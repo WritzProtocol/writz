@@ -1,0 +1,26 @@
+{
+  "name": "@writz/circuits",
+  "version": "0.1.0",
+  "description": "Writz Protocol ZK circuits — Groth16 on BN254 for private lending positions",
+  "scripts": {
+    "compile": "bash scripts/compile_all.sh",
+    "setup:dev": "bash scripts/setup_dev.sh",
+    "test": "node --experimental-vm-modules node_modules/.bin/jest --forceExit",
+    "test:watch": "node --experimental-vm-modules node_modules/.bin/jest --watch"
+  },
+  "dependencies": {
+    "circomlib": "^2.0.5",
+    "circomlibjs": "^0.1.7",
+    "snarkjs": "^0.7.6"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "roots": [
+      "<rootDir>/test"
+    ],
+    "testTimeout": 60000
+  }
+}
