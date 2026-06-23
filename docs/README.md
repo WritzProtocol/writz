@@ -1,92 +1,92 @@
-# Writz Protocol — Documentation
+# Writz Protocol Documentation
 
-> The first trustless Bitcoin DeFi layer on Stellar, with ZK-private positions.
+> **Bitcoin was built to be yours. Your loans should be too.**
+
+Writz is the first trustless Bitcoin lending protocol on Stellar. Lock real BTC. Borrow real USDC. Every position stays private — always.
 
 ---
 
-## Documents
+## Find Your Path
 
-### Start here
+| You are | Start here |
+|---|---|
+| New to Writz | [What is Writz? →](introduction/what-is-writz.md) |
+| Want to understand how it works (no jargon) | [How Writz Works →](introduction/how-writz-works.md) |
+| Ready to use PrivateLend | [PrivateLend Guide →](products/privatelend.md) |
+| A developer building on Stellar | [Quick Start →](developers/quick-start.md) |
+| A Stellar protocol that needs Bitcoin verification | [SPV SDK →](developers/spv-sdk.md) |
+| An institution exploring Proof of Reserve | [ZK Proof of Reserve →](products/zk-proof-of-reserve.md) |
+| An investor or grant reviewer | [Vision →](roadmap/vision.md) |
 
-- [`project-overview.md`](./project-overview.md) — What Writz Protocol is, products, business model, and why Stellar
+---
 
-### Research
+## Documentation Map
 
-- [`research/spv-implementations.md`](./research/spv-implementations.md) — Prior art: Bitcoin SPV on other chains (BTC Relay, summa-tx, Interlay, SP1+BitVM). Critical lessons for building on Soroban.
-- [`research/market-landscape.md`](./research/market-landscape.md) — BTCfi market size and growth, competitive landscape, Stellar ecosystem, why now
-- [`research/protocol-x-ray-capabilities.md`](./research/protocol-x-ray-capabilities.md) — Deep dive: Protocol 25 (X-Ray), 26 (Yardstick), 27 (Zipper). ZK capabilities, costs, and what each means for Writz
-- [`research/soroban-compute-benchmarks.md`](./research/soroban-compute-benchmarks.md) — Resource limits, instruction costs, ZK + SPV feasibility analysis, storage pitfalls
-- [`research/bitcoin-locking-script.md`](./research/bitcoin-locking-script.md) — P2WSH vs Taproot, exact script design, timelock logic, co-signing key architecture
-- [`research/oracle-design.md`](./research/oracle-design.md) — RedStone + Pyth on Stellar, SEP-40 standard, multi-oracle median strategy, manipulation mitigations
-- [`research/interest-rate-model.md`](./research/interest-rate-model.md) — Kinked utilization curve, Aave/Compound/Blend comparison, Writz-specific parameters
-- [`research/liquidation-mechanism.md`](./research/liquidation-mechanism.md) — Private ZK liquidations, keeper design, circuit constraints, health factor system
-- [`research/circom-circuit-design.md`](./research/circom-circuit-design.md) — Three circuits (deposit, borrow/repay, liquidation), constraint counts, trusted setup requirements
-- [`research/relayer-incentive-design.md`](./research/relayer-incentive-design.md) — Stateless SPV relay service, incentive model, zkRelay alternative, fallback sources
-- [`research/blend-usdc-integration.md`](./research/blend-usdc-integration.md) — USDC liquidity landscape, Blend ecosystem, bootstrap strategy, oracle alignment
-- [`research/tokenomics-fee-model.md`](./research/tokenomics-fee-model.md) — Revenue streams, WRTZ token design, real-yield model, financial projections
-- [`research/security-audit-strategy.md`](./research/security-audit-strategy.md) — Audit Bank, common Soroban vulnerabilities, audit sequence, bug bounty tiers
-- [`research/regulatory-landscape.md`](./research/regulatory-landscape.md) — FATF/AML, Tornado Cash precedent, ASP compliance model, jurisdictional strategy
-- [`research/sdf-grants.md`](./research/sdf-grants.md) — One-time $92K SCF application strategy, Audit Bank access, long-term Stellar alliance vision
-- [`research/growth-strategy.md`](./research/growth-strategy.md) — User segments, growth flywheel, points program, verifiable traction metrics, community building
+### Introduction
+- [What is Writz?](introduction/what-is-writz.md) — The home metaphor. Plain English. 5 minutes.
+- [The Problem](introduction/the-problem.md) — Why public DeFi fails Bitcoin holders.
+- [How Writz Works](introduction/how-writz-works.md) — Anyone can understand this. No jargon.
+- [Why Stellar, Why Now](introduction/why-stellar-why-now.md) — The strategic window. Protocol X-Ray. First-mover.
 
-### Architecture
+### Products
+- [PrivateLend](products/privatelend.md) — BTC collateral → private USDC loan. Step-by-step guide.
+- [Dark Swap](products/dark-swap.md) — Private BTC↔USDC conversion (Phase 3).
+- [BTC Savings](products/btc-savings.md) — BTC collateral + USDC yield (Phase 3).
+- [ZK Proof of Reserve](products/zk-proof-of-reserve.md) — Enterprise B2B attestation product.
 
-- [`architecture/technical-overview.md`](./architecture/technical-overview.md) — System design: P2WSH locking script, SPV contract, ZK privacy layer, PrivateLend contract, full user journeys
+### How It Works (Technical)
+- [Bitcoin Side](how-it-works/bitcoin-side.md) — P2WSH script, spending paths, co-signing architecture.
+- [SPV Verification](how-it-works/spv-verification.md) — Trustless Bitcoin transaction verification on Soroban.
+- [ZK Privacy Layer](how-it-works/zk-privacy-layer.md) — Groth16 circuits, Poseidon commitments, nullifiers.
+- [Stellar Side](how-it-works/stellar-side.md) — Four contracts, interest model, USDC pool, oracles.
+
+### Developers
+- [Quick Start](developers/quick-start.md) — Clone, build, test, deploy in under 5 minutes.
+- [SPV SDK](developers/spv-sdk.md) — Free Bitcoin verification for any Stellar protocol.
+- [Contract Reference](developers/contract-reference.md) — All public interfaces, parameters, events.
+- [Contributing](developers/contributing.md) — How to contribute code, docs, and security research.
+
+### Security
+- [Security Model](security/security-model.md) — Trust assumptions, failure scenarios, what Writz can't do.
+- [Audits](security/audits.md) — Audit roadmap, target firms, Audit Bank process.
+- [Bug Bounty](security/bug-bounty.md) — Responsible disclosure. Up to $50,000 for critical findings.
 
 ### Roadmap
+- [Vision](roadmap/vision.md) — Where Writz goes by 2028. The three-layer moat.
+- [Phases](roadmap/phases.md) — Phase-by-phase execution plan with milestones and metrics.
 
-- [`roadmap/roadmap.md`](./roadmap/roadmap.md) — Four-phase execution plan: Phase 0 (Research), Phase 1 (Foundation), Phase 2 (Launch), Phase 3 (Scale)
+### Research (Internal Reference)
+- [Bitcoin SPV on Other Chains](research/spv-implementations.md)
+- [Market Landscape](research/market-landscape.md)
+- [Protocol X-Ray Capabilities](research/protocol-x-ray-capabilities.md)
+- [Soroban Compute Benchmarks](research/soroban-compute-benchmarks.md)
+- [Bitcoin Locking Script Design](research/bitcoin-locking-script.md)
+- [Oracle Design](research/oracle-design.md)
+- [Interest Rate Model](research/interest-rate-model.md)
+- [Liquidation Mechanism](research/liquidation-mechanism.md)
+- [Circom Circuit Design](research/circom-circuit-design.md)
+- [Relayer Incentive Design](research/relayer-incentive-design.md)
+- [Tokenomics & Fee Model](research/tokenomics-fee-model.md)
+- [Security Audit Strategy](research/security-audit-strategy.md)
+- [Regulatory Landscape](research/regulatory-landscape.md)
+- [Growth Strategy](research/growth-strategy.md)
 
-### Brainstorming
-
-- [`brainstorming/brainstorming-session-2026-06-22-1000.md`](./brainstorming/brainstorming-session-2026-06-22-1000.md) — Original ideation session: 14 ideas generated, analysis, and final concept selection
+### SCF Application
+- [Application](scf/application.md) — Full Open Track Build Award application text.
+- [Milestone Plan](scf/milestone-plan.md) — Four-tranche deliverables and verification steps.
+- [STRIDE Threat Model](scf/stride-threat-model.md) — Security threat model for SCF review.
 
 ---
 
 ## Current Status
 
-**Phase:** 1 — Foundation (in progress)
+**Phase:** 1 — Foundation (in progress, June 2026)
 
-**Completed:**
-- Phase 0: All 15 research documents ✅
-- Phase 1.2: Bitcoin SPV Soroban contract — 28/28 tests, deployed to testnet ✅
-- Phase 1.3: Relayer service (`relayer/`) — 35/35 tests ✅
-- Phase 1.4: P2WSH locking script (`bitcoin-script/`) — 48/48 tests ✅
-- Phase 1.5: PrivateLend skeleton contract (`contracts/contracts/private-lend/`) — 50/50 tests, 23.7 KB WASM ✅
-- Phase 1.6: Community presence content — Mintlify config, Discord post, GitHub Discussion, outreach playbook ✅
-- Phase 1.7: SCF application content — full application, 4-tranche milestone plan, STRIDE threat model ✅
+**All contracts live on Soroban testnet. 268 tests passing.**
 
-**Remaining before SCF submission:** push repo public → publish Mintlify docs → record demo video → record team video → engage community for 2–3 weeks → submit SCF Interest Form.
-
----
-
-## Quick Reference
-
-### What Writz does
-
-```
-User sends BTC (Bitcoin) → P2WSH locking script
-                                    │
-                        SPV proof submitted to Soroban
-                                    │
-                        PrivateLend issues USDC loan
-                        (position hidden via ZK proof)
-                                    │
-                        User uses USDC in Stellar DeFi
-```
-
-### Products
-
-| Product | Description | Status |
-|---|---|---|
-| **PrivateLend** | BTC collateral → private USDC loan | In design |
-| **Dark Swap** | Private BTC ↔ USDC swap | Planned (Phase 3) |
-| **BTC Savings** | BTC collateral + auto USDC yield | Planned (Phase 3) |
-| **ZK Proof of Reserve** | B2B: prove BTC holdings privately | Planned (Phase 3) |
-
-### Key technical dependencies
-
-- Stellar Protocol X-Ray (live on mainnet, Jan 2026)
-- Soroban smart contracts (production-grade since Protocol 23, Sep 2025)
-- summa-tx/bitcoin-spv Rust library (reference implementation)
-- Bitcoin P2WSH scripting
+| Contract | Address |
+|---|---|
+| `bitcoin-spv` | `CAE5L7BO2GNF7MIZWXB2BTUMLYNIMQZUSWN2BWLZQS7HRHLOUSL6VLWJ` |
+| `zk-verifier` | `CDV45GLXG4AOU6BDZSY5YHHVNGQIAYAPD3PUGXIIIYLIO6V2XGO6SMFV` |
+| `commitment-tree` | `CDFAP3J4WLFZC2N5U66X5EO62POBBIBXOKCCMCM3IRLJNXT73C4IBKA7` |
+| `private-lend` | `CCLH2GJYG3QSHZJI7V7VK3DNMNK3I3QJCECBSFGX3AC6CK4I7EF7ZJ2G` |
