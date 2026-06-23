@@ -1,0 +1,35 @@
+# ── Stellar / Soroban ─────────────────────────────────────────────────────────
+.stellar/
+contracts/target/
+**/.soroban/
+
+# ── Node / JavaScript ─────────────────────────────────────────────────────────
+node_modules/
+dist/
+.env
+.env.local
+.env.*.local
+npm-debug.log*
+yarn-debug.log*
+
+# ── Rust ──────────────────────────────────────────────────────────────────────
+target/
+
+# ── ZK artifacts (large binaries) ────────────────────────────────────────────
+circuits/build/
+circuits/ptau/
+circuits/keys/*.zkey
+
+# ── Claude Code / Codex ───────────────────────────────────────────────────────
+.claude/
+.codex/
+
+# ── OS ────────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Editor ────────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
