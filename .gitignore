@@ -20,9 +20,10 @@ circuits/build/
 circuits/ptau/
 circuits/keys/*.zkey
 
-# ── Claude Code / Codex ───────────────────────────────────────────────────────
-.claude/
-.codex/
+# ── AI agents (track skills, ignore local settings) ───────────────────────────
+.claude/settings.json
+.claude/settings.local.json
+.agents/settings.local.json
 
 # ── OS ────────────────────────────────────────────────────────────────────────
 .DS_Store
