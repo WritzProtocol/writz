@@ -1,0 +1,92 @@
+{
+  "name": "Writz Protocol",
+  "logo": {
+    "dark": "/logo/writz-dark.svg",
+    "light": "/logo/writz-light.svg"
+  },
+  "favicon": "/favicon.svg",
+  "colors": {
+    "primary": "#F7931A",
+    "light": "#FFB347",
+    "dark": "#C47217",
+    "anchors": {
+      "from": "#F7931A",
+      "to": "#FF6B35"
+    }
+  },
+  "topbarLinks": [
+    {
+      "name": "GitHub",
+      "url": "https://github.com/writz-protocol/writz"
+    }
+  ],
+  "topbarCtaButton": {
+    "name": "Launch App",
+    "url": "https://app.writz.io"
+  },
+  "tabs": [
+    {
+      "name": "Research",
+      "url": "research"
+    },
+    {
+      "name": "SCF Application",
+      "url": "scf"
+    }
+  ],
+  "anchors": [
+    {
+      "name": "Testnet Contract",
+      "icon": "cube",
+      "url": "https://stellar.expert/explorer/testnet/contract/CDYQRO6PZ55A3AMJQBHDEUUCQTSVHHRWQW7WSDX7CBX6FQ2NLKYCPLVC"
+    },
+    {
+      "name": "Discord",
+      "icon": "discord",
+      "url": "https://discord.gg/stellar"
+    }
+  ],
+  "navigation": [
+    {
+      "group": "Overview",
+      "pages": [
+        "project-overview",
+        "architecture/technical-overview",
+        "roadmap/roadmap"
+      ]
+    },
+    {
+      "group": "Research",
+      "pages": [
+        "research/spv-implementations",
+        "research/market-landscape",
+        "research/protocol-x-ray-capabilities",
+        "research/soroban-compute-benchmarks",
+        "research/bitcoin-locking-script",
+        "research/oracle-design",
+        "research/interest-rate-model",
+        "research/liquidation-mechanism",
+        "research/circom-circuit-design",
+        "research/relayer-incentive-design",
+        "research/blend-usdc-integration",
+        "research/tokenomics-fee-model",
+        "research/security-audit-strategy",
+        "research/regulatory-landscape",
+        "research/growth-strategy"
+      ]
+    },
+    {
+      "group": "SCF Application",
+      "pages": [
+        "scf/application",
+        "scf/milestone-plan",
+        "scf/stride-threat-model",
+        "research/sdf-grants"
+      ]
+    }
+  ],
+  "footerSocials": {
+    "twitter": "https://twitter.com/writz_protocol",
+    "github": "https://github.com/writz-protocol/writz"
+  }
+}
