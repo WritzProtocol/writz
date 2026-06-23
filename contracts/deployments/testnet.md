@@ -122,42 +122,41 @@ stellar contract invoke \
 
 ---
 
-## P2WSH End-to-End Test (Bitcoin testnet3)
+## P2WSH End-to-End Test (Bitcoin Signet)
 
 **Script:** `bitcoin-script/scripts/e2e_testnet.mjs`  
-**Run:** `npm run e2e:dryrun` (dry-run, no funding needed) · `npm run e2e:testnet` (live broadcast)  
-**Date:** 2026-06-22
+**Run:** `node scripts/e2e_testnet.mjs --dry-run` · `node scripts/e2e_testnet.mjs` (live broadcast)  
+**Date:** 2026-06-23  
+**Network:** Bitcoin Signet (Blockstream Esplora)
 
 ### Deposit address
 
 ```
-tb1qsdfkzmnd0smfzsxdcp56skphd98gmn58srmm60scst62fq657xmq7mgjee
+tb1q2ewa3444emmn80sxg9ncfsr9v8pn0cc2ae2fy5u2qqm4a4jewwhsqwjt2m
 ```
 
 | Key | Value |
 |-----|-------|
-| Protocol pubkey | `02fa5aaea4cb2c61b4497fa0aa32d24fa005a26d22f33260eec44d4218e4b3d9f2` |
-| User pubkey | `03af6f3380be025d3faab06d448e2c4f8cd28790f7c8500899893a2e611719165b` |
-| CLTV timelock | `5,500,000` (fixed for test reproducibility) |
-| User return addr | `tb1q6ekvq27u8kul8kwwft9u6vtrxzw92nx2kr8y6q` |
+| Protocol pubkey | `031918f1cf7f7c5ce714251bc1c757ea9c855fb11fca316aec6108668379f231ed` |
+| User pubkey | `02bbcf244d0b968684729fc7d82722466048e584907f045d8b8810d7f831655ad7` |
+| CLTV timelock | `700,000` (fixed for test reproducibility; Signet tip ~310k) |
+| User return addr | `tb1qx8kdpw7aj8v2dppxggfw9mm2ckjwvp7mx00325` |
 
-### Dry-run results ✅
+### Live broadcast results ✅
 
 | Field | Value |
 |-------|-------|
-| TX size | 346 bytes / **148 vbytes** |
+| Funding tx | [`61deea44`](https://blockstream.info/signet/tx/61deea4439ecd6c325c5b23ecf4b27694ce3cb0474adbbcc6221968ecbd583a4) (89,631 sat to P2WSH) |
+| Release tx | [`11932100`](https://blockstream.info/signet/tx/119321009b2f92dac8f25f6bcddb2ed6a3ae778e8748ec52910cce90742e4098) (88,131 sat → user) |
+| TX size | 347 bytes / **149 vbytes** |
 | Fee | 1,500 sat (10.1 sat/vbyte) |
-| Witness items | 4: `[user_sig (71B), protocol_sig (71B), 0x01, redeemScript (114B)]` |
-| redeemScript | 114 bytes — IF/CHECKSIGVERIFY/CHECKSIG/ELSE/CLTV/DROP/CHECKSIG/ENDIF |
-| Paths verified | Path A (co-sign) witness structure ✅ |
+| Witness items | 4: `[user_sig (72B), protocol_sig (71B), 0x01, redeemScript (114B)]` |
 
 **What was verified:**
-- P2WSH address derived correctly from (protocol_key, user_key, CLTV=5,500,000) ✅
+- P2WSH address derived correctly from (protocol_key, user_key, CLTV=700,000) ✅
 - Both keys signed the PSBT independently (multi-party flow) ✅
 - `finalizePathA` assembled witness `[user_sig, protocol_sig, 0x01, redeemScript]` correctly ✅
-- Transaction structurally valid — ready to broadcast once deposit address is funded ✅
-
-> Fund `tb1qsdfkzmnd0smfzsxdcp56skphd98gmn58srmm60scst62fq657xmq7mgjee` from any testnet3 faucet, then run `npm run e2e:testnet` for the live broadcast.
+- Transaction broadcast and accepted by Bitcoin Signet mempool ✅
 
 ---
 

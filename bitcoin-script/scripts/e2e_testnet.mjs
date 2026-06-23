@@ -1,32 +1,27 @@
 #!/usr/bin/env node
 /**
- * End-to-end P2WSH test on Bitcoin testnet3 (Blockstream Esplora).
+ * End-to-end P2WSH test on Bitcoin Signet (Blockstream Esplora).
  *
  * Tests the full Writz Protocol Bitcoin locking flow:
  *   1. Derive P2WSH deposit address (protocol key + user key + CLTV)
- *   2. Fund the address (from testnet faucet or manually)
+ *   2. Fund the address (from Signet faucet or manually)
  *   3. Build + sign Path A co-signed release transaction (both keys)
  *   4. Broadcast via Esplora and confirm on-chain
  *
  * Usage:
- *   node scripts/e2e_testnet.mjs
+ *   node scripts/e2e_testnet.mjs [--dry-run]
  *
  * The script derives keys deterministically from SHA256 of known seed strings —
- * safe for testnet only, no real funds. On re-runs it reuses the same deposit
- * address, so if it was already funded the test proceeds immediately.
+ * safe for Signet only, no real funds. Each set of seeds produces a unique
+ * deposit address; update the seed strings to rotate to a fresh address.
  */
 
 import { createHash } from 'node:crypto';
 import * as bitcoin from 'bitcoinjs-lib';
 import * as ecc from '@bitcoinerlab/secp256k1';
 import { ECPairFactory } from 'ecpair';
-import {
-  deriveDepositAddress,
-  keyPairFromPrivkey,
-  pubkeyToP2WPKHAddress,
-  buildReleaseTransaction,
-  finalizePathA,
-} from '../dist/index.js';
+import pkg from '../dist/index.js';
+const { deriveDepositAddress, keyPairFromPrivkey, pubkeyToP2WPKHAddress, buildReleaseTransaction, finalizePathA } = pkg;
 
 // ── Setup ─────────────────────────────────────────────────────────────────────
 
@@ -35,9 +30,9 @@ const ECPair = ECPairFactory(ecc);
 
 const DRY_RUN = process.argv.includes('--dry-run');
 
-const NETWORK   = bitcoin.networks.testnet;
-const ESPLORA   = 'https://blockstream.info/testnet/api';
-const FEE_SAT   = 1500;   // generous fee for testnet (~10 sat/vbyte)
+const NETWORK   = bitcoin.networks.testnet; // Signet shares address prefixes with testnet
+const ESPLORA   = 'https://blockstream.info/signet/api';
+const FEE_SAT   = 1500;   // generous fee for Signet (~10 sat/vbyte)
 const POLL_MS   = 15_000; // check for UTXO every 15 seconds
 const POLL_MAX  = 40;     // give up after ~10 minutes
 
@@ -48,11 +43,11 @@ function seedToPrivkey(seed) {
 }
 
 const protocolKP = keyPairFromPrivkey(
-  seedToPrivkey('writz-protocol-testnet-e2e-v2'),
+  seedToPrivkey('writz-protocol-signet-e2e-v1'),
   NETWORK,
 );
 const userKP = keyPairFromPrivkey(
-  seedToPrivkey('writz-user-testnet-e2e-v2'),
+  seedToPrivkey('writz-user-signet-e2e-v1'),
   NETWORK,
 );
 
@@ -93,15 +88,12 @@ async function broadcastTx(rawHex) {
 // ── Faucet helper ─────────────────────────────────────────────────────────────
 
 async function tryFaucet(address) {
-  // Blockstream testnet faucet (may be rate-limited)
+  // signetfaucet.com — reliable Signet faucet
   try {
-    const res = await fetch('https://blockstream.info/testnet/faucet.html', {
+    const res = await fetch(`https://signetfaucet.com/api/claim?address=${encodeURIComponent(address)}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: `address=${encodeURIComponent(address)}`,
     });
     const text = await res.text();
-    // Response is HTML; look for the txid pattern (64 hex chars)
     const match = text.match(/[0-9a-f]{64}/i);
     if (match) return match[0];
   } catch (_) { /* ignore */ }
@@ -111,18 +103,18 @@ async function tryFaucet(address) {
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 console.log('══════════════════════════════════════════════════════════════');
-console.log('Writz Protocol — Bitcoin Testnet P2WSH End-to-End Test');
+console.log('Writz Protocol — Bitcoin Signet P2WSH End-to-End Test');
 console.log('══════════════════════════════════════════════════════════════\n');
 
 // ── Step 1: Derive deposit address ───────────────────────────────────────────
 
 const blockHeight = await getCurrentBlockHeight();
-// Fixed timelock for testnet e2e reproducibility — this is the P2WSH-defining
+// Fixed timelock for Signet e2e reproducibility — this is the P2WSH-defining
 // height (must be ≥ MIN_TIMELOCK_HEIGHT). Path A (co-signed) does not enforce
 // this height; it's only relevant for the Path B emergency recovery branch.
 // A fixed value ensures the deposit address is stable across script re-runs.
-const FIXED_TESTNET_TIMELOCK = 5_500_000;  // well beyond current testnet3 tip (~5M)
-const timelockHeight = FIXED_TESTNET_TIMELOCK;
+const FIXED_SIGNET_TIMELOCK = 700_000;  // well beyond current Signet tip (~300k)
+const timelockHeight = FIXED_SIGNET_TIMELOCK;
 
 const depositAddr = deriveDepositAddress(
   {
@@ -135,7 +127,7 @@ const depositAddr = deriveDepositAddress(
 
 const userReturnAddress = pubkeyToP2WPKHAddress(userKP.publicKey, NETWORK);
 
-console.log('Keys (testnet-only deterministic keys):');
+console.log('Keys (Signet-only deterministic keys):');
 console.log(`  protocol pubkey : ${protocolKP.publicKey.toString('hex')}`);
 console.log(`  user pubkey     : ${userKP.publicKey.toString('hex')}`);
 console.log(`  user return addr: ${userReturnAddress}`);
@@ -146,7 +138,7 @@ console.log();
 console.log('─────────────────────────────────────────────────────────────');
 console.log(`P2WSH deposit address: ${depositAddr.address}`);
 console.log('─────────────────────────────────────────────────────────────');
-console.log(`View: https://blockstream.info/testnet/address/${depositAddr.address}`);
+console.log(`View: https://blockstream.info/signet/address/${depositAddr.address}`);
 console.log();
 
 // ── Step 2: Find funding UTXO ────────────────────────────────────────────────
@@ -171,20 +163,19 @@ if (DRY_RUN) {
   let utxos = await getUtxos(depositAddr.address);
 
   if (utxos.length === 0) {
-    console.log('  No UTXO found. Trying testnet faucet…');
+    console.log('  No UTXO found. Trying Signet faucet…');
     const faucetTxid = await tryFaucet(depositAddr.address);
     if (faucetTxid) {
       console.log(`  ✓ Faucet funded — txid: ${faucetTxid}`);
-      console.log(`    https://blockstream.info/testnet/tx/${faucetTxid}`);
+      console.log(`    https://blockstream.info/signet/tx/${faucetTxid}`);
     } else {
       console.log('  Faucet unavailable or rate-limited.');
       console.log('');
-      console.log('  ► Fund this address manually from any Bitcoin testnet faucet,');
+      console.log('  ► Fund this address manually from a Signet faucet,');
       console.log('    then re-run (the script polls until a UTXO appears):');
       console.log(`    Address : ${depositAddr.address}`);
-      console.log('    Faucets : https://blockstream.info/testnet/faucet.html');
-      console.log('              https://signetfaucet.com  (use Signet mode — same address format)');
-      console.log('              https://coinfaucet.eu/en/btc-testnet/');
+      console.log('    Faucets : https://signetfaucet.com  ← recommended');
+      console.log('              https://alt.signetfaucet.com');
       console.log('');
       console.log(`  Polling for UTXO every ${POLL_MS / 1000}s (up to ${POLL_MAX * POLL_MS / 60_000} min)…`);
     }
@@ -288,7 +279,7 @@ if (DRY_RUN) {
   console.log(`  ${rawHex.slice(0, 80)}…`);
   broadcastedTxid = releaseTxid;
 } else {
-  console.log('\nSTEP 6: Broadcasting to Bitcoin testnet…');
+  console.log('\nSTEP 6: Broadcasting to Bitcoin Signet…');
   try {
     broadcastedTxid = await broadcastTx(rawHex);
   } catch (err) {
@@ -304,19 +295,19 @@ if (DRY_RUN) {
   }
   console.log(`  ✓ Broadcast accepted`);
   console.log(`  txid : ${broadcastedTxid}`);
-  console.log(`  URL  : https://blockstream.info/testnet/tx/${broadcastedTxid}`);
+  console.log(`  URL  : https://blockstream.info/signet/tx/${broadcastedTxid}`);
 }
 
 // ── Summary ───────────────────────────────────────────────────────────────────
 
-const mode = DRY_RUN ? 'DRY-RUN (synthetic UTXO)' : 'Bitcoin testnet3';
+const mode = DRY_RUN ? 'DRY-RUN (synthetic UTXO)' : 'Bitcoin Signet';
 console.log('\n══════════════════════════════════════════════════════════════');
 console.log(`✅  P2WSH END-TO-END TEST COMPLETE — ${mode}`);
 console.log('══════════════════════════════════════════════════════════════\n');
 console.log(`  Deposit address    : ${depositAddr.address}`);
 if (!DRY_RUN) {
-  console.log(`  Funding tx         : https://blockstream.info/testnet/tx/${utxo.txid}`);
-  console.log(`  Release tx (Path A): https://blockstream.info/testnet/tx/${releaseTxid}`);
+  console.log(`  Funding tx         : https://blockstream.info/signet/tx/${utxo.txid}`);
+  console.log(`  Release tx (Path A): https://blockstream.info/signet/tx/${releaseTxid}`);
   console.log(`  Recipient          : ${userReturnAddress}`);
   console.log(`  Net received       : ${utxo.value - FEE_SAT} sat`);
 } else {
@@ -332,11 +323,11 @@ console.log('  ✓ Both keys signed the PSBT independently (multi-party flow)');
 console.log('  ✓ finalizePathA assembled correct witness stack');
 if (DRY_RUN) {
   console.log();
-  console.log('To broadcast on real Bitcoin testnet, fund the deposit address');
+  console.log('To broadcast on Bitcoin Signet, fund the deposit address');
   console.log(`from a faucet and re-run without --dry-run:`);
   console.log(`  Address : ${depositAddr.address}`);
-  console.log('  Faucets : https://blockstream.info/testnet/faucet.html');
-  console.log('            https://signetfaucet.com');
+  console.log('  Faucets : https://signetfaucet.com');
+  console.log('            https://alt.signetfaucet.com');
 } else {
-  console.log('  ✓ Transaction accepted by Bitcoin testnet mempool');
+  console.log('  ✓ Transaction accepted by Bitcoin Signet mempool');
 }

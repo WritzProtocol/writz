@@ -1,4 +1,4 @@
-export type BitcoinNetwork = "mainnet" | "testnet";
+export type BitcoinNetwork = "mainnet" | "signet";
 
 function getEnv(key: string, fallback?: string): string {
   const val = process.env[key] ?? fallback;
@@ -19,13 +19,15 @@ export interface Config {
 
 const ESPLORA_URLS: Record<BitcoinNetwork, string> = {
   mainnet: "https://blockstream.info/api",
-  testnet: "https://blockstream.info/testnet/api",
+  signet: "https://blockstream.info/signet/api",
 };
 
 function loadConfig(): Config {
-  const network = getEnv("BITCOIN_NETWORK", "mainnet") as BitcoinNetwork;
-  if (network !== "mainnet" && network !== "testnet") {
-    throw new Error(`BITCOIN_NETWORK must be "mainnet" or "testnet", got: ${network}`);
+  const rawNetwork = getEnv("BITCOIN_NETWORK", "mainnet");
+  // Legacy alias: testnet3 was replaced by Bitcoin Signet for development.
+  const network = (rawNetwork === "testnet" ? "signet" : rawNetwork) as BitcoinNetwork;
+  if (network !== "mainnet" && network !== "signet") {
+    throw new Error(`BITCOIN_NETWORK must be "mainnet" or "signet", got: ${rawNetwork}`);
   }
 
   return {
