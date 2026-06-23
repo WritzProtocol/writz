@@ -103,7 +103,7 @@ GET https://relayer.writz.io/spv-proof/{txid}
 **Response:**
 ```json
 {
-  "txid": "b594441f89e2437b1e14c4a7e5c1797139cd76461a3d7594eda379eaa672ec28",
+  "txid": "119321009b2f92dac8f25f6bcddb2ed6a3ae778e8748ec52910cce90742e4098",
   "block_hash": "00000000000000000003...",
   "confirmations": 12,
   "sorobanArgs": {

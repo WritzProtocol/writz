@@ -17,7 +17,7 @@ This is not a whitepaper. As of June 2026, four contracts are live on Soroban te
 |---|---|
 | Bitcoin SPV verification on Soroban | ✅ Live on testnet |
 | ZK-private positions (Groth16 BN254) | ✅ Verified on-chain |
-| P2WSH locking + co-signed BTC release | ✅ Broadcast on Bitcoin testnet |
+| P2WSH locking + co-signed BTC release | ✅ Broadcast on Bitcoin Signet |
 | Poseidon Merkle commitment tree | ✅ Root updated on-chain |
 | Full deposit → borrow → repay ZK flow | ✅ 6 sequential testnet transactions |
 | 268 tests across all modules | ✅ All passing |

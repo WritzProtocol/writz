@@ -89,7 +89,7 @@ This establishes the privacy-ready data model before full circuit integration.
 
 ### Deliverable 3: End-to-end testnet demo video
 
-10–15 minute demo of the full deposit → borrow → repay cycle using real testnet BTC and testnet USDC.
+10–15 minute demo of the full deposit → borrow → repay cycle using real Signet BTC and Soroban testnet USDC.
 
 ### Deliverable 4: STRIDE threat model (draft)
 
