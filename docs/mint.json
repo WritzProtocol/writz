@@ -26,6 +26,14 @@
   },
   "tabs": [
     {
+      "name": "How It Works",
+      "url": "how-it-works"
+    },
+    {
+      "name": "Developers",
+      "url": "developers"
+    },
+    {
       "name": "Research",
       "url": "research"
     },
@@ -36,9 +44,14 @@
   ],
   "anchors": [
     {
-      "name": "Testnet Contract",
+      "name": "Testnet Explorer",
       "icon": "cube",
-      "url": "https://stellar.expert/explorer/testnet/contract/CDYQRO6PZ55A3AMJQBHDEUUCQTSVHHRWQW7WSDX7CBX6FQ2NLKYCPLVC"
+      "url": "https://stellar.expert/explorer/testnet/contract/CDFAP3J4WLFZC2N5U66X5EO62POBBIBXOKCCMCM3IRLJNXT73C4IBKA7"
+    },
+    {
+      "name": "Bitcoin Testnet Tx",
+      "icon": "bitcoin-sign",
+      "url": "https://blockstream.info/testnet/tx/b594441f89e2437b1e14c4a7e5c1797139cd76461a3d7594eda379eaa672ec28"
     },
     {
       "name": "Discord",
@@ -48,11 +61,54 @@
   ],
   "navigation": [
     {
-      "group": "Overview",
+      "group": "Introduction",
       "pages": [
-        "project-overview",
-        "architecture/technical-overview",
-        "roadmap/roadmap"
+        "introduction/what-is-writz",
+        "introduction/the-problem",
+        "introduction/how-writz-works",
+        "introduction/why-stellar-why-now"
+      ]
+    },
+    {
+      "group": "Products",
+      "pages": [
+        "products/privatelend",
+        "products/dark-swap",
+        "products/btc-savings",
+        "products/zk-proof-of-reserve"
+      ]
+    },
+    {
+      "group": "How It Works",
+      "pages": [
+        "how-it-works/bitcoin-side",
+        "how-it-works/spv-verification",
+        "how-it-works/zk-privacy-layer",
+        "how-it-works/stellar-side"
+      ]
+    },
+    {
+      "group": "Developers",
+      "pages": [
+        "developers/quick-start",
+        "developers/spv-sdk",
+        "developers/contract-reference",
+        "developers/contributing"
+      ]
+    },
+    {
+      "group": "Security",
+      "pages": [
+        "security/security-model",
+        "security/audits",
+        "security/bug-bounty"
+      ]
+    },
+    {
+      "group": "Roadmap",
+      "pages": [
+        "roadmap/vision",
+        "roadmap/phases"
       ]
     },
     {
