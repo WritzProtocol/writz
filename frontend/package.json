@@ -13,6 +13,7 @@
     "@stellar/stellar-sdk": "^16.0.1",
     "commitment-tree": "file:packages/commitment-tree",
     "next": "16.2.9",
+    "poseidon-lite": "^0.3.0",
     "react": "19.2.4",
     "react-dom": "19.2.4"
   },
