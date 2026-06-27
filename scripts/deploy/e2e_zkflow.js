@@ -187,45 +187,74 @@ function i128ToScVal(n) {
 // ── Contract invocation ───────────────────────────────────────────────────────
 
 async function invoke(contractId, method, args) {
-    const account  = await server.getAccount(keypair.publicKey());
-    const contract = new Contract(contractId);
+    // Retry on testnet flakiness: txBadSeq (sequence lag) or NOT_FOUND (dropped).
+    for (let attempt = 1; attempt <= 4; attempt++) {
+        const account  = await server.getAccount(keypair.publicKey());
+        const contract = new Contract(contractId);
 
-    const tx = new TransactionBuilder(account, { fee: '1000000', networkPassphrase: NETWORK })
-        .addOperation(contract.call(method, ...args))
-        .setTimeout(30)
-        .build();
+        const tx = new TransactionBuilder(account, { fee: '1000000', networkPassphrase: NETWORK })
+            .addOperation(contract.call(method, ...args))
+            .setTimeout(30)
+            .build();
 
-    const simResult = await server.simulateTransaction(tx);
-    if (SorobanRpc.Api.isSimulationError(simResult)) {
-        throw new Error(`Simulation failed (${method}): ${JSON.stringify(simResult.error)}`);
+        const simResult = await server.simulateTransaction(tx);
+        if (SorobanRpc.Api.isSimulationError(simResult)) {
+            // Transient: RPC state from a prior tx may not have propagated yet.
+            if (attempt < 4) {
+                await new Promise(r => setTimeout(r, 3000));
+                continue;
+            }
+            throw new Error(`Simulation failed (${method}): ${JSON.stringify(simResult.error)}`);
+        }
+
+        const prepared = SorobanRpc.assembleTransaction(tx, simResult).build();
+        prepared.sign(keypair);
+
+        const sendResult = await server.sendTransaction(prepared);
+        if (sendResult.status === 'ERROR') {
+            if (JSON.stringify(sendResult).includes('txBadSeq') && attempt < 4) {
+                await new Promise(r => setTimeout(r, 2500));
+                continue;
+            }
+            throw new Error(`Send failed (${method}): ${JSON.stringify(sendResult.errorResult)}`);
+        }
+
+        let getResult;
+        for (let i = 0; i < 40; i++) {
+            await new Promise(r => setTimeout(r, 2000));
+            getResult = await server.getTransaction(sendResult.hash);
+            if (getResult.status !== 'NOT_FOUND') break;
+        }
+
+        if (getResult.status !== 'SUCCESS') {
+            if (attempt < 4) {
+                await new Promise(r => setTimeout(r, 2500));
+                continue;
+            }
+            throw new Error(`Tx failed (${method}): ${getResult.status}`);
+        }
+
+        return { hash: sendResult.hash, result: getResult };
     }
-
-    const prepared = SorobanRpc.assembleTransaction(tx, simResult).build();
-    prepared.sign(keypair);
-
-    const sendResult = await server.sendTransaction(prepared);
-    if (sendResult.status === 'ERROR') {
-        throw new Error(`Send failed (${method}): ${JSON.stringify(sendResult.errorResult)}`);
-    }
-
-    let getResult;
-    for (let i = 0; i < 30; i++) {
-        await new Promise(r => setTimeout(r, 2000));
-        getResult = await server.getTransaction(sendResult.hash);
-        if (getResult.status !== 'NOT_FOUND') break;
-    }
-
-    if (getResult.status !== 'SUCCESS') {
-        throw new Error(`Tx failed (${method}): ${getResult.status}\n${JSON.stringify(getResult.resultMetaXdr)}`);
-    }
-
-    return { hash: sendResult.hash, result: getResult };
 }
 
-// Deploy a Soroban contract from a local WASM file.
+// Deploy a Soroban contract from a local WASM file (with retry on flakiness).
 async function deployContract(wasmPath) {
     const wasm = fs.readFileSync(wasmPath);
+    let lastErr;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        return await deployContractOnce(wasm);
+      } catch (e) {
+        lastErr = e;
+        console.log(`  deploy attempt ${attempt} failed (${e.message}); retrying…`);
+        await new Promise(r => setTimeout(r, 3000));
+      }
+    }
+    throw lastErr;
+}
 
+async function deployContractOnce(wasm) {
     // Upload WASM
     const account = await server.getAccount(keypair.publicKey());
     const uploadOp = StellarSdk.Operation.uploadContractWasm({ wasm });
@@ -271,7 +300,7 @@ async function deployContract(wasmPath) {
 
 async function waitForTx(hash) {
     let result;
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 45; i++) {
         await new Promise(r => setTimeout(r, 2000));
         result = await server.getTransaction(hash);
         if (result.status !== 'NOT_FOUND') break;
@@ -385,6 +414,25 @@ async function main() {
     ]);
     console.log(`✓ insert_commitment — tx ${insertResult.hash}`);
     console.log(`  https://stellar.expert/explorer/testnet/tx/${insertResult.hash}`);
+
+    // ── Demo seed mode: stop here and print the config the frontend needs ─────
+    if (process.env.SEED_ONLY) {
+        console.log('\n══════════════════════════════════════════════════════════════');
+        console.log('✅ DEMO SEED COMPLETE — funded pool + one inserted position');
+        console.log('══════════════════════════════════════════════════════════════');
+        console.log('\nFrontend config — set in frontend/.env.local:');
+        console.log(`  NEXT_PUBLIC_COMMITMENT_TREE_ID=${ctId}`);
+        console.log(`  NEXT_PUBLIC_USDC_TOKEN_ID=${XLM_SAC}`);
+        console.log('\nSeeded position (debt 0) — the app must hold the same secret/nonce:');
+        console.log(JSON.stringify({
+            collateralSats: COLLATERAL_SATS.toString(),
+            debtStroops: '0',
+            secret: SECRET.toString(),
+            nonce: NONCE.toString(),
+            commitment: commitment.toString(),
+        }, null, 2));
+        return;
+    }
 
     // ── Step 7: Generate borrow ZK proof ─────────────────────────────────────
     console.log('\n══════════════════════════════════════════════════════════════');

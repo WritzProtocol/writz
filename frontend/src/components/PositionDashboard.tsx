@@ -10,7 +10,6 @@ import {
   EMPTY_POSITIONS,
   computeCommitment,
   computeNullifier,
-  randomFieldElement,
   type Position,
 } from "@/lib/position";
 
@@ -68,13 +67,15 @@ export function PositionDashboard() {
     () => EMPTY_POSITIONS,
   );
 
-  // Temporary seed until the deposit flow (#7) creates real positions.
+  // Loads the position seeded on-chain by the demo-prep script (#3): same
+  // secret/nonce/collateral, debt 0. This makes the commitment match the
+  // on-chain tree so a borrow succeeds. Replaced by the deposit flow (#7).
   const addSample = useCallback(() => {
     if (!address) return;
-    const secret = randomFieldElement();
-    const nonce = randomFieldElement();
-    const collateralSats = 5_000_000n; // 0.05 BTC
-    const debtStroops = 15_000_000_000n; // 1,500 USDC
+    const secret = BigInt("0xdeadbeef12345678");
+    const nonce = BigInt("0x8765432112345678");
+    const collateralSats = 1_000_000n; // 0.01 BTC
+    const debtStroops = 0n;
     const commitment = computeCommitment(collateralSats, debtStroops, secret, nonce);
     const nullifier = computeNullifier(secret, nonce);
     savePosition({
@@ -111,7 +112,7 @@ export function PositionDashboard() {
             onClick={addSample}
             className="rounded-full border border-line-2 px-3 py-1 text-xs font-semibold text-amber transition-colors hover:border-amber"
           >
-            + Add sample position (local, dev)
+            + Load demo position
           </button>
         </div>
       ) : (
