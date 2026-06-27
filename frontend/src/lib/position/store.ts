@@ -20,6 +20,47 @@ function read(owner: string): Position[] {
 function write(owner: string, positions: Position[]): void {
   if (typeof window === "undefined") return;
   localStorage.setItem(keyFor(owner), JSON.stringify(positions));
+  notify();
+}
+
+// ── Reactive subscription (for React's useSyncExternalStore) ────────────────
+
+const listeners = new Set<() => void>();
+let storageBound = false;
+
+function notify(): void {
+  for (const l of listeners) l();
+}
+
+/** Subscribe to position changes (same-tab writes and cross-tab storage events). */
+export function subscribePositions(cb: () => void): () => void {
+  listeners.add(cb);
+  if (typeof window !== "undefined" && !storageBound) {
+    storageBound = true;
+    window.addEventListener("storage", notify);
+  }
+  return () => {
+    listeners.delete(cb);
+  };
+}
+
+/** Stable empty snapshot (server + disconnected). */
+export const EMPTY_POSITIONS: readonly Position[] = Object.freeze([]);
+
+const snapshotCache = new Map<string, { raw: string | null; value: Position[] }>();
+
+/**
+ * Snapshot for `useSyncExternalStore`: returns a stable array reference while
+ * the underlying storage string is unchanged, so React does not loop.
+ */
+export function positionsSnapshot(owner: string): readonly Position[] {
+  if (typeof window === "undefined") return EMPTY_POSITIONS;
+  const raw = localStorage.getItem(keyFor(owner));
+  const cached = snapshotCache.get(owner);
+  if (cached && cached.raw === raw) return cached.value;
+  const value = raw ? (JSON.parse(raw) as Position[]) : [];
+  snapshotCache.set(owner, { raw, value });
+  return value;
 }
 
 export function listPositions(owner: string): Position[] {

@@ -4,6 +4,7 @@ import {
   type PoolState,
 } from "@/lib/contracts/commitmentTree";
 import { WalletButton } from "@/components/WalletButton";
+import { PositionDashboard } from "@/components/PositionDashboard";
 
 // Read on-chain state at request time; never statically prerendered.
 export const dynamic = "force-dynamic";
@@ -86,6 +87,8 @@ export default async function Home() {
           />
         </section>
       )}
+
+      <PositionDashboard />
 
       <footer className="mt-auto border-t border-line pt-6 text-xs text-muted">
         Read via generated contract bindings · no wallet required.
