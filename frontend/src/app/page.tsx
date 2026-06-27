@@ -3,6 +3,7 @@ import {
   getPoolState,
   type PoolState,
 } from "@/lib/contracts/commitmentTree";
+import { WalletButton } from "@/components/WalletButton";
 
 // Read on-chain state at request time; never statically prerendered.
 export const dynamic = "force-dynamic";
@@ -38,9 +39,12 @@ export default async function Home() {
         <div className="flex items-center gap-3">
           <span className="inline-block h-4 w-4 rotate-45 border border-amber" />
           <span className="font-serif text-xl text-hi">Writz</span>
-          <span className="ml-auto inline-flex items-center gap-2 rounded-full border border-line-2 px-3 py-1 text-xs font-semibold tracking-wide text-amber">
-            Soroban Testnet
-          </span>
+          <div className="ml-auto flex items-center gap-2">
+            <span className="hidden items-center gap-2 rounded-full border border-line-2 px-3 py-1 text-xs font-semibold tracking-wide text-amber sm:inline-flex">
+              Soroban Testnet
+            </span>
+            <WalletButton />
+          </div>
         </div>
         <h1 className="font-serif text-4xl leading-[1.05] text-hi sm:text-5xl">
           Bitcoin was built to be yours.
