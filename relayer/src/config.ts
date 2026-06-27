@@ -12,6 +12,7 @@ export interface Config {
   port: number;
   bitcoinNetwork: BitcoinNetwork;
   esploraBaseUrl: string;
+  corsOrigin: string;
   defaultConfirmations: number;
   maxConfirmations: number;
   requestTimeoutMs: number;
@@ -34,6 +35,7 @@ function loadConfig(): Config {
     port: parseInt(getEnv("PORT", "3000"), 10),
     bitcoinNetwork: network,
     esploraBaseUrl: getEnv("ESPLORA_URL", ESPLORA_URLS[network]),
+    corsOrigin: getEnv("CORS_ORIGIN", "*"),
     defaultConfirmations: parseInt(getEnv("DEFAULT_CONFIRMATIONS", "6"), 10),
     maxConfirmations: parseInt(getEnv("MAX_CONFIRMATIONS", "20"), 10),
     requestTimeoutMs: parseInt(getEnv("REQUEST_TIMEOUT_MS", "10000"), 10),

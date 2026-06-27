@@ -6,6 +6,22 @@ const app = express();
 
 app.use(express.json());
 
+// CORS — allow configured origins (or all origins when CORS_ORIGIN="*").
+app.use((req, res, next) => {
+  const origin = req.headers["origin"];
+  const allowed = config.corsOrigin;
+  if (allowed === "*" || (origin && allowed.split(",").map((s) => s.trim()).includes(origin))) {
+    res.setHeader("Access-Control-Allow-Origin", origin ?? "*");
+    res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  }
+  if (req.method === "OPTIONS") {
+    res.sendStatus(204);
+    return;
+  }
+  next();
+});
+
 // Health check — used by monitors and load balancers.
 app.get("/health", (_req, res) => {
   res.json({
