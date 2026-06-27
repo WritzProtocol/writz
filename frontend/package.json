@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@creit.tech/stellar-wallets-kit": "^2.4.0",
     "@stellar/stellar-sdk": "^16.0.1",
     "commitment-tree": "file:packages/commitment-tree",
     "next": "16.2.9",
