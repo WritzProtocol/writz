@@ -26,5 +26,12 @@
     "eslint-config-next": "16.2.9",
     "tailwindcss": "^4",
     "typescript": "^5"
-  }
+  },
+  "trustedDependencies": [
+    "@reown/appkit",
+    "@stellar/stellar-sdk",
+    "protobufjs",
+    "tiny-secp256k1",
+    "unrs-resolver"
+  ]
 }
