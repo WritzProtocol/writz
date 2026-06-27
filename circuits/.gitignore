@@ -1,0 +1,5 @@
+/node_modules/
+/build/
+/ptau/
+# proving keys are large; the served copies live in frontend/public/circuits/
+keys/*.zkey
