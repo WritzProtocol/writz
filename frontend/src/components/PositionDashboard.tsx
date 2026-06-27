@@ -2,6 +2,7 @@
 
 import { useCallback, useState, useSyncExternalStore } from "react";
 import { useWallet } from "@/lib/wallet/WalletProvider";
+import { borrow } from "@/lib/flows/borrow";
 import {
   savePosition,
   subscribePositions,
@@ -130,6 +131,7 @@ export function PositionDashboard() {
 }
 
 function PositionCard({ position }: { position: Position }) {
+  const { address, signTransaction } = useWallet();
   const collateralSats = BigInt(position.collateralSats);
   const debtStroops = BigInt(position.debtStroops);
   const bp = healthBp(collateralSats, debtStroops);
@@ -142,6 +144,46 @@ function PositionCard({ position }: { position: Position }) {
         : bp >= 12_000n
           ? { label: `${Number(bp) / 100}%`, tone: "text-amber" }
           : { label: `${Number(bp) / 100}%`, tone: "text-crit" };
+
+  // Max additional borrow that keeps the collateral ratio at >= 150%.
+  const collateralStroops = (collateralSats * BTC_PRICE_STROOPS_PER_BTC) / SAT;
+  const maxDebt = (collateralStroops * 10_000n) / 15_000n;
+  const maxBorrow = maxDebt > debtStroops ? maxDebt - debtStroops : 0n;
+
+  const [amount, setAmount] = useState("");
+  const [status, setStatus] = useState<"idle" | "working" | "done" | "error">("idle");
+  const [message, setMessage] = useState<string | null>(null);
+
+  async function handleBorrow() {
+    setMessage(null);
+    if (!address) {
+      setStatus("error");
+      setMessage("Connect your wallet first.");
+      return;
+    }
+    const usdc = Number(amount);
+    if (!Number.isFinite(usdc) || usdc <= 0) {
+      setStatus("error");
+      setMessage("Enter an amount.");
+      return;
+    }
+    const amountStroops = BigInt(Math.round(usdc * 1e7));
+    if (amountStroops > maxBorrow) {
+      setStatus("error");
+      setMessage(`Max borrow is ${fmtUsdc(maxBorrow)} USDC (keeps ≥150%).`);
+      return;
+    }
+    setStatus("working");
+    try {
+      const { txHash } = await borrow({ position, amountStroops, borrower: address, signTransaction });
+      setStatus("done");
+      setMessage(txHash ? `Borrowed — tx ${txHash.slice(0, 10)}…` : "Borrowed.");
+      setAmount("");
+    } catch (e) {
+      setStatus("error");
+      setMessage(e instanceof Error ? e.message : String(e));
+    }
+  }
 
   return (
     <div className="rounded-xl border border-line bg-surface p-5">
@@ -164,6 +206,36 @@ function PositionCard({ position }: { position: Position }) {
         <Metric label="Health factor">
           <span className={health.tone}>{health.label}</span>
         </Metric>
+      </div>
+
+      <div className="mt-5 flex flex-col gap-2 border-t border-line pt-4">
+        <div className="flex items-center gap-2">
+          <input
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            inputMode="decimal"
+            placeholder="USDC amount"
+            className="w-full rounded-lg border border-line bg-surface-2 px-3 py-2 font-mono text-sm text-head outline-none focus:border-amber"
+          />
+          <button
+            type="button"
+            onClick={handleBorrow}
+            disabled={status === "working"}
+            className="shrink-0 rounded-lg bg-amber px-4 py-2 text-sm font-semibold text-[#1a1206] transition-colors hover:bg-[#eeb459] disabled:opacity-50"
+          >
+            {status === "working" ? "Proving…" : "Borrow"}
+          </button>
+        </div>
+        <p className="text-xs text-muted">
+          Max {fmtUsdc(maxBorrow)} USDC · keeps a ≥150% collateral ratio
+        </p>
+        {message ? (
+          <p
+            className={`break-all text-xs ${status === "error" ? "text-crit" : "text-ok"}`}
+          >
+            {message}
+          </p>
+        ) : null}
       </div>
     </div>
   );
