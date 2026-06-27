@@ -1,14 +1,23 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Fraunces, Hanken_Grotesk, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+// Display — luxury editorial serif (used with restraint for wordmark + headings).
+const display = Fraunces({
+  variable: "--ff-display",
+  subsets: ["latin"],
+  style: ["normal", "italic"],
+});
+
+// UI / body — precise grotesque.
+const body = Hanken_Grotesk({
+  variable: "--ff-body",
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+// Data — monospace with tabular figures for on-chain values, hashes, amounts.
+const mono = Geist_Mono({
+  variable: "--ff-mono",
   subsets: ["latin"],
 });
 
@@ -26,9 +35,9 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${display.variable} ${body.variable} ${mono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full">{children}</body>
     </html>
   );
 }

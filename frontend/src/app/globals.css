@@ -1,26 +1,107 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/*
+  Writz — "Private Vault" design system.
+  Dark warm-obsidian ground · scarce amber accent · serif display + grotesque
+  UI + mono data · redacted-by-default for private values. See DESIGN_SYSTEM.md.
+*/
+
+@theme {
+  /* ground & neutrals (warm) */
+  --color-obsidian: #0a0908;
+  --color-surface: #16130f;
+  --color-surface-2: #1e1a14;
+  --color-line: #2a251d;
+  --color-line-2: #3a3128;
+  --color-muted: #877f71;
+  --color-body: #b7af9f;
+  --color-head: #e8e2d5;
+  --color-hi: #fbf8f1;
+  /* accent — refined Bitcoin amber (scarce) */
+  --color-amber: #e3a646;
+  --color-amber-2: #c98a34;
+  /* privacy whisper + semantics (separate from accent) */
+  --color-zk: #8fb6b0;
+  --color-ok: #79a66f;
+  --color-crit: #c75b4f;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* next/font sets --ff-* on <html> (see layout.tsx) */
+  --font-serif: var(--ff-display), Georgia, "Times New Roman", serif;
+  --font-sans: var(--ff-body), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--ff-mono), ui-monospace, "SF Mono", Menlo, monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+  body {
+    min-height: 100vh;
+    background: var(--color-obsidian);
+    color: var(--color-body);
+    font-family: var(--ff-body), ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  /* atmosphere: faint amber glow + ZK whisper + grain */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(60rem 40rem at 85% -10%, rgba(227, 166, 70, 0.1), transparent 60%),
+      radial-gradient(50rem 40rem at -10% 110%, rgba(143, 182, 176, 0.05), transparent 60%);
+  }
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.035;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  }
+  /* keep app content above the atmosphere layers */
+  body > * {
+    position: relative;
+    z-index: 1;
+  }
+  h1,
+  h2,
+  h3 {
+    color: var(--color-head);
+    text-wrap: balance;
+  }
+  ::selection {
+    background: rgba(227, 166, 70, 0.25);
+    color: var(--color-hi);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer components {
+  /*
+    Redacted-by-default — the brand signature for private values.
+    Apply `.private` to any element showing a user's private amount and toggle
+    `.revealed` to disclose it. The protocol hides amounts on-chain; the UI does too.
+  */
+  .private {
+    cursor: pointer;
+    transition:
+      filter 0.25s ease-out,
+      color 0.25s ease-out;
+  }
+  .private:not(.revealed) {
+    filter: blur(7px);
+    color: var(--color-muted);
+    user-select: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .private {
+    filter: none !important;
+  }
 }

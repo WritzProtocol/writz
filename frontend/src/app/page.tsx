@@ -33,76 +33,86 @@ export default async function Home() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-2xl flex-col gap-8 px-6 py-16">
-      <header className="flex flex-col gap-2">
-        <span className="text-xs font-medium uppercase tracking-widest text-amber-600">
-          Soroban Testnet
-        </span>
-        <h1 className="text-3xl font-semibold tracking-tight">Writz</h1>
-        <p className="text-sm text-zinc-500">
-          Trustless, ZK-private Bitcoin lending on Stellar. Frontend scaffold —
-          live on-chain state from the <code>commitment-tree</code> contract
-          below.
+    <main className="mx-auto flex min-h-screen w-full max-w-3xl flex-col gap-12 px-6 py-20 sm:py-28">
+      <header className="flex flex-col gap-5">
+        <div className="flex items-center gap-3">
+          <span className="inline-block h-4 w-4 rotate-45 border border-amber" />
+          <span className="font-serif text-xl text-hi">Writz</span>
+          <span className="ml-auto inline-flex items-center gap-2 rounded-full border border-line-2 px-3 py-1 text-xs font-semibold tracking-wide text-amber">
+            Soroban Testnet
+          </span>
+        </div>
+        <h1 className="font-serif text-4xl leading-[1.05] text-hi sm:text-5xl">
+          Bitcoin was built to be yours.
+          <br />
+          <span className="italic text-amber">Your loans should be too.</span>
+        </h1>
+        <p className="max-w-prose text-body">
+          Trustless, ZK-private Bitcoin lending on Stellar. Live on-chain state
+          from the <span className="font-mono text-head">commitment-tree</span>{" "}
+          contract.
         </p>
       </header>
 
       {error ? (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300">
-          <p className="font-medium">Could not read contract state</p>
+        <div className="rounded-xl border border-crit/40 bg-crit/10 p-5 text-sm text-crit">
+          <p className="font-semibold">Could not read contract state</p>
           <p className="mt-1 font-mono text-xs break-all">{error}</p>
         </div>
       ) : (
         <section className="grid gap-4 sm:grid-cols-2">
-          <Card
+          <Stat
             label="Merkle root"
             value={merkleRoot ? truncate(merkleRoot) : "—"}
             title={merkleRoot ?? undefined}
-            mono
+            sub="empty-tree root"
           />
-          <Card
-            label="Available liquidity (USDC)"
+          <Stat
+            label="Available liquidity · USDC"
             value={pool ? formatStroops(pool.available) : "—"}
+            sub="supplied − borrowed"
           />
-          <Card
-            label="Total supplied (USDC)"
+          <Stat
+            label="Total supplied · USDC"
             value={pool ? formatStroops(pool.totalSupplied) : "—"}
           />
-          <Card
-            label="Total borrowed (USDC)"
+          <Stat
+            label="Total borrowed · USDC"
             value={pool ? formatStroops(pool.totalBorrowed) : "—"}
           />
         </section>
       )}
 
-      <footer className="mt-auto text-xs text-zinc-400">
+      <footer className="mt-auto border-t border-line pt-6 text-xs text-muted">
         Read via generated contract bindings · no wallet required.
       </footer>
     </main>
   );
 }
 
-function Card({
+function Stat({
   label,
   value,
-  mono,
+  sub,
   title,
 }: {
   label: string;
   value: string;
-  mono?: boolean;
+  sub?: string;
   title?: string;
 }) {
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-      <p className="text-xs font-medium uppercase tracking-wide text-zinc-400">
+    <div className="rounded-xl border border-line bg-surface p-5 transition-colors hover:border-line-2">
+      <p className="text-xs font-semibold uppercase tracking-wider text-muted">
         {label}
       </p>
       <p
-        className={`mt-1 text-lg ${mono ? "font-mono" : "font-semibold"}`}
+        className="mt-3 font-mono text-2xl tabular-nums text-hi"
         title={title}
       >
         {value}
       </p>
+      {sub ? <p className="mt-1 text-xs text-muted">{sub}</p> : null}
     </div>
   );
 }
