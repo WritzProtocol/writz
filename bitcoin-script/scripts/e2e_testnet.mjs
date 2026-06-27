@@ -16,7 +16,6 @@
  * deposit address; update the seed strings to rotate to a fresh address.
  */
 
-import { createHash } from 'node:crypto';
 import * as bitcoin from 'bitcoinjs-lib';
 import * as ecc from '@bitcoinerlab/secp256k1';
 import { ECPairFactory } from 'ecpair';
@@ -31,25 +30,22 @@ const ECPair = ECPairFactory(ecc);
 const DRY_RUN = process.argv.includes('--dry-run');
 
 const NETWORK   = bitcoin.networks.testnet; // Signet shares address prefixes with testnet
-const ESPLORA   = 'https://blockstream.info/signet/api';
+const ESPLORA   = process.env.E2E_ESPLORA_URL ?? 'https://blockstream.info/signet/api';
 const FEE_SAT   = 1500;   // generous fee for Signet (~10 sat/vbyte)
 const POLL_MS   = 15_000; // check for UTXO every 15 seconds
 const POLL_MAX  = 40;     // give up after ~10 minutes
 
-// ── Deterministic key generation ──────────────────────────────────────────────
+// ── Key loading ───────────────────────────────────────────────────────────────
 
-function seedToPrivkey(seed) {
-  return createHash('sha256').update(seed).digest();
+function hexToPrivkey(hex) {
+  if (!hex || !/^[0-9a-f]{64}$/i.test(hex)) {
+    throw new Error('E2E_PROTOCOL_PRIVKEY and E2E_USER_PRIVKEY must be 64-char hex strings. Copy .env.example to .env.local and fill in the values.');
+  }
+  return Buffer.from(hex, 'hex');
 }
 
-const protocolKP = keyPairFromPrivkey(
-  seedToPrivkey('writz-protocol-signet-e2e-v1'),
-  NETWORK,
-);
-const userKP = keyPairFromPrivkey(
-  seedToPrivkey('writz-user-signet-e2e-v1'),
-  NETWORK,
-);
+const protocolKP = keyPairFromPrivkey(hexToPrivkey(process.env.E2E_PROTOCOL_PRIVKEY), NETWORK);
+const userKP     = keyPairFromPrivkey(hexToPrivkey(process.env.E2E_USER_PRIVKEY),     NETWORK);
 
 // ── Esplora helpers ───────────────────────────────────────────────────────────
 
@@ -113,8 +109,7 @@ const blockHeight = await getCurrentBlockHeight();
 // height (must be ≥ MIN_TIMELOCK_HEIGHT). Path A (co-signed) does not enforce
 // this height; it's only relevant for the Path B emergency recovery branch.
 // A fixed value ensures the deposit address is stable across script re-runs.
-const FIXED_SIGNET_TIMELOCK = 700_000;  // well beyond current Signet tip (~300k)
-const timelockHeight = FIXED_SIGNET_TIMELOCK;
+const timelockHeight = parseInt(process.env.E2E_CLTV_TIMELOCK ?? '700000', 10);
 
 const depositAddr = deriveDepositAddress(
   {
@@ -127,7 +122,7 @@ const depositAddr = deriveDepositAddress(
 
 const userReturnAddress = pubkeyToP2WPKHAddress(userKP.publicKey, NETWORK);
 
-console.log('Keys (Signet-only deterministic keys):');
+console.log('Keys:');
 console.log(`  protocol pubkey : ${protocolKP.publicKey.toString('hex')}`);
 console.log(`  user pubkey     : ${userKP.publicKey.toString('hex')}`);
 console.log(`  user return addr: ${userReturnAddress}`);
