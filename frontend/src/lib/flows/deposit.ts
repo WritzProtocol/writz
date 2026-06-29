@@ -2,7 +2,6 @@ import { Client } from "commitment-tree";
 import { Buffer } from "buffer";
 import { config, requireContract } from "@/config";
 import { proveDeposit } from "@/lib/prover";
-import { singleLeafPath } from "@/lib/merkle";
 import { simulateWithRetry } from "./submit";
 import {
   computeCommitment,
@@ -160,20 +159,21 @@ export async function deposit(params: {
   const sent = await tx.signAndSend({ signTransaction });
 
   // 6. Admin inserts the commitment into the Merkle tree (Phase 1: trusted relay).
+  // The server computes the correct new root from its persistent leaf list.
   onStatus("Finalizing position in Merkle tree… (step 2/2)");
-  const newRoot = singleLeafPath(commitment).root;
   const insertRes = await fetch("/api/insert-commitment", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       commitment: commitment.toString(16).padStart(64, "0"),
-      new_root: newRoot.toString(16).padStart(64, "0"),
     }),
   });
   if (!insertRes.ok) {
     const body = (await insertRes.json().catch(() => ({}))) as { error?: string };
     throw new Error(`Merkle insertion failed: ${body.error ?? insertRes.status}`);
   }
+  const insertBody = (await insertRes.json().catch(() => ({}))) as { leafIndex?: number };
+  const leafIndex = insertBody.leafIndex;
 
   // 7. Persist the position on this device.
   const position: Position = {
@@ -191,6 +191,7 @@ export async function deposit(params: {
     btcPubkey,
     timelockHeight,
     vout,
+    leafIndex,
   };
   savePosition(position);
 

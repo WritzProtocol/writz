@@ -1,6 +1,5 @@
 import { Client } from "commitment-tree";
 import { config, requireContract } from "@/config";
-import { singleLeafPath } from "@/lib/merkle";
 import { proveBorrowRepay } from "@/lib/prover";
 import { simulateWithRetry } from "./submit";
 import {
@@ -13,9 +12,27 @@ import {
 } from "@/lib/position";
 import type { SignTransaction } from "@/lib/wallet/WalletProvider";
 
-// Testnet oracle stub price; must match the on-chain oracle for borrow() to pass.
-const BTC_PRICE_STROOPS_PER_BTC = "600000000000"; // $60,000 (7 decimals)
-const MIN_RATIO_BP = "15000"; // 150%
+const MIN_RATIO_BP = "15000"; // 150% — must match contract's min_collateral_ratio_bp
+
+interface MerklePathResponse {
+  root: string;
+  pathElements: string[];
+  pathIndices: number[];
+  leafIndex: number;
+}
+
+async function fetchMerklePath(commitmentHex: string, leafIndex?: number): Promise<MerklePathResponse> {
+  const qs =
+    leafIndex !== undefined
+      ? `?leafIndex=${leafIndex}&commitment=${commitmentHex}`
+      : `?commitment=${commitmentHex}`;
+  const res = await fetch(`/api/merkle-path${qs}`);
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(`Merkle path unavailable: ${body.error ?? res.status}`);
+  }
+  return res.json() as Promise<MerklePathResponse>;
+}
 
 export interface BorrowResult {
   txHash?: string;
@@ -23,9 +40,9 @@ export interface BorrowResult {
 }
 
 /**
- * Borrow USDC against a position: build the Merkle path, generate the
- * borrow_repay proof in the browser, submit `borrow()` signed by the wallet,
- * then update the local position (new debt, nonce, commitment, nullifier).
+ * Borrow USDC against a position: fetch the real Merkle path from the server,
+ * generate the borrow_repay ZK proof in-browser, submit `borrow()` signed by
+ * the Stellar wallet, then update the local position (new debt, nonce, commitment).
  */
 export async function borrow(params: {
   position: Position;
@@ -41,9 +58,13 @@ export async function borrow(params: {
   const nonce = BigInt(position.nonce);
   const newNonce = randomFieldElement();
 
-  // Merkle path for this position's current commitment (single-leaf demo tree).
   const commitment = computeCommitment(collateral, oldDebt, secret, nonce);
-  const { root, pathElements, pathIndices } = singleLeafPath(commitment);
+  const commitmentHex = commitment.toString(16).padStart(64, "0");
+
+  // Fetch the real Merkle path from the server. Pass leafIndex so the server can
+  // look up by position (not by value) — the commitment rotates on every borrow,
+  // so value-based lookup would fail from the second borrow onward.
+  const { root, pathElements, pathIndices } = await fetchMerklePath(commitmentHex, position.leafIndex);
 
   const { proof, publicSignals } = await proveBorrowRepay({
     collateral_satoshis: collateral.toString(),
@@ -51,12 +72,15 @@ export async function borrow(params: {
     secret: secret.toString(),
     nonce: nonce.toString(),
     new_nonce: newNonce.toString(),
-    path_elements: pathElements.map(String),
+    path_elements: pathElements,
     path_indices: pathIndices.map(String),
-    old_root: root.toString(),
+    old_root: root,
     delta_stroops: amountStroops.toString(),
     is_borrow: "1",
-    btc_price_stroops_per_btc: BTC_PRICE_STROOPS_PER_BTC,
+    // Price read from config (env: NEXT_PUBLIC_BTC_PRICE_STROOPS).
+    // Must match the on-chain oracle — the contract rejects proofs with a
+    // different value (CommitmentTreeError::PriceMismatch = #12).
+    btc_price_stroops_per_btc: config.btcPriceStroops,
     min_ratio_bp: MIN_RATIO_BP,
   });
 
@@ -68,14 +92,11 @@ export async function borrow(params: {
     publicKey: borrower,
   });
 
-  // Building the tx simulates it; contract errors (e.g. InsufficientLiquidity,
-  // RootMismatch) surface here.
   const tx = await simulateWithRetry(() =>
     client.borrow({ borrower, zk_proof: proof, public_signals: publicSignals }),
   );
   const sent = await tx.signAndSend({ signTransaction });
 
-  // Update the local position to reflect the new debt and rotated nonce.
   const newDebt = oldDebt + amountStroops;
   const updated: Position = {
     ...position,
