@@ -9,9 +9,12 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@bitcoinerlab/secp256k1": "^1.2.0",
     "@creit.tech/stellar-wallets-kit": "^2.4.0",
     "@stellar/stellar-sdk": "^16.0.1",
+    "bitcoinjs-lib": "^7.0.1",
     "commitment-tree": "file:packages/commitment-tree",
+    "ecpair": "^3.0.1",
     "next": "16.2.9",
     "poseidon-lite": "^0.3.0",
     "react": "19.2.4",
