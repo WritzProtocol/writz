@@ -1,0 +1,317 @@
+"use client";
+
+import { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
+import { useWallet } from "@/lib/wallet/WalletProvider";
+import { useBitcoinWallet } from "@/lib/bitcoin/useBitcoinWallet";
+import { deriveP2WSH } from "@/lib/bitcoin/address";
+import { deposit, pollSpvBundle } from "@/lib/flows/deposit";
+import { config } from "@/config";
+
+const MIN_DEPOSIT_BTC = 0.001;
+const SAT = 100_000_000;
+
+type Step =
+  | "idle"
+  | "sending"
+  | "polling"
+  | "proving"
+  | "depositing"
+  | "inserting"
+  | "done"
+  | "error";
+
+function stepLabel(step: Step, statusMsg: string): string {
+  switch (step) {
+    case "sending":    return "Waiting for Bitcoin wallet…";
+    case "polling":
+    case "proving":
+    case "depositing":
+    case "inserting":  return statusMsg;
+    default:           return "";
+  }
+}
+
+export function DepositFlow() {
+  const { address, signTransaction } = useWallet();
+  const btcWallet = useBitcoinWallet();
+  const router = useRouter();
+
+  const [txid, setTxid] = useState("");
+  const [btcAmount, setBtcAmount] = useState("");
+  const [step, setStep] = useState<Step>("idle");
+  const [statusMsg, setStatusMsg] = useState("");
+  const [txHash, setTxHash] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const busy = step !== "idle" && step !== "done" && step !== "error";
+
+  // Derive P2WSH address from the user's BTC pubkey when available.
+  const p2wsh = useMemo(() => {
+    const protocolPubkey = config.bitcoin.protocolPubkey;
+    if (!protocolPubkey || !btcWallet.btcPubkey) return null;
+    try {
+      return deriveP2WSH(protocolPubkey, btcWallet.btcPubkey, config.bitcoin.timelockHeight);
+    } catch {
+      return null;
+    }
+  }, [btcWallet.btcPubkey]);
+
+  const depositAddress = p2wsh?.address ?? null;
+
+  function validate(): string | null {
+    if (!txid.trim() || !/^[0-9a-f]{64}$/i.test(txid.trim())) {
+      return "Enter a valid 64-character Bitcoin txid.";
+    }
+    const amount = parseFloat(btcAmount);
+    if (!Number.isFinite(amount) || amount < MIN_DEPOSIT_BTC) {
+      return `Minimum deposit is ${MIN_DEPOSIT_BTC} BTC.`;
+    }
+    return null;
+  }
+
+  async function handleSendBtc() {
+    if (!depositAddress) return;
+    const amount = parseFloat(btcAmount);
+    if (!Number.isFinite(amount) || amount < MIN_DEPOSIT_BTC) {
+      setStep("error");
+      setErrorMsg(`Minimum deposit is ${MIN_DEPOSIT_BTC} BTC.`);
+      return;
+    }
+    setErrorMsg(null);
+    setStep("sending");
+    try {
+      const amountSats = Math.round(amount * SAT);
+      const sentTxid = await btcWallet.sendBtc(depositAddress, amountSats);
+      setTxid(sentTxid);
+      setStep("idle");
+    } catch (e) {
+      setStep("error");
+      setErrorMsg(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  async function handleDeposit() {
+    if (!address) return;
+    const validationError = validate();
+    if (validationError) {
+      setStep("error");
+      setErrorMsg(validationError);
+      return;
+    }
+
+    setErrorMsg(null);
+    setStep("polling");
+
+    const collateralSats = BigInt(Math.round(parseFloat(btcAmount) * SAT));
+
+    const onStatus = (msg: string) => {
+      if (msg.toLowerCase().includes("zk proof")) setStep("proving");
+      else if (msg.includes("1/2")) setStep("depositing");
+      else if (msg.includes("2/2")) setStep("inserting");
+      setStatusMsg(msg);
+    };
+
+    try {
+      const result = await deposit({
+        txid: txid.trim().toLowerCase(),
+        collateralSats,
+        depositor: address,
+        signTransaction,
+        onStatus,
+        btcPubkey: btcWallet.btcPubkey ?? undefined,
+        timelockHeight: config.bitcoin.timelockHeight,
+      });
+      setTxHash(result.txHash ?? null);
+      setStep("done");
+      router.refresh();
+    } catch (e) {
+      setStep("error");
+      setErrorMsg(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  function reset() {
+    setStep("idle");
+    setErrorMsg(null);
+    setTxid("");
+    setBtcAmount("");
+    setTxHash(null);
+    setStatusMsg("");
+  }
+
+  if (!address) return null;
+
+  return (
+    <section className="flex flex-col gap-4">
+      <div className="flex items-baseline justify-between gap-4">
+        <h2 className="font-serif text-2xl text-head">Deposit BTC</h2>
+        <span className="text-xs text-muted">testnet · P2WSH</span>
+      </div>
+
+      <div className="rounded-xl border border-line bg-surface p-5">
+        {/* Bitcoin wallet connection */}
+        {!btcWallet.btcAddress ? (
+          <div className="mb-5">
+            <p className="text-sm text-body">
+              Connect a Bitcoin wallet to derive your personal P2WSH deposit address.
+            </p>
+            <button
+              type="button"
+              onClick={btcWallet.connect}
+              disabled={btcWallet.connecting}
+              className="mt-3 rounded-lg border border-line-2 px-4 py-2 text-sm font-semibold text-head transition-colors hover:border-amber disabled:opacity-60"
+            >
+              {btcWallet.connecting ? "Connecting…" : "Connect Bitcoin Wallet (Xverse)"}
+            </button>
+            {btcWallet.error && (
+              <p className="mt-2 text-xs text-crit">{btcWallet.error}</p>
+            )}
+          </div>
+        ) : (
+          <>
+            {/* Derived P2WSH address */}
+            <div className="mb-5">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted">
+                Your P2WSH deposit address
+              </p>
+              {depositAddress ? (
+                <>
+                  <p
+                    className="mt-2 break-all font-mono text-sm text-head"
+                    title={depositAddress}
+                  >
+                    {depositAddress}
+                  </p>
+                  <p className="mt-1 text-xs text-muted">
+                    Derived from your Bitcoin pubkey · timelock block{" "}
+                    <span className="font-mono">{config.bitcoin.timelockHeight.toLocaleString()}</span>
+                  </p>
+                </>
+              ) : (
+                <p className="mt-2 text-xs text-muted italic">
+                  Set{" "}
+                  <span className="font-mono text-head">NEXT_PUBLIC_PROTOCOL_BTC_PUBKEY</span>{" "}
+                  to derive the address.
+                </p>
+              )}
+              <p className="mt-2 text-xs text-muted">
+                Minimum {MIN_DEPOSIT_BTC} BTC · 6 confirmations required
+              </p>
+            </div>
+
+            <div className="border-t border-line pt-4">
+              {step === "done" ? (
+                <div className="flex flex-col gap-3">
+                  <p className="text-sm font-semibold text-ok">
+                    Deposit complete — position created.
+                  </p>
+                  {txHash && (
+                    <p className="text-xs text-muted">
+                      Tx{" "}
+                      <a
+                        href={`https://stellar.expert/explorer/testnet/tx/${txHash}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="font-mono text-amber underline-offset-2 hover:underline"
+                      >
+                        {txHash.slice(0, 10)}…{txHash.slice(-6)}
+                      </a>
+                    </p>
+                  )}
+                  <p className="text-xs text-muted">
+                    Your position is now borrowable. Scroll down to view it.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={reset}
+                    className="self-start rounded-full border border-line-2 px-3 py-1 text-xs font-semibold text-body transition-colors hover:border-amber"
+                  >
+                    New deposit
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {/* Amount input */}
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-semibold uppercase tracking-wider text-muted">
+                      Amount (BTC)
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        value={btcAmount}
+                        onChange={(e) => setBtcAmount(e.target.value)}
+                        inputMode="decimal"
+                        placeholder="e.g. 0.01"
+                        disabled={busy}
+                        className="w-full rounded-lg border border-line bg-surface-2 px-3 py-2 font-mono text-sm text-head outline-none focus:border-amber disabled:opacity-60"
+                      />
+                      {depositAddress && (
+                        <button
+                          type="button"
+                          onClick={handleSendBtc}
+                          disabled={busy}
+                          className="shrink-0 rounded-lg border border-line-2 px-3 py-2 text-sm font-semibold text-head transition-colors hover:border-amber disabled:opacity-50"
+                        >
+                          Send BTC
+                        </button>
+                      )}
+                    </div>
+                    {btcAmount && Number.isFinite(parseFloat(btcAmount)) && (
+                      <p className="text-xs text-muted">
+                        = {Math.round(parseFloat(btcAmount) * SAT).toLocaleString()} sats
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Txid input */}
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-semibold uppercase tracking-wider text-muted">
+                      Bitcoin txid
+                    </label>
+                    <input
+                      value={txid}
+                      onChange={(e) => setTxid(e.target.value)}
+                      placeholder="64-character hex (auto-filled when using Send BTC)"
+                      disabled={busy}
+                      spellCheck={false}
+                      className="w-full rounded-lg border border-line bg-surface-2 px-3 py-2 font-mono text-sm text-head outline-none focus:border-amber disabled:opacity-60"
+                    />
+                  </div>
+
+                  {/* Step progress */}
+                  {busy && (
+                    <p className="text-xs text-zk">{stepLabel(step, statusMsg)}</p>
+                  )}
+
+                  {step === "error" && errorMsg && (
+                    <p className="break-all text-xs text-crit">{errorMsg}</p>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={handleDeposit}
+                    disabled={busy}
+                    className="self-start rounded-lg bg-amber px-4 py-2 text-sm font-semibold text-[#1a1206] transition-colors hover:bg-[#eeb459] disabled:opacity-50"
+                  >
+                    {busy
+                      ? step === "polling"
+                        ? "Waiting for confirmations…"
+                        : step === "proving"
+                          ? "Proving…"
+                          : "Submitting…"
+                      : "Deposit"}
+                  </button>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+
+      <p className="text-xs text-muted">
+        Your secret and nonce are generated locally and stored only on this device.
+      </p>
+    </section>
+  );
+}

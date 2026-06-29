@@ -4,6 +4,8 @@ import {
   type PoolState,
 } from "@/lib/contracts/commitmentTree";
 import { WalletButton } from "@/components/WalletButton";
+import { BitcoinWalletButton } from "@/components/BitcoinWalletButton";
+import { DepositFlow } from "@/components/DepositFlow";
 import { PositionDashboard } from "@/components/PositionDashboard";
 import { LenderPanel } from "@/components/LenderPanel";
 
@@ -45,6 +47,7 @@ export default async function Home() {
             <span className="hidden items-center gap-2 rounded-full border border-line-2 px-3 py-1 text-xs font-semibold tracking-wide text-amber sm:inline-flex">
               Soroban Testnet
             </span>
+            <BitcoinWalletButton />
             <WalletButton />
           </div>
         </div>
@@ -88,6 +91,8 @@ export default async function Home() {
           />
         </section>
       )}
+
+      <DepositFlow />
 
       <LenderPanel />
 
