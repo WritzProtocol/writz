@@ -49,9 +49,9 @@
       "url": "https://stellar.expert/explorer/testnet/contract/CDFAP3J4WLFZC2N5U66X5EO62POBBIBXOKCCMCM3IRLJNXT73C4IBKA7"
     },
     {
-      "name": "Bitcoin Testnet Tx",
+      "name": "Bitcoin Signet Tx",
       "icon": "bitcoin-sign",
-      "url": "https://blockstream.info/testnet/tx/b594441f89e2437b1e14c4a7e5c1797139cd76461a3d7594eda379eaa672ec28"
+      "url": "https://blockstream.info/signet/tx/119321009b2f92dac8f25f6bcddb2ed6a3ae778e8748ec52910cce90742e4098"
     },
     {
       "name": "Discord",
