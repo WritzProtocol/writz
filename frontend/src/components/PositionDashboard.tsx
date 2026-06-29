@@ -280,7 +280,7 @@ function PositionCard({ position }: { position: Position }) {
       const cosignRes = await fetch("/api/cosign", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ psbt: psbt.toBase64(), commitment: commitmentHex, stellarAddress: address }),
+        body: JSON.stringify({ psbt: psbt.toBase64(), commitment: commitmentHex }),
       });
       if (!cosignRes.ok) {
         const body = (await cosignRes.json().catch(() => ({}))) as { error?: string };

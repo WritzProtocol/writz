@@ -86,9 +86,9 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  let body: { psbt?: string; commitment?: string };
+  let body: { psbt?: string; commitment?: string; stellarAddress?: string };
   try {
-    body = (await req.json()) as { psbt?: string; commitment?: string };
+    body = (await req.json()) as typeof body;
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
@@ -106,13 +106,13 @@ export async function POST(req: NextRequest) {
   }
 
   // Eligibility: the position must be finalized on-chain AND the loan repaid.
-  // `is_commitment_pending` only tells us the commitment was inserted into the
-  // tree — it does NOT prove the debt is cleared (a finalized commitment can
-  // still carry debt). So we also require no outstanding debt on-chain.
   //
-  // Demo-grade: on the single-borrower testnet, `borrowed == 0` means this loan
-  // is repaid, and it leaks no private position data. The production check is a
-  // ZK proof of `debt == 0` bound to the deposit txid (out of scope here).
+  // Phase 1 (single-borrower testnet): `totalBorrowed == 0` is used as a proxy
+  // for "this position has no debt". This is intentionally simplified — in a
+  // multi-borrower environment it would prevent any release while any other
+  // user has debt. Phase 2 requires a per-position ZK proof of `debt == 0`
+  // bound to the deposit txid so the check can be made without revealing which
+  // position is being released.
   try {
     const client = new Client({
       contractId: requireContract(

@@ -11,8 +11,13 @@ export function getBitcoinNetwork(): bitcoin.networks.Network {
 }
 
 /**
- * Builds the Writz P2WSH redeem script:
- *   OP_IF <protocol_pubkey> OP_CHECKSIGVERIFY <user_pubkey> OP_CHECKSIG
+ * Builds the Writz P2WSH redeem script.
+ *
+ * Canonical implementation lives in bitcoin-script/src/script.ts.
+ * Both MUST produce identical output for the same inputs — any change here
+ * must be mirrored there and vice versa.
+ *
+ *   OP_IF   <protocol_pubkey> OP_CHECKSIGVERIFY <user_pubkey> OP_CHECKSIG
  *   OP_ELSE <timelock> OP_CHECKLOCKTIMEVERIFY OP_DROP <user_pubkey> OP_CHECKSIG
  *   OP_ENDIF
  */
@@ -21,6 +26,15 @@ function buildRedeemScript(
   userPubkey: Buffer,
   timelockHeight: number,
 ): Buffer {
+  if (protocolPubkey.length !== 33) {
+    throw new Error("protocolPubkey must be a 33-byte compressed public key");
+  }
+  if (userPubkey.length !== 33) {
+    throw new Error("userPubkey must be a 33-byte compressed public key");
+  }
+  if (timelockHeight < 100_000) {
+    throw new Error(`timelockHeight must be ≥ 100,000 (got ${timelockHeight})`);
+  }
   return bitcoin.script.compile([
     bitcoin.opcodes.OP_IF,
     protocolPubkey,
@@ -164,9 +178,41 @@ function serializeWitness(items: Buffer[]): Buffer {
 }
 
 function encodeVarInt(n: number): Buffer {
+  if (n < 0) throw new RangeError(`witness item length must be non-negative, got ${n}`);
   if (n < 0xfd) return Buffer.from([n]);
+  if (n > 0xffff) throw new RangeError(`witness item too large: ${n} bytes (max 65535)`);
   const b = Buffer.allocUnsafe(3);
   b[0] = 0xfd;
   b.writeUInt16LE(n, 1);
   return b;
+}
+
+/**
+ * Finds the output index (vout) in a Bitcoin transaction that pays to the given
+ * address, by polling the Esplora API until the transaction is indexed.
+ * Falls back to 0 if not found after all attempts.
+ */
+export async function resolveVout(
+  txid: string,
+  address: string,
+  apiUrl: string,
+  maxAttempts = 12,
+  intervalMs = 5_000,
+): Promise<number> {
+  for (let i = 0; i < maxAttempts; i++) {
+    try {
+      const res = await fetch(`${apiUrl}/tx/${txid}`);
+      if (res.ok) {
+        const tx = (await res.json()) as { vout: Array<{ scriptpubkey_address?: string }> };
+        const idx = tx.vout.findIndex((o) => o.scriptpubkey_address === address);
+        if (idx !== -1) return idx;
+      }
+    } catch {
+      // network error — retry
+    }
+    if (i < maxAttempts - 1) {
+      await new Promise((r) => setTimeout(r, intervalMs));
+    }
+  }
+  return 0;
 }
