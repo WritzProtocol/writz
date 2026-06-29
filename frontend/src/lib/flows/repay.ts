@@ -102,17 +102,34 @@ export async function repay(params: {
   const sent = await tx.signAndSend({ signTransaction });
 
   const newDebt = oldDebt - amountStroops;
+  const newCommitment = computeCommitment(collateral, newDebt, secret, newNonce);
   const updated: Position = {
     ...position,
-    id: computeCommitment(collateral, newDebt, secret, newNonce).toString(),
+    id: newCommitment.toString(),
     debtStroops: newDebt.toString(),
     nonce: newNonce.toString(),
-    commitment: computeCommitment(collateral, newDebt, secret, newNonce).toString(),
+    commitment: newCommitment.toString(),
     nullifier: computeNullifier(secret, newNonce).toString(),
     status: newDebt === 0n ? "closed" : "active",
   };
   removePosition(position.owner, position.id);
   savePosition(updated);
+
+  // Keep the server-side leaf store in sync so subsequent borrows/repays by any
+  // user get correct sibling values in their Merkle paths.
+  if (position.leafIndex !== undefined) {
+    fetch("/api/update-leaf", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        leafIndex: position.leafIndex,
+        newCommitment: newCommitment.toString(16).padStart(64, "0"),
+      }),
+    }).catch(() => {
+      // Non-fatal: the next merkle-path call will provide the correct commitment
+      // via leafIndex, so the path remains correct even if this update is lost.
+    });
+  }
 
   return { txHash: sent.sendTransactionResponse?.hash, updated };
 }
