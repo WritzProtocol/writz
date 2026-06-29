@@ -3,6 +3,7 @@
 import { useCallback, useState, useSyncExternalStore } from "react";
 import { useWallet } from "@/lib/wallet/WalletProvider";
 import { borrow } from "@/lib/flows/borrow";
+import { repay } from "@/lib/flows/repay";
 import {
   savePosition,
   subscribePositions,
@@ -155,6 +156,10 @@ function PositionCard({ position }: { position: Position }) {
   const [status, setStatus] = useState<"idle" | "working" | "done" | "error">("idle");
   const [message, setMessage] = useState<string | null>(null);
 
+  const [repayAmount, setRepayAmount] = useState("");
+  const [repayStatus, setRepayStatus] = useState<"idle" | "working" | "done" | "error">("idle");
+  const [repayMessage, setRepayMessage] = useState<string | null>(null);
+
   async function handleBorrow() {
     setMessage(null);
     if (!address) {
@@ -183,6 +188,37 @@ function PositionCard({ position }: { position: Position }) {
     } catch (e) {
       setStatus("error");
       setMessage(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  async function handleRepay() {
+    setRepayMessage(null);
+    if (!address) {
+      setRepayStatus("error");
+      setRepayMessage("Connect your wallet first.");
+      return;
+    }
+    const usdc = Number(repayAmount);
+    if (!Number.isFinite(usdc) || usdc <= 0) {
+      setRepayStatus("error");
+      setRepayMessage("Enter an amount.");
+      return;
+    }
+    const amountStroops = BigInt(Math.round(usdc * 1e7));
+    if (amountStroops > debtStroops) {
+      setRepayStatus("error");
+      setRepayMessage(`You owe ${fmtUsdc(debtStroops)} USDC.`);
+      return;
+    }
+    setRepayStatus("working");
+    try {
+      const { txHash } = await repay({ position, amountStroops, repayer: address, signTransaction });
+      setRepayStatus("done");
+      setRepayMessage(txHash ? `Repaid — tx ${txHash.slice(0, 10)}…` : "Repaid.");
+      setRepayAmount("");
+    } catch (e) {
+      setRepayStatus("error");
+      setRepayMessage(e instanceof Error ? e.message : String(e));
     }
   }
 
@@ -238,6 +274,36 @@ function PositionCard({ position }: { position: Position }) {
           </p>
         ) : null}
       </div>
+
+      {debtStroops > 0n ? (
+        <div className="mt-3 flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <input
+              value={repayAmount}
+              onChange={(e) => setRepayAmount(e.target.value)}
+              inputMode="decimal"
+              placeholder="Repay USDC"
+              className="w-full rounded-lg border border-line bg-surface-2 px-3 py-2 font-mono text-sm text-head outline-none focus:border-amber"
+            />
+            <button
+              type="button"
+              onClick={handleRepay}
+              disabled={repayStatus === "working"}
+              className="shrink-0 rounded-lg border border-line-2 px-4 py-2 text-sm font-semibold text-head transition-colors hover:border-amber disabled:opacity-50"
+            >
+              {repayStatus === "working" ? "Proving…" : "Repay"}
+            </button>
+          </div>
+          <p className="text-xs text-muted">You owe {fmtUsdc(debtStroops)} USDC</p>
+          {repayMessage ? (
+            <p
+              className={`break-all text-xs ${repayStatus === "error" ? "text-crit" : "text-ok"}`}
+            >
+              {repayMessage}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }
