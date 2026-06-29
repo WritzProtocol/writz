@@ -50,3 +50,9 @@ export async function getPoolState(): Promise<PoolState> {
     available: totalSupplied - totalBorrowed,
   };
 }
+
+/** A lender's supplied balance (stroops) from `get_supply_balance`. */
+export async function getSupplyBalance(lender: string): Promise<bigint> {
+  const { result } = await getClient().get_supply_balance({ lender });
+  return result;
+}
