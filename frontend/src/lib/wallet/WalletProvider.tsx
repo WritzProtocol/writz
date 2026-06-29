@@ -20,6 +20,13 @@ export type SignTransaction = (
   xdr: string,
 ) => Promise<{ signedTxXdr: string; signerAddress: string }>;
 
+/**
+ * Signs an arbitrary message with the connected wallet (SEP-53) and returns the
+ * base64-encoded signature. Deterministic per wallet + message, so it can derive
+ * recoverable position keys (#18).
+ */
+export type SignMessage = (message: string) => Promise<string>;
+
 interface WalletState {
   address: string | null;
   connecting: boolean;
@@ -27,6 +34,7 @@ interface WalletState {
   connect: () => Promise<void>;
   disconnect: () => void;
   signTransaction: SignTransaction;
+  signMessage: SignMessage;
 }
 
 const WalletContext = createContext<WalletState | null>(null);
@@ -79,9 +87,19 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     return { signedTxXdr, signerAddress: signer ?? signerAddress };
   }, []);
 
+  const signMessage = useCallback<SignMessage>(async (message) => {
+    const kit = ensureKit();
+    const { address } = await kit.getAddress();
+    const { signedMessage } = await kit.signMessage(message, {
+      address,
+      networkPassphrase: config.networkPassphrase,
+    });
+    return signedMessage;
+  }, []);
+
   const value = useMemo<WalletState>(
-    () => ({ address, connecting, error, connect, disconnect, signTransaction }),
-    [address, connecting, error, connect, disconnect, signTransaction],
+    () => ({ address, connecting, error, connect, disconnect, signTransaction, signMessage }),
+    [address, connecting, error, connect, disconnect, signTransaction, signMessage],
   );
 
   return (
