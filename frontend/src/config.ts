@@ -24,6 +24,7 @@ export const config = {
   services: {
     relayerUrl: process.env.NEXT_PUBLIC_RELAYER_URL ?? "",
     proverUrl: process.env.NEXT_PUBLIC_PROVER_URL ?? "",
+    depositAddress: process.env.NEXT_PUBLIC_DEPOSIT_ADDRESS ?? "",
   },
 } as const;
 
