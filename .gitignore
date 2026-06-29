@@ -24,6 +24,8 @@ circuits/keys/*.zkey
 .claude/settings.json
 .claude/settings.local.json
 .agents/settings.local.json
+CLAUDE.md
+**/CLAUDE.md
 
 # ── OS ────────────────────────────────────────────────────────────────────────
 .DS_Store

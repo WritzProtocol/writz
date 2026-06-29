@@ -310,7 +310,8 @@ export function DepositFlow() {
       </div>
 
       <p className="text-xs text-muted">
-        Your secret and nonce are generated locally and stored only on this device.
+        Your secret and nonce are generated locally and stored only on this
+        device. Back them up via the position export if you clear browser data.
       </p>
     </section>
   );

@@ -24,6 +24,7 @@ export const config = {
   services: {
     relayerUrl: process.env.NEXT_PUBLIC_RELAYER_URL ?? "",
     proverUrl: process.env.NEXT_PUBLIC_PROVER_URL ?? "",
+    depositAddress: process.env.NEXT_PUBLIC_DEPOSIT_ADDRESS ?? "",
   },
   bitcoin: {
     network: process.env.NEXT_PUBLIC_BITCOIN_NETWORK ?? "testnet",
