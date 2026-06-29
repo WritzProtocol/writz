@@ -5,6 +5,7 @@ import {
 } from "@/lib/contracts/commitmentTree";
 import { WalletButton } from "@/components/WalletButton";
 import { PositionDashboard } from "@/components/PositionDashboard";
+import { LenderPanel } from "@/components/LenderPanel";
 
 // Read on-chain state at request time; never statically prerendered.
 export const dynamic = "force-dynamic";
@@ -87,6 +88,8 @@ export default async function Home() {
           />
         </section>
       )}
+
+      <LenderPanel />
 
       <PositionDashboard />
 

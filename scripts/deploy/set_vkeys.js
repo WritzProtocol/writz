@@ -91,43 +91,59 @@ function circuitIdToScVal(name) {
 // ── Transaction helper ────────────────────────────────────────────────────────
 
 async function invoke(contractId, method, args) {
-    const account = await server.getAccount(keypair.publicKey());
-    const contract = new Contract(contractId);
+    // Retry on txBadSeq: after a prior tx, the RPC account sequence can lag, so
+    // re-fetch the account and rebuild before retrying.
+    for (let attempt = 1; attempt <= 5; attempt++) {
+        const account = await server.getAccount(keypair.publicKey());
+        const contract = new Contract(contractId);
 
-    const tx = new TransactionBuilder(account, {
-        fee: BASE_FEE,
-        networkPassphrase: NETWORK,
-    })
-        .addOperation(contract.call(method, ...args))
-        .setTimeout(30)
-        .build();
+        const tx = new TransactionBuilder(account, {
+            fee: BASE_FEE,
+            networkPassphrase: NETWORK,
+        })
+            .addOperation(contract.call(method, ...args))
+            .setTimeout(30)
+            .build();
 
-    const simResult = await server.simulateTransaction(tx);
-    if (SorobanRpc.Api.isSimulationError(simResult)) {
-        throw new Error(`Simulation failed: ${JSON.stringify(simResult.error)}`);
+        const simResult = await server.simulateTransaction(tx);
+        if (SorobanRpc.Api.isSimulationError(simResult)) {
+            throw new Error(`Simulation failed: ${JSON.stringify(simResult.error)}`);
+        }
+
+        const preparedTx = SorobanRpc.assembleTransaction(tx, simResult).build();
+        preparedTx.sign(keypair);
+
+        const sendResult = await server.sendTransaction(preparedTx);
+        if (sendResult.status === 'ERROR') {
+            if (JSON.stringify(sendResult).includes('txBadSeq') && attempt < 5) {
+                await new Promise(r => setTimeout(r, 2500));
+                continue;
+            }
+            throw new Error(`Send failed: ${JSON.stringify(sendResult)}`);
+        }
+
+        // Poll until confirmed
+        let getResult;
+        for (let i = 0; i < 20; i++) {
+            await new Promise(r => setTimeout(r, 1500));
+            getResult = await server.getTransaction(sendResult.hash);
+            if (getResult.status !== 'NOT_FOUND') break;
+        }
+
+        if (getResult.status !== 'SUCCESS') {
+            // Not confirmed (e.g. dropped / NOT_FOUND) — rebuild with a fresh
+            // sequence and retry.
+            if (attempt < 5) {
+                await new Promise(r => setTimeout(r, 2500));
+                continue;
+            }
+            throw new Error(`Transaction failed: ${getResult.status}\n${JSON.stringify(getResult)}`);
+        }
+
+        return { hash: sendResult.hash };
     }
 
-    const preparedTx = SorobanRpc.assembleTransaction(tx, simResult).build();
-    preparedTx.sign(keypair);
-
-    const sendResult = await server.sendTransaction(preparedTx);
-    if (sendResult.status === 'ERROR') {
-        throw new Error(`Send failed: ${JSON.stringify(sendResult)}`);
-    }
-
-    // Poll until confirmed
-    let getResult;
-    for (let i = 0; i < 20; i++) {
-        await new Promise(r => setTimeout(r, 1500));
-        getResult = await server.getTransaction(sendResult.hash);
-        if (getResult.status !== 'NOT_FOUND') break;
-    }
-
-    if (getResult.status !== 'SUCCESS') {
-        throw new Error(`Transaction failed: ${getResult.status}\n${JSON.stringify(getResult)}`);
-    }
-
-    return { hash: sendResult.hash };
+    throw new Error('Exhausted retries');
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────

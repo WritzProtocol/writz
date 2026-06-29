@@ -7,23 +7,25 @@ added in subsequent issues.
 
 ## Prerequisites
 
-- Node.js **24** (pinned in `.tool-versions`; if you use asdf it is selected
-  automatically — otherwise install Node 24).
+- **Bun** (package manager + scripts) and **Node.js 24**, both pinned in
+  `.tool-versions` (selected automatically with asdf — otherwise install Bun and
+  Node 24). Bun installs dependencies and runs the scripts; Node is the runtime
+  Next.js executes under.
 
 ## Setup
 
 ```bash
 cp .env.example .env.local   # public testnet config; adjust if needed
-npm install                  # also links the generated contract bindings
+bun install                  # also links the generated contract bindings
 ```
 
 ## Develop / build
 
 ```bash
-npm run dev      # http://localhost:3000
-npm run build    # production build
-npm run start    # serve the production build
-npm run lint     # eslint
+bun run dev      # http://localhost:3000
+bun run build    # production build
+bun run start    # serve the production build
+bun run lint     # eslint
 ```
 
 The home page reads `get_merkle_root` and `get_pool_state` from the

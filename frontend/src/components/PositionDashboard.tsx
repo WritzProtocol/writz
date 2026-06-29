@@ -1,7 +1,10 @@
 "use client";
 
 import { useCallback, useState, useSyncExternalStore } from "react";
+import { useRouter } from "next/navigation";
 import { useWallet } from "@/lib/wallet/WalletProvider";
+import { borrow } from "@/lib/flows/borrow";
+import { repay } from "@/lib/flows/repay";
 import {
   savePosition,
   subscribePositions,
@@ -9,7 +12,6 @@ import {
   EMPTY_POSITIONS,
   computeCommitment,
   computeNullifier,
-  randomFieldElement,
   type Position,
 } from "@/lib/position";
 
@@ -67,13 +69,15 @@ export function PositionDashboard() {
     () => EMPTY_POSITIONS,
   );
 
-  // Temporary seed until the deposit flow (#7) creates real positions.
+  // Loads the position seeded on-chain by the demo-prep script (#3): same
+  // secret/nonce/collateral, debt 0. This makes the commitment match the
+  // on-chain tree so a borrow succeeds. Replaced by the deposit flow (#7).
   const addSample = useCallback(() => {
     if (!address) return;
-    const secret = randomFieldElement();
-    const nonce = randomFieldElement();
-    const collateralSats = 5_000_000n; // 0.05 BTC
-    const debtStroops = 15_000_000_000n; // 1,500 USDC
+    const secret = BigInt("0xdeadbeef12345678");
+    const nonce = BigInt("0x8765432112345678");
+    const collateralSats = 1_000_000n; // 0.01 BTC
+    const debtStroops = 0n;
     const commitment = computeCommitment(collateralSats, debtStroops, secret, nonce);
     const nullifier = computeNullifier(secret, nonce);
     savePosition({
@@ -110,7 +114,7 @@ export function PositionDashboard() {
             onClick={addSample}
             className="rounded-full border border-line-2 px-3 py-1 text-xs font-semibold text-amber transition-colors hover:border-amber"
           >
-            + Add sample position (local, dev)
+            + Load demo position
           </button>
         </div>
       ) : (
@@ -130,6 +134,8 @@ export function PositionDashboard() {
 }
 
 function PositionCard({ position }: { position: Position }) {
+  const { address, signTransaction } = useWallet();
+  const router = useRouter();
   const collateralSats = BigInt(position.collateralSats);
   const debtStroops = BigInt(position.debtStroops);
   const bp = healthBp(collateralSats, debtStroops);
@@ -142,6 +148,87 @@ function PositionCard({ position }: { position: Position }) {
         : bp >= 12_000n
           ? { label: `${Number(bp) / 100}%`, tone: "text-amber" }
           : { label: `${Number(bp) / 100}%`, tone: "text-crit" };
+
+  // Max additional borrow that keeps the collateral ratio at >= 150%.
+  const collateralStroops = (collateralSats * BTC_PRICE_STROOPS_PER_BTC) / SAT;
+  const maxDebt = (collateralStroops * 10_000n) / 15_000n;
+  const maxBorrow = maxDebt > debtStroops ? maxDebt - debtStroops : 0n;
+
+  const [amount, setAmount] = useState("");
+  const [status, setStatus] = useState<"idle" | "working" | "done" | "error">("idle");
+  const [message, setMessage] = useState<string | null>(null);
+
+  const [repayAmount, setRepayAmount] = useState("");
+  const [repayStatus, setRepayStatus] = useState<"idle" | "working" | "done" | "error">("idle");
+  const [repayMessage, setRepayMessage] = useState<string | null>(null);
+
+  // While any tx is in flight, lock both actions — an account can only have one
+  // transaction per ledger, so back-to-back borrow/repay would hit TRY_AGAIN_LATER.
+  const busy = status === "working" || repayStatus === "working";
+
+  async function handleBorrow() {
+    setMessage(null);
+    if (!address) {
+      setStatus("error");
+      setMessage("Connect your wallet first.");
+      return;
+    }
+    const usdc = Number(amount);
+    if (!Number.isFinite(usdc) || usdc <= 0) {
+      setStatus("error");
+      setMessage("Enter an amount.");
+      return;
+    }
+    const amountStroops = BigInt(Math.round(usdc * 1e7));
+    if (amountStroops > maxBorrow) {
+      setStatus("error");
+      setMessage(`Max borrow is ${fmtUsdc(maxBorrow)} USDC (keeps ≥150%).`);
+      return;
+    }
+    setStatus("working");
+    try {
+      const { txHash } = await borrow({ position, amountStroops, borrower: address, signTransaction });
+      setStatus("done");
+      setMessage(txHash ? `Borrowed — tx ${txHash.slice(0, 10)}…` : "Borrowed.");
+      setAmount("");
+      router.refresh(); // refresh the server-rendered pool stats
+    } catch (e) {
+      setStatus("error");
+      setMessage(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  async function handleRepay() {
+    setRepayMessage(null);
+    if (!address) {
+      setRepayStatus("error");
+      setRepayMessage("Connect your wallet first.");
+      return;
+    }
+    const usdc = Number(repayAmount);
+    if (!Number.isFinite(usdc) || usdc <= 0) {
+      setRepayStatus("error");
+      setRepayMessage("Enter an amount.");
+      return;
+    }
+    const amountStroops = BigInt(Math.round(usdc * 1e7));
+    if (amountStroops > debtStroops) {
+      setRepayStatus("error");
+      setRepayMessage(`You owe ${fmtUsdc(debtStroops)} USDC.`);
+      return;
+    }
+    setRepayStatus("working");
+    try {
+      const { txHash } = await repay({ position, amountStroops, repayer: address, signTransaction });
+      setRepayStatus("done");
+      setRepayMessage(txHash ? `Repaid — tx ${txHash.slice(0, 10)}…` : "Repaid.");
+      setRepayAmount("");
+      router.refresh(); // refresh the server-rendered pool stats
+    } catch (e) {
+      setRepayStatus("error");
+      setRepayMessage(e instanceof Error ? e.message : String(e));
+    }
+  }
 
   return (
     <div className="rounded-xl border border-line bg-surface p-5">
@@ -165,6 +252,68 @@ function PositionCard({ position }: { position: Position }) {
           <span className={health.tone}>{health.label}</span>
         </Metric>
       </div>
+
+      <div className="mt-5 flex flex-col gap-2 border-t border-line pt-4">
+        <div className="flex items-center gap-2">
+          <input
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            inputMode="decimal"
+            placeholder="USDC amount"
+            disabled={busy}
+            className="w-full rounded-lg border border-line bg-surface-2 px-3 py-2 font-mono text-sm text-head outline-none focus:border-amber disabled:opacity-60"
+          />
+          <button
+            type="button"
+            onClick={handleBorrow}
+            disabled={busy}
+            className="shrink-0 rounded-lg bg-amber px-4 py-2 text-sm font-semibold text-[#1a1206] transition-colors hover:bg-[#eeb459] disabled:opacity-50"
+          >
+            {status === "working" ? "Proving…" : "Borrow"}
+          </button>
+        </div>
+        <p className="text-xs text-muted">
+          Max {fmtUsdc(maxBorrow)} USDC · keeps a ≥150% collateral ratio
+        </p>
+        {message ? (
+          <p
+            className={`break-all text-xs ${status === "error" ? "text-crit" : "text-ok"}`}
+          >
+            {message}
+          </p>
+        ) : null}
+      </div>
+
+      {debtStroops > 0n ? (
+        <div className="mt-3 flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <input
+              value={repayAmount}
+              onChange={(e) => setRepayAmount(e.target.value)}
+              inputMode="decimal"
+              placeholder="Repay USDC"
+              disabled={busy}
+              className="w-full rounded-lg border border-line bg-surface-2 px-3 py-2 font-mono text-sm text-head outline-none focus:border-amber disabled:opacity-60"
+            />
+            <button
+              type="button"
+              onClick={handleRepay}
+              disabled={busy}
+              className="shrink-0 rounded-lg border border-line-2 px-4 py-2 text-sm font-semibold text-head transition-colors hover:border-amber disabled:opacity-50"
+            >
+              {repayStatus === "working" ? "Proving…" : "Repay"}
+            </button>
+          </div>
+          <p className="text-xs text-muted">You owe {fmtUsdc(debtStroops)} USDC</p>
+          {repayMessage ? (
+            <p
+              className={`break-all text-xs ${repayStatus === "error" ? "text-crit" : "text-ok"}`}
+            >
+              {repayMessage}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }
