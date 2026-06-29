@@ -54,8 +54,14 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Verify the commitment is in the Merkle tree (not pending) — proves it went
-  // through the full deposit + insert_commitment flow on-chain.
+  // Eligibility: the position must be finalized on-chain AND the loan repaid.
+  // `is_commitment_pending` only tells us the commitment was inserted into the
+  // tree — it does NOT prove the debt is cleared (a finalized commitment can
+  // still carry debt). So we also require no outstanding debt on-chain.
+  //
+  // Demo-grade: on the single-borrower testnet, `borrowed == 0` means this loan
+  // is repaid, and it leaks no private position data. The production check is a
+  // ZK proof of `debt == 0` bound to the deposit txid (out of scope here).
   try {
     const client = new Client({
       contractId: requireContract(
@@ -69,13 +75,22 @@ export async function POST(req: NextRequest) {
     });
 
     const commitmentBuf = Buffer.from(commitmentHex, "hex");
-    const { result: isPending } = await client.is_commitment_pending({
-      commitment: commitmentBuf,
-    });
+    const [{ result: isPending }, { result: pool }] = await Promise.all([
+      client.is_commitment_pending({ commitment: commitmentBuf }),
+      client.get_pool_state(),
+    ]);
 
     if (isPending) {
       return NextResponse.json(
         { error: "Position commitment is not yet finalized on-chain" },
+        { status: 403 },
+      );
+    }
+
+    const [, totalBorrowed] = pool;
+    if (totalBorrowed > 0n) {
+      return NextResponse.json(
+        { error: "Outstanding debt on-chain — repay the loan before releasing collateral" },
         { status: 403 },
       );
     }
