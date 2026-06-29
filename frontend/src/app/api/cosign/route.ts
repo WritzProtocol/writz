@@ -86,18 +86,14 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  let body: { psbt?: string; commitment?: string; stellarAddress?: string };
+  let body: { psbt?: string; commitment?: string };
   try {
-    body = (await req.json()) as {
-      psbt?: string;
-      commitment?: string;
-      stellarAddress?: string;
-    };
+    body = (await req.json()) as { psbt?: string; commitment?: string };
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const { psbt: psbtBase64, commitment: commitmentHex, stellarAddress } = body;
+  const { psbt: psbtBase64, commitment: commitmentHex } = body;
 
   if (!psbtBase64 || typeof psbtBase64 !== "string") {
     return NextResponse.json({ error: "psbt is required" }, { status: 400 });
@@ -105,12 +101,6 @@ export async function POST(req: NextRequest) {
   if (!commitmentHex || !/^[0-9a-f]{64}$/i.test(commitmentHex)) {
     return NextResponse.json(
       { error: "commitment must be a 64-char hex string" },
-      { status: 400 },
-    );
-  }
-  if (!stellarAddress || typeof stellarAddress !== "string") {
-    return NextResponse.json(
-      { error: "stellarAddress is required" },
       { status: 400 },
     );
   }
