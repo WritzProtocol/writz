@@ -90,9 +90,9 @@ The witness structure for Condition A:
 
 This produces a transaction of ~149 vbytes — efficient and inexpensive.
 
-**Verified on Bitcoin testnet3:**  
-A real Path A release transaction was broadcast and accepted by the Bitcoin testnet mempool: [`b594441f`](https://blockstream.info/testnet/tx/b594441f89e2437b1e14c4a7e5c1797139cd76461a3d7594eda379eaa672ec28)  
-- 153,363 satoshis locked; 151,863 satoshis released (Path A co-signed release)
+**Verified on Bitcoin Signet:**  
+A real Path A release transaction was broadcast and accepted by the Bitcoin Signet mempool: [`11932100`](https://blockstream.info/signet/tx/119321009b2f92dac8f25f6bcddb2ed6a3ae778e8748ec52910cce90742e4098)  
+- 89,631 satoshis locked; 88,131 satoshis released (Path A co-signed release)
 - 149 vbytes at 10.1 sat/vbyte
 - Both keys signed the PSBT independently (multi-party flow)
 

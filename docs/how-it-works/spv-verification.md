@@ -118,7 +118,7 @@ GET /spv-proof/{txid}
 
 Response:
 {
-  "txid": "b594441f...",
+  "txid": "11932100...",
   "block_hash": "00000000...",
   "confirmations": 6,
   "sorobanArgs": {

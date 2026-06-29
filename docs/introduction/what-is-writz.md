@@ -86,7 +86,7 @@ As of June 2026, Writz has completed Phase 1 — Foundation:
 - Four Soroban contracts deployed on testnet
 - 268 tests passing across all modules
 - Full ZK proof cycle (deposit → borrow → repay) verified on-chain
-- Real Bitcoin transactions broadcast and confirmed on Bitcoin testnet
+- Real Bitcoin transactions broadcast and confirmed on Bitcoin Signet
 - SCF Build Award application in progress
 
 The protocol is not yet available on mainnet. Mainnet launch is targeted for Q4 2026 (Phase 2), starting with a gated, TVL-capped release of PrivateLend.
