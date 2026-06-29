@@ -4,6 +4,7 @@ import {
   type PoolState,
 } from "@/lib/contracts/commitmentTree";
 import { WalletButton } from "@/components/WalletButton";
+import { DepositFlow } from "@/components/DepositFlow";
 import { PositionDashboard } from "@/components/PositionDashboard";
 import { LenderPanel } from "@/components/LenderPanel";
 
@@ -88,6 +89,8 @@ export default async function Home() {
           />
         </section>
       )}
+
+      <DepositFlow />
 
       <LenderPanel />
 
