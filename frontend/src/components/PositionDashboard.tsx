@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState, useSyncExternalStore } from "react";
+import { useRouter } from "next/navigation";
 import { useWallet } from "@/lib/wallet/WalletProvider";
 import { borrow } from "@/lib/flows/borrow";
 import { repay } from "@/lib/flows/repay";
@@ -134,6 +135,7 @@ export function PositionDashboard() {
 
 function PositionCard({ position }: { position: Position }) {
   const { address, signTransaction } = useWallet();
+  const router = useRouter();
   const collateralSats = BigInt(position.collateralSats);
   const debtStroops = BigInt(position.debtStroops);
   const bp = healthBp(collateralSats, debtStroops);
@@ -160,6 +162,10 @@ function PositionCard({ position }: { position: Position }) {
   const [repayStatus, setRepayStatus] = useState<"idle" | "working" | "done" | "error">("idle");
   const [repayMessage, setRepayMessage] = useState<string | null>(null);
 
+  // While any tx is in flight, lock both actions — an account can only have one
+  // transaction per ledger, so back-to-back borrow/repay would hit TRY_AGAIN_LATER.
+  const busy = status === "working" || repayStatus === "working";
+
   async function handleBorrow() {
     setMessage(null);
     if (!address) {
@@ -185,6 +191,7 @@ function PositionCard({ position }: { position: Position }) {
       setStatus("done");
       setMessage(txHash ? `Borrowed — tx ${txHash.slice(0, 10)}…` : "Borrowed.");
       setAmount("");
+      router.refresh(); // refresh the server-rendered pool stats
     } catch (e) {
       setStatus("error");
       setMessage(e instanceof Error ? e.message : String(e));
@@ -216,6 +223,7 @@ function PositionCard({ position }: { position: Position }) {
       setRepayStatus("done");
       setRepayMessage(txHash ? `Repaid — tx ${txHash.slice(0, 10)}…` : "Repaid.");
       setRepayAmount("");
+      router.refresh(); // refresh the server-rendered pool stats
     } catch (e) {
       setRepayStatus("error");
       setRepayMessage(e instanceof Error ? e.message : String(e));
@@ -252,12 +260,13 @@ function PositionCard({ position }: { position: Position }) {
             onChange={(e) => setAmount(e.target.value)}
             inputMode="decimal"
             placeholder="USDC amount"
-            className="w-full rounded-lg border border-line bg-surface-2 px-3 py-2 font-mono text-sm text-head outline-none focus:border-amber"
+            disabled={busy}
+            className="w-full rounded-lg border border-line bg-surface-2 px-3 py-2 font-mono text-sm text-head outline-none focus:border-amber disabled:opacity-60"
           />
           <button
             type="button"
             onClick={handleBorrow}
-            disabled={status === "working"}
+            disabled={busy}
             className="shrink-0 rounded-lg bg-amber px-4 py-2 text-sm font-semibold text-[#1a1206] transition-colors hover:bg-[#eeb459] disabled:opacity-50"
           >
             {status === "working" ? "Proving…" : "Borrow"}
@@ -283,12 +292,13 @@ function PositionCard({ position }: { position: Position }) {
               onChange={(e) => setRepayAmount(e.target.value)}
               inputMode="decimal"
               placeholder="Repay USDC"
-              className="w-full rounded-lg border border-line bg-surface-2 px-3 py-2 font-mono text-sm text-head outline-none focus:border-amber"
+              disabled={busy}
+              className="w-full rounded-lg border border-line bg-surface-2 px-3 py-2 font-mono text-sm text-head outline-none focus:border-amber disabled:opacity-60"
             />
             <button
               type="button"
               onClick={handleRepay}
-              disabled={repayStatus === "working"}
+              disabled={busy}
               className="shrink-0 rounded-lg border border-line-2 px-4 py-2 text-sm font-semibold text-head transition-colors hover:border-amber disabled:opacity-50"
             >
               {repayStatus === "working" ? "Proving…" : "Repay"}

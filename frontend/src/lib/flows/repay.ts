@@ -2,6 +2,7 @@ import { Client } from "commitment-tree";
 import { config, requireContract } from "@/config";
 import { singleLeafPath } from "@/lib/merkle";
 import { proveBorrowRepay } from "@/lib/prover";
+import { simulateWithRetry } from "./submit";
 import {
   FIELD_PRIME,
   computeCommitment,
@@ -69,11 +70,9 @@ export async function repay(params: {
     publicKey: repayer,
   });
 
-  const tx = await client.repay({
-    repayer,
-    zk_proof: proof,
-    public_signals: publicSignals,
-  });
+  const tx = await simulateWithRetry(() =>
+    client.repay({ repayer, zk_proof: proof, public_signals: publicSignals }),
+  );
   const sent = await tx.signAndSend({ signTransaction });
 
   const newDebt = oldDebt - amountStroops;

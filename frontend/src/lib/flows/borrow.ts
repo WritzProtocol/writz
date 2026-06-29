@@ -2,6 +2,7 @@ import { Client } from "commitment-tree";
 import { config, requireContract } from "@/config";
 import { singleLeafPath } from "@/lib/merkle";
 import { proveBorrowRepay } from "@/lib/prover";
+import { simulateWithRetry } from "./submit";
 import {
   computeCommitment,
   computeNullifier,
@@ -69,11 +70,9 @@ export async function borrow(params: {
 
   // Building the tx simulates it; contract errors (e.g. InsufficientLiquidity,
   // RootMismatch) surface here.
-  const tx = await client.borrow({
-    borrower,
-    zk_proof: proof,
-    public_signals: publicSignals,
-  });
+  const tx = await simulateWithRetry(() =>
+    client.borrow({ borrower, zk_proof: proof, public_signals: publicSignals }),
+  );
   const sent = await tx.signAndSend({ signTransaction });
 
   // Update the local position to reflect the new debt and rotated nonce.
