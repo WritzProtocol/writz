@@ -167,14 +167,14 @@ Implement the Bitcoin-side locking mechanism.
 - [x] Implement `buildEmergencyTransaction` (Path B — timelock) with CLTV nLockTime
 - [x] Implement `finalizePathA` / `finalizePathB` — custom witness assemblers
 - [x] 48/48 tests passing — script structure, address derivation, PSBT round-trips, witness inspection
-- [x] Verified on Bitcoin testnet address format (tb1q...) and mainnet (bc1q...)
-- [x] E2E testnet script (`bitcoin-script/scripts/e2e_testnet.mjs`) — **live broadcast complete on Bitcoin testnet3** ✅
-  - Funding tx: [`39836e7c`](https://blockstream.info/testnet/tx/39836e7c83e4b17313406e649ca3ec9d6e6ab64256321318864837ba2df4c80c) (153,363 sat to P2WSH)
-  - Path A release tx: [`b594441f`](https://blockstream.info/testnet/tx/b594441f89e2437b1e14c4a7e5c1797139cd76461a3d7594eda379eaa672ec28) (151,863 sat → user, accepted by mempool)
+- [x] Verified on Bitcoin Signet address format (tb1q...) and mainnet (bc1q...)
+- [x] E2E testnet script (`bitcoin-script/scripts/e2e_testnet.mjs`) — **live broadcast complete on Bitcoin Signet** ✅
+  - Funding tx: [`61deea44`](https://blockstream.info/signet/tx/61deea4439ecd6c325c5b23ecf4b27694ce3cb0474adbbcc6221968ecbd583a4) (89,631 sat to P2WSH)
+  - Path A release tx: [`11932100`](https://blockstream.info/signet/tx/119321009b2f92dac8f25f6bcddb2ed6a3ae778e8748ec52910cce90742e4098) (88,131 sat → user, accepted by mempool)
   - Path A witness: `[user_sig (71B), protocol_sig (72B), 0x01, redeemScript (114B)]`
   - TX size: 347 bytes / **149 vbytes** at 10.1 sat/vbyte
   - Both keys signed PSBT independently (multi-party flow) ✅
-  - PSBT finalization via `finalizePathA` produces valid segwit witness, accepted by Bitcoin testnet ✅
+  - PSBT finalization via `finalizePathA` produces valid segwit witness, accepted by Bitcoin Signet ✅
 - **Location:** `bitcoin-script/`
 - **Key:** Script is 114 bytes; each deposit gets a unique address from (protocolKey, userKey, timelock)
 
@@ -258,7 +258,7 @@ The Groth16 trusted setup is a hard pre-mainnet requirement. It is a multi-party
 ### Phase 1 Exit Criteria
 
 - [x] SPV contract verifies a real Bitcoin mainnet transaction on Soroban testnet
-- [x] P2WSH locking and release tested end-to-end on Bitcoin testnet3 — Path A co-signed release broadcast and accepted ✅ ([`b594441f`](https://blockstream.info/testnet/tx/b594441f89e2437b1e14c4a7e5c1797139cd76461a3d7594eda379eaa672ec28))
+- [x] P2WSH locking and release tested end-to-end on Bitcoin Signet — Path A co-signed release broadcast and accepted ✅ ([`11932100`](https://blockstream.info/signet/tx/119321009b2f92dac8f25f6bcddb2ed6a3ae778e8748ec52910cce90742e4098))
 - [x] ZK commitment-tree on Soroban testnet — full deposit→borrow→repay ZK flow verified on-chain ✅
 - [ ] SCF application submitted
 - [ ] Trusted setup ceremony planned and participants identified

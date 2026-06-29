@@ -20,7 +20,7 @@ Research    ──►  Foundation  ──►  Launch      ──►  Scale
 
 - Stateless SPV on Soroban is feasible: ~37–55M instructions per full verification — within the 100M instruction budget
 - Protocol X-Ray (Protocol 26) BN254 host functions reduce ZK verification cost significantly
-- P2WSH locking script design complete and tested on Bitcoin testnet
+- P2WSH locking script design complete and tested on Bitcoin Signet
 - SCF Build Award strategy defined ($92K, Open Track, one-time application)
 
 ### Research Produced
@@ -57,7 +57,7 @@ Research    ──►  Foundation  ──►  Launch      ──►  Scale
 | **ZK circuits** | 45/45 tests. All 3 circuits compiled (Circom 2.2.3). Dev keys generated. |
 | **Relayer service** | 35/35 tests. REST API: `GET /spv-proof/:txid`. Esplora-backed. |
 | **Bitcoin script toolkit** | 48/48 tests. P2WSH generation, PSBT signing, witness assembly. |
-| **Bitcoin testnet E2E** | Path A co-signed release broadcast and accepted. `b594441f` |
+| **Bitcoin Signet E2E** | Path A co-signed release broadcast and accepted. `11932100` |
 | **ZK testnet E2E** | Full deposit→borrow→repay cycle on Soroban testnet. 6 transactions. `8daddf52` |
 | **SCF application** | Content complete: full application, 4-tranche milestone plan, STRIDE threat model |
 | **Documentation** | Complete rewrite: 22 documents across introduction, products, how-it-works, developers, security, roadmap |
@@ -78,7 +78,7 @@ Research    ──►  Foundation  ──►  Launch      ──►  Scale
 ### Phase 1 Exit Criteria
 
 - [x] SPV contract verifies a real Bitcoin transaction on Soroban testnet ✅
-- [x] P2WSH locking and release tested E2E on Bitcoin testnet ✅
+- [x] P2WSH locking and release tested E2E on Bitcoin Signet ✅
 - [x] ZK commitment-tree full cycle verified on Soroban testnet ✅
 - [ ] SCF application submitted
 - [ ] Trusted setup ceremony planned and participants identified

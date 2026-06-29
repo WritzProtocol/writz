@@ -27,7 +27,7 @@ The key differentiator vs. everything else in BTCfi: no custodian, no wrapped to
 
 2. **SPV Relayer service** (Node.js / Blockstream Esplora) — REST API that fetches block headers + Merkle proof for any confirmed Bitcoin txid and formats the `sorobanArgs` ready for contract invocation. Running locally, will be hosted publicly before SCF application.
 
-3. **P2WSH script library** (TypeScript) — Generates unique deposit addresses from `(protocol_key, user_key, cltv_timelock)`. Builds and finalizes PSBTs for both spending paths: co-signed release (Path A) and emergency timelock recovery (Path B). Tested against real testnet addresses.
+3. **P2WSH script library** (TypeScript) — Generates unique deposit addresses from `(protocol_key, user_key, cltv_timelock)`. Builds and finalizes PSBTs for both spending paths: co-signed release (Path A) and emergency timelock recovery (Path B). Tested against real Signet addresses.
 
 4. **PrivateLend contract** (Soroban) — Skeleton lending contract: calls the SPV contract cross-contract, parses the raw Bitcoin tx on-chain to verify the P2WSH output satoshi amount (no trusted off-chain data), creates per-entry positions in persistent storage (per CertiK's unbounded instance storage warning), implements the kinked interest rate model (Uoptimal=75%, slope1=8%, slope2=200%), and handles the full deposit→borrow→repay→liquidate lifecycle. 50 tests passing. 23.7 KB WASM.
 

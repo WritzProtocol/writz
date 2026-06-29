@@ -125,7 +125,7 @@ The protocol can prove it is solvent without revealing any individual position. 
 
 The flow above is not theoretical. As of June 2026:
 
-- A real Bitcoin testnet transaction was locked in a P2WSH script and co-signed released: [`b594441f`](https://blockstream.info/testnet/tx/b594441f89e2437b1e14c4a7e5c1797139cd76461a3d7594eda379eaa672ec28)
+- A real Bitcoin Signet transaction was locked in a P2WSH script and co-signed released: [`11932100`](https://blockstream.info/signet/tx/119321009b2f92dac8f25f6bcddb2ed6a3ae778e8748ec52910cce90742e4098)
 - A full ZK cycle (deposit → borrow → repay) was executed on Soroban testnet across 6 transactions: [`8daddf52`](https://stellar.expert/explorer/testnet/tx/8daddf528c6f6254e67132265e3d9fea07fe1ce63622115b8dff4c335138bbd9)
 - Groth16 BN254 pairing checks pass on-chain. Poseidon Merkle roots update correctly. ZK-enforced collateral ratios hold.
 

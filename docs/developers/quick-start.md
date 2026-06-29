@@ -147,7 +147,7 @@ All 6 transactions land on testnet. You can verify them on [Stellar Expert (test
 
 ## Run the Bitcoin P2WSH End-to-End
 
-This script tests the Bitcoin locking and release flow on Bitcoin testnet3. No funds required for a dry run.
+This script tests the Bitcoin locking and release flow on Bitcoin Signet. No funds required for a dry run.
 
 ```bash
 cd bitcoin-script
@@ -156,20 +156,20 @@ npm run build
 # Dry run — builds and inspects the P2WSH transaction without broadcasting
 node scripts/e2e_testnet.mjs --dry-run
 
-# Live broadcast (requires testnet BTC — get from a testnet faucet)
+# Live broadcast (requires Signet BTC — get from a Signet faucet)
 node scripts/e2e_testnet.mjs
 ```
 
 The live broadcast will:
 1. Generate a unique P2WSH address
-2. Send testnet BTC to the address
+2. Send Signet BTC to the address
 3. Build the Path A co-signed release transaction
 4. Sign with both user and protocol keys (PSBT round-trip)
-5. Broadcast to Bitcoin testnet3
+5. Broadcast to Bitcoin Signet
 
-Reference transactions (already executed):
-- Funding: [`39836e7c`](https://blockstream.info/testnet/tx/39836e7c83e4b17313406e649ca3ec9d6e6ab64256321318864837ba2df4c80c)
-- Release: [`b594441f`](https://blockstream.info/testnet/tx/b594441f89e2437b1e14c4a7e5c1797139cd76461a3d7594eda379eaa672ec28)
+Reference transactions (already executed on Bitcoin Signet):
+- Funding: [`61deea44`](https://blockstream.info/signet/tx/61deea4439ecd6c325c5b23ecf4b27694ce3cb0474adbbcc6221968ecbd583a4)
+- Release: [`11932100`](https://blockstream.info/signet/tx/119321009b2f92dac8f25f6bcddb2ed6a3ae778e8748ec52910cce90742e4098)
 
 ---
 
