@@ -87,8 +87,20 @@ export async function deposit(params: {
   depositor: string;
   signTransaction: SignTransaction;
   onStatus: (step: string) => void;
+  btcPubkey?: string;
+  timelockHeight?: number;
+  vout?: number;
 }): Promise<DepositResult> {
-  const { txid, collateralSats, depositor, signTransaction, onStatus } = params;
+  const {
+    txid,
+    collateralSats,
+    depositor,
+    signTransaction,
+    onStatus,
+    btcPubkey,
+    timelockHeight,
+    vout,
+  } = params;
 
   // 1. Fetch SPV bundle from the relayer (polls until confirmed).
   const bundle = await pollSpvBundle(txid, onStatus);
@@ -176,6 +188,9 @@ export async function deposit(params: {
     nullifier: nullifier.toString(),
     status: "active",
     createdAt: Date.now(),
+    btcPubkey,
+    timelockHeight,
+    vout,
   };
   savePosition(position);
 

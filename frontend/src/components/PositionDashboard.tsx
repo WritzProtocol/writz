@@ -3,8 +3,11 @@
 import { useCallback, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { useWallet } from "@/lib/wallet/WalletProvider";
+import { useBitcoinWallet } from "@/lib/bitcoin/useBitcoinWallet";
+import { deriveP2WSH, buildReleasePsbt, finalizePathA } from "@/lib/bitcoin/address";
 import { borrow } from "@/lib/flows/borrow";
 import { repay } from "@/lib/flows/repay";
+import { config } from "@/config";
 import {
   savePosition,
   subscribePositions,
@@ -135,6 +138,7 @@ export function PositionDashboard() {
 
 function PositionCard({ position }: { position: Position }) {
   const { address, signTransaction } = useWallet();
+  const btcWallet = useBitcoinWallet();
   const router = useRouter();
   const collateralSats = BigInt(position.collateralSats);
   const debtStroops = BigInt(position.debtStroops);
@@ -162,9 +166,13 @@ function PositionCard({ position }: { position: Position }) {
   const [repayStatus, setRepayStatus] = useState<"idle" | "working" | "done" | "error">("idle");
   const [repayMessage, setRepayMessage] = useState<string | null>(null);
 
+  const [releaseRecipient, setReleaseRecipient] = useState("");
+  const [releaseStatus, setReleaseStatus] = useState<"idle" | "working" | "done" | "error">("idle");
+  const [releaseMessage, setReleaseMessage] = useState<string | null>(null);
+
   // While any tx is in flight, lock both actions — an account can only have one
   // transaction per ledger, so back-to-back borrow/repay would hit TRY_AGAIN_LATER.
-  const busy = status === "working" || repayStatus === "working";
+  const busy = status === "working" || repayStatus === "working" || releaseStatus === "working";
 
   async function handleBorrow() {
     setMessage(null);
@@ -227,6 +235,80 @@ function PositionCard({ position }: { position: Position }) {
     } catch (e) {
       setRepayStatus("error");
       setRepayMessage(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  async function handleRelease() {
+    if (!address || !position.btcPubkey || !position.timelockHeight || !position.txid) {
+      setReleaseStatus("error");
+      setReleaseMessage("Position is missing Bitcoin metadata needed for release.");
+      return;
+    }
+    if (!releaseRecipient.trim()) {
+      setReleaseStatus("error");
+      setReleaseMessage("Enter the Bitcoin address to receive the released funds.");
+      return;
+    }
+    if (!btcWallet.btcAddress) {
+      setReleaseStatus("error");
+      setReleaseMessage("Connect your Bitcoin wallet to sign the release transaction.");
+      return;
+    }
+
+    setReleaseStatus("working");
+    setReleaseMessage("Building release transaction…");
+    try {
+      const protocolPubkey = config.bitcoin.protocolPubkey;
+      if (!protocolPubkey) throw new Error("NEXT_PUBLIC_PROTOCOL_BTC_PUBKEY not configured");
+
+      const p2wsh = deriveP2WSH(protocolPubkey, position.btcPubkey, position.timelockHeight);
+      const collateralSats = Number(BigInt(position.collateralSats));
+      const feeSat = 2000; // ~2 sat/vbyte testnet stub
+
+      const psbt = buildReleasePsbt({
+        txidHex: position.txid,
+        vout: position.vout ?? 0,
+        amountSat: collateralSats,
+        scriptPubKey: p2wsh.scriptPubKey,
+        redeemScript: p2wsh.redeemScript,
+        recipientAddress: releaseRecipient.trim(),
+        feeSat,
+      });
+
+      setReleaseMessage("Requesting protocol co-signature…");
+      const commitmentHex = BigInt(position.commitment).toString(16).padStart(64, "0");
+      const cosignRes = await fetch("/api/cosign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ psbt: psbt.toBase64(), commitment: commitmentHex, stellarAddress: address }),
+      });
+      if (!cosignRes.ok) {
+        const body = (await cosignRes.json().catch(() => ({}))) as { error?: string };
+        throw new Error(`Co-sign failed: ${body.error ?? cosignRes.status}`);
+      }
+      const { signedPsbt: protocolSignedPsbt } = (await cosignRes.json()) as { signedPsbt: string };
+
+      setReleaseMessage("Sign the release transaction with your Bitcoin wallet…");
+      const userSignedPsbt = await btcWallet.signPsbt(psbt.toBase64());
+
+      setReleaseMessage("Finalizing and broadcasting…");
+      const txHex = finalizePathA(protocolSignedPsbt, userSignedPsbt, protocolPubkey, position.btcPubkey);
+      const broadcastRes = await fetch(`${config.bitcoin.apiUrl}/tx`, {
+        method: "POST",
+        body: txHex,
+      });
+      if (!broadcastRes.ok) {
+        const errText = await broadcastRes.text().catch(() => String(broadcastRes.status));
+        throw new Error(`Broadcast failed: ${errText}`);
+      }
+      const btcTxid = await broadcastRes.text();
+
+      setReleaseStatus("done");
+      setReleaseMessage(`BTC released — txid ${btcTxid.slice(0, 10)}…`);
+      router.refresh();
+    } catch (e) {
+      setReleaseStatus("error");
+      setReleaseMessage(e instanceof Error ? e.message : String(e));
     }
   }
 
@@ -306,12 +388,51 @@ function PositionCard({ position }: { position: Position }) {
           </div>
           <p className="text-xs text-muted">You owe {fmtUsdc(debtStroops)} USDC</p>
           {repayMessage ? (
-            <p
-              className={`break-all text-xs ${repayStatus === "error" ? "text-crit" : "text-ok"}`}
-            >
+            <p className={`break-all text-xs ${repayStatus === "error" ? "text-crit" : "text-ok"}`}>
               {repayMessage}
             </p>
           ) : null}
+        </div>
+      ) : null}
+
+      {position.status === "closed" && position.btcPubkey ? (
+        <div className="mt-4 flex flex-col gap-2 border-t border-line pt-4">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted">
+            Release BTC
+          </p>
+          {releaseStatus === "done" ? (
+            <p className="text-xs text-ok">{releaseMessage}</p>
+          ) : (
+            <>
+              <div className="flex items-center gap-2">
+                <input
+                  value={releaseRecipient}
+                  onChange={(e) => setReleaseRecipient(e.target.value)}
+                  placeholder="Your Bitcoin receive address"
+                  disabled={busy}
+                  spellCheck={false}
+                  className="w-full rounded-lg border border-line bg-surface-2 px-3 py-2 font-mono text-sm text-head outline-none focus:border-amber disabled:opacity-60"
+                />
+                <button
+                  type="button"
+                  onClick={handleRelease}
+                  disabled={busy}
+                  className="shrink-0 rounded-lg bg-amber px-4 py-2 text-sm font-semibold text-[#1a1206] transition-colors hover:bg-[#eeb459] disabled:opacity-50"
+                >
+                  {releaseStatus === "working" ? "Releasing…" : "Release"}
+                </button>
+              </div>
+              {releaseStatus === "working" && releaseMessage && (
+                <p className="text-xs text-zk">{releaseMessage}</p>
+              )}
+              {releaseStatus === "error" && releaseMessage && (
+                <p className="break-all text-xs text-crit">{releaseMessage}</p>
+              )}
+              <p className="text-xs text-muted">
+                Requires Bitcoin wallet signature + protocol co-signature. Fee ≈2 sat/vbyte.
+              </p>
+            </>
+          )}
         </div>
       ) : null}
     </div>

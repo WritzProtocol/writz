@@ -28,6 +28,12 @@ export interface Position {
   status: PositionStatus;
   /** Unix ms when created (stamped by the caller). */
   createdAt: number;
+  /** User's Bitcoin compressed pubkey hex (33 bytes). Needed to reconstruct the P2WSH for release. */
+  btcPubkey?: string;
+  /** CLTV block height used in the P2WSH redeem script. Needed to reconstruct it for release. */
+  timelockHeight?: number;
+  /** Vout of the collateral UTXO within the deposit transaction. */
+  vout?: number;
 }
 
 /** A versioned export envelope for backup / restore. */

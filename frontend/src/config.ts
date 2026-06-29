@@ -26,6 +26,17 @@ export const config = {
     proverUrl: process.env.NEXT_PUBLIC_PROVER_URL ?? "",
     depositAddress: process.env.NEXT_PUBLIC_DEPOSIT_ADDRESS ?? "",
   },
+  bitcoin: {
+    network: process.env.NEXT_PUBLIC_BITCOIN_NETWORK ?? "testnet",
+    protocolPubkey: process.env.NEXT_PUBLIC_PROTOCOL_BTC_PUBKEY ?? "",
+    timelockHeight: parseInt(
+      process.env.NEXT_PUBLIC_BITCOIN_TIMELOCK_HEIGHT ?? "3000000",
+      10,
+    ),
+    apiUrl:
+      process.env.NEXT_PUBLIC_BITCOIN_API_URL ??
+      "https://blockstream.info/testnet/api",
+  },
 } as const;
 
 /** Throws a clear error if a required contract id is not configured. */
