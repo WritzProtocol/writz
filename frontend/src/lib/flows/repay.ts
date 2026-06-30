@@ -23,11 +23,13 @@ interface MerklePathResponse {
 }
 
 async function fetchMerklePath(commitmentHex: string, leafIndex?: number): Promise<MerklePathResponse> {
+  const relayerUrl = config.services.relayerUrl;
+  if (!relayerUrl) throw new Error("NEXT_PUBLIC_RELAYER_URL is not configured");
   const qs =
     leafIndex !== undefined
       ? `?leafIndex=${leafIndex}&commitment=${commitmentHex}`
       : `?commitment=${commitmentHex}`;
-  const res = await fetch(`/api/merkle-path${qs}`);
+  const res = await fetch(`${relayerUrl}/merkle-path${qs}`);
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as { error?: string };
     throw new Error(`Merkle path unavailable: ${body.error ?? res.status}`);
@@ -117,8 +119,8 @@ export async function repay(params: {
 
   // Keep the server-side leaf store in sync so subsequent borrows/repays by any
   // user get correct sibling values in their Merkle paths.
-  if (position.leafIndex !== undefined) {
-    fetch("/api/update-leaf", {
+  if (position.leafIndex !== undefined && config.services.relayerUrl) {
+    fetch(`${config.services.relayerUrl}/update-leaf`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

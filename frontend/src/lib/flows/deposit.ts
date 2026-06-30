@@ -159,9 +159,11 @@ export async function deposit(params: {
   const sent = await tx.signAndSend({ signTransaction });
 
   // 6. Admin inserts the commitment into the Merkle tree (Phase 1: trusted relay).
-  // The server computes the correct new root from its persistent leaf list.
+  // The relayer holds the persistent leaf store and signs the on-chain tx.
   onStatus("Finalizing position in Merkle tree… (step 2/2)");
-  const insertRes = await fetch("/api/insert-commitment", {
+  const relayerUrl = config.services.relayerUrl;
+  if (!relayerUrl) throw new Error("NEXT_PUBLIC_RELAYER_URL is not configured");
+  const insertRes = await fetch(`${relayerUrl}/insert-commitment`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
