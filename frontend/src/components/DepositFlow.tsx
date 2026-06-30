@@ -8,6 +8,8 @@ import { deriveP2WSH } from "@/lib/bitcoin/address";
 import { deposit } from "@/lib/flows/deposit";
 import { resolveVout } from "@/lib/bitcoin/address";
 import { positionsSnapshot } from "@/lib/position";
+import { stellarTxUrl } from "@/lib/explorer";
+import { TxLink } from "./TxLink";
 import { config } from "@/config";
 
 const MIN_DEPOSIT_BTC = 0.0001;
@@ -249,15 +251,7 @@ export function DepositFlow() {
                   </p>
                   {txHash && (
                     <p className="text-xs text-muted">
-                      Tx{" "}
-                      <a
-                        href={`https://stellar.expert/explorer/testnet/tx/${txHash}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="font-mono text-amber underline-offset-2 hover:underline"
-                      >
-                        {txHash.slice(0, 10)}…{txHash.slice(-6)}
-                      </a>
+                      Tx <TxLink url={stellarTxUrl(txHash)} hash={txHash} />
                     </p>
                   )}
                   <p className="text-xs text-muted">

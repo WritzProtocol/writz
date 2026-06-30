@@ -9,6 +9,8 @@ import { borrow } from "@/lib/flows/borrow";
 import { repay } from "@/lib/flows/repay";
 import { recoverPositions } from "@/lib/flows/recover";
 import { proveZeroDebt, type ZeroDebtInput } from "@/lib/prover";
+import { stellarTxUrl, btcTxUrl } from "@/lib/explorer";
+import { TxLink } from "./TxLink";
 import { config } from "@/config";
 import {
   positionKeys,
@@ -200,19 +202,23 @@ function PositionCard({ position }: { position: Position }) {
   const [amount, setAmount] = useState("");
   const [status, setStatus] = useState<"idle" | "working" | "done" | "error">("idle");
   const [message, setMessage] = useState<string | null>(null);
+  const [borrowTx, setBorrowTx] = useState<string | null>(null);
 
   const [repayAmount, setRepayAmount] = useState("");
   const [repayStatus, setRepayStatus] = useState<"idle" | "working" | "done" | "error">("idle");
   const [repayMessage, setRepayMessage] = useState<string | null>(null);
+  const [repayTx, setRepayTx] = useState<string | null>(null);
 
   const [releaseRecipient, setReleaseRecipient] = useState("");
   const [releaseStatus, setReleaseStatus] = useState<"idle" | "working" | "done" | "error">("idle");
   const [releaseMessage, setReleaseMessage] = useState<string | null>(null);
+  const [releaseTx, setReleaseTx] = useState<string | null>(null);
 
   const busy = status === "working" || repayStatus === "working" || releaseStatus === "working";
 
   async function handleBorrow() {
     setMessage(null);
+    setBorrowTx(null);
     if (!address || !seed) {
       setStatus("error");
       setMessage("Unlock your positions first.");
@@ -234,7 +240,8 @@ function PositionCard({ position }: { position: Position }) {
     try {
       const { txHash } = await borrow({ position, amountStroops, borrower: address, seed, signTransaction });
       setStatus("done");
-      setMessage(txHash ? `Borrowed — tx ${txHash.slice(0, 10)}…` : "Borrowed.");
+      setMessage("Borrowed.");
+      setBorrowTx(txHash ?? null);
       setAmount("");
       router.refresh();
     } catch (e) {
@@ -245,6 +252,7 @@ function PositionCard({ position }: { position: Position }) {
 
   async function handleRepay() {
     setRepayMessage(null);
+    setRepayTx(null);
     if (!address || !seed) {
       setRepayStatus("error");
       setRepayMessage("Unlock your positions first.");
@@ -266,7 +274,8 @@ function PositionCard({ position }: { position: Position }) {
     try {
       const { txHash } = await repay({ position, amountStroops, repayer: address, seed, signTransaction });
       setRepayStatus("done");
-      setRepayMessage(txHash ? `Repaid — tx ${txHash.slice(0, 10)}…` : "Repaid.");
+      setRepayMessage("Repaid.");
+      setRepayTx(txHash ?? null);
       setRepayAmount("");
       router.refresh();
     } catch (e) {
@@ -303,6 +312,7 @@ function PositionCard({ position }: { position: Position }) {
     }
 
     setReleaseStatus("working");
+    setReleaseTx(null);
     setReleaseMessage("Building release transaction…");
     try {
       const protocolPubkey = config.bitcoin.protocolPubkey;
@@ -384,7 +394,8 @@ function PositionCard({ position }: { position: Position }) {
       const btcTxid = await broadcastRes.text();
 
       setReleaseStatus("done");
-      setReleaseMessage(`BTC released — txid ${btcTxid.slice(0, 10)}…`);
+      setReleaseMessage("BTC released —");
+      setReleaseTx(btcTxid);
       router.refresh();
     } catch (e) {
       setReleaseStatus("error");
@@ -439,7 +450,8 @@ function PositionCard({ position }: { position: Position }) {
         </p>
         {message ? (
           <p className={`break-all text-xs ${status === "error" ? "text-crit" : "text-ok"}`}>
-            {message}
+            {message}{" "}
+            {borrowTx && <TxLink url={stellarTxUrl(borrowTx)} hash={borrowTx} />}
           </p>
         ) : null}
       </div>
@@ -467,7 +479,8 @@ function PositionCard({ position }: { position: Position }) {
           <p className="text-xs text-muted">You owe {fmtUsdc(debtStroops)} USDC</p>
           {repayMessage ? (
             <p className={`break-all text-xs ${repayStatus === "error" ? "text-crit" : "text-ok"}`}>
-              {repayMessage}
+              {repayMessage}{" "}
+              {repayTx && <TxLink url={stellarTxUrl(repayTx)} hash={repayTx} />}
             </p>
           ) : null}
         </div>
@@ -477,7 +490,10 @@ function PositionCard({ position }: { position: Position }) {
         <div className="mt-4 flex flex-col gap-2 border-t border-line pt-4">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted">Release BTC</p>
           {releaseStatus === "done" ? (
-            <p className="text-xs text-ok">{releaseMessage}</p>
+            <p className="break-all text-xs text-ok">
+              {releaseMessage}{" "}
+              {releaseTx && <TxLink url={btcTxUrl(releaseTx)} hash={releaseTx} />}
+            </p>
           ) : (
             <>
               <div className="flex items-center gap-2">
