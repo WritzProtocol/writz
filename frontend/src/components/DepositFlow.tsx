@@ -187,7 +187,7 @@ export function DepositFlow() {
     <section className="flex flex-col gap-4">
       <div className="flex items-baseline justify-between gap-4">
         <h2 className="font-serif text-2xl text-head">Deposit BTC</h2>
-        <span className="text-xs text-muted">testnet · P2WSH</span>
+        <span className="text-xs text-muted">{config.bitcoin.network} · P2WSH</span>
       </div>
 
       <div className="rounded-xl border border-line bg-surface p-5">
