@@ -8,6 +8,12 @@ const nextConfig: NextConfig = {
     root: path.resolve(__dirname, ".."),
     resolveAlias: {
       "commitment-tree": "../packages/commitment-tree/src/index.ts",
+      // commitment-tree lives outside frontend/, so Turbopack can't traverse
+      // up to frontend/node_modules/ when resolving its dependencies. Pin them
+      // explicitly to the copies installed here.
+      "@stellar/stellar-sdk": path.resolve(__dirname, "node_modules/@stellar/stellar-sdk"),
+      "@stellar/stellar-sdk/contract": path.resolve(__dirname, "node_modules/@stellar/stellar-sdk/contract"),
+      "@stellar/stellar-sdk/rpc": path.resolve(__dirname, "node_modules/@stellar/stellar-sdk/rpc"),
     },
   },
   // Transpile the generated contract bindings from source so no committed
