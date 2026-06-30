@@ -47,5 +47,3 @@ app.listen(config.port, () => {
   console.log(`Esplora: ${config.esploraBaseUrl}`);
   console.log(`Stellar RPC: ${config.stellarRpcUrl}`);
 });
-
-export { app };
