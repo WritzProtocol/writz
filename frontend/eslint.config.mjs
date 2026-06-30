@@ -14,6 +14,7 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Generated contract bindings (vendored, not hand-written).
     "packages/**",
+    "src/lib/contracts/generated.ts",
   ]),
 ]);
 

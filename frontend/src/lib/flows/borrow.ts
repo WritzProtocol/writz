@@ -116,17 +116,19 @@ export async function borrow(params: {
   // Keep the server-side leaf store in sync so subsequent borrows/repays by any
   // user get correct sibling values in their Merkle paths.
   if (position.leafIndex !== undefined && config.services.relayerUrl) {
-    fetch(`${config.services.relayerUrl}/update-leaf`, {
+    const syncRes = await fetch(`${config.services.relayerUrl}/update-leaf`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         leafIndex: position.leafIndex,
         newCommitment: newCommitment.toString(16).padStart(64, "0"),
       }),
-    }).catch(() => {
-      // Non-fatal: the next merkle-path call will provide the correct commitment
-      // via leafIndex, so the path remains correct even if this update is lost.
-    });
+    }).catch(() => null);
+    if (!syncRes || !syncRes.ok) {
+      throw new Error(
+        "Borrowed on-chain, but failed to sync the relayer leaf store — resync the relayer before the next operation.",
+      );
+    }
   }
 
   return { txHash: sent.sendTransactionResponse?.hash, updated };
