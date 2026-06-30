@@ -10,6 +10,7 @@ import {
 } from "react";
 import { ensureKit } from "@/lib/wallet/kit";
 import { config } from "@/config";
+import { KEY_DERIVATION_MESSAGE, deriveSeed } from "@/lib/position/derive";
 
 /**
  * Signs a transaction XDR with the connected wallet. The return shape is
@@ -20,6 +21,9 @@ export type SignTransaction = (
   xdr: string,
 ) => Promise<{ signedTxXdr: string; signerAddress: string }>;
 
+/** Signs an arbitrary message (SEP-53) and returns the base64 signature. */
+export type SignMessage = (message: string) => Promise<string>;
+
 interface WalletState {
   address: string | null;
   connecting: boolean;
@@ -27,6 +31,13 @@ interface WalletState {
   connect: () => Promise<void>;
   disconnect: () => void;
   signTransaction: SignTransaction;
+  signMessage: SignMessage;
+  /** In-memory master seed (32 bytes) derived from the unlock signature, or null. */
+  seed: Uint8Array | null;
+  /** True once the user has unlocked (signed the derivation message) this session. */
+  unlocked: boolean;
+  /** Sign the canonical message → derive + hold the in-memory seed. */
+  unlock: () => Promise<void>;
 }
 
 const WalletContext = createContext<WalletState | null>(null);
@@ -35,6 +46,8 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const [address, setAddress] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Master seed lives only in memory (never persisted); cleared on disconnect/switch.
+  const [seed, setSeed] = useState<Uint8Array | null>(null);
 
   // Restore a previously connected wallet from the kit's own persistence.
   useEffect(() => {
@@ -51,6 +64,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const connect = useCallback(async () => {
     setError(null);
     setConnecting(true);
+    setSeed(null); // a new wallet must re-unlock
     try {
       const { address } = await ensureKit().authModal();
       setAddress(address);
@@ -66,6 +80,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       .disconnect()
       .catch(() => {});
     setAddress(null);
+    setSeed(null);
     setError(null);
   }, []);
 
@@ -79,9 +94,35 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     return { signedTxXdr, signerAddress: signer ?? signerAddress };
   }, []);
 
+  const signMessage = useCallback<SignMessage>(async (message) => {
+    const kit = ensureKit();
+    const { address } = await kit.getAddress();
+    const { signedMessage } = await kit.signMessage(message, {
+      address,
+      networkPassphrase: config.networkPassphrase,
+    });
+    return signedMessage;
+  }, []);
+
+  const unlock = useCallback(async () => {
+    const signature = await signMessage(KEY_DERIVATION_MESSAGE);
+    setSeed(deriveSeed(signature));
+  }, [signMessage]);
+
   const value = useMemo<WalletState>(
-    () => ({ address, connecting, error, connect, disconnect, signTransaction }),
-    [address, connecting, error, connect, disconnect, signTransaction],
+    () => ({
+      address,
+      connecting,
+      error,
+      connect,
+      disconnect,
+      signTransaction,
+      signMessage,
+      seed,
+      unlocked: seed !== null,
+      unlock,
+    }),
+    [address, connecting, error, connect, disconnect, signTransaction, signMessage, seed, unlock],
   );
 
   return (

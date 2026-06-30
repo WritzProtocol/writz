@@ -6,7 +6,12 @@ import { simulateWithRetry } from "./submit";
 import {
   computeCommitment,
   computeNullifier,
-  randomFieldElement,
+  seedToField,
+  deriveSecret,
+  deriveNonce,
+  deriveViewingKey,
+  sealNote,
+  bytesToHex,
   savePosition,
   type Position,
 } from "@/lib/position";
@@ -84,6 +89,8 @@ export async function deposit(params: {
   txid: string;
   collateralSats: bigint;
   depositor: string;
+  seed: Uint8Array;
+  index: number;
   signTransaction: SignTransaction;
   onStatus: (step: string) => void;
   btcPubkey?: string;
@@ -94,6 +101,8 @@ export async function deposit(params: {
     txid,
     collateralSats,
     depositor,
+    seed,
+    index,
     signTransaction,
     onStatus,
     btcPubkey,
@@ -107,9 +116,10 @@ export async function deposit(params: {
   // 2. Split txid into the two 128-bit halves the deposit circuit expects.
   const { lo, hi } = await txidParts(bundle.rawTxNoWitness);
 
-  // 3. Fresh secret + nonce — never reused, must be kept by the user.
-  const secret = randomFieldElement();
-  const nonce = randomFieldElement();
+  // 3. Derive keys from the session seed (version 0 for a fresh deposit).
+  const f = seedToField(seed);
+  const secret = deriveSecret(f, index);
+  const nonce = deriveNonce(f, index, 0);
 
   // 4. ZK deposit proof — generated entirely in the browser.
   onStatus("Generating ZK proof in browser… (may take ~10s)");
@@ -122,17 +132,21 @@ export async function deposit(params: {
     min_deposit_satoshis: MIN_DEPOSIT_SATS,
   });
 
-  // Public signals (deposit circuit): commitment[0], nullifier[1],
-  // btc_txid_lo[2], btc_txid_hi[3], min_deposit_satoshis[4].
+  // Public signals (deposit circuit): commitment[0], nullifier[1], ...
   const commitmentBuf = publicSignals[0];
   const commitment = BigInt("0x" + commitmentBuf.toString("hex"));
   const nullifier = computeNullifier(secret, nonce);
 
-  // Sanity check: locally computed commitment must match the circuit output.
   const localCommitment = computeCommitment(collateralSats, 0n, secret, nonce);
   if (commitment !== localCommitment) {
     throw new Error("Commitment mismatch — circuit output does not match local computation.");
   }
+
+  // Seal the recovery note for the deposit state (debt 0) to the viewing key.
+  const encNote = sealNote(
+    { index, version: 0, collateralSats: collateralSats.toString(), debtStroops: "0" },
+    deriveViewingKey(seed).publicKey,
+  );
 
   // 5. Submit deposit() — user signs with their Stellar wallet.
   onStatus("Submitting deposit to Soroban… (step 1/2)");
@@ -154,12 +168,12 @@ export async function deposit(params: {
       raw_tx: Buffer.from(sorobanArgs.raw_tx, "hex"),
       zk_proof: proof,
       public_signals: publicSignals,
+      enc_note: Buffer.from(encNote),
     }),
   );
   const sent = await tx.signAndSend({ signTransaction });
 
   // 6. Admin inserts the commitment into the Merkle tree (Phase 1: trusted relay).
-  // The relayer holds the persistent leaf store and signs the on-chain tx.
   onStatus("Finalizing position in Merkle tree… (step 2/2)");
   const relayerUrl = config.services.relayerUrl;
   if (!relayerUrl) throw new Error("NEXT_PUBLIC_RELAYER_URL is not configured");
@@ -168,6 +182,7 @@ export async function deposit(params: {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       commitment: commitment.toString(16).padStart(64, "0"),
+      encNote: bytesToHex(encNote),
     }),
   });
   if (!insertRes.ok) {
@@ -177,15 +192,15 @@ export async function deposit(params: {
   const insertBody = (await insertRes.json().catch(() => ({}))) as { leafIndex?: number };
   const leafIndex = insertBody.leafIndex;
 
-  // 7. Persist the position on this device.
+  // 7. Persist the position (no secret/nonce — derived from the seed + index/version).
   const position: Position = {
     id: commitment.toString(),
     owner: depositor,
     txid,
     collateralSats: collateralSats.toString(),
     debtStroops: "0",
-    secret: secret.toString(),
-    nonce: nonce.toString(),
+    index,
+    version: 0,
     commitment: commitment.toString(),
     nullifier: nullifier.toString(),
     status: "active",

@@ -7,6 +7,7 @@ import { useBitcoinWallet } from "@/lib/bitcoin/useBitcoinWallet";
 import { deriveP2WSH } from "@/lib/bitcoin/address";
 import { deposit } from "@/lib/flows/deposit";
 import { resolveVout } from "@/lib/bitcoin/address";
+import { positionsSnapshot } from "@/lib/position";
 import { config } from "@/config";
 
 const MIN_DEPOSIT_BTC = 0.001;
@@ -49,7 +50,7 @@ function stepLabel(step: Step, statusMsg: string): string {
 }
 
 export function DepositFlow() {
-  const { address, signTransaction } = useWallet();
+  const { address, signTransaction, seed, unlocked, unlock } = useWallet();
   const btcWallet = useBitcoinWallet();
   const router = useRouter();
 
@@ -124,6 +125,11 @@ export function DepositFlow() {
 
   async function handleDeposit() {
     if (!address) return;
+    if (!seed) {
+      setStep("error");
+      setErrorMsg("Unlock your positions first.");
+      return;
+    }
     const validationError = validate();
     if (validationError) {
       setStep("error");
@@ -148,6 +154,8 @@ export function DepositFlow() {
         txid: txid.trim().toLowerCase(),
         collateralSats,
         depositor: address,
+        seed,
+        index: positionsSnapshot(address).length,
         signTransaction,
         onStatus,
         btcPubkey: btcWallet.btcPubkey ?? undefined,
@@ -321,10 +329,20 @@ export function DepositFlow() {
                     <p className="break-all text-xs text-crit">{errorMsg}</p>
                   )}
 
+                  {!unlocked && (
+                    <button
+                      type="button"
+                      onClick={() => unlock().catch(() => {})}
+                      className="self-start rounded-full border border-line-2 px-3 py-1 text-xs font-semibold text-amber transition-colors hover:border-amber"
+                    >
+                      Unlock to derive your keys
+                    </button>
+                  )}
+
                   <button
                     type="button"
                     onClick={handleDeposit}
-                    disabled={busy}
+                    disabled={busy || !unlocked}
                     className="self-start rounded-lg bg-amber px-4 py-2 text-sm font-semibold text-[#1a1206] transition-colors hover:bg-[#eeb459] disabled:opacity-50"
                   >
                     {busy
@@ -343,8 +361,8 @@ export function DepositFlow() {
       </div>
 
       <p className="text-xs text-muted">
-        Your secret and nonce are generated locally and stored only on this
-        device. Back them up via the position export if you clear browser data.
+        Your position keys are derived from your wallet signature — no secret to
+        back up. Recover positions on any device by unlocking with the same wallet.
       </p>
     </section>
   );

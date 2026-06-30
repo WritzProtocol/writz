@@ -156,6 +156,7 @@ impl CommitmentTreeContract {
         raw_tx: Bytes,
         zk_proof: Proof,
         public_signals: Vec<BytesN<32>>,
+        enc_note: Bytes,
     ) -> Result<BytesN<32>, CommitmentTreeError> {
         depositor.require_auth();
         let config = Self::load_config(&env)?;
@@ -226,7 +227,7 @@ impl CommitmentTreeContract {
         env.storage().persistent().set(&pending_key, &spv.txid);
         env.storage().persistent().extend_ttl(&pending_key, PERSISTENT_THRESHOLD, PERSISTENT_BUMP);
 
-        DepositEvent { commitment: commitment.clone(), depositor, txid: spv.txid, nullifier }
+        DepositEvent { commitment: commitment.clone(), depositor, txid: spv.txid, nullifier, enc_note }
             .publish(&env);
 
         Ok(commitment)
@@ -309,6 +310,7 @@ impl CommitmentTreeContract {
         borrower: Address,
         zk_proof: Proof,
         public_signals: Vec<BytesN<32>>,
+        enc_note: Bytes,
     ) -> Result<(), CommitmentTreeError> {
         borrower.require_auth();
         let config = Self::load_config(&env)?;
@@ -395,7 +397,7 @@ impl CommitmentTreeContract {
             &usdc_amount,
         );
 
-        BorrowEvent { new_root, borrower, usdc_amount, old_nullifier }.publish(&env);
+        BorrowEvent { new_root, borrower, usdc_amount, old_nullifier, enc_note }.publish(&env);
         Ok(())
     }
 
@@ -427,6 +429,7 @@ impl CommitmentTreeContract {
         repayer: Address,
         zk_proof: Proof,
         public_signals: Vec<BytesN<32>>,
+        enc_note: Bytes,
     ) -> Result<(), CommitmentTreeError> {
         repayer.require_auth();
         let config = Self::load_config(&env)?;
@@ -492,7 +495,7 @@ impl CommitmentTreeContract {
         env.storage().persistent().set(&DataKey::Pool, &pool);
         env.storage().persistent().extend_ttl(&DataKey::Pool, PERSISTENT_THRESHOLD, PERSISTENT_BUMP);
 
-        RepayEvent { new_root, repayer, usdc_amount, old_nullifier, new_commitment }
+        RepayEvent { new_root, repayer, usdc_amount, old_nullifier, new_commitment, enc_note }
             .publish(&env);
         Ok(())
     }

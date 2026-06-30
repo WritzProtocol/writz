@@ -1,3 +1,4 @@
+import { Buffer } from "buffer";
 import { Client } from "@/lib/contracts/generated";
 import { config, requireContract } from "@/config";
 import { proveBorrowRepay } from "@/lib/prover";
@@ -6,7 +7,12 @@ import {
   FIELD_PRIME,
   computeCommitment,
   computeNullifier,
-  randomFieldElement,
+  positionKeys,
+  seedToField,
+  deriveNonce,
+  deriveViewingKey,
+  sealNote,
+  bytesToHex,
   removePosition,
   savePosition,
   type Position,
@@ -43,33 +49,33 @@ export interface RepayResult {
 }
 
 /**
- * Repay USDC debt on a position. Uses the same `borrow_repay` circuit as borrow
- * but with `is_borrow = 0` and the repay amount encoded as a BN254 field
- * negation (`p − amount`), which is how the contract recovers the positive amount.
+ * Repay USDC debt. Same `borrow_repay` circuit as borrow but `is_borrow = 0` and
+ * the repay amount encoded as the BN254 field negation (`p − amount`). Keys are
+ * derived from the session seed; the recovery note for the new (lower-debt)
+ * state is sealed and emitted on-chain.
  */
 export async function repay(params: {
   position: Position;
   amountStroops: bigint;
   repayer: string;
+  seed: Uint8Array;
   signTransaction: SignTransaction;
 }): Promise<RepayResult> {
-  const { position, amountStroops, repayer, signTransaction } = params;
+  const { position, amountStroops, repayer, seed, signTransaction } = params;
 
   const collateral = BigInt(position.collateralSats);
   const oldDebt = BigInt(position.debtStroops);
-  const secret = BigInt(position.secret);
-  const nonce = BigInt(position.nonce);
-  const newNonce = randomFieldElement();
+  const f = seedToField(seed);
+  const { secret, nonce } = positionKeys(seed, position);
+  const newVersion = position.version + 1;
+  const newNonce = deriveNonce(f, position.index, newVersion);
 
   const commitment = computeCommitment(collateral, oldDebt, secret, nonce);
   const commitmentHex = commitment.toString(16).padStart(64, "0");
 
-  // Fetch the real Merkle path from the server. Pass leafIndex so the server can
-  // look up by position (not by value) — the commitment rotates on every borrow/repay,
-  // so value-based lookup would fail from the second operation onward.
   const { root, pathElements, pathIndices } = await fetchMerklePath(commitmentHex, position.leafIndex);
 
-  // Repay amount is encoded as the BN254 field negation of the delta.
+  // Repay amount encoded as the BN254 field negation of the delta.
   const delta = (FIELD_PRIME - amountStroops) % FIELD_PRIME;
 
   const { proof, publicSignals } = await proveBorrowRepay({
@@ -83,12 +89,20 @@ export async function repay(params: {
     old_root: root,
     delta_stroops: delta.toString(),
     is_borrow: "0",
-    // Price read from config (env: NEXT_PUBLIC_BTC_PRICE_STROOPS).
-    // Must match the on-chain oracle — the contract rejects proofs with a
-    // different value (CommitmentTreeError::PriceMismatch = #12).
     btc_price_stroops_per_btc: config.btcPriceStroops,
     min_ratio_bp: MIN_RATIO_BP,
   });
+
+  const newDebt = oldDebt - amountStroops;
+  const encNote = sealNote(
+    {
+      index: position.index,
+      version: newVersion,
+      collateralSats: collateral.toString(),
+      debtStroops: newDebt.toString(),
+    },
+    deriveViewingKey(seed).publicKey,
+  );
 
   const client = new Client({
     contractId: requireContract(config.contracts.commitmentTree, "commitment-tree"),
@@ -99,17 +113,21 @@ export async function repay(params: {
   });
 
   const tx = await simulateWithRetry(() =>
-    client.repay({ repayer, zk_proof: proof, public_signals: publicSignals }),
+    client.repay({
+      repayer,
+      zk_proof: proof,
+      public_signals: publicSignals,
+      enc_note: Buffer.from(encNote),
+    }),
   );
   const sent = await tx.signAndSend({ signTransaction });
 
-  const newDebt = oldDebt - amountStroops;
   const newCommitment = computeCommitment(collateral, newDebt, secret, newNonce);
   const updated: Position = {
     ...position,
     id: newCommitment.toString(),
     debtStroops: newDebt.toString(),
-    nonce: newNonce.toString(),
+    version: newVersion,
     commitment: newCommitment.toString(),
     nullifier: computeNullifier(secret, newNonce).toString(),
     status: newDebt === 0n ? "closed" : "active",
@@ -117,8 +135,6 @@ export async function repay(params: {
   removePosition(position.owner, position.id);
   savePosition(updated);
 
-  // Keep the server-side leaf store in sync so subsequent borrows/repays by any
-  // user get correct sibling values in their Merkle paths.
   if (position.leafIndex !== undefined && config.services.relayerUrl) {
     const syncRes = await fetch(`${config.services.relayerUrl}/update-leaf`, {
       method: "POST",
@@ -126,6 +142,7 @@ export async function repay(params: {
       body: JSON.stringify({
         leafIndex: position.leafIndex,
         newCommitment: newCommitment.toString(16).padStart(64, "0"),
+        encNote: bytesToHex(encNote),
       }),
     }).catch(() => null);
     if (!syncRes || !syncRes.ok) {
