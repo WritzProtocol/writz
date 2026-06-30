@@ -130,7 +130,6 @@ export function finalizePathA(
   userPubkeyHex: string,
 ): string {
   const network = getBitcoinNetwork();
-  const protocolPsbt = bitcoin.Psbt.fromBase64(protocolSignedPsbtBase64, { network });
   const userPsbt = bitcoin.Psbt.fromBase64(userSignedPsbtBase64, { network });
 
   // Merge partial signatures from both PSBTs into one.

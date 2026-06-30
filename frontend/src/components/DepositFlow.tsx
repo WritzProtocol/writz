@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useWallet } from "@/lib/wallet/WalletProvider";
 import { useBitcoinWallet } from "@/lib/bitcoin/useBitcoinWallet";
 import { deriveP2WSH } from "@/lib/bitcoin/address";
-import { deposit, pollSpvBundle } from "@/lib/flows/deposit";
+import { deposit } from "@/lib/flows/deposit";
 import { resolveVout } from "@/lib/bitcoin/address";
 import { config } from "@/config";
 

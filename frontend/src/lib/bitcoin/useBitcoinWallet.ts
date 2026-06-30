@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import Wallet, { AddressPurpose, BitcoinNetworkType } from "sats-connect";
+import Wallet, { AddressPurpose } from "sats-connect";
 
 export interface BitcoinWalletState {
   btcAddress: string | null;
@@ -12,12 +12,6 @@ export interface BitcoinWalletState {
   disconnect: () => void;
   sendBtc: (toAddress: string, amountSats: number) => Promise<string>;
   signPsbt: (psbtBase64: string) => Promise<string>;
-}
-
-function getNetworkType(): BitcoinNetworkType {
-  return process.env.NEXT_PUBLIC_BITCOIN_NETWORK === "mainnet"
-    ? BitcoinNetworkType.Mainnet
-    : BitcoinNetworkType.Testnet;
 }
 
 export function useBitcoinWallet(): BitcoinWalletState {
