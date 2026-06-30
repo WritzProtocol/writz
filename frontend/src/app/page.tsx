@@ -5,9 +5,8 @@ import {
 } from "@/lib/contracts/commitmentTree";
 import { WalletButton } from "@/components/WalletButton";
 import { BitcoinWalletButton } from "@/components/BitcoinWalletButton";
-import { DepositFlow } from "@/components/DepositFlow";
-import { PositionDashboard } from "@/components/PositionDashboard";
-import { LenderPanel } from "@/components/LenderPanel";
+import { AppTabs } from "@/components/AppTabs";
+import { config } from "@/config";
 
 // Read on-chain state at request time; never statically prerendered.
 export const dynamic = "force-dynamic";
@@ -27,6 +26,9 @@ function truncate(hex: string): string {
 }
 
 export default async function Home() {
+  const btcNetworkLabel =
+    config.bitcoin.network.charAt(0).toUpperCase() + config.bitcoin.network.slice(1);
+
   let merkleRoot: string | null = null;
   let pool: PoolState | null = null;
   let error: string | null = null;
@@ -44,8 +46,13 @@ export default async function Home() {
           <span className="inline-block h-4 w-4 rotate-45 border border-amber" />
           <span className="font-serif text-xl text-hi">Writz</span>
           <div className="ml-auto flex items-center gap-2">
-            <span className="hidden items-center gap-2 rounded-full border border-line-2 px-3 py-1 text-xs font-semibold tracking-wide text-amber sm:inline-flex">
-              Soroban Testnet
+            <span className="hidden items-center gap-1.5 rounded-full border border-line px-2.5 py-1 text-xs font-medium tracking-wide text-muted sm:inline-flex">
+              <span className="h-1.5 w-1.5 rounded-full bg-zk" />
+              Stellar Testnet
+            </span>
+            <span className="hidden items-center gap-1.5 rounded-full border border-line px-2.5 py-1 text-xs font-medium tracking-wide text-muted sm:inline-flex">
+              <span className="h-1.5 w-1.5 rounded-full bg-amber" />
+              Bitcoin {btcNetworkLabel}
             </span>
             <BitcoinWalletButton />
             <WalletButton />
@@ -92,11 +99,7 @@ export default async function Home() {
         </section>
       )}
 
-      <DepositFlow />
-
-      <LenderPanel />
-
-      <PositionDashboard />
+      <AppTabs />
 
       <footer className="mt-auto border-t border-line pt-6 text-xs text-muted">
         Read via generated contract bindings · no wallet required.
