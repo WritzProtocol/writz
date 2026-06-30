@@ -1,4 +1,4 @@
-import { Client } from "commitment-tree";
+import { Client } from "@/lib/contracts/generated";
 import { Buffer } from "buffer";
 import { config, requireContract } from "@/config";
 import { proveDeposit } from "@/lib/prover";

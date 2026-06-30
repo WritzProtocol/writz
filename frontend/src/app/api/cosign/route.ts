@@ -3,7 +3,7 @@ import * as bitcoin from "bitcoinjs-lib";
 import * as ecc from "@bitcoinerlab/secp256k1";
 import { ECPairFactory } from "ecpair";
 import { groth16, type Groth16ProofJSON } from "snarkjs";
-import { Client } from "commitment-tree";
+import { Client } from "@/lib/contracts/generated";
 import { config, requireContract } from "@/config";
 import { getMerkleRoot } from "@/lib/contracts/commitmentTree";
 import vKeyData from "@/circuits/zero_debt_vkey.json";
