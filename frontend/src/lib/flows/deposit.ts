@@ -55,7 +55,7 @@ export async function pollSpvBundle(
   txid: string,
   onStatus: (msg: string) => void,
   intervalMs = 10_000,
-  maxAttempts = 72,
+  maxAttempts = 270, // ~45 min — signet block times are irregular
 ): Promise<SpvBundle> {
   const relayerUrl = config.services.relayerUrl;
   if (!relayerUrl) throw new Error("NEXT_PUBLIC_RELAYER_URL is not configured.");
