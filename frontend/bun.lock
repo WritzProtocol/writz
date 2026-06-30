@@ -9,7 +9,7 @@
         "@creit.tech/stellar-wallets-kit": "^2.4.0",
         "@stellar/stellar-sdk": "^16.0.1",
         "bitcoinjs-lib": "^6.1.7",
-        "commitment-tree": "file:packages/commitment-tree",
+        "commitment-tree": "file:../packages/commitment-tree",
         "ecpair": "^2.1.0",
         "next": "16.2.9",
         "poseidon-lite": "^0.3.0",
@@ -862,7 +862,7 @@
 
     "commander": ["commander@14.0.3", "", {}, "sha512-H+y0Jo/T1RZ9qPP4Eh1pkcQcLRglraJaSLoyOtHxu6AapkjWVCy2Sit1QQ4x3Dng8qDlSsZEet7g5Pq06MvTgw=="],
 
-    "commitment-tree": ["commitment-tree@file:packages/commitment-tree", { "dependencies": { "@stellar/stellar-sdk": "^14.5.0", "buffer": "6.0.3" }, "devDependencies": { "typescript": "^5.6.2" } }],
+    "commitment-tree": ["commitment-tree@file:../packages/commitment-tree", { "dependencies": { "@stellar/stellar-sdk": "^14.5.0", "buffer": "6.0.3" }, "devDependencies": { "typescript": "^5.6.2" } }],
 
     "concat-map": ["concat-map@0.0.1", "", {}, "sha512-/Srv4dswyQNBfohGpz9o6Yb3Gz3SrUDqBH5rTuhGR7ahtlbYKnVxw2bCFMRljaA7EXHaXZ8wsHdodFvbkhKmqg=="],
 

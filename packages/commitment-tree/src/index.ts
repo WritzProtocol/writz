@@ -474,26 +474,4 @@ export class Client extends ContractClient {
       options
     )
   }
-  public readonly fromJSON = {
-    repay: this.txFromJSON<Result<void>>,
-        borrow: this.txFromJSON<Result<void>>,
-        deposit: this.txFromJSON<Result<Buffer>>,
-        liquidate: this.txFromJSON<Result<void>>,
-        initialize: this.txFromJSON<Result<void>>,
-        supply_usdc: this.txFromJSON<Result<void>>,
-        get_commitment: this.txFromJSON<Option<Buffer>>,
-        get_pool_state: this.txFromJSON<readonly [i128, i128]>,
-        get_merkle_root: this.txFromJSON<Buffer>,
-        withdraw_supply: this.txFromJSON<Result<void>>,
-        refresh_pool_ttl: this.txFromJSON<null>,
-        insert_commitment: this.txFromJSON<Result<void>>,
-        get_supply_balance: this.txFromJSON<i128>,
-        is_nullifier_spent: this.txFromJSON<boolean>,
-        refresh_instance_ttl: this.txFromJSON<null>,
-        is_commitment_pending: this.txFromJSON<boolean>,
-        refresh_nullifier_ttl: this.txFromJSON<boolean>,
-        refresh_commitment_ttl: this.txFromJSON<boolean>,
-        refresh_merkle_root_ttl: this.txFromJSON<null>,
-        refresh_supply_balance_ttl: this.txFromJSON<boolean>
-  }
 }
