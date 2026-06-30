@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useWallet } from "@/lib/wallet/WalletProvider";
 import { supply, withdraw } from "@/lib/flows/lend";
 import { getPoolState, getSupplyBalance } from "@/lib/contracts/commitmentTree";
+import { stellarTxUrl } from "@/lib/explorer";
+import { TxLink } from "./TxLink";
 
 // USDC uses 7 decimals (stroops).
 const STROOP = 10_000_000n;
@@ -82,10 +84,12 @@ export function LenderPanel() {
   const [supplyAmount, setSupplyAmount] = useState("");
   const [supplyStatus, setSupplyStatus] = useState<"idle" | "working" | "done" | "error">("idle");
   const [supplyMessage, setSupplyMessage] = useState<string | null>(null);
+  const [supplyTx, setSupplyTx] = useState<string | null>(null);
 
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [withdrawStatus, setWithdrawStatus] = useState<"idle" | "working" | "done" | "error">("idle");
   const [withdrawMessage, setWithdrawMessage] = useState<string | null>(null);
+  const [withdrawTx, setWithdrawTx] = useState<string | null>(null);
 
   // One transaction per account per ledger — lock both actions while in flight.
   const busy = supplyStatus === "working" || withdrawStatus === "working";
@@ -100,6 +104,7 @@ export function LenderPanel() {
 
   async function handleSupply() {
     setSupplyMessage(null);
+    setSupplyTx(null);
     if (!address) {
       setSupplyStatus("error");
       setSupplyMessage("Connect your wallet first.");
@@ -115,7 +120,8 @@ export function LenderPanel() {
     try {
       const { txHash } = await supply({ amountStroops, supplier: address, signTransaction });
       setSupplyStatus("done");
-      setSupplyMessage(txHash ? `Supplied — tx ${txHash.slice(0, 10)}…` : "Supplied.");
+      setSupplyMessage("Supplied.");
+      setSupplyTx(txHash ?? null);
       setSupplyAmount("");
       await reload();
       router.refresh();
@@ -132,6 +138,7 @@ export function LenderPanel() {
 
   async function handleWithdraw() {
     setWithdrawMessage(null);
+    setWithdrawTx(null);
     if (!address) {
       setWithdrawStatus("error");
       setWithdrawMessage("Connect your wallet first.");
@@ -152,7 +159,8 @@ export function LenderPanel() {
     try {
       const { txHash } = await withdraw({ amountStroops, supplier: address, signTransaction });
       setWithdrawStatus("done");
-      setWithdrawMessage(txHash ? `Withdrew — tx ${txHash.slice(0, 10)}…` : "Withdrew.");
+      setWithdrawMessage("Withdrew.");
+      setWithdrawTx(txHash ?? null);
       setWithdrawAmount("");
       await reload();
       router.refresh();
@@ -211,7 +219,8 @@ export function LenderPanel() {
             </div>
             {supplyMessage ? (
               <p className={`break-all text-xs ${supplyStatus === "error" ? "text-crit" : "text-ok"}`}>
-                {supplyMessage}
+                {supplyMessage}{" "}
+                {supplyTx && <TxLink url={stellarTxUrl(supplyTx)} hash={supplyTx} />}
               </p>
             ) : null}
           </div>
@@ -243,7 +252,8 @@ export function LenderPanel() {
             </p>
             {withdrawMessage ? (
               <p className={`break-all text-xs ${withdrawStatus === "error" ? "text-crit" : "text-ok"}`}>
-                {withdrawMessage}
+                {withdrawMessage}{" "}
+                {withdrawTx && <TxLink url={stellarTxUrl(withdrawTx)} hash={withdrawTx} />}
               </p>
             ) : null}
           </div>
