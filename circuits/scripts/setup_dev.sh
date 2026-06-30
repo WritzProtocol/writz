@@ -55,6 +55,7 @@ setup_circuit() {
 setup_circuit deposit
 setup_circuit borrow_repay
 setup_circuit liquidation
+setup_circuit zero_debt
 
 echo ""
 echo "✅ Development setup complete."
