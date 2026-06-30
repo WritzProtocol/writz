@@ -117,7 +117,7 @@ export function PositionDashboard() {
 
       {!address ? (
         <div className="rounded-xl border border-line bg-surface p-6 text-sm text-muted">
-          Connect your wallet to view your positions.
+          Connect your Stellar wallet to view your positions.
         </div>
       ) : !unlocked ? (
         <div className="flex flex-col items-start gap-3 rounded-xl border border-line bg-surface p-6">

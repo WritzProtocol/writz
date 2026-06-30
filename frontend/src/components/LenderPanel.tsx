@@ -102,7 +102,7 @@ export function LenderPanel() {
     setSupplyMessage(null);
     if (!address) {
       setSupplyStatus("error");
-      setSupplyMessage("Connect your wallet first.");
+      setSupplyMessage("Connect your Stellar wallet first.");
       return;
     }
     const amountStroops = toStroops(supplyAmount);
@@ -134,7 +134,7 @@ export function LenderPanel() {
     setWithdrawMessage(null);
     if (!address) {
       setWithdrawStatus("error");
-      setWithdrawMessage("Connect your wallet first.");
+      setWithdrawMessage("Connect your Stellar wallet first.");
       return;
     }
     const amountStroops = toStroops(withdrawAmount);
@@ -176,7 +176,7 @@ export function LenderPanel() {
 
       {!address ? (
         <div className="rounded-xl border border-line bg-surface p-6 text-sm text-muted">
-          Connect your wallet to supply or withdraw USDC.
+          Connect your Stellar wallet to supply or withdraw USDC.
         </div>
       ) : (
         <div className="rounded-xl border border-line bg-surface p-5">
