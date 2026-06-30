@@ -1,7 +1,7 @@
 /**
- * A private lending position, owned and stored entirely on the user's device.
- * The chain only ever sees `commitment` / `nullifier`; everything else
- * (amounts, secret, nonce) lives here. BigInt fields are stored as decimal
+ * A private lending position. Amounts live on the device; `secret`/`nonce` are
+ * NOT persisted — they are derived on demand from the wallet-derived session seed
+ * plus `index`/`version` (see lib/position/derive). BigInt fields are decimal
  * strings for JSON-safe persistence.
  */
 export type PositionStatus = "pending" | "active" | "closed";
@@ -17,10 +17,10 @@ export interface Position {
   collateralSats: string;
   /** Current USDC debt, in stroops. */
   debtStroops: string;
-  /** Private secret (field element). Losing this locks the position until the timelock. */
-  secret: string;
-  /** Current nonce (field element); rotates on every borrow/repay. */
-  nonce: string;
+  /** Derivation index — which position for this wallet. secret = derive(seed, index). */
+  index: number;
+  /** Nonce rotation counter — incremented on every borrow/repay. nonce = derive(seed, index, version). */
+  version: number;
   /** Current commitment (decimal string). */
   commitment: string;
   /** Current nullifier (decimal string) — spent when the position next changes. */

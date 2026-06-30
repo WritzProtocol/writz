@@ -1,28 +1,26 @@
 "use client";
 
-import { useCallback, useState, useSyncExternalStore } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { useWallet } from "@/lib/wallet/WalletProvider";
 import { useBitcoinWallet } from "@/lib/bitcoin/useBitcoinWallet";
 import { deriveP2WSH, buildReleasePsbt, finalizePathA, estimateReleaseFee } from "@/lib/bitcoin/address";
 import { borrow } from "@/lib/flows/borrow";
 import { repay } from "@/lib/flows/repay";
+import { recoverPositions } from "@/lib/flows/recover";
 import { proveZeroDebt, type ZeroDebtInput } from "@/lib/prover";
 import { config } from "@/config";
 import {
-  savePosition,
+  positionKeys,
   subscribePositions,
   positionsSnapshot,
   EMPTY_POSITIONS,
-  computeCommitment,
-  computeNullifier,
   type Position,
 } from "@/lib/position";
 
 // USDC = 7 decimals (stroops), BTC = 8 decimals (sats).
 const STROOP = 10_000_000n;
 const SAT = 100_000_000n;
-// Testnet oracle stub: BTC/USD is a fixed value on-chain.
 const BTC_PRICE_STROOPS_PER_BTC = 60_000n * STROOP;
 
 function fmtUsdc(stroops: bigint): string {
@@ -37,7 +35,6 @@ function fmtBtc(sats: bigint): string {
   return `${whole}.${frac}`;
 }
 
-/** Collateral ratio in basis points (collateral value / debt), or null if no debt. */
 function healthBp(collateralSats: bigint, debtStroops: bigint): bigint | null {
   if (debtStroops <= 0n) return null;
   const collateralStroops = (collateralSats * BTC_PRICE_STROOPS_PER_BTC) / SAT;
@@ -66,70 +63,108 @@ function Private({ children }: { children: React.ReactNode }) {
 }
 
 export function PositionDashboard() {
-  const { address } = useWallet();
+  const { address, seed, unlocked, unlock } = useWallet();
   const positions = useSyncExternalStore(
     subscribePositions,
     () => (address ? positionsSnapshot(address) : EMPTY_POSITIONS),
     () => EMPTY_POSITIONS,
   );
 
-  // Loads the position seeded on-chain by the demo-prep script (#3): same
-  // secret/nonce/collateral, debt 0. This makes the commitment match the
-  // on-chain tree so a borrow succeeds. Replaced by the deposit flow (#7).
-  const addSample = useCallback(() => {
-    if (!address) return;
-    const secret = BigInt("0xdeadbeef12345678");
-    const nonce = BigInt("0x8765432112345678");
-    const collateralSats = 1_000_000n; // 0.01 BTC
-    const debtStroops = 0n;
-    const commitment = computeCommitment(collateralSats, debtStroops, secret, nonce);
-    const nullifier = computeNullifier(secret, nonce);
-    savePosition({
-      id: commitment.toString(),
-      owner: address,
-      txid: null,
-      collateralSats: collateralSats.toString(),
-      debtStroops: debtStroops.toString(),
-      secret: secret.toString(),
-      nonce: nonce.toString(),
-      commitment: commitment.toString(),
-      nullifier: nullifier.toString(),
-      status: "active",
-      createdAt: Date.now(),
-      // The demo position sits at on-chain leaf index 0. Setting leafIndex lets
-      // borrow/repay sync the relayer's leaf store after each rotation (without
-      // it, the store drifts and the next op fails the merkle-path drift check).
-      leafIndex: 0,
-    });
-  }, [address]);
+  const [unlocking, setUnlocking] = useState(false);
+  const [unlockError, setUnlockError] = useState<string | null>(null);
+
+  const [recovering, setRecovering] = useState(false);
+  const [recoverMsg, setRecoverMsg] = useState<string | null>(null);
+  const [recoverError, setRecoverError] = useState<string | null>(null);
+
+  async function handleUnlock() {
+    setUnlockError(null);
+    setUnlocking(true);
+    try {
+      await unlock();
+    } catch (e) {
+      setUnlockError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setUnlocking(false);
+    }
+  }
+
+  async function handleRecover() {
+    if (!address || !seed) return;
+    setRecoverError(null);
+    setRecoverMsg(null);
+    setRecovering(true);
+    try {
+      const { recovered, scanned } = await recoverPositions({ owner: address, seed });
+      setRecoverMsg(
+        recovered > 0
+          ? `Recovered ${recovered} position${recovered === 1 ? "" : "s"}.`
+          : `No positions for this wallet (scanned ${scanned}).`,
+      );
+    } catch (e) {
+      setRecoverError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setRecovering(false);
+    }
+  }
 
   return (
     <section className="flex flex-col gap-4">
       <div className="flex items-baseline justify-between gap-4">
         <h2 className="font-serif text-2xl text-head">Your positions</h2>
-        <span className="text-xs text-muted">private · stored on this device</span>
+        <span className="text-xs text-muted">private · keys derived from your wallet</span>
       </div>
 
       {!address ? (
         <div className="rounded-xl border border-line bg-surface p-6 text-sm text-muted">
           Connect your wallet to view your positions.
         </div>
-      ) : positions.length === 0 ? (
+      ) : !unlocked ? (
         <div className="flex flex-col items-start gap-3 rounded-xl border border-line bg-surface p-6">
-          <p className="text-sm text-muted">No positions yet.</p>
+          <p className="text-sm text-muted">
+            Unlock to derive your position keys from your wallet. This signs a
+            message (no transaction, no fee) and works on any device.
+          </p>
           <button
             type="button"
-            onClick={addSample}
-            className="rounded-full border border-line-2 px-3 py-1 text-xs font-semibold text-amber transition-colors hover:border-amber"
+            onClick={handleUnlock}
+            disabled={unlocking}
+            className="rounded-full border border-line-2 px-3 py-1 text-xs font-semibold text-amber transition-colors hover:border-amber disabled:opacity-50"
           >
-            + Load demo position
+            {unlocking ? "Waiting for signature…" : "Unlock positions"}
           </button>
+          {unlockError ? <p className="break-all text-xs text-crit">{unlockError}</p> : null}
         </div>
       ) : (
-        <div className="grid gap-4">
-          {positions.map((p) => (
-            <PositionCard key={p.id} position={p} />
-          ))}
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-surface px-4 py-3">
+            <span className="text-xs text-muted">
+              Restore positions on this device — keys come from your wallet, no backup needed.
+            </span>
+            <div className="flex items-center gap-3">
+              {recoverMsg ? <span className="text-xs text-ok">{recoverMsg}</span> : null}
+              <button
+                type="button"
+                onClick={handleRecover}
+                disabled={recovering}
+                className="shrink-0 rounded-full border border-line-2 px-3 py-1 text-xs font-semibold text-amber transition-colors hover:border-amber disabled:opacity-50"
+              >
+                {recovering ? "Recovering…" : "Recover positions"}
+              </button>
+            </div>
+          </div>
+          {recoverError ? <p className="break-all text-xs text-crit">{recoverError}</p> : null}
+          {positions.length === 0 ? (
+            <div className="rounded-xl border border-line bg-surface p-6 text-sm text-muted">
+              No positions yet. Deposit BTC above to open one, or recover existing ones.
+            </div>
+          ) : (
+            <div className="grid gap-4">
+              {positions.map((p) => (
+                <PositionCard key={p.id} position={p} />
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -142,7 +177,7 @@ export function PositionDashboard() {
 }
 
 function PositionCard({ position }: { position: Position }) {
-  const { address, signTransaction } = useWallet();
+  const { address, signTransaction, seed } = useWallet();
   const btcWallet = useBitcoinWallet();
   const router = useRouter();
   const collateralSats = BigInt(position.collateralSats);
@@ -158,7 +193,6 @@ function PositionCard({ position }: { position: Position }) {
           ? { label: `${Number(bp) / 100}%`, tone: "text-amber" }
           : { label: `${Number(bp) / 100}%`, tone: "text-crit" };
 
-  // Max additional borrow that keeps the collateral ratio at >= 150%.
   const collateralStroops = (collateralSats * BTC_PRICE_STROOPS_PER_BTC) / SAT;
   const maxDebt = (collateralStroops * 10_000n) / 15_000n;
   const maxBorrow = maxDebt > debtStroops ? maxDebt - debtStroops : 0n;
@@ -175,15 +209,13 @@ function PositionCard({ position }: { position: Position }) {
   const [releaseStatus, setReleaseStatus] = useState<"idle" | "working" | "done" | "error">("idle");
   const [releaseMessage, setReleaseMessage] = useState<string | null>(null);
 
-  // While any tx is in flight, lock both actions — an account can only have one
-  // transaction per ledger, so back-to-back borrow/repay would hit TRY_AGAIN_LATER.
   const busy = status === "working" || repayStatus === "working" || releaseStatus === "working";
 
   async function handleBorrow() {
     setMessage(null);
-    if (!address) {
+    if (!address || !seed) {
       setStatus("error");
-      setMessage("Connect your wallet first.");
+      setMessage("Unlock your positions first.");
       return;
     }
     const usdc = Number(amount);
@@ -200,11 +232,11 @@ function PositionCard({ position }: { position: Position }) {
     }
     setStatus("working");
     try {
-      const { txHash } = await borrow({ position, amountStroops, borrower: address, signTransaction });
+      const { txHash } = await borrow({ position, amountStroops, borrower: address, seed, signTransaction });
       setStatus("done");
       setMessage(txHash ? `Borrowed — tx ${txHash.slice(0, 10)}…` : "Borrowed.");
       setAmount("");
-      router.refresh(); // refresh the server-rendered pool stats
+      router.refresh();
     } catch (e) {
       setStatus("error");
       setMessage(e instanceof Error ? e.message : String(e));
@@ -213,9 +245,9 @@ function PositionCard({ position }: { position: Position }) {
 
   async function handleRepay() {
     setRepayMessage(null);
-    if (!address) {
+    if (!address || !seed) {
       setRepayStatus("error");
-      setRepayMessage("Connect your wallet first.");
+      setRepayMessage("Unlock your positions first.");
       return;
     }
     const usdc = Number(repayAmount);
@@ -232,11 +264,11 @@ function PositionCard({ position }: { position: Position }) {
     }
     setRepayStatus("working");
     try {
-      const { txHash } = await repay({ position, amountStroops, repayer: address, signTransaction });
+      const { txHash } = await repay({ position, amountStroops, repayer: address, seed, signTransaction });
       setRepayStatus("done");
       setRepayMessage(txHash ? `Repaid — tx ${txHash.slice(0, 10)}…` : "Repaid.");
       setRepayAmount("");
-      router.refresh(); // refresh the server-rendered pool stats
+      router.refresh();
     } catch (e) {
       setRepayStatus("error");
       setRepayMessage(e instanceof Error ? e.message : String(e));
@@ -244,7 +276,12 @@ function PositionCard({ position }: { position: Position }) {
   }
 
   async function handleRelease() {
-    if (!address || !position.btcPubkey || !position.timelockHeight || !position.txid) {
+    if (!address || !seed) {
+      setReleaseStatus("error");
+      setReleaseMessage("Unlock your positions first.");
+      return;
+    }
+    if (!position.btcPubkey || !position.timelockHeight || !position.txid) {
       setReleaseStatus("error");
       setReleaseMessage("Position is missing Bitcoin metadata needed for release.");
       return;
@@ -275,20 +312,19 @@ function PositionCard({ position }: { position: Position }) {
       if (!relayerUrl) throw new Error("NEXT_PUBLIC_RELAYER_URL not configured");
 
       const p2wsh = deriveP2WSH(protocolPubkey, position.btcPubkey, position.timelockHeight);
-      const collateralSats = Number(BigInt(position.collateralSats));
+      const collateralSatsNum = Number(BigInt(position.collateralSats));
       const feeSat = await estimateReleaseFee(config.bitcoin.apiUrl);
 
       const psbt = buildReleasePsbt({
         txidHex: position.txid,
         vout: position.vout ?? 0,
-        amountSat: collateralSats,
+        amountSat: collateralSatsNum,
         scriptPubKey: p2wsh.scriptPubKey,
         redeemScript: p2wsh.redeemScript,
         recipientAddress: releaseRecipient.trim(),
         feeSat,
       });
 
-      // ── Fetch Merkle path for the current (zero-debt) commitment ─────────
       setReleaseMessage("Fetching Merkle inclusion path…");
       const commitmentHex = BigInt(position.commitment).toString(16).padStart(64, "0");
       const qs =
@@ -306,19 +342,19 @@ function PositionCard({ position }: { position: Position }) {
         root: string;
       };
 
-      // ── Generate zero-debt proof in-browser (private witness stays local) ─
+      // Zero-debt proof — keys derived from the session seed (never persisted).
       setReleaseMessage("Generating zero-debt proof (this may take ~30 s)…");
+      const { secret, nonce } = positionKeys(seed, position);
       const zeroDebtInput: ZeroDebtInput = {
         collateral_satoshis: position.collateralSats,
-        secret: position.secret,
-        nonce: position.nonce,
+        secret: secret.toString(),
+        nonce: nonce.toString(),
         path_elements: pathElements,
         path_indices: pathIndices,
         merkle_root: merkleRoot,
       };
       const { raw: zkRaw } = await proveZeroDebt(zeroDebtInput);
 
-      // ── Request protocol co-signature (server verifies proof + root) ──────
       setReleaseMessage("Requesting protocol co-signature…");
       const cosignRes = await fetch("/api/cosign", {
         method: "POST",
@@ -340,10 +376,7 @@ function PositionCard({ position }: { position: Position }) {
 
       setReleaseMessage("Finalizing and broadcasting…");
       const txHex = finalizePathA(protocolSignedPsbt, userSignedPsbt, protocolPubkey, position.btcPubkey);
-      const broadcastRes = await fetch(`${config.bitcoin.apiUrl}/tx`, {
-        method: "POST",
-        body: txHex,
-      });
+      const broadcastRes = await fetch(`${config.bitcoin.apiUrl}/tx`, { method: "POST", body: txHex });
       if (!broadcastRes.ok) {
         const errText = await broadcastRes.text().catch(() => String(broadcastRes.status));
         throw new Error(`Broadcast failed: ${errText}`);
@@ -405,9 +438,7 @@ function PositionCard({ position }: { position: Position }) {
           Max {fmtUsdc(maxBorrow)} USDC · keeps a ≥150% collateral ratio
         </p>
         {message ? (
-          <p
-            className={`break-all text-xs ${status === "error" ? "text-crit" : "text-ok"}`}
-          >
+          <p className={`break-all text-xs ${status === "error" ? "text-crit" : "text-ok"}`}>
             {message}
           </p>
         ) : null}
@@ -444,9 +475,7 @@ function PositionCard({ position }: { position: Position }) {
 
       {position.status === "closed" && position.btcPubkey ? (
         <div className="mt-4 flex flex-col gap-2 border-t border-line pt-4">
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted">
-            Release BTC
-          </p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted">Release BTC</p>
           {releaseStatus === "done" ? (
             <p className="text-xs text-ok">{releaseMessage}</p>
           ) : (
@@ -486,13 +515,7 @@ function PositionCard({ position }: { position: Position }) {
   );
 }
 
-function Metric({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
+function Metric({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-1">
       <span className="text-xs uppercase tracking-wide text-muted">{label}</span>

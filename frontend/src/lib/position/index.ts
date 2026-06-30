@@ -1,27 +1,41 @@
-import {
-  computeCommitment,
-  computeNullifier,
-  randomFieldElement,
-} from "./crypto";
+import { computeCommitment, computeNullifier } from "./crypto";
+import { seedToField, deriveSecret, deriveNonce } from "./derive";
 import type { Position } from "./types";
 
 export * from "./types";
 export * from "./crypto";
 export * from "./store";
+export * from "./derive";
+export * from "./notes";
 
 /**
- * Create a fresh position for a new deposit: generate a random secret + nonce,
- * derive the commitment (debt = 0) and nullifier. The returned position is not
- * yet persisted — the caller stamps `txid` and calls `savePosition`.
+ * Derive a position's spending keys from the in-memory session seed. The secret
+ * is fixed per `index`; the nonce rotates with `version`.
+ */
+export function positionKeys(
+  seed: Uint8Array,
+  p: Pick<Position, "index" | "version">,
+): { secret: bigint; nonce: bigint } {
+  const f = seedToField(seed);
+  return { secret: deriveSecret(f, p.index), nonce: deriveNonce(f, p.index, p.version) };
+}
+
+/**
+ * Create a fresh position for a new deposit (debt 0, version 0) with keys derived
+ * from the session seed at `index`. Not yet persisted — the caller stamps
+ * `txid`/`leafIndex` and calls `savePosition`.
  */
 export function createDepositPosition(args: {
   owner: string;
   collateralSats: bigint;
+  seed: Uint8Array;
+  index: number;
   txid?: string | null;
   createdAt: number;
 }): Position {
-  const secret = randomFieldElement();
-  const nonce = randomFieldElement();
+  const f = seedToField(args.seed);
+  const secret = deriveSecret(f, args.index);
+  const nonce = deriveNonce(f, args.index, 0);
   const debt = 0n;
   const commitment = computeCommitment(args.collateralSats, debt, secret, nonce);
   const nullifier = computeNullifier(secret, nonce);
@@ -32,8 +46,8 @@ export function createDepositPosition(args: {
     txid: args.txid ?? null,
     collateralSats: args.collateralSats.toString(),
     debtStroops: debt.toString(),
-    secret: secret.toString(),
-    nonce: nonce.toString(),
+    index: args.index,
+    version: 0,
     commitment: commitment.toString(),
     nullifier: nullifier.toString(),
     status: "pending",
@@ -49,12 +63,13 @@ export interface PositionWitness {
   nonce: string;
 }
 
-/** Extract the private witness for the proving step (borrow/repay flows). */
-export function positionWitness(p: Position): PositionWitness {
+/** Extract the private witness for proving (derives keys from the session seed). */
+export function positionWitness(seed: Uint8Array, p: Position): PositionWitness {
+  const { secret, nonce } = positionKeys(seed, p);
   return {
     collateral_satoshis: p.collateralSats,
     debt_stroops: p.debtStroops,
-    secret: p.secret,
-    nonce: p.nonce,
+    secret: secret.toString(),
+    nonce: nonce.toString(),
   };
 }

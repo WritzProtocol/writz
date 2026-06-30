@@ -1,3 +1,4 @@
+import { Buffer } from "buffer";
 import { Client } from "@/lib/contracts/generated";
 import { config, requireContract } from "@/config";
 import { proveBorrowRepay } from "@/lib/prover";
@@ -5,7 +6,12 @@ import { simulateWithRetry } from "./submit";
 import {
   computeCommitment,
   computeNullifier,
-  randomFieldElement,
+  positionKeys,
+  seedToField,
+  deriveNonce,
+  deriveViewingKey,
+  sealNote,
+  bytesToHex,
   removePosition,
   savePosition,
   type Position,
@@ -42,30 +48,31 @@ export interface BorrowResult {
 }
 
 /**
- * Borrow USDC against a position: fetch the real Merkle path from the server,
- * generate the borrow_repay ZK proof in-browser, submit `borrow()` signed by
- * the Stellar wallet, then update the local position (new debt, nonce, commitment).
+ * Borrow USDC against a position. Keys are derived from the session `seed`
+ * (secret fixed per index; nonce rotated by bumping `version`). The recovery
+ * note for the new state is sealed to the viewing key and emitted on-chain.
  */
 export async function borrow(params: {
   position: Position;
   amountStroops: bigint;
   borrower: string;
+  seed: Uint8Array;
   signTransaction: SignTransaction;
 }): Promise<BorrowResult> {
-  const { position, amountStroops, borrower, signTransaction } = params;
+  const { position, amountStroops, borrower, seed, signTransaction } = params;
 
   const collateral = BigInt(position.collateralSats);
   const oldDebt = BigInt(position.debtStroops);
-  const secret = BigInt(position.secret);
-  const nonce = BigInt(position.nonce);
-  const newNonce = randomFieldElement();
+  const f = seedToField(seed);
+  const { secret, nonce } = positionKeys(seed, position);
+  const newVersion = position.version + 1;
+  const newNonce = deriveNonce(f, position.index, newVersion);
 
   const commitment = computeCommitment(collateral, oldDebt, secret, nonce);
   const commitmentHex = commitment.toString(16).padStart(64, "0");
 
-  // Fetch the real Merkle path from the server. Pass leafIndex so the server can
-  // look up by position (not by value) — the commitment rotates on every borrow,
-  // so value-based lookup would fail from the second borrow onward.
+  // Real Merkle path from the relayer; leafIndex looks up by position (the
+  // commitment rotates each borrow, so value-based lookup fails after the first).
   const { root, pathElements, pathIndices } = await fetchMerklePath(commitmentHex, position.leafIndex);
 
   const { proof, publicSignals } = await proveBorrowRepay({
@@ -79,12 +86,23 @@ export async function borrow(params: {
     old_root: root,
     delta_stroops: amountStroops.toString(),
     is_borrow: "1",
-    // Price read from config (env: NEXT_PUBLIC_BTC_PRICE_STROOPS).
-    // Must match the on-chain oracle — the contract rejects proofs with a
-    // different value (CommitmentTreeError::PriceMismatch = #12).
+    // Must match the on-chain oracle (env NEXT_PUBLIC_BTC_PRICE_STROOPS) or the
+    // contract rejects with PriceMismatch (#12).
     btc_price_stroops_per_btc: config.btcPriceStroops,
     min_ratio_bp: MIN_RATIO_BP,
   });
+
+  const newDebt = oldDebt + amountStroops;
+  // Seal the recovery note for the NEW (higher-debt) state to the viewing key.
+  const encNote = sealNote(
+    {
+      index: position.index,
+      version: newVersion,
+      collateralSats: collateral.toString(),
+      debtStroops: newDebt.toString(),
+    },
+    deriveViewingKey(seed).publicKey,
+  );
 
   const client = new Client({
     contractId: requireContract(config.contracts.commitmentTree, "commitment-tree"),
@@ -95,17 +113,21 @@ export async function borrow(params: {
   });
 
   const tx = await simulateWithRetry(() =>
-    client.borrow({ borrower, zk_proof: proof, public_signals: publicSignals }),
+    client.borrow({
+      borrower,
+      zk_proof: proof,
+      public_signals: publicSignals,
+      enc_note: Buffer.from(encNote),
+    }),
   );
   const sent = await tx.signAndSend({ signTransaction });
 
-  const newDebt = oldDebt + amountStroops;
   const newCommitment = computeCommitment(collateral, newDebt, secret, newNonce);
   const updated: Position = {
     ...position,
     id: newCommitment.toString(),
     debtStroops: newDebt.toString(),
-    nonce: newNonce.toString(),
+    version: newVersion,
     commitment: newCommitment.toString(),
     nullifier: computeNullifier(secret, newNonce).toString(),
     status: "active",
@@ -113,8 +135,7 @@ export async function borrow(params: {
   removePosition(position.owner, position.id);
   savePosition(updated);
 
-  // Keep the server-side leaf store in sync so subsequent borrows/repays by any
-  // user get correct sibling values in their Merkle paths.
+  // Sync the relayer leaf store so subsequent ops get correct sibling values.
   if (position.leafIndex !== undefined && config.services.relayerUrl) {
     const syncRes = await fetch(`${config.services.relayerUrl}/update-leaf`, {
       method: "POST",
@@ -122,6 +143,7 @@ export async function borrow(params: {
       body: JSON.stringify({
         leafIndex: position.leafIndex,
         newCommitment: newCommitment.toString(16).padStart(64, "0"),
+        encNote: bytesToHex(encNote),
       }),
     }).catch(() => null);
     if (!syncRes || !syncRes.ok) {

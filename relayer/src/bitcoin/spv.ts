@@ -9,6 +9,22 @@
 import { EsploraClient } from "./esplora.js";
 import { stripWitness } from "./tx.js";
 
+/**
+ * Reverses the byte order of a 32-byte hash hex string.
+ *
+ * Esplora returns Merkle-proof sibling hashes in display (reversed) byte order,
+ * matching how txids are shown. The `bitcoin-spv` contract folds the proof in
+ * internal byte order — its leaf is `SHA256d(raw_tx)` (internal) and it compares
+ * against the header's `merkle_root` field (internal). So each sibling must be
+ * reversed to internal order before it is sent on-chain, or the fold yields a
+ * root that doesn't match and `verify_transaction` fails with MerkleProofInvalid.
+ */
+function toInternalByteOrder(hex: string): string {
+  const bytes = hex.match(/../g);
+  if (!bytes) return hex;
+  return bytes.reverse().join("");
+}
+
 export interface SPVProofBundle {
   /** Transaction ID in display byte order (for human reference). */
   txid: string;
@@ -112,7 +128,9 @@ export async function buildSPVProof(
     txid,
     rawTxNoWitness,
     txIndex: merkleProofData.pos,
-    merkleProof: merkleProofData.merkle,
+    // Esplora returns siblings in display order; the contract folds in internal
+    // order, so reverse each before sending on-chain (see toInternalByteOrder).
+    merkleProof: merkleProofData.merkle.map(toInternalByteOrder),
     headers: headerHexes.map((h) => h.trim()),
     blockHeight,
     confirmations,

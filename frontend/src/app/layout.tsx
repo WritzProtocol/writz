@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Fraunces, Hanken_Grotesk, Geist_Mono } from "next/font/google";
 import { WalletProvider } from "@/lib/wallet/WalletProvider";
+import { BitcoinWalletProvider } from "@/lib/bitcoin/useBitcoinWallet";
 import "./globals.css";
 
 // Display — luxury editorial serif (used with restraint for wordmark + headings).
@@ -40,7 +41,9 @@ export default function RootLayout({
       className={`${display.variable} ${body.variable} ${mono.variable} h-full antialiased`}
     >
       <body className="min-h-full">
-        <WalletProvider>{children}</WalletProvider>
+        <WalletProvider>
+          <BitcoinWalletProvider>{children}</BitcoinWalletProvider>
+        </WalletProvider>
       </body>
     </html>
   );

@@ -3,9 +3,10 @@ import { Keypair, Transaction } from "@stellar/stellar-sdk";
 import { Client } from "commitment-tree";
 import { config } from "../config.js";
 import { computePath, computeRoot } from "../merkle.js";
-import { readLeaves, writeLeaves } from "../leaf-store.js";
+import { readLeaves, writeLeaves, saveNote, readNotes } from "../leaf-store.js";
 
 const COMMITMENT_RE = /^[0-9a-f]{64}$/i;
+const HEX_RE = /^[0-9a-f]+$/i;
 
 export const merkleRouter = Router();
 
@@ -50,9 +51,16 @@ merkleRouter.post("/insert-commitment", async (req: Request, res: Response): Pro
     return;
   }
 
-  const { commitment: commitmentHex } = req.body as { commitment?: string };
+  const { commitment: commitmentHex, encNote } = req.body as {
+    commitment?: string;
+    encNote?: string;
+  };
   if (!commitmentHex || !COMMITMENT_RE.test(commitmentHex)) {
     res.status(400).json({ error: "commitment must be a 64-char hex string" });
+    return;
+  }
+  if (encNote !== undefined && !HEX_RE.test(encNote)) {
+    res.status(400).json({ error: "encNote must be a hex string" });
     return;
   }
 
@@ -116,6 +124,7 @@ merkleRouter.post("/insert-commitment", async (req: Request, res: Response): Pro
     const sent = await tx.signAndSend({ signTransaction });
 
     writeLeaves(newLeaves);
+    if (encNote) saveNote(existingLeaves.length, encNote);
 
     res.json({
       txHash: sent.sendTransactionResponse?.hash,
@@ -225,9 +234,10 @@ merkleRouter.get("/merkle-path", async (req: Request, res: Response): Promise<vo
 // POST /update-leaf
 // ---------------------------------------------------------------------------
 merkleRouter.post("/update-leaf", (req: Request, res: Response): void => {
-  const { leafIndex, newCommitment } = req.body as {
+  const { leafIndex, newCommitment, encNote } = req.body as {
     leafIndex?: number;
     newCommitment?: string;
+    encNote?: string;
   };
 
   if (typeof leafIndex !== "number" || !Number.isInteger(leafIndex) || leafIndex < 0) {
@@ -236,6 +246,10 @@ merkleRouter.post("/update-leaf", (req: Request, res: Response): void => {
   }
   if (!newCommitment || !COMMITMENT_RE.test(newCommitment)) {
     res.status(400).json({ error: "newCommitment must be a 64-char hex string" });
+    return;
+  }
+  if (encNote !== undefined && !HEX_RE.test(encNote)) {
+    res.status(400).json({ error: "encNote must be a hex string" });
     return;
   }
 
@@ -249,7 +263,27 @@ merkleRouter.post("/update-leaf", (req: Request, res: Response): void => {
 
   leaves[leafIndex] = BigInt("0x" + newCommitment);
   writeLeaves(leaves);
+  if (encNote) saveNote(leafIndex, encNote);
 
   const newRoot = computeRoot(leaves);
   res.json({ newRoot: newRoot.toString() });
+});
+
+// ---------------------------------------------------------------------------
+// GET /notes
+//
+// Returns every sealed recovery note with its leaf index and current
+// commitment. A client trial-decrypts each note with its viewing key to
+// rebuild its positions on a fresh device (#18). Notes are sealed (x25519 +
+// ChaCha20-Poly1305), so this endpoint leaks nothing about amounts or owners.
+// ---------------------------------------------------------------------------
+merkleRouter.get("/notes", (_req: Request, res: Response): void => {
+  const leaves = readLeaves();
+  const notes = readNotes().map((n) => ({
+    leafIndex: n.leafIndex,
+    encNote: n.encNote,
+    commitment:
+      n.leafIndex < leaves.length ? leaves[n.leafIndex].toString(16).padStart(64, "0") : null,
+  }));
+  res.json({ notes });
 });
