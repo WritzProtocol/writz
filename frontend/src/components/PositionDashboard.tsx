@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { useWallet } from "@/lib/wallet/WalletProvider";
 import { useBitcoinWallet } from "@/lib/bitcoin/useBitcoinWallet";
@@ -8,7 +8,7 @@ import { deriveP2WSH, buildReleasePsbt, finalizePathA, estimateReleaseFee } from
 import { borrow } from "@/lib/flows/borrow";
 import { repay } from "@/lib/flows/repay";
 import { recoverPositions } from "@/lib/flows/recover";
-import { createDemoPosition } from "@/lib/flows/demo";
+import { createDemoPosition, isDemoLoaded } from "@/lib/flows/demo";
 import { proveZeroDebt, type ZeroDebtInput } from "@/lib/prover";
 import { config } from "@/config";
 import {
@@ -80,6 +80,11 @@ export function PositionDashboard() {
 
   const [demoLoading, setDemoLoading] = useState(false);
   const [demoError, setDemoError] = useState<string | null>(null);
+  const [demoLoaded, setDemoLoaded] = useState(false);
+
+  useEffect(() => {
+    setDemoLoaded(address ? isDemoLoaded(address) : false);
+  }, [address]);
 
   async function handleUnlock() {
     setUnlockError(null);
@@ -99,6 +104,7 @@ export function PositionDashboard() {
     setDemoLoading(true);
     try {
       await createDemoPosition({ owner: address, seed, index: positionsSnapshot(address).length });
+      setDemoLoaded(true);
     } catch (e) {
       setDemoError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -163,11 +169,15 @@ export function PositionDashboard() {
               <button
                 type="button"
                 onClick={handleDemo}
-                disabled={demoLoading || recovering}
-                title="Insert a test position (no real BTC) to try borrow/repay"
-                className="shrink-0 rounded-full border border-dashed border-line-2 px-3 py-1 text-xs font-semibold text-muted transition-colors hover:border-amber hover:text-amber disabled:opacity-50"
+                disabled={demoLoading || recovering || demoLoaded}
+                title={
+                  demoLoaded
+                    ? "A demo position has already been loaded for this wallet"
+                    : "Insert a test position (no real BTC) to try borrow/repay"
+                }
+                className="shrink-0 rounded-full border border-dashed border-line-2 px-3 py-1 text-xs font-semibold text-muted transition-colors hover:border-amber hover:text-amber disabled:cursor-not-allowed disabled:opacity-40"
               >
-                {demoLoading ? "Adding…" : "Load demo position"}
+                {demoLoaded ? "Demo loaded" : demoLoading ? "Adding…" : "Load demo position"}
               </button>
               <button
                 type="button"

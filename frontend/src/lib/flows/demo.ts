@@ -16,6 +16,16 @@ import {
 // a few hundred USDC against the demo pool.
 const DEMO_COLLATERAL_SATS = 1_000_000n;
 
+// Per-wallet flag so the demo can only be loaded once. insert_commitment
+// consumes a pending commitment, so re-running for the same wallet would fail.
+const DEMO_FLAG_PREFIX = "writz.demo.";
+
+/** Whether a demo position has already been loaded for this wallet. */
+export function isDemoLoaded(owner: string): boolean {
+  if (typeof window === "undefined") return false;
+  return localStorage.getItem(`${DEMO_FLAG_PREFIX}${owner}`) === "1";
+}
+
 /**
  * Creates a position for testing the borrow/repay flow without a real BTC
  * deposit. The commitment is inserted into the on-chain Merkle tree (via the
@@ -73,5 +83,8 @@ export async function createDemoPosition(params: {
     // No btcPubkey/timelockHeight/vout — no real BTC, so release stays hidden.
   };
   savePosition(position);
+  if (typeof window !== "undefined") {
+    localStorage.setItem(`${DEMO_FLAG_PREFIX}${owner}`, "1");
+  }
   return position;
 }
