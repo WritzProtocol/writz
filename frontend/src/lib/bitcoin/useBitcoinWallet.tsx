@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { createContext, useCallback, useContext, useMemo, useState } from "react";
 import Wallet, { AddressPurpose, BitcoinNetworkType, RpcErrorCode } from "sats-connect";
 import { config } from "@/config";
 
@@ -29,7 +29,15 @@ export interface BitcoinWalletState {
   signPsbt: (psbtBase64: string) => Promise<string>;
 }
 
-export function useBitcoinWallet(): BitcoinWalletState {
+const BitcoinWalletContext = createContext<BitcoinWalletState | null>(null);
+
+/**
+ * Shares one Bitcoin-wallet connection across the whole app. Without this, each
+ * `useBitcoinWallet()` caller (header button, deposit form, position card) would
+ * hold its own state, so connecting in one place wouldn't be visible in another
+ * (e.g. the release flow would think the wallet is disconnected).
+ */
+export function BitcoinWalletProvider({ children }: { children: React.ReactNode }) {
   const [btcAddress, setBtcAddress] = useState<string | null>(null);
   const [btcPubkey, setBtcPubkey] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(false);
@@ -93,17 +101,34 @@ export function useBitcoinWallet(): BitcoinWalletState {
     [],
   );
 
-  const signPsbt = useCallback(async (psbtBase64: string): Promise<string> => {
-    const res = await Wallet.request("signPsbt", {
-      psbt: psbtBase64,
-      signInputs: { "0": [0] },
-      broadcast: false,
-    });
-    if (res.status === "error") {
-      throw new Error(res.error.message ?? "PSBT signing failed");
-    }
-    return res.result.psbt;
-  }, []);
+  const signPsbt = useCallback(
+    async (psbtBase64: string): Promise<string> => {
+      if (!btcAddress) throw new Error("Connect your Bitcoin wallet first");
+      const res = await Wallet.request("signPsbt", {
+        psbt: psbtBase64,
+        // signInputs is keyed by address → input indices it should sign. The
+        // release PSBT has a single P2WSH input (index 0) the user must sign.
+        signInputs: { [btcAddress]: [0] },
+        broadcast: false,
+      });
+      if (res.status === "error") {
+        throw new Error(res.error.message ?? "PSBT signing failed");
+      }
+      return res.result.psbt;
+    },
+    [btcAddress],
+  );
 
-  return { btcAddress, btcPubkey, connecting, error, connect, disconnect, sendBtc, signPsbt };
+  const value = useMemo<BitcoinWalletState>(
+    () => ({ btcAddress, btcPubkey, connecting, error, connect, disconnect, sendBtc, signPsbt }),
+    [btcAddress, btcPubkey, connecting, error, connect, disconnect, sendBtc, signPsbt],
+  );
+
+  return <BitcoinWalletContext.Provider value={value}>{children}</BitcoinWalletContext.Provider>;
+}
+
+export function useBitcoinWallet(): BitcoinWalletState {
+  const ctx = useContext(BitcoinWalletContext);
+  if (!ctx) throw new Error("useBitcoinWallet must be used within a BitcoinWalletProvider");
+  return ctx;
 }
