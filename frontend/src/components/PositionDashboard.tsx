@@ -8,6 +8,7 @@ import { deriveP2WSH, buildReleasePsbt, finalizePathA, estimateReleaseFee } from
 import { borrow } from "@/lib/flows/borrow";
 import { repay } from "@/lib/flows/repay";
 import { recoverPositions } from "@/lib/flows/recover";
+import { createDemoPosition } from "@/lib/flows/demo";
 import { proveZeroDebt, type ZeroDebtInput } from "@/lib/prover";
 import { config } from "@/config";
 import {
@@ -77,6 +78,9 @@ export function PositionDashboard() {
   const [recoverMsg, setRecoverMsg] = useState<string | null>(null);
   const [recoverError, setRecoverError] = useState<string | null>(null);
 
+  const [demoLoading, setDemoLoading] = useState(false);
+  const [demoError, setDemoError] = useState<string | null>(null);
+
   async function handleUnlock() {
     setUnlockError(null);
     setUnlocking(true);
@@ -86,6 +90,19 @@ export function PositionDashboard() {
       setUnlockError(e instanceof Error ? e.message : String(e));
     } finally {
       setUnlocking(false);
+    }
+  }
+
+  async function handleDemo() {
+    if (!address || !seed) return;
+    setDemoError(null);
+    setDemoLoading(true);
+    try {
+      await createDemoPosition({ owner: address, seed, index: positionsSnapshot(address).length });
+    } catch (e) {
+      setDemoError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setDemoLoading(false);
     }
   }
 
@@ -145,8 +162,17 @@ export function PositionDashboard() {
               {recoverMsg ? <span className="text-xs text-ok">{recoverMsg}</span> : null}
               <button
                 type="button"
+                onClick={handleDemo}
+                disabled={demoLoading || recovering}
+                title="Insert a test position (no real BTC) to try borrow/repay"
+                className="shrink-0 rounded-full border border-dashed border-line-2 px-3 py-1 text-xs font-semibold text-muted transition-colors hover:border-amber hover:text-amber disabled:opacity-50"
+              >
+                {demoLoading ? "Adding…" : "Load demo position"}
+              </button>
+              <button
+                type="button"
                 onClick={handleRecover}
-                disabled={recovering}
+                disabled={recovering || demoLoading}
                 className="shrink-0 rounded-full border border-line-2 px-3 py-1 text-xs font-semibold text-amber transition-colors hover:border-amber disabled:opacity-50"
               >
                 {recovering ? "Recovering…" : "Recover positions"}
@@ -154,6 +180,7 @@ export function PositionDashboard() {
             </div>
           </div>
           {recoverError ? <p className="break-all text-xs text-crit">{recoverError}</p> : null}
+          {demoError ? <p className="break-all text-xs text-crit">{demoError}</p> : null}
           {positions.length === 0 ? (
             <div className="rounded-xl border border-line bg-surface p-6 text-sm text-muted">
               No positions yet. Deposit BTC above to open one, or recover existing ones.
