@@ -6,6 +6,19 @@
  *
  * Genuine errors (a truly stale local position, insufficient liquidity, etc.)
  * still surface after the attempts are exhausted.
+ *
+ * CommitmentTreeError codes that are transient (resolve without user action):
+ *   #5  = RootMismatch       — on-chain state lag after a prior tx
+ *
+ * CommitmentTreeError codes that are permanent (do NOT retry):
+ *   #4  = InvalidZkProof     — proof verification failed
+ *   #6  = NullifierAlreadySpent
+ *   #7  = DuplicateDeposit
+ *   #9  = InsufficientLiquidity
+ *   #11 = ProtocolParamMismatch — wrong min_ratio_bp or min_deposit_sats in proof
+ *   #12 = PriceMismatch        — proof price ≠ oracle; update NEXT_PUBLIC_BTC_PRICE_STROOPS
+ *
+ * See contracts/contracts/commitment-tree/src/error.rs for the full enum.
  */
 const TRANSIENT =
   /Error\(Contract, #5\)|RootMismatch|TRY_AGAIN_LATER|txBadSeq|NotFound|not found/i;

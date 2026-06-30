@@ -5,11 +5,27 @@ import { useRouter } from "next/navigation";
 import { useWallet } from "@/lib/wallet/WalletProvider";
 import { useBitcoinWallet } from "@/lib/bitcoin/useBitcoinWallet";
 import { deriveP2WSH } from "@/lib/bitcoin/address";
-import { deposit, pollSpvBundle } from "@/lib/flows/deposit";
+import { deposit } from "@/lib/flows/deposit";
+import { resolveVout } from "@/lib/bitcoin/address";
 import { config } from "@/config";
 
 const MIN_DEPOSIT_BTC = 0.001;
-const SAT = 100_000_000;
+const MIN_DEPOSIT_SATS = 100_000n; // 0.001 BTC
+
+/**
+ * Parses a decimal BTC string into satoshis without floating-point arithmetic.
+ * "0.1" → 10_000_000n, "0.00000001" → 1n, "1.5" → 150_000_000n
+ */
+function parseBtcToSats(btcStr: string): bigint {
+  const trimmed = btcStr.trim();
+  const dotIdx = trimmed.indexOf(".");
+  const whole = dotIdx === -1 ? trimmed : trimmed.slice(0, dotIdx);
+  const frac = dotIdx === -1 ? "" : trimmed.slice(dotIdx + 1, dotIdx + 9).padEnd(8, "0");
+  if (!/^\d+$/.test(whole) || !/^\d+$/.test(frac)) {
+    throw new Error(`Invalid BTC amount: "${btcStr}"`);
+  }
+  return BigInt(whole) * 100_000_000n + BigInt(frac);
+}
 
 type Step =
   | "idle"
@@ -38,6 +54,7 @@ export function DepositFlow() {
   const router = useRouter();
 
   const [txid, setTxid] = useState("");
+  const [sentVout, setSentVout] = useState<number | null>(null);
   const [btcAmount, setBtcAmount] = useState("");
   const [step, setStep] = useState<Step>("idle");
   const [statusMsg, setStatusMsg] = useState("");
@@ -63,17 +80,28 @@ export function DepositFlow() {
     if (!txid.trim() || !/^[0-9a-f]{64}$/i.test(txid.trim())) {
       return "Enter a valid 64-character Bitcoin txid.";
     }
-    const amount = parseFloat(btcAmount);
-    if (!Number.isFinite(amount) || amount < MIN_DEPOSIT_BTC) {
-      return `Minimum deposit is ${MIN_DEPOSIT_BTC} BTC.`;
+    try {
+      const sats = parseBtcToSats(btcAmount);
+      if (sats < MIN_DEPOSIT_SATS) {
+        return `Minimum deposit is ${MIN_DEPOSIT_BTC} BTC.`;
+      }
+    } catch {
+      return `Invalid BTC amount.`;
     }
     return null;
   }
 
   async function handleSendBtc() {
     if (!depositAddress) return;
-    const amount = parseFloat(btcAmount);
-    if (!Number.isFinite(amount) || amount < MIN_DEPOSIT_BTC) {
+    let amountSats: bigint;
+    try {
+      amountSats = parseBtcToSats(btcAmount);
+    } catch {
+      setStep("error");
+      setErrorMsg("Invalid BTC amount.");
+      return;
+    }
+    if (amountSats < MIN_DEPOSIT_SATS) {
       setStep("error");
       setErrorMsg(`Minimum deposit is ${MIN_DEPOSIT_BTC} BTC.`);
       return;
@@ -81,9 +109,12 @@ export function DepositFlow() {
     setErrorMsg(null);
     setStep("sending");
     try {
-      const amountSats = Math.round(amount * SAT);
-      const sentTxid = await btcWallet.sendBtc(depositAddress, amountSats);
+      const sentTxid = await btcWallet.sendBtc(depositAddress, Number(amountSats));
       setTxid(sentTxid);
+      setStep("sending");
+      setStatusMsg("Locating output in transaction…");
+      const vout = await resolveVout(sentTxid, depositAddress, config.bitcoin.apiUrl);
+      setSentVout(vout);
       setStep("idle");
     } catch (e) {
       setStep("error");
@@ -103,7 +134,7 @@ export function DepositFlow() {
     setErrorMsg(null);
     setStep("polling");
 
-    const collateralSats = BigInt(Math.round(parseFloat(btcAmount) * SAT));
+    const collateralSats = parseBtcToSats(btcAmount);
 
     const onStatus = (msg: string) => {
       if (msg.toLowerCase().includes("zk proof")) setStep("proving");
@@ -121,6 +152,7 @@ export function DepositFlow() {
         onStatus,
         btcPubkey: btcWallet.btcPubkey ?? undefined,
         timelockHeight: config.bitcoin.timelockHeight,
+        vout: sentVout ?? 0,
       });
       setTxHash(result.txHash ?? null);
       setStep("done");
@@ -135,6 +167,7 @@ export function DepositFlow() {
     setStep("idle");
     setErrorMsg(null);
     setTxid("");
+    setSentVout(null);
     setBtcAmount("");
     setTxHash(null);
     setStatusMsg("");
@@ -257,9 +290,9 @@ export function DepositFlow() {
                         </button>
                       )}
                     </div>
-                    {btcAmount && Number.isFinite(parseFloat(btcAmount)) && (
+                    {btcAmount && (() => { try { return parseBtcToSats(btcAmount); } catch { return null; } })() !== null && (
                       <p className="text-xs text-muted">
-                        = {Math.round(parseFloat(btcAmount) * SAT).toLocaleString()} sats
+                        = {(() => { try { return parseBtcToSats(btcAmount).toLocaleString(); } catch { return ""; } })()} sats
                       </p>
                     )}
                   </div>

@@ -2,8 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import * as bitcoin from "bitcoinjs-lib";
 import * as ecc from "@bitcoinerlab/secp256k1";
 import { ECPairFactory } from "ecpair";
-import { Client } from "commitment-tree";
+import { groth16, type Groth16ProofJSON } from "snarkjs";
+import { Client } from "@/lib/contracts/generated";
 import { config, requireContract } from "@/config";
+import { getMerkleRoot } from "@/lib/contracts/commitmentTree";
+import vKeyData from "@/circuits/zero_debt_vkey.json";
+
+// Force the Node.js runtime — snarkjs requires native BigInt and is incompatible
+// with Vercel's Edge runtime.
+export const runtime = "nodejs";
 
 const ECPair = ECPairFactory(ecc);
 
@@ -77,6 +84,11 @@ function assertWritzReleaseInput(
   }
 }
 
+interface ZkProofBody {
+  proof: Groth16ProofJSON;
+  publicSignals: string[];
+}
+
 export async function POST(req: NextRequest) {
   const protocolKey = process.env.PROTOCOL_SIGNING_KEY;
   if (!protocolKey) {
@@ -86,14 +98,14 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  let body: { psbt?: string; commitment?: string };
+  let body: { psbt?: string; commitment?: string; zkProof?: ZkProofBody };
   try {
-    body = (await req.json()) as { psbt?: string; commitment?: string };
+    body = (await req.json()) as typeof body;
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const { psbt: psbtBase64, commitment: commitmentHex } = body;
+  const { psbt: psbtBase64, commitment: commitmentHex, zkProof } = body;
 
   if (!psbtBase64 || typeof psbtBase64 !== "string") {
     return NextResponse.json({ error: "psbt is required" }, { status: 400 });
@@ -104,15 +116,33 @@ export async function POST(req: NextRequest) {
       { status: 400 },
     );
   }
+  if (
+    !zkProof ||
+    typeof zkProof !== "object" ||
+    !zkProof.proof ||
+    !Array.isArray(zkProof.publicSignals) ||
+    zkProof.publicSignals.length < 1
+  ) {
+    return NextResponse.json(
+      { error: "zkProof with proof and publicSignals is required" },
+      { status: 400 },
+    );
+  }
 
-  // Eligibility: the position must be finalized on-chain AND the loan repaid.
-  // `is_commitment_pending` only tells us the commitment was inserted into the
-  // tree — it does NOT prove the debt is cleared (a finalized commitment can
-  // still carry debt). So we also require no outstanding debt on-chain.
-  //
-  // Demo-grade: on the single-borrower testnet, `borrowed == 0` means this loan
-  // is repaid, and it leaks no private position data. The production check is a
-  // ZK proof of `debt == 0` bound to the deposit txid (out of scope here).
+  // Reject immediately if the circuit artifacts haven't been set up yet.
+  if ((vKeyData as { SETUP_REQUIRED?: boolean }).SETUP_REQUIRED) {
+    return NextResponse.json(
+      {
+        error:
+          "zero_debt circuit not set up — run: cd circuits && bash scripts/compile_all.sh && " +
+          "bash scripts/setup_dev.sh, then copy zero_debt_vkey.json to frontend/src/circuits/ " +
+          "and the .wasm/.zkey artifacts to frontend/public/circuits/",
+      },
+      { status: 503 },
+    );
+  }
+
+  // ── Eligibility checks (parallel): commitment finalized + ZK proof valid ──
   try {
     const client = new Client({
       contractId: requireContract(
@@ -126,10 +156,20 @@ export async function POST(req: NextRequest) {
     });
 
     const commitmentBuf = Buffer.from(commitmentHex, "hex");
-    const [{ result: isPending }, { result: pool }] = await Promise.all([
-      client.is_commitment_pending({ commitment: commitmentBuf }),
-      client.get_pool_state(),
-    ]);
+
+    // Fetch on-chain state and verify the ZK proof in parallel.
+    const [{ result: isPending }, onChainRootHex, proofValid] =
+      await Promise.all([
+        client.is_commitment_pending({ commitment: commitmentBuf }),
+        getMerkleRoot(),
+        groth16.verify(
+          // vKeyData is a valid Groth16 verification key at this point
+          // (SETUP_REQUIRED guard above ensures this branch is only reached post-setup).
+          vKeyData as Parameters<typeof groth16.verify>[0],
+          zkProof.publicSignals,
+          zkProof.proof,
+        ),
+      ]);
 
     if (isPending) {
       return NextResponse.json(
@@ -138,10 +178,24 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const [, totalBorrowed] = pool;
-    if (totalBorrowed > 0n) {
+    if (!proofValid) {
       return NextResponse.json(
-        { error: "Outstanding debt on-chain — repay the loan before releasing collateral" },
+        { error: "Invalid zero-debt proof" },
+        { status: 403 },
+      );
+    }
+
+    // The proof's public merkle_root (publicSignals[0]) must match the current
+    // on-chain root. This prevents replay of a valid proof generated when the
+    // position had no debt but the tree has since changed.
+    const onChainRootDecimal = BigInt("0x" + onChainRootHex).toString();
+    if (zkProof.publicSignals[0] !== onChainRootDecimal) {
+      return NextResponse.json(
+        {
+          error:
+            "Proof merkle_root does not match the current on-chain root — " +
+            "regenerate the proof against the latest tree state",
+        },
         { status: 403 },
       );
     }

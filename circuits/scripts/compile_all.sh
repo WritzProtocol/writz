@@ -31,6 +31,7 @@ compile_circuit() {
 compile_circuit deposit
 compile_circuit borrow_repay
 compile_circuit liquidation
+compile_circuit zero_debt
 
 echo ""
 echo "✅ All circuits compiled."

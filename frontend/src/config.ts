@@ -37,6 +37,13 @@ export const config = {
       process.env.NEXT_PUBLIC_BITCOIN_API_URL ??
       "https://blockstream.info/testnet/api",
   },
+  /**
+   * BTC/USD oracle price in USDC stroops per BTC (7 decimals).
+   * Must match the value returned by the on-chain oracle at the time of
+   * borrow/repay — the contract validates the proof's price signal against it.
+   * Override via NEXT_PUBLIC_BTC_PRICE_STROOPS when the oracle price changes.
+   */
+  btcPriceStroops: process.env.NEXT_PUBLIC_BTC_PRICE_STROOPS ?? "600000000000",
 } as const;
 
 /** Throws a clear error if a required contract id is not configured. */

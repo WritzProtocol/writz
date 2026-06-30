@@ -1,6 +1,7 @@
 import express from "express";
 import { config } from "./config.js";
 import { proofRouter } from "./routes/proof.js";
+import { merkleRouter } from "./routes/merkle.js";
 
 const app = express();
 
@@ -12,7 +13,7 @@ app.use((req, res, next) => {
   const allowed = config.corsOrigin;
   if (allowed === "*" || (origin && allowed.split(",").map((s) => s.trim()).includes(origin))) {
     res.setHeader("Access-Control-Allow-Origin", origin ?? "*");
-    res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
     res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   }
   if (req.method === "OPTIONS") {
@@ -33,6 +34,7 @@ app.get("/health", (_req, res) => {
 });
 
 app.use("/spv-proof", proofRouter);
+app.use("/", merkleRouter);
 
 // 404 fallback.
 app.use((_req, res) => {
@@ -43,6 +45,7 @@ app.listen(config.port, () => {
   console.log(`Writz relayer running on port ${config.port}`);
   console.log(`Bitcoin network: ${config.bitcoinNetwork}`);
   console.log(`Esplora: ${config.esploraBaseUrl}`);
+  console.log(`Stellar RPC: ${config.stellarRpcUrl}`);
 });
 
 export { app };

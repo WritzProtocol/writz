@@ -1,27 +1,31 @@
 # syntax=docker/dockerfile:1
-FROM oven/bun:1-alpine AS builder
+#
+# Build from the monorepo root:
+#   docker build -f relayer/Dockerfile .
+#
+# Bun runs the TypeScript source directly — no compile step needed.
+# This lets us import ESM-only packages (commitment-tree) without
+# a CJS/ESM conversion layer.
+
+FROM oven/bun:1-alpine
 
 WORKDIR /app
 
-COPY package.json bun.lock ./
+# Shared monorepo packages (commitment-tree)
+COPY packages/ ./packages/
+
+# Relayer
+COPY relayer/package.json relayer/bun.lock ./
 RUN bun install --frozen-lockfile
 
-COPY tsconfig*.json ./
-COPY src ./src
-RUN bun run build
+COPY relayer/tsconfig.json ./
+COPY relayer/src ./src
 
-# ---- runtime ----
-FROM oven/bun:1-alpine AS runtime
-
-WORKDIR /app
-
-ENV NODE_ENV=production
-
-COPY package.json bun.lock ./
-RUN bun install --frozen-lockfile --production
-
-COPY --from=builder /app/dist ./dist
+# Mount a persistent volume at /app/data to survive container restarts:
+#   docker run -v writz-merkle-data:/app/data ...
+# Without a volume the leaf store resets on every restart.
+VOLUME ["/app/data"]
 
 EXPOSE 3000
 
-CMD ["bun", "dist/index.js"]
+CMD ["bun", "src/index.ts"]

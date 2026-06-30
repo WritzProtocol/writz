@@ -1,8 +1,7 @@
-import { Client } from "commitment-tree";
+import { Client } from "@/lib/contracts/generated";
 import { Buffer } from "buffer";
 import { config, requireContract } from "@/config";
 import { proveDeposit } from "@/lib/prover";
-import { singleLeafPath } from "@/lib/merkle";
 import { simulateWithRetry } from "./submit";
 import {
   computeCommitment,
@@ -160,20 +159,23 @@ export async function deposit(params: {
   const sent = await tx.signAndSend({ signTransaction });
 
   // 6. Admin inserts the commitment into the Merkle tree (Phase 1: trusted relay).
+  // The relayer holds the persistent leaf store and signs the on-chain tx.
   onStatus("Finalizing position in Merkle tree… (step 2/2)");
-  const newRoot = singleLeafPath(commitment).root;
-  const insertRes = await fetch("/api/insert-commitment", {
+  const relayerUrl = config.services.relayerUrl;
+  if (!relayerUrl) throw new Error("NEXT_PUBLIC_RELAYER_URL is not configured");
+  const insertRes = await fetch(`${relayerUrl}/insert-commitment`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       commitment: commitment.toString(16).padStart(64, "0"),
-      new_root: newRoot.toString(16).padStart(64, "0"),
     }),
   });
   if (!insertRes.ok) {
     const body = (await insertRes.json().catch(() => ({}))) as { error?: string };
     throw new Error(`Merkle insertion failed: ${body.error ?? insertRes.status}`);
   }
+  const insertBody = (await insertRes.json().catch(() => ({}))) as { leafIndex?: number };
+  const leafIndex = insertBody.leafIndex;
 
   // 7. Persist the position on this device.
   const position: Position = {
@@ -191,6 +193,7 @@ export async function deposit(params: {
     btcPubkey,
     timelockHeight,
     vout,
+    leafIndex,
   };
   savePosition(position);
 
