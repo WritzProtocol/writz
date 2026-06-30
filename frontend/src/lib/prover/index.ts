@@ -12,7 +12,7 @@ import { Buffer } from "buffer";
  * 32-byte big-endian value — matching `zk-verifier`'s expectations.
  */
 
-type Circuit = "deposit" | "borrow_repay" | "liquidation";
+type Circuit = "deposit" | "borrow_repay" | "liquidation" | "zero_debt";
 
 const ARTIFACTS: Record<Circuit, { wasm: string; zkey: string }> = {
   deposit: { wasm: "/circuits/deposit.wasm", zkey: "/circuits/deposit_final.zkey" },
@@ -23,6 +23,10 @@ const ARTIFACTS: Record<Circuit, { wasm: string; zkey: string }> = {
   liquidation: {
     wasm: "/circuits/liquidation.wasm",
     zkey: "/circuits/liquidation_final.zkey",
+  },
+  zero_debt: {
+    wasm: "/circuits/zero_debt.wasm",
+    zkey: "/circuits/zero_debt_final.zkey",
   },
 };
 
@@ -118,6 +122,29 @@ export interface LiquidationInput {
   liquidation_threshold_bp: string;
 }
 
+/**
+ * Proves that a commitment in the Merkle tree encodes zero outstanding debt
+ * (debt_stroops == 0). Used in the cooperative BTC release path to provide
+ * per-position eligibility without revealing collateral, secret, or nonce.
+ *
+ * Public signal: publicSignals[0] = merkle_root (decimal string).
+ * The cosign endpoint verifies this matches the current on-chain root.
+ */
+export interface ZeroDebtInput {
+  /** Collateral in satoshis (decimal string). */
+  collateral_satoshis: string;
+  /** Position secret (decimal string). */
+  secret: string;
+  /** Current nonce after last borrow/repay (decimal string). */
+  nonce: string;
+  /** Sibling hashes along the Merkle path (20 decimal strings). */
+  path_elements: string[];
+  /** Left/right direction at each level (20 values: 0 or 1). */
+  path_indices: Array<string | number>;
+  /** Current Merkle root as a decimal string (from relayer /merkle-path). */
+  merkle_root: string;
+}
+
 const asInput = (i: object) => i as unknown as Record<string, unknown>;
 
 export const proveDeposit = (input: DepositInput) =>
@@ -126,3 +153,5 @@ export const proveBorrowRepay = (input: BorrowRepayInput) =>
   prove("borrow_repay", asInput(input));
 export const proveLiquidation = (input: LiquidationInput) =>
   prove("liquidation", asInput(input));
+export const proveZeroDebt = (input: ZeroDebtInput) =>
+  prove("zero_debt", asInput(input));

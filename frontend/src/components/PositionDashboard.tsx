@@ -4,9 +4,10 @@ import { useCallback, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { useWallet } from "@/lib/wallet/WalletProvider";
 import { useBitcoinWallet } from "@/lib/bitcoin/useBitcoinWallet";
-import { deriveP2WSH, buildReleasePsbt, finalizePathA } from "@/lib/bitcoin/address";
+import { deriveP2WSH, buildReleasePsbt, finalizePathA, estimateReleaseFee } from "@/lib/bitcoin/address";
 import { borrow } from "@/lib/flows/borrow";
 import { repay } from "@/lib/flows/repay";
+import { proveZeroDebt, type ZeroDebtInput } from "@/lib/prover";
 import { config } from "@/config";
 import {
   savePosition,
@@ -254,6 +255,11 @@ function PositionCard({ position }: { position: Position }) {
       setReleaseMessage("Connect your Bitcoin wallet to sign the release transaction.");
       return;
     }
+    if (debtStroops !== 0n) {
+      setReleaseStatus("error");
+      setReleaseMessage(`Outstanding debt of ${fmtUsdc(debtStroops)} USDC — repay before releasing.`);
+      return;
+    }
 
     setReleaseStatus("working");
     setReleaseMessage("Building release transaction…");
@@ -261,9 +267,12 @@ function PositionCard({ position }: { position: Position }) {
       const protocolPubkey = config.bitcoin.protocolPubkey;
       if (!protocolPubkey) throw new Error("NEXT_PUBLIC_PROTOCOL_BTC_PUBKEY not configured");
 
+      const relayerUrl = config.services.relayerUrl;
+      if (!relayerUrl) throw new Error("NEXT_PUBLIC_RELAYER_URL not configured");
+
       const p2wsh = deriveP2WSH(protocolPubkey, position.btcPubkey, position.timelockHeight);
       const collateralSats = Number(BigInt(position.collateralSats));
-      const feeSat = 2000; // ~2 sat/vbyte testnet stub
+      const feeSat = await estimateReleaseFee(config.bitcoin.apiUrl);
 
       const psbt = buildReleasePsbt({
         txidHex: position.txid,
@@ -275,16 +284,50 @@ function PositionCard({ position }: { position: Position }) {
         feeSat,
       });
 
-      setReleaseMessage("Requesting protocol co-signature…");
+      // ── Fetch Merkle path for the current (zero-debt) commitment ─────────
+      setReleaseMessage("Fetching Merkle inclusion path…");
       const commitmentHex = BigInt(position.commitment).toString(16).padStart(64, "0");
+      const qs =
+        position.leafIndex !== undefined
+          ? `?leafIndex=${position.leafIndex}&commitment=${commitmentHex}`
+          : `?commitment=${commitmentHex}`;
+      const pathRes = await fetch(`${relayerUrl}/merkle-path${qs}`);
+      if (!pathRes.ok) {
+        const pb = (await pathRes.json().catch(() => ({}))) as { error?: string };
+        throw new Error(`Merkle path fetch failed: ${pb.error ?? pathRes.status}`);
+      }
+      const { pathElements, pathIndices, root: merkleRoot } = (await pathRes.json()) as {
+        pathElements: string[];
+        pathIndices: number[];
+        root: string;
+      };
+
+      // ── Generate zero-debt proof in-browser (private witness stays local) ─
+      setReleaseMessage("Generating zero-debt proof (this may take ~30 s)…");
+      const zeroDebtInput: ZeroDebtInput = {
+        collateral_satoshis: position.collateralSats,
+        secret: position.secret,
+        nonce: position.nonce,
+        path_elements: pathElements,
+        path_indices: pathIndices,
+        merkle_root: merkleRoot,
+      };
+      const { raw: zkRaw } = await proveZeroDebt(zeroDebtInput);
+
+      // ── Request protocol co-signature (server verifies proof + root) ──────
+      setReleaseMessage("Requesting protocol co-signature…");
       const cosignRes = await fetch("/api/cosign", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ psbt: psbt.toBase64(), commitment: commitmentHex }),
+        body: JSON.stringify({
+          psbt: psbt.toBase64(),
+          commitment: commitmentHex,
+          zkProof: { proof: zkRaw.proof, publicSignals: zkRaw.publicSignals },
+        }),
       });
       if (!cosignRes.ok) {
-        const body = (await cosignRes.json().catch(() => ({}))) as { error?: string };
-        throw new Error(`Co-sign failed: ${body.error ?? cosignRes.status}`);
+        const cbody = (await cosignRes.json().catch(() => ({}))) as { error?: string };
+        throw new Error(`Co-sign failed: ${cbody.error ?? cosignRes.status}`);
       }
       const { signedPsbt: protocolSignedPsbt } = (await cosignRes.json()) as { signedPsbt: string };
 
