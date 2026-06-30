@@ -73,10 +73,10 @@ stellar contract invoke \
 
 | Field | Value |
 |---|---|
-| **Contract ID** | `CBTQBYGKFJSTTF5POVG6EI2ERXTP3DM2OBOXD7TG4EO5WCDZHNTKBQSC` |
-| **WASM Hash** | `928588199637216908e4f18747e14a65ebe143f8d2f00a65f4c65ccf3547c9ab` |
+| **Contract ID** | `CBG43NU4LZ5VY4K3YXBS77MXK7VNYEIVR7562QBXX5OQ5LJDTSNYFTLZ` |
+| **WASM Hash** | `679af82a7441649a69bdba3be88bd8ce1f4d6e9693d96c2e50a6d2196a117e1b` |
 | **WASM Size** | 26,580 bytes |
-| **Init tx** | [`191a365966...`](https://stellar.expert/explorer/testnet/tx/191a365966137bc03c30a110e8a46a2fab34883001daee1bdd505593c4ead425) |
+| **Init tx** | [`2a1bb0cbb3...`](https://stellar.expert/explorer/testnet/tx/2a1bb0cbb3a524077b105ddd9d02560553d1137a65dca1bdd0d1bcaea65f8935) |
 | **Deployed** | 2026-06-30 |
 | **Interface** | `deposit`/`borrow`/`repay` carry `enc_note` (sealed recovery note, #18) |
 
@@ -89,7 +89,7 @@ stellar contract invoke \
 | `zk_verifier` | `CDV45GLXG4AOU6BDZSY5YHHVNGQIAYAPD3PUGXIIIYLIO6V2XGO6SMFV` |
 | `usdc_token` | `CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC` (XLM SAC — testnet USDC stand-in) |
 | `min_confirmations` | `1` (testnet) |
-| `min_deposit_satoshis` | `100,000` (0.001 BTC) |
+| `min_deposit_satoshis` | `10,000` (0.0001 BTC — lowered for signet faucet testing) |
 | `min_collateral_ratio_bp` | `15,000` (150%) |
 | `liquidation_threshold_bp` | `12,000` (120%) |
 
@@ -97,7 +97,7 @@ stellar contract invoke \
 
 ```bash
 stellar contract invoke \
-  --id CBTQBYGKFJSTTF5POVG6EI2ERXTP3DM2OBOXD7TG4EO5WCDZHNTKBQSC \
+  --id CBG43NU4LZ5VY4K3YXBS77MXK7VNYEIVR7562QBXX5OQ5LJDTSNYFTLZ \
   --source writz-deployer \
   --network testnet \
   -- \

@@ -105,7 +105,7 @@
                               "symbol": "min_deposit_satoshis"
                             },
                             "val": {
-                              "u64": "100000"
+                              "u64": "10000"
                             }
                           },
                           {

@@ -18,7 +18,7 @@ import {
 import type { SignTransaction } from "@/lib/wallet/WalletProvider";
 
 // Must match the contract's `min_deposit_satoshis` config (set at initialization).
-const MIN_DEPOSIT_SATS = "100000"; // 0.001 BTC
+const MIN_DEPOSIT_SATS = "10000"; // 0.0001 BTC
 
 async function sha256d(bytes: ArrayBuffer): Promise<Buffer> {
   const h1 = await crypto.subtle.digest("SHA-256", bytes);
@@ -65,7 +65,7 @@ export async function pollSpvBundle(
       const res = await fetch(`${relayerUrl}/spv-proof/${txid}`);
       if (res.status === 404 || res.status === 409) {
         const body = (await res.json()) as { available?: number };
-        onStatus(`Waiting for confirmations… (${body.available ?? 0}/6)`);
+        onStatus(`Waiting for confirmation… (${body.available ?? 0} so far)`);
         await new Promise((r) => setTimeout(r, intervalMs));
         continue;
       }

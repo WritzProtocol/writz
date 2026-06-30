@@ -10,8 +10,8 @@ import { resolveVout } from "@/lib/bitcoin/address";
 import { positionsSnapshot } from "@/lib/position";
 import { config } from "@/config";
 
-const MIN_DEPOSIT_BTC = 0.001;
-const MIN_DEPOSIT_SATS = 100_000n; // 0.001 BTC
+const MIN_DEPOSIT_BTC = 0.0001;
+const MIN_DEPOSIT_SATS = 10_000n; // 0.0001 BTC
 
 /**
  * Parses a decimal BTC string into satoshis without floating-point arithmetic.
@@ -237,7 +237,7 @@ export function DepositFlow() {
                 </p>
               )}
               <p className="mt-2 text-xs text-muted">
-                Minimum {MIN_DEPOSIT_BTC} BTC · 6 confirmations required
+                Minimum {MIN_DEPOSIT_BTC} BTC · 1 confirmation required
               </p>
             </div>
 

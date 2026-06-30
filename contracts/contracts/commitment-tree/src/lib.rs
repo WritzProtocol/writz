@@ -99,7 +99,7 @@ impl CommitmentTreeContract {
                 usdc_token,
                 oracle,
                 min_confirmations,
-                min_deposit_satoshis:     100_000,
+                min_deposit_satoshis:     10_000,
                 min_collateral_ratio_bp:  15_000,
                 liquidation_threshold_bp: 12_000,
             },
