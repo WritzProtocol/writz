@@ -188,9 +188,36 @@ function encodeVarInt(n: number): Buffer {
 }
 
 /**
+ * Estimates the miner fee for a Path A cooperative release transaction.
+ *
+ * Queries the Esplora fee-estimates endpoint for the sat/vbyte rate at the
+ * requested confirmation target and multiplies by the fixed P2WSH Path A
+ * transaction size (~150 vbytes). Falls back to `fallbackSatPerVbyte` if the
+ * API is unreachable.
+ */
+export async function estimateReleaseFee(
+  apiUrl: string,
+  confirmationTarget = 3,
+  fallbackSatPerVbyte = 10,
+): Promise<number> {
+  // P2WSH cooperative release: 1 input + 1 P2WPKH output ≈ 150 vbytes
+  const TX_VBYTES = 150;
+  try {
+    const res = await fetch(`${apiUrl}/fee-estimates`);
+    if (res.ok) {
+      const estimates = (await res.json()) as Record<string, number>;
+      const rate = estimates[String(confirmationTarget)] ?? estimates["6"] ?? fallbackSatPerVbyte;
+      return Math.max(Math.ceil(rate * TX_VBYTES), 1000); // floor at 1000 sats (dust guard)
+    }
+  } catch {
+    // network error — use fallback
+  }
+  return fallbackSatPerVbyte * TX_VBYTES;
+}
+
+/**
  * Finds the output index (vout) in a Bitcoin transaction that pays to the given
  * address, by polling the Esplora API until the transaction is indexed.
- * Falls back to 0 if not found after all attempts.
  */
 export async function resolveVout(
   txid: string,
@@ -214,5 +241,8 @@ export async function resolveVout(
       await new Promise((r) => setTimeout(r, intervalMs));
     }
   }
-  return 0;
+  throw new Error(
+    `Could not locate output paying ${address} in tx ${txid} after ${maxAttempts} attempts. ` +
+    `Check that the transaction was broadcast and the Esplora API (${apiUrl}) is reachable.`,
+  );
 }
