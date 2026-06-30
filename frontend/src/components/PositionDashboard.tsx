@@ -96,6 +96,10 @@ export function PositionDashboard() {
       nullifier: nullifier.toString(),
       status: "active",
       createdAt: Date.now(),
+      // The demo position sits at on-chain leaf index 0. Setting leafIndex lets
+      // borrow/repay sync the relayer's leaf store after each rotation (without
+      // it, the store drifts and the next op fails the merkle-path drift check).
+      leafIndex: 0,
     });
   }, [address]);
 
