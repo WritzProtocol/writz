@@ -5,7 +5,10 @@ const nextConfig: NextConfig = {
   // Pin the workspace root to this app so an unrelated lockfile higher up the
   // tree is not picked up as the root.
   turbopack: {
-    root: path.resolve(),
+    root: path.resolve(__dirname, ".."),
+    resolveAlias: {
+      "commitment-tree": "../packages/commitment-tree/src/index.ts",
+    },
   },
   // Transpile the generated contract bindings from source so no committed
   // build artifact (dist/) is required.
