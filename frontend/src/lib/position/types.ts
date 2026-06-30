@@ -37,6 +37,8 @@ export interface Position {
   /** Leaf index in the on-chain Merkle tree, assigned at deposit. Needed to compute the
    *  correct Merkle path after subsequent borrows/repays rotate the commitment. */
   leafIndex?: number;
+  /** True for a test position created via "Load demo position" (no real BTC). */
+  demo?: boolean;
 }
 
 /** A versioned export envelope for backup / restore. */

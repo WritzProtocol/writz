@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { useWallet } from "@/lib/wallet/WalletProvider";
 import { useBitcoinWallet } from "@/lib/bitcoin/useBitcoinWallet";
@@ -8,7 +8,7 @@ import { deriveP2WSH, buildReleasePsbt, finalizePathA, estimateReleaseFee } from
 import { borrow } from "@/lib/flows/borrow";
 import { repay } from "@/lib/flows/repay";
 import { recoverPositions } from "@/lib/flows/recover";
-import { createDemoPosition, isDemoLoaded } from "@/lib/flows/demo";
+import { createDemoPosition } from "@/lib/flows/demo";
 import { proveZeroDebt, type ZeroDebtInput } from "@/lib/prover";
 import { config } from "@/config";
 import {
@@ -80,11 +80,9 @@ export function PositionDashboard() {
 
   const [demoLoading, setDemoLoading] = useState(false);
   const [demoError, setDemoError] = useState<string | null>(null);
-  const [demoLoaded, setDemoLoaded] = useState(false);
-
-  useEffect(() => {
-    setDemoLoaded(address ? isDemoLoaded(address) : false);
-  }, [address]);
+  // Reactive from the (localStorage-backed) positions list — a demo can only be
+  // loaded once per wallet, since insert_commitment consumes its pending entry.
+  const demoLoaded = positions.some((p) => p.demo);
 
   async function handleUnlock() {
     setUnlockError(null);
@@ -104,7 +102,6 @@ export function PositionDashboard() {
     setDemoLoading(true);
     try {
       await createDemoPosition({ owner: address, seed, index: positionsSnapshot(address).length });
-      setDemoLoaded(true);
     } catch (e) {
       setDemoError(e instanceof Error ? e.message : String(e));
     } finally {
