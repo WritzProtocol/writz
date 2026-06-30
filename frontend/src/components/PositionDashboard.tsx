@@ -9,6 +9,7 @@ import { borrow } from "@/lib/flows/borrow";
 import { repay } from "@/lib/flows/repay";
 import { recoverPositions } from "@/lib/flows/recover";
 import { createDemoPosition } from "@/lib/flows/demo";
+import { EnableUsdcButton } from "./EnableUsdcButton";
 import { proveZeroDebt, type ZeroDebtInput } from "@/lib/prover";
 import { stellarTxUrl, btcTxUrl } from "@/lib/explorer";
 import { TxLink } from "./TxLink";
@@ -136,6 +137,8 @@ export function PositionDashboard() {
         <h2 className="font-serif text-2xl text-head">Your positions</h2>
         <span className="text-xs text-muted">private · keys derived from your wallet</span>
       </div>
+
+      <EnableUsdcButton />
 
       {!address ? (
         <div className="rounded-xl border border-line bg-surface p-6 text-sm text-muted">
