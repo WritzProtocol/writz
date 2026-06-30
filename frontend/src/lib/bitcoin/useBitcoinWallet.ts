@@ -1,7 +1,22 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import Wallet, { AddressPurpose } from "sats-connect";
+import Wallet, { AddressPurpose, BitcoinNetworkType, RpcErrorCode } from "sats-connect";
+import { config } from "@/config";
+
+/** Map the configured BTC network string to the sats-connect network type. */
+function walletNetwork(): BitcoinNetworkType {
+  switch (config.bitcoin.network) {
+    case "mainnet":
+      return BitcoinNetworkType.Mainnet;
+    case "signet":
+      return BitcoinNetworkType.Signet;
+    case "testnet4":
+      return BitcoinNetworkType.Testnet4;
+    default:
+      return BitcoinNetworkType.Testnet;
+  }
+}
 
 export interface BitcoinWalletState {
   btcAddress: string | null;
@@ -24,17 +39,32 @@ export function useBitcoinWallet(): BitcoinWalletState {
     setError(null);
     setConnecting(true);
     try {
-      const res = await Wallet.request("getAddresses", {
-        purposes: [AddressPurpose.Payment],
+      // `wallet_connect` establishes the connection + read permissions in one
+      // step and returns the addresses. Calling `getAddresses` directly (before
+      // connecting) makes Xverse reject with ACCESS_DENIED. We also request the
+      // configured network (Signet) so the returned addresses match the protocol.
+      const res = await Wallet.request("wallet_connect", {
+        addresses: [AddressPurpose.Payment],
         message: "Connect your Bitcoin wallet to Writz Protocol",
+        network: walletNetwork(),
       });
       if (res.status === "error") {
+        if (res.error.code === RpcErrorCode.USER_REJECTION) {
+          throw new Error("Connection rejected in your Bitcoin wallet.");
+        }
         throw new Error(res.error.message ?? "Failed to connect Bitcoin wallet");
       }
       const payment = res.result.addresses.find(
         (a) => a.purpose === AddressPurpose.Payment,
       );
       if (!payment) throw new Error("No payment address returned by wallet");
+
+      const active = res.result.network.bitcoin.name;
+      if (active !== walletNetwork()) {
+        throw new Error(
+          `Switch your Bitcoin wallet to ${config.bitcoin.network} (currently ${active}).`,
+        );
+      }
       setBtcAddress(payment.address);
       setBtcPubkey(payment.publicKey);
     } catch (e) {
