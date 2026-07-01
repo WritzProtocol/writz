@@ -13,7 +13,14 @@ const TESTNET_PASSPHRASE = "Test SDF Network ; September 2015";
 
 export const config = {
   rpcUrl: process.env.NEXT_PUBLIC_SOROBAN_RPC_URL ?? TESTNET_RPC,
+  horizonUrl: process.env.NEXT_PUBLIC_HORIZON_URL ?? "https://horizon-testnet.stellar.org",
   networkPassphrase: process.env.NEXT_PUBLIC_NETWORK_PASSPHRASE ?? TESTNET_PASSPHRASE,
+  // The pool token as a classic Stellar asset (for trustline ops). The SAC id
+  // is contracts.usdcToken.
+  usdc: {
+    code: process.env.NEXT_PUBLIC_USDC_CODE ?? "USDC",
+    issuer: process.env.NEXT_PUBLIC_USDC_ISSUER ?? "",
+  },
   contracts: {
     commitmentTree: process.env.NEXT_PUBLIC_COMMITMENT_TREE_ID ?? "",
     bitcoinSpv: process.env.NEXT_PUBLIC_BITCOIN_SPV_ID ?? "",

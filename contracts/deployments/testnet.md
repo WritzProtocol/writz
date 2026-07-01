@@ -73,10 +73,10 @@ stellar contract invoke \
 
 | Field | Value |
 |---|---|
-| **Contract ID** | `CBG43NU4LZ5VY4K3YXBS77MXK7VNYEIVR7562QBXX5OQ5LJDTSNYFTLZ` |
+| **Contract ID** | `CC2OZ3LG5U6RE3U7QC2R5QMID5GHQBE7QXTJQ4ZSTP5W73WDTKQPRW7E` |
 | **WASM Hash** | `679af82a7441649a69bdba3be88bd8ce1f4d6e9693d96c2e50a6d2196a117e1b` |
 | **WASM Size** | 26,580 bytes |
-| **Init tx** | [`2a1bb0cbb3...`](https://stellar.expert/explorer/testnet/tx/2a1bb0cbb3a524077b105ddd9d02560553d1137a65dca1bdd0d1bcaea65f8935) |
+| **Init tx** | [`1502ecb851...`](https://stellar.expert/explorer/testnet/tx/1502ecb851bf6109a66b37ed3d6fb80406379e1af58e97360d8b426079a99bfc) |
 | **Deployed** | 2026-06-30 |
 | **Interface** | `deposit`/`borrow`/`repay` carry `enc_note` (sealed recovery note, #18) |
 
@@ -87,7 +87,7 @@ stellar contract invoke \
 | `admin` | `GB2BSYQS3FRJ5LZSSIDF3ZCSG5MKWJT5SZ3OZO4QRCAMCR357YAVPTWT` (`writz-deployer`) |
 | `spv_contract` | `CAE5L7BO2GNF7MIZWXB2BTUMLYNIMQZUSWN2BWLZQS7HRHLOUSL6VLWJ` |
 | `zk_verifier` | `CDV45GLXG4AOU6BDZSY5YHHVNGQIAYAPD3PUGXIIIYLIO6V2XGO6SMFV` |
-| `usdc_token` | `CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC` (XLM SAC — testnet USDC stand-in) |
+| `usdc_token` | `CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA` (testnet USDC SAC — `USDC:GBBD47IF…`, DEX-liquid, 7 decimals) |
 | `min_confirmations` | `1` (testnet) |
 | `min_deposit_satoshis` | `10,000` (0.0001 BTC — lowered for signet faucet testing) |
 | `min_collateral_ratio_bp` | `15,000` (150%) |
@@ -97,7 +97,7 @@ stellar contract invoke \
 
 ```bash
 stellar contract invoke \
-  --id CBG43NU4LZ5VY4K3YXBS77MXK7VNYEIVR7562QBXX5OQ5LJDTSNYFTLZ \
+  --id CC2OZ3LG5U6RE3U7QC2R5QMID5GHQBE7QXTJQ4ZSTP5W73WDTKQPRW7E \
   --source writz-deployer \
   --network testnet \
   -- \
