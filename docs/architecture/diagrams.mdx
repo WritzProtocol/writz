@@ -1,0 +1,140 @@
+---
+title: "Architecture Diagrams"
+description: "Visual reference for the full Writz Protocol — from Bitcoin locking to ZK proofs on Soroban."
+---
+
+<Tabs>
+  <Tab title="System Overview">
+    ## Full System Architecture
+
+    End-to-end view of how Bitcoin, the SPV Relayer, the four Soroban contracts, and the browser interact.
+
+    <Frame caption="Writz Protocol — complete system architecture across Bitcoin, Relayer, and Stellar">
+      <img src="/diagrams/output/01-system-architecture.png" alt="Writz System Architecture" />
+    </Frame>
+
+    **Key layers:**
+    - **Bitcoin** — P2WSH address locks collateral; two spending paths (cooperative co-sign or CLTV timelock)
+    - **SPV Relayer** — watches Bitcoin, produces Merkle inclusion proofs on demand
+    - **Soroban contracts** — `bitcoin-spv`, `zk-verifier`, `commitment-tree`, `private-lend` work together to verify proofs and manage positions
+    - **Browser** — generates all ZK proofs locally; private witness values never leave the device
+  </Tab>
+
+  <Tab title="Deposit Flow">
+    ## Deposit Flow
+
+    Step-by-step path from connecting a Bitcoin wallet to having an active position on Stellar.
+
+    <Frame caption="Deposit flow: connect → derive P2WSH → fund → SPV proof → ZK proof → on-chain commitment">
+      <img src="/diagrams/output/02-deposit-flow.png" alt="Deposit Flow" />
+    </Frame>
+
+    **Steps:**
+    1. Connect Bitcoin wallet (Xverse) and Stellar wallet (Freighter)
+    2. Derive unique P2WSH address from protocol key + user key + timelock height
+    3. Send BTC to that address on-chain
+    4. Relayer produces SPV proof (block headers + Merkle path)
+    5. Browser generates Groth16 ZK proof binding commitment to the Bitcoin txid
+    6. `commitment-tree.deposit()` verifies SPV proof + ZK proof on Soroban
+    7. Admin calls `insert_commitment()` — position becomes active
+  </Tab>
+
+  <Tab title="Borrow / Repay">
+    ## Borrow & Repay Flow
+
+    How the protocol updates the Merkle commitment on every borrow or repay, preserving privacy throughout.
+
+    <Frame caption="Borrow/repay flow with field negation for repay delta and nonce rotation on every state change">
+      <img src="/diagrams/output/03-borrow-repay-flow.png" alt="Borrow and Repay Flow" />
+    </Frame>
+
+    **Privacy mechanics:**
+    - Each state change generates a new Groth16 proof — no on-chain link between positions
+    - **Borrow:** `delta = amount_stroops`, `is_borrow = 1`
+    - **Repay:** `delta = (FIELD_PRIME − amount) mod FIELD_PRIME`, `is_borrow = 0`
+    - The nonce rotates on every action; the commitment `Poseidon(collateral, debt, secret, nonce)` is replaced in the tree
+  </Tab>
+
+  <Tab title="BTC Release">
+    ## BTC Release Flow (Path A)
+
+    Cooperative co-signed release after full repayment — the normal happy path.
+
+    <Frame caption="Path A: build PSBT in browser → /api/cosign (protocol sig) → Xverse sign → finalize → broadcast">
+      <img src="/diagrams/output/04-btc-release-flow.png" alt="BTC Release Flow" />
+    </Frame>
+
+    **Security properties:**
+    - The server (`/api/cosign`) verifies the commitment is no longer pending before signing
+    - `PROTOCOL_SIGNING_KEY` is server-only — never exposed to the browser
+    - Both signatures are merged client-side via `finalizePathA()`; the final witness is `[user_sig, protocol_sig, 0x01, redeemScript]`
+    - If the protocol goes offline, Path B (CLTV timelock) lets users recover BTC unilaterally after expiry
+  </Tab>
+
+  <Tab title="ZK Circuits">
+    ## ZK Circuits
+
+    All three Groth16 circuits (Circom / BN254), their private inputs, public inputs, and public outputs.
+
+    <Frame caption="Three Groth16 circuits: deposit, borrow_repay, liquidation — all verified on Soroban via Protocol X-Ray">
+      <img src="/diagrams/output/05-zk-circuits.png" alt="ZK Circuits" />
+    </Frame>
+
+    | Circuit | Purpose | Key constraint |
+    |---|---|---|
+    | `deposit.circom` | Binds a Poseidon commitment to a Bitcoin txid | `Poseidon(collateral, 0, secret, nonce) == commitment` |
+    | `borrow_repay.circom` | Proves Merkle inclusion + valid collateral ratio after state change | `new_ratio ≥ min_ratio_bp` |
+    | `liquidation.circom` | Proves position is under-collateralized | `ratio < liquidation_threshold_bp` |
+  </Tab>
+
+  <Tab title="Position Lifecycle">
+    ## Commitment State Machine
+
+    Complete lifecycle of a position from pending to BTC release (or liquidation).
+
+    <Frame caption="State machine: pending → active (debt=0) → active (debt>0) → closed → released / liquidated">
+      <img src="/diagrams/output/06-commitment-state-machine.png" alt="Commitment State Machine" />
+    </Frame>
+
+    **States:**
+    - **Pending** — `deposit()` verified, waiting for admin `insert_commitment()`
+    - **Active · debt=0** — commitment in Merkle tree, no outstanding debt
+    - **Active · debt>0** — USDC borrowed; nonce rotates on every partial repay
+    - **Closed** — full repayment done; old nullifier spent
+    - **Released** — Path A PSBT finalized; BTC returned on Bitcoin
+    - **Liquidated** — ratio fell below 120%; keeper repaid debt and spent nullifier
+  </Tab>
+
+  <Tab title="Contract Interactions">
+    ## Soroban Contract Interactions
+
+    How the four live testnet contracts call each other, and which external actors interact with each.
+
+    <Frame caption="Four Soroban contracts and external actors — all ZK verification routes through zk-verifier">
+      <img src="/diagrams/output/07-contract-interactions.png" alt="Contract Interactions" />
+    </Frame>
+
+    | Contract | Address | Role |
+    |---|---|---|
+    | `bitcoin-spv` | `CAE5L7BO2G…` | Verifies Bitcoin SPV proofs (block headers + Merkle path) |
+    | `zk-verifier` | `CDV45GLXG4…` | Groth16 verification via Protocol X-Ray host functions |
+    | `commitment-tree` | `CDFAP3J4WL…` | Merkle tree of position commitments; orchestrates all flows |
+    | `private-lend` | `CCLH2GJYG3…` | USDC liquidity pool; lender deposits + borrower drawdowns |
+  </Tab>
+</Tabs>
+
+---
+
+## Regenerating Diagrams
+
+All diagrams are generated from Python scripts in `scripts/diagrams/` using [Graphviz](https://graphviz.org/).
+
+```bash
+# Install dependency (once)
+pip3 install graphviz
+
+# Render all 7 diagrams to docs/diagrams/output/
+python3 scripts/diagrams/render-all.py
+```
+
+Output: `docs/diagrams/output/*.svg` and `*.png`
