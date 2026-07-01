@@ -1,10 +1,5 @@
 {
   "name": "Writz Protocol",
-  "logo": {
-    "dark": "/docs/logo/writz-dark.svg",
-    "light": "/docs/logo/writz-light.svg"
-  },
-  "favicon": "/docs/favicon.svg",
   "colors": {
     "primary": "#F7931A",
     "light": "#FFB347",
@@ -36,10 +31,6 @@
     {
       "name": "Research",
       "url": "docs/research"
-    },
-    {
-      "name": "SCF Application",
-      "url": "docs/scf"
     }
   ],
   "anchors": [
@@ -136,15 +127,6 @@
         "docs/research/security-audit-strategy",
         "docs/research/regulatory-landscape",
         "docs/research/growth-strategy"
-      ]
-    },
-    {
-      "group": "SCF Application",
-      "pages": [
-        "docs/scf/application",
-        "docs/scf/milestone-plan",
-        "docs/scf/stride-threat-model",
-        "docs/research/sdf-grants"
       ]
     }
   ],
