@@ -1,5 +1,5 @@
 import { sha256 } from "@noble/hashes/sha2.js";
-import { Keypair, Transaction, TransactionBuilder } from "@stellar/stellar-sdk";
+import { Transaction, TransactionBuilder } from "@stellar/stellar-sdk";
 import { config } from "@/config";
 
 type SignRawHashFn = (opts: {

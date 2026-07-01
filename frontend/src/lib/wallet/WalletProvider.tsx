@@ -123,24 +123,28 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       // Session expired or the login modal was dismissed before auth completed.
       // Only clear state when no address was ever set (avoids wiping on SSR
       // where privy.authenticated might briefly lag behind).
-      if (!address) {
-        setBackend(null);
-        localStorage.removeItem(BACKEND_KEY);
-      }
-      setConnecting(false);
+      void Promise.resolve().then(() => {
+        if (!address) {
+          setBackend(null);
+          localStorage.removeItem(BACKEND_KEY);
+        }
+        setConnecting(false);
+      });
       return;
     }
 
     const stellarAddress = getStellarAddress(privy.user);
 
     if (stellarAddress) {
-      if (address !== stellarAddress) setAddress(stellarAddress);
-      setConnecting(false);
-      localStorage.setItem(BACKEND_KEY, "privy");
+      void Promise.resolve().then(() => {
+        if (address !== stellarAddress) setAddress(stellarAddress);
+        setConnecting(false);
+        localStorage.setItem(BACKEND_KEY, "privy");
+      });
     } else if (!creatingPrivyWallet.current) {
       // First login — create the user's Stellar embedded wallet.
       creatingPrivyWallet.current = true;
-      setConnecting(true);
+      void Promise.resolve().then(() => setConnecting(true));
       privy
         .createWallet({ chainType: "stellar" })
         .then(({ wallet }) => {
@@ -168,7 +172,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
           creatingPrivyWallet.current = false;
         });
     }
-  }, [privy?.ready, privy?.authenticated, privy?.user, backend, address]);
+  }, [privy, backend, address]);
 
   // ── Kit connect ──
   const connect = useCallback(async () => {
