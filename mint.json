@@ -1,0 +1,155 @@
+{
+  "name": "Writz Protocol",
+  "logo": {
+    "dark": "/docs/logo/writz-dark.svg",
+    "light": "/docs/logo/writz-light.svg"
+  },
+  "favicon": "/docs/favicon.svg",
+  "colors": {
+    "primary": "#F7931A",
+    "light": "#FFB347",
+    "dark": "#C47217",
+    "anchors": {
+      "from": "#F7931A",
+      "to": "#FF6B35"
+    }
+  },
+  "topbarLinks": [
+    {
+      "name": "GitHub",
+      "url": "https://github.com/WritzProtocol/writz"
+    }
+  ],
+  "topbarCtaButton": {
+    "name": "Launch App",
+    "url": "https://app.writz.io"
+  },
+  "tabs": [
+    {
+      "name": "How It Works",
+      "url": "docs/how-it-works"
+    },
+    {
+      "name": "Developers",
+      "url": "docs/developers"
+    },
+    {
+      "name": "Research",
+      "url": "docs/research"
+    },
+    {
+      "name": "SCF Application",
+      "url": "docs/scf"
+    }
+  ],
+  "anchors": [
+    {
+      "name": "Testnet Explorer",
+      "icon": "cube",
+      "url": "https://stellar.expert/explorer/testnet/contract/CDFAP3J4WLFZC2N5U66X5EO62POBBIBXOKCCMCM3IRLJNXT73C4IBKA7"
+    },
+    {
+      "name": "Bitcoin Signet Tx",
+      "icon": "bitcoin-sign",
+      "url": "https://blockstream.info/signet/tx/119321009b2f92dac8f25f6bcddb2ed6a3ae778e8748ec52910cce90742e4098"
+    },
+    {
+      "name": "Discord",
+      "icon": "discord",
+      "url": "https://discord.gg/stellar"
+    }
+  ],
+  "navigation": [
+    {
+      "group": "Architecture",
+      "pages": [
+        "docs/architecture/technical-overview",
+        "docs/architecture/diagrams"
+      ]
+    },
+    {
+      "group": "Introduction",
+      "pages": [
+        "docs/introduction/what-is-writz",
+        "docs/introduction/the-problem",
+        "docs/introduction/how-writz-works",
+        "docs/introduction/why-stellar-why-now"
+      ]
+    },
+    {
+      "group": "Products",
+      "pages": [
+        "docs/products/privatelend",
+        "docs/products/dark-swap",
+        "docs/products/btc-savings",
+        "docs/products/zk-proof-of-reserve"
+      ]
+    },
+    {
+      "group": "How It Works",
+      "pages": [
+        "docs/how-it-works/bitcoin-side",
+        "docs/how-it-works/spv-verification",
+        "docs/how-it-works/zk-privacy-layer",
+        "docs/how-it-works/stellar-side"
+      ]
+    },
+    {
+      "group": "Developers",
+      "pages": [
+        "docs/developers/quick-start",
+        "docs/developers/spv-sdk",
+        "docs/developers/contract-reference",
+        "docs/developers/contributing"
+      ]
+    },
+    {
+      "group": "Security",
+      "pages": [
+        "docs/security/security-model",
+        "docs/security/audits",
+        "docs/security/bug-bounty"
+      ]
+    },
+    {
+      "group": "Roadmap",
+      "pages": [
+        "docs/roadmap/vision",
+        "docs/roadmap/phases"
+      ]
+    },
+    {
+      "group": "Research",
+      "pages": [
+        "docs/research/spv-implementations",
+        "docs/research/market-landscape",
+        "docs/research/protocol-x-ray-capabilities",
+        "docs/research/soroban-compute-benchmarks",
+        "docs/research/bitcoin-locking-script",
+        "docs/research/oracle-design",
+        "docs/research/interest-rate-model",
+        "docs/research/liquidation-mechanism",
+        "docs/research/circom-circuit-design",
+        "docs/research/relayer-incentive-design",
+        "docs/research/blend-usdc-integration",
+        "docs/research/tokenomics-fee-model",
+        "docs/research/security-audit-strategy",
+        "docs/research/regulatory-landscape",
+        "docs/research/growth-strategy"
+      ]
+    },
+    {
+      "group": "SCF Application",
+      "pages": [
+        "docs/scf/application",
+        "docs/scf/milestone-plan",
+        "docs/scf/stride-threat-model",
+        "docs/research/sdf-grants"
+      ]
+    }
+  ],
+  "footerSocials": {
+    "twitter": "https://twitter.com/writz_protocol",
+    "github": "https://github.com/WritzProtocol/writz"
+  }
+}

@@ -10,7 +10,7 @@ description: "Visual reference for the full Writz Protocol — from Bitcoin lock
     End-to-end view of how Bitcoin, the SPV Relayer, the four Soroban contracts, and the browser interact.
 
     <Frame caption="Writz Protocol — complete system architecture across Bitcoin, Relayer, and Stellar">
-      <img src="/diagrams/output/01-system-architecture.png" alt="Writz System Architecture" />
+      <img src="/docs/docs/diagrams/output/01-system-architecture.png" alt="Writz System Architecture" />
     </Frame>
 
     **Key layers:**
@@ -26,7 +26,7 @@ description: "Visual reference for the full Writz Protocol — from Bitcoin lock
     Step-by-step path from connecting a Bitcoin wallet to having an active position on Stellar.
 
     <Frame caption="Deposit flow: connect → derive P2WSH → fund → SPV proof → ZK proof → on-chain commitment">
-      <img src="/diagrams/output/02-deposit-flow.png" alt="Deposit Flow" />
+      <img src="/docs/docs/diagrams/output/02-deposit-flow.png" alt="Deposit Flow" />
     </Frame>
 
     **Steps:**
@@ -45,7 +45,7 @@ description: "Visual reference for the full Writz Protocol — from Bitcoin lock
     How the protocol updates the Merkle commitment on every borrow or repay, preserving privacy throughout.
 
     <Frame caption="Borrow/repay flow with field negation for repay delta and nonce rotation on every state change">
-      <img src="/diagrams/output/03-borrow-repay-flow.png" alt="Borrow and Repay Flow" />
+      <img src="/docs/diagrams/output/03-borrow-repay-flow.png" alt="Borrow and Repay Flow" />
     </Frame>
 
     **Privacy mechanics:**
@@ -61,7 +61,7 @@ description: "Visual reference for the full Writz Protocol — from Bitcoin lock
     Cooperative co-signed release after full repayment — the normal happy path.
 
     <Frame caption="Path A: build PSBT in browser → /api/cosign (protocol sig) → Xverse sign → finalize → broadcast">
-      <img src="/diagrams/output/04-btc-release-flow.png" alt="BTC Release Flow" />
+      <img src="/docs/diagrams/output/04-btc-release-flow.png" alt="BTC Release Flow" />
     </Frame>
 
     **Security properties:**
@@ -77,7 +77,7 @@ description: "Visual reference for the full Writz Protocol — from Bitcoin lock
     All three Groth16 circuits (Circom / BN254), their private inputs, public inputs, and public outputs.
 
     <Frame caption="Three Groth16 circuits: deposit, borrow_repay, liquidation — all verified on Soroban via Protocol X-Ray">
-      <img src="/diagrams/output/05-zk-circuits.png" alt="ZK Circuits" />
+      <img src="/docs/diagrams/output/05-zk-circuits.png" alt="ZK Circuits" />
     </Frame>
 
     | Circuit | Purpose | Key constraint |
@@ -93,7 +93,7 @@ description: "Visual reference for the full Writz Protocol — from Bitcoin lock
     Complete lifecycle of a position from pending to BTC release (or liquidation).
 
     <Frame caption="State machine: pending → active (debt=0) → active (debt>0) → closed → released / liquidated">
-      <img src="/diagrams/output/06-commitment-state-machine.png" alt="Commitment State Machine" />
+      <img src="/docs/diagrams/output/06-commitment-state-machine.png" alt="Commitment State Machine" />
     </Frame>
 
     **States:**
@@ -111,7 +111,7 @@ description: "Visual reference for the full Writz Protocol — from Bitcoin lock
     How the four live testnet contracts call each other, and which external actors interact with each.
 
     <Frame caption="Four Soroban contracts and external actors — all ZK verification routes through zk-verifier">
-      <img src="/diagrams/output/07-contract-interactions.png" alt="Contract Interactions" />
+      <img src="/docs/diagrams/output/07-contract-interactions.png" alt="Contract Interactions" />
     </Frame>
 
     | Contract | Address | Role |
@@ -133,8 +133,8 @@ All diagrams are generated from Python scripts in `scripts/diagrams/` using [Gra
 # Install dependency (once)
 pip3 install graphviz
 
-# Render all 7 diagrams to docs/diagrams/output/
+# Render all 7 diagrams to docs/docs/diagrams/output/
 python3 scripts/diagrams/render-all.py
 ```
 
-Output: `docs/diagrams/output/*.svg` and `*.png`
+Output: `docs/docs/diagrams/output/*.svg` and `*.png`
