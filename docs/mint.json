@@ -17,7 +17,7 @@
   "topbarLinks": [
     {
       "name": "GitHub",
-      "url": "https://github.com/writz-protocol/writz"
+      "url": "https://github.com/WritzProtocol/writz"
     }
   ],
   "topbarCtaButton": {
@@ -60,6 +60,13 @@
     }
   ],
   "navigation": [
+    {
+      "group": "Architecture",
+      "pages": [
+        "architecture/technical-overview",
+        "architecture/diagrams"
+      ]
+    },
     {
       "group": "Introduction",
       "pages": [
