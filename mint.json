@@ -1,5 +1,6 @@
 {
   "name": "Writz Protocol",
+  "favicon": "/docs/favicon.svg",
   "colors": {
     "primary": "#F7931A",
     "light": "#FFB347",
