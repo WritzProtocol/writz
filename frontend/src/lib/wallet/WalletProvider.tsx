@@ -203,7 +203,9 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     setError(null);
     setSeed(null);
     setBackend("privy");
-    privy.login();
+    if (!privy.authenticated) {
+      privy.login();
+    }
     // Auth state changes are handled reactively by the Privy effect above.
   }, [privy]);
 
