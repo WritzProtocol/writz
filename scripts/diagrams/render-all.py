@@ -19,6 +19,8 @@ scripts = [
     "05-zk-circuits.py",
     "06-commitment-state-machine.py",
     "07-contract-interactions.py",
+    "08-roadmap-phases.py",
+    "09-bitcoin-script.py",
 ]
 
 base   = Path(__file__).parent
