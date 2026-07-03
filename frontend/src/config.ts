@@ -51,6 +51,12 @@ export const config = {
    * Override via NEXT_PUBLIC_BTC_PRICE_STROOPS when the oracle price changes.
    */
   btcPriceStroops: process.env.NEXT_PUBLIC_BTC_PRICE_STROOPS ?? "600000000000",
+  /**
+   * Privy app ID for embedded wallet support (email / social login).
+   * When unset, the Privy connect option is disabled and the Stellar Wallets Kit
+   * remains the only auth path.
+   */
+  privyAppId: process.env.NEXT_PUBLIC_PRIVY_APP_ID ?? "",
 } as const;
 
 /** Throws a clear error if a required contract id is not configured. */
