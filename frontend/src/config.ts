@@ -64,6 +64,12 @@ export const config = {
       7,
     ),
   },
+  /**
+   * Privy app ID for embedded wallet support (email / social login).
+   * When unset, the Privy connect option is disabled and the Stellar Wallets Kit
+   * remains the only auth path.
+   */
+  privyAppId: process.env.NEXT_PUBLIC_PRIVY_APP_ID ?? "",
 } as const;
 
 /** Throws a clear error if a required contract id is not configured. */
