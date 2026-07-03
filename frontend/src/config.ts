@@ -11,6 +11,11 @@
 const TESTNET_RPC = "https://soroban-testnet.stellar.org";
 const TESTNET_PASSPHRASE = "Test SDF Network ; September 2015";
 
+function parseInteger(value: string | undefined, fallback: number): number {
+  const parsed = Number.parseInt(value ?? "", 10);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
 export const config = {
   rpcUrl: process.env.NEXT_PUBLIC_SOROBAN_RPC_URL ?? TESTNET_RPC,
   horizonUrl: process.env.NEXT_PUBLIC_HORIZON_URL ?? "https://horizon-testnet.stellar.org",
@@ -51,6 +56,14 @@ export const config = {
    * Override via NEXT_PUBLIC_BTC_PRICE_STROOPS when the oracle price changes.
    */
   btcPriceStroops: process.env.NEXT_PUBLIC_BTC_PRICE_STROOPS ?? "600000000000",
+  defindex: {
+    vaultAddress: process.env.NEXT_PUBLIC_DEFINDEX_VAULT_ADDRESS ?? "",
+    assetSymbol: process.env.NEXT_PUBLIC_DEFINDEX_ASSET_SYMBOL ?? "USDC",
+    assetDecimals: parseInteger(
+      process.env.NEXT_PUBLIC_DEFINDEX_ASSET_DECIMALS,
+      7,
+    ),
+  },
 } as const;
 
 /** Throws a clear error if a required contract id is not configured. */

@@ -3,10 +3,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useWallet } from "@/lib/wallet/WalletProvider";
+import { config } from "@/config";
 import { supply, withdraw } from "@/lib/flows/lend";
 import { getPoolState, getSupplyBalance } from "@/lib/contracts/commitmentTree";
+import { explainTrustlineError } from "@/lib/errors/stellar";
 import { stellarTxUrl } from "@/lib/explorer";
 import { TxLink } from "./TxLink";
+import { DeFindexPanel } from "./DeFindexPanel";
 
 // USDC uses 7 decimals (stroops).
 const STROOP = 10_000_000n;
@@ -33,7 +36,9 @@ function friendlyError(raw: string, limits: { balance: bigint; available: bigint
   if (/InsufficientLiquidity/.test(raw)) {
     return `Only ${fmtUsdc(limits.available)} USDC is available — the rest is currently borrowed.`;
   }
-  return raw;
+  return explainTrustlineError(raw, {
+    action: `use ${config.usdc.code} in the lending pool`,
+  });
 }
 
 export function LenderPanel() {
@@ -264,6 +269,8 @@ export function LenderPanel() {
         No yield figure is shown — interest accrual is not yet wired into this
         pool. You supply and withdraw at par.
       </p>
+
+      <DeFindexPanel />
     </section>
   );
 }

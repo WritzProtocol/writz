@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useWallet } from "@/lib/wallet/WalletProvider";
 import { useBitcoinWallet } from "@/lib/bitcoin/useBitcoinWallet";
 import { deriveP2WSH, buildReleasePsbt, finalizePathA, estimateReleaseFee } from "@/lib/bitcoin/address";
+import { explainTrustlineError } from "@/lib/errors/stellar";
 import { borrow } from "@/lib/flows/borrow";
 import { repay } from "@/lib/flows/repay";
 import { recoverPositions } from "@/lib/flows/recover";
@@ -283,7 +284,11 @@ function PositionCard({ position }: { position: Position }) {
       router.refresh();
     } catch (e) {
       setStatus("error");
-      setMessage(e instanceof Error ? e.message : String(e));
+      setMessage(
+        explainTrustlineError(e instanceof Error ? e.message : String(e), {
+          action: "receive borrowed USDC",
+        }),
+      );
     }
   }
 
@@ -317,7 +322,11 @@ function PositionCard({ position }: { position: Position }) {
       router.refresh();
     } catch (e) {
       setRepayStatus("error");
-      setRepayMessage(e instanceof Error ? e.message : String(e));
+      setRepayMessage(
+        explainTrustlineError(e instanceof Error ? e.message : String(e), {
+          action: "repay with USDC",
+        }),
+      );
     }
   }
 
