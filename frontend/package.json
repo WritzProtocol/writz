@@ -11,6 +11,7 @@
   "dependencies": {
     "@bitcoinerlab/secp256k1": "^1.0.5",
     "@creit.tech/stellar-wallets-kit": "^2.4.0",
+    "@defindex/sdk": "^0.3.0",
     "@noble/ciphers": "^2.2.0",
     "@noble/curves": "^2.2.0",
     "@noble/hashes": "^2.2.0",
