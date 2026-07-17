@@ -197,16 +197,21 @@ function encodeVarInt(n: number): Buffer {
 export async function estimateReleaseFee(
   apiUrl: string,
   confirmationTarget = 3,
-  fallbackSatPerVbyte = 10,
+  fallbackSatPerVbyte = 2,
 ): Promise<number> {
   // P2WSH cooperative release: 1 input + 1 P2WPKH output ≈ 150 vbytes
   const TX_VBYTES = 150;
+  // Signet has no real fee market — Esplora's /fee-estimates often returns
+  // hundreds of sat/vB, which would exceed small collateral and produce a
+  // negative output. Cap the rate so the fee stays sane on signet/testnet.
+  const MAX_SAT_PER_VBYTE = 2;
   try {
     const res = await fetch(`${apiUrl}/fee-estimates`);
     if (res.ok) {
       const estimates = (await res.json()) as Record<string, number>;
       const rate = estimates[String(confirmationTarget)] ?? estimates["6"] ?? fallbackSatPerVbyte;
-      return Math.max(Math.ceil(rate * TX_VBYTES), 1000); // floor at 1000 sats (dust guard)
+      const capped = Math.min(rate, MAX_SAT_PER_VBYTE);
+      return Math.max(Math.ceil(capped * TX_VBYTES), 300); // floor 300 sats (> P2WPKH dust)
     }
   } catch {
     // network error — use fallback
