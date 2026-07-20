@@ -115,3 +115,77 @@ For a public demo on signet:
 BITCOIN_NETWORK=signet
 CORS_ORIGIN=https://your-frontend.vercel.app
 ```
+
+---
+
+## Deployed Relayer Instance
+
+The Writz SPV Proof Relayer is deployed on Railway for the **Bitcoin signet** network:
+- **Base URL:** `https://writz-relayer-production.up.railway.app`
+- **Health Check Endpoint:** `https://writz-relayer-production.up.railway.app/health`
+
+### Connecting to the Relayer
+
+To verify a Bitcoin transaction and submit the SPV proof to the Soroban contract, follow these steps in your frontend or client application:
+
+#### 1. Fetch the SPV Proof from the Relayer
+
+Send a `GET` request to the relayer with the transaction ID (`txid`) and the desired number of confirmations.
+
+```typescript
+const txid = "a107055a66ed43c7a0dfae05c061c88bb07e91d589db43e78de017deb409254f"; // your signet txid
+const confirmations = 6;
+
+const response = await fetch(`https://writz-relayer-production.up.railway.app/spv-proof/${txid}?confirmations=${confirmations}`);
+
+if (!response.ok) {
+  const errorData = await response.json();
+  console.error("Failed to fetch proof:", errorData.message);
+  return;
+}
+
+const proofBundle = await response.json();
+const { sorobanArgs } = proofBundle;
+```
+
+#### 2. Submit the SPV Proof to the Soroban Contract
+
+Using the `@stellar/stellar-sdk`, format the values from `sorobanArgs` into Stellar/Soroban SCVals and submit them to your contract call (like the `deposit` function on the `CommitmentTree` contract or `verify_transaction` on the `BitcoinSPV` contract):
+
+```typescript
+import { Contract, xdr, Address, nativeToScVal } from "@stellar/stellar-sdk";
+
+// Initialize contract instance
+const contractId = "CDFAP3J4WLFZC2N5U66X5EO62POBBIBXOKCCMCM3IRLJNXT73C4IBKA7";
+const commitmentTreeContract = new Contract(contractId);
+
+// Format the arguments retrieved from the relayer
+const headersScVal = xdr.ScVal.scvVec(
+  sorobanArgs.headers.map((h: string) => xdr.ScVal.scvBytes(Buffer.from(h, "hex")))
+);
+const merkleProofScVal = xdr.ScVal.scvVec(
+  sorobanArgs.merkle_proof.map((p: string) => xdr.ScVal.scvBytes(Buffer.from(p, "hex")))
+);
+const txIndexScVal = nativeToScVal(sorobanArgs.tx_index, { type: "u32" });
+const rawTxScVal = xdr.ScVal.scvBytes(Buffer.from(sorobanArgs.raw_tx, "hex"));
+
+// Prepare other parameters needed for Writz deposit (ZK Proof and Public Signals)
+const zkProofScVal = ...; // Your generated ZK Proof ScVal
+const publicSignalsScVal = ...; // Your public signals ScVal
+const depositorScVal = nativeToScVal(Address.fromString(depositorAddress));
+
+// Call the deposit function
+const tx = await commitmentTreeContract.call(
+  "deposit",
+  depositorScVal,
+  headersScVal,
+  merkleProofScVal,
+  txIndexScVal,
+  rawTxScVal,
+  zkProofScVal,
+  publicSignalsScVal
+);
+
+// Sign and submit transaction to Soroban network...
+```
+
