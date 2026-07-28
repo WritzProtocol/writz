@@ -57,6 +57,11 @@ export const config = {
    * remains the only auth path.
    */
   privyAppId: process.env.NEXT_PUBLIC_PRIVY_APP_ID ?? "",
+  /**
+   * Umami website ID for pageview analytics. When unset, the tracking
+   * script is not injected (e.g. local dev without an env file).
+   */
+  umamiWebsiteId: process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID ?? "",
 } as const;
 
 /** Throws a clear error if a required contract id is not configured. */
