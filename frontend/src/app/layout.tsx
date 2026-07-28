@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { Fraunces, Hanken_Grotesk, Geist_Mono } from "next/font/google";
+import { config } from "@/config";
 import { Providers } from "@/app/Providers";
 import { WalletProvider } from "@/lib/wallet/WalletProvider";
 import { BitcoinWalletProvider } from "@/lib/bitcoin/useBitcoinWallet";
@@ -42,6 +44,13 @@ export default function RootLayout({
       className={`${display.variable} ${body.variable} ${mono.variable} h-full antialiased`}
     >
       <body className="min-h-full">
+        {config.umamiWebsiteId && (
+          <Script
+            src="https://cloud.umami.is/script.js"
+            data-website-id={config.umamiWebsiteId}
+            strategy="afterInteractive"
+          />
+        )}
         <Providers>
           <WalletProvider>
             <BitcoinWalletProvider>{children}</BitcoinWalletProvider>
