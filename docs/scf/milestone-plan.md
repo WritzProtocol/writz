@@ -116,10 +116,20 @@ Each circuit:
 
 ### Deliverable 2: Trusted setup ceremony executed
 
-Powers of Tau Phase 2 for each of the three circuits:
+Powers of Tau Phase 2 for **four** circuits — the three above plus
+`zero_debt` (gates the cooperative Path A release endpoint; a forged
+zero-debt proof is fund-loss-equivalent to a forged deposit/liquidation
+proof, so it goes through the same ceremony):
 - Ceremony transcript published publicly
+- Minimum 5 independent participants per circuit
 - Multiple independent verifiers confirm transcript integrity
 - Final `.zkey` files and verification keys published
+
+Tooling for running this (fetch/checksum-verify the Hermez ptau, per-circuit
+setup, participant contribution flow, transcript verification, contract-shape
+export, and a CI gate on the committed manifest) is implemented in
+`circuits/scripts/ceremony/` — see that directory's `README.md` for the
+step-by-step runbook.
 
 ### Deliverable 3: Frontend v1 live on testnet (app.writz.io)
 

@@ -391,6 +391,9 @@ Apply to the Soroban Security Audit Bank (separate from the SCF Build Award).
 
 **Tasks:**
 - [ ] Deploy SPV + commitment-tree + zk-verifier contracts to Soroban mainnet (testnet deployments complete ✅)
+  - [ ] Run `bitcoin-spv::initialize(admin)` + `set_checkpoint(admin, height, block_hash, bits)` against a recent, independently-verified mainnet Bitcoin block before accepting any deposits (`verify_transaction` fails closed with `CheckpointNotSet` until this is done)
+  - [ ] Convert the `bitcoin-spv` and `zk-verifier` admin accounts to 2-of-3 Stellar multisig before mainnet — both are currently single-key authorities
+  - [ ] Establish an operational runbook for refreshing the `bitcoin-spv` checkpoint on a recurring (recommended: weekly) cadence
 - [ ] Seed USDC pool with protocol-owned liquidity ($50K)
 - [ ] Set initial TVL cap: $50,000 BTC collateral
 - [ ] Set initial protocol fee to 0% for 90-day bootstrap period

@@ -141,8 +141,8 @@ Writz holds a co-signing private key for the `protocol_pubkey` in every locking 
 
 ### Solutions (in order of security)
 
-**Phase 1: HSM (Hardware Security Module)**
-Store the protocol private key in a cloud HSM (AWS CloudHSM, Azure Dedicated HSM). The key never leaves the HSM in plaintext. Signing requires authenticated access to the HSM service. Protects against software compromise but requires trust in the HSM provider.
+**Phase 1.5 (implemented): AWS KMS**
+The protocol private key is generated and held inside an AWS KMS asymmetric key (`ECC_SECG_P256K1` curve, `ECDSA_SHA_256` signing algorithm — natively matching Bitcoin's curve). The raw key material never leaves KMS; signing is a `kms:Sign` API call authenticated via IAM, with CloudTrail audit logging on every call. See `bitcoin-script/src/keys.ts`'s `KmsSigner` and `frontend/src/app/api/cosign/route.ts`. The `$50K` mainnet TVL cap bounds exposure on top of this custody model. See `docs/security/security-model.md` for the full trust-model discussion.
 
 **Phase 2: MPC (Multi-Party Computation)**
 Distribute the protocol private key across multiple parties using threshold ECDSA (e.g., GG20/21 or CGGMP21 protocols). No single party ever holds the complete key. A 2-of-3 or 3-of-5 MPC setup is standard in institutional custody. Used by Fireblocks, Copper, and major custodians.
@@ -214,16 +214,24 @@ DEPOSIT:
 7. SPV contract verifies and signals PrivateLend contract
 8. PrivateLend creates ZK position commitment, allows USDC borrowing
 
-REPAYMENT:
+REPAYMENT (private-lend's plaintext flow — automated):
 1. User repays USDC + interest via PrivateLend contract
-2. PrivateLend contract emits repayment event
-3. Writz backend detects repayment event on Stellar
-4. Writz backend co-signs a Bitcoin transaction spending path A:
+2. PrivateLend contract emits a repay_full event
+3. relayer/src/repay-watcher polls Soroban RPC for this event (persisted cursor,
+   survives relayer restarts)
+4. The watcher co-signs a Bitcoin transaction spending path A:
    input: the P2WSH UTXO
-   output: user's Bitcoin return address
-   witness: [user_sig, writz_sig, redeem_script]
-5. User broadcasts the pre-signed transaction on Bitcoin
-6. BTC arrives in user's wallet (standard Bitcoin transaction)
+   output: user's Bitcoin return address (derived from the on-chain user_pubkey)
+   witness (once the user also signs): [user_sig, writz_sig, redeem_script]
+5. The half-signed PSBT is published on-chain via publish_release_psbt —
+   retrievable even if the Writz frontend is down
+6. User retrieves the PSBT, adds their own signature, and broadcasts it
+7. BTC arrives in user's wallet (standard Bitcoin transaction)
+
+REPAYMENT (commitment-tree's ZK flow — still manual): cosigning requires the
+user's own private witness to construct a zero-debt proof, which the backend
+does not have. The user submits this proof via the existing /api/cosign route
+themselves.
 
 EMERGENCY RECOVERY (if Writz offline):
 1. User waits for timelock to expire (current block ≥ timelock_value)
@@ -241,7 +249,7 @@ EMERGENCY RECOVERY (if Writz offline):
 | Script type | P2WSH (Phase 1) → P2TR (Phase 2) | P2WSH: simpler, universal support. P2TR: better privacy, lower fees |
 | Timelock | CLTV absolute block height | Simpler than relative timelocks, predictable |
 | Timelock duration | Loan term + 7 days safety buffer | Protects users without locking capital indefinitely |
-| Protocol key storage | HSM (Phase 1) → MPC (Phase 2) | Progressive decentralization of signing authority |
+| Protocol key storage | AWS KMS (Phase 1.5, implemented) → MPC (Phase 2, not started) | Progressive decentralization of signing authority |
 | Confirmation requirement | 6 standard, 3 fast-lane (capped) | 6 eliminates reorg risk; 3 improves UX for small amounts |
 | SPV type | Stateless (summa-tx) | No on-chain header storage, no relayer dependency |
 | Future direction | zkRelay batching for Phase 2+ | If header chain verification becomes a cost bottleneck |

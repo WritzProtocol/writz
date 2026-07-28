@@ -30,7 +30,8 @@ The ZK proof convinces the Soroban contract that all of this is true — without
 | The health factor | **Private — never on-chain** |
 | The user's public key linked to a position | **Private** |
 | That a liquidation occurred | Public (event emitted) |
-| Who was liquidated or for how much | **Private** |
+| Who was liquidated | **Private** (only a nullifier is revealed, not a user identity) |
+| How much debt was repaid in a liquidation | Public — the liquidator must know the amount to pay it. The published amount is provably correct (bound to the private commitment via a circuit constraint, not caller-supplied), but it is not hidden. |
 | Total TVL (aggregate) | Public |
 | Total USDC outstanding (aggregate) | Public |
 

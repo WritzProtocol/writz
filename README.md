@@ -131,12 +131,14 @@ Circuits use Groth16 over BN254. Verification runs on Soroban via Protocol 26 ho
 
 | Contract | Purpose | Depends on |
 |---|---|---|
-| `bitcoin-spv` | SHA256d, PoW validation, Merkle inclusion, block header chain | — |
+| `bitcoin-spv` | SHA256d, PoW validation, checkpoint-anchored difficulty check, Merkle inclusion, block header chain | — |
 | `zk-verifier` | Stores Groth16 verification keys; verifies deposit/borrow_repay/liquidation proofs | — |
-| `commitment-tree` | Poseidon Merkle tree; core deposit/borrow/repay/liquidate logic | `bitcoin-spv` + `zk-verifier` |
-| `private-lend` | USDC lending pool; supply, withdraw, interest rate model, orchestration | `commitment-tree` |
+| `commitment-tree` | Poseidon Merkle tree; core deposit/borrow/repay/liquidate logic, ZK-private | `bitcoin-spv` + `zk-verifier` |
+| `private-lend` | USDC lending pool; supply, withdraw, interest rate model, plaintext (non-ZK) positions | `bitcoin-spv` |
 
 **Interest rate model** — kinked curve: base rate + linear slope up to 75% utilization, then a steep slope to discourage over-borrowing. Protocol captures the spread between borrow and supply rates.
+
+**Note on `private-lend` vs. `commitment-tree`:** these are independent, parallel lending implementations against the shared `bitcoin-spv`/`zk-verifier` primitives, not a layered dependency — `private-lend` is the Phase 1 non-private MVP; `commitment-tree` is the ZK-private product described above (see `docs/roadmap/roadmap.md` — "cleaner separation of concerns than embedding into `private-lend`"). Each independently rejects a reused Bitcoin txid before creating a position/commitment — see `docs/security/security-model.md` for how this closes the Merkle duplicate-leaf ambiguity (CVE-2012-2459-class) at the deposit layer.
 
 ---
 

@@ -103,11 +103,14 @@ A real Path A release transaction was broadcast and accepted by the Bitcoin Sign
 If the time-lock has expired and a user wants to reclaim their BTC without a protocol co-signature:
 
 1. The user assembles a transaction with `nLockTime` set to `locktime`.
-2. The transaction is signed with the user's key only.
-3. Once the Bitcoin block height exceeds `locktime`, the transaction becomes valid.
-4. The user broadcasts it directly to the Bitcoin network — no Writz involvement.
+2. **The input's `nSequence` must be set to a value less than `0xFFFFFFFF`** (Writz uses `0xFFFFFFFE`) — see the warning below.
+3. The transaction is signed with the user's key only.
+4. Once the Bitcoin block height exceeds `locktime`, the transaction becomes valid.
+5. The user broadcasts it directly to the Bitcoin network — no Writz involvement.
 
 This ensures that user funds are never permanently inaccessible, even in a worst-case scenario where Writz stops operating.
+
+> **⚠️ `nSequence` warning:** `OP_CHECKLOCKTIMEVERIFY` has a non-obvious interaction with `nSequence` — if the spending input's `nSequence` is `0xFFFFFFFF` (Bitcoin's "final" value, which many wallets use by default), the Bitcoin Script interpreter causes `CLTV` to fail immediately, **even if the timelock has genuinely expired**. There is no clear error message — the transaction is simply rejected by the network, and it's easy to mistakenly conclude the timelock hasn't expired when it has. The Writz frontend and the `bitcoin-script` package's `buildEmergencyTransaction`/`finalizePathB` helpers already set this correctly and hardcode it (it cannot be overridden by a caller). If you are constructing this recovery transaction manually with a third-party wallet or library instead of using Writz's own tooling, you must set `nSequence` yourself — see [Manual Emergency Recovery](./manual-emergency-recovery.md) for a safe, copy-pasteable reference implementation.
 
 ---
 
