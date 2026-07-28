@@ -36,6 +36,14 @@ pub struct Position {
     /// The depositor's Stellar address (must repay to close the position).
     pub depositor: Address,
     pub status: PositionStatus,
+    /// The depositor's 33-byte compressed Bitcoin public key.
+    /// Already public information — it's revealed the moment either
+    /// spending path is used — so storing it plaintext is not a new privacy
+    /// leak. Lets the auto-cosign relayer watcher reconstruct the redeem
+    /// script and the user's default return address (a P2WPKH address
+    /// derived from this key) from on-chain state alone, without a separate
+    /// off-chain "return address" store.
+    pub user_pubkey: BytesN<33>,
 }
 
 /// Global protocol accounting.
@@ -51,6 +59,12 @@ pub struct ProtocolState {
     /// Total outstanding USDC debt across all active positions (in stroops).
     /// Updated on every borrow, repay, accrual, and liquidation.
     pub total_borrowed: i128,
+    /// Ledger timestamp of the most recent successful liquidation by the
+    /// designated `config.keeper`. Used to detect a stale/absent
+    /// keeper and open liquidation to any caller with a valid
+    /// undercollateralization check after `config.keeper_stale_after_secs`.
+    /// Explicit `keeper_heartbeat` calls also update this.
+    pub last_keeper_heartbeat: u64,
 }
 
 /// Immutable protocol configuration set at initialization.
@@ -69,6 +83,9 @@ pub struct Config {
     pub oracle: Address,
     /// Trusted keeper address for Phase 1 liquidations.
     pub keeper: Address,
+    /// Address authorized to publish a co-signed release PSBT via
+    /// `publish_release_psbt` (the auto-cosign relayer watcher).
+    pub relayer: Address,
     /// Minimum BTC deposit in satoshis (default: 100_000 = 0.001 BTC).
     pub min_deposit_satoshis: u64,
     /// Minimum collateral ratio in basis points (15_000 = 150%).
@@ -79,6 +96,11 @@ pub struct Config {
     pub liquidation_bonus_bp: u32,
     /// Minimum SPV confirmation depth before a deposit is accepted (default: 6).
     pub min_confirmations: u32,
+    /// Seconds of keeper inactivity after which liquidation opens to any
+    /// caller, not just `keeper` (default: 86_400 = 24h). This is a
+    /// liveness/censorship fallback, not a privacy mechanism (this contract
+    /// has no ZK privacy).
+    pub keeper_stale_after_secs: u64,
 }
 
 /// Return type of the cross-contract SPV verification call.

@@ -18,8 +18,8 @@ use rates::{borrow_rate_bp, interest_delta, supply_rate_bp};
 use soroban_sdk::{
     contract, contractimpl, token, Address, Bytes, BytesN, Env, IntoVal, Symbol, Vec,
 };
-use storage::{get_config, get_position, get_protocol, get_supply_balance, set_config,
-               set_position, set_protocol, set_supply_balance};
+use storage::{get_config, get_position, get_protocol, get_release_psbt, get_supply_balance,
+               set_config, set_position, set_protocol, set_release_psbt, set_supply_balance};
 use types::{Config, Position, PositionStatus, ProtocolState, SpvResult};
 
 #[contract]
@@ -37,6 +37,7 @@ impl PrivateLendContract {
     /// - `usdc_token`     — USDC Stellar Asset Contract address.
     /// - `oracle`         — SEP-40 BTC/USD oracle address (RedStone).
     /// - `keeper`         — Trusted liquidation keeper (Phase 1).
+    /// - `relayer`        — Auto-cosign relayer watcher address.
     pub fn initialize(
         env: Env,
         admin: Address,
@@ -44,6 +45,7 @@ impl PrivateLendContract {
         usdc_token: Address,
         oracle: Address,
         keeper: Address,
+        relayer: Address,
     ) -> Result<(), PrivateLendError> {
         if get_config(&env).is_some() {
             return Err(PrivateLendError::AlreadyInitialized);
@@ -56,11 +58,13 @@ impl PrivateLendContract {
                 usdc_token,
                 oracle,
                 keeper,
+                relayer,
                 min_deposit_satoshis: 100_000,       // 0.001 BTC
                 min_collateral_ratio_bp: 15_000,      // 150%
                 liquidation_threshold_bp: 12_000,     // 120%
                 liquidation_bonus_bp: 1_000,          // 10%
                 min_confirmations: 6,
+                keeper_stale_after_secs: 86_400,      // 24h stale-keeper liveness window
             },
         );
         Ok(())
@@ -87,6 +91,12 @@ impl PrivateLendContract {
     /// - `p2wsh_script_pubkey`— 34-byte P2WSH scriptPubKey (OP_0 + 32-byte hash)
     ///                          of the deposit output.
     /// - `timelock_height`    — Bitcoin block height of the CLTV escape hatch.
+    /// - `user_pubkey`        — Depositor's 33-byte compressed Bitcoin public
+    ///                          key. Already public the moment
+    ///                          either spending path is used; stored so the
+    ///                          auto-cosign relayer watcher can reconstruct
+    ///                          the redeem script and return address without
+    ///                          a separate off-chain store.
     pub fn deposit(
         env: Env,
         depositor: Address,
@@ -96,6 +106,7 @@ impl PrivateLendContract {
         raw_tx: Bytes,
         p2wsh_script_pubkey: Bytes,
         timelock_height: u32,
+        user_pubkey: BytesN<33>,
     ) -> Result<BytesN<32>, PrivateLendError> {
         depositor.require_auth();
 
@@ -146,6 +157,7 @@ impl PrivateLendContract {
             last_update_ledger: env.ledger().sequence(),
             depositor,
             status: PositionStatus::Active,
+            user_pubkey,
         };
         set_position(&env, &txid, &pos);
 
@@ -335,17 +347,28 @@ impl PrivateLendContract {
 
     // ── Liquidation ───────────────────────────────────────────────────────────
 
-    /// Liquidate an undercollateralized position (Phase 1 — keeper only).
+    /// Liquidate an undercollateralized position.
     ///
-    /// The keeper must have pre-approved a USDC transfer of at least
+    /// Phase 1: only the authorized `keeper` may call this — *unless* the
+    /// keeper has gone stale (no successful liquidation or explicit
+    /// `keeper_heartbeat` in `config.keeper_stale_after_secs`, default 24h),
+    /// in which case any caller with a genuinely undercollateralized
+    /// position may liquidate it. This is a liveness/censorship
+    /// fallback, not a privacy mechanism — `private-lend` positions are
+    /// already plaintext. Safety is unaffected by who calls: the
+    /// undercollateralization check below is independent of caller identity.
+    ///
+    /// The caller must have pre-approved a USDC transfer of at least
     /// `pos.usdc_debt` (after accrual) to this contract.
     ///
     /// On success:
-    /// - The keeper's USDC covers the outstanding debt.
+    /// - The caller's USDC covers the outstanding debt.
     /// - The position is marked `Liquidated`.
-    /// - A `liquidate` event is emitted containing the keeper's address and
+    /// - A `liquidate` event is emitted containing the caller's address and
     ///   the P2WSH scriptPubKey.  The Writz backend co-signs the Bitcoin
-    ///   release to the keeper at a 10% discount (liquidation bonus in BTC).
+    ///   release to the caller at a 10% discount (liquidation bonus in BTC).
+    /// - If the caller is the designated keeper, `last_keeper_heartbeat` is
+    ///   refreshed (a keeper that successfully liquidates is provably alive).
     ///
     /// Phase 2 will replace the keeper check with a ZK proof of
     /// undercollateralization — see `docs/research/liquidation-mechanism.md`.
@@ -356,9 +379,12 @@ impl PrivateLendContract {
     ) -> Result<(), PrivateLendError> {
         keeper.require_auth();
         let config = get_config(&env).ok_or(PrivateLendError::NotInitialized)?;
+        let mut proto = get_protocol(&env);
 
-        // Phase 1: only the authorized keeper can trigger liquidation.
-        if keeper != config.keeper {
+        let is_designated_keeper = keeper == config.keeper;
+        let keeper_is_stale = env.ledger().timestamp()
+            > proto.last_keeper_heartbeat.saturating_add(config.keeper_stale_after_secs);
+        if !is_designated_keeper && !keeper_is_stale {
             return Err(PrivateLendError::Unauthorized);
         }
 
@@ -367,7 +393,6 @@ impl PrivateLendContract {
             return Err(PrivateLendError::PositionNotActive);
         }
 
-        let mut proto = get_protocol(&env);
         accrue_position_interest(&env, &mut pos, &mut proto);
 
         // Check the position is actually undercollateralized.
@@ -386,6 +411,9 @@ impl PrivateLendContract {
         token.transfer(&keeper, &env.current_contract_address(), &debt);
 
         proto.total_borrowed = proto.total_borrowed.saturating_sub(debt);
+        if is_designated_keeper {
+            proto.last_keeper_heartbeat = env.ledger().timestamp();
+        }
 
         pos.usdc_debt = 0;
         pos.status = PositionStatus::Liquidated;
@@ -420,6 +448,92 @@ impl PrivateLendContract {
         config.keeper = new_keeper;
         set_config(&env, &config);
         Ok(())
+    }
+
+    /// Explicit liveness signal from the designated keeper.
+    ///
+    /// Lets the keeper reset the stale-window clock even when there is
+    /// nothing to liquidate right now (`liquidate` itself also refreshes
+    /// this on every successful call — this entrypoint covers idle periods).
+    pub fn keeper_heartbeat(env: Env, keeper: Address) -> Result<(), PrivateLendError> {
+        keeper.require_auth();
+        let config = get_config(&env).ok_or(PrivateLendError::NotInitialized)?;
+        if keeper != config.keeper {
+            return Err(PrivateLendError::Unauthorized);
+        }
+        let mut proto = get_protocol(&env);
+        proto.last_keeper_heartbeat = env.ledger().timestamp();
+        set_protocol(&env, &proto);
+        Ok(())
+    }
+
+    /// Updates how many seconds of keeper inactivity before liquidation
+    /// opens to any caller.  Admin only.
+    pub fn set_keeper_stale_window(
+        env: Env,
+        caller: Address,
+        secs: u64,
+    ) -> Result<(), PrivateLendError> {
+        caller.require_auth();
+        let mut config = get_config(&env).ok_or(PrivateLendError::NotInitialized)?;
+        if caller != config.admin {
+            return Err(PrivateLendError::Unauthorized);
+        }
+        config.keeper_stale_after_secs = secs;
+        set_config(&env, &config);
+        Ok(())
+    }
+
+    /// Updates the relayer address authorized to call `publish_release_psbt`.
+    /// Admin only.
+    pub fn set_relayer(
+        env: Env,
+        caller: Address,
+        new_relayer: Address,
+    ) -> Result<(), PrivateLendError> {
+        caller.require_auth();
+        let mut config = get_config(&env).ok_or(PrivateLendError::NotInitialized)?;
+        if caller != config.admin {
+            return Err(PrivateLendError::Unauthorized);
+        }
+        config.relayer = new_relayer;
+        set_config(&env, &config);
+        Ok(())
+    }
+
+    // ── Auto-cosign relayer watcher ─────────────────────────────────────────────
+
+    /// Publishes a co-signed Path A release PSBT for a repaid position.
+    ///
+    /// Called by the relayer watcher immediately after it detects a
+    /// `RepayFullEvent`, builds the release transaction, and co-signs it.
+    /// Storing the PSBT
+    /// on-chain (rather than e.g. IPFS) means the user can retrieve and
+    /// broadcast it even if the entire Writz off-chain stack is down.
+    /// Relayer only.
+    pub fn publish_release_psbt(
+        env: Env,
+        relayer: Address,
+        txid: BytesN<32>,
+        psbt: Bytes,
+    ) -> Result<(), PrivateLendError> {
+        relayer.require_auth();
+        let config = get_config(&env).ok_or(PrivateLendError::NotInitialized)?;
+        if relayer != config.relayer {
+            return Err(PrivateLendError::Unauthorized);
+        }
+        if get_position(&env, &txid).is_none() {
+            return Err(PrivateLendError::PositionNotFound);
+        }
+        set_release_psbt(&env, &txid, &psbt);
+        Ok(())
+    }
+
+    /// Returns the relayer-published release PSBT for a position, or `None`
+    /// if the relayer hasn't published one yet (or the position was never
+    /// fully repaid).
+    pub fn get_release_psbt(env: Env, txid: BytesN<32>) -> Option<Bytes> {
+        get_release_psbt(&env, &txid)
     }
 
     // ── View functions ────────────────────────────────────────────────────────
