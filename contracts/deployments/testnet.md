@@ -44,6 +44,23 @@ stellar contract invoke \
 
 **Verified:** `txid` and `block_hash` match SHA256d values exactly. ✅
 
+> **⚠️ Requires initialization:** `bitcoin-spv` is not stateless — `verify_transaction` requires `initialize(admin)` and `set_checkpoint(admin, height, block_hash, bits)` to have been called first, or it returns `NotInitialized`/`CheckpointNotSet`. The deployment above (2026-06-22) predates the current contract build and must be redeployed or have these two calls issued before further testing. Example:
+>
+> ```bash
+> stellar contract invoke --id CAE5L7BO2GNF7MIZWXB2BTUMLYNIMQZUSWN2BWLZQS7HRHLOUSL6VLWJ \
+>   --source writz-deployer --network testnet --send=yes -- \
+>   initialize --admin writz-deployer
+>
+> stellar contract invoke --id CAE5L7BO2GNF7MIZWXB2BTUMLYNIMQZUSWN2BWLZQS7HRHLOUSL6VLWJ \
+>   --source writz-deployer --network testnet --send=yes -- \
+>   set_checkpoint --caller writz-deployer \
+>   --height <recent Bitcoin block height> \
+>   --block_hash <recent Bitcoin block hash, internal byte order> \
+>   --bits <recent Bitcoin block's compact bits field>
+> ```
+>
+> The checkpoint must be refreshed periodically (recommended: weekly) — see `docs/security/security-model.md` for the full trust-model discussion. Before removing the testnet TVL considerations for mainnet, convert the admin account to a multisig (2-of-3) rather than a single key.
+
 ---
 
 ## zk-verifier
