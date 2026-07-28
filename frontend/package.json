@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@aws-sdk/client-kms": "^3.699.0",
     "@bitcoinerlab/secp256k1": "^1.0.5",
     "@creit.tech/stellar-wallets-kit": "^2.4.0",
     "@noble/ciphers": "^2.2.0",

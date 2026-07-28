@@ -2,5 +2,5 @@ export { buildRedeemScript, decompileRedeemScript, computeTimelock, MIN_TIMELOCK
 export { deriveDepositAddress, redeemScriptHash } from './address.js';
 export type { LockingParams, DepositAddress } from './address.js';
 export { buildReleaseTransaction, buildEmergencyTransaction, finalizePathA, finalizePathB, serializeWitness, deserializeWitness } from './spend.js';
-export { generateKeyPair, keyPairFromPrivkey, pubkeyToP2WPKHAddress } from './keys.js';
-export type { WritzKeyPair } from './keys.js';
+export { generateKeyPair, keyPairFromPrivkey, pubkeyToP2WPKHAddress, KmsSigner, resolveProtocolSigner } from './keys.js';
+export type { WritzKeyPair, ProtocolSigner, ProtocolSignerOptions } from './keys.js';

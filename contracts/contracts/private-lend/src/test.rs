@@ -82,12 +82,21 @@ fn fake_proof(env: &Env) -> Vec<BytesN<32>> {
     Vec::new(env)
 }
 
+/// A fake 33-byte compressed Bitcoin public key (compressed-prefix byte +
+/// 32 arbitrary bytes) — this test suite never validates curve membership.
+fn fake_user_pubkey(env: &Env) -> BytesN<33> {
+    let mut buf = [0x22u8; 33];
+    buf[0] = 0x02;
+    BytesN::from_array(env, &buf)
+}
+
 struct Setup {
     env: Env,
     admin: Address,
     supplier: Address,
     depositor: Address,
     keeper: Address,
+    relayer: Address,
     client: PrivateLendContractClient<'static>,
     usdc: Address,
     /// The 34-byte P2WSH scriptPubKey used in test deposit transactions.
@@ -105,6 +114,7 @@ fn setup() -> Setup {
     let supplier = Address::generate(&env);
     let depositor = Address::generate(&env);
     let keeper = Address::generate(&env);
+    let relayer = Address::generate(&env);
 
     // Deploy USDC stellar asset contract.
     let usdc_id = env.register_stellar_asset_contract_v2(admin.clone());
@@ -122,7 +132,7 @@ fn setup() -> Setup {
     let pl = env.register(PrivateLendContract, ());
     let client = PrivateLendContractClient::new(&env, &pl);
 
-    client.initialize(&admin, &spv, &usdc, &admin, &keeper);
+    client.initialize(&admin, &spv, &usdc, &admin, &keeper, &relayer);
 
     // Pre-build deposit transaction artifacts.
     let hash_byte = 0xabu8;
@@ -137,6 +147,7 @@ fn setup() -> Setup {
         supplier,
         depositor,
         keeper,
+        relayer,
         client,
         usdc,
         spk,
@@ -160,7 +171,7 @@ fn initialize_twice_panics() {
     let s = setup();
     let spv2 = Address::generate(&s.env);
     s.client
-        .initialize(&s.admin, &spv2, &s.usdc, &s.admin, &s.keeper);
+        .initialize(&s.admin, &spv2, &s.usdc, &s.admin, &s.keeper, &s.relayer);
 }
 
 // ── deposit ───────────────────────────────────────────────────────────────────
@@ -174,6 +185,7 @@ fn do_deposit(s: &Setup) -> BytesN<32> {
         &s.raw_tx,
         &s.spk,
         &2_905_328u32,
+        &fake_user_pubkey(&s.env),
     )
 }
 
@@ -217,6 +229,7 @@ fn deposit_wrong_script_pubkey_panics() {
         &s.raw_tx,
         &wrong_spk,
         &2_905_328u32,
+        &fake_user_pubkey(&s.env),
     );
 }
 
@@ -235,7 +248,77 @@ fn deposit_too_small_panics() {
         &raw_tx,
         &s.spk,
         &2_905_328u32,
+        &fake_user_pubkey(&s.env),
     );
+}
+
+#[test]
+fn deposit_stores_user_pubkey() {
+    let s = setup();
+    let expected = fake_user_pubkey(&s.env);
+    let txid = do_deposit(&s);
+    let pos: Position = s.client.get_position(&txid).unwrap();
+    assert_eq!(pos.user_pubkey, expected);
+}
+
+// ── release PSBT / relayer ──────────────────────────────────────────────────────
+
+#[test]
+fn get_release_psbt_returns_none_before_publish() {
+    let s = setup();
+    let txid = do_deposit(&s);
+    assert_eq!(s.client.get_release_psbt(&txid), None);
+}
+
+#[test]
+fn publish_release_psbt_by_relayer_succeeds() {
+    let s = setup();
+    let txid = do_deposit(&s);
+    let psbt = Bytes::from_slice(&s.env, &[0xaa, 0xbb, 0xcc]);
+    s.client.publish_release_psbt(&s.relayer, &txid, &psbt);
+    assert_eq!(s.client.get_release_psbt(&txid), Some(psbt));
+}
+
+#[test]
+#[should_panic]
+fn publish_release_psbt_by_non_relayer_panics() {
+    let s = setup();
+    let txid = do_deposit(&s);
+    let rando = Address::generate(&s.env);
+    let psbt = Bytes::from_slice(&s.env, &[0xaa]);
+    s.client.publish_release_psbt(&rando, &txid, &psbt);
+}
+
+#[test]
+#[should_panic]
+fn publish_release_psbt_for_unknown_txid_panics() {
+    let s = setup();
+    let unknown_txid = BytesN::from_array(&s.env, &[0x99u8; 32]);
+    let psbt = Bytes::from_slice(&s.env, &[0xaa]);
+    s.client.publish_release_psbt(&s.relayer, &unknown_txid, &psbt);
+}
+
+#[test]
+fn set_relayer_by_admin_succeeds() {
+    let s = setup();
+    let txid = do_deposit(&s);
+    let new_relayer = Address::generate(&s.env);
+    s.client.set_relayer(&s.admin, &new_relayer);
+
+    let psbt = Bytes::from_slice(&s.env, &[0xaa]);
+    // Old relayer is no longer authorized.
+    let old_result = s.client.try_publish_release_psbt(&s.relayer, &txid, &psbt);
+    assert!(old_result.is_err());
+
+    s.client.publish_release_psbt(&new_relayer, &txid, &psbt);
+}
+
+#[test]
+#[should_panic]
+fn set_relayer_by_non_admin_panics() {
+    let s = setup();
+    let rando = Address::generate(&s.env);
+    s.client.set_relayer(&rando, &rando);
 }
 
 // ── supply_usdc / withdraw_supply ─────────────────────────────────────────────
@@ -483,6 +566,111 @@ fn liquidation_by_non_keeper_panics() {
     s.client.borrow(&s.depositor, &txid, &500_000_000_i128);
     let rando = Address::generate(&s.env);
     s.client.liquidate(&rando, &txid);
+}
+
+// ── keeper stale-window fallback ─────────────────────────────────────────────────
+
+/// Builds an undercollateralized position, mirroring
+/// `liquidation_of_undercollateralized_position`'s exact numbers, but lets
+/// the caller control the ledger timestamp independently of the sequence
+/// number (interest accrual runs off sequence number; the stale-keeper
+/// check runs off timestamp — the two clocks are orthogonal).
+fn setup_undercollateralized_at(s: &Setup, timestamp: u64) -> BytesN<32> {
+    s.env.ledger().set_timestamp(timestamp);
+    let supply = 2_654_000_000_i128;
+    let txid = setup_with_supply_and_deposit(s, supply);
+    let borrow = 1_990_000_000_i128;
+    s.client.borrow(&s.depositor, &txid, &borrow);
+    s.env.ledger().set_sequence_number(1_000 + 25_000_000);
+    txid
+}
+
+#[test]
+#[should_panic]
+fn liquidate_by_non_keeper_fails_before_stale_window() {
+    let s = setup();
+    let txid = setup_undercollateralized_at(&s, 1_000_000);
+    // Timestamp unchanged since the position's first protocol-state access
+    // above — well within the default 24h (86_400s) stale window.
+    let rando = Address::generate(&s.env);
+    StellarAssetClient::new(&s.env, &s.usdc).mint(&rando, &10_000_000_000_i128);
+    s.client.liquidate(&rando, &txid);
+}
+
+#[test]
+fn liquidate_by_non_keeper_succeeds_after_stale_window() {
+    let s = setup();
+    let txid = setup_undercollateralized_at(&s, 1_000_000);
+
+    // Advance well past the 24h default stale window with no keeper
+    // heartbeat — liquidation now opens to any caller.
+    s.env.ledger().set_timestamp(1_000_000 + 86_400 + 1);
+
+    let rando = Address::generate(&s.env);
+    StellarAssetClient::new(&s.env, &s.usdc).mint(&rando, &10_000_000_000_i128);
+    s.client.liquidate(&rando, &txid);
+
+    let pos: Position = s.client.get_position(&txid).unwrap();
+    assert_eq!(pos.status, PositionStatus::Liquidated);
+}
+
+#[test]
+fn keeper_heartbeat_resets_stale_window() {
+    let s = setup();
+    let txid = setup_undercollateralized_at(&s, 1_000_000);
+
+    // Keeper checks in partway through the window...
+    s.env.ledger().set_timestamp(1_000_000 + 80_000);
+    s.client.keeper_heartbeat(&s.keeper);
+
+    // ...so 24h after the ORIGINAL baseline is no longer stale relative to
+    // the refreshed heartbeat.
+    s.env.ledger().set_timestamp(1_000_000 + 86_400 + 1);
+    let rando = Address::generate(&s.env);
+    StellarAssetClient::new(&s.env, &s.usdc).mint(&rando, &10_000_000_000_i128);
+    let result = s.client.try_liquidate(&rando, &txid);
+    assert!(result.is_err(), "non-keeper must still be unauthorized after a fresh heartbeat");
+}
+
+#[test]
+fn liquidate_by_designated_keeper_refreshes_heartbeat() {
+    let s = setup();
+    let txid = setup_undercollateralized_at(&s, 1_000_000);
+
+    // Some time later, still well within the stale window.
+    s.env.ledger().set_timestamp(1_050_000);
+    StellarAssetClient::new(&s.env, &s.usdc).mint(&s.keeper, &10_000_000_000_i128);
+    s.client.liquidate(&s.keeper, &txid);
+
+    let state = s.client.get_protocol_state();
+    assert_eq!(
+        state.last_keeper_heartbeat, 1_050_000,
+        "a successful designated-keeper liquidation must refresh the heartbeat"
+    );
+}
+
+#[test]
+#[should_panic]
+fn set_keeper_stale_window_by_non_admin_panics() {
+    let s = setup();
+    let rando = Address::generate(&s.env);
+    s.client.set_keeper_stale_window(&rando, &3_600);
+}
+
+#[test]
+fn set_keeper_stale_window_by_admin_changes_fallback_timing() {
+    let s = setup();
+    s.client.set_keeper_stale_window(&s.admin, &3_600); // 1h instead of 24h
+
+    let txid = setup_undercollateralized_at(&s, 1_000_000);
+    s.env.ledger().set_timestamp(1_000_000 + 3_600 + 1);
+
+    let rando = Address::generate(&s.env);
+    StellarAssetClient::new(&s.env, &s.usdc).mint(&rando, &10_000_000_000_i128);
+    s.client.liquidate(&rando, &txid);
+
+    let pos: Position = s.client.get_position(&txid).unwrap();
+    assert_eq!(pos.status, PositionStatus::Liquidated);
 }
 
 // ── borrow rate ───────────────────────────────────────────────────────────────

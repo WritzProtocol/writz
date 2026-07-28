@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "P2WSH locking script construction and transaction signing for Writz Protocol",
   "main": "dist/index.js",
+  "types": "src/index.ts",
   "scripts": {
     "build": "bun build src/index.ts --outdir dist --target node --format cjs --sourcemap",
     "test": "bun test",
@@ -12,6 +13,7 @@
     "e2e:dryrun": "bun run scripts/e2e_testnet.mjs --dry-run"
   },
   "dependencies": {
+    "@aws-sdk/client-kms": "^3.699.0",
     "@bitcoinerlab/secp256k1": "^1.0.5",
     "bitcoinjs-lib": "^6.1.7",
     "ecpair": "^2.1.0"

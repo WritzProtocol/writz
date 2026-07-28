@@ -1,4 +1,4 @@
-use soroban_sdk::{contracttype, Address, BytesN, Env};
+use soroban_sdk::{contracttype, Address, Bytes, BytesN, Env};
 
 use crate::types::{Config, Position, ProtocolState};
 
@@ -17,6 +17,11 @@ pub enum DataKey {
     Position(BytesN<32>),
     /// Per-lender USDC supply balance in stroops.
     SupplyBalance(Address),
+    /// The relayer-published, co-signed Path A release PSBT for a fully
+    /// repaid position, keyed by Bitcoin txid. Lets a user
+    /// retrieve and broadcast their release transaction even if the Writz
+    /// frontend is unavailable.
+    ReleasePsbt(BytesN<32>),
 }
 
 // Each ledger targets a 5-second close time.
@@ -66,9 +71,15 @@ pub fn get_protocol(env: &Env) -> ProtocolState {
                 .extend_ttl(&key, PERSISTENT_THRESHOLD, PERSISTENT_BUMP);
             state
         }
+        // No ProtocolState written yet (lazy-initialized on first activity).
+        // `last_keeper_heartbeat` defaults to "now", not epoch zero — this
+        // starts the stale-keeper window fresh from first contact
+        // rather than having liquidation open to anyone immediately after
+        // `initialize()`, before the keeper has had any chance to act.
         None => ProtocolState {
             total_supplied: 0,
             total_borrowed: 0,
+            last_keeper_heartbeat: env.ledger().timestamp(),
         },
     }
 }
@@ -160,4 +171,25 @@ pub fn refresh_supply_balance_ttl(env: &Env, lender: &Address) -> bool {
     }
     env.storage().persistent().extend_ttl(&key, 0, PERMANENT_BUMP);
     true
+}
+
+// ── Release PSBT ─────────────────────────────────────────────────────────────
+
+pub fn get_release_psbt(env: &Env, txid: &BytesN<32>) -> Option<Bytes> {
+    let key = DataKey::ReleasePsbt(txid.clone());
+    let result: Option<Bytes> = env.storage().persistent().get(&key);
+    if result.is_some() {
+        env.storage()
+            .persistent()
+            .extend_ttl(&key, PERMANENT_THRESHOLD, PERMANENT_BUMP);
+    }
+    result
+}
+
+pub fn set_release_psbt(env: &Env, txid: &BytesN<32>, psbt: &Bytes) {
+    let key = DataKey::ReleasePsbt(txid.clone());
+    env.storage().persistent().set(&key, psbt);
+    env.storage()
+        .persistent()
+        .extend_ttl(&key, PERMANENT_THRESHOLD, PERMANENT_BUMP);
 }
