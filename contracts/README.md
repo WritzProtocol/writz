@@ -24,7 +24,9 @@ Key functions: `deposit`, `insert_commitment`, `borrow`, `repay`, `liquidate`
 
 ### `private-lend`
 
-Orchestration contract. Entry point for the PrivateLend product. Composes `commitment-tree` with pool supply management.
+Phase 1, non-ZK lending contract: plaintext BTC-collateralized positions, USDC pool supply/withdraw, and its own liquidation logic. Calls `bitcoin-spv` directly to verify deposits.
+
+> **Note:** `private-lend` and `commitment-tree` are independent, parallel implementations of the lending flow against the shared `bitcoin-spv`/`zk-verifier` primitives — `private-lend` does **not** call or compose `commitment-tree`. Each performs its own txid-based deposit deduplication; see `docs/security/security-model.md` for why this closes the Merkle duplicate-leaf ambiguity at the deposit layer rather than in the Merkle verifier itself.
 
 ## Build
 
