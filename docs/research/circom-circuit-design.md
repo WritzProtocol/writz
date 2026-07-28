@@ -217,57 +217,65 @@ For Groth16, ~10K constraints is a medium-sized circuit — proof generation sho
 ## Circuit 3: Liquidation
 
 ### Purpose
-Prove that a specific position (identified by its commitment) is undercollateralized, without revealing the amounts, enabling a liquidator to claim the collateral.
+Prove that a specific position (identified by its commitment) is undercollateralized, without revealing the collateral amount or position owner, enabling a liquidator to claim the collateral.
 
-### Inputs/Outputs
+> **Note (updated to match the shipped circuit):** the pseudocode below described an earlier design where `usdc_to_repay` was supplied as a separate **public input**, checked for equality against the private debt field. The circuit as implemented (`circuits/src/liquidation.circom`) is stronger: it has no `usdc_to_repay` input at all. `usdc_debt` is instead a circuit **output**, structurally bound to the private commitment (`usdc_debt <== debt_stroops`). This is a meaningful difference — see "Privacy tradeoff" below.
+
+### Inputs/Outputs (as implemented)
 
 ```circom
 template LiquidationCircuit(DEPTH) {
     // Private inputs
-    signal private input collateral_satoshis;
-    signal private input usdc_debt;
-    signal private input secret;
-    signal private input nonce;
-    signal private input merkle_path[DEPTH];
-    signal private input commitment_index;
+    signal input collateral_satoshis;
+    signal input debt_stroops;
+    signal input secret;
+    signal input nonce;
+    signal input path_elements[DEPTH];
+    signal input path_indices[DEPTH];
 
     // Public inputs
     signal input merkle_root;
-    signal input btc_price;
-    signal input liquidation_threshold;  // 120% = 12000 basis points
-    signal input nullifier;
-    signal input usdc_to_repay;          // claimed debt amount (public for liquidator to pay)
+    signal input btc_price_stroops_per_btc;
+    signal input liquidation_threshold_bp;  // 12_000 = 120%
+
+    // Public outputs
+    signal output nullifier;  // Poseidon(secret, nonce)
+    signal output usdc_debt;  // bound to debt_stroops — not caller-supplied
 
     // Constraints
 
     // 1. Commitment exists in tree
-    commitment <== Poseidon(4)([collateral_satoshis, usdc_debt, secret, nonce]);
-    merkle_root === MerkleProof(DEPTH)(commitment, commitment_index, merkle_path);
+    commitment <== Poseidon(4)([collateral_satoshis, debt_stroops, secret, nonce]);
+    merkle_root === MerkleTreeChecker(DEPTH)(commitment, path_elements, path_indices);
 
-    // 2. Position IS undercollateralized
-    collateral_value_usd <== collateral_satoshis × btc_price \ 100_000_000;
-    ratio <== collateral_value_usd × 10000 \ usdc_debt;
-    ratio < liquidation_threshold === 1;  // Must be BELOW threshold
+    // 2. Position IS undercollateralized (cross-multiplied, no division)
+    //    collateral_satoshis × price × 10_000 < debt × 100_000_000 × threshold_bp
+    GreaterThan(128)(debt_stroops × 100_000_000 × liquidation_threshold_bp,
+                      collateral_satoshis × btc_price_stroops_per_btc × 10_000) === 1;
 
-    // 3. usdc_to_repay matches the actual debt
-    usdc_to_repay === usdc_debt;
-    // NOTE: This reveals the debt amount! See discussion below.
+    // 3. Debt output is bound to the commitment's private debt field — a
+    //    keeper cannot claim an arbitrary amount while proving a different
+    //    commitment.
+    usdc_debt <== debt_stroops;
 
     // 4. Nullifier
-    nullifier === Poseidon(2)([secret, commitment_index]);
+    nullifier <== Poseidon(2)([secret, nonce]);
 }
 ```
 
 ### Privacy tradeoff in liquidation
 
-There's a fundamental tension in private liquidations: the liquidator needs to know how much USDC to pay to execute the liquidation. This means `usdc_to_repay` (the debt) must be a public input.
+There's a fundamental tension in private liquidations: the liquidator (or the contract, on the liquidator's behalf) needs to know how much USDC to pay to execute the liquidation. This means the debt amount is published on-chain at liquidation time regardless of circuit design — that part of the tradeoff is inherent and cannot be engineered away while liquidation remains permissionless.
 
-**Options:**
-1. **Reveal debt publicly** — simplest, but partially breaks privacy
-2. **Trusted keeper pays the debt** — keeper knows the private amounts, handles the USDC payment without public disclosure
-3. **Encrypted debt in commitment** — liquidator receives an encrypted hint containing the debt amount, decryptable only with a specific key
+What the circuit design *can* control is whether that published amount is **trustworthy** — i.e. whether a keeper (or anyone else constructing the liquidation call) could claim a different amount than what the position actually owes. The original pseudocode above modeled `usdc_to_repay` as a public input checked for equality against the private debt — functionally adequate, but it leaves the "declare the correct amount" burden on an external equality constraint, callable with any input. **The shipped circuit removes that input entirely**: `usdc_debt` is a circuit *output*, computed as `usdc_debt <== debt_stroops` directly from the private commitment. A malicious keeper cannot supply a different value — there is no signal for them to lie in. `contracts/contracts/commitment-tree/src/lib.rs` extracts `usdc_debt` from the proof's output signal, never from a caller-supplied parameter, so this guarantee is enforced on-chain as well as in the circuit.
 
-**Recommendation for Phase 1:** Use option 2 (trusted keeper). The keeper knows all position preimages and executes liquidations privately. The on-chain ZK proof confirms the position is undercollateralized without revealing amounts — only the keeper learns the debt through off-chain channels. Revisit in Phase 2.
+**Phase 1 status:** debt amount is revealed on-chain at liquidation time (unavoidable given a permissionless/keeper-based liquidator model), but the amount is provably correct — see `docs/how-it-works/zk-privacy-layer.md`.
+
+**Phase 2 options (blocked on a decentralized keeper network):**
+1. **Encrypted debt in commitment** — liquidator receives an encrypted hint containing the debt amount, decryptable only with a specific key.
+2. **Committed-but-unrevealed liquidation bids** — multiple competing keepers commit to a bid without revealing it, settled without exposing the amount to losing bidders.
+
+Neither of these has a consumer today: a hidden-bid or encrypted-hint scheme only makes sense once there are multiple competing keepers to hide the amount *from*, and that decentralized keeper network is itself Phase 2 and not yet built. Designing this crypto now, before that network exists, would be speculative work against a documented, accepted, non-blocking tradeoff — revisit once that network exists.
 
 ---
 
@@ -277,7 +285,7 @@ Groth16 requires a per-circuit trusted setup. The setup has two phases:
 
 **Phase 1 (Powers of Tau):** A multi-party ceremony generating universal SRS (Structured Reference String) parameters. Stellar Private Payments uses the Hermez Powers of Tau ceremony — Writz can reuse this. Already done.
 
-**Phase 2 (Circuit-specific):** A circuit-specific setup generating the proving key and verification key. This must be done separately for each of Writz's three circuits. It is a one-time event per circuit version.
+**Phase 2 (Circuit-specific):** A circuit-specific setup generating the proving key and verification key. This must be done separately for each of Writz's **four** circuits (the three named throughout this doc, plus `zero_debt`, which gates the cooperative Path A release endpoint and is fund-loss-equivalent in severity to the others). It is a one-time event per circuit version.
 
 **Ceremony requirements for production:**
 - Minimum 5 independent participants (more is better)
@@ -286,6 +294,8 @@ Groth16 requires a per-circuit trusted setup. The setup has two phases:
 - Can be done by the Writz team + community members + security researchers
 
 This is a **pre-mainnet requirement**. The ceremony must be completed and the results audited before any mainnet deployment.
+
+**Tooling:** the coordinator/participant scripts, transcript format, verification, and on-chain rotation runbook implementing all of the above are in `circuits/scripts/ceremony/` — see that directory's `README.md` for the exact step-by-step process. A CI job (`circuits-ceremony-verify` in `.github/workflows/ci.yml`) mechanically checks the committed manifest's hashes and rejects any transcript with a "dev"-labeled participant before a rotation is accepted; it does not replace the human verification steps in the runbook.
 
 ---
 

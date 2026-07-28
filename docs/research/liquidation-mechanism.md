@@ -97,7 +97,10 @@ Writz Keeper (off-chain)
     by anyone with a valid ZK proof (open liquidation with proof submission)
 ```
 
-**Emergency fallback mechanism:** The Soroban contract has a `liquidation_open_after_block` parameter. If a position's last health check is older than X blocks (e.g., 1440 blocks = ~2 hours), liquidation becomes open to anyone who can submit a valid ZK proof. This prevents positions from going unliquidated if the keeper is down.
+**Emergency fallback mechanism — the two lending contracts differ here, by design:**
+
+1. **`commitment-tree::liquidate`** — Writz's ZK liquidation path — needs no fallback at all. It is fully permissionless from the start: it requires only `keeper.require_auth()` (the caller authorizing their own USDC payment) plus a valid Groth16 undercollateralization proof, with no keeper-address check to fall back from. "Anyone who can submit a valid ZK proof" already describes its normal operating mode, not an emergency-only path.
+2. **`private-lend::liquidate`** — the plaintext (non-ZK) lending contract — restricts liquidation to a designated keeper by default, with a **time-based** fallback: `Config.keeper_stale_after_secs` (default 86,400 = 24h) and `ProtocolState.last_keeper_heartbeat`. If the designated keeper hasn't successfully liquidated or called `keeper_heartbeat` within that window, `liquidate` opens to any caller who can satisfy the (caller-independent) undercollateralization check. See `contracts/contracts/private-lend/src/lib.rs`.
 
 ### Phase 2: Decentralized Keeper Network
 

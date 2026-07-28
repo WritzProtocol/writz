@@ -30,13 +30,15 @@ If these three things are consistent — the header has valid PoW, the Merkle pr
 
 Most SPV implementations maintain state: they store a chain of Bitcoin block headers on-chain, and new headers are submitted by a relayer service. This creates a hard dependency on the relayer — if the relayer goes down, the system breaks.
 
-Writz uses **stateless SPV**: the caller provides all necessary headers at the time of verification. The contract validates them in a single transaction and does not store any headers.
+Writz uses **stateless SPV**: the caller provides all necessary headers at the time of verification, and the contract validates the full chain in a single transaction rather than storing a growing header history.
 
 This has important implications:
 
 - **No relayer dependency for core security:** The SPV contract can be called by anyone with the right data. Writz runs a relayer service as a convenience, but it is not a critical path component.
-- **No growing on-chain state:** A stateful header chain would grow indefinitely. Stateless SPV has zero persistent storage for headers.
-- **Simpler audit surface:** The verification logic is a pure function — given inputs, it returns a result. No state transitions to reason about.
+- **No growing on-chain state:** A stateful header chain would grow indefinitely; a per-call header submission never accumulates that way.
+- **Simpler audit surface:** The verification logic is a pure function of its inputs plus one small anchor value — given inputs, it returns a result. No header-chain state transitions to reason about.
+
+The one piece of state the contract does keep is a small, admin-set checkpoint singleton — a recent Bitcoin block's height, hash, and difficulty (`bits`) — used to reject a header chain mined at a historically low difficulty (real Bitcoin blocks from years ago had trivially small proof-of-work targets, so PoW validity alone isn't enough to rule out a privately-mined chain). This is a single fixed-size value, not a growing header chain — closer in spirit to a hardcoded constant than to the "stateful" designs this section argues against. See `contracts/contracts/bitcoin-spv/src/types.rs`'s `Checkpoint` type, and `docs/security/security-model.md` for the full trust-model discussion.
 
 ---
 
@@ -62,6 +64,7 @@ For each call, the contract:
 - Compute `SHA256d(header)` — Bitcoin's double-SHA256 block hash
 - Verify the hash meets the difficulty target encoded in `bits`
 - Verify the chain is continuous: `headers[i].prev_block == SHA256d(headers[i-1])`
+- Verify no header's target is more than 64× easier than the stored checkpoint's difficulty — this is what rules out a chain mined at a historically low (e.g. 2009-era) difficulty even though it would otherwise pass its own PoW check
 
 **Step 2 — Verify Merkle inclusion:**
 - Compute `txid = SHA256d(SHA256d(raw_tx))`

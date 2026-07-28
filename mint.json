@@ -83,6 +83,8 @@
         "docs/how-it-works/bitcoin-side",
         "docs/how-it-works/spv-verification",
         "docs/how-it-works/zk-privacy-layer",
+        "docs/how-it-works/manual-proof-submission",
+        "docs/how-it-works/manual-emergency-recovery",
         "docs/how-it-works/stellar-side"
       ]
     },
