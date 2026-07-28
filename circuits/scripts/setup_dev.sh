@@ -1,7 +1,13 @@
 #!/usr/bin/env bash
 # Development-only trusted setup (NOT for production).
 # Uses a small Powers of Tau file (2^15) for fast local testing.
-# Production requires the Hermez ceremony ptau (2^28).
+#
+# For production, use the multi-party ceremony tooling in
+# scripts/ceremony/ instead — see
+# scripts/ceremony/README.md for the full runbook. This script remains as
+# the fast local dev/test loop (CI's `circuits` job runs it before `bun run
+# test`); it is not a shortcut for a real ceremony and its output must
+# never be used for a production deployment.
 set -euo pipefail
 
 CIRCUITS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

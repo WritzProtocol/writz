@@ -16,41 +16,14 @@ const path  = require('path');
 const fs    = require('fs');
 const snarkjs = require('snarkjs');
 const { buildPoseidon } = require('circomlibjs');
+const { decToHex32, g1ToHex, g2ToHex, hexToRustBytes } = require('./lib/vkey_encode.js');
 
 const ROOT = path.resolve(__dirname, '..');
 const CONTRACTS_ROOT = path.resolve(__dirname, '../../contracts/contracts/zk-verifier/src');
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-// Convert a decimal string to a 32-byte big-endian hex string.
-function decToHex32(s) {
-    let n = BigInt(s);
-    let hex = n.toString(16).padStart(64, '0');
-    if (hex.length > 64) throw new Error(`Value too large: ${s}`);
-    return hex;
-}
-
-// Convert a G1 point [x_dec, y_dec, "1"] to 64-byte hex.
-// Format: be(x) || be(y) — Ethereum-compatible.
-function g1ToHex(point) {
-    return decToHex32(point[0]) + decToHex32(point[1]);
-}
-
-// Convert a G2 point [[x0,x1],[y0,y1],["1","0"]] to 128-byte hex.
-// Soroban / EIP-197 format: be(x.c1) || be(x.c0) || be(y.c1) || be(y.c0)
-function g2ToHex(point) {
-    // point[0] = [x.c0, x.c1], point[1] = [y.c0, y.c1]
-    const xc0 = point[0][0], xc1 = point[0][1];
-    const yc0 = point[1][0], yc1 = point[1][1];
-    return decToHex32(xc1) + decToHex32(xc0) + decToHex32(yc1) + decToHex32(yc0);
-}
-
-// Convert a hex string to a Rust byte array literal.
-function hexToRustBytes(hex, name, comment = '') {
-    const bytes = hex.match(/.{2}/g).map(b => `0x${b}`).join(', ');
-    const commentLine = comment ? `    // ${comment}\n` : '';
-    return `${commentLine}    pub const ${name}: [u8; ${hex.length / 2}] = [${bytes}];`;
-}
+// (decToHex32 / g1ToHex / g2ToHex / hexToRustBytes now live in
+// ./lib/vkey_encode.js, shared with ceremony/04_export.js.)
 
 // Format a 32-byte public signal as Rust bytes.
 function signalToRustBytes(hex, name) {
