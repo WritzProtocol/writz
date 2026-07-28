@@ -57,6 +57,165 @@ function makeSegwitTx(): { full: Buffer; noWitness: Buffer } {
   return { full, noWitness };
 }
 
+/**
+ * A single-input P2WSH transaction whose witness stack has 4 items,
+ * mirroring Writz's own real production release witness shape
+ * (`[user_sig, protocol_sig, 0x01, redeemScript]`, see
+ * `bitcoin-script/src/spend.ts`'s `finalizePathA`). The existing
+ * `makeSegwitTx` fixture above has only a single 1-item witness stack and
+ * cannot catch a bug in `stripWitness`'s per-item skip loop.
+ */
+function makeP2wshMultiItemWitnessTx(): { full: Buffer; noWitness: Buffer } {
+  const common = {
+    version: Buffer.from('01000000', 'hex'),
+    inCount: Buffer.from([0x01]),
+    prevHash: Buffer.alloc(32, 0x00),
+    prevIndex: Buffer.from([0x00, 0x00, 0x00, 0x00]),
+    scriptLen: Buffer.from([0x00]), // empty scriptSig (native segwit)
+    sequence: Buffer.from([0xff, 0xff, 0xff, 0xff]),
+    outCount: Buffer.from([0x01]),
+    value: Buffer.from('e803000000000000', 'hex'),
+    spkLen: Buffer.from([0x22]), // 34 bytes (P2WSH: OP_0 + 32-byte script hash)
+    spk: Buffer.from('0020' + 'cc'.repeat(32), 'hex'),
+    locktime: Buffer.from([0x00, 0x00, 0x00, 0x00]),
+  };
+
+  const userSig = Buffer.alloc(72, 0x11);
+  const protocolSig = Buffer.alloc(71, 0x22);
+  const opTrue = Buffer.from([0x01]);
+  const redeemScript = Buffer.alloc(114, 0x33);
+
+  const witness = Buffer.concat([
+    Buffer.from([0x04]), // 4 witness stack items
+    Buffer.from([userSig.length]), userSig,
+    Buffer.from([protocolSig.length]), protocolSig,
+    Buffer.from([opTrue.length]), opTrue,
+    Buffer.from([redeemScript.length]), redeemScript,
+  ]);
+
+  const full = Buffer.concat([
+    common.version,
+    Buffer.from([0x00, 0x01]),
+    common.inCount, common.prevHash, common.prevIndex, common.scriptLen, common.sequence,
+    common.outCount, common.value, common.spkLen, common.spk,
+    witness,
+    common.locktime,
+  ]);
+
+  const noWitness = Buffer.concat([
+    common.version,
+    common.inCount, common.prevHash, common.prevIndex, common.scriptLen, common.sequence,
+    common.outCount, common.value, common.spkLen, common.spk,
+    common.locktime,
+  ]);
+
+  return { full, noWitness };
+}
+
+/**
+ * A P2TR (Taproot key-path spend) transaction: single witness item, a
+ * 64-byte Schnorr signature — a SegWit output type that otherwise had no
+ * test coverage.
+ */
+function makeP2trTx(): { full: Buffer; noWitness: Buffer } {
+  const common = {
+    version: Buffer.from('01000000', 'hex'),
+    inCount: Buffer.from([0x01]),
+    prevHash: Buffer.alloc(32, 0x00),
+    prevIndex: Buffer.from([0x00, 0x00, 0x00, 0x00]),
+    scriptLen: Buffer.from([0x00]),
+    sequence: Buffer.from([0xff, 0xff, 0xff, 0xff]),
+    outCount: Buffer.from([0x01]),
+    value: Buffer.from('e803000000000000', 'hex'),
+    spkLen: Buffer.from([0x22]), // 34 bytes: OP_1 (0x51) + 32-byte x-only pubkey
+    spk: Buffer.from('5120' + 'dd'.repeat(32), 'hex'),
+    locktime: Buffer.from([0x00, 0x00, 0x00, 0x00]),
+  };
+
+  const schnorrSig = Buffer.alloc(64, 0xaa);
+  const witness = Buffer.concat([
+    Buffer.from([0x01]), // 1 witness stack item
+    Buffer.from([schnorrSig.length]), schnorrSig,
+  ]);
+
+  const full = Buffer.concat([
+    common.version,
+    Buffer.from([0x00, 0x01]),
+    common.inCount, common.prevHash, common.prevIndex, common.scriptLen, common.sequence,
+    common.outCount, common.value, common.spkLen, common.spk,
+    witness,
+    common.locktime,
+  ]);
+
+  const noWitness = Buffer.concat([
+    common.version,
+    common.inCount, common.prevHash, common.prevIndex, common.scriptLen, common.sequence,
+    common.outCount, common.value, common.spkLen, common.spk,
+    common.locktime,
+  ]);
+
+  return { full, noWitness };
+}
+
+/**
+ * A 2-input SegWit transaction, each input carrying its own distinct
+ * witness stack (different item lengths). `stripWitness`'s witness-skipping
+ * loop (`tx.ts:92-99`) iterates once per input; the single-input fixtures
+ * above cannot detect an off-by-one or interleaving bug in that loop — this
+ * is the highest-value addition to this test suite.
+ */
+function makeTwoInputSegwitTx(): { full: Buffer; noWitness: Buffer } {
+  const common = {
+    version: Buffer.from('01000000', 'hex'),
+    inCount: Buffer.from([0x02]),
+    prevHash0: Buffer.alloc(32, 0x00),
+    prevHash1: Buffer.alloc(32, 0x01),
+    prevIndex: Buffer.from([0x00, 0x00, 0x00, 0x00]),
+    scriptLen: Buffer.from([0x00]),
+    sequence: Buffer.from([0xff, 0xff, 0xff, 0xff]),
+    outCount: Buffer.from([0x01]),
+    value: Buffer.from('e803000000000000', 'hex'),
+    spkLen: Buffer.from([0x16]),
+    spk: Buffer.from('0014' + 'bb'.repeat(20), 'hex'),
+    locktime: Buffer.from([0x00, 0x00, 0x00, 0x00]),
+  };
+
+  // Input 0's witness: a single 72-byte item.
+  const witness0 = Buffer.concat([
+    Buffer.from([0x01]),
+    Buffer.from([72]), Buffer.alloc(72, 0xee),
+  ]);
+  // Input 1's witness: a single 33-byte item (deliberately different length,
+  // so a fixed-offset assumption in the skip loop would misalign here).
+  const witness1 = Buffer.concat([
+    Buffer.from([0x01]),
+    Buffer.from([33]), Buffer.alloc(33, 0xff),
+  ]);
+
+  const inputs = Buffer.concat([
+    common.prevHash0, common.prevIndex, common.scriptLen, common.sequence,
+    common.prevHash1, common.prevIndex, common.scriptLen, common.sequence,
+  ]);
+
+  const full = Buffer.concat([
+    common.version,
+    Buffer.from([0x00, 0x01]),
+    common.inCount, inputs,
+    common.outCount, common.value, common.spkLen, common.spk,
+    witness0, witness1,
+    common.locktime,
+  ]);
+
+  const noWitness = Buffer.concat([
+    common.version,
+    common.inCount, inputs,
+    common.outCount, common.value, common.spkLen, common.spk,
+    common.locktime,
+  ]);
+
+  return { full, noWitness };
+}
+
 // Two-output legacy tx used for parseOutput tests.
 function makeTwoOutputLegacyTx(): Buffer {
   const p2pkh  = Buffer.from('76a914' + 'aa'.repeat(20) + '88ac', 'hex'); // 25 bytes
@@ -120,6 +279,21 @@ describe('stripWitness', () => {
     const { full } = makeSegwitTx();
     const stripped = stripWitness(full.toString('hex'));
     expect(isSegwit(stripped)).toBe(false);
+  });
+
+  test('strips a P2WSH transaction with a 4-item witness stack (Writz production witness shape)', () => {
+    const { full, noWitness } = makeP2wshMultiItemWitnessTx();
+    expect(stripWitness(full.toString('hex'))).toBe(noWitness.toString('hex'));
+  });
+
+  test('strips a P2TR (Taproot key-path) transaction', () => {
+    const { full, noWitness } = makeP2trTx();
+    expect(stripWitness(full.toString('hex'))).toBe(noWitness.toString('hex'));
+  });
+
+  test('strips a 2-input SegWit transaction with distinct per-input witness stacks', () => {
+    const { full, noWitness } = makeTwoInputSegwitTx();
+    expect(stripWitness(full.toString('hex'))).toBe(noWitness.toString('hex'));
   });
 });
 

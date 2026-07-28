@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@stellar/stellar-sdk": "^16.0.1",
+    "@writz/bitcoin-script": "file:../bitcoin-script",
     "commitment-tree": "file:../packages/commitment-tree",
     "express": "^4.19.2",
     "poseidon-lite": "^0.3.0"
