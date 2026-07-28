@@ -231,6 +231,40 @@ describe('Path B — emergency timelock', () => {
     expect(inputSeq).toBeLessThan(0xffff_ffff);
   });
 
+  // Pins the exact production value, not just the inequality
+  // above — a future refactor that picked any value < 0xFFFFFFFF would
+  // still pass the inequality test but could reintroduce a subtly wrong
+  // sequence (e.g. one that also fails to disable RBF as intended).
+  test('input nSequence is exactly 0xFFFFFFFE for both Path A and Path B', () => {
+    const { spendParams } = makeFixture();
+
+    const pathA = buildReleaseTransaction(spendParams);
+    const pathAExtracted = (pathA.data.globalMap.unsignedTx as any).tx.ins[0].sequence as number;
+    expect(pathAExtracted).toBe(0xffff_fffe);
+
+    const pathB = buildEmergencyTransaction(spendParams, TIMELOCK);
+    const pathBExtracted = (pathB.data.globalMap.unsignedTx as any).tx.ins[0].sequence as number;
+    expect(pathBExtracted).toBe(0xffff_fffe);
+  });
+
+  // Regression guard for this behavior — the whole point of
+  // hardcoding nSequence inside buildEmergencyTransaction is that a caller
+  // (a generic wallet, or a future refactor) cannot override it into the
+  // unsafe 0xFFFFFFFF value. If SpendParams ever grows a `sequence` field,
+  // this test forces a conscious decision about whether Path B should still
+  // ignore it.
+  test('SpendParams has no caller-settable sequence field for Path B', () => {
+    const { spendParams } = makeFixture();
+    expect(Object.prototype.hasOwnProperty.call(spendParams, 'sequence')).toBe(false);
+
+    // Even if a caller forges a params object with an unsafe sequence, the
+    // builder must not use it — it must still emit 0xFFFFFFFE.
+    const forged = { ...spendParams, sequence: 0xffff_ffff } as typeof spendParams;
+    const psbt = buildEmergencyTransaction(forged, TIMELOCK);
+    const inputSeq = (psbt.data.globalMap.unsignedTx as any).tx.ins[0].sequence as number;
+    expect(inputSeq).toBe(0xffff_fffe);
+  });
+
   test('only the user needs to sign Path B', () => {
     const { user, spendParams } = makeFixture();
     const psbt = buildEmergencyTransaction(spendParams, TIMELOCK);
