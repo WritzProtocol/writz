@@ -21,6 +21,20 @@ export interface Config {
   networkPassphrase: string;
   commitmentTreeId: string;
   adminSecret: string | undefined;
+  // Repay watcher
+  privateLendId: string;
+  relayerSecret: string | undefined;
+  kmsKeyId: string | undefined;
+  /** WIF-encoded protocol signing key — testnet/signet-only fallback used
+   * when `kmsKeyId` isn't set. See `resolveProtocolSigner` in
+   * `@writz/bitcoin-script` for why this is refused on mainnet. */
+  protocolSigningKeyWif: string | undefined;
+  /** Fee (satoshis) subtracted from the release amount. Dynamic fee
+   * estimation is out of scope for now; a fixed, operator-tunable rate is
+   * sufficient. */
+  releaseFeeSat: number;
+  /** How often (ms) the repay watcher polls Soroban RPC for new events. */
+  repayWatcherPollIntervalMs: number;
 }
 
 const ESPLORA_URLS: Record<BitcoinNetwork, string> = {
@@ -50,6 +64,12 @@ function loadConfig(): Config {
     networkPassphrase: getEnv("STELLAR_NETWORK_PASSPHRASE", TESTNET_PASSPHRASE),
     commitmentTreeId: getEnv("COMMITMENT_TREE_ID", ""),
     adminSecret: process.env["ADMIN_SECRET"],
+    privateLendId: getEnv("PRIVATE_LEND_ID", ""),
+    relayerSecret: process.env["RELAYER_SECRET"],
+    kmsKeyId: process.env["KMS_KEY_ID"],
+    protocolSigningKeyWif: process.env["PROTOCOL_SIGNING_KEY"],
+    releaseFeeSat: parseInt(getEnv("RELEASE_FEE_SAT", "1500"), 10),
+    repayWatcherPollIntervalMs: parseInt(getEnv("REPAY_WATCHER_POLL_INTERVAL_MS", "30000"), 10),
   };
 }
 

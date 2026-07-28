@@ -2,6 +2,7 @@ import express from "express";
 import { config } from "./config.js";
 import { proofRouter } from "./routes/proof.js";
 import { merkleRouter } from "./routes/merkle.js";
+import { startRepayWatcher } from "./repay-watcher/poller.js";
 
 const app = express();
 
@@ -47,3 +48,7 @@ app.listen(config.port, () => {
   console.log(`Esplora: ${config.esploraBaseUrl}`);
   console.log(`Stellar RPC: ${config.stellarRpcUrl}`);
 });
+
+// Auto-cosign repay watcher — no-ops with a warning if its
+// required config isn't set, so this never blocks the HTTP API from starting.
+startRepayWatcher();
