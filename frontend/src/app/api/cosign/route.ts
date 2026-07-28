@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import * as bitcoin from "bitcoinjs-lib";
-import * as ecc from "@bitcoinerlab/secp256k1";
-import { ECPairFactory } from "ecpair";
+import { resolveProtocolSigner } from "@/lib/bitcoin/kmsSigner";
 import { groth16, type Groth16ProofJSON } from "snarkjs";
 import { Client } from "@/lib/contracts/generated";
 import { config, requireContract } from "@/config";
@@ -11,8 +10,6 @@ import vKeyData from "@/circuits/zero_debt_vkey.json";
 // Force the Node.js runtime — snarkjs requires native BigInt and is incompatible
 // with Vercel's Edge runtime.
 export const runtime = "nodejs";
-
-const ECPair = ECPairFactory(ecc);
 
 const READ_ONLY_SOURCE =
   "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF";
@@ -90,10 +87,16 @@ interface ZkProofBody {
 }
 
 export async function POST(req: NextRequest) {
-  const protocolKey = process.env.PROTOCOL_SIGNING_KEY;
-  if (!protocolKey) {
+  // The protocol signing key prefers AWS KMS (ECC_SECG_P256K1 /
+  // ECDSA_SHA_256), which never reads it into process memory. If KMS isn't
+  // configured, PROTOCOL_SIGNING_KEY is a testnet/signet-only raw-WIF
+  // fallback — resolveProtocolSigner refuses it on mainnet. See
+  // docs/security/security-model.md.
+  const kmsKeyId = process.env.KMS_KEY_ID;
+  const envPrivateKeyWif = process.env.PROTOCOL_SIGNING_KEY;
+  if (!kmsKeyId && !envPrivateKeyWif) {
     return NextResponse.json(
-      { error: "PROTOCOL_SIGNING_KEY not configured" },
+      { error: "Neither KMS_KEY_ID nor PROTOCOL_SIGNING_KEY is configured" },
       { status: 500 },
     );
   }
@@ -212,11 +215,17 @@ export async function POST(req: NextRequest) {
   // blind signing oracle for arbitrary inputs.
   try {
     const network = getNetwork();
-    const keypair = ECPair.fromWIF(protocolKey, network);
+    const signer = await resolveProtocolSigner({
+      kmsKeyId,
+      envPrivateKeyWif,
+      network,
+    });
 
     const psbt = bitcoin.Psbt.fromBase64(psbtBase64, { network });
-    assertWritzReleaseInput(psbt, Buffer.from(keypair.publicKey), network);
-    psbt.signInput(0, keypair);
+    assertWritzReleaseInput(psbt, signer.publicKey, network);
+    // signInputAsync works for both KMS (a network call) and the sync
+    // raw-WIF fallback signer.
+    await psbt.signInputAsync(0, signer);
 
     return NextResponse.json({ signedPsbt: psbt.toBase64() });
   } catch (e) {

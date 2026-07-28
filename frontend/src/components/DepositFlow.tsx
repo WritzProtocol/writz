@@ -63,8 +63,21 @@ export function DepositFlow() {
   const [statusMsg, setStatusMsg] = useState("");
   const [txHash, setTxHash] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [addressCopied, setAddressCopied] = useState(false);
 
   const busy = step !== "idle" && step !== "done" && step !== "error";
+  const isMainnet = config.bitcoin.network === "mainnet";
+
+  async function handleCopyAddress() {
+    if (!depositAddress) return;
+    try {
+      await navigator.clipboard.writeText(depositAddress);
+      setAddressCopied(true);
+      setTimeout(() => setAddressCopied(false), 2000);
+    } catch {
+      // clipboard API unavailable — address is still selectable/visible
+    }
+  }
 
   // Derive P2WSH address from the user's BTC pubkey when available.
   const p2wsh = useMemo(() => {
@@ -220,16 +233,54 @@ export function DepositFlow() {
               </p>
               {depositAddress ? (
                 <>
-                  <p
-                    className="mt-2 break-all font-mono text-sm text-head"
-                    title={depositAddress}
-                  >
-                    {depositAddress}
-                  </p>
+                  <div className="mt-2 flex items-start gap-2">
+                    <p
+                      className="break-all font-mono text-sm text-head"
+                      title={depositAddress}
+                    >
+                      {depositAddress}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleCopyAddress}
+                      className="shrink-0 rounded-md border border-line-2 px-2 py-0.5 text-xs font-semibold text-body transition-colors hover:border-amber"
+                    >
+                      {addressCopied ? "Copied" : "Copy"}
+                    </button>
+                  </div>
                   <p className="mt-1 text-xs text-muted">
                     Derived from your Bitcoin pubkey · timelock block{" "}
                     <span className="font-mono">{config.bitcoin.timelockHeight.toLocaleString()}</span>
                   </p>
+                  {!isMainnet && (
+                    <div className="mt-3 rounded-lg border border-line-2 bg-surface-2 p-3">
+                      <p className="text-xs font-semibold text-head">
+                        Need {config.bitcoin.network} BTC?
+                      </p>
+                      <p className="mt-1 text-xs text-muted">
+                        Copy the address above and fund it from a public faucet, then
+                        come back and send from your wallet.
+                      </p>
+                      <div className="mt-2 flex flex-wrap gap-3">
+                        <a
+                          href="https://bitcoinsignetfaucet.com/"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-xs font-semibold text-amber underline-offset-2 hover:underline"
+                        >
+                          bitcoinsignetfaucet.com ↗
+                        </a>
+                        <a
+                          href="https://signet.dcorral.com/"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-xs font-semibold text-amber underline-offset-2 hover:underline"
+                        >
+                          signet.dcorral.com ↗
+                        </a>
+                      </div>
+                    </div>
+                  )}
                 </>
               ) : (
                 <p className="mt-2 text-xs text-muted italic">
