@@ -180,11 +180,21 @@ jobs:
       # circuits/ is npm-managed (package-lock.json), unlike the bun-managed
       # bitcoin-script/relayer packages — matches its existing convention.
       - run: npm ci
+      - name: Cache circom binary
+        id: cache-circom
+        uses: actions/cache@v4
+        with:
+          path: /usr/local/bin/circom
+          key: circom-v2.2.3
       - name: Install circom
+        if: steps.cache-circom.outputs.cache-hit != 'true'
         run: |
           curl -fL -o /tmp/circom https://github.com/iden3/circom/releases/download/v2.2.3/circom-linux-amd64
           chmod +x /tmp/circom
           sudo mv /tmp/circom /usr/local/bin/circom
+      - name: Ensure cached circom is executable
+        if: steps.cache-circom.outputs.cache-hit == 'true'
+        run: chmod +x /usr/local/bin/circom
       - run: npm run compile
       # The existing test suite proves real deposit/borrow_repay/liquidation
       # circuits via snarkjs, which needs proving keys — same dev trusted
