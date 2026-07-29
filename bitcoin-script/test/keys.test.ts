@@ -9,7 +9,7 @@
 
 import * as ecc from '@bitcoinerlab/secp256k1';
 import { ECPairFactory } from 'ecpair';
-import { GetPublicKeyCommand, SignCommand } from '@aws-sdk/client-kms';
+import { GetPublicKeyCommand, SignCommand, type KMSClient } from '@aws-sdk/client-kms';
 import { KmsSigner, generateKeyPair, resolveProtocolSigner } from '../src/keys.js';
 import * as bitcoin from 'bitcoinjs-lib';
 
@@ -87,9 +87,9 @@ function makeMockKmsClient(opts: {
         const compact = Buffer.from(ecc.sign(hash, opts.privateKey));
         return { Signature: compactToDer(compact) };
       }
-      throw new Error(`unexpected KMS command: ${(command as any)?.constructor?.name}`);
+      throw new Error(`unexpected KMS command: ${(command as object)?.constructor?.name}`);
     },
-  } as any;
+  } as unknown as KMSClient;
 }
 
 // ── Tests ────────────────────────────────────────────────────────────────────
@@ -109,7 +109,7 @@ describe('KmsSigner.create', () => {
   });
 
   test('throws if KMS returns no public key', async () => {
-    const client = { send: async () => ({}) } as any;
+    const client = { send: async () => ({}) } as unknown as KMSClient;
     await expect(KmsSigner.create('alias/missing', network, client)).rejects.toThrow();
   });
 });
@@ -172,8 +172,8 @@ describe('KmsSigner.sign', () => {
     });
     const signer = await KmsSigner.create('alias/writz-protocol-key', network, client);
 
-    const brokenClient = { send: async () => ({}) } as any;
-    (signer as any).client = brokenClient;
+    const brokenClient = { send: async () => ({}) } as unknown as KMSClient;
+    (signer as unknown as { client: KMSClient }).client = brokenClient;
 
     await expect(signer.sign(Buffer.alloc(32))).rejects.toThrow();
   });

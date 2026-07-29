@@ -18,14 +18,12 @@
 
 import * as bitcoin from 'bitcoinjs-lib';
 import * as ecc from '@bitcoinerlab/secp256k1';
-import { ECPairFactory } from 'ecpair';
 import pkg from '../dist/index.js';
 const { deriveDepositAddress, keyPairFromPrivkey, pubkeyToP2WPKHAddress, buildReleaseTransaction, finalizePathA } = pkg;
 
 // ── Setup ─────────────────────────────────────────────────────────────────────
 
 bitcoin.initEccLib(ecc);
-const ECPair = ECPairFactory(ecc);
 
 const DRY_RUN = process.argv.includes('--dry-run');
 
@@ -92,7 +90,7 @@ async function tryFaucet(address) {
     const text = await res.text();
     const match = text.match(/[0-9a-f]{64}/i);
     if (match) return match[0];
-  } catch (_) { /* ignore */ }
+  } catch { /* ignore */ }
   return null;
 }
 
