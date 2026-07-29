@@ -7,7 +7,7 @@
 # This lets us import ESM-only packages (commitment-tree) without
 # a CJS/ESM conversion layer.
 
-FROM oven/bun:1-alpine
+FROM oven/bun:1.3.14-alpine
 
 WORKDIR /app
 

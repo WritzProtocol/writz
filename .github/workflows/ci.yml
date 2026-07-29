@@ -187,17 +187,24 @@ jobs:
         id: cache-circom
         uses: actions/cache@v4
         with:
-          path: /usr/local/bin/circom
+          path: ~/.local/bin/circom
           key: circom-v2.2.3
+      # actions/cache's restore step runs as the unprivileged runner user
+      # (no sudo), so the cached path must be runner-owned rather than a
+      # system directory like /usr/local/bin — otherwise a cache hit could
+      # fail to restore with a permission error.
+      - name: Add circom install dir to PATH
+        run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: Install circom
         if: steps.cache-circom.outputs.cache-hit != 'true'
         run: |
+          mkdir -p "$HOME/.local/bin"
           curl -fL -o /tmp/circom https://github.com/iden3/circom/releases/download/v2.2.3/circom-linux-amd64
           chmod +x /tmp/circom
-          sudo mv /tmp/circom /usr/local/bin/circom
+          mv /tmp/circom "$HOME/.local/bin/circom"
       - name: Ensure cached circom is executable
         if: steps.cache-circom.outputs.cache-hit == 'true'
-        run: chmod +x /usr/local/bin/circom
+        run: chmod +x "$HOME/.local/bin/circom"
       - name: Cache compiled circuits + dev trusted setup
         id: cache-circuits
         uses: actions/cache@v4
