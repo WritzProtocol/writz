@@ -16,7 +16,7 @@
   "dependencies": {
     "@aws-sdk/client-kms": "^3.699.0",
     "@bitcoinerlab/secp256k1": "^1.0.5",
-    "bitcoinjs-lib": "^6.1.7",
+    "bitcoinjs-lib": "^7.0.1",
     "ecpair": "^2.1.0"
   },
   "devDependencies": {
