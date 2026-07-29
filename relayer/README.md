@@ -85,10 +85,11 @@ curl http://localhost:3000/health
 
 ## Docker
 
-Build and run:
+Build from the **repo root** (the image needs `packages/commitment-tree/`
+and `bitcoin-script/`, which live outside `relayer/`):
 
 ```bash
-docker build -t writz-relayer .
+docker build -f Dockerfile -t writz-relayer .
 docker run --rm -p 3000:3000 \
   -e BITCOIN_NETWORK=signet \
   -e CORS_ORIGIN=https://app.writz.io \
