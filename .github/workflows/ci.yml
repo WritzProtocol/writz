@@ -203,6 +203,11 @@ jobs:
             circuits/build
             circuits/ptau
             circuits/keys
+          # IMPORTANT: Bump this key's "-v1" suffix when the circom version
+          # in the "Cache circom binary" step (above) changes — the hash below
+          # only covers circuit sources and setup scripts, not the compiler
+          # version. A circom version upgrade requires a manual bump here too,
+          # or stale compiled output will silently be reused with the new compiler.
           key: circuits-setup-v1-${{ hashFiles('circuits/src/**', 'circuits/scripts/compile_all.sh', 'circuits/scripts/setup_dev.sh') }}
       - run: npm run compile
         if: steps.cache-circuits.outputs.cache-hit != 'true'
