@@ -17,7 +17,7 @@
     "@noble/hashes": "^2.2.0",
     "@privy-io/react-auth": "^3.32.2",
     "@stellar/stellar-sdk": "^16.0.1",
-    "bitcoinjs-lib": "^6.1.7",
+    "bitcoinjs-lib": "^7.0.1",
     "ecpair": "^2.1.0",
     "next": "16.2.9",
     "poseidon-lite": "^0.3.0",
