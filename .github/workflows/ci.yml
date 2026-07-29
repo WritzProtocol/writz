@@ -277,10 +277,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Fail if any non-skipped job failed
+        if: contains(needs.*.result, 'failure')
         run: |
-          results='${{ toJSON(needs) }}'
-          echo "$results"
-          if echo "$results" | grep -q '"result":"failure"'; then
-            echo "One or more CI jobs failed."
-            exit 1
-          fi
+          echo "One or more CI jobs failed."
+          exit 1
+      - name: All good
+        if: "!contains(needs.*.result, 'failure')"
+        run: echo "No required job failed."
