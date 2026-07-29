@@ -195,13 +195,26 @@ jobs:
       - name: Ensure cached circom is executable
         if: steps.cache-circom.outputs.cache-hit == 'true'
         run: chmod +x /usr/local/bin/circom
+      - name: Cache compiled circuits + dev trusted setup
+        id: cache-circuits
+        uses: actions/cache@v4
+        with:
+          path: |
+            circuits/build
+            circuits/ptau
+            circuits/keys
+          key: circuits-setup-v1-${{ hashFiles('circuits/src/**', 'circuits/scripts/compile_all.sh', 'circuits/scripts/setup_dev.sh') }}
       - run: npm run compile
+        if: steps.cache-circuits.outputs.cache-hit != 'true'
       # The existing test suite proves real deposit/borrow_repay/liquidation
       # circuits via snarkjs, which needs proving keys — same dev trusted
       # setup already used locally (see scripts/setup_dev.sh's own "NOT for
       # production" warning; this is a test-only key generation step, not
-      # part of the production ceremony.
+      # part of the production ceremony. Skipped on cache hit — see the
+      # "Cache compiled circuits" step above; only reruns when circuit
+      # sources or the setup scripts themselves change.
       - run: npm run setup:dev
+        if: steps.cache-circuits.outputs.cache-hit != 'true'
       - run: npm test
 
   # Gates committed ceremony/verification-key artifacts. This is
