@@ -21,6 +21,19 @@ const TIMELOCK = 2_900_000;
 const AMOUNT_SAT = 100_000; // 0.001 BTC
 const FEE_SAT = 300;
 
+// bip174's `PsbtGlobal.unsignedTx` type only declares the methods its own
+// serialization code needs (`toBuffer`, `addInput`, ...) — not the `.tx`
+// property bitcoinjs-lib's internal `PsbtTransaction` wrapper actually
+// carries. This narrow, purpose-built cast reaches exactly the shape these
+// tests need (the underlying real `Transaction`'s inputs) without resorting
+// to `any`.
+function unsignedTxSequence(psbt: bitcoin.Psbt, index: number): number {
+  const unsignedTx = psbt.data.globalMap.unsignedTx as unknown as {
+    tx: { ins: { sequence: number }[] };
+  };
+  return unsignedTx.tx.ins[index]!.sequence;
+}
+
 // ── Test fixtures ─────────────────────────────────────────────────────────────
 
 function makeFixture() {
@@ -227,7 +240,7 @@ describe('Path B — emergency timelock', () => {
     const { spendParams } = makeFixture();
     const psbt = buildEmergencyTransaction(spendParams, TIMELOCK);
     // Inspect the sequence from the unsigned tx input via the PSBT data layer.
-    const inputSeq = (psbt.data.globalMap.unsignedTx as any).tx.ins[0].sequence as number;
+    const inputSeq = unsignedTxSequence(psbt, 0);
     expect(inputSeq).toBeLessThan(0xffff_ffff);
   });
 
@@ -239,11 +252,11 @@ describe('Path B — emergency timelock', () => {
     const { spendParams } = makeFixture();
 
     const pathA = buildReleaseTransaction(spendParams);
-    const pathAExtracted = (pathA.data.globalMap.unsignedTx as any).tx.ins[0].sequence as number;
+    const pathAExtracted = unsignedTxSequence(pathA, 0);
     expect(pathAExtracted).toBe(0xffff_fffe);
 
     const pathB = buildEmergencyTransaction(spendParams, TIMELOCK);
-    const pathBExtracted = (pathB.data.globalMap.unsignedTx as any).tx.ins[0].sequence as number;
+    const pathBExtracted = unsignedTxSequence(pathB, 0);
     expect(pathBExtracted).toBe(0xffff_fffe);
   });
 
@@ -261,7 +274,7 @@ describe('Path B — emergency timelock', () => {
     // builder must not use it — it must still emit 0xFFFFFFFE.
     const forged = { ...spendParams, sequence: 0xffff_ffff } as typeof spendParams;
     const psbt = buildEmergencyTransaction(forged, TIMELOCK);
-    const inputSeq = (psbt.data.globalMap.unsignedTx as any).tx.ins[0].sequence as number;
+    const inputSeq = unsignedTxSequence(psbt, 0);
     expect(inputSeq).toBe(0xffff_fffe);
   });
 

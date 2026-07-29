@@ -1,0 +1,29 @@
+# Version control and local tooling metadata — never needed in the image.
+.git
+.github
+.claude
+.codex
+.agents
+.stellar
+.DS_Store
+
+# Subprojects the relayer image doesn't build from.
+frontend
+contracts
+circuits
+docs
+scripts
+
+# Build artifacts and dependency caches — installed fresh inside the
+# image build stages instead, so stale local output is never copied in.
+**/node_modules
+**/dist
+**/.next
+**/target
+
+# Secrets — never bake these into an image layer.
+**/.env
+**/.env.*
+
+# Not needed at runtime.
+*.md

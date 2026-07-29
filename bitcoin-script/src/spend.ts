@@ -20,9 +20,6 @@
 import * as bitcoin from 'bitcoinjs-lib';
 import type { PsbtInput } from 'bip174/src/lib/interfaces';
 
-/** SIGHASH_ALL — the standard sighash type for Writz transactions. */
-const SIGHASH_ALL = bitcoin.Transaction.SIGHASH_ALL;
-
 /** Sequence value that enables nLockTime checking (any value < 0xFFFFFFFF). */
 const SEQUENCE_LOCKTIME_ENABLED = 0xffff_fffe;
 

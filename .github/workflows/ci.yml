@@ -11,8 +11,45 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: detect changed areas
+    runs-on: ubuntu-latest
+    outputs:
+      frontend: ${{ steps.filter.outputs.frontend }}
+      relayer: ${{ steps.filter.outputs.relayer }}
+      bitcoin_script: ${{ steps.filter.outputs.bitcoin_script }}
+      contracts: ${{ steps.filter.outputs.contracts }}
+      circuits: ${{ steps.filter.outputs.circuits }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            frontend:
+              - 'frontend/**'
+              - '.github/workflows/ci.yml'
+            relayer:
+              - 'relayer/**'
+              - 'packages/commitment-tree/**'
+              - 'bitcoin-script/**'
+              - 'Dockerfile'
+              - '.dockerignore'
+              - '.github/workflows/ci.yml'
+            bitcoin_script:
+              - 'bitcoin-script/**'
+              - '.github/workflows/ci.yml'
+            contracts:
+              - 'contracts/**'
+              - '.github/workflows/ci.yml'
+            circuits:
+              - 'circuits/**'
+              - '.github/workflows/ci.yml'
+
   frontend:
     name: frontend (bun · lint + build)
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -22,18 +59,32 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.3.14
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
       - run: bun install --frozen-lockfile
       - run: bun run lint
       - run: bun run build
 
   relayer:
     name: relayer (bun · typecheck + test)
+    needs: changes
+    if: needs.changes.outputs.relayer == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.3.14
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
       - run: bun install --frozen-lockfile
         working-directory: packages/commitment-tree
       # relayer's repay-watcher depends on the local
@@ -47,11 +98,38 @@ jobs:
         working-directory: relayer
       - run: bun run typecheck
         working-directory: relayer
+      - run: bun run lint
+        working-directory: relayer
       - run: bun run test
         working-directory: relayer
 
+  relayer-docker-build:
+    name: relayer (docker build + boot smoke test)
+    needs: changes
+    if: needs.changes.outputs.relayer == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build relayer image
+        run: docker build -f Dockerfile -t writz-relayer-ci .
+      - name: Boot container and check /health
+        run: |
+          docker run -d --name relayer-smoke -p 3000:3000 -e BITCOIN_NETWORK=signet writz-relayer-ci
+          for i in $(seq 1 15); do
+            if curl -sf http://localhost:3000/health; then
+              echo "relayer is healthy"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "relayer never became healthy" >&2
+          docker logs relayer-smoke
+          exit 1
+
   bitcoin-script:
     name: bitcoin-script (bun · test)
+    needs: changes
+    if: needs.changes.outputs.bitcoin_script == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -61,11 +139,20 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.3.14
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
       - run: bun install --frozen-lockfile
+      - run: bun run lint
       - run: bun test
 
   contracts:
     name: contracts (cargo test)
+    needs: changes
+    if: needs.changes.outputs.contracts == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -80,6 +167,8 @@ jobs:
 
   circuits:
     name: circuits (circom compile + test)
+    needs: changes
+    if: needs.changes.outputs.circuits == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -89,21 +178,58 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
+          cache-dependency-path: circuits/package-lock.json
       # circuits/ is npm-managed (package-lock.json), unlike the bun-managed
       # bitcoin-script/relayer packages — matches its existing convention.
       - run: npm ci
+      - name: Cache circom binary
+        id: cache-circom
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/bin/circom
+          key: circom-v2.2.3
+      # actions/cache's restore step runs as the unprivileged runner user
+      # (no sudo), so the cached path must be runner-owned rather than a
+      # system directory like /usr/local/bin — otherwise a cache hit could
+      # fail to restore with a permission error.
+      - name: Add circom install dir to PATH
+        run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: Install circom
+        if: steps.cache-circom.outputs.cache-hit != 'true'
         run: |
+          mkdir -p "$HOME/.local/bin"
           curl -fL -o /tmp/circom https://github.com/iden3/circom/releases/download/v2.2.3/circom-linux-amd64
           chmod +x /tmp/circom
-          sudo mv /tmp/circom /usr/local/bin/circom
+          mv /tmp/circom "$HOME/.local/bin/circom"
+      - name: Ensure cached circom is executable
+        if: steps.cache-circom.outputs.cache-hit == 'true'
+        run: chmod +x "$HOME/.local/bin/circom"
+      - name: Cache compiled circuits + dev trusted setup
+        id: cache-circuits
+        uses: actions/cache@v4
+        with:
+          path: |
+            circuits/build
+            circuits/ptau
+            circuits/keys
+          # IMPORTANT: Bump this key's "-v1" suffix when the circom version
+          # in the "Cache circom binary" step (above) changes — the hash below
+          # only covers circuit sources and setup scripts, not the compiler
+          # version. A circom version upgrade requires a manual bump here too,
+          # or stale compiled output will silently be reused with the new compiler.
+          key: circuits-setup-v1-${{ hashFiles('circuits/src/**', 'circuits/scripts/compile_all.sh', 'circuits/scripts/setup_dev.sh') }}
       - run: npm run compile
+        if: steps.cache-circuits.outputs.cache-hit != 'true'
       # The existing test suite proves real deposit/borrow_repay/liquidation
       # circuits via snarkjs, which needs proving keys — same dev trusted
       # setup already used locally (see scripts/setup_dev.sh's own "NOT for
       # production" warning; this is a test-only key generation step, not
-      # part of the production ceremony.
+      # part of the production ceremony. Skipped on cache hit — see the
+      # "Cache compiled circuits" step above; only reruns when circuit
+      # sources or the setup scripts themselves change.
       - run: npm run setup:dev
+        if: steps.cache-circuits.outputs.cache-hit != 'true'
       - run: npm test
 
   # Gates committed ceremony/verification-key artifacts. This is
@@ -116,6 +242,8 @@ jobs:
   # 04_export.js writes a manifest.
   circuits-ceremony-verify:
     name: circuits ceremony verify
+    needs: changes
+    if: needs.changes.outputs.circuits == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -191,3 +319,26 @@ jobs:
             }
             if (failed) process.exit(1);
           '
+
+  ci-summary:
+    name: CI summary
+    if: always()
+    needs:
+      - changes
+      - frontend
+      - relayer
+      - relayer-docker-build
+      - bitcoin-script
+      - contracts
+      - circuits
+      - circuits-ceremony-verify
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail if any non-skipped job failed
+        if: contains(needs.*.result, 'failure')
+        run: |
+          echo "One or more CI jobs failed."
+          exit 1
+      - name: All good
+        if: "!contains(needs.*.result, 'failure')"
+        run: echo "No required job failed."
