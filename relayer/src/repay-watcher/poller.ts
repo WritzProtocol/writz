@@ -126,7 +126,7 @@ export interface RepayWatcherHandle {
  * startup — the rest of the relayer's HTTP API remains fully functional.
  */
 export function startRepayWatcher(): RepayWatcherHandle {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- see top-of-file comment: deliberately deferred to avoid the CJS/ESM interop crash under ts-jest.
   const { config } = require("../config.js") as typeof import("../config.js");
 
   const hasSignerConfig = Boolean(config.kmsKeyId || config.protocolSigningKeyWif);
@@ -138,10 +138,14 @@ export function startRepayWatcher(): RepayWatcherHandle {
     return { stop: () => {} };
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- see top-of-file comment: deliberately deferred to avoid the CJS/ESM interop crash under ts-jest.
   const { Keypair, rpc } = require("@stellar/stellar-sdk") as typeof import("@stellar/stellar-sdk");
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- see top-of-file comment: deliberately deferred to avoid the CJS/ESM interop crash under ts-jest.
   const { resolveProtocolSigner } = require("@writz/bitcoin-script") as typeof import("@writz/bitcoin-script");
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- see top-of-file comment: deliberately deferred to avoid the CJS/ESM interop crash under ts-jest.
   const { EsploraClient } = require("../bitcoin/esplora.js") as typeof import("../bitcoin/esplora.js");
   const { getBitcoinNetwork, handleRepayFull } =
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- see top-of-file comment: deliberately deferred to avoid the CJS/ESM interop crash under ts-jest.
     require("./handler.js") as typeof import("./handler.js");
 
   const server = new rpc.Server(config.stellarRpcUrl, {

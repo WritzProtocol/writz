@@ -2,7 +2,6 @@ import {
   buildSPVProof,
   UnconfirmedTxError,
   InsufficientConfirmationsError,
-  SPVProofBundle,
 } from '../src/bitcoin/spv.js';
 import { EsploraClient, TxInfo, MerkleProofResponse } from '../src/bitcoin/esplora.js';
 
