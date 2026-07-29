@@ -98,6 +98,8 @@ jobs:
         working-directory: relayer
       - run: bun run typecheck
         working-directory: relayer
+      - run: bun run lint
+        working-directory: relayer
       - run: bun run test
         working-directory: relayer
 
@@ -144,6 +146,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-bun-
       - run: bun install --frozen-lockfile
+      - run: bun run lint
       - run: bun test
 
   contracts:
