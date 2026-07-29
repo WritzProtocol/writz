@@ -11,8 +11,45 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: detect changed areas
+    runs-on: ubuntu-latest
+    outputs:
+      frontend: ${{ steps.filter.outputs.frontend }}
+      relayer: ${{ steps.filter.outputs.relayer }}
+      bitcoin_script: ${{ steps.filter.outputs.bitcoin_script }}
+      contracts: ${{ steps.filter.outputs.contracts }}
+      circuits: ${{ steps.filter.outputs.circuits }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            frontend:
+              - 'frontend/**'
+              - '.github/workflows/ci.yml'
+            relayer:
+              - 'relayer/**'
+              - 'packages/commitment-tree/**'
+              - 'bitcoin-script/**'
+              - 'Dockerfile'
+              - '.dockerignore'
+              - '.github/workflows/ci.yml'
+            bitcoin_script:
+              - 'bitcoin-script/**'
+              - '.github/workflows/ci.yml'
+            contracts:
+              - 'contracts/**'
+              - '.github/workflows/ci.yml'
+            circuits:
+              - 'circuits/**'
+              - '.github/workflows/ci.yml'
+
   frontend:
     name: frontend (bun · lint + build)
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -28,6 +65,8 @@ jobs:
 
   relayer:
     name: relayer (bun · typecheck + test)
+    needs: changes
+    if: needs.changes.outputs.relayer == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -50,8 +89,33 @@ jobs:
       - run: bun run test
         working-directory: relayer
 
+  relayer-docker-build:
+    name: relayer (docker build + boot smoke test)
+    needs: changes
+    if: needs.changes.outputs.relayer == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build relayer image
+        run: docker build -f Dockerfile -t writz-relayer-ci .
+      - name: Boot container and check /health
+        run: |
+          docker run -d --name relayer-smoke -p 3000:3000 -e BITCOIN_NETWORK=signet writz-relayer-ci
+          for i in $(seq 1 15); do
+            if curl -sf http://localhost:3000/health; then
+              echo "relayer is healthy"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "relayer never became healthy" >&2
+          docker logs relayer-smoke
+          exit 1
+
   bitcoin-script:
     name: bitcoin-script (bun · test)
+    needs: changes
+    if: needs.changes.outputs.bitcoin_script == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -66,6 +130,8 @@ jobs:
 
   contracts:
     name: contracts (cargo test)
+    needs: changes
+    if: needs.changes.outputs.contracts == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -80,6 +146,8 @@ jobs:
 
   circuits:
     name: circuits (circom compile + test)
+    needs: changes
+    if: needs.changes.outputs.circuits == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -116,6 +184,8 @@ jobs:
   # 04_export.js writes a manifest.
   circuits-ceremony-verify:
     name: circuits ceremony verify
+    needs: changes
+    if: needs.changes.outputs.circuits == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -191,3 +261,26 @@ jobs:
             }
             if (failed) process.exit(1);
           '
+
+  ci-summary:
+    name: CI summary
+    if: always()
+    needs:
+      - changes
+      - frontend
+      - relayer
+      - relayer-docker-build
+      - bitcoin-script
+      - contracts
+      - circuits
+      - circuits-ceremony-verify
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail if any non-skipped job failed
+        run: |
+          results='${{ toJSON(needs) }}'
+          echo "$results"
+          if echo "$results" | grep -q '"result":"failure"'; then
+            echo "One or more CI jobs failed."
+            exit 1
+          fi
