@@ -14,7 +14,7 @@
     "snarkjs": "^0.7.6"
   },
   "devDependencies": {
-    "jest": "^29.7.0"
+    "jest": "^30.4.2"
   },
   "jest": {
     "testEnvironment": "node",
