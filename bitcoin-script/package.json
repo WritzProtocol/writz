@@ -20,7 +20,7 @@
     "ecpair": "^2.1.0"
   },
   "devDependencies": {
-    "@eslint/js": "^9",
+    "@eslint/js": "^10",
     "@types/bun": "latest",
     "@types/node": "^22.0.0",
     "eslint": "^9",
