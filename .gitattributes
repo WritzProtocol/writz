@@ -1,0 +1,22 @@
+# Shell scripts must always check out with LF endings. A contributor with
+# core.autocrlf=true would otherwise get CRLF, which breaks `set -e` bash
+# under strict mode (`\r` is parsed as part of the command).
+*.sh text eol=lf
+
+# Same reasoning for the other executable text we ship.
+*.bash text eol=lf
+Makefile text eol=lf
+
+# Lockfiles and generated artifacts: normalize to LF so diffs stay readable
+# across platforms.
+*.lock text eol=lf
+bun.lock text eol=lf
+package-lock.json text eol=lf
+
+# Binary — never touch line endings, never try to diff as text.
+*.png binary
+*.svg text
+*.pdf binary
+*.wasm binary
+*.ptau binary
+*.zkey binary

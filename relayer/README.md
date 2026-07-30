@@ -157,7 +157,7 @@ Using the `@stellar/stellar-sdk`, format the values from `sorobanArgs` into Stel
 import { Contract, xdr, Address, nativeToScVal } from "@stellar/stellar-sdk";
 
 // Initialize contract instance
-const contractId = "CDFAP3J4WLFZC2N5U66X5EO62POBBIBXOKCCMCM3IRLJNXT73C4IBKA7";
+const contractId = "CC2OZ3LG5U6RE3U7QC2R5QMID5GHQBE7QXTJQ4ZSTP5W73WDTKQPRW7E";
 const commitmentTreeContract = new Contract(contractId);
 
 // Format the arguments retrieved from the relayer

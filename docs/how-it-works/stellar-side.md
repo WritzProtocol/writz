@@ -88,7 +88,7 @@ pub fn withdraw_supply(amount: i128) -> i128
 - Nullifier freshness is checked before any state change — double-spending is impossible
 - Merkle root must match the current on-chain root — stale proofs are rejected
 
-**Deployed:** `CDFAP3J4WLFZC2N5U66X5EO62POBBIBXOKCCMCM3IRLJNXT73C4IBKA7`
+**Deployed:** `CC2OZ3LG5U6RE3U7QC2R5QMID5GHQBE7QXTJQ4ZSTP5W73WDTKQPRW7E`
 
 ---
 
