@@ -32,7 +32,7 @@ npm install -g snarkjs
 ## Clone the Repository
 
 ```bash
-git clone https://github.com/writz-protocol/writz.git
+git clone https://github.com/WritzProtocol/writz.git
 cd writz
 ```
 

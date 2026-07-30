@@ -2,8 +2,8 @@
 
 > **Bitcoin was built to be yours. Your loans should be too.**
 
-[![CI](https://github.com/writz-protocol/writz/actions/workflows/ci.yml/badge.svg)](https://github.com/writz-protocol/writz/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-268%20passing-brightgreen)](https://github.com/writz-protocol/writz/actions)
+[![CI](https://github.com/WritzProtocol/writz/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/WritzProtocol/writz/actions/workflows/ci.yml?query=branch%3Amain)
+[![Tests](https://img.shields.io/badge/tests-268%20passing-brightgreen)](https://github.com/WritzProtocol/writz/actions)
 [![Network](https://img.shields.io/badge/network-Soroban%20Testnet-blue)](https://stellar.expert/explorer/testnet)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -281,7 +281,7 @@ cd ../bitcoin-script && npm install && npm test
 cd ../circuits && npm install && npm test
 ```
 
-All 268 tests pass. If anything fails, [open an issue](https://github.com/writz-protocol/writz/issues).
+All 268 tests pass. If anything fails, [open an issue](https://github.com/WritzProtocol/writz/issues).
 
 ### Full ZK End-to-End on Soroban Testnet
 
@@ -397,7 +397,7 @@ python3 scripts/diagrams/render-all.py
 
 Mainnet launch is gated on zero critical/high findings from both audits.
 
-To report a security issue: open a private [GitHub Security Advisory](https://github.com/writz-protocol/writz/security/advisories/new).
+To report a security issue: open a private [GitHub Security Advisory](https://github.com/WritzProtocol/writz/security/advisories/new).
 
 ---
 

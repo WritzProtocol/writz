@@ -21,7 +21,7 @@ Writz is open source. Contributions — bug reports, code improvements, document
 ## Development Setup
 
 ```bash
-git clone https://github.com/writz-protocol/writz.git
+git clone https://github.com/WritzProtocol/writz.git
 cd writz
 
 # Install all dependencies
