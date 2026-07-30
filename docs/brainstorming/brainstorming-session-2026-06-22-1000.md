@@ -103,7 +103,7 @@ _Concept:_ Integration with native Stellar wallets — Freighter or Lobstr — t
 _Novelty:_ Stellar Wallets Kit already supports multiple wallets with a single integration.
 
 **[BTCfi #14]: Launch with Own Frontend First**
-_Concept:_ Launch app.writz.io as a direct product. Build an early adopter user base. With demonstrated traction, wallets come to you on their own.
+_Concept:_ Launch app.writz.xyz as a direct product. Build an early adopter user base. With demonstrated traction, wallets come to you on their own.
 _Novelty:_ Uniswap, Aave and Compound all launched with their own frontend before MetaMask natively integrated them. Traction is the best sales pitch.
 
 ### Anti-patterns Detected

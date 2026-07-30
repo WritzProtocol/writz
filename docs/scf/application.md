@@ -175,7 +175,7 @@ Post-launch programs Writz intends to apply for: Growth Hack Program (after 60 d
 |---|---|---|
 | ZK circuit implementation (Circom — 3 circuits) | $28,000 | 3–4 months of specialist ZK engineering (Circom, snarkjs, trusted setup ceremony coordination) |
 | Soroban ZK verifier integration | $18,000 | Integrating Groth16 verification into PrivateLend using Protocol X-Ray BN254 ops |
-| Frontend development (app.writz.io) | $22,000 | Next.js app, Xverse wallet integration, Freighter integration, Stellar Wallets Kit |
+| Frontend development (app.writz.xyz) | $22,000 | Next.js app, Xverse wallet integration, Freighter integration, Stellar Wallets Kit |
 | Infrastructure (relayer hosting, RPC, CI/CD) | $8,000 | 12-month runway for decentralized relayer, Bitcoin RPC node, testnet/mainnet infrastructure |
 | Legal entity setup (Swiss GmbH) | $8,000 | Switzerland recommended by regulatory research for DeFi protocols |
 | Security tooling and bug bounty seed | $8,000 | Mythril/Slither scans, Certora specs, initial bug bounty program |
@@ -198,7 +198,7 @@ See [`scf/milestone-plan.md`](milestone-plan.md) for the detailed four-tranche b
 
 ## 11. Links
 
-- **Documentation:** [docs.writz.io](https://docs.writz.io) (Mintlify — live before Tranche #0 submission)
+- **Documentation:** [docs.writz.xyz](https://docs.writz.xyz) (Mintlify — live before Tranche #0 submission)
 - **GitHub:** [github.com/WritzProtocol/writz](https://github.com/WritzProtocol/writz) (going public before submission)
 - **Testnet SPV contract:** `CDYQRO6PZ55A3AMJQBHDEUUCQTSVHHRWQW7WSDX7CBX6FQ2NLKYCPLVC`
 - **Demo video:** [Recorded before Tranche #0 submission]

@@ -2,7 +2,19 @@
 
 **Responsible disclosure program for Writz Protocol.**
 
-If you find a security vulnerability in Writz Protocol, we want to hear from you before it becomes a problem. Report it responsibly and we will reward you fairly.
+> ### ⚠️ Not yet active — no cash rewards are payable today
+>
+> Writz runs on **testnet only** and holds no user funds. The paid bug bounty
+> starts at mainnet launch (targeted Q4 2026); the reward amounts below are the
+> **planned** bands for that program, not offers we can honour right now.
+>
+> **Please still report findings.** During testnet we acknowledge, fix, and
+> credit them, and a finding reported now is honoured at mainnet launch under
+> the bands below. What we cannot do today is pay on receipt — we would rather
+> say so plainly than have you assume otherwise.
+
+If you find a security vulnerability in Writz Protocol, we want to hear from you
+before it becomes a problem.
 
 ---
 
@@ -37,9 +49,11 @@ The following are in-scope for the bug bounty program:
 
 ---
 
-## Severity Levels and Rewards
+## Severity Levels and Rewards (planned — from mainnet launch)
 
-Rewards are paid in USDC on Stellar. Amounts are guidelines — actual rewards depend on impact and quality of the report.
+Rewards will be paid in USDC on Stellar once the program is active. Amounts are
+guidelines — actual rewards depend on impact and quality of the report. **None of
+these are payable during the testnet phase**; see the notice at the top.
 
 | Severity | Description | Reward |
 |---|---|---|
@@ -58,9 +72,19 @@ Rewards are paid in USDC on Stellar. Amounts are guidelines — actual rewards d
 
 ## How to Report
 
-**Email:** [security@writz.io](mailto:security@writz.io)
+**Open a private GitHub security advisory:**
+[github.com/WritzProtocol/writz/security/advisories/new](https://github.com/WritzProtocol/writz/security/advisories/new)
 
-**PGP key:** Published on Keybase at `keybase.io/writz` (coming soon)
+Only you and the maintainers can see it, and it gives us a thread to coordinate
+the fix and the reward in. See [`SECURITY.md`](https://github.com/WritzProtocol/writz/blob/main/SECURITY.md)
+for the full policy.
+
+> **There is no security mailbox yet.** Earlier versions of this page pointed at
+> `security@writz.io`, a domain with no DNS at all — mail to it bounced, and at
+> least one researcher's disclosure was lost that way. The project has since
+> moved to `writz.xyz`, which is registered but has no MX record yet, so email
+> there does not arrive either. Use the private advisory link above; this note
+> goes away once a mailbox is live.
 
 **Include in your report:**
 1. A description of the vulnerability
@@ -74,7 +98,7 @@ Rewards are paid in USDC on Stellar. Amounts are guidelines — actual rewards d
 
 ## Disclosure Process
 
-1. **You submit** a report to [security@writz.io](mailto:security@writz.io)
+1. **You submit** a [private advisory](https://github.com/WritzProtocol/writz/security/advisories/new)
 2. **We acknowledge** within 48 hours
 3. **We assess** the report and confirm the severity within 7 business days
 4. **We fix** the issue; Critical/High findings are patched within 14 days

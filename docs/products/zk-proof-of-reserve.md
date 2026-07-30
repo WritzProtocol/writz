@@ -100,7 +100,10 @@ The circuit design is complete. The required ZK infrastructure (zk-verifier cont
 
 Institutions interested in early access to ZK Proof of Reserve can contact the Writz team directly. We are targeting 5 enterprise customers by end of 2027.
 
-**Contact:** [team@writz.io](mailto:team@writz.io)
+**Contact:** open an issue at
+[github.com/WritzProtocol/writz/issues](https://github.com/WritzProtocol/writz/issues).
+(`writz.xyz` is registered but has no MX record yet, so `team@writz.xyz` does
+not receive mail — use GitHub until a mailbox is live.)
 
 ---
 

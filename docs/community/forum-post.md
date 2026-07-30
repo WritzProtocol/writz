@@ -44,7 +44,7 @@ The protocol holds a co-signing key for the P2WSH script's `<protocol_pubkey>`. 
 ---
 
 **Links:**
-- Docs: [coming to Mintlify (docs.writz.io) before the SCF application]
+- Docs: [coming to Mintlify (docs.writz.xyz) before the SCF application]
 - GitHub: [going public before SCF application]
 - Testnet contract: `CDYQRO6PZ55A3AMJQBHDEUUCQTSVHHRWQW7WSDX7CBX6FQ2NLKYCPLVC`
 
