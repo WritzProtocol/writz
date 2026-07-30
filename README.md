@@ -301,13 +301,15 @@ All 274 tests pass. If anything fails, [open an issue](https://github.com/WritzP
 
 ### Full ZK End-to-End on Soroban Testnet
 
-Runs the complete deposit → borrow → repay cycle against the live testnet contracts (6 transactions):
+Deploys a fresh commitment-tree and runs the complete deposit → borrow → repay cycle with real Groth16 proofs:
 
 ```bash
 WRITZ_DEV_SECRET=<your-testnet-key> node scripts/deploy/e2e_zkflow.js
 ```
 
 Get a free testnet key and fund it with [Stellar Friendbot](https://friendbot.stellar.org).
+
+This needs compiled circuit artifacts and a built contract wasm, neither of which is in git. **Read the [Testnet Runbook](docs/developers/runbook.md) first** — it covers the build chain, the trusted-setup caveat that otherwise makes proofs fail on-chain, the testnet assumptions (XLM stands in for USDC, the Bitcoin transaction is fabricated), and the manual Signet walkthrough for the Bitcoin half.
 
 ### Frontend Dev Server
 

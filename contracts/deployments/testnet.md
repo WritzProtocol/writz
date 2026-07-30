@@ -200,3 +200,25 @@ tb1q2ewa3444emmn80sxg9ncfsr9v8pn0cc2ae2fy5u2qqm4a4jewwhsqwjt2m
 - Groth16 repay proof: field-negation repay amount recovered correctly ✅
 - Pool accounting updated after each operation ✅
 - All proofs verified against `zk-verifier` contract `CDV45GLXG4AOU6BDZSY5YHHVNGQIAYAPD3PUGXIIIYLIO6V2XGO6SMFV` ✅
+
+### Re-run after the `enc_note` interface change (#18)
+
+The 2026-06-22 run above predates `enc_note`. `e2e_zkflow.js` was not updated
+alongside the contract, so it failed at the deposit step until fixed (#15).
+Re-verified against the current interface:
+
+**Test instance:** `CBM5OUBYBICB3QB4T5PAGYUWWLZOIVWQCUHKV3HCSNZGB72GYM5Q5ID4`
+**Token:** XLM native SAC (`CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC`)
+**Date:** 2026-07-30 · whole run completes in about a minute
+
+| Step | Transaction |
+|------|-------------|
+| initialize | [`aed32de63b…`](https://stellar.expert/explorer/testnet/tx/aed32de63bcb4888defb564f703e01eb50907732ee10f2b966a9b286b675a034) |
+| supply_usdc (500 XLM) | [`512b91d750…`](https://stellar.expert/explorer/testnet/tx/512b91d750d39bdcc196b2ec38266b6e9ffc5f0ebda4573bd1a4ac1c76936ffa) |
+| **deposit** (ZK proof ✅) | [`c3320d79f9…`](https://stellar.expert/explorer/testnet/tx/c3320d79f955ad35ad32ebae2d849024d6d69d597a0b355d8ec2ebb5e22f7e29) |
+| insert_commitment | [`9fbed23db3…`](https://stellar.expert/explorer/testnet/tx/9fbed23db3b91e2520cf54ab54f715284d700fb011c16d2b64d5e9fade2635bb) |
+| **borrow** 200 XLM (ZK proof ✅) | [`b7b83f7501…`](https://stellar.expert/explorer/testnet/tx/b7b83f750128df68b1cd2f91a375b6e5393d7daac764bba1fa87cf3484a6541a) |
+| **repay** 200 XLM (ZK proof ✅) | [`261d8b14ab…`](https://stellar.expert/explorer/testnet/tx/261d8b14ab83414b712a0ba8a817ccbc0a6b36de2ef03896ea986beecdb82f14) |
+
+Reproduction steps, build prerequisites, and the trusted-setup caveat:
+[`docs/developers/runbook.md`](../../docs/developers/runbook.md).
