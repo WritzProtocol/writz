@@ -14,7 +14,7 @@ Writz is open source. Contributions — bug reports, code improvements, document
 
 **Security research:** See the [Bug Bounty](../security/bug-bounty.md) page for responsible disclosure guidelines and rewards.
 
-**ZK ceremony participation:** The Groth16 trusted setup ceremony requires independent participants. If you're interested in participating, [contact us](mailto:team@writz.io). No technical background required — participants just need to run a script and discard their randomness.
+**ZK ceremony participation:** The Groth16 trusted setup ceremony requires independent participants. If you're interested in participating, [open an issue](https://github.com/WritzProtocol/writz/issues) (`writz.xyz` has no mailbox yet). No technical background required — participants just need to run a script and discard their randomness.
 
 ---
 
@@ -80,7 +80,7 @@ The following areas are actively looking for contributors:
 
 | Area | Description | Skill needed |
 |---|---|---|
-| Frontend (app.writz.io) | React/Next.js frontend for PrivateLend | React, TypeScript, Stellar Wallets Kit |
+| Frontend (app.writz.xyz) | React/Next.js frontend for PrivateLend | React, TypeScript, Stellar Wallets Kit |
 | WASM prover integration | Integrate circom WASM prover in browser | TypeScript, snarkjs |
 | Phase 2 ceremony tooling | Scripts for Powers of Tau Phase 2 ceremony | snarkjs, cryptography |
 | Taproot migration | Upgrade P2WSH to P2TR for Phase 2 | Bitcoin Script, bitcoinjs-lib |

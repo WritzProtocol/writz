@@ -92,7 +92,7 @@ and `bitcoin-script/`, which live outside `relayer/`):
 docker build -f Dockerfile -t writz-relayer .
 docker run --rm -p 3000:3000 \
   -e BITCOIN_NETWORK=signet \
-  -e CORS_ORIGIN=https://app.writz.io \
+  -e CORS_ORIGIN=https://app.writz.xyz \
   writz-relayer
 ```
 
@@ -107,7 +107,7 @@ docker run --rm -p 3000:3000 --env-file .env writz-relayer
 The container listens on `PORT` (default `3000`). Set `CORS_ORIGIN` to your frontend URL in production:
 
 ```
-CORS_ORIGIN=https://app.writz.io
+CORS_ORIGIN=https://app.writz.xyz
 ```
 
 For a public demo on signet:

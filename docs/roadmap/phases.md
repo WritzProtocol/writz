@@ -68,7 +68,7 @@ Research    ──►  Foundation  ──►  Launch      ──►  Scale
 |---|---|
 | Protocol 27 monitoring (July 8, 2026) | Monitor testnet; update co-signing key architecture after P27 ships |
 | Push repo public | Ready — waiting for community engagement first |
-| Mintlify docs at docs.writz.io | Connect GitHub → publish (mint.json ready) |
+| Mintlify docs at docs.writz.xyz | Connect GitHub → publish (mint.json ready) |
 | Demo video (testnet) | Record after docs are live |
 | Community engagement | Discord, GitHub discussions, Stellar forum — 2–3 weeks |
 | SCF referral | Approach Stellar ecosystem members after community presence established |
@@ -109,7 +109,7 @@ Research    ──►  Foundation  ──►  Launch      ──►  Scale
 - OtterSec/Zellic audit: Soroban contracts
 - Remediate all Critical/High/Medium findings
 
-**Frontend (app.writz.io):**
+**Frontend (app.writz.xyz):**
 - Deposit flow UI: connect Xverse → P2WSH → SPV proof → ZK commitment
 - Borrow/repay UI with local position decryption
 - Position dashboard (health factor, interest accrued)

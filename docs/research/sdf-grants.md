@@ -140,7 +140,7 @@ Per SCF v7.0's four-tranche disbursement: 10% / 20% / 30% / 40%
 |---|---|---|---|
 | **#0** | 10% | ~$9,200 | Bitcoin SPV client verifies a Bitcoin mainnet transaction on Soroban testnet. GitHub repo public with technical documentation. |
 | **#1** | 20% | ~$18,400 | PrivateLend v1 on Soroban testnet: deposit BTC via SPV → borrow USDC with ZK-private position. End-to-end testnet demo published. |
-| **#2** | 30% | ~$27,600 | Circom circuits (deposit, borrow/repay, liquidation) complete. Trusted setup ceremony executed. Frontend v1 (app.writz.io) on testnet. |
+| **#2** | 30% | ~$27,600 | Circom circuits (deposit, borrow/repay, liquidation) complete. Trusted setup ceremony executed. Frontend v1 (app.writz.xyz) on testnet. |
 | **#3** | 40% | ~$36,800 | Mainnet deployment. First real BTC deposit processed. Public launch with $50K TVL cap. |
 
 ---
@@ -190,7 +190,7 @@ These programs are not part of the initial SCF application — they are post-lau
 
 - [ ] Stellar Discord community engagement (start before applying)
 - [ ] GitHub repository public with initial SPV prototype
-- [ ] Mintlify docs live (docs.writz.io, `docs/` connected to GitHub)
+- [ ] Mintlify docs live (docs.writz.xyz, `docs/` connected to GitHub)
 - [ ] Testnet demo video (SPV verification of a real Bitcoin tx on Soroban)
 - [ ] Team video presentation recorded
 - [ ] STRIDE threat model drafted

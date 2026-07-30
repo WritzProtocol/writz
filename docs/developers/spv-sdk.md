@@ -97,7 +97,7 @@ Your contract needs the SPV proof data as input. Use the Writz Relayer API to as
 ### Writz Relayer API
 
 ```bash
-GET https://relayer.writz.io/spv-proof/{txid}
+GET https://relayer.writz.xyz/spv-proof/{txid}
 ```
 
 **Response:**
@@ -141,7 +141,7 @@ The `writz-sdk` npm package (planned Q4 2026) will wrap this logic for easy inte
 
 Writz charges a small fee per verification call in Phase 3 (after TVL and adoption milestones), but early integrators and protocols that contribute to the ecosystem will be whitelisted for free access.
 
-If you are building on Stellar and want to integrate Bitcoin SPV, [reach out directly](mailto:team@writz.io) — we will work with you.
+If you are building on Stellar and want to integrate Bitcoin SPV, [open an issue](https://github.com/WritzProtocol/writz/issues) (`writz.xyz` has no mailbox yet) — we will work with you.
 
 ---
 

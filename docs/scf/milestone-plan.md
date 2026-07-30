@@ -46,7 +46,7 @@ All code open-sourced under MIT license:
 
 ### Deliverable 3: Public documentation on Mintlify
 
-`docs.writz.io` live with: project overview, architecture, all 15 research documents, roadmap, and SCF application. Powered by Mintlify connected to the public GitHub repo.
+`docs.writz.xyz` live with: project overview, architecture, all 15 research documents, roadmap, and SCF application. Powered by Mintlify connected to the public GitHub repo.
 
 ### Deliverable 4: Testnet demo video
 
@@ -131,7 +131,7 @@ export, and a CI gate on the committed manifest) is implemented in
 `circuits/scripts/ceremony/` — see that directory's `README.md` for the
 step-by-step runbook.
 
-### Deliverable 3: Frontend v1 live on testnet (app.writz.io)
+### Deliverable 3: Frontend v1 live on testnet (app.writz.xyz)
 
 Functional testnet frontend with:
 - Xverse wallet connection (BTC side)

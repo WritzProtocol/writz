@@ -92,7 +92,7 @@ Collateral amount, debt size, health ratio — all hidden. Nobody knows you're a
 ```
 
 ```
-5/ Building toward SCF application. Docs will be public on Mintlify (docs.writz.io) next week.
+5/ Building toward SCF application. Docs will be public on Mintlify (docs.writz.xyz) next week.
 
 If you're in the Stellar ecosystem and want to collaborate or give feedback — DM me or drop a comment on the GitHub discussion [link].
 ```
@@ -211,7 +211,7 @@ The SCF Open Track submission requires public documentation. Writz uses Mintlify
 5. Publish → your docs live at `[your-slug].mintlify.app`
 
 **Custom domain:**
-- Point `docs.writz.io` → go to Mintlify dashboard → Settings → Custom Domain → add `docs.writz.io`
+- Point `docs.writz.xyz` → go to Mintlify dashboard → Settings → Custom Domain → add `docs.writz.xyz`
 - Add the CNAME record in your DNS provider
 
 **Local preview (before publishing):**
@@ -222,7 +222,7 @@ npx mintlify dev
 ```
 
 **After publishing, update `mint.json`:**
-Replace placeholder URLs (`https://github.com/WritzProtocol/writz`, `https://app.writz.io`) with the real ones once the GitHub repo is public.
+Replace placeholder URLs (`https://github.com/WritzProtocol/writz`, `https://app.writz.xyz`) with the real ones once the GitHub repo is public.
 
 ---
 
@@ -232,7 +232,7 @@ Replace placeholder URLs (`https://github.com/WritzProtocol/writz`, `https://app
 |---|---|---|
 | Week 1 | Join Discord, listen, answer one non-Writz question | Establish presence, learn the community |
 | Week 2 | Post Discord announcement + GitHub discussion + Twitter thread + Reddit post | Go public |
-| Week 2 | Launch Mintlify docs | Have public docs live at docs.writz.io |
+| Week 2 | Launch Mintlify docs | Have public docs live at docs.writz.xyz |
 | Week 3 | Identify 3 referral candidates, start genuine engagement | Build toward referral |
 | Week 3 | Follow up with Discord conversations, reply to all GitHub discussion comments | Sustain presence |
 | Week 4 | Ask for referral from best candidate | Secure referral if possible |

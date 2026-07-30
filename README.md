@@ -358,7 +358,7 @@ python3 scripts/diagrams/render-all.py
 - [x] P2WSH locking and release tested on Bitcoin Signet
 - [ ] SCF Build Award submitted (~$92K, Open Track)
 - [ ] Trusted setup ceremony planned (5+ independent participants)
-- [ ] Mintlify docs live at docs.writz.io
+- [ ] Mintlify docs live at docs.writz.xyz
 
 **Phase 2 — Launch** *(Q4 2026)*
 
@@ -413,7 +413,7 @@ python3 scripts/diagrams/render-all.py
 
 Mainnet launch is gated on zero critical/high findings from both audits.
 
-To report a security issue: open a private [GitHub Security Advisory](https://github.com/WritzProtocol/writz/security/advisories/new).
+To report a security issue: open a private [GitHub Security Advisory](https://github.com/WritzProtocol/writz/security/advisories/new). Full policy, response targets, and safe harbour in [`SECURITY.md`](SECURITY.md); rewards and severity bands in [`docs/security/bug-bounty.md`](docs/security/bug-bounty.md).
 
 ---
 

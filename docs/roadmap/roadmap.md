@@ -209,7 +209,7 @@ Build community presence before submitting the SCF application. Referrals from c
 - [ ] Post Phase 1 progress updates in Stellar developer forum
 - [ ] Open a GitHub Discussion in the Stellar ecosystem repos (e.g., contribute to a CAP discussion)
 - [ ] Identify and approach a Stellar ecosystem member for a referral to SCF
-- [ ] Port `docs/` to public Mintlify docs at docs.writz.io (required by Open Track submission criteria)
+- [ ] Port `docs/` to public Mintlify docs at docs.writz.xyz (required by Open Track submission criteria)
 
 **Content prepared (ready to post):**
 - [x] `docs/community/forum-post.md` — Stellar Discord #soroban announcement (copy-paste ready)
@@ -226,7 +226,7 @@ Submit the SCF Build Award application. Target: $92,000 worth of XLM. This is a 
 **Pre-requisites before submitting:**
 - [x] SPV prototype working on testnet ✅ (`CDYQRO6PZ55A3AMJQBHDEUUCQTSVHHRWQW7WSDX7CBX6FQ2NLKYCPLVC`)
 - [ ] Public GitHub repo with clean, documented code (push repo public)
-- [ ] Public Mintlify docs live at docs.writz.io (run `npx mintlify dev`, connect to GitHub)
+- [ ] Public Mintlify docs live at docs.writz.xyz (run `npx mintlify dev`, connect to GitHub)
 - [ ] Testnet demo video recorded
 - [ ] Team video presentation recorded
 - [x] STRIDE threat model drafted ✅ (`docs/scf/stride-threat-model.md`)
@@ -375,7 +375,7 @@ Apply to the Soroban Security Audit Bank (separate from the SCF Build Award).
 
 ---
 
-### 2.5 Frontend — app.writz.io
+### 2.5 Frontend — app.writz.xyz
 
 **Tasks:**
 - [ ] Build deposit flow UI: connect Xverse → send to P2WSH → wait for confirmations → submit SPV proof → receive USDC
