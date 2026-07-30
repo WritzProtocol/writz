@@ -222,7 +222,7 @@ npx mintlify dev
 ```
 
 **After publishing, update `mint.json`:**
-Replace placeholder URLs (`https://github.com/writz-protocol/writz`, `https://app.writz.io`) with the real ones once the GitHub repo is public.
+Replace placeholder URLs (`https://github.com/WritzProtocol/writz`, `https://app.writz.io`) with the real ones once the GitHub repo is public.
 
 ---
 

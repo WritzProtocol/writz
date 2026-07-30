@@ -199,7 +199,7 @@ See [`scf/milestone-plan.md`](milestone-plan.md) for the detailed four-tranche b
 ## 11. Links
 
 - **Documentation:** [docs.writz.io](https://docs.writz.io) (Mintlify — live before Tranche #0 submission)
-- **GitHub:** [github.com/writz-protocol/writz](https://github.com/writz-protocol/writz) (going public before submission)
+- **GitHub:** [github.com/WritzProtocol/writz](https://github.com/WritzProtocol/writz) (going public before submission)
 - **Testnet SPV contract:** `CDYQRO6PZ55A3AMJQBHDEUUCQTSVHHRWQW7WSDX7CBX6FQ2NLKYCPLVC`
 - **Demo video:** [Recorded before Tranche #0 submission]
 - **Team video:** [Recorded before submission]
