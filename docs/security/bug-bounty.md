@@ -2,7 +2,19 @@
 
 **Responsible disclosure program for Writz Protocol.**
 
-If you find a security vulnerability in Writz Protocol, we want to hear from you before it becomes a problem. Report it responsibly and we will reward you fairly.
+> ### ⚠️ Not yet active — no cash rewards are payable today
+>
+> Writz runs on **testnet only** and holds no user funds. The paid bug bounty
+> starts at mainnet launch (targeted Q4 2026); the reward amounts below are the
+> **planned** bands for that program, not offers we can honour right now.
+>
+> **Please still report findings.** During testnet we acknowledge, fix, and
+> credit them, and a finding reported now is honoured at mainnet launch under
+> the bands below. What we cannot do today is pay on receipt — we would rather
+> say so plainly than have you assume otherwise.
+
+If you find a security vulnerability in Writz Protocol, we want to hear from you
+before it becomes a problem.
 
 ---
 
@@ -37,9 +49,11 @@ The following are in-scope for the bug bounty program:
 
 ---
 
-## Severity Levels and Rewards
+## Severity Levels and Rewards (planned — from mainnet launch)
 
-Rewards are paid in USDC on Stellar. Amounts are guidelines — actual rewards depend on impact and quality of the report.
+Rewards will be paid in USDC on Stellar once the program is active. Amounts are
+guidelines — actual rewards depend on impact and quality of the report. **None of
+these are payable during the testnet phase**; see the notice at the top.
 
 | Severity | Description | Reward |
 |---|---|---|
