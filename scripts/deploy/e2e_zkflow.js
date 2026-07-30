@@ -34,10 +34,18 @@ const {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const RPC_URL       = 'https://soroban-testnet.stellar.org';
+const RPC_URL       = process.env.STELLAR_RPC_URL ?? 'https://soroban-testnet.stellar.org';
 const NETWORK       = Networks.TESTNET;
-const SPV_CONTRACT  = 'CAE5L7BO2GNF7MIZWXB2BTUMLYNIMQZUSWN2BWLZQS7HRHLOUSL6VLWJ';
-const ZK_VERIFIER   = 'CDV45GLXG4AOU6BDZSY5YHHVNGQIAYAPD3PUGXIIIYLIO6V2XGO6SMFV';
+const SPV_CONTRACT  = process.env.BITCOIN_SPV_ID ?? 'CAE5L7BO2GNF7MIZWXB2BTUMLYNIMQZUSWN2BWLZQS7HRHLOUSL6VLWJ';
+
+// The zk-verifier holds the Groth16 verification keys, so the proofs this
+// script generates must come from the SAME trusted setup that produced them.
+// `circuits/scripts/setup_dev.sh` seeds its entropy with `$(date)`, so
+// regenerating the setup yields keys that will NOT verify against the shared
+// testnet verifier below. If you regenerated, deploy your own zk-verifier,
+// push your keys with `set_vkeys.js`, and point this at it via ZK_VERIFIER_ID.
+// See docs/developers/runbook.md § Trusted setup.
+const ZK_VERIFIER   = process.env.ZK_VERIFIER_ID ?? 'CDV45GLXG4AOU6BDZSY5YHHVNGQIAYAPD3PUGXIIIYLIO6V2XGO6SMFV';
 // XLM native Stellar Asset Contract — no trustline needed, always available
 const XLM_SAC       = 'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC';
 
@@ -54,7 +62,12 @@ const PRICE_STROOPS       = 600_000_000_000n; // $60k in stroops/BTC
 const MIN_RATIO_BP        = 15_000n;          // 150%
 const SUPPLY_AMOUNT       = 5_000_000_000n;   // 500 XLM stroops to pool
 const MIN_CONFIRMATIONS   = 1;
-const MIN_DEPOSIT_SATS    = 100_000n;         // 0.001 BTC
+// MUST match `min_deposit_satoshis` in commitment-tree's `initialize`, which
+// hardcodes 10_000 (0.0001 BTC — lowered for signet faucet testing). The
+// contract binds this into the deposit proof's public signals and rejects a
+// mismatch with ProtocolParamMismatch (#11), so a stale value here fails the
+// whole flow at the deposit step.
+const MIN_DEPOSIT_SATS    = 10_000n;          // 0.0001 BTC
 
 // Fake Bitcoin raw transaction for testing
 const RAW_TX_HEX = '010000000000000000';
@@ -159,6 +172,17 @@ function signalsToScVal(publicSignals) {
 
 function bytesNToScVal(buf) {
     return xdr.ScVal.scvBytes(buf);
+}
+
+/**
+ * `enc_note` — the sealed recovery note added to deposit/borrow/repay by #18.
+ * The contract does not validate it; it is echoed into the emitted event so a
+ * client can rediscover its positions by replaying events. This script passes
+ * an empty note: it exercises the contract interface but NOT the encrypt /
+ * decrypt round-trip, which lives in the frontend (`position/notes.ts`).
+ */
+function emptyEncNote() {
+    return xdr.ScVal.scvBytes(Buffer.alloc(0));
 }
 
 function bigIntToScVal(n, bytes = 32) {
@@ -393,6 +417,7 @@ async function main() {
         bytesNToScVal(rawTxBuf),                // raw_tx
         proofToScVal(depProof),
         signalsToScVal(depSignals),
+        emptyEncNote(),
     ]);
     console.log(`✓ deposit submitted — tx ${depResult.hash}`);
     console.log(`  https://stellar.expert/explorer/testnet/tx/${depResult.hash}`);
@@ -471,6 +496,7 @@ async function main() {
         addressToScVal(keypair.publicKey()),
         proofToScVal(borProof),
         signalsToScVal(borSignals),
+        emptyEncNote(),
     ]);
     console.log(`✓ borrow ${BORROW_AMOUNT} stroops (${Number(BORROW_AMOUNT) / 1e7} XLM) — tx ${borResult.hash}`);
     console.log(`  https://stellar.expert/explorer/testnet/tx/${borResult.hash}`);
@@ -520,6 +546,7 @@ async function main() {
         addressToScVal(keypair.publicKey()),
         proofToScVal(repProof),
         signalsToScVal(repSignals),
+        emptyEncNote(),
     ]);
     console.log(`✓ repay ${BORROW_AMOUNT} stroops — tx ${repResult.hash}`);
     console.log(`  https://stellar.expert/explorer/testnet/tx/${repResult.hash}`);

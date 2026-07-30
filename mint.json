@@ -92,6 +92,7 @@
       "group": "Developers",
       "pages": [
         "docs/developers/quick-start",
+        "docs/developers/runbook",
         "docs/developers/spv-sdk",
         "docs/developers/contract-reference",
         "docs/developers/contribution-guide"
