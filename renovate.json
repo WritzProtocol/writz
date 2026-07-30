@@ -1,0 +1,46 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", ":semanticCommitTypeAll(chore)"],
+
+  "timezone": "Etc/UTC",
+  "schedule": ["before 6am on monday"],
+
+  "dependencyDashboard": true,
+  "dependencyDashboardTitle": "Dependency Dashboard",
+
+  "prConcurrentLimit": 3,
+  "prHourlyLimit": 2,
+  "rebaseWhen": "conflicted",
+
+  "ignorePaths": [
+    "**/node_modules/**",
+    "**/.next/**",
+    "**/target/**",
+    "relayer/package-lock.json"
+  ],
+
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 6am on the first day of the month"]
+  },
+
+  "packageRules": [
+    {
+      "description": "Everything non-breaking lands in a single weekly PR — npm, bun, cargo and github-actions together. This is the whole point of moving off Dependabot, which opened one PR per package per directory.",
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "groupName": "all non-major dependencies",
+      "groupSlug": "all-minor-patch"
+    },
+    {
+      "description": "Majors are never auto-raised: they wait as checkboxes on the Dependency Dashboard, so a breaking bump (typescript 7, eslint 10, bitcoinjs-lib 7, soroban-sdk 27) only becomes a PR once someone opts in.",
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true
+    },
+    {
+      "description": "soroban-sdk is pinned to the contracts' protocol floor: a major also raises the required Stellar CLI version and can change bn254/Poseidon host-function behaviour, so it must be reviewed by hand alongside contracts/deployments.",
+      "matchManagers": ["cargo"],
+      "matchPackageNames": ["soroban-sdk"],
+      "dependencyDashboardApproval": true
+    }
+  ]
+}
