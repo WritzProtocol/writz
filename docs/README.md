@@ -82,11 +82,11 @@ Writz is the first trustless Bitcoin lending protocol on Stellar. Lock real BTC.
 
 **Phase:** 1 — Foundation (in progress, June 2026)
 
-**All contracts live on Soroban testnet. 268 tests passing.**
+**All contracts live on Soroban testnet. 274 tests passing.**
 
 | Contract | Address |
 |---|---|
 | `bitcoin-spv` | `CAE5L7BO2GNF7MIZWXB2BTUMLYNIMQZUSWN2BWLZQS7HRHLOUSL6VLWJ` |
 | `zk-verifier` | `CDV45GLXG4AOU6BDZSY5YHHVNGQIAYAPD3PUGXIIIYLIO6V2XGO6SMFV` |
-| `commitment-tree` | `CDFAP3J4WLFZC2N5U66X5EO62POBBIBXOKCCMCM3IRLJNXT73C4IBKA7` |
+| `commitment-tree` | `CC2OZ3LG5U6RE3U7QC2R5QMID5GHQBE7QXTJQ4ZSTP5W73WDTKQPRW7E` |
 | `private-lend` | `CCLH2GJYG3QSHZJI7V7VK3DNMNK3I3QJCECBSFGX3AC6CK4I7EF7ZJ2G` |

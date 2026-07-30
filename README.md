@@ -3,7 +3,7 @@
 > **Bitcoin was built to be yours. Your loans should be too.**
 
 [![CI](https://github.com/WritzProtocol/writz/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/WritzProtocol/writz/actions/workflows/ci.yml?query=branch%3Amain)
-[![Tests](https://img.shields.io/badge/tests-268%20passing-brightgreen)](https://github.com/WritzProtocol/writz/actions)
+[![Tests](https://img.shields.io/badge/tests-274%20passing-brightgreen)](https://github.com/WritzProtocol/writz/actions)
 [![Network](https://img.shields.io/badge/network-Soroban%20Testnet-blue)](https://stellar.expert/explorer/testnet)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -28,7 +28,7 @@ No bridge. No custodian. No wrapped tokens. No public balance sheet.
 
 ## This Is Not a Whitepaper
 
-As of June 2026, four contracts are live on Soroban testnet, 268 tests pass, and real Bitcoin transactions have been verified on-chain.
+As of June 2026, four contracts are live on Soroban testnet, 274 tests pass, and real Bitcoin transactions have been verified on-chain.
 
 | What | Status |
 |---|---|
@@ -37,16 +37,16 @@ As of June 2026, four contracts are live on Soroban testnet, 268 tests pass, and
 | P2WSH locking + co-signed BTC release | ✅ Broadcast on Bitcoin Signet |
 | Poseidon Merkle commitment tree | ✅ Root updated on-chain |
 | Full deposit → borrow → repay ZK flow | ✅ 6 sequential testnet transactions |
-| 268 tests across all modules | ✅ All passing |
+| 274 tests across all modules | ✅ All passing |
 
 ### Live Testnet Contracts
 
 | Contract | Address | WASM | Tests |
 |---|---|---|---|
-| `bitcoin-spv` | `CAE5L7BO2GNF7MIZWXB2BTUMLYNIMQZUSWN2BWLZQS7HRHLOUSL6VLWJ` | 5.2 KB | 28 |
+| `bitcoin-spv` | `CAE5L7BO2GNF7MIZWXB2BTUMLYNIMQZUSWN2BWLZQS7HRHLOUSL6VLWJ` | 5.2 KB | 47 |
 | `zk-verifier` | `CDV45GLXG4AOU6BDZSY5YHHVNGQIAYAPD3PUGXIIIYLIO6V2XGO6SMFV` | 11.8 KB | 18 |
-| `commitment-tree` | `CDFAP3J4WLFZC2N5U66X5EO62POBBIBXOKCCMCM3IRLJNXT73C4IBKA7` | 26.6 KB | 50 |
-| `private-lend` | `CCLH2GJYG3QSHZJI7V7VK3DNMNK3I3QJCECBSFGX3AC6CK4I7EF7ZJ2G` | — | 50 |
+| `commitment-tree` | `CC2OZ3LG5U6RE3U7QC2R5QMID5GHQBE7QXTJQ4ZSTP5W73WDTKQPRW7E` | 26.6 KB | 18 |
+| `private-lend` | `CCLH2GJYG3QSHZJI7V7VK3DNMNK3I3QJCECBSFGX3AC6CK4I7EF7ZJ2G` | — | 63 |
 
 Full deployment log, init transactions, and verified calls: [`contracts/deployments/testnet.md`](contracts/deployments/testnet.md)
 
@@ -261,27 +261,43 @@ cargo install stellar-cli --locked --version 27  # or later
 node --version  # >= 20
 bun --version   # >= 1.1
 
-# For ZK circuit compilation only
-npm install -g circom snarkjs
+# For ZK circuit compilation only.
+# circom 2.x is a Rust binary — do NOT `npm install -g circom`, which installs
+# the legacy 1.x package and cannot compile `pragma circom 2.0.0`. Grab the
+# release binary (CI pins v2.2.3) or build it with cargo:
+curl -fL -o ~/.local/bin/circom \
+  https://github.com/iden3/circom/releases/download/v2.2.3/circom-linux-amd64
+chmod +x ~/.local/bin/circom   # macOS: use circom-macos-amd64
+circom --version               # expect: circom compiler 2.2.3
+# snarkjs needs no global install — it is already a dependency of circuits/
 ```
 
 ### Run All Tests
+
+Each module has its own toolchain — there is no unifying root build, and the
+package manager is **not** the same everywhere. Run them from the repo root:
 
 ```bash
 # 1. Soroban contracts — 146 tests
 cd contracts && cargo test
 
-# 2. Relayer service — 35 tests
-cd ../relayer && npm install && npm test
+# 2. Bitcoin script toolkit — 60 tests (Bun's own test runner)
+cd ../bitcoin-script && bun install && bun test
 
-# 3. Bitcoin script toolkit — 48 tests
-cd ../bitcoin-script && npm install && npm test
+# 3. Relayer service — 48 tests
+#    Deps install with Bun, but the suite itself is Jest (ts-jest), so it must
+#    be run through the package script — plain `bun test` picks Bun's runner
+#    instead and fails. The relayer also imports the local @writz/* packages
+#    via their built dist/ output, so build those first.
+cd ../packages/commitment-tree && bun install
+cd ../../bitcoin-script && bun run build
+cd ../relayer && bun install && bun run test
 
-# 4. ZK circuits — 45 tests
+# 4. ZK circuits — 20 tests (npm + Jest; needs circom on PATH)
 cd ../circuits && npm install && npm test
 ```
 
-All 268 tests pass. If anything fails, [open an issue](https://github.com/WritzProtocol/writz/issues).
+All 274 tests pass. If anything fails, [open an issue](https://github.com/WritzProtocol/writz/issues).
 
 ### Full ZK End-to-End on Soroban Testnet
 
@@ -320,14 +336,14 @@ python3 scripts/diagrams/render-all.py
 
 | Module | Language | Tests | How to run |
 |---|---|---|---|
-| `bitcoin-spv` contract | Rust | 28 | `cd contracts && cargo test -p bitcoin-spv` |
+| `bitcoin-spv` contract | Rust | 47 | `cd contracts && cargo test -p bitcoin-spv` |
 | `zk-verifier` contract | Rust | 18 | `cd contracts && cargo test -p zk-verifier` |
-| `commitment-tree` contract | Rust | 50 | `cd contracts && cargo test -p commitment-tree` |
-| `private-lend` contract | Rust | 50 | `cd contracts && cargo test -p private-lend` |
-| Relayer service | TypeScript | 35 | `cd relayer && npm test` |
-| Bitcoin script toolkit | TypeScript | 48 | `cd bitcoin-script && npm test` |
-| ZK circuits | Circom / JS | 45 | `cd circuits && npm test` |
-| **Total** | | **268** | |
+| `commitment-tree` contract | Rust | 18 | `cd contracts && cargo test -p commitment-tree` |
+| `private-lend` contract | Rust | 63 | `cd contracts && cargo test -p private-lend` |
+| Relayer service | TypeScript | 48 | `cd relayer && bun run test` |
+| Bitcoin script toolkit | TypeScript | 60 | `cd bitcoin-script && bun test` |
+| ZK circuits | Circom / JS | 20 | `cd circuits && npm test` |
+| **Total** | | **274** | |
 
 ---
 
@@ -439,7 +455,7 @@ Full documentation lives in [`docs/`](docs/) and is published at **[writz.mintli
 ## Contributing
 
 1. Fork the repo and create a branch from `main`.
-2. Run the full test suite before opening a PR — all 268 tests must pass.
+2. Run the full test suite before opening a PR — all 274 tests must pass.
 3. For new features, add tests. For bug fixes, add a regression test.
 4. Open a PR with a clear description of what changed and why.
 

@@ -22,9 +22,19 @@ cargo install --locked stellar-cli
 # Node.js 20+
 # https://nodejs.org/
 
-# circom (for ZK circuit tests only)
-npm install -g circom
-npm install -g snarkjs
+# Bun 1.1+ — bitcoin-script, relayer, frontend and packages/* install with Bun,
+# not npm. Only circuits/ is npm-managed.
+curl -fsSL https://bun.sh/install | bash
+
+# circom (for ZK circuit tests only).
+# circom 2.x is a Rust binary. `npm install -g circom` installs the legacy 1.x
+# package and CANNOT compile `pragma circom 2.0.0` — use the release binary:
+curl -fL -o ~/.local/bin/circom \
+  https://github.com/iden3/circom/releases/download/v2.2.3/circom-linux-amd64
+chmod +x ~/.local/bin/circom   # macOS: use circom-macos-amd64
+circom --version               # expect: circom compiler 2.2.3
+
+# snarkjs needs no global install — it is a dependency of circuits/
 ```
 
 ---
@@ -47,29 +57,34 @@ cd contracts
 cargo test
 ```
 
-Expected output: 146 tests pass across `bitcoin-spv`, `zk-verifier`, `commitment-tree`, and `private-lend`.
+Expected output: 146 tests pass across `bitcoin-spv` (47), `zk-verifier` (18), `commitment-tree` (18), and `private-lend` (63).
 
-### Relayer service (TypeScript)
-
-```bash
-cd relayer
-npm install
-npm test
-```
-
-Expected output: 35 tests pass.
-
-### Bitcoin script toolkit (TypeScript)
+### Bitcoin script toolkit (TypeScript, Bun)
 
 ```bash
 cd bitcoin-script
-npm install
-npm test
+bun install
+bun test
+```
+
+Expected output: 60 tests pass.
+
+### Relayer service (TypeScript, Bun install + Jest)
+
+The relayer installs with Bun but its suite is Jest (ts-jest), so it must run
+through the package script — plain `bun test` selects Bun's own runner and
+fails. It also imports the local `@writz/*` packages via their built `dist/`
+output, so build those first.
+
+```bash
+cd packages/commitment-tree && bun install
+cd ../../bitcoin-script && bun run build
+cd ../relayer && bun install && bun run test
 ```
 
 Expected output: 48 tests pass.
 
-### ZK circuits (Circom + snarkjs)
+### ZK circuits (Circom + snarkjs, npm)
 
 ```bash
 cd circuits
@@ -77,9 +92,9 @@ npm install
 npm test
 ```
 
-Expected output: 45 tests pass (proof generation, commitment correctness, ratio enforcement, nullifiers).
+Expected output: 20 tests pass (proof generation, commitment correctness, ratio enforcement, nullifiers).
 
-### All together: 268 tests, all passing.
+### All together: 274 tests, all passing.
 
 ---
 
@@ -111,7 +126,7 @@ stellar contract invoke \
 
 # Check the Merkle root
 stellar contract invoke \
-  --id CDFAP3J4WLFZC2N5U66X5EO62POBBIBXOKCCMCM3IRLJNXT73C4IBKA7 \
+  --id CC2OZ3LG5U6RE3U7QC2R5QMID5GHQBE7QXTJQ4ZSTP5W73WDTKQPRW7E \
   --network testnet \
   -- get_merkle_root
 # Returns: 0x2134e76ac74b4b8765b6e37992aa15f0... (Poseidon-2 empty tree root)

@@ -24,14 +24,16 @@ Writz is open source. Contributions — bug reports, code improvements, document
 git clone https://github.com/WritzProtocol/writz.git
 cd writz
 
-# Install all dependencies
+# Install all dependencies. Note the package manager differs per module:
+# Bun for bitcoin-script / relayer / frontend / packages/*, npm for circuits.
 cd contracts && cargo fetch
-cd ../relayer && npm install
-cd ../bitcoin-script && npm install
+cd ../bitcoin-script && bun install && bun run build
+cd ../packages/commitment-tree && bun install
+cd ../../relayer && bun install
 cd ../circuits && npm install
 ```
 
-All 268 tests should pass on a clean checkout.
+All 274 tests should pass on a clean checkout.
 
 ---
 
@@ -48,7 +50,7 @@ All 268 tests should pass on a clean checkout.
 
 ### TypeScript (Relayer + Bitcoin Script)
 
-- Run `npm run lint` before committing
+- Run `bun run lint` before committing
 - Every function must have a test covering the happy path and at least one error case
 - No `any` types — explicit type annotations required
 - Use the `Result<T, E>` pattern for operations that can fail
@@ -66,7 +68,7 @@ All 268 tests should pass on a clean checkout.
 
 1. Fork the repository and create a feature branch (`feature/your-feature`)
 2. Make your changes with tests
-3. Run `cargo test` (contracts), `npm test` (relayer, bitcoin-script, circuits) — all must pass
+3. Run `cargo test` (contracts), `bun test` (bitcoin-script), `bun run test` (relayer), `npm test` (circuits) — all must pass
 4. Open a PR with a clear description of what changed and why
 5. A maintainer will review within 5 business days
 
