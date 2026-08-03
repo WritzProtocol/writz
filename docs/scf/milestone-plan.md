@@ -38,7 +38,7 @@ The headers and Merkle proof are fetched from a real confirmed Bitcoin mainnet t
 
 ### Deliverable 2: Public GitHub repository
 
-All code open-sourced under MIT license:
+All code open-sourced under the Apache 2.0 license:
 - `contracts/contracts/bitcoin-spv/` — Soroban SPV contract
 - `contracts/contracts/private-lend/` — PrivateLend skeleton (50 tests)
 - `relayer/` — Node.js SPV proof relayer (35 tests)

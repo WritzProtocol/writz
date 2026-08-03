@@ -5,9 +5,9 @@
 [![CI](https://github.com/WritzProtocol/writz/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/WritzProtocol/writz/actions/workflows/ci.yml?query=branch%3Amain)
 [![Tests](https://img.shields.io/badge/tests-274%20passing-brightgreen)](https://github.com/WritzProtocol/writz/actions)
 [![Network](https://img.shields.io/badge/network-Soroban%20Testnet-blue)](https://stellar.expert/explorer/testnet)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
-**[Live App](https://writz-protocol.vercel.app)** · **[Docs](https://writz.mintlify.app)** · **[Relayer API](https://writz-relayer-production.up.railway.app)**
+**[Live App](https://writz.xyz)** · **[Docs](https://docs.writz.xyz)** · **[Relayer API](https://writz-relayer-production.up.railway.app)**
 
 **Writz** is the first trustless Bitcoin lending protocol on Stellar. Lock real BTC directly from your Bitcoin wallet, borrow USDC on Stellar, and keep every position private — always.
 
@@ -322,7 +322,7 @@ bun install && bun dev
 # → http://localhost:3000
 ```
 
-The testnet app is also live at **[writz-protocol.vercel.app](https://writz-protocol.vercel.app)**.
+The testnet app is also live at **[writz.xyz](https://writz.xyz)**.
 
 ### Generate Architecture Diagrams
 
@@ -360,7 +360,7 @@ python3 scripts/diagrams/render-all.py
 - [x] P2WSH locking and release tested on Bitcoin Signet
 - [ ] SCF Build Award submitted (~$92K, Open Track)
 - [ ] Trusted setup ceremony planned (5+ independent participants)
-- [ ] Mintlify docs live at docs.writz.xyz
+- [x] Mintlify docs live at docs.writz.xyz
 
 **Phase 2 — Launch** *(Q4 2026)*
 
@@ -421,7 +421,7 @@ To report a security issue: open a private [GitHub Security Advisory](https://gi
 
 ## Documentation
 
-Full documentation lives in [`docs/`](docs/) and is published at **[writz.mintlify.app](https://writz.mintlify.app)**:
+Full documentation lives in [`docs/`](docs/) and is published at **[docs.writz.xyz](https://docs.writz.xyz)**:
 
 **Start here:**
 - [What is Writz?](docs/introduction/what-is-writz.md) — Plain English. No jargon. 5 minutes.
@@ -478,4 +478,4 @@ See [`docs/developers/contribution-guide.md`](docs/developers/contribution-guide
 
 ## License
 
-MIT
+Apache License 2.0 — see [`LICENSE`](LICENSE).
