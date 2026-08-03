@@ -358,9 +358,9 @@ python3 scripts/diagrams/render-all.py
 - [x] 4 contracts live on Soroban testnet
 - [x] Full ZK E2E cycle verified on-chain
 - [x] P2WSH locking and release tested on Bitcoin Signet
-- [ ] SCF Build Award submitted (~$92K, Open Track)
+- [ ] SCF Build Award submitted (Open Track)
 - [ ] Trusted setup ceremony planned (5+ independent participants)
-- [x] Mintlify docs live at docs.writz.xyz
+- [x] Docs live at docs.writz.xyz
 
 **Phase 2 — Launch** *(Q4 2026)*
 
