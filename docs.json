@@ -140,7 +140,7 @@
     "primary": {
       "type": "button",
       "label": "Launch App",
-      "href": "https://app.writz.xyz"
+      "href": "https://writz.xyz"
     }
   },
   "footer": {

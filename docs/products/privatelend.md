@@ -61,7 +61,7 @@ The model is designed to keep utilization near 75% — the point where lenders e
 
 ### Step 1 — Connect Your Wallets
 
-Open the Writz app at `app.writz.xyz`. Connect your Bitcoin wallet (Xverse) and your Stellar wallet (Freighter or Lobstr). Both connections happen in your browser — no private keys leave your device.
+Open the Writz app at `writz.xyz`. Connect your Bitcoin wallet (Xverse) and your Stellar wallet (Freighter or Lobstr). Both connections happen in your browser — no private keys leave your device.
 
 ### Step 2 — Choose Your Deposit Amount
 
