@@ -5,6 +5,7 @@ import { config } from "@/config";
 import { Providers } from "@/app/Providers";
 import { WalletProvider } from "@/lib/wallet/WalletProvider";
 import { BitcoinWalletProvider } from "@/lib/bitcoin/useBitcoinWallet";
+import { env } from "@/config/env";
 import "./globals.css";
 
 // Display — luxury editorial serif (used with restraint for wordmark + headings).
@@ -27,9 +28,10 @@ const mono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Writz — Testnet",
+  metadataBase: new URL(env.siteUrl),
+  title: "Writz — Bitcoin was built to be yours",
   description:
-    "Trustless, ZK-private Bitcoin lending on Stellar (Soroban testnet).",
+    "Trustless, ZK-private Bitcoin lending on Stellar. Lock real BTC, borrow USDC, keep every position private.",
 };
 
 export default function RootLayout({
