@@ -1,0 +1,36 @@
+/*
+  Landing design tokens — scoped under `.landing-root` so they never leak
+  into (or collide with) the dApp's own design system in globals.css.
+  Fixed "Gold & Black" palette — there is no runtime theme switcher.
+*/
+
+.landing-root {
+  --landing-font-sans: var(--ff-landing-sans), ui-sans-serif, system-ui, sans-serif;
+  --landing-font-display: var(--ff-landing-sans), ui-sans-serif, system-ui, sans-serif;
+  --landing-font-heading: var(--ff-landing-sans), ui-sans-serif, system-ui, sans-serif;
+
+  --bg: #0a0908;
+  --card: #161311;
+  --card-soft: rgba(22, 19, 17, 0.5);
+  --border: #2b2620;
+  --border-hover: #453d30;
+  --text-hi: #faf6ee;
+  --text-body: #b8ad97;
+  --text-dim: #7a7060;
+  --accent: #d4af37;
+  --accent-contrast: #1a1400;
+  --status: #e8c468;
+  --premium-glow-accent: color-mix(in srgb, var(--accent) 8%, transparent);
+  --premium-border-accent: color-mix(in srgb, var(--accent) 40%, transparent);
+  --premium-glow-status: color-mix(in srgb, var(--status) 8%, transparent);
+  --premium-border-status: color-mix(in srgb, var(--status) 40%, transparent);
+
+  background: var(--bg);
+  color: var(--text-body);
+  font-family: var(--landing-font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+.landing-root * {
+  border-color: var(--border);
+}
