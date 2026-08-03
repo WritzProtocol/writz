@@ -63,7 +63,7 @@ export function FinalCTA() {
           initial={{ opacity: 0, scale: 0.95 }}
           animate={isInView ? { opacity: 1, scale: 1 } : {}}
           transition={{ duration: 0.6, delay: 0.4 }}
-          className="flex flex-col items-center justify-center relative z-20 mt-12 w-full overflow-hidden"
+          className="flex flex-col items-center justify-center relative z-20 mt-12 w-full"
         >
           <SplitFlapAudioProvider>
             <div className="flex flex-col items-center max-w-full">

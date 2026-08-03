@@ -22,10 +22,11 @@ export function SplitFlapChar({ char, index, animationKey, skipEntrance, speed, 
   const textColor = isSettled ? "var(--text-hi)" : "var(--accent)";
 
   // The tile's font-size drives its width/height (both set in `em`), so this
-  // one clamp() controls the whole board's scale. The mobile tier has its
-  // own (lower) minimum — at the desktop tier's 3rem minimum, 14 tiles
-  // ("WRITZ PROTOCOL") would overflow a phone-width viewport.
-  const fontSizeClass = "text-[clamp(1.4rem,7vw,3rem)] sm:text-[clamp(3rem,8vw,6rem)]";
+  // one clamp() controls the whole board's scale. It must stay small enough
+  // that all 14 tiles of "WRITZ PROTOCOL" (0.85em wide each) never exceed the
+  // FinalCTA's max-w-4xl (896px) container — the max here (4rem) tops out
+  // around ~755px total row width, comfortably inside that budget.
+  const fontSizeClass = "text-[clamp(1.5rem,6vw,4rem)]";
 
   if (isSpace) {
     return <div className={fontSizeClass} style={{ width: "0.3em" }} />;
