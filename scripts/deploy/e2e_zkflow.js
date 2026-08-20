@@ -36,7 +36,10 @@ const {
 
 const RPC_URL       = process.env.STELLAR_RPC_URL ?? 'https://soroban-testnet.stellar.org';
 const NETWORK       = Networks.TESTNET;
-const SPV_CONTRACT  = process.env.BITCOIN_SPV_ID ?? 'CAE5L7BO2GNF7MIZWXB2BTUMLYNIMQZUSWN2BWLZQS7HRHLOUSL6VLWJ';
+// No BITCOIN_SPV_ID here: this script deploys its own throwaway bitcoin-spv
+// per run (see STEP 0 in main()) rather than pointing at the shared
+// production instance, since that one enforces real Bitcoin difficulty and
+// this script's header is mined in JS, not on real Bitcoin/Signet hardware.
 
 // The zk-verifier holds the Groth16 verification keys, so the proofs this
 // script generates must come from the SAME trusted setup that produced them.
@@ -45,8 +48,8 @@ const SPV_CONTRACT  = process.env.BITCOIN_SPV_ID ?? 'CAE5L7BO2GNF7MIZWXB2BTUMLYN
 // testnet verifier below. If you regenerated, deploy your own zk-verifier,
 // push your keys with `set_vkeys.js`, and point this at it via ZK_VERIFIER_ID.
 // See docs/developers/runbook.md § Trusted setup.
-const ZK_VERIFIER   = process.env.ZK_VERIFIER_ID ?? 'CDV45GLXG4AOU6BDZSY5YHHVNGQIAYAPD3PUGXIIIYLIO6V2XGO6SMFV';
-// XLM native Stellar Asset Contract — no trustline needed, always available
+const ZK_VERIFIER   = process.env.ZK_VERIFIER_ID ?? 'CBNZU23QGCZATJB2QMNF2K6IST2SVP7FSGCKASQNBULTWDWGANDBYLFY';
+// XLM native Stellar Asset Contract - no trustline needed, always available
 const XLM_SAC       = 'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC';
 
 const FIELD_PRIME = 21888242871839275222246405745257275088548364400416034343698204186575808495617n;
@@ -63,7 +66,7 @@ const MIN_RATIO_BP        = 15_000n;          // 150%
 const SUPPLY_AMOUNT       = 5_000_000_000n;   // 500 XLM stroops to pool
 const MIN_CONFIRMATIONS   = 1;
 // MUST match `min_deposit_satoshis` in commitment-tree's `initialize`, which
-// hardcodes 10_000 (0.0001 BTC — lowered for signet faucet testing). The
+// hardcodes 10_000 (0.0001 BTC - lowered for signet faucet testing). The
 // contract binds this into the deposit proof's public signals and rejects a
 // mismatch with ProtocolParamMismatch (#11), so a stale value here fails the
 // whole flow at the deposit step.
@@ -89,15 +92,49 @@ function sha256d(data) {
     return crypto.createHash('sha256').update(h1).digest();
 }
 
-// Build an 80-byte Bitcoin block header where merkle_root = txid (single-tx block).
+// Same easy compact-difficulty target bitcoind itself uses for regtest -
+// see bitcoin-spv/src/test.rs's EASY_TEST_BITS doc comment. ~50% of hashes
+// satisfy it, so mining a real header below takes ~2 attempts on average.
+const EASY_TEST_BITS = 0x207f_ffff;
+
+// Decodes Bitcoin's compact difficulty encoding into the 256-bit target a
+// header hash must be below, mirroring bitcoin-spv's `bits_to_target` for
+// the one case this script needs (small exponent, no overflow/negative).
+function bitsToTarget(bits) {
+    const exponent = (bits >>> 24) & 0xff;
+    const mantissa = BigInt(bits & 0x007f_ffff);
+    if (mantissa === 0n) return 0n;
+    if (exponent <= 3) return mantissa >> BigInt(8 * (3 - exponent));
+    return mantissa << BigInt(8 * (exponent - 3));
+}
+
+// A block hash counts as big-endian for PoW comparison - see bitcoin-spv's
+// `hash_as_u256`, which reverses the (little-endian) hash bytes first.
+function hashAsBigEndianInt(hash) {
+    return BigInt('0x' + Buffer.from(hash).reverse().toString('hex'));
+}
+
+// Build an 80-byte Bitcoin block header where merkle_root = txid (single-tx
+// block), then brute-force the nonce until it satisfies real proof-of-work
+// at EASY_TEST_BITS. The old version of this helper left bits/nonce at
+// zero, which `bits_to_target` correctly treats as an unsatisfiable
+// (zero) target - that only ever "worked" against a bitcoin-spv build that
+// didn't yet enforce real PoW. The current contract always does, so a
+// header actually has to be mined now, not just shaped correctly.
 function buildFakeHeader(txidBuffer) {
     const header = Buffer.alloc(80, 0);
     header.writeUInt32LE(1, 0);      // version
     // prev_block: all zeros (bytes 4-35)
     txidBuffer.copy(header, 36);     // merkle_root at offset 36 (bytes 36-67)
     header.writeUInt32LE(0x65_53_F1_00, 68); // timestamp
-    // bits, nonce: all zeros
-    return header;
+    header.writeUInt32LE(EASY_TEST_BITS, 72); // bits
+
+    const target = bitsToTarget(EASY_TEST_BITS);
+    for (let nonce = 0; nonce < 1_000_000; nonce++) {
+        header.writeUInt32LE(nonce, 76);
+        if (hashAsBigEndianInt(sha256d(header)) < target) return header;
+    }
+    throw new Error('failed to mine a test header in 1,000,000 attempts - EASY_TEST_BITS misconfigured');
 }
 
 // Compute BTC txid from raw_tx hex and return { txidBuf, txidLo, txidHi } for ZK input.
@@ -175,7 +212,7 @@ function bytesNToScVal(buf) {
 }
 
 /**
- * `enc_note` — the sealed recovery note added to deposit/borrow/repay by #18.
+ * `enc_note` - the sealed recovery note added to deposit/borrow/repay by #18.
  * The contract does not validate it; it is echoed into the emitted event so a
  * client can rediscover its positions by replaying events. This script passes
  * an empty note: it exercises the contract interface but NOT the encrypt /
@@ -339,6 +376,37 @@ async function main() {
     const poseidon = await buildPoseidon();
     const F = poseidon.F;
 
+    // ── Step 0: Deploy a throwaway bitcoin-spv with an easy checkpoint ────────
+    // The shared production SPV_CONTRACT is anchored to a real, current
+    // Bitcoin difficulty (see contracts/deployments/testnet.md) - exactly
+    // the security property that makes it reject this script's mined-in-JS
+    // test header (real Bitcoin/Signet difficulty is computationally
+    // infeasible to brute-force here). Deploying a private, easy-checkpoint
+    // instance for this test run only (mirroring the throwaway
+    // commitment-tree below) keeps that production security intact while
+    // still letting this script's header pass a REAL proof-of-work check
+    // rather than reintroducing the old zero-bits shortcut.
+    console.log('\n══════════════════════════════════════════════════════════════');
+    console.log('STEP 0: Deploy test bitcoin-spv (easy checkpoint, this run only)');
+    console.log('══════════════════════════════════════════════════════════════');
+
+    const spvWasmPath = path.join(CONTRACTS, 'target/wasm32v1-none/release/bitcoin_spv.wasm');
+    const spvTestId = await deployContract(spvWasmPath);
+    console.log(`✓ bitcoin-spv (test) deployed: ${spvTestId}`);
+
+    const spvInit = await invoke(spvTestId, 'initialize', [
+        addressToScVal(keypair.publicKey()), // admin
+    ]);
+    console.log(`✓ initialized - tx ${spvInit.hash}`);
+
+    const spvCheckpoint = await invoke(spvTestId, 'set_checkpoint', [
+        addressToScVal(keypair.publicKey()),          // caller
+        u32ToScVal(0),                                 // height (arbitrary for a throwaway instance)
+        bytesNToScVal(Buffer.alloc(32, 0)),             // block_hash (unused by this test's checks)
+        u32ToScVal(EASY_TEST_BITS),                     // bits - same floor the test header is mined against
+    ]);
+    console.log(`✓ checkpoint set (easy) - tx ${spvCheckpoint.hash}`);
+
     // ── Step 1: Deploy fresh commitment-tree with XLM as token ───────────────
     console.log('\n══════════════════════════════════════════════════════════════');
     console.log('STEP 1: Deploy test commitment-tree (XLM as token)');
@@ -350,13 +418,13 @@ async function main() {
 
     const initResult = await invoke(ctId, 'initialize', [
         addressToScVal(keypair.publicKey()), // admin
-        addressToScVal(SPV_CONTRACT),         // spv_contract
-        addressToScVal(ZK_VERIFIER),          // zk_verifier
+        addressToScVal(spvTestId),            // spv_contract (throwaway, easy checkpoint - see STEP 0)
+        addressToScVal(ZK_VERIFIER),          // zk_verifier (shared - VKs aren't test-run-specific)
         addressToScVal(XLM_SAC),              // usdc_token (XLM for test)
         addressToScVal(keypair.publicKey()),   // oracle (stub ignores it)
         u32ToScVal(MIN_CONFIRMATIONS),         // min_confirmations
     ]);
-    console.log(`✓ initialized — tx ${initResult.hash}`);
+    console.log(`✓ initialized - tx ${initResult.hash}`);
 
     // Verify empty Merkle root
     const rootResult = await invoke(ctId, 'get_merkle_root', []);
@@ -371,11 +439,11 @@ async function main() {
         addressToScVal(keypair.publicKey()),
         i128ToScVal(SUPPLY_AMOUNT),
     ]);
-    console.log(`✓ supplied ${SUPPLY_AMOUNT} stroops (${Number(SUPPLY_AMOUNT) / 1e7} XLM) — tx ${supplyResult.hash}`);
+    console.log(`✓ supplied ${SUPPLY_AMOUNT} stroops (${Number(SUPPLY_AMOUNT) / 1e7} XLM) - tx ${supplyResult.hash}`);
 
-    // ── Step 3: Bitcoin SPV — compute txid from raw_tx ───────────────────────
+    // ── Step 3: Bitcoin SPV - compute txid from raw_tx ───────────────────────
     console.log('\n══════════════════════════════════════════════════════════════');
-    console.log('STEP 3: Deposit — compute txid and generate ZK proof');
+    console.log('STEP 3: Deposit - compute txid and generate ZK proof');
     console.log('══════════════════════════════════════════════════════════════');
 
     const { txidBuf, txidLo, txidHi } = computeTxid(RAW_TX_HEX);
@@ -419,7 +487,7 @@ async function main() {
         signalsToScVal(depSignals),
         emptyEncNote(),
     ]);
-    console.log(`✓ deposit submitted — tx ${depResult.hash}`);
+    console.log(`✓ deposit submitted - tx ${depResult.hash}`);
     console.log(`  https://stellar.expert/explorer/testnet/tx/${depResult.hash}`);
 
     // ── Step 6: Compute new Merkle root and insert commitment ─────────────────
@@ -437,18 +505,18 @@ async function main() {
         bytesNToScVal(Buffer.from(BigInt(depSignals[0]).toString(16).padStart(64, '0'), 'hex')),
         bytesNToScVal(Buffer.from(newRootHex, 'hex')),
     ]);
-    console.log(`✓ insert_commitment — tx ${insertResult.hash}`);
+    console.log(`✓ insert_commitment - tx ${insertResult.hash}`);
     console.log(`  https://stellar.expert/explorer/testnet/tx/${insertResult.hash}`);
 
     // ── Demo seed mode: stop here and print the config the frontend needs ─────
     if (process.env.SEED_ONLY) {
         console.log('\n══════════════════════════════════════════════════════════════');
-        console.log('✅ DEMO SEED COMPLETE — funded pool + one inserted position');
+        console.log('✅ DEMO SEED COMPLETE - funded pool + one inserted position');
         console.log('══════════════════════════════════════════════════════════════');
-        console.log('\nFrontend config — set in frontend/.env.local:');
+        console.log('\nFrontend config - set in frontend/.env.local:');
         console.log(`  NEXT_PUBLIC_COMMITMENT_TREE_ID=${ctId}`);
         console.log(`  NEXT_PUBLIC_USDC_TOKEN_ID=${XLM_SAC}`);
-        console.log('\nSeeded position (debt 0) — the app must hold the same secret/nonce:');
+        console.log('\nSeeded position (debt 0) - the app must hold the same secret/nonce:');
         console.log(JSON.stringify({
             collateralSats: COLLATERAL_SATS.toString(),
             debtStroops: '0',
@@ -461,7 +529,7 @@ async function main() {
 
     // ── Step 7: Generate borrow ZK proof ─────────────────────────────────────
     console.log('\n══════════════════════════════════════════════════════════════');
-    console.log('STEP 5: Borrow — generate ZK proof');
+    console.log('STEP 5: Borrow - generate ZK proof');
     console.log('══════════════════════════════════════════════════════════════');
 
     const borrowInput = {
@@ -498,12 +566,12 @@ async function main() {
         signalsToScVal(borSignals),
         emptyEncNote(),
     ]);
-    console.log(`✓ borrow ${BORROW_AMOUNT} stroops (${Number(BORROW_AMOUNT) / 1e7} XLM) — tx ${borResult.hash}`);
+    console.log(`✓ borrow ${BORROW_AMOUNT} stroops (${Number(BORROW_AMOUNT) / 1e7} XLM) - tx ${borResult.hash}`);
     console.log(`  https://stellar.expert/explorer/testnet/tx/${borResult.hash}`);
 
     // ── Step 9: Generate repay ZK proof ──────────────────────────────────────
     console.log('\n══════════════════════════════════════════════════════════════');
-    console.log('STEP 6: Full repayment — generate ZK proof');
+    console.log('STEP 6: Full repayment - generate ZK proof');
     console.log('══════════════════════════════════════════════════════════════');
 
     // Build tree for updated state (new commitment after borrow at index 0)
@@ -548,7 +616,7 @@ async function main() {
         signalsToScVal(repSignals),
         emptyEncNote(),
     ]);
-    console.log(`✓ repay ${BORROW_AMOUNT} stroops — tx ${repResult.hash}`);
+    console.log(`✓ repay ${BORROW_AMOUNT} stroops - tx ${repResult.hash}`);
     console.log(`  https://stellar.expert/explorer/testnet/tx/${repResult.hash}`);
 
     // ── Final state ───────────────────────────────────────────────────────────

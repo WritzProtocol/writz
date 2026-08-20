@@ -22,9 +22,9 @@ const { Keypair, Networks, TransactionBuilder, Contract, Address, xdr, rpc: Soro
 
 const RPC_URL          = 'https://soroban-testnet.stellar.org';
 const NETWORK          = Networks.TESTNET;
-const SPV_CONTRACT     = 'CAE5L7BO2GNF7MIZWXB2BTUMLYNIMQZUSWN2BWLZQS7HRHLOUSL6VLWJ';
-const ZK_VERIFIER      = 'CDV45GLXG4AOU6BDZSY5YHHVNGQIAYAPD3PUGXIIIYLIO6V2XGO6SMFV';
-// Testnet USDC (USDC:GBBD47IF…) — a classic asset with deep XLM/USDC liquidity
+const SPV_CONTRACT     = 'CB2BD6QCSZVNZN5NLI7C5NF356WXVJDSXT6LVAQFWHHS4SZ4NCKKNIVA';
+const ZK_VERIFIER      = 'CBNZU23QGCZATJB2QMNF2K6IST2SVP7FSGCKASQNBULTWDWGANDBYLFY';
+// Testnet USDC (USDC:GBBD47IF…) - a classic asset with deep XLM/USDC liquidity
 // on the Stellar DEX, so the deployer can swap XLM→USDC (path payment) and seed
 // the pool itself. 7 decimals. SAC id below.
 const USDC_ISSUER      = 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5';
@@ -78,7 +78,7 @@ async function acquireUsdc() {
     .build();
   swapTx.sign(keypair);
   const res = await horizon.submitTransaction(swapTx);
-  console.log(`✓ swapped XLM→${SUPPLY_USDC} USDC on the DEX — tx ${res.hash}`);
+  console.log(`✓ swapped XLM→${SUPPLY_USDC} USDC on the DEX - tx ${res.hash}`);
 }
 
 const addressToScVal = (pub) => Address.fromString(pub).toScVal();
@@ -198,7 +198,7 @@ async function main() {
     addressToScVal(keypair.publicKey()), // oracle (stub)
     u32ToScVal(MIN_CONFIRMATIONS),
   ]);
-  console.log(`✓ initialized with USDC token ${USDC_SAC} — tx ${init.hash}`);
+  console.log(`✓ initialized with USDC token ${USDC_SAC} - tx ${init.hash}`);
 
   const root = await invoke(contractId, 'get_merkle_root', []);
   console.log(`✓ empty merkle root: ${root.result.returnValue?.bytes()?.toString('hex')}`);
@@ -209,7 +209,7 @@ async function main() {
     addressToScVal(keypair.publicKey()),
     i128ToScVal(SUPPLY_STROOPS),
   ]);
-  console.log(`✓ supplied ${SUPPLY_USDC} USDC to pool — tx ${supply.hash}`);
+  console.log(`✓ supplied ${SUPPLY_USDC} USDC to pool - tx ${supply.hash}`);
 
   console.log('\n══════════════════════════════════════');
   console.log('REDEPLOY COMPLETE');
