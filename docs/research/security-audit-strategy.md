@@ -16,7 +16,7 @@ Security is Writz Protocol's most critical non-negotiable. A single exploit coul
 
 **The most important finding in this research: Writz may qualify for FREE security audits through the SDF.**
 
-The Stellar Development Foundation operates the **Soroban Security Audit Bank** — a program that provides up to $1M in security audit credits distributed across 20–30 high-priority Soroban projects.
+The Stellar Development Foundation operates the **Soroban Security Audit Bank** - a program that provides up to $1M in security audit credits distributed across 20–30 high-priority Soroban projects.
 
 ### Program details
 
@@ -31,9 +31,9 @@ The Stellar Development Foundation operates the **Soroban Security Audit Bank** 
 
 ### How to qualify
 
-The primary pathway is through the **Stellar Community Fund (SCF)**. If Writz receives an SCF grant, it automatically qualifies for Audit Bank access. This aligns the grant strategy with the security strategy — SCF funding unlocks both capital AND audit support.
+The primary pathway is through the **Stellar Community Fund (SCF)**. If Writz receives an SCF grant, it automatically qualifies for Audit Bank access. This aligns the grant strategy with the security strategy - SCF funding unlocks both capital AND audit support.
 
-**Action item:** SCF application should explicitly mention the planned Audit Bank participation.
+**Open dependency - no Plan B currently defined:** The SCF application is a draft and has not been submitted, with no short-term plan to submit it (see `docs/roadmap/phases.md`). Since Audit Bank qualification is described here as SCF-gated, this is currently an unresolved blocker for the audit funding path, not a scheduled step. Before this becomes a pre-mainnet gate in practice, either (a) confirm whether Audit Bank has a qualification path independent of an SCF award, or (b) define an alternative audit-funding plan that doesn't depend on SCF.
 
 ---
 
@@ -43,9 +43,9 @@ The following firms are officially pre-approved by the SDF for the Soroban Secur
 
 | Firm | Specialization | Writz relevance |
 |---|---|---|
-| **Veridise** | Smart contract + ZK circuit audits, advanced vulnerability detection tooling | ✅ Primary — only approved firm with explicit ZK circuit capability |
-| **OtterSec** | $36B+ TVL secured, 120+ protocols, Soroban track record | ✅ Primary — Soroban smart contract audit |
-| **Zellic** | Blockchain + cryptography security, world-class white-hat team | ✅ Strong option for Soroban contracts |
+| **Veridise** | Smart contract + ZK circuit audits, advanced vulnerability detection tooling | ✓ Primary - only approved firm with explicit ZK circuit capability |
+| **OtterSec** | $36B+ TVL secured, 120+ protocols, Soroban track record | ✓ Primary - Soroban smart contract audit |
+| **Zellic** | Blockchain + cryptography security, world-class white-hat team | ✓ Strong option for Soroban contracts |
 | **Certora** | Formal verification via mathematical reasoning of code | Good for PrivateLend financial math formal proofs |
 | **Runtime Verification** | Formal methods and runtime verification, deep design review | Good for SPV verification correctness proofs |
 | **Spearbit + Cantina** | Network of top researchers, competitive audit platform | Good for broad coverage |
@@ -55,8 +55,8 @@ The following firms are officially pre-approved by the SDF for the Soroban Secur
 | **Code4rena** | Competitive platform, 100+ researchers per audit | Good for community-wide coverage |
 
 **Writz's target firms:**
-- **Veridise** — Circom ZK circuit audit (3 circuits: deposit, borrow/repay, liquidation)
-- **OtterSec or Zellic** — Soroban smart contracts (SPV client + PrivateLend + USDC pool)
+- **Veridise** - Circom ZK circuit audit (3 circuits: deposit, borrow/repay, liquidation)
+- **OtterSec or Zellic** - Soroban smart contracts (SPV client + PrivateLend + USDC pool)
 
 ---
 
@@ -98,14 +98,14 @@ pub struct PoolState {
 **What it is:** Before Protocol 26, overflow in 256-bit arithmetic would silently wrap around, causing wildly incorrect financial calculations. Protocol 26 introduces checked arithmetic that traps on overflow.
 
 **Writz mitigation:**
-- Target Protocol 26+ from day one — use checked arithmetic everywhere
+- Target Protocol 26+ from day one - use checked arithmetic everywhere
 - Use `checked_add`, `checked_mul`, `checked_div` for all financial calculations
 - Fuzz test interest accrual calculations with extreme inputs (very high interest rates, very long time periods, max uint values)
 - Write explicit overflow tests at boundary conditions
 
 ### 4. Reentrancy via Cross-Contract Calls (HIGH SEVERITY)
 
-**What it is:** When Writz's PrivateLend contract calls an external contract (USDC token transfer, oracle, etc.), that external contract could call back into Writz before the first call completes — potentially double-spending or corrupting state.
+**What it is:** When Writz's PrivateLend contract calls an external contract (USDC token transfer, oracle, etc.), that external contract could call back into Writz before the first call completes - potentially double-spending or corrupting state.
 
 **Writz mitigation:**
 - Follow checks-effects-interactions pattern: update all state BEFORE making external calls
@@ -124,7 +124,7 @@ pub struct PoolState {
 
 ### 6. ZK Proof Soundness (CRITICAL)
 
-**What it is:** A bug in the Circom circuit could allow an attacker to construct a valid-looking proof that proves a false statement — e.g., proving they have more collateral than they do.
+**What it is:** A bug in the Circom circuit could allow an attacker to construct a valid-looking proof that proves a false statement - e.g., proving they have more collateral than they do.
 
 **Writz mitigation:**
 - Engage ZK-specialized auditors (Veridise, Trail of Bits' ZK team) separately from Soroban contract auditors
@@ -203,11 +203,11 @@ Ongoing:
 - [ ] Trusted setup ceremony completed and transcript published
 - [ ] Bug bounty program live on Immunefi
 - [ ] TVL cap set at $50K for first 30 days
-- [ ] Insurance fund seeded with $5K minimum
+- [ ] Insurance fund seeded with $5K minimum (= 10% of the $50K launch TVL cap, consistent with the 10%-of-TVL target in `docs/research/tokenomics-fee-model.md` - see that doc for the ramp as TVL scales past the launch cap)
 - [ ] Emergency pause mechanism tested
 - [ ] Incident response runbook written and team trained
 
 ---
 
 *Last updated: 2026-06-22*
-*Sources: [Soroban Audit Bank — stellar.org](https://stellar.org/grants-and-funding/soroban-audit-bank) · [CertiK: Soroban Contract State Management](https://www.certik.com/blog/soroban-contract-state-management) · [OtterSec](https://osec.io/) · [Veridise Soroban Audits](https://veridise.com/audits/soroban/)*
+*Sources: [Soroban Audit Bank - stellar.org](https://stellar.org/grants-and-funding/soroban-audit-bank) · [CertiK: Soroban Contract State Management](https://www.certik.com/blog/soroban-contract-state-management) · [OtterSec](https://osec.io/) · [Veridise Soroban Audits](https://veridise.com/audits/soroban/)*

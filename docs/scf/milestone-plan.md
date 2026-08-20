@@ -1,4 +1,6 @@
-# SCF Milestone Plan — Four-Tranche Breakdown
+# SCF Milestone Plan - Four-Tranche Breakdown *(DRAFT - NOT SUBMITTED)*
+
+> **Note:** The SCF application has not been submitted and there is no short-term plan to submit it. Every deadline, tranche amount, and date in this document is hypothetical - none are scheduled or committed.
 
 **Total award:** $92,000 worth of XLM
 **Disbursement structure:** 10% / 20% / 30% / 40% (SCF v7.0 standard)
@@ -7,11 +9,11 @@ Each tranche has a verifiable on-chain deliverable that SCF reviewers can indepe
 
 ---
 
-## Tranche #0 — 10% (~$9,200)
+## Tranche #0 - 10% (~$9,200)
 
 **Theme:** Prove the core primitive works.
 
-**Deadline:** August 2026
+**Deadline (hypothetical, not scheduled):** August 2026
 
 ### Deliverable 1: SPV contract verifies a real Bitcoin mainnet transaction on Soroban testnet
 
@@ -19,7 +21,7 @@ Each tranche has a verifiable on-chain deliverable that SCF reviewers can indepe
 
 ```bash
 stellar contract invoke \
-  --id CDYQRO6PZ55A3AMJQBHDEUUCQTSVHHRWQW7WSDX7CBX6FQ2NLKYCPLVC \
+  --id CB2BD6QCSZVNZN5NLI7C5NF356WXVJDSXT6LVAQFWHHS4SZ4NCKKNIVA \
   --network testnet \
   -- verify_transaction \
   --headers '[...]' \
@@ -32,17 +34,17 @@ stellar contract invoke \
 The headers and Merkle proof are fetched from a real confirmed Bitcoin mainnet transaction and submitted to the Soroban testnet contract. The contract returns `{ txid, block_hash, confirmations: 6 }`.
 
 **What has already been achieved (before grant disbursement):**
-- SPV contract deployed at `CDYQRO6PZ55A3AMJQBHDEUUCQTSVHHRWQW7WSDX7CBX6FQ2NLKYCPLVC` ✅
-- Live testnet invocation confirmed with a real Bitcoin txid ✅
-- 28 unit tests passing ✅
+- SPV contract deployed at `CB2BD6QCSZVNZN5NLI7C5NF356WXVJDSXT6LVAQFWHHS4SZ4NCKKNIVA` ✓
+- Live testnet invocation confirmed with a real Bitcoin txid ✓
+- 49 unit tests passing ✓
 
 ### Deliverable 2: Public GitHub repository
 
 All code open-sourced under the Apache 2.0 license:
-- `contracts/contracts/bitcoin-spv/` — Soroban SPV contract
-- `contracts/contracts/private-lend/` — PrivateLend skeleton (50 tests)
-- `relayer/` — Node.js SPV proof relayer (35 tests)
-- `bitcoin-script/` — P2WSH locking script library (48 tests)
+- `contracts/contracts/bitcoin-spv/` - Soroban SPV contract
+- `contracts/contracts/private-lend/` - PrivateLend skeleton (85 tests)
+- `relayer/` - Node.js SPV proof relayer (59 tests)
+- `bitcoin-script/` - P2WSH locking script library (60 tests)
 
 ### Deliverable 3: Public documentation on Mintlify
 
@@ -60,11 +62,11 @@ All code open-sourced under the Apache 2.0 license:
 
 ---
 
-## Tranche #1 — 20% (~$18,400)
+## Tranche #1 - 20% (~$18,400)
 
 **Theme:** Full deposit → borrow flow on testnet.
 
-**Deadline:** October 2026
+**Deadline (hypothetical, not scheduled):** October 2026
 
 ### Deliverable 1: PrivateLend v1 on Soroban testnet
 
@@ -82,7 +84,7 @@ End-to-end flow working on testnet:
 
 Phase 2 ZK privacy is not complete by Tranche #1, but the **interface** is live:
 - Deposit creates a Poseidon commitment hash stored on-chain
-- Borrow/repay updates the commitment (no ZK proof yet — full ZK in Tranche #2)
+- Borrow/repay updates the commitment (no ZK proof yet - full ZK in Tranche #2)
 - Positions identified by commitment hash, not by Stellar address
 
 This establishes the privacy-ready data model before full circuit integration.
@@ -97,16 +99,16 @@ First version of the STRIDE security analysis published in docs (`scf/stride-thr
 
 ---
 
-## Tranche #2 — 30% (~$27,600)
+## Tranche #2 - 30% (~$27,600)
 
 **Theme:** Privacy complete. Frontend live. Audit-ready.
 
-**Deadline:** December 2026
+**Deadline (hypothetical, not scheduled):** December 2026
 
 ### Deliverable 1: All three Circom circuits implemented and tested
 
 - **Deposit circuit** (~280 constraints): Poseidon commitment creation
-- **Borrow/repay circuit** (~10,500 constraints): ZK proof of valid state transition preserving collateral ratio
+- **Borrow/repay circuit** (~11,200 constraints): ZK proof of valid state transition preserving collateral ratio
 - **Liquidation circuit** (~9,000 constraints): ZK proof of undercollateralization without revealing amounts
 
 Each circuit:
@@ -116,7 +118,7 @@ Each circuit:
 
 ### Deliverable 2: Trusted setup ceremony executed
 
-Powers of Tau Phase 2 for **four** circuits — the three above plus
+Powers of Tau Phase 2 for **four** circuits - the three above plus
 `zero_debt` (gates the cooperative Path A release endpoint; a forged
 zero-debt proof is fund-loss-equivalent to a forged deposit/liquidation
 proof, so it goes through the same ceremony):
@@ -128,7 +130,7 @@ proof, so it goes through the same ceremony):
 Tooling for running this (fetch/checksum-verify the Hermez ptau, per-circuit
 setup, participant contribution flow, transcript verification, contract-shape
 export, and a CI gate on the committed manifest) is implemented in
-`circuits/scripts/ceremony/` — see that directory's `README.md` for the
+`circuits/scripts/ceremony/` - see that directory's `README.md` for the
 step-by-step runbook.
 
 ### Deliverable 3: Frontend v1 live on testnet (app.writz.xyz)
@@ -143,18 +145,18 @@ Functional testnet frontend with:
 ### Deliverable 4: Audit Bank application submitted
 
 Application to the Soroban Security Audit Bank submitted to SDF with:
-- Code deployed on testnet with extensive tests (141 tests across all contracts)
+- Code deployed on testnet with extensive tests (191 tests across all contracts)
 - STRIDE threat model complete
 - Self-service tooling scans complete (Mythril/Slither)
 - Dataflow diagram produced
 
 ---
 
-## Tranche #3 — 40% (~$36,800)
+## Tranche #3 - 40% (~$36,800)
 
 **Theme:** Mainnet. Real users. Real money.
 
-**Deadline:** March 2027
+**Deadline (hypothetical, not scheduled):** March 2027
 
 ### Deliverable 1: Mainnet deployment
 
@@ -192,7 +194,7 @@ The Bitcoin SPV verification logic packaged as a standalone Rust crate (`writz-s
 
 ```
 June 2026    ████ Phase 0 research + Phase 1 foundation COMPLETE (before grant)
-             ████ SPV on testnet ✅ | Relayer ✅ | P2WSH lib ✅ | PrivateLend ✅
+             ████ SPV on testnet ✓ | Relayer ✓ | P2WSH lib ✓ | PrivateLend ✓
 
 July 2026    ▓▓▓▓ Community presence + Mintlify docs + SCF application
              ▓▓▓▓ SCF interest form submitted → await invitation to Build round

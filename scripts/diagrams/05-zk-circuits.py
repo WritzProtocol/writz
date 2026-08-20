@@ -1,5 +1,5 @@
 """
-Writz Protocol — 05 ZK Circuits
+Writz Protocol - 05 ZK Circuits
 Inputs and public outputs for all three Groth16 circuits.
 """
 import sys, os
@@ -13,7 +13,7 @@ g.attr(**base_graph_attr(
     splines="spline",
     size="18,10",
     label=hl(
-        "Writz Protocol — ZK Circuits (Groth16 / BN254)",
+        "Writz Protocol - ZK Circuits (Groth16 / BN254)",
         "All proofs generated in-browser via snarkjs · verified on Soroban via Protocol X-Ray host functions",
     ),
 ))

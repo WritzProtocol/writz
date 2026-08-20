@@ -2,20 +2,20 @@
 
 **Author:** Justin (Business Analyst)
 **Date:** 2026-06-22
-**Status:** Complete — initial survey
+**Status:** Complete - initial survey
 **Relevance:** Directly informs Writz Protocol's core technical approach
 
 ---
 
 ## Overview
 
-Bitcoin SPV (Simplified Payment Verification) allows a system to verify that a Bitcoin transaction occurred without running a full Bitcoin node. It works by checking a Merkle proof against a block header — a computationally cheap operation that can be performed inside a smart contract.
+Bitcoin SPV (Simplified Payment Verification) allows a system to verify that a Bitcoin transaction occurred without running a full Bitcoin node. It works by checking a Merkle proof against a block header - a computationally cheap operation that can be performed inside a smart contract.
 
 This document surveys every meaningful attempt to implement Bitcoin SPV verification on another blockchain, extracting lessons that directly apply to building the SPV client on Stellar's Soroban.
 
 ---
 
-## 1. BTC Relay — Ethereum (2016)
+## 1. BTC Relay - Ethereum (2016)
 
 **Status:** Deprecated / inactive
 **Chain:** Ethereum (Solidity)
@@ -43,8 +43,8 @@ BTC Relay was the first implementation of a Bitcoin light client on another bloc
 
 ### What worked
 
-- The **cryptographic verification was correct** — Merkle proof validation worked as designed
-- The **SPV approach was sound** — the concept proved valid even if the implementation had issues
+- The **cryptographic verification was correct** - Merkle proof validation worked as designed
+- The **SPV approach was sound** - the concept proved valid even if the implementation had issues
 - It demonstrated that cross-chain Bitcoin verification was technically possible
 
 ### Key lesson for Writz
@@ -53,7 +53,7 @@ BTC Relay was the first implementation of a Bitcoin light client on another bloc
 
 ---
 
-## 2. summa-tx/bitcoin-spv — Multi-chain (2019–present)
+## 2. summa-tx/bitcoin-spv - Multi-chain (2019–present)
 
 **Status:** Actively maintained (last update: 2024)
 **Chains:** EVM (Ethereum, Celo), Cosmos SDK, others
@@ -61,14 +61,14 @@ BTC Relay was the first implementation of a Bitcoin light client on another bloc
 
 ### What it is
 
-A low-level toolkit for Bitcoin SPV proof verification. Unlike BTC Relay, it does NOT maintain a chain of block headers on-chain. Instead, it verifies a **specific slice of headers** provided at call time — a "stateless" approach.
+A low-level toolkit for Bitcoin SPV proof verification. Unlike BTC Relay, it does NOT maintain a chain of block headers on-chain. Instead, it verifies a **specific slice of headers** provided at call time - a "stateless" approach.
 
 Available implementations:
-- **Solidity** — for EVM chains
-- **Rust** — directly applicable to Soroban ⭐
-- **Go** — for Cosmos SDK chains
-- **Python** — for tooling
-- **JavaScript/ES6** — for off-chain tooling
+- **Solidity** - for EVM chains
+- **Rust** - directly applicable to Soroban
+- **Go** - for Cosmos SDK chains
+- **Python** - for tooling
+- **JavaScript/ES6** - for off-chain tooling
 
 ### The stateless SPV insight
 
@@ -86,18 +86,18 @@ The contract verifies everything in a single call without storing anything perma
 
 This is the **most directly relevant existing work**. The Rust library (`bitcoin-spv` in Rust) is written in the same language as Soroban contracts. It provides:
 
-- `validateHeader()` — verifies a Bitcoin block header is valid (correct PoW, correct format)
-- `validateHeaderChain()` — verifies a sequence of headers forms a valid chain
-- `prove()` — verifies a transaction is included in a block via Merkle proof
-- `extractTxOutputValue()` — extracts the output value from a Bitcoin transaction
+- `validateHeader()` - verifies a Bitcoin block header is valid (correct PoW, correct format)
+- `validateHeaderChain()` - verifies a sequence of headers forms a valid chain
+- `prove()` - verifies a transaction is included in a block via Merkle proof
+- `extractTxOutputValue()` - extracts the output value from a Bitcoin transaction
 
 **Recommended action:** Evaluate the Rust implementation of `summa-tx/bitcoin-spv` as the starting point for the Soroban SPV contract, rather than implementing from scratch.
 
 ---
 
-## 3. Interlay / interBTC — Polkadot (2021–present)
+## 3. Interlay / interBTC - Polkadot (2021–present)
 
-**Status:** Active — deployed on Polkadot (Interlay) and Kusama (Kintsugi)
+**Status:** Active - deployed on Polkadot (Interlay) and Kusama (Kintsugi)
 **Chain:** Substrate/Polkadot (Rust)
 **Repository:** [github.com/interlay/interbtc](https://github.com/interlay/interbtc)
 **Spec:** [github.com/interlay/interbtc-spec](https://github.com/interlay/interbtc-spec)
@@ -149,7 +149,7 @@ User BTC Wallet              BTC-Relay pallet (SPV)
 
 ---
 
-## 4. Solana BTC SPV — Experimental (2020–2021)
+## 4. Solana BTC SPV - Experimental (2020–2021)
 
 **Status:** Minimal maintenance
 **Chain:** Solana
@@ -168,11 +168,11 @@ An experimental implementation of Bitcoin SPV verification as a Solana on-chain 
 
 ### Key lesson for Writz
 
-Solana attempted this and stalled — not because the idea was wrong, but because the ecosystem incentives and developer focus were elsewhere. Stellar's situation is different: the SDF actively wants BTC to enter the ecosystem, and Soroban's fee model is more favorable.
+Solana attempted this and stalled - not because the idea was wrong, but because the ecosystem incentives and developer focus were elsewhere. Stellar's situation is different: the SDF actively wants BTC to enter the ecosystem, and Soroban's fee model is more favorable.
 
 ---
 
-## 5. Succinct Labs SP1 + BitVM — Bitcoin-Native ZK (2024–2026)
+## 5. Succinct Labs SP1 + BitVM - Bitcoin-Native ZK (2024–2026)
 
 **Status:** Active / cutting-edge
 **Direction:** ZK proofs ON Bitcoin (reverse direction)
@@ -182,7 +182,7 @@ Solana attempted this and stalled — not because the idea was wrong, but becaus
 
 ### What it is
 
-SP1 is a zkVM (zero-knowledge virtual machine) that can prove the execution of arbitrary Rust programs. It is optimized for Bitcoin. Combined with **BitVM** — a computing paradigm that allows Bitcoin to verify ZK proofs without changing Bitcoin's consensus rules — it enables a new class of trust-minimized Bitcoin bridges.
+SP1 is a zkVM (zero-knowledge virtual machine) that can prove the execution of arbitrary Rust programs. It is optimized for Bitcoin. Combined with **BitVM** - a computing paradigm that allows Bitcoin to verify ZK proofs without changing Bitcoin's consensus rules - it enables a new class of trust-minimized Bitcoin bridges.
 
 ### How it works
 
@@ -200,14 +200,14 @@ This is the **long-term convergence point** of ZK and Bitcoin. Today, Writz uses
 
 ### Current limitations
 
-- BitVM is still experimental — real-world deployments are limited
+- BitVM is still experimental - real-world deployments are limited
 - Proof generation for complex programs can take minutes
 - The challenge-response model adds latency and requires capital at risk
 - Not ready for production DeFi today
 
 ### Key lesson for Writz
 
-This is the **Phase 3 vision** for Writz Protocol — not the starting point. Track actively. When BitVM matures to production readiness, Writz should be the first protocol on Stellar to integrate it.
+This is the **Phase 3 vision** for Writz Protocol - not the starting point. Track actively. When BitVM matures to production readiness, Writz should be the first protocol on Stellar to integrate it.
 
 ---
 
@@ -215,41 +215,39 @@ This is the **Phase 3 vision** for Writz Protocol — not the starting point. Tr
 
 | Project | Chain | Approach | Status | Rust Code? | Lessons Weight |
 |---|---|---|---|---|---|
-| **BTC Relay** | Ethereum | Stateful headers on-chain | Deprecated | No (Solidity) | High — what NOT to do |
-| **summa-tx/bitcoin-spv** | Multi-chain | Stateless SPV toolkit | Active | ✅ Yes | Very high — direct reference |
-| **Interlay/interBTC** | Polkadot | SPV + collateralized vaults | Active | ✅ Yes | Very high — closest to Writz |
-| **Solana BTC SPV** | Solana | Experimental program | Minimal | ✅ Yes | Medium — shows pitfalls |
-| **SP1 + BitVM** | Bitcoin-native | ZK proofs on Bitcoin | Cutting-edge | ✅ Yes | Medium — long-term vision |
+| **BTC Relay** | Ethereum | Stateful headers on-chain | Deprecated | No (Solidity) | High - what NOT to do |
+| **summa-tx/bitcoin-spv** | Multi-chain | Stateless SPV toolkit | Active | ✓ Yes | Very high - direct reference |
+| **Interlay/interBTC** | Polkadot | SPV + collateralized vaults | Active | ✓ Yes | Very high - closest to Writz |
+| **Solana BTC SPV** | Solana | Experimental program | Minimal | ✓ Yes | Medium - shows pitfalls |
+| **SP1 + BitVM** | Bitcoin-native | ZK proofs on Bitcoin | Cutting-edge | ✓ Yes | Medium - long-term vision |
 
 ---
 
 ## Critical Findings for Writz Protocol
 
 ### 1. Start with stateless SPV (summa-tx approach)
-Don't build a stateful header chain — it's expensive and creates relayer dependency. Use stateless SPV where the caller provides headers at verification time. The Soroban contract only needs to verify the math, not store state.
+Don't build a stateful header chain - it's expensive and creates relayer dependency. Use stateless SPV where the caller provides headers at verification time. The Soroban contract only needs to verify the math, not store state.
 
 ### 2. The Rust ecosystem is already there
-Both `summa-tx/bitcoin-spv` (Rust) and `interbtc` (Rust/Substrate) are written in Rust. Soroban contracts are written in Rust. This is a significant advantage — the hardest parts of the implementation have precedent in the same language.
+Both `summa-tx/bitcoin-spv` (Rust) and `interbtc` (Rust/Substrate) are written in Rust. Soroban contracts are written in Rust. This is a significant advantage - the hardest parts of the implementation have precedent in the same language.
 
 ### 3. Relayer incentives must be designed from day 0
 Every failed implementation either ignored relayer incentives or added them as an afterthought. For stateless SPV, relayers are less critical (no on-chain header chain to maintain), but someone still needs to provide valid headers to users. A small fee mechanism for header provision should be designed into the protocol.
 
 ### 4. Bitcoin confirmation time is a UX problem, not a technical one
-6 confirmations ≈ 60 minutes. Writz should offer tiered confirmation options:
-- **Fast lane:** 3 confirmations (~30 min) with a higher protocol fee and smaller max deposit
-- **Standard lane:** 6 confirmations (~60 min) with standard fees
+6 confirmations ≈ 60 minutes. A tiered confirmation option was evaluated in `docs/research/bitcoin-locking-script.md` - fast lane (3 confirmations, capped deposit size) vs. standard lane (6 confirmations) - but was not adopted for the current spec. Writz requires a flat 6 confirmations for all deposit sizes; see `docs/products/privatelend.md` and `docs/how-it-works/spv-verification.md` for the adopted policy.
 
-### 5. The SPV math is solved — focus engineering effort on economics
+### 5. The SPV math is solved - focus engineering effort on economics
 The cryptographic verification (SHA256d, Merkle proofs, header validation) is well-understood and implemented. The unsolved problems are: incentive design, reorg handling, UX around Bitcoin's slow finality, and the BTC locking mechanism on the Bitcoin side.
 
 ---
 
 ## Recommended Next Steps
 
-1. **Fork and study** the Rust implementation of `summa-tx/bitcoin-spv` — map every function to what Writz needs
-2. **Read the interBTC specification** (`interlay/interbtc-spec`) — it's the most complete formal specification of a trustless BTC bridge and directly applicable
-3. **Prototype stateless SPV verification** in a Soroban contract on testnet — target: verify a single mainnet Bitcoin transaction
-4. **Design the P2WSH locking script** — the Bitcoin-side of the mechanism that prevents users from moving BTC after depositing
+1. **Fork and study** the Rust implementation of `summa-tx/bitcoin-spv` - map every function to what Writz needs
+2. **Read the interBTC specification** (`interlay/interbtc-spec`) - it's the most complete formal specification of a trustless BTC bridge and directly applicable
+3. **Prototype stateless SPV verification** in a Soroban contract on testnet - target: verify a single mainnet Bitcoin transaction
+4. **Design the P2WSH locking script** - the Bitcoin-side of the mechanism that prevents users from moving BTC after depositing
 
 ---
 

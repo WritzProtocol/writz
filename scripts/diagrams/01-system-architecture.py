@@ -1,5 +1,5 @@
 """
-Writz Protocol — 01 System Architecture
+Writz Protocol - 01 System Architecture
 Full three-layer view: Bitcoin network, Stellar/Soroban contracts, Browser frontend.
 """
 import sys, os
@@ -13,7 +13,7 @@ g.attr(**base_graph_attr(
     splines="spline",
     size="16,12",
     label=hl(
-        "Writz Protocol — System Architecture",
+        "Writz Protocol - System Architecture",
         "Trustless ZK-private Bitcoin lending on Stellar · live on testnet",
     ),
 ))

@@ -1,10 +1,10 @@
-# SCF Build Award — Open Track Application *(DRAFT)*
+# SCF Build Award - Open Track Application *(DRAFT - NOT SUBMITTED)*
 
-> **Note:** This is a draft and will be changed if needed. Content is directionally correct but specific numbers, team details, and deliverable dates will be refined before actual submission.
+> **Note:** This is a draft only. It has not been submitted to the Stellar Community Fund, and there is no short-term plan to submit it. Content is directionally correct but specific numbers, team details, and deliverable dates would need to be refined before any actual submission. Treat every date, tranche, and dollar figure in this document as hypothetical until that decision changes.
 
-**Program:** Stellar Community Fund — Build Award, Open Track
+**Program:** Stellar Community Fund - Build Award, Open Track
 **Amount requested:** $92,000 worth of XLM
-**Disbursement:** Four tranches — 10% / 20% / 30% / 40%
+**Disbursement:** Four tranches - 10% / 20% / 30% / 40%
 **Submission type:** This document is the full application text, structured to match the SCF Open Track submission form.
 
 ---
@@ -13,7 +13,7 @@
 
 **Name:** Writz Protocol
 
-**One line:** The first trustless Bitcoin DeFi layer on Stellar — BTC collateral verified via SPV, lending positions hidden by ZK proofs.
+**One line:** A trustless Bitcoin DeFi layer on Stellar - BTC collateral verified via SPV, lending positions hidden by ZK proofs.
 
 ---
 
@@ -21,11 +21,11 @@
 
 Bitcoin is the world's largest crypto asset ($1T+ in long-term holders) and almost none of it participates in DeFi. Existing solutions fail in one of two ways:
 
-**They require trust.** WBTC (BitGo custody), tBTC (threshold signatures), Stacks sBTC (federated peg), RSK (federated peg) — every major BTCfi implementation relies on a third party to hold or vouch for the Bitcoin. This is counterproductive for an asset whose entire value proposition is trustlessness.
+**They require trust.** WBTC (BitGo custody), tBTC (threshold signatures), Stacks sBTC (federated peg), RSK (federated peg) - every major BTCfi implementation relies on a third party to hold or vouch for the Bitcoin. This is counterproductive for an asset whose entire value proposition is trustlessness.
 
-**They expose positions publicly.** Aave, Compound, Blend — every lending protocol makes collateral amounts, loan sizes, and liquidation thresholds visible to anyone on the blockchain. Front-running bots exploit liquidation thresholds. Institutional participants won't accept this visibility. Sophisticated retail users don't want their net worth public.
+**They expose positions publicly.** Aave, Compound, Blend - every lending protocol makes collateral amounts, loan sizes, and liquidation thresholds visible to anyone on the blockchain. Front-running bots exploit liquidation thresholds. Institutional participants won't accept this visibility. Sophisticated retail users don't want their net worth public.
 
-Meanwhile, Stellar launched Protocol X-Ray (January 2026) — ZK proof verification inside Soroban smart contracts — and processes $500M/month in USDC. The infrastructure to solve both problems simultaneously now exists on Stellar. Nobody has built on it.
+Meanwhile, Stellar launched Protocol X-Ray (January 2026) - ZK proof verification inside Soroban smart contracts - and processes $500M/month in USDC. The infrastructure to solve both problems simultaneously now exists on Stellar. As of 2026-08-04, Solv Protocol and Templar Protocol both have live Stellar BTC infrastructure, but neither combines trustless native BTC with ZK-private positions - that combination remains unaddressed. See `docs/research/market-landscape.md` for the current competitive picture.
 
 ---
 
@@ -33,9 +33,9 @@ Meanwhile, Stellar launched Protocol X-Ray (January 2026) — ZK proof verificat
 
 Writz Protocol connects Bitcoin natively to Stellar's DeFi and privacy infrastructure:
 
-**Trustless BTC collateral via stateless SPV.** Users send BTC to a P2WSH script with two spending paths: (A) protocol co-signature when the loan is repaid, and (B) a CLTV timelock escape hatch in case the protocol is unavailable. A Soroban smart contract verifies the Bitcoin transaction cryptographically — SHA256d header chain validation + Merkle inclusion proof — with no bridge, no custodian, and no wrapped token. If Writz disappears, users recover their BTC via the timelock with no protocol involvement.
+**Trustless BTC collateral via stateless SPV.** Users send BTC to a P2WSH script with two spending paths: (A) protocol co-signature when the loan is repaid, and (B) a CLTV timelock escape hatch in case the protocol is unavailable. A Soroban smart contract verifies the Bitcoin transaction cryptographically - SHA256d header chain validation + Merkle inclusion proof - with no bridge, no custodian, and no wrapped token. If Writz disappears, users recover their BTC via the timelock with no protocol involvement.
 
-**ZK-private lending positions.** Collateral amounts, loan sizes, and health ratios are hidden using zero-knowledge proofs built on Stellar's Protocol X-Ray (Groth16 on BN254). Nobody — not front-running bots, not competitors, not surveillance firms — can see your position. Liquidations are proved ZK: the keeper proves a position is undercollateralized without revealing the actual amounts.
+**ZK-private lending positions.** Collateral amounts, loan sizes, and health ratios are hidden using zero-knowledge proofs built on Stellar's Protocol X-Ray (Groth16 on BN254). Nobody - not front-running bots, not competitors, not surveillance firms - can see your position. Liquidations are proved ZK: the keeper proves a position is undercollateralized without revealing the actual amounts.
 
 **Real business model.** Revenue from lending spread (protocol captures 15% of interest), SPV API fees, swap fees (Dark Swap product), and Proof of Reserve SaaS for enterprises. The SCF grant accelerates development; Writz sustains itself on protocol revenue.
 
@@ -43,7 +43,7 @@ Writz Protocol connects Bitcoin natively to Stellar's DeFi and privacy infrastru
 
 ## 4. Technical architecture
 
-### Layer 1 — Bitcoin (P2WSH locking script)
+### Layer 1 - Bitcoin (P2WSH locking script)
 
 Each deposit creates a unique Bitcoin address from three inputs: `(protocol_key, user_key, cltv_timelock)`. The redeem script encodes two spending conditions using Bitcoin Script:
 
@@ -59,11 +59,11 @@ OP_ENDIF
 
 Phase 1 uses HSM for the protocol key. Phase 2 migrates to MPC (multi-party computation) for distributed key custody.
 
-### Layer 2 — Bitcoin SPV contract (Soroban)
+### Layer 2 - Bitcoin SPV contract (Soroban)
 
-A stateless Soroban contract that verifies Bitcoin transaction inclusion. "Stateless" means the caller provides all data at verification time — headers, Merkle proof, raw transaction — and the contract verifies without storing state. This eliminates the relayer dependency that caused BTC Relay (Ethereum, 2016) to fail.
+A stateless Soroban contract that verifies Bitcoin transaction inclusion. "Stateless" means the caller provides all data at verification time - headers, Merkle proof, raw transaction - and the contract verifies without storing state. This eliminates the relayer dependency that caused BTC Relay (Ethereum, 2016) to fail.
 
-**Deployed on Soroban testnet:** `CDYQRO6PZ55A3AMJQBHDEUUCQTSVHHRWQW7WSDX7CBX6FQ2NLKYCPLVC`
+**Deployed on Soroban testnet:** `CB2BD6QCSZVNZN5NLI7C5NF356WXVJDSXT6LVAQFWHHS4SZ4NCKKNIVA`
 
 Core operations:
 - SHA256d (Bitcoin's double-SHA256) using Soroban host `env.crypto().sha256()`
@@ -71,25 +71,25 @@ Core operations:
 - Merkle inclusion: walks from txid to Merkle root using sibling hashes
 - On-chain Bitcoin tx parsing: finds the P2WSH output to verify the deposited satoshi amount
 
-### Layer 3 — PrivateLend contract (Soroban)
+### Layer 3 - PrivateLend contract (Soroban)
 
 Lending logic above the SPV layer. Key design decisions:
 
-- **Per-entry persistent storage** (no growing instance collections — following CertiK's Soroban vulnerability research)
+- **Per-entry persistent storage** (no growing instance collections - following CertiK's Soroban vulnerability research)
 - **Cross-contract SPV call** at deposit time before creating a position
 - **Kinked interest rate model**: base=0%, Uoptimal=75%, slope1=8%, slope2=200%, protocol fee=15%
 - **Phase 1 liquidation**: trusted keeper detects undercollateralized positions and submits; Phase 2 uses ZK proof of undercollateralization
 
-Current state: 50 tests passing, 23.7 KB WASM, 14 exported functions.
+Current state: 85 tests passing, 36.0 KB WASM, 26 exported functions.
 
-### Layer 4 — ZK privacy layer (Phase 2)
+### Layer 4 - ZK privacy layer (Phase 2)
 
 Three Circom circuits on Groth16 / BN254:
 - **Deposit circuit** (~280 constraints): creates a Poseidon commitment to the position
-- **Borrow/repay circuit** (~10,500 constraints): proves state transition preserves collateral ratio without revealing amounts
+- **Borrow/repay circuit** (~11,200 constraints): proves state transition preserves collateral ratio without revealing amounts
 - **Liquidation circuit** (~9,000 constraints): proves undercollateralization without revealing the specific amounts
 
-Protocol X-Ray (Protocol 25, January 2026) added BN254 elliptic curve operations and Poseidon hash to Soroban host functions — the exact primitives Groth16 verification requires.
+Protocol X-Ray (Protocol 25, January 2026) added BN254 elliptic curve operations and Poseidon hash to Soroban host functions - the exact primitives Groth16 verification requires.
 
 ### Supporting infrastructure
 
@@ -101,17 +101,17 @@ Protocol X-Ray (Protocol 25, January 2026) added BN254 elliptic curve operations
 
 ## 5. Team
 
-**Sebastian Salazar** — Founder and sole developer at this stage.
+**Sebastian Salazar** - Founder and sole developer at this stage.
 
 Deep understanding of the full technical stack: Bitcoin scripting (P2WSH, PSBT, CLTV), Soroban/Rust smart contracts, TypeScript systems engineering, ZK circuit design (Circom/Groth16), and Stellar's ZK infrastructure (Protocol X-Ray).
 
 The protocol concept, architecture, research, and all current code were produced by Sebastian. The research phase (15 documents, covering SPV implementations, oracle design, interest rate modeling, ZK circuit architecture, regulatory landscape, and more) preceded any code, establishing deep domain knowledge before building.
 
-**Current state:** All Phase 0 research complete. Phase 1 foundation complete: SPV contract deployed on testnet, SPV relayer operational, P2WSH library with 48 tests, PrivateLend skeleton with 50 tests.
+**Current state:** All Phase 0 research complete. Phase 1 foundation complete: SPV contract deployed on testnet, SPV relayer operational, P2WSH library with 60 tests, PrivateLend skeleton with 85 tests.
 
 **Planned team growth with grant:** The $92K grant funds one additional Rust/Soroban developer for the ZK circuit implementation sprint (Phase 2) and frontend development (Phase 2–3).
 
-**AI-assisted artifacts disclosure** (required by SCF Open Track): Research documents and code were produced with AI assistance (Claude Code). All architecture decisions, technical direction, and implementation choices are Sebastian's own. All code has been reviewed, tested, and understood by Sebastian before committing. The AI tooling accelerated the research and implementation phases — it did not replace the technical judgment.
+**AI-assisted artifacts disclosure** (required by SCF Open Track): Research documents and code were produced with AI assistance (Claude Code). All architecture decisions, technical direction, and implementation choices are Sebastian's own. All code has been reviewed, tested, and understood by Sebastian before committing. The AI tooling accelerated the research and implementation phases - it did not replace the technical judgment.
 
 ---
 
@@ -133,7 +133,7 @@ The SCF handbook explicitly filters projects replicating existing solutions on S
 
 - Brings Bitcoin TVL to Stellar for the first time as a genuine, trustless collateral asset
 - Opens BTCfi to the 77% of Bitcoin holders who have never tried DeFi (primary growth market)
-- Creates an open Bitcoin SPV SDK that any Stellar protocol can integrate — infrastructure that multiplies ecosystem value beyond Writz itself
+- Creates an open Bitcoin SPV SDK that any Stellar protocol can integrate - infrastructure that multiplies ecosystem value beyond Writz itself
 - Increases USDC utilization on Stellar (USDC supply side benefits from BTC-collateralized borrowing demand)
 - Demonstrates Protocol X-Ray's practical privacy capabilities to the wider DeFi community
 
@@ -141,12 +141,12 @@ The SCF handbook explicitly filters projects replicating existing solutions on S
 
 | Metric | Phase 1 target | Phase 2 target |
 |---|---|---|
-| SPV verifications (testnet) | 100+ | — |
-| PrivateLend TVL (mainnet) | — | $50K (launch cap) |
-| Monthly USDC volume | — | $250K |
-| Protocols using SPV SDK | — | 1 (Writz itself) |
-| DeFiLlama listed | — | ✅ |
-| Audit completed (0 critical findings) | — | ✅ |
+| SPV verifications (testnet) | 100+ | - |
+| PrivateLend TVL (mainnet) | - | $50K (launch cap) |
+| Monthly USDC volume | - | $250K |
+| Protocols using SPV SDK | - | 1 (Writz itself) |
+| DeFiLlama listed | - | ✓ |
+| Audit completed (0 critical findings) | - | ✓ |
 
 ---
 
@@ -173,7 +173,7 @@ Post-launch programs Writz intends to apply for: Growth Hack Program (after 60 d
 
 | Item | Amount | Rationale |
 |---|---|---|
-| ZK circuit implementation (Circom — 3 circuits) | $28,000 | 3–4 months of specialist ZK engineering (Circom, snarkjs, trusted setup ceremony coordination) |
+| ZK circuit implementation (Circom - 3 circuits) | $28,000 | 3–4 months of specialist ZK engineering (Circom, snarkjs, trusted setup ceremony coordination) |
 | Soroban ZK verifier integration | $18,000 | Integrating Groth16 verification into PrivateLend using Protocol X-Ray BN254 ops |
 | Frontend development (app.writz.xyz) | $22,000 | Next.js app, Xverse wallet integration, Freighter integration, Stellar Wallets Kit |
 | Infrastructure (relayer hosting, RPC, CI/CD) | $8,000 | 12-month runway for decentralized relayer, Bitcoin RPC node, testnet/mainnet infrastructure |
@@ -198,9 +198,9 @@ See [`scf/milestone-plan.md`](milestone-plan.md) for the detailed four-tranche b
 
 ## 11. Links
 
-- **Documentation:** [docs.writz.xyz](https://docs.writz.xyz) (Mintlify — live before Tranche #0 submission)
+- **Documentation:** [docs.writz.xyz](https://docs.writz.xyz) (Mintlify - live before Tranche #0 submission)
 - **GitHub:** [github.com/WritzProtocol/writz](https://github.com/WritzProtocol/writz) (going public before submission)
-- **Testnet SPV contract:** `CDYQRO6PZ55A3AMJQBHDEUUCQTSVHHRWQW7WSDX7CBX6FQ2NLKYCPLVC`
+- **Testnet SPV contract:** `CB2BD6QCSZVNZN5NLI7C5NF356WXVJDSXT6LVAQFWHHS4SZ4NCKKNIVA`
 - **Demo video:** [Recorded before Tranche #0 submission]
 - **Team video:** [Recorded before submission]
 
@@ -208,6 +208,6 @@ See [`scf/milestone-plan.md`](milestone-plan.md) for the detailed four-tranche b
 
 ## 12. Declaration
 
-Writz Protocol is applying to the Stellar Community Fund **once**, for **$92,000**. This is the complete and final ask. The protocol has a real business model and does not depend on future SDF funding for operational sustainability. We view this grant as a strategic alliance with Stellar — Writz benefits from the development runway, and Stellar gains its first trustless Bitcoin DeFi infrastructure.
+Writz Protocol is applying to the Stellar Community Fund **once**, for **$92,000**. This is the complete and final ask. The protocol has a real business model and does not depend on future SDF funding for operational sustainability. We view this grant as a strategic alliance with Stellar - Writz benefits from the development runway, and Stellar gains its first trustless Bitcoin DeFi infrastructure.
 
 We commit to the Soroban Audit Bank process as a condition of mainnet launch, and to open-sourcing the Bitcoin SPV SDK as reusable infrastructure for the Stellar ecosystem.

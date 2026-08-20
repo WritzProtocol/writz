@@ -1,5 +1,7 @@
 # GitHub Discussion Draft
 
+> **Status:** Draft post, not published. References to SCF reviewers below are aspirational - the SCF application is a draft only, not submitted, with no short-term plan to submit.
+
 **Target repository:** `stellar/stellar-protocol`
 **Discussion category:** Ideas / Show and Tell
 **Purpose:** Contribute to the ecosystem conversation while introducing Writz.
@@ -9,7 +11,7 @@
 
 ## Discussion Title
 
-**Pattern: Stateless Bitcoin SPV on Soroban — lessons from implementing SHA256d + Merkle verification**
+**Pattern: Stateless Bitcoin SPV on Soroban - lessons from implementing SHA256d + Merkle verification**
 
 ---
 
@@ -27,7 +29,7 @@ This has a key practical implication: the relayer is a **convenience service**, 
 
 ### What I found building SHA256d in Soroban
 
-Bitcoin uses double-SHA256 (SHA256d) as its primary hash function — block hashes, txids, and Merkle tree nodes are all computed this way. On Soroban SDK v26, `env.crypto().sha256(data)` gives you the first pass, and `sha256(sha256(data))` gives you SHA256d:
+Bitcoin uses double-SHA256 (SHA256d) as its primary hash function - block hashes, txids, and Merkle tree nodes are all computed this way. On Soroban SDK v26, `env.crypto().sha256(data)` gives you the first pass, and `sha256(sha256(data))` gives you SHA256d:
 
 ```rust
 pub(crate) fn sha256d(env: &Env, data: &Bytes) -> BytesN<32> {
@@ -37,7 +39,7 @@ pub(crate) fn sha256d(env: &Env, data: &Bytes) -> BytesN<32> {
 }
 ```
 
-This uses native host functions rather than a Rust SHA256 implementation — significantly cheaper in instructions.
+This uses native host functions rather than a Rust SHA256 implementation - significantly cheaper in instructions.
 
 ### Header chain validation cost
 
@@ -50,12 +52,12 @@ In practice: a 6-header chain + 12-sibling Merkle proof costs roughly 30–40M S
 
 ### Pattern: per-entry persistent storage for user data
 
-The contract stores nothing itself — it's fully stateless. But the PrivateLend contract that calls it stores one `Position` per Bitcoin txid using keyed persistent storage:
+The contract stores nothing itself - it's fully stateless. But the PrivateLend contract that calls it stores one `Position` per Bitcoin txid using keyed persistent storage:
 
 ```rust
 #[contracttype]
 pub enum DataKey {
-    Position(BytesN<32>),      // keyed by Bitcoin txid — never grows as a collection
+    Position(BytesN<32>),      // keyed by Bitcoin txid - never grows as a collection
     SupplyBalance(Address),
     Config,
     Protocol,
@@ -69,14 +71,14 @@ This avoids the unbounded instance storage growth vulnerability that the Soroban
 The PrivateLend contract calls the SPV contract at deposit time:
 
 ```rust
-let spv_result: SpvResult = env.invoke_contract(
+let spv_result: SpvVerificationResult = env.invoke_contract(
     &config.spv_contract,
     &Symbol::new(&env, "verify_transaction"),
     (headers, merkle_proof, tx_index, raw_tx, min_confirmations).into_val(&env),
 );
 ```
 
-The `SpvResult` type is defined locally in PrivateLend with the same field order as `VerificationResult` in the SPV contract — Soroban's Val encoding makes them wire-compatible as long as the `#[contracttype]` fields match. Curious if there's a more idiomatic pattern (maybe `contractimport!` with a pinned WASM hash?) that others have used for stable cross-contract interfaces.
+This originally used a `SpvResult` type defined locally in PrivateLend with the same field order as the SPV contract's own return type - wire-compatible because Soroban's Val encoding only checks that `#[contracttype]` fields match, not the type's name or crate. We've since factored it into a shared `spv-types` crate all four contracts depend on, so there's one definition instead of independently-maintained copies. Still curious if there's an even more idiomatic pattern (maybe `contractimport!` with a pinned WASM hash?) that others have used for stable cross-contract interfaces.
 
 ### What's next
 
@@ -91,7 +93,7 @@ Happy to share the full contract code when the repo goes public (before SCF appl
 1. Go to `https://github.com/stellar/stellar-protocol/discussions`
 2. Click **New discussion**
 3. Select category: **Ideas** (or "General" if Ideas isn't available)
-4. Title: `Pattern: Stateless Bitcoin SPV on Soroban — lessons from implementing SHA256d + Merkle verification`
+4. Title: `Pattern: Stateless Bitcoin SPV on Soroban - lessons from implementing SHA256d + Merkle verification`
 5. Body: paste the content above (starting from "I've been building...")
 6. Add labels if available: `soroban`, `cross-chain`
 7. Submit

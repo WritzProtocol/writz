@@ -1,5 +1,5 @@
 """
-Writz Protocol — 04 BTC Release Flow
+Writz Protocol - 04 BTC Release Flow
 Path A cooperative release: PSBT built in browser, co-signed by protocol, finalized and broadcast.
 """
 import sys, os
@@ -13,7 +13,7 @@ g.attr(**base_graph_attr(
     splines="ortho",
     size="18,8",
     label=hl(
-        "Writz Protocol — BTC Release Flow (Path A)",
+        "Writz Protocol - BTC Release Flow (Path A)",
         "After full repay · cooperative co-sign · witness: [user_sig, protocol_sig, 0x01, redeemScript]",
     ),
 ))

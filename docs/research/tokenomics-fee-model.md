@@ -8,7 +8,7 @@
 
 ## Overview
 
-Writz Protocol's economic sustainability depends on a well-designed fee model. This document defines all revenue streams, the protocol fee structure, treasury allocation, and the governance token strategy — informed by the 2025–2026 shift in DeFi toward real-yield tokenomics.
+Writz Protocol's economic sustainability depends on a well-designed fee model. This document defines all revenue streams, the protocol fee structure, treasury allocation, and the governance token strategy - informed by the 2025–2026 shift in DeFi toward real-yield tokenomics.
 
 ---
 
@@ -48,7 +48,7 @@ Other Stellar protocols pay to use Writz's Bitcoin SPV client.
 - Per-verification fee: $0.10–$0.50 per proof verification
 - Monthly subscription: $500–$5,000/month for high-volume protocols
 
-Early adopter pricing is aggressive — the goal is ecosystem adoption, not maximizing API revenue in Year 1.
+Early adopter pricing is aggressive - the goal is ecosystem adoption, not maximizing API revenue in Year 1.
 
 ### Tertiary: Swap Fees (Dark Swap)
 Basis points on BTC/USDC swaps. Target: 0.3% per swap (comparable to Uniswap v3).
@@ -59,9 +59,9 @@ At $10M monthly swap volume: $30,000/month in swap fees.
 Enterprise customers pay for private, verifiable BTC reserve attestations.
 
 **Pricing model:**
-- Starter: $500/month — up to 5 attestations
-- Professional: $2,000/month — unlimited attestations, custom reporting
-- Enterprise: $10,000+/month — SLA, dedicated support, compliance documentation
+- Starter: $500/month - up to 5 attestations
+- Professional: $2,000/month - unlimited attestations, custom reporting
+- Enterprise: $10,000+/month - SLA, dedicated support, compliance documentation
 
 Target: 10 paying enterprise customers in Year 1 = $20,000–$100,000/year.
 
@@ -86,17 +86,19 @@ All protocol revenue flows into a distribution contract that routes funds to:
 
 **Insurance Fund:** Accumulates until it reaches 10% of TVL. After that, excess flows to buyback instead. This ensures the protocol can cover bad debt without relying on tokenomics.
 
-**Buyback & Burn:** Protocol buys WRTZ tokens from the open market and burns them. This creates deflationary pressure tied directly to protocol usage — more borrowers = more revenue = more buybacks = less token supply.
+**Buyback & Burn:** Protocol buys WRTZ tokens from the open market and burns them. This creates deflationary pressure tied directly to protocol usage - more borrowers = more revenue = more buybacks = less token supply.
 
 ---
 
 ## Governance Token: WRTZ
 
+> **Scope status:** This is a problem-and-hypothesis exploration, not a committed design. No contract, governance mechanism, or legal analysis of WRTZ's status as a security in target jurisdictions exists today. Token launch is explicitly gated on post-$5M TVL (see "When to launch the token" below), so there is no urgency to finalize this - treat the distribution table and utility design as directional, not final, until closer to that milestone and until legal counsel has reviewed the security-classification question.
+
 ### Design principles
 - Total supply: **100,000,000 WRTZ** (fixed, no inflation)
 - 100% backed by real protocol revenue (no liquidity mining emissions)
 - Governance rights over protocol parameters
-- Revenue sharing via buyback/burn (not direct dividends — cleaner tax treatment)
+- Revenue sharing via buyback/burn (not direct dividends - cleaner tax treatment)
 
 ### Distribution
 
@@ -167,11 +169,26 @@ These are conservative estimates. At BTCfi's current 28× annual TVL growth rate
 | Token model | Real-yield, buyback/burn | 2026 industry standard; no inflationary emissions |
 | Token supply | 100M fixed | Simple, no inflation |
 | Token launch timing | Post $5M TVL | Product-market fit first |
-| Protocol fee % | 15% of interest spread | Higher than Aave (10%) due to ZK infrastructure costs |
+| Protocol fee % | 15% of interest spread (`PROTOCOL_FEE_BP = 1_500` in contract) | Higher than Aave (10%) due to ZK infrastructure costs |
+| Mainnet bootstrap fee waiver | 0% protocol fee for the first 90 days after mainnet launch, per `docs/roadmap/phases.md` | Bootstrap incentive to attract early liquidity; the 15% fee is a contract constant, so this waiver is a launch-time parameter change, not yet implemented in `rates.rs` - flag as an explicit pre-mainnet task, not an assumed feature |
 | Insurance fund target | 10% of TVL | Industry standard; covers typical bad debt scenarios |
 | Revenue distribution | 30/30/25/15 | Balanced between safety, token health, operations, growth |
 
 ---
 
+### Insurance Fund Ramp
+
+The $5K launch seed (`docs/research/security-audit-strategy.md` pre-mainnet checklist) is exactly 10% of the $50K launch TVL cap, so it starts on-target. As the TVL cap is raised, the fund needs to keep pace:
+
+| TVL cap | 10% target | Funding source |
+|---|---|---|
+| $50K (launch) | $5K | Seeded directly at launch |
+| $250K (post 30-day clean operation) | $25K | Must accrue from protocol fee revenue (30% slice) between launch and the cap raise |
+| $5M+ (Phase 3 scale) | $500K+ | Ongoing accrual from protocol fee revenue |
+
+**Open gap:** the fund is meant to grow from the 30% "safety" slice of protocol fee revenue, but the protocol fee is 0% for the first 90 days (bootstrap waiver, see the row above). That means the fund cannot accrue past its initial $5K seed during the exact window when TVL is scaling from $50K toward $250K, unless a separate top-up is planned. This needs an explicit answer before the 30-day TVL cap raise is exercised - either delay the cap raise until the fund has organically caught up, or fund the gap from another source.
+
+---
+
 *Last updated: 2026-06-22*
-*Sources: [DeFi Protocol Revenue Rankings — DefiLlama](https://defillama.com/revenue) · [Aave Interest Rate Model](https://rareskills.io/post/aave-interest-rate-model) · [DeFi 2.0 Lending Protocols](https://1bitup.com/blog/defi-lending-protocols)*
+*Sources: [DeFi Protocol Revenue Rankings - DefiLlama](https://defillama.com/revenue) · [Aave Interest Rate Model](https://rareskills.io/post/aave-interest-rate-model) · [DeFi 2.0 Lending Protocols](https://1bitup.com/blog/defi-lending-protocols)*

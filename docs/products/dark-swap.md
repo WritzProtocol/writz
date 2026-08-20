@@ -1,6 +1,8 @@
 # Dark Swap
 
-**Convert BTC to USDC directly — no exchange, no KYC, no visible order.**
+> **Scope status:** This is a problem-and-hypothesis exploration, not a committed roadmap item. No circuit, contract, or engineering work exists for Dark Swap today - it is fully speculative. Before investing further spec or engineering time here, validate real user demand from PrivateLend's mainnet launch first; this document should not expand further until that validation exists.
+
+**Convert BTC to USDC directly - no exchange, no KYC, no visible order.**
 
 Dark Swap is the second product in the Writz Protocol suite. Planned for Phase 3 (2027), it uses the same Bitcoin SPV infrastructure as PrivateLend to enable direct BTC-to-USDC conversion with ZK-private swap sizes.
 
@@ -8,7 +10,7 @@ Dark Swap is the second product in the Writz Protocol suite. Planned for Phase 3
 
 ## What Dark Swap Does
 
-A user sends BTC to a Writz P2WSH address. The SPV contract verifies the deposit. USDC is released from the Dark Swap pool at the current oracle price. The swap size is hidden behind a ZK proof — the on-chain record shows only that a swap occurred, not for how much.
+A user sends BTC to a Writz P2WSH address. The SPV contract verifies the deposit. USDC is released from the Dark Swap pool at the current oracle price. The swap size is hidden behind a ZK proof - the on-chain record shows only that a swap occurred, not for how much.
 
 No exchange account. No KYC form. No order book that reveals your trade.
 
@@ -18,7 +20,7 @@ No exchange account. No KYC form. No order book that reveals your trade.
 
 | | PrivateLend | Dark Swap |
 |---|---|---|
-| BTC returned? | Yes (after repayment) | No — BTC is sold |
+| BTC returned? | Yes (after repayment) | No - BTC is sold |
 | Output | USDC loan | USDC outright |
 | Position ongoing? | Yes (active loan) | No (one-time conversion) |
 | Interest? | Yes | No (one-time swap fee) |
@@ -38,7 +40,7 @@ No exchange account. No KYC form. No order book that reveals your trade.
 
 Dark Swap reuses the existing Writz infrastructure:
 
-1. User sends BTC to a P2WSH address (no co-sign release needed — the BTC is consumed, not returned)
+1. User sends BTC to a P2WSH address (no co-sign release needed - the BTC is consumed, not returned)
 2. SPV contract verifies the BTC deposit
 3. ZK proof validates the swap amount stays within pool limits
 4. USDC is released from the Dark Swap AMM pool
@@ -52,7 +54,7 @@ The AMM-style liquidity pool on the USDC side is seeded by protocol-owned liquid
 
 Dark Swap is planned for Phase 3 (Q2–Q3 2027), after PrivateLend has been live on mainnet for six or more months.
 
-The SPV contract and ZK verifier required for Dark Swap are already deployed and tested — the same contracts used by PrivateLend. The additional work is the swap AMM contract and the updated ZK circuit for swap-specific constraints.
+The SPV contract and ZK verifier required for Dark Swap are already deployed and tested - the same contracts used by PrivateLend. The additional work is the swap AMM contract and the updated ZK circuit for swap-specific constraints.
 
 ---
 

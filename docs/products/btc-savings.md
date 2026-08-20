@@ -1,6 +1,8 @@
 # BTC Savings
 
-**Earn USDC yield on your Bitcoin — without selling a sat.**
+> **Scope status:** This is a problem-and-hypothesis exploration, not a committed roadmap item. No circuit, contract, or engineering work exists for BTC Savings today - it is fully speculative. Before investing further spec or engineering time here, validate real user demand from PrivateLend's mainnet launch first; this document should not expand further until that validation exists.
+
+**Earn USDC yield on your Bitcoin - without selling a sat.**
 
 BTC Savings is the third product in the Writz Protocol suite. Planned for Phase 3 (2027), it combines Bitcoin collateral with automated USDC yield routing. Your BTC stays locked on Bitcoin. The USDC you borrow against it flows automatically to the highest-yield opportunities on Stellar.
 
@@ -8,9 +10,9 @@ BTC Savings is the third product in the Writz Protocol suite. Planned for Phase 
 
 ## What BTC Savings Does
 
-BTC Savings is PrivateLend with automated yield routing. You deposit BTC. Writz borrows USDC against it on your behalf at a conservative LTV. That USDC is automatically deployed into yield-bearing positions on Stellar — Blend lending pools, AMM liquidity positions, and other vetted sources.
+BTC Savings is PrivateLend with automated yield routing. You deposit BTC. Writz borrows USDC against it on your behalf at a conservative LTV. That USDC is automatically deployed into yield-bearing positions on Stellar - Blend lending pools, AMM liquidity positions, and other vetted sources.
 
-The yield accumulates in USDC. The BTC remains your collateral — protected by the same Bitcoin Script as PrivateLend. Your yield position compounds automatically. Withdraw at any time.
+The yield accumulates in USDC. The BTC remains your collateral - protected by the same Bitcoin Script as PrivateLend. Your yield position compounds automatically. Withdraw at any time.
 
 ---
 

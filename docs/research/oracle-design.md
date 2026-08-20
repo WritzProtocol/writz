@@ -19,13 +19,13 @@ Oracle manipulation is the #1 attack vector in DeFi lending protocols. This docu
 
 ## Available Oracles on Stellar (2026)
 
-### 1. RedStone — RECOMMENDED PRIMARY
+### 1. RedStone - RECOMMENDED PRIMARY
 
 **Live on Stellar mainnet since:** March 4, 2026
 **BTC/USD feed:** Available
 **Standard:** SEP-40 (Stellar oracle standard)
 
-**Architecture:** RedStone uses a "pull oracle" model — price data is published off-chain and pulled on-chain only when needed (at transaction time), rather than being pushed on-chain continuously. This is more gas-efficient and avoids stale data.
+**Architecture:** RedStone uses a "pull oracle" model - price data is published off-chain and pulled on-chain only when needed (at transaction time), rather than being pushed on-chain continuously. This is more gas-efficient and avoids stale data.
 
 **Key metrics:**
 - $8.5B+ Total Value Secured across 70+ blockchains
@@ -36,11 +36,11 @@ Oracle manipulation is the #1 attack vector in DeFi lending protocols. This docu
 - Time-based updates: daily minimum refresh during low volatility
 - SEP-40 compliant: standardized interface for Stellar protocols
 
-**Data sources:** RedStone sources from institutional market participants — trading firms, market makers, exchanges. 30–60 publishers per major feed (BTC/USD). Single publisher failure has zero impact on the aggregated value.
+**Data sources:** RedStone sources from institutional market participants - trading firms, market makers, exchanges. 30–60 publishers per major feed (BTC/USD). Single publisher failure has zero impact on the aggregated value.
 
 **Blend integration:** Blend (Stellar's major lending protocol) is already preparing to integrate RedStone feeds. This means the same infrastructure Writz will use is battle-tested in the ecosystem's existing lending product.
 
-**Why this matters for Writz:** RedStone is the most mature, production-ready oracle on Stellar. It's already Blend-compatible, has the SEP-40 standard interface, and has proven zero mispricing. It should be Writz's primary BTC/USD source.
+**Why this matters for Writz:** RedStone is the most mature, production-ready oracle on Stellar. It's already Blend-compatible and has the SEP-40 standard interface. It should be Writz's primary BTC/USD source. (Note: the "zero mispricing" claim below comes from RedStone's own materials, not an independent audit - treat it as a vendor claim, not a verified fact, and don't restate it as objective in public docs.)
 
 ### 2. Pyth Network
 
@@ -55,11 +55,11 @@ Oracle manipulation is the #1 attack vector in DeFi lending protocols. This docu
 - Proven across 60+ blockchains
 - Core upgrade scheduled July 31, 2026 (requires API key for users)
 
-**Note on July 2026 API key requirement:** Pyth's Core upgrade introduces API key requirements for data consumers. This is a dependency Writz must track — accessing Pyth prices may require an API key after July 31, 2026.
+**Note on July 2026 API key requirement:** Pyth's Core upgrade introduces API key requirements for data consumers. This is a dependency Writz must track - accessing Pyth prices may require an API key after July 31, 2026.
 
 ### 3. SEP-40 Standard
 
-SEP-40 is Stellar's native oracle interface standard. RedStone adopted it in June 2026 for RWA assets. Any SEP-40-compatible oracle can be swapped in without contract changes — Writz should build against the SEP-40 interface, not against a specific oracle provider.
+SEP-40 is Stellar's native oracle interface standard. RedStone adopted it in June 2026 for RWA assets. Any SEP-40-compatible oracle can be swapped in without contract changes - Writz should build against the SEP-40 interface, not against a specific oracle provider.
 
 **SEP-40 assets live (June 2026):** USDC, EURC, XLM, PYUSD, and several tokenized instruments. BTC/USD via RedStone is available.
 
@@ -71,7 +71,7 @@ SEP-40 is Stellar's native oracle interface standard. RedStone adopted it in Jun
 
 An attacker takes a large flash loan, moves the price of BTC on a DEX (if the oracle reads from a DEX), liquidates an undercollateralized position at the manipulated price, repays the flash loan.
 
-**Writz exposure:** LOW — Writz uses off-chain institutional price feeds (RedStone, Pyth), not on-chain DEX prices. Off-chain feeds cannot be manipulated by on-chain flash loans.
+**Writz exposure:** LOW - Writz uses off-chain institutional price feeds (RedStone, Pyth), not on-chain DEX prices. Off-chain feeds cannot be manipulated by on-chain flash loans.
 
 ### 2. Single oracle failure / manipulation
 
@@ -83,13 +83,13 @@ A single oracle source fails, is manipulated, or goes stale. All lending decisio
 
 An attacker observes a large price update in the mempool (or before it's applied) and liquidates positions milliseconds before the update executes.
 
-**Writz exposure:** MEDIUM — On Stellar, front-running is harder than on Ethereum (no public mempool in the same way), but not impossible. Mitigation: require a price confirmation delay of 1–2 ledgers (~5–10 seconds) before acting on a new price for liquidations.
+**Writz exposure:** MEDIUM - On Stellar, front-running is harder than on Ethereum (no public mempool in the same way), but not impossible. Mitigation: require a price confirmation delay of 1–2 ledgers (~5–10 seconds) before acting on a new price for liquidations.
 
 ### 4. Stale price data
 
 The oracle hasn't updated in a long time. The contract uses an outdated price that doesn't reflect current market conditions.
 
-**Mitigation:** Reject any price older than X minutes (e.g., 60 minutes for BTC/USD). If no fresh price is available, the protocol enters a "price paused" state — no new borrows or liquidations until a fresh price is available. Existing positions are safe.
+**Mitigation:** Reject any price older than X minutes (e.g., 60 minutes for BTC/USD). If no fresh price is available, the protocol enters a "price paused" state - no new borrows or liquidations until a fresh price is available. Existing positions are safe.
 
 ---
 
@@ -146,10 +146,10 @@ This prevents attackers from temporarily spiking the price to trigger unfair liq
 
 | Decision | Choice | Rationale |
 |---|---|---|
-| Primary oracle | RedStone (SEP-40) | Live on Stellar, Blend-compatible, zero mispricing history |
+| Primary oracle | RedStone (SEP-40) | Live on Stellar, Blend-compatible; "zero mispricing" is RedStone's own claim, not independently verified |
 | Secondary oracle | Pyth | Large publisher network, independent source |
 | Aggregation | Median of 2–3 sources | Resistant to single-source manipulation |
-| Staleness threshold | 60 minutes | BTC/USD volatile — stale data is dangerous |
+| Staleness threshold | 60 minutes | BTC/USD volatile - stale data is dangerous |
 | Liquidation smoothing | min(current, 5-min lookback) | Prevents front-running and price spike exploits |
 | Interface standard | SEP-40 | Provider-agnostic, future-proof |
 
