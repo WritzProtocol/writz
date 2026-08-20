@@ -3,7 +3,7 @@
 # Uses a small Powers of Tau file (2^15) for fast local testing.
 #
 # For production, use the multi-party ceremony tooling in
-# scripts/ceremony/ instead — see
+# scripts/ceremony/ instead - see
 # scripts/ceremony/README.md for the full runbook. This script remains as
 # the fast local dev/test loop (CI's `circuits` job runs it before `bun run
 # test`); it is not a shortcut for a real ceremony and its output must
@@ -20,7 +20,7 @@ mkdir -p "$KEYS" "$PTAU"
 
 echo "── Powers of Tau (development) ─────────────────────────────────────────"
 if [ ! -f "$PTAU_FILE" ]; then
-    echo "▶ Generating dev Powers of Tau (pot15 — 32,768 constraints max)..."
+    echo "▶ Generating dev Powers of Tau (pot15 - 32,768 constraints max)..."
     snarkjs powersoftau new bn128 15 "$PTAU/pot15_0000.ptau" -v 2>&1 | tail -3
     snarkjs powersoftau contribute "$PTAU/pot15_0000.ptau" "$PTAU/pot15_0001.ptau" \
         --name="Writz dev setup" -v -e="writz dev entropy $(date)" 2>&1 | tail -3

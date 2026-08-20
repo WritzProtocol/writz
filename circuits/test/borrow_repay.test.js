@@ -133,7 +133,7 @@ describe('borrow_repay circuit', () => {
             path_indices:              tree2.pathIndices.map(String),
             old_root:                  String(tree2.root),
             delta_stroops:             String(repayDelta),
-            is_borrow:                 '0',  // repay — skip ratio check
+            is_borrow:                 '0',  // repay - skip ratio check
             btc_price_stroops_per_btc: String(PRICE_STROOPS_PER_BTC),
             min_ratio_bp:              String(MIN_RATIO_BP),
         };
@@ -147,6 +147,42 @@ describe('borrow_repay circuit', () => {
         const tree = await buildBaseTree();
         const input = borrowInput({ tree, delta: 500_000_000n, isBorrow: 1 });
         input.old_root = String(tree.root + 1n); // wrong root
+        await expect(prove('borrow_repay', input)).rejects.toThrow();
+    });
+
+    // ── is_borrow soundness (previously underconstrained - see the comment on
+    // Step 3b in borrow_repay.circom) ─────────────────────────────────────────
+
+    test('is_borrow=0 with a positive delta (debt increase disguised as repay) is rejected', async () => {
+        // The exploit this closes: with the old circuit, is_borrow=0 skipped
+        // the ratio check entirely, and nothing tied delta_stroops' sign to
+        // is_borrow - so a "repay" proof carrying a positive delta could
+        // increase debt with zero collateral-ratio enforcement. This test
+        // proves the fix: is_borrow=0 now requires new_debt <= old_debt.
+        const tree = await buildBaseTree();
+        const input = borrowInput({ tree, delta: 1000n, isBorrow: 0 }); // OLD_DEBT=0, delta=+1000
+        await expect(prove('borrow_repay', input)).rejects.toThrow();
+    });
+
+    test('is_borrow=1 with a debt-decreasing delta (repay disguised as borrow) is rejected', async () => {
+        // Mirror case: is_borrow=1 must mean new_debt >= old_debt. Start from
+        // a non-zero old_debt and submit a negative (field-encoded) delta.
+        const oldDebt = 2_000_000_000n;
+        const oldCommitment = await poseidonHash([COLLATERAL, oldDebt, SECRET, NONCE]);
+        const tree = await buildSingleLeafTree(oldCommitment, DEPTH);
+        const fieldPrime = 21888242871839275222246405745257275088548364400416034343698204186575808495617n;
+        const decreaseAmount = 500_000_000n;
+        const negativeDelta = (fieldPrime - decreaseAmount) % fieldPrime; // = -decreaseAmount in the field
+
+        const input = borrowInput({
+            tree, oldDebt, delta: negativeDelta, isBorrow: 1,
+        });
+        await expect(prove('borrow_repay', input)).rejects.toThrow();
+    });
+
+    test('non-boolean is_borrow is rejected regardless of other signals', async () => {
+        const tree = await buildBaseTree();
+        const input = borrowInput({ tree, delta: 0n, isBorrow: 2 }); // delta=0 satisfies both direction checks trivially
         await expect(prove('borrow_repay', input)).rejects.toThrow();
     });
 });

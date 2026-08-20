@@ -5,7 +5,7 @@ include "circomlib/circuits/comparators.circom";
 include "./merkle.circom";
 
 /*
- * Writz Protocol — Liquidation Circuit
+ * Writz Protocol - Liquidation Circuit
  *
  * Proves that a lending position is undercollateralized without revealing
  * the actual collateral amount or position owner, while publishing the
@@ -15,26 +15,29 @@ include "./merkle.circom";
  *   1. The position commitment exists in the current Merkle tree.
  *   2. The collateral ratio < liquidation threshold (120%).
  *      Equivalently: collateral_satoshis × price × 10_000 < debt × 100_000_000 × threshold_bp
- *   3. A nullifier is published — the old position is marked as liquidated.
- *   4. usdc_debt == debt_stroops — the public output is bound to the private
+ *   3. A nullifier is published - the old position is marked as liquidated.
+ *   4. usdc_debt == debt_stroops - the public output is bound to the private
  *      debt field inside the commitment, so the contract can trust it.
  *
- * The circuit does NOT compute the liquidation proceeds or bonus — those are
+ * The circuit does NOT compute the liquidation proceeds or bonus - those are
  * computed on-chain using the public inputs (price, threshold) once the proof
  * is verified. The liquidator receives BTC at a 10% discount to market price.
  *
  * Public signal ordering (outputs first, then declared public inputs):
- *   0: nullifier                  — output, marks position liquidated
- *   1: usdc_debt                  — output, proven debt amount from commitment
- *   2: merkle_root                — public input, current on-chain root
- *   3: btc_price_stroops_per_btc  — public input, from oracle
- *   4: liquidation_threshold_bp   — public input, 12_000 = 120%
+ *   0: nullifier                  - output, marks position liquidated
+ *   1: usdc_debt                  - output, proven debt amount from commitment
+ *   2: merkle_root                - public input, current on-chain root
+ *   3: btc_price_stroops_per_btc  - public input, from oracle
+ *   4: liquidation_threshold_bp   - public input, 12_000 = 120%
  *
- * Constraint count: ~9,200
+ * Constraint count: measured via `circom --r1cs` after the collateral/price
+ * range-check fix below - regenerate this comment if the circuit changes
+ * again rather than trusting stale arithmetic here.
  *   - Commitment hash: ~320
  *   - Merkle proof (depth 20): ~5,200
  *   - Undercollateral check: ~200
- *   - Range proofs: ~400
+ *   - collateral_satoshis / btc_price_stroops_per_btc range checks: ~120
+ *     (previously unconstrained here - see the comment at Step 3)
  *   - Nullifier: ~160
  *   - usdc_debt binding: ~1
  */
@@ -57,7 +60,7 @@ template LiquidationCircuit(DEPTH) {
 
     // ── Public outputs ────────────────────────────────────────────────────────
     signal output nullifier;  // Marks position as liquidated (prevents double-liquidation)
-    signal output usdc_debt;  // Proven outstanding debt — bound to the commitment's debt field
+    signal output usdc_debt;  // Proven outstanding debt - bound to the commitment's debt field
 
     // ── Step 1: Reconstruct the position commitment ───────────────────────────
     component commit = Poseidon(4);
@@ -75,6 +78,20 @@ template LiquidationCircuit(DEPTH) {
         checker.pathElements[i] <== path_elements[i];
         checker.pathIndices[i]  <== path_indices[i];
     }
+
+    // `collateral_satoshis` and `btc_price_stroops_per_btc` feed the
+    // undercollateralization comparator below the same way they feed the
+    // ratio comparator in `borrow_repay.circom` - GreaterThan does not itself
+    // verify its operands' bit-width, so without an explicit check here their
+    // range only holds transitively (collateral via `deposit.circom`'s own
+    // check at position creation; price via the calling contract's oracle
+    // equality check, not anything in this circuit). See the matching
+    // comment in `borrow_repay.circom` Step 3 for the full rationale - same
+    // fix, same reasoning, applied here for the same self-containment.
+    component collateral_range = Num2Bits(52); // Bitcoin's 21M BTC cap fits in ~51 bits
+    collateral_range.in <== collateral_satoshis;
+    component price_range = Num2Bits(64); // generous headroom over any realistic USD price
+    price_range.in <== btc_price_stroops_per_btc;
 
     // ── Step 3: Prove the position is undercollateralized ─────────────────────
     // Collateral ratio = (collateral_satoshis × price / 100_000_000) / debt

@@ -13,15 +13,15 @@
  *   final.zkey: path to the verified final zkey (see 03_verify_transcript.sh)
  *
  * Writes:
- *   circuits/keys/<circuit>_vkey.json         — source-of-truth verification key JSON
- *   circuits/ceremony/<circuit>/vkey.contract.json — {alpha_g1, beta_g2, gamma_g2,
+ *   circuits/keys/<circuit>_vkey.json         - source-of-truth verification key JSON
+ *   circuits/ceremony/<circuit>/vkey.contract.json - {alpha_g1, beta_g2, gamma_g2,
  *                                                      delta_g2, ic} hex-string shape,
  *                                                      ready for a `set_verification_key`
  *                                                      Soroban call
- *   circuits/keys/CEREMONY_MANIFEST.json      — updated with this circuit's entry
+ *   circuits/keys/CEREMONY_MANIFEST.json      - updated with this circuit's entry
  *
  * Does NOT copy the final .zkey into `circuits/keys/` or `frontend/public/circuits/`
- * — those are large binaries intentionally excluded from git (see the ceremony
+ * - those are large binaries intentionally excluded from git (see the ceremony
  * README's "why .zkey files aren't committed" note). Publish the .zkey as a
  * GitHub Release asset and record its URL + hash in the manifest by hand, or
  * extend this script to do so once a release workflow exists.
@@ -36,7 +36,7 @@ const CIRCUITS_DIR = path.resolve(__dirname, '../..');
 const KEYS_DIR = path.join(CIRCUITS_DIR, 'keys');
 const MANIFEST_PATH = path.join(KEYS_DIR, 'CEREMONY_MANIFEST.json');
 
-// Expected public-signal counts, per circuit — must match the IC length in
+// Expected public-signal counts, per circuit - must match the IC length in
 // the exported vkey. Mirrors the values already verified against the dev
 // keys (circuits/keys/*_vkey.json) and contracts/contracts/zk-verifier/src/
 // test_vectors.rs. Kept here (not imported from a shared source) since this
@@ -73,7 +73,7 @@ function main() {
   const ceremonyDir = path.join(CIRCUITS_DIR, 'ceremony', circuit);
   const transcriptPath = path.join(ceremonyDir, 'transcript.json');
   if (!fs.existsSync(transcriptPath)) {
-    console.error(`ERROR: no transcript at ${transcriptPath} — run 03_verify_transcript.sh first`);
+    console.error(`ERROR: no transcript at ${transcriptPath} - run 03_verify_transcript.sh first`);
     process.exit(1);
   }
 
@@ -114,7 +114,7 @@ function main() {
     final_zkey_sha256: sha256File(finalZkey),
     vkey_sha256: sha256File(vkeyOutPath),
     ic_length: vkey.IC.length,
-    // Filled in by hand once the .zkey is published as a Release asset —
+    // Filled in by hand once the .zkey is published as a Release asset -
     // see this script's top-of-file comment.
     final_zkey_release_url: null,
     transcript_path: path.relative(CIRCUITS_DIR, transcriptPath),

@@ -4,7 +4,7 @@ include "circomlib/circuits/poseidon.circom";
 include "./merkle.circom";
 
 /*
- * Writz Protocol — Zero-Debt Release Circuit
+ * Writz Protocol - Zero-Debt Release Circuit
  *
  * Proves that a commitment in the current Merkle tree encodes zero outstanding
  * debt (debt_stroops == 0), without revealing the collateral amount, secret,
@@ -17,12 +17,12 @@ include "./merkle.circom";
  *      commitment = Poseidon(collateral, 0, secret, nonce).
  *   2. That commitment exists in the Merkle tree at the provided root.
  *
- * The literal `0` for debt is hardcoded in the circuit — there is no private
+ * The literal `0` for debt is hardcoded in the circuit - there is no private
  * debt signal. It is impossible to generate a valid proof with any non-zero
  * debt value.
  *
  * Public signal ordering (no circuit outputs, one declared public input):
- *   0: merkle_root  — must equal the current on-chain Merkle root at verify time
+ *   0: merkle_root  - must equal the current on-chain Merkle root at verify time
  *
  * Private signals (never revealed):
  *   collateral_satoshis, secret, nonce, path_elements[20], path_indices[20]
@@ -49,7 +49,7 @@ template ZeroDebtCircuit(DEPTH) {
 
     // ── Step 1: Compute the zero-debt commitment ──────────────────────────────
     // commitment = Poseidon(collateral_satoshis, 0, secret, nonce)
-    // The second input is the literal 0 — no private debt variable exists.
+    // The second input is the literal 0 - no private debt variable exists.
     // A witness with non-zero debt cannot satisfy this circuit.
     component commit = Poseidon(4);
     commit.inputs[0] <== collateral_satoshis;

@@ -5,7 +5,7 @@
 keys/*.zkey
 
 # Production ceremony: intermediate/final .zkey files are large
-# binaries — publish them as GitHub Release assets instead (see
+# binaries - publish them as GitHub Release assets instead (see
 # scripts/ceremony/README.md). The transcript, contract-shape vkey, and
 # manifest ARE committed (small, and are the actual audit trail).
 /ceremony/ptau/

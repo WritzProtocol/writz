@@ -1,7 +1,7 @@
 'use strict';
 const { poseidonHash, prove, verify } = require('./helpers');
 
-// Test values — realistic but small enough for fast proving.
+// Test values - realistic but small enough for fast proving.
 const COLLATERAL = 1_000_000n;           // 0.01 BTC = 1,000,000 satoshis
 const SECRET = 0xdeadbeefcafe1234n;
 const NONCE  = 0x0102030405060708n;
