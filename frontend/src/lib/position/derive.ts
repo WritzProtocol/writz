@@ -15,10 +15,10 @@ import { FIELD_PRIME } from "./crypto";
  */
 
 /**
- * Canonical message signed once per session. MUST stay byte-for-byte constant —
+ * Canonical message signed once per session. MUST stay byte-for-byte constant -
  * any edit derives different keys and orphans existing positions.
  */
-export const KEY_DERIVATION_MESSAGE = `Writz — position keys
+export const KEY_DERIVATION_MESSAGE = `Writz - position keys
 
 Sign this message to derive the private keys for your Writz positions.
 This lets you access your positions on any device with this wallet.
@@ -50,17 +50,17 @@ function bytesToField(bytes: Uint8Array): bigint {
   return v % FIELD_PRIME;
 }
 
-/** Field-element form of the seed — the Poseidon derivation root. */
+/** Field-element form of the seed - the Poseidon derivation root. */
 export function seedToField(seed: Uint8Array): bigint {
   return bytesToField(seed);
 }
 
-/** Per-position secret — fixed for a position's whole lifetime. */
+/** Per-position secret - fixed for a position's whole lifetime. */
 export function deriveSecret(seedField: bigint, index: number): bigint {
   return poseidon3([seedField, DOMAIN_SECRET, BigInt(index)]);
 }
 
-/** Per-position nonce — rotates with `version` (incremented on each borrow/repay). */
+/** Per-position nonce - rotates with `version` (incremented on each borrow/repay). */
 export function deriveNonce(seedField: bigint, index: number, version: number): bigint {
   return poseidon4([seedField, DOMAIN_NONCE, BigInt(index), BigInt(version)]);
 }

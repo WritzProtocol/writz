@@ -8,20 +8,20 @@ import { BitcoinWalletProvider } from "@/lib/bitcoin/useBitcoinWallet";
 import { env } from "@/config/env";
 import "./globals.css";
 
-// Display — luxury editorial serif (used with restraint for wordmark + headings).
+// Display - luxury editorial serif (used with restraint for wordmark + headings).
 const display = Fraunces({
   variable: "--ff-display",
   subsets: ["latin"],
   style: ["normal", "italic"],
 });
 
-// UI / body — precise grotesque.
+// UI / body - precise grotesque.
 const body = Hanken_Grotesk({
   variable: "--ff-body",
   subsets: ["latin"],
 });
 
-// Data — monospace with tabular figures for on-chain values, hashes, amounts.
+// Data - monospace with tabular figures for on-chain values, hashes, amounts.
 const mono = Geist_Mono({
   variable: "--ff-mono",
   subsets: ["latin"],
@@ -29,7 +29,7 @@ const mono = Geist_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL(env.siteUrl),
-  title: "Writz — Bitcoin was built to be yours",
+  title: "Writz - Bitcoin was built to be yours",
   description:
     "Trustless, ZK-private Bitcoin lending on Stellar. Lock real BTC, borrow USDC, keep every position private.",
 };

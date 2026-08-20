@@ -14,7 +14,7 @@ export function getBitcoinNetwork(): bitcoin.networks.Network {
  * Builds the Writz P2WSH redeem script.
  *
  * Canonical implementation lives in bitcoin-script/src/script.ts.
- * Both MUST produce identical output for the same inputs — any change here
+ * Both MUST produce identical output for the same inputs - any change here
  * must be mirrored there and vice versa.
  *
  *   OP_IF   <protocol_pubkey> OP_CHECKSIGVERIFY <user_pubkey> OP_CHECKSIG
@@ -89,7 +89,7 @@ export function deriveP2WSH(
 
 /**
  * Builds a PSBT for the Path A release transaction (co-signed by protocol + user).
- * The PSBT is unsigned — both parties sign before finalization.
+ * The PSBT is unsigned - both parties sign before finalization.
  */
 export function buildReleasePsbt(params: {
   txidHex: string;
@@ -201,7 +201,7 @@ export async function estimateReleaseFee(
 ): Promise<number> {
   // P2WSH cooperative release: 1 input + 1 P2WPKH output ≈ 150 vbytes
   const TX_VBYTES = 150;
-  // Signet has no real fee market — Esplora's /fee-estimates often returns
+  // Signet has no real fee market - Esplora's /fee-estimates often returns
   // hundreds of sat/vB, which would exceed small collateral and produce a
   // negative output. Cap the rate so the fee stays sane on signet/testnet.
   const MAX_SAT_PER_VBYTE = 2;
@@ -214,7 +214,7 @@ export async function estimateReleaseFee(
       return Math.max(Math.ceil(capped * TX_VBYTES), 300); // floor 300 sats (> P2WPKH dust)
     }
   } catch {
-    // network error — use fallback
+    // network error - use fallback
   }
   return fallbackSatPerVbyte * TX_VBYTES;
 }
@@ -239,7 +239,7 @@ export async function resolveVout(
         if (idx !== -1) return idx;
       }
     } catch {
-      // network error — retry
+      // network error - retry
     }
     if (i < maxAttempts - 1) {
       await new Promise((r) => setTimeout(r, intervalMs));

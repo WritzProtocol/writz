@@ -11,7 +11,7 @@ interface LiquidGoldTextProps {
   tone?: LiquidGoldTone;
 }
 
-/** Animated "liquid metal" text — background-clip:text over a drifting
+/** Animated "liquid metal" text - background-clip:text over a drifting
  * radial-gradient blob field, driven by useLiquidGoldAnimation. */
 export function LiquidGoldText({ children, className = "", style, tone = "gold" }: LiquidGoldTextProps) {
   const { ref, palette } = useLiquidGoldAnimation(tone);

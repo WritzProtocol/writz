@@ -1,6 +1,6 @@
 /**
  * Typed, validated environment access for the marketing/landing surface.
- * The dApp's own on-chain config already lives in `@/config` — this module
+ * The dApp's own on-chain config already lives in `@/config` - this module
  * only covers what the landing page itself needs (currently just the
  * canonical site URL used for `metadataBase`/OpenGraph resolution).
  */

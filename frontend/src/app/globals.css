@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /*
-  Writz — "Private Vault" design system.
+  Writz - "Private Vault" design system.
   Dark warm-obsidian ground · scarce amber accent · serif display + grotesque
   UI + mono data · redacted-by-default for private values. See DESIGN_SYSTEM.md.
 */
@@ -17,7 +17,7 @@
   --color-body: #b7af9f;
   --color-head: #e8e2d5;
   --color-hi: #fbf8f1;
-  /* accent — refined Bitcoin amber (scarce) */
+  /* accent - refined Bitcoin amber (scarce) */
   --color-amber: #e3a646;
   --color-amber-2: #c98a34;
   /* privacy whisper + semantics (separate from accent) */
@@ -83,7 +83,7 @@
 
 @layer components {
   /*
-    Redacted-by-default — the brand signature for private values.
+    Redacted-by-default - the brand signature for private values.
     Apply `.private` to any element showing a user's private amount and toggle
     `.revealed` to disclose it. The protocol hides amounts on-chain; the UI does too.
   */
@@ -100,8 +100,22 @@
   }
 }
 
+@keyframes indeterminate {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(300%);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .private {
     filter: none !important;
+  }
+  .animate-\[indeterminate_1\.4s_ease-in-out_infinite\] {
+    animation: none !important;
+    width: 100% !important;
+    opacity: 0.4;
   }
 }

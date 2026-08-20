@@ -109,7 +109,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         setBackend(null);
         localStorage.removeItem(BACKEND_KEY);
       });
-    // Runs once on mount — backend is initialised from localStorage.
+    // Runs once on mount - backend is initialised from localStorage.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -142,7 +142,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem(BACKEND_KEY, "privy");
       });
     } else if (!creatingPrivyWallet.current) {
-      // First login — create the user's Stellar embedded wallet.
+      // First login - create the user's Stellar embedded wallet.
       creatingPrivyWallet.current = true;
       void Promise.resolve().then(() => setConnecting(true));
       privy
@@ -154,7 +154,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
           localStorage.setItem(BACKEND_KEY, "privy");
         })
         .catch((e) => {
-          // Wallet might have been created in a race — check once more.
+          // Wallet might have been created in a race - check once more.
           const existing = getStellarAddress(privy.user);
           if (existing) {
             setAddress(existing);
@@ -226,7 +226,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem(BACKEND_KEY);
   }, [backend, privy]);
 
-  // ── Signing — dispatches to the active backend ──
+  // ── Signing - dispatches to the active backend ──
   const signTransaction = useCallback<SignTransaction>(
     async (xdr) => {
       if (backend === "privy") {

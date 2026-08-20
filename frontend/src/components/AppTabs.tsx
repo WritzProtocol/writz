@@ -31,7 +31,7 @@ export function AppTabs() {
         </div>
         <p className="text-sm text-muted">
           {tab === "borrow"
-            ? "Lock BTC as collateral and borrow USDC privately — no bridge, no custodian."
+            ? "Lock BTC as collateral and borrow USDC privately - no bridge, no custodian."
             : "Supply USDC to the pool and earn from borrower demand."}
         </p>
       </div>

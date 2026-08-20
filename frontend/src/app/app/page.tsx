@@ -7,6 +7,7 @@ import { WalletButton } from "@/components/WalletButton";
 import { BitcoinWalletButton } from "@/components/BitcoinWalletButton";
 import { AppTabs } from "@/components/AppTabs";
 import { config } from "@/config";
+import { humanizeError } from "@/lib/errors";
 
 // Read on-chain state at request time; never statically prerendered.
 export const dynamic = "force-dynamic";
@@ -36,7 +37,7 @@ export default async function AppDashboardPage() {
   try {
     [merkleRoot, pool] = await Promise.all([getMerkleRoot(), getPoolState()]);
   } catch (e) {
-    error = e instanceof Error ? e.message : String(e);
+    error = humanizeError(e);
   }
 
   return (
@@ -79,22 +80,22 @@ export default async function AppDashboardPage() {
         <section className="grid gap-4 sm:grid-cols-2">
           <Stat
             label="Merkle root"
-            value={merkleRoot ? truncate(merkleRoot) : "—"}
+            value={merkleRoot ? truncate(merkleRoot) : "-"}
             title={merkleRoot ?? undefined}
             sub="empty-tree root"
           />
           <Stat
             label="Available liquidity · USDC"
-            value={pool ? formatStroops(pool.available) : "—"}
+            value={pool ? formatStroops(pool.available) : "-"}
             sub="supplied − borrowed"
           />
           <Stat
             label="Total supplied · USDC"
-            value={pool ? formatStroops(pool.totalSupplied) : "—"}
+            value={pool ? formatStroops(pool.totalSupplied) : "-"}
           />
           <Stat
             label="Total borrowed · USDC"
-            value={pool ? formatStroops(pool.totalBorrowed) : "—"}
+            value={pool ? formatStroops(pool.totalBorrowed) : "-"}
           />
         </section>
       )}

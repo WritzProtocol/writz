@@ -49,7 +49,7 @@ describe("key derivation (#18)", () => {
   });
 
   test("canonical message is fixed", () => {
-    expect(KEY_DERIVATION_MESSAGE.startsWith("Writz — position keys")).toBe(true);
+    expect(KEY_DERIVATION_MESSAGE.startsWith("Writz - position keys")).toBe(true);
     expect(KEY_DERIVATION_MESSAGE).toContain("Version: 1");
   });
 });

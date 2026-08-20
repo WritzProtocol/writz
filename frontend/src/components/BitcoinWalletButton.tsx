@@ -37,7 +37,7 @@ export function BitcoinWalletButton() {
       <button
         type="button"
         onClick={disconnect}
-        title={`${btcAddress} — click to disconnect`}
+        title={`${btcAddress} - click to disconnect`}
         className={`${BASE} border border-line-2 bg-surface text-head hover:border-amber`}
       >
         <span className="h-1.5 w-1.5 rounded-full bg-ok" />

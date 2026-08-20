@@ -22,7 +22,7 @@ export function positionKeys(
 
 /**
  * Create a fresh position for a new deposit (debt 0, version 0) with keys derived
- * from the session seed at `index`. Not yet persisted — the caller stamps
+ * from the session seed at `index`. Not yet persisted - the caller stamps
  * `txid`/`leafIndex` and calls `savePosition`.
  */
 export function createDepositPosition(args: {

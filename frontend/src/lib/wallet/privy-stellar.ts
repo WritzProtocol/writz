@@ -39,7 +39,7 @@ export async function signMessageWithPrivy(
  * Signs a Stellar transaction XDR via Privy raw-hash, attaches the decorated
  * signature to the envelope, and returns the signed XDR + signer address.
  *
- * FeeBumpTransactions are not supported — Privy embedded wallets are used for
+ * FeeBumpTransactions are not supported - Privy embedded wallets are used for
  * end-user signing, not fee-bump sponsorship.
  */
 export async function signTransactionWithPrivy(

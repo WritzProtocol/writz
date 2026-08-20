@@ -18,7 +18,7 @@ import {
 } from "@/lib/position";
 import type { SignTransaction } from "@/lib/wallet/WalletProvider";
 
-const MIN_RATIO_BP = "15000"; // 150% — must match contract's min_collateral_ratio_bp
+const MIN_RATIO_BP = "15000"; // 150% - must match contract's min_collateral_ratio_bp
 
 interface MerklePathResponse {
   root: string;
@@ -148,7 +148,7 @@ export async function borrow(params: {
     }).catch(() => null);
     if (!syncRes || !syncRes.ok) {
       throw new Error(
-        "Borrowed on-chain, but failed to sync the relayer leaf store — resync the relayer before the next operation.",
+        "Borrowed on-chain, but failed to sync the relayer leaf store - resync the relayer before the next operation.",
       );
     }
   }
