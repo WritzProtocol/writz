@@ -11,10 +11,10 @@
  *     <user_pubkey>     OP_CHECKSIG           ← path B: emergency recovery
  *   OP_ENDIF
  *
- * Path A is used for normal loan repayment — both the protocol and the user
+ * Path A is used for normal loan repayment - both the protocol and the user
  * sign the release transaction cooperatively.
  *
- * Path B is used if Writz becomes unavailable — after the timelock block height
+ * Path B is used if Writz becomes unavailable - after the timelock block height
  * is reached, the user can recover their BTC with their key alone, with no
  * Writz involvement.
  */

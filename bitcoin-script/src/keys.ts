@@ -5,7 +5,7 @@
  * only. Production co-signing prefers `KmsSigner` below, which never holds
  * the protocol private key in process memory. `resolveProtocolSigner` also
  * supports a raw-WIF environment-variable fallback for testnet/signet use
- * while KMS isn't set up — see that function's doc comment for why it's
+ * while KMS isn't set up - see that function's doc comment for why it's
  * refused on mainnet.
  */
 
@@ -25,7 +25,7 @@ const ECPair = ECPairFactory(ecc);
 export interface WritzKeyPair {
   /** 33-byte compressed public key. */
   publicKey: Buffer;
-  /** The underlying ECPair — implements the bitcoinjs-lib Signer interface. */
+  /** The underlying ECPair - implements the bitcoinjs-lib Signer interface. */
   signer: ECPairInterface;
   /** The network this key is bound to. */
   network: bitcoin.networks.Network;
@@ -33,7 +33,7 @@ export interface WritzKeyPair {
 
 /**
  * Generates a fresh random key pair for the given network.
- * For tests and local development only — never log the private key in production.
+ * For tests and local development only - never log the private key in production.
  */
 export function generateKeyPair(network: bitcoin.networks.Network): WritzKeyPair {
   const pair = ECPair.makeRandom({ network });
@@ -76,7 +76,7 @@ export function pubkeyToP2WPKHAddress(
 // ── KMS-backed protocol signer ───────────────────────────────────────────────
 
 /** secp256k1 curve order. Signatures with s > n/2 must be normalized to
- * n - s (BIP-62 low-S rule) — AWS KMS does not guarantee this. */
+ * n - s (BIP-62 low-S rule) - AWS KMS does not guarantee this. */
 const SECP256K1_N = BigInt(
   '0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141',
 );
@@ -84,7 +84,7 @@ const SECP256K1_N_HALF = SECP256K1_N / 2n;
 
 /**
  * A bitcoinjs-lib `SignerAsync` backed by an AWS KMS asymmetric key
- * (`ECC_SECG_P256K1` curve, `ECDSA_SHA_256` algorithm — the same curve
+ * (`ECC_SECG_P256K1` curve, `ECDSA_SHA_256` algorithm - the same curve
  * Bitcoin uses). The private key material never leaves KMS; every signature
  * is an authenticated `kms:Sign` API call, audit-logged via CloudTrail.
  *
@@ -92,7 +92,7 @@ const SECP256K1_N_HALF = SECP256K1_N / 2n;
  * `signInput`, since every signature requires a network round-trip).
  *
  * This is the signer shared by the interactive `/api/cosign` route and the
- * automated repayment watcher — both call sites hold the same custody
+ * automated repayment watcher - both call sites hold the same custody
  * guarantee.
  */
 export class KmsSigner implements SignerAsync {
@@ -149,7 +149,7 @@ export class KmsSigner implements SignerAsync {
 
 // ── Protocol signer resolution (KMS, with a testnet/signet fallback) ────────
 
-/** Whatever `resolveProtocolSigner` returns — either a `KmsSigner`
+/** Whatever `resolveProtocolSigner` returns - either a `KmsSigner`
  * (`SignerAsync`) or a raw-WIF `ECPairInterface` (`Signer`, sync). Both
  * satisfy `psbt.signInputAsync`, so call sites don't need to distinguish. */
 export type ProtocolSigner = Signer | SignerAsync;
@@ -158,7 +158,7 @@ export interface ProtocolSignerOptions {
   /** AWS KMS key ID or alias. Preferred whenever set. */
   kmsKeyId?: string;
   /** WIF-encoded private key (e.g. from a `PROTOCOL_SIGNING_KEY` env var).
-   * Fallback only — see this function's doc comment for why it's rejected
+   * Fallback only - see this function's doc comment for why it's rejected
    * on mainnet. */
   envPrivateKeyWif?: string;
   network: bitcoin.networks.Network;
@@ -171,7 +171,7 @@ export interface ProtocolSignerOptions {
  * otherwise a WIF-encoded key read from the environment.
  *
  * The raw-WIF fallback exists to unblock testnet/signet operation while AWS
- * KMS account setup is in progress or unavailable — it is the same custody
+ * KMS account setup is in progress or unavailable - it is the same custody
  * model Writz used before migrating to KMS, and reintroduces the same risk
  * that migration closed (a compromised host/environment leaks the key
  * outright, with no HSM boundary). It is refused unconditionally on
@@ -192,7 +192,7 @@ export async function resolveProtocolSigner(
     if (opts.network === bitcoin.networks.bitcoin) {
       throw new Error(
         'Refusing to use the raw-WIF protocol signer fallback on mainnet. ' +
-          'Configure KMS_KEY_ID instead — see docs/security/security-model.md.',
+          'Configure KMS_KEY_ID instead - see docs/security/security-model.md.',
       );
     }
     return ECPair.fromWIF(opts.envPrivateKeyWif, opts.network);
@@ -209,8 +209,8 @@ export async function resolveProtocolSigner(
  * SubjectPublicKeyInfo structure KMS's `GetPublicKey` returns.
  *
  * Rather than a full ASN.1 parser, this exploits a fixed structural fact:
- * the BIT STRING payload — an uncompressed SEC1 point
- * (`0x04 || X(32) || Y(32)`, 65 bytes) — is always the final component of
+ * the BIT STRING payload - an uncompressed SEC1 point
+ * (`0x04 || X(32) || Y(32)`, 65 bytes) - is always the final component of
  * an EC SubjectPublicKeyInfo, so it's simply the last 65 bytes of the DER
  * blob. Validated by checking the point actually starts with `0x04`.
  */
@@ -218,7 +218,7 @@ function spkiToCompressedPubkey(spki: Buffer): Buffer {
   const point = spki.subarray(spki.length - 65);
   if (point.length !== 65 || point[0] !== 0x04) {
     throw new Error(
-      'unexpected KMS public key encoding — expected an uncompressed secp256k1 point',
+      'unexpected KMS public key encoding - expected an uncompressed secp256k1 point',
     );
   }
   const x = point.subarray(1, 33);
@@ -236,7 +236,7 @@ function spkiToCompressedPubkey(spki: Buffer): Buffer {
  *
  * The outer SEQUENCE and both INTEGER length fields are always short-form
  * (single length byte, no 0x80 continuation) for a secp256k1 ECDSA
- * signature — the total DER encoding is at most ~72 bytes, far under the
+ * signature - the total DER encoding is at most ~72 bytes, far under the
  * 128-byte threshold where DER's long-form length encoding would apply.
  */
 function derEcdsaSignatureToCompactLowS(der: Buffer): Buffer {

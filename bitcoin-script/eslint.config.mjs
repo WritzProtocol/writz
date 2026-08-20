@@ -11,7 +11,7 @@ export default tseslint.config(
   {
     // scripts/e2e_testnet.mjs is a standalone Node CLI script (run via `bun
     // run scripts/e2e_testnet.mjs`, see its own shebang/usage comment), not
-    // part of the library's bundled TS sources — it genuinely runs under
+    // part of the library's bundled TS sources - it genuinely runs under
     // Node's global scope (process, fetch, console, ...).
     files: ["scripts/**/*.mjs"],
     languageOptions: {
