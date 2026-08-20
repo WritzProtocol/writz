@@ -11,12 +11,12 @@ you than read about it later.
 → **https://github.com/WritzProtocol/writz/security/advisories/new**
 
 This opens a private advisory visible only to you and the maintainers. It is the
-only supported channel — please do not open a public issue for a security
+only supported channel - please do not open a public issue for a security
 finding, and do not email the addresses that appear in older documents.
 
 If GitHub private reporting is unavailable to you for any reason, open a public
 issue containing **only** the sentence "I have a security finding and need a
-private channel" — no technical detail — and a maintainer will arrange one.
+private channel" - no technical detail - and a maintainer will arrange one.
 
 ## What to include
 
@@ -42,11 +42,11 @@ than you did.
 
 ## Scope
 
-In scope — the four Soroban contracts (`bitcoin-spv`, `zk-verifier`,
+In scope - the four Soroban contracts (`bitcoin-spv`, `zk-verifier`,
 `commitment-tree`, `private-lend`), the three Circom circuits, the P2WSH
 scripts in `bitcoin-script/`, and the SPV relayer.
 
-Out of scope — denial of service, social engineering, findings that require
+Out of scope - denial of service, social engineering, findings that require
 physical access to infrastructure, vulnerabilities in Stellar or Bitcoin
 themselves, and issues already documented in
 [`docs/security/security-model.md`](docs/security/security-model.md) or a

@@ -46,6 +46,20 @@ jobs:
               - 'circuits/**'
               - '.github/workflows/ci.yml'
 
+  # Cheap, dependency-free (only Node builtins), so it always runs rather
+  # than being gated by the changes filter - a stale contract address or
+  # test count can be introduced by editing docs/ alone, which nothing
+  # else in this workflow would catch.
+  docs-sync:
+    name: docs sync (contract addresses + test counts)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/check-docs-sync.mjs
+
   frontend:
     name: frontend (bun · lint + build)
     needs: changes
@@ -89,7 +103,7 @@ jobs:
         working-directory: packages/commitment-tree
       # relayer's repay-watcher depends on the local
       # @writz/bitcoin-script package's built dist/ output (its `main`
-      # field points there) — build it before relayer's own install/test.
+      # field points there) - build it before relayer's own install/test.
       - run: bun install --frozen-lockfile
         working-directory: bitcoin-script
       - run: bun run build
@@ -181,7 +195,7 @@ jobs:
           cache: npm
           cache-dependency-path: circuits/package-lock.json
       # circuits/ is npm-managed (package-lock.json), unlike the bun-managed
-      # bitcoin-script/relayer packages — matches its existing convention.
+      # bitcoin-script/relayer packages - matches its existing convention.
       - run: npm ci
       - name: Cache circom binary
         id: cache-circom
@@ -191,7 +205,7 @@ jobs:
           key: circom-v2.2.3
       # actions/cache's restore step runs as the unprivileged runner user
       # (no sudo), so the cached path must be runner-owned rather than a
-      # system directory like /usr/local/bin — otherwise a cache hit could
+      # system directory like /usr/local/bin - otherwise a cache hit could
       # fail to restore with a permission error.
       - name: Add circom install dir to PATH
         run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
@@ -214,7 +228,7 @@ jobs:
             circuits/ptau
             circuits/keys
           # IMPORTANT: Bump this key's "-v1" suffix when the circom version
-          # in the "Cache circom binary" step (above) changes — the hash below
+          # in the "Cache circom binary" step (above) changes - the hash below
           # only covers circuit sources and setup scripts, not the compiler
           # version. A circom version upgrade requires a manual bump here too,
           # or stale compiled output will silently be reused with the new compiler.
@@ -222,10 +236,10 @@ jobs:
       - run: npm run compile
         if: steps.cache-circuits.outputs.cache-hit != 'true'
       # The existing test suite proves real deposit/borrow_repay/liquidation
-      # circuits via snarkjs, which needs proving keys — same dev trusted
+      # circuits via snarkjs, which needs proving keys - same dev trusted
       # setup already used locally (see scripts/setup_dev.sh's own "NOT for
       # production" warning; this is a test-only key generation step, not
-      # part of the production ceremony. Skipped on cache hit — see the
+      # part of the production ceremony. Skipped on cache hit - see the
       # "Cache compiled circuits" step above; only reruns when circuit
       # sources or the setup scripts themselves change.
       - run: npm run setup:dev
@@ -237,7 +251,7 @@ jobs:
   # not a substitute for the human verification steps in
   # circuits/scripts/ceremony/README.md. Cheap no-op until
   # keys/CEREMONY_MANIFEST.json exists (i.e. until a real ceremony has run
-  # at least once) — the repo currently only has dev keys, so this job
+  # at least once) - the repo currently only has dev keys, so this job
   # exits early on every run today; it activates automatically the moment
   # 04_export.js writes a manifest.
   circuits-ceremony-verify:
@@ -254,7 +268,7 @@ jobs:
         id: check
         run: |
           if [ ! -f keys/CEREMONY_MANIFEST.json ]; then
-            echo "No CEREMONY_MANIFEST.json yet — nothing to verify (dev keys only so far)."
+            echo "No CEREMONY_MANIFEST.json yet - nothing to verify (dev keys only so far)."
             echo "skip=true" >> "$GITHUB_OUTPUT"
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
@@ -263,7 +277,7 @@ jobs:
         if: steps.check.outputs.skip == 'false'
         with:
           node-version: 20
-      # No `npm ci` needed — the verification steps below only use Node's
+      # No `npm ci` needed - the verification steps below only use Node's
       # built-in fs/crypto modules, no dependencies.
       - name: Verify manifest hashes match committed vkeys
         if: steps.check.outputs.skip == 'false'
@@ -282,13 +296,13 @@ jobs:
               }
               const actualHash = crypto.createHash("sha256").update(fs.readFileSync(vkeyPath)).digest("hex");
               if (actualHash !== entry.vkey_sha256) {
-                console.error(`ERROR: ${vkeyPath} hash mismatch — manifest says ${entry.vkey_sha256}, actual is ${actualHash}`);
+                console.error(`ERROR: ${vkeyPath} hash mismatch - manifest says ${entry.vkey_sha256}, actual is ${actualHash}`);
                 failed = true;
               } else {
                 console.log(`  ✓ ${circuit}: vkey hash matches manifest`);
               }
               if (/dev/i.test(JSON.stringify(entry))) {
-                console.error(`ERROR: ${circuit}'s manifest entry references "dev" — refusing a development ceremony as production`);
+                console.error(`ERROR: ${circuit}'s manifest entry references "dev" - refusing a development ceremony as production`);
                 failed = true;
               }
             }
@@ -310,7 +324,7 @@ jobs:
                 continue;
               }
               if (entry.ic_length !== expected) {
-                console.error(`ERROR: ${circuit} manifest ic_length=${entry.ic_length}, expected ${expected} — ` +
+                console.error(`ERROR: ${circuit} manifest ic_length=${entry.ic_length}, expected ${expected} - ` +
                   "this must match contracts/contracts/zk-verifier/src/test_vectors.rs's public-signal counts");
                 failed = true;
               } else {
@@ -325,6 +339,7 @@ jobs:
     if: always()
     needs:
       - changes
+      - docs-sync
       - frontend
       - relayer
       - relayer-docker-build
