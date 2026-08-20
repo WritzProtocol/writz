@@ -113,7 +113,7 @@ export function Hero() {
             </motion.div>
           </div>
 
-          {/* Stats — compact 3-up grid on mobile, vertical rail on desktop */}
+          {/* Stats - compact 3-up grid on mobile, vertical rail on desktop */}
           <motion.div
             initial="hidden"
             animate="visible"

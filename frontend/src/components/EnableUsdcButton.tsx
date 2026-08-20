@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useWallet } from "@/lib/wallet/WalletProvider";
 import { hasUsdcTrustline, enableUsdcTrustline } from "@/lib/flows/trustline";
 import { config } from "@/config";
+import { humanizeError } from "@/lib/errors";
 
 /**
  * Shows a one-click "Enable USDC" prompt when the connected account lacks a
@@ -38,7 +39,7 @@ export function EnableUsdcButton() {
       await enableUsdcTrustline({ address, signTransaction });
       setEnabled(true);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(humanizeError(e));
     } finally {
       setWorking(false);
     }
@@ -48,7 +49,7 @@ export function EnableUsdcButton() {
     <div className="flex flex-col gap-2 rounded-xl border border-amber/40 bg-amber/5 p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <span className="text-sm text-body">
-          Enable USDC to receive borrowed funds — adds a trustline (one signature, no fee beyond the base).
+          Enable USDC to receive borrowed funds - adds a trustline (one signature, no fee beyond the base).
         </span>
         <button
           type="button"

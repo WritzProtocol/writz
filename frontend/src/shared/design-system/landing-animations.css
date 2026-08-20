@@ -1,11 +1,11 @@
 /*
   Landing keyframes & animation utility classes.
   Ported 1:1 from the writz-react reference (see reference/src/index.css at
-  the time of migration) — only the selectors that scope colors were kept
+  the time of migration) - only the selectors that scope colors were kept
   as CSS custom properties so every theme in themes.data.ts still works.
 */
 
-/* ── Ambient hero glow — moved via transform so the compositor handles it
+/* ── Ambient hero glow - moved via transform so the compositor handles it
    instead of repainting the whole viewport every frame. ────────────────── */
 @keyframes hero-glow-drift {
   0% {

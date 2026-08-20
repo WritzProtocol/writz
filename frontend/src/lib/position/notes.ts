@@ -8,7 +8,7 @@ import { sha256 } from "@noble/hashes/sha2.js";
  * On every position change the client seals the note plaintext to the owner's
  * x25519 viewing public key and the contract emits the ciphertext in its event.
  * On a fresh device the user re-derives the viewing key, scans the emitted
- * blobs, and trial-decrypts — the ones that open are theirs — recovering the
+ * blobs, and trial-decrypts - the ones that open are theirs - recovering the
  * amounts (which are NOT derivable from the seed and are hidden in the
  * commitment). Anonymous-sender sealed-box pattern: ephemeral x25519 → ECDH →
  * SHA-256 → ChaCha20-Poly1305. Wire format: ephPub(32) ‖ nonce(12) ‖ ciphertext.
@@ -19,7 +19,7 @@ export interface PositionNote {
   collateralSats: string;
   debtStroops: string;
 }
-// Note: leafIndex is intentionally NOT in the note — on recovery it's resolved by
+// Note: leafIndex is intentionally NOT in the note - on recovery it's resolved by
 // recomputing the commitment and matching it against the relayer's leaf list
 // (the deposit leafIndex isn't known until after the note is sealed into deposit()).
 

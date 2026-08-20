@@ -1,7 +1,7 @@
 import { poseidon2, poseidon4 } from "poseidon-lite";
 
 /**
- * Position cryptography — must match the circuits in `circuits/src/` exactly,
+ * Position cryptography - must match the circuits in `circuits/src/` exactly,
  * or proofs will fail on-chain. `poseidon-lite` is verified to produce the same
  * outputs as the `circomlibjs` Poseidon used by the circuits.
  *
@@ -23,7 +23,7 @@ export function randomFieldElement(): bigint {
   return value === 0n ? 1n : value;
 }
 
-/** Position commitment — `Poseidon(collateral, debt, secret, nonce)`. */
+/** Position commitment - `Poseidon(collateral, debt, secret, nonce)`. */
 export function computeCommitment(
   collateralSats: bigint,
   debtStroops: bigint,
@@ -33,7 +33,7 @@ export function computeCommitment(
   return poseidon4([collateralSats, debtStroops, secret, nonce]);
 }
 
-/** Nullifier — `Poseidon(secret, nonce)`. */
+/** Nullifier - `Poseidon(secret, nonce)`. */
 export function computeNullifier(secret: bigint, nonce: bigint): bigint {
   return poseidon2([secret, nonce]);
 }

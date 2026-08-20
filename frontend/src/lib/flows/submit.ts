@@ -1,5 +1,5 @@
 /**
- * Retry a contract simulation that fails for transient reasons — mainly RPC
+ * Retry a contract simulation that fails for transient reasons - mainly RPC
  * state lag right after a prior action (the new Merkle root / nullifier may not
  * have propagated to the simulation view yet), account concurrency, or a stale
  * sequence. The proof is reused across attempts (no re-proving, no re-signing).
@@ -8,15 +8,15 @@
  * still surface after the attempts are exhausted.
  *
  * CommitmentTreeError codes that are transient (resolve without user action):
- *   #5  = RootMismatch       — on-chain state lag after a prior tx
+ *   #5  = RootMismatch       - on-chain state lag after a prior tx
  *
  * CommitmentTreeError codes that are permanent (do NOT retry):
- *   #4  = InvalidZkProof     — proof verification failed
+ *   #4  = InvalidZkProof     - proof verification failed
  *   #6  = NullifierAlreadySpent
  *   #7  = DuplicateDeposit
  *   #9  = InsufficientLiquidity
- *   #11 = ProtocolParamMismatch — wrong min_ratio_bp or min_deposit_sats in proof
- *   #12 = PriceMismatch        — proof price ≠ oracle; update NEXT_PUBLIC_BTC_PRICE_STROOPS
+ *   #11 = ProtocolParamMismatch - wrong min_ratio_bp or min_deposit_sats in proof
+ *   #12 = PriceMismatch        - proof price ≠ oracle; update NEXT_PUBLIC_BTC_PRICE_STROOPS
  *
  * See contracts/contracts/commitment-tree/src/error.rs for the full enum.
  */

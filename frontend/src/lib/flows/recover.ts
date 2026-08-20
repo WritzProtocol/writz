@@ -59,7 +59,7 @@ export async function recoverPositions(params: {
   let recovered = 0;
   for (const n of notes) {
     const note = openNote(hexToBytes(n.encNote), viewingSk);
-    if (!note) continue; // not ours — trial decryption failed
+    if (!note) continue; // not ours - trial decryption failed
 
     const collateral = BigInt(note.collateralSats);
     const debt = BigInt(note.debtStroops);
@@ -68,7 +68,7 @@ export async function recoverPositions(params: {
     const commitment = computeCommitment(collateral, debt, secret, nonce);
 
     // Skip notes that don't reconstruct the on-chain commitment for their leaf
-    // (a stale or tampered note) — only trust verifiable state.
+    // (a stale or tampered note) - only trust verifiable state.
     if (n.commitment !== null && commitment !== BigInt("0x" + n.commitment)) continue;
 
     const prior = existing.find((p) => p.index === note.index);

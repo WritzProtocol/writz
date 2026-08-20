@@ -1,7 +1,7 @@
 /*
-  Landing design tokens — scoped under `.landing-root` so they never leak
+  Landing design tokens - scoped under `.landing-root` so they never leak
   into (or collide with) the dApp's own design system in globals.css.
-  Fixed "Gold & Black" palette — there is no runtime theme switcher.
+  Fixed "Gold & Black" palette - there is no runtime theme switcher.
 */
 
 .landing-root {

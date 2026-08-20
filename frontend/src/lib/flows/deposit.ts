@@ -55,7 +55,7 @@ export async function pollSpvBundle(
   txid: string,
   onStatus: (msg: string) => void,
   intervalMs = 10_000,
-  maxAttempts = 270, // ~45 min — signet block times are irregular
+  maxAttempts = 270, // ~45 min - signet block times are irregular
 ): Promise<SpvBundle> {
   const relayerUrl = config.services.relayerUrl;
   if (!relayerUrl) throw new Error("NEXT_PUBLIC_RELAYER_URL is not configured.");
@@ -73,7 +73,7 @@ export async function pollSpvBundle(
       return (await res.json()) as SpvBundle;
     } catch (e) {
       if (i === maxAttempts) throw e;
-      onStatus(`Relayer unreachable — retrying… (attempt ${i})`);
+      onStatus(`Relayer unreachable - retrying… (attempt ${i})`);
       await new Promise((r) => setTimeout(r, intervalMs));
     }
   }
@@ -121,7 +121,7 @@ export async function deposit(params: {
   const secret = deriveSecret(f, index);
   const nonce = deriveNonce(f, index, 0);
 
-  // 4. ZK deposit proof — generated entirely in the browser.
+  // 4. ZK deposit proof - generated entirely in the browser.
   onStatus("Generating ZK proof in browser… (may take ~10s)");
   const { proof, publicSignals } = await proveDeposit({
     collateral_satoshis: collateralSats.toString(),
@@ -139,7 +139,7 @@ export async function deposit(params: {
 
   const localCommitment = computeCommitment(collateralSats, 0n, secret, nonce);
   if (commitment !== localCommitment) {
-    throw new Error("Commitment mismatch — circuit output does not match local computation.");
+    throw new Error("Commitment mismatch - circuit output does not match local computation.");
   }
 
   // Seal the recovery note for the deposit state (debt 0) to the viewing key.
@@ -148,7 +148,7 @@ export async function deposit(params: {
     deriveViewingKey(seed).publicKey,
   );
 
-  // 5. Submit deposit() — user signs with their Stellar wallet.
+  // 5. Submit deposit() - user signs with their Stellar wallet.
   onStatus("Submitting deposit to Soroban… (step 1/2)");
   const client = new Client({
     contractId: requireContract(config.contracts.commitmentTree, "commitment-tree"),
@@ -192,7 +192,7 @@ export async function deposit(params: {
   const insertBody = (await insertRes.json().catch(() => ({}))) as { leafIndex?: number };
   const leafIndex = insertBody.leafIndex;
 
-  // 7. Persist the position (no secret/nonce — derived from the seed + index/version).
+  // 7. Persist the position (no secret/nonce - derived from the seed + index/version).
   const position: Position = {
     id: commitment.toString(),
     owner: depositor,

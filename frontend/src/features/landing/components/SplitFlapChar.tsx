@@ -24,7 +24,7 @@ export function SplitFlapChar({ char, index, animationKey, skipEntrance, speed, 
   // The tile's font-size drives its width/height (both set in `em`), so this
   // one clamp() controls the whole board's scale. It must stay small enough
   // that all 14 tiles of "WRITZ PROTOCOL" (0.85em wide each) never exceed the
-  // FinalCTA's max-w-4xl (896px) container — the max here (4rem) tops out
+  // FinalCTA's max-w-4xl (896px) container - the max here (4rem) tops out
   // around ~755px total row width, comfortably inside that budget.
   const fontSizeClass = "text-[clamp(1.5rem,6vw,4rem)]";
 

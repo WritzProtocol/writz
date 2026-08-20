@@ -38,14 +38,14 @@ export function useSplitFlapChar({
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
 
     // Space tiles never render this hook's state (the caller returns its own
-    // spacer element for them — see SplitFlapChar), so there's nothing to
+    // spacer element for them - see SplitFlapChar), so there's nothing to
     // synchronize; just skip the flip machinery.
     if (isSpace) return;
 
     // This effect *is* the subscription to an external system (the flip
     // timers below): every time a dependency changes it must reset the tile
     // to "flipping" and kick off a fresh setInterval sequence. That reset
-    // can't be modeled as derived state — it's the setup step for the timer
+    // can't be modeled as derived state - it's the setup step for the timer
     // this effect owns.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsSettled(false);

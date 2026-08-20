@@ -1,12 +1,12 @@
-# Writz — Design System
+# Writz - Design System
 
-**"Private Vault"** — a design language for trustless, ZK-private Bitcoin lending.
+**"Private Vault"** - a design language for trustless, ZK-private Bitcoin lending.
 Institutional in its restraint, precise in its data, built so a position stays
 invisible until you choose to look.
 
 Implemented as Tailwind v4 theme tokens in `src/app/globals.css` and fonts in
 `src/app/layout.tsx`. Use the generated utilities (`bg-surface`, `text-amber`,
-`border-line`, `font-serif`, `font-mono`, …) — do not hardcode hex values.
+`border-line`, `font-serif`, `font-mono`, …) - do not hardcode hex values.
 
 ## Principles
 
@@ -38,7 +38,7 @@ Ratio target: ~82% obsidian/neutrals · ~12% off-whites · ~5% amber · ~1% sign
 | `body` | `#B7AF9F` | Body text |
 | `head` | `#E8E2D5` | Headings, labels |
 | `hi` | `#FBF8F1` | Display / hero (warm white) |
-| `amber` | `#E3A646` | Accent — CTAs, active state |
+| `amber` | `#E3A646` | Accent - CTAs, active state |
 | `amber-2` | `#C98A34` | Amber hover / deep borders |
 | `zk` | `#8FB6B0` | Privacy / ZK semantics only |
 | `ok` | `#79A66F` | Success / healthy |
@@ -67,13 +67,13 @@ text near 65ch; uppercase labels get `tracking-wider`; headings use
 
 ## Components
 
-- **Buttons** — Primary: solid amber, dark text. Secondary: transparent, thin
+- **Buttons** - Primary: solid amber, dark text. Secondary: transparent, thin
   `line-2` border, amber on hover. Destructive: ghost with `crit` text/border.
-- **Pills/badges** — thin border, optional dot; variants for `zk`, `amber`
+- **Pills/badges** - thin border, optional dot; variants for `zk`, `amber`
   (testnet), `ok`, `crit`.
-- **Cards** — `bg-surface` + `border-line`; hover lifts to `border-line-2`.
-- **Inputs** — `surface-2` background, thin `line` border, amber focus border,
+- **Cards** - `bg-surface` + `border-line`; hover lifts to `border-line-2`.
+- **Inputs** - `surface-2` background, thin `line` border, amber focus border,
   `font-mono` for numeric entry.
-- **Tables** — minimal grid; hairline row dividers; `tabular-nums`; selected row
+- **Tables** - minimal grid; hairline row dividers; `tabular-nums`; selected row
   gets a faint amber tint.
-- **Private value** — `.private` (blurred) → `.revealed` on click/Enter.
+- **Private value** - `.private` (blurred) → `.revealed` on click/Enter.

@@ -7,6 +7,7 @@ import { supply, withdraw } from "@/lib/flows/lend";
 import { getPoolState, getSupplyBalance } from "@/lib/contracts/commitmentTree";
 import { stellarTxUrl } from "@/lib/explorer";
 import { TxLink } from "./TxLink";
+import { humanizeError } from "@/lib/errors";
 
 // USDC uses 7 decimals (stroops).
 const STROOP = 10_000_000n;
@@ -23,17 +24,6 @@ function toStroops(usdc: string): bigint | null {
   const n = Number(usdc);
   if (!Number.isFinite(n) || n <= 0) return null;
   return BigInt(Math.round(n * 1e7));
-}
-
-/** Map the contract's typed errors to plain-language guidance. */
-function friendlyError(raw: string, limits: { balance: bigint; available: bigint }): string {
-  if (/WithdrawExceedsBalance/.test(raw)) {
-    return `You can withdraw at most ${fmtUsdc(limits.balance)} USDC (your supplied balance).`;
-  }
-  if (/InsufficientLiquidity/.test(raw)) {
-    return `Only ${fmtUsdc(limits.available)} USDC is available — the rest is currently borrowed.`;
-  }
-  return raw;
 }
 
 export function LenderPanel() {
@@ -91,7 +81,7 @@ export function LenderPanel() {
   const [withdrawMessage, setWithdrawMessage] = useState<string | null>(null);
   const [withdrawTx, setWithdrawTx] = useState<string | null>(null);
 
-  // One transaction per account per ledger — lock both actions while in flight.
+  // One transaction per account per ledger - lock both actions while in flight.
   const busy = supplyStatus === "working" || withdrawStatus === "working";
 
   // Withdrawable = min(own balance, pool available liquidity).
@@ -128,9 +118,10 @@ export function LenderPanel() {
     } catch (e) {
       setSupplyStatus("error");
       setSupplyMessage(
-        friendlyError(e instanceof Error ? e.message : String(e), {
-          balance: balance ?? 0n,
-          available: available ?? 0n,
+        humanizeError(e, {
+          flow: "lend",
+          ownBalanceUsdc: fmtUsdc(balance ?? 0n),
+          availableUsdc: fmtUsdc(available ?? 0n),
         }),
       );
     }
@@ -167,9 +158,10 @@ export function LenderPanel() {
     } catch (e) {
       setWithdrawStatus("error");
       setWithdrawMessage(
-        friendlyError(e instanceof Error ? e.message : String(e), {
-          balance: balance ?? 0n,
-          available: available ?? 0n,
+        humanizeError(e, {
+          flow: "withdraw",
+          ownBalanceUsdc: fmtUsdc(balance ?? 0n),
+          availableUsdc: fmtUsdc(available ?? 0n),
         }),
       );
     }
@@ -190,10 +182,10 @@ export function LenderPanel() {
         <div className="rounded-xl border border-line bg-surface p-5">
           <div className="grid grid-cols-2 gap-5">
             <Metric label="Your supplied · USDC">
-              {balance !== null ? fmtUsdc(balance) : "—"}
+              {balance !== null ? fmtUsdc(balance) : "-"}
             </Metric>
             <Metric label="Pool available · USDC">
-              {available !== null ? fmtUsdc(available) : "—"}
+              {available !== null ? fmtUsdc(available) : "-"}
             </Metric>
           </div>
 
@@ -261,7 +253,7 @@ export function LenderPanel() {
       )}
 
       <p className="text-xs text-muted">
-        No yield figure is shown — interest accrual is not yet wired into this
+        No yield figure is shown - interest accrual is not yet wired into this
         pool. You supply and withdraw at par.
       </p>
     </section>

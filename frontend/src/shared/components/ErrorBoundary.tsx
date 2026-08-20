@@ -12,7 +12,7 @@ interface ErrorBoundaryState {
 }
 
 /** Generic render-error boundary. React only supports this via a class
- * component — there is no hook equivalent for `getDerivedStateFromError`. */
+ * component - there is no hook equivalent for `getDerivedStateFromError`. */
 export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   state: ErrorBoundaryState = { hasError: false };
 

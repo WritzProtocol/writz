@@ -8,7 +8,7 @@ added in subsequent issues.
 ## Prerequisites
 
 - **Bun** (package manager + scripts) and **Node.js 24**, both pinned in
-  `.tool-versions` (selected automatically with asdf — otherwise install Bun and
+  `.tool-versions` (selected automatically with asdf - otherwise install Bun and
   Node 24). Bun installs dependencies and runs the scripts; Node is the runtime
   Next.js executes under.
 

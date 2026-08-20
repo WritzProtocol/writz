@@ -32,7 +32,7 @@ const PrivyBridgeContext = createContext<PrivyBridge | null>(null);
 
 /**
  * Inner component that calls Privy hooks. Must be rendered inside
- * `<PrivyProvider>` — never instantiated when privyAppId is absent.
+ * `<PrivyProvider>` - never instantiated when privyAppId is absent.
  */
 function PrivyBridgeActive({ children }: { children: React.ReactNode }) {
   const {
@@ -68,7 +68,7 @@ function PrivyBridgeActive({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * Renders the null context — no Privy available (appId not configured).
+ * Renders the null context - no Privy available (appId not configured).
  */
 export function PrivyBridgeDisabled({ children }: { children: React.ReactNode }) {
   return (
