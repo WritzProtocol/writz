@@ -3,7 +3,7 @@
 # zkey's internal Groth16 contribution chain against the r1cs + ptau, and
 # cross-checks it against the transcript's recorded hash chain.
 #
-# Anyone can (and should) run this independently — it requires no special
+# Anyone can (and should) run this independently - it requires no special
 # access, only the public r1cs, ptau, transcript, and final zkey.
 #
 # Usage: bash scripts/ceremony/03_verify_transcript.sh <circuit> [final.zkey]
@@ -39,13 +39,13 @@ if [ -z "$FINAL_ZKEY" ]; then
   # which is the pre-contribution setup step, not a valid "final" state).
   FINAL_ZKEY="$(find "$OUT_DIR" -maxdepth 1 -name '*.zkey' ! -name '0000.zkey' | sort -V | tail -1)"
   if [ -z "$FINAL_ZKEY" ]; then
-    echo "ERROR: no contribution .zkey found in $OUT_DIR (only 0000.zkey exists —" >&2
+    echo "ERROR: no contribution .zkey found in $OUT_DIR (only 0000.zkey exists -" >&2
     echo "        has anyone actually contributed yet? See 02_contribute.sh)" >&2
     exit 1
   fi
 fi
 
-# Which ptau power was used — recover it from the transcript's recorded
+# Which ptau power was used - recover it from the transcript's recorded
 # 0000.zkey hash isn't possible directly, so require the operator to have
 # kept the matching ptau file around; default to power 15 (Writz's current
 # default across all four circuits).
@@ -64,7 +64,7 @@ echo "  zkey:  $FINAL_ZKEY"
 echo ""
 
 # snarkjs verifies the full internal contribution chain baked into the
-# zkey — every contributor's proof-of-knowledge, in order — against the
+# zkey - every contributor's proof-of-knowledge, in order - against the
 # r1cs and the original ptau.
 snarkjs zkey verify "$R1CS" "$PTAU" "$FINAL_ZKEY"
 
@@ -86,7 +86,7 @@ for i, entry in enumerate(transcript):
         print(f"ERROR: transcript entry {i} has contribution_index={entry['contribution_index']} (expected {i})", file=sys.stderr)
         sys.exit(1)
     if "dev" in entry.get("participant_name", "").lower():
-        print(f"ERROR: transcript entry {i} participant_name contains 'dev' ({entry['participant_name']!r}) — "
+        print(f"ERROR: transcript entry {i} participant_name contains 'dev' ({entry['participant_name']!r}) - "
               "this looks like a development ceremony, not a production one. Refusing to treat it as valid.", file=sys.stderr)
         sys.exit(1)
     if i > 0:
@@ -94,13 +94,13 @@ for i, entry in enumerate(transcript):
         prev_actual = transcript[i - 1]["zkey_sha256"]
         if prev_recorded != prev_actual:
             print(f"ERROR: transcript entry {i}'s prev_zkey_sha256 ({prev_recorded}) does not match "
-                  f"entry {i-1}'s recorded zkey_sha256 ({prev_actual}) — the hash chain is broken.", file=sys.stderr)
+                  f"entry {i-1}'s recorded zkey_sha256 ({prev_actual}) - the hash chain is broken.", file=sys.stderr)
             sys.exit(1)
 
 print(f"  ✓ {len(transcript)} contribution(s) recorded, hash chain is consistent, no 'dev' markers found")
 
 if len(transcript) < 6:  # coordinator's 0000 entry + 5 real participants
-    print(f"WARNING: only {len(transcript) - 1} participant contribution(s) recorded — "
+    print(f"WARNING: only {len(transcript) - 1} participant contribution(s) recorded - "
           "docs/scf/milestone-plan.md requires a minimum of 5 independent participants "
           "per circuit for a production ceremony.", file=sys.stderr)
 PYEOF

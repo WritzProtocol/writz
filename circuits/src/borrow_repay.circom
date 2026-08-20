@@ -6,7 +6,7 @@ include "circomlib/circuits/mux1.circom";
 include "./merkle.circom";
 
 /*
- * Writz Protocol — Borrow/Repay Circuit
+ * Writz Protocol - Borrow/Repay Circuit
  *
  * Proves a valid state transition of a lending position without revealing
  * collateral amount, current debt, or the identity of the position owner.
@@ -14,10 +14,15 @@ include "./merkle.circom";
  * What the circuit proves (all without revealing amounts):
  *   1. The position (commitment) exists in the current Merkle tree.
  *   2. The new debt is correctly updated: new_debt = old_debt ± delta.
- *   3. After the update, the collateral ratio >= 150% (borrow) or >= 0 (repay).
- *   4. A nullifier is published to spend the old commitment (prevents replay).
- *   5. The new commitment is correctly formed with the updated debt.
- *   6. The new Merkle root reflects the commitment update.
+ *   3. `is_borrow` is boolean, and its value matches the actual debt
+ *      direction: is_borrow=1 requires new_debt >= old_debt, is_borrow=0
+ *      requires new_debt <= old_debt. Neither was constrained before - see
+ *      the comment on Step 3b below for the exploit this closes.
+ *   4. After the update, the collateral ratio >= 150% (borrow) or is
+ *      unconstrained (repay - reducing debt cannot itself break solvency).
+ *   5. A nullifier is published to spend the old commitment (prevents replay).
+ *   6. The new commitment is correctly formed with the updated debt.
+ *   7. The new Merkle root reflects the commitment update.
  *
  * Collateral ratio check (borrow only):
  *   collateral_satoshis × btc_price_stroops_per_btc ÷ 100_000_000 ÷ new_debt
@@ -26,13 +31,15 @@ include "./merkle.circom";
  *   Rearranged to avoid division (ZK-friendly):
  *   collateral_satoshis × btc_price × 10_000 ≥ new_debt × 100_000_000 × 15_000
  *
- * Constraint count: ~10,500
+ * Constraint count: 11,296 non-linear (measured via `circom --r1cs`, not an
+ * estimate - regenerate this comment if the circuit changes again rather
+ * than trusting stale arithmetic here).
  *   - Old commitment hash: ~320
  *   - Old Merkle proof (depth 20): ~5,200
  *   - New commitment hash: ~320
  *   - New Merkle root update: ~5,200 (shared path, no double-count)
- *   - Ratio check + range proofs: ~400
- *   Total: approximately 10,500
+ *   - Ratio check + is_borrow boolean + debt-direction + collateral/price
+ *     range proofs: ~800
  *
  * Tree depth parameter: DEPTH = 20 (supports 1M+ positions)
  */
@@ -43,7 +50,7 @@ template BorrowRepayCircuit(DEPTH) {
     signal input old_debt_stroops;    // Current USDC debt before this operation
     signal input secret;              // Position secret (constant across all operations)
     signal input nonce;               // Position nonce (constant; new nonce in new commit)
-    signal input new_nonce;           // New nonce — prevents linking old and new commitments
+    signal input new_nonce;           // New nonce - prevents linking old and new commitments
 
     // Merkle tree path for the old commitment
     signal input path_elements[DEPTH];
@@ -83,6 +90,52 @@ template BorrowRepayCircuit(DEPTH) {
     debt_range.in <== new_debt_stroops;
     // (If new_debt_stroops were negative, Num2Bits would fail to produce valid bits)
 
+    // `collateral_satoshis` and `btc_price_stroops_per_btc` feed the ratio
+    // comparator below (Step 4), whose correctness depends on both operands
+    // already fitting their assumed bit-width - GreaterEqThan does not itself
+    // verify that. Without an explicit check here, `collateral_satoshis`'
+    // range only holds because it happens to be copied forward unchanged from
+    // `deposit.circom`'s own `GreaterEqThan(52)` check at the position's
+    // creation - a real but undocumented cross-circuit dependency, not
+    // something this circuit enforces on its own. `btc_price_stroops_per_btc`
+    // has no such indirect guarantee at all; it's a fresh public input every
+    // call, only pinned to the real oracle value by the calling contract's
+    // separate equality check (`price_signal != get_btc_price_stroops(...)`),
+    // not by anything in this circuit. Range-checking both here makes this
+    // circuit's own soundness self-contained instead of borrowed.
+    component collateral_range = Num2Bits(52); // Bitcoin's 21M BTC cap fits in ~51 bits
+    collateral_range.in <== collateral_satoshis;
+    component price_range = Num2Bits(64); // generous headroom over any realistic USD price
+    price_range.in <== btc_price_stroops_per_btc;
+
+    // ── Step 3b: is_borrow must be boolean, and must match the debt direction ──
+    // Without these two constraints, is_borrow is an unconstrained public
+    // signal: the ratio check below is gated by `is_borrow * (1 - ratio_ok)`,
+    // which is satisfiable for ANY is_borrow value as long as ratio_ok == 1,
+    // and trivially satisfiable whenever is_borrow == 0 regardless of
+    // ratio_ok - with nothing tying `is_borrow == 0` to delta_stroops actually
+    // being non-positive. A prover could set is_borrow = 0 (skipping the ratio
+    // check entirely) while delta_stroops is any value that still range-checks
+    // at Step 3, including a positive one that increases debt with no
+    // collateral-ratio enforcement at all. The Rust caller currently forecloses
+    // this only incidentally (`commitment-tree::repay`'s field-negation decode
+    // of delta_stroops overflows i128 for a non-negative delta) - that is a
+    // property of one specific caller, not a guarantee the circuit itself
+    // makes. Fix it here so the circuit is self-sufficient.
+    is_borrow * (1 - is_borrow) === 0;
+
+    component debt_did_not_decrease = GreaterEqThan(120);
+    debt_did_not_decrease.in[0] <== new_debt_stroops;
+    debt_did_not_decrease.in[1] <== old_debt_stroops;
+    // is_borrow == 1  =>  new_debt_stroops >= old_debt_stroops
+    is_borrow * (1 - debt_did_not_decrease.out) === 0;
+
+    component debt_did_not_increase = LessEqThan(120);
+    debt_did_not_increase.in[0] <== new_debt_stroops;
+    debt_did_not_increase.in[1] <== old_debt_stroops;
+    // is_borrow == 0  =>  new_debt_stroops <= old_debt_stroops
+    (1 - is_borrow) * (1 - debt_did_not_increase.out) === 0;
+
     // ── Step 4: Collateral ratio check (borrow case only) ─────────────────────
     // Check: collateral_satoshis × price × 10_000 >= new_debt × 100_000_000 × min_ratio_bp
     //
@@ -106,7 +159,7 @@ template BorrowRepayCircuit(DEPTH) {
     // rhs: debt ~87 bits × 10^8 ~27 bits = ~114 bits
 
     signal rhs_scaled <== rhs * min_ratio_bp;
-    // rhs_scaled: ~114 + 14 bits = ~128 bits — within i128 range
+    // rhs_scaled: ~114 + 14 bits = ~128 bits - within i128 range
 
     // ratio_ok = 1 if lhs_scaled >= rhs_scaled (collateral ratio satisfied)
     component ratio_check = GreaterEqThan(128);
@@ -126,13 +179,13 @@ template BorrowRepayCircuit(DEPTH) {
     new_commit.inputs[3] <== new_nonce;  // new nonce hides that this is the same position
     new_commitment <== new_commit.out;
 
-    // ── Step 6: Nullifier — marks old commitment as spent ────────────────────
+    // ── Step 6: Nullifier - marks old commitment as spent ────────────────────
     component null_hasher = Poseidon(2);
     null_hasher.inputs[0] <== secret;
     null_hasher.inputs[1] <== nonce;
     old_nullifier <== null_hasher.out;
 
-    // ── Step 7: Update Merkle tree — verify old root, compute new root ────────
+    // ── Step 7: Update Merkle tree - verify old root, compute new root ────────
     component updater = MerkleTreeUpdater(DEPTH);
     updater.old_leaf <== old_commitment;
     updater.new_leaf <== new_commitment;
