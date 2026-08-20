@@ -7,8 +7,8 @@
  * independent of the Merkle leaf store's lifecycle.
  *
  * The cursor is what actually bounds the "stranded window" the fix is
- * meant to close: on restart, the poller resumes from here — never from
- * "now" — so no `repay_full` event that fired while the watcher was down
+ * meant to close: on restart, the poller resumes from here - never from
+ * "now" - so no `repay_full` event that fired while the watcher was down
  * is silently skipped.
  */
 import { Database } from "bun:sqlite";
@@ -43,8 +43,8 @@ export function readCursor(): string | null {
   return _read.get()?.cursor ?? null;
 }
 
-/** Persists the RPC events cursor. Call this after every poll — even one
- * that found no matching events — so a restart never re-scans from "now". */
+/** Persists the RPC events cursor. Call this after every poll - even one
+ * that found no matching events - so a restart never re-scans from "now". */
 export function writeCursor(cursor: string): void {
   _write.run(cursor);
 }

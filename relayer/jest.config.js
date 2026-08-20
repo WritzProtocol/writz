@@ -9,7 +9,7 @@ module.exports = {
   moduleNameMapper: {
     // bun:sqlite only exists under Bun's runtime; substitute a minimal
     // test-only mock under Jest/Node (see test/__mocks__/bun-sqlite.ts).
-    // Production code is unaffected — it still resolves the real
+    // Production code is unaffected - it still resolves the real
     // `bun:sqlite` when run via `bun src/index.ts` / `bun test`.
     '^bun:sqlite$': '<rootDir>/test/__mocks__/bun-sqlite.ts',
     '^(\\.{1,2}/.*)\\.js$': '$1',
