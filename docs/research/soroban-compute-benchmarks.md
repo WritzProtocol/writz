@@ -9,7 +9,7 @@
 
 ## Overview
 
-Before writing a single line of Writz contract code, we need to know whether the core operations — Bitcoin SPV verification and ZK proof verification — are feasible within Soroban's resource constraints. This document establishes the cost baseline.
+Before writing a single line of Writz contract code, we need to know whether the core operations - Bitcoin SPV verification and ZK proof verification - are feasible within Soroban's resource constraints. This document establishes the cost baseline.
 
 ---
 
@@ -45,17 +45,17 @@ Based on current Stellar documentation and Protocol 26 mainnet parameters:
 | Protocol 26 MSM host function | Significantly cheaper (host-layer, not Wasm) |
 | Simulation margin of error | ±20% + 3M minimum floor |
 
-**The 40M instruction figure for Groth16 verification comes directly from Stellar's own documentation** and is approximately 40% of the per-transaction maximum — feasible but not trivial.
+**The 40M instruction figure for Groth16 verification comes directly from Stellar's own documentation** and is approximately 40% of the per-transaction maximum - feasible but not trivial.
 
 ### Why Protocol 26 matters for cost
 
-Before Protocol 26, multi-scalar multiplication (MSM) — the dominant computation in Groth16 verification — had to run in Wasm and was counted instruction-by-instruction. After Protocol 26, `bn254_msm` is a host function: it executes at native speed and is billed as a fixed cost at the host layer, dramatically reducing effective instruction consumption for ZK verification.
+Before Protocol 26, multi-scalar multiplication (MSM) - the dominant computation in Groth16 verification - had to run in Wasm and was counted instruction-by-instruction. After Protocol 26, `bn254_msm` is a host function: it executes at native speed and is billed as a fixed cost at the host layer, dramatically reducing effective instruction consumption for ZK verification.
 
 **Practical implication for Writz:** ZK position proofs should become significantly cheaper after Protocol 26. The 40M instruction figure is likely a pre-Protocol-26 measurement. Real benchmarking post-Protocol-26 is a required Phase 1 task.
 
 ---
 
-## Cost Benchmarks — Current Data
+## Cost Benchmarks - Current Data
 
 ### Average transaction costs on Soroban (Protocol 25+ era)
 
@@ -72,7 +72,7 @@ From analysis of 220 community protocol transactions:
 | Lending position update (read/write) | ~1–3M instructions | ~0.001–0.003 XLM |
 | Full deposit flow (SPV + ZK + state) | ~50–60M instructions | ~0.025–0.06 XLM |
 
-**At $0.40 XLM, a full deposit costs approximately $0.01–0.024.** This is acceptable for DeFi — substantially cheaper than Ethereum, where comparable operations cost $5–50+.
+**At $0.40 XLM, a full deposit costs approximately $0.01–0.024.** This is acceptable for DeFi - substantially cheaper than Ethereum, where comparable operations cost $5–50+.
 
 ---
 
@@ -82,21 +82,21 @@ From analysis of 220 community protocol transactions:
 
 Bitcoin SPV verification requires:
 - `SHA256d` (double-SHA256) for each level of the Merkle tree: typically 12–13 levels for a block with ~1000–4000 transactions
-- Block header PoW check: `SHA256d(header) < target` — two SHA256d calls
+- Block header PoW check: `SHA256d(header) < target` - two SHA256d calls
 - Header chain validation: `prev_block_hash` check for each header in the chain
 
 **Wasm SHA256 cost estimate:** Each SHA256d is ~10,000–20,000 instructions in Wasm. For a 13-level Merkle proof: ~130,000–260,000 instructions for the proof itself. Header chain (6 headers): ~120,000–240,000 additional instructions.
 
-**Total SPV estimate:** 5–15M instructions — well within budget, even combined with ZK verification in the same transaction.
+**Total SPV estimate:** 5–15M instructions - well within budget, even combined with ZK verification in the same transaction.
 
 **Important:** Soroban does NOT have a native SHA256d host function. Bitcoin uses double-SHA256 (`SHA256(SHA256(data))`), not single SHA256. The circuit must implement this in Wasm. This adds cost vs. SHA256, but is manageable.
 
 ### 2. ZK Proof Verification (Groth16 / Circom)
 
 The Groth16 verifier requires:
-- Bilinear pairing check (the most expensive operation — `bn254_pairing` host function after P25)
-- Multi-scalar multiplication (MSM) — `bn254_msm` host function after P26
-- Field arithmetic operations — `bn254_field_*` host functions after P26
+- Bilinear pairing check (the most expensive operation - `bn254_pairing` host function after P25)
+- Multi-scalar multiplication (MSM) - `bn254_msm` host function after P26
+- Field arithmetic operations - `bn254_field_*` host functions after P26
 
 With Protocol 26's host functions, the bulk of the ZK verification cost moves off the Wasm instruction counter. The remaining Wasm work is mostly data marshaling and memory operations.
 
@@ -122,7 +122,7 @@ A Soroban transaction's physical size affects fees. Key sizes to manage:
 - Groth16 proof: 192 bytes (fixed for Groth16)
 - ZK public inputs: depends on circuit, typically 32–128 bytes
 
-**Total transaction payload estimate:** ~1.5–2.5 KB — within Soroban's limits.
+**Total transaction payload estimate:** ~1.5–2.5 KB - within Soroban's limits.
 
 ---
 
@@ -141,7 +141,7 @@ A Soroban transaction's physical size affects fees. Key sizes to manage:
 
 CertiK specifically flags **unbounded storage growth** as a critical Soroban vulnerability class. If the commitment Merkle tree or nullifier set is stored in `instance` storage, they grow indefinitely and can cause DoS by exceeding storage limits or making reads prohibitively expensive.
 
-**Writz design requirement:** Store individual commitments and nullifiers in separate `persistent` ledger entries keyed by their hash. Never store growing collections in a single `instance` storage entry. Each entry is a fixed-size 32-byte hash — cost is predictable and bounded per user.
+**Writz design requirement:** Store individual commitments and nullifiers in separate `persistent` ledger entries keyed by their hash. Never store growing collections in a single `instance` storage entry. Each entry is a fixed-size 32-byte hash - cost is predictable and bounded per user.
 
 ---
 
@@ -165,12 +165,12 @@ Before deploying to testnet, Writz must benchmark all critical operations using 
 
 ## Key Findings
 
-1. **SPV verification is feasible** (~5–15M instructions) — well within budget
-2. **ZK Groth16 verification is feasible** (~25–40M instructions post-P26) — within budget
-3. **Combined deposit transaction is feasible** (~37–55M instructions) — fits in one transaction
+1. **SPV verification is feasible** (~5–15M instructions) - well within budget
+2. **ZK Groth16 verification is feasible** (~25–40M instructions post-P26) - within budget
+3. **Combined deposit transaction is feasible** (~37–55M instructions) - fits in one transaction
 4. **Cost is DeFi-acceptable** (~$0.01–0.06 per operation vs $5–50 on Ethereum)
-5. **Unbounded storage growth is the main storage risk** — use per-entry persistent storage, never growing instance collections
-6. **Real benchmarking required in Phase 1** — these are estimates; `simulateTransaction` on testnet with real proofs is mandatory before mainnet
+5. **Unbounded storage growth is the main storage risk** - use per-entry persistent storage, never growing instance collections
+6. **Real benchmarking required in Phase 1** - these are estimates; `simulateTransaction` on testnet with real proofs is mandatory before mainnet
 
 ---
 
@@ -187,4 +187,4 @@ Before deploying to testnet, Writz must benchmark all critical operations using 
 ---
 
 *Last updated: 2026-06-22*
-*Sources: [Soroban Fees & Metering — Stellar Docs](https://soroban.stellar.org/docs/soroban-internals/fees-and-metering) · [CertiK: Soroban Contract State Management](https://www.certik.com/blog/soroban-contract-state-management) · [How Much Do Soroban Fees Cost — CheesecakeLabs](https://cheesecakelabs.com/blog/how-much-do-soroban-fees-cost/) · [Stellar ZK Proofs Docs](https://developers.stellar.org/docs/build/apps/zk)*
+*Sources: [Soroban Fees & Metering - Stellar Docs](https://soroban.stellar.org/docs/soroban-internals/fees-and-metering) · [CertiK: Soroban Contract State Management](https://www.certik.com/blog/soroban-contract-state-management) · [How Much Do Soroban Fees Cost - CheesecakeLabs](https://cheesecakelabs.com/blog/how-much-do-soroban-fees-cost/) · [Stellar ZK Proofs Docs](https://developers.stellar.org/docs/build/apps/zk)*

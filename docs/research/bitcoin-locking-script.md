@@ -9,7 +9,7 @@
 
 ## Overview
 
-When a user deposits BTC into Writz Protocol, that BTC must be provably locked on the Bitcoin side — the user cannot move it until the loan is repaid. This document designs the Bitcoin-side locking mechanism, evaluating P2WSH vs. Taproot approaches and defining the exact script logic.
+When a user deposits BTC into Writz Protocol, that BTC must be provably locked on the Bitcoin side - the user cannot move it until the loan is repaid. This document designs the Bitcoin-side locking mechanism, evaluating P2WSH vs. Taproot approaches and defining the exact script logic.
 
 ---
 
@@ -45,12 +45,12 @@ OP_ELSE
 OP_ENDIF
 ```
 
-**Spending path A (normal — loan repaid):**
+**Spending path A (normal - loan repaid):**
 - Branch: `OP_IF` (push `1` to unlock)
 - Requires: protocol signature + user signature
 - Triggered: when user repays USDC loan and Writz co-signs the BTC release
 
-**Spending path B (emergency — timelock expiry):**
+**Spending path B (emergency - timelock expiry):**
 - Branch: `OP_ELSE` (push `0` to unlock)
 - Requires: only user signature + block height ≥ timelock
 - Triggered: after a predefined locktime if Writz becomes unavailable
@@ -93,7 +93,7 @@ The `timelock` is unique per deposit (based on current block height + loan durat
 - **Output:** 34 bytes (version byte + 32-byte script hash)
 - **Spending (path A, normal):** ~250 bytes (user sig + protocol sig + redeem script in witness)
 - **Spending (path B, emergency):** ~180 bytes (user sig + redeem script in witness)
-- **Fee impact:** Witness bytes are discounted by 4x in Bitcoin's fee calculation — P2WSH spends are economically efficient
+- **Fee impact:** Witness bytes are discounted by 4x in Bitcoin's fee calculation - P2WSH spends are economically efficient
 
 ---
 
@@ -101,7 +101,7 @@ The `timelock` is unique per deposit (based on current block height + loan durat
 
 **Recommended for Phase 2+**
 
-Taproot (BIP 341, active since November 2021) is a significant privacy and efficiency upgrade to Bitcoin scripting. It uses Schnorr signatures and Merkle trees (MAST — Merkelized Abstract Syntax Tree) to hide spending conditions until they are used.
+Taproot (BIP 341, active since November 2021) is a significant privacy and efficiency upgrade to Bitcoin scripting. It uses Schnorr signatures and Merkle trees (MAST - Merkelized Abstract Syntax Tree) to hide spending conditions until they are used.
 
 ### How Taproot improves on P2WSH for Writz
 
@@ -112,14 +112,14 @@ Taproot (BIP 341, active since November 2021) is a significant privacy and effic
 | **Fee efficiency (normal path)** | ~250 bytes | ~57 bytes (key-path spend with MuSig2) |
 | **Complex script support** | Full Bitcoin Script | Tapscript (similar, slightly extended) |
 | **Hardware wallet support** | Universal | Growing but not universal |
-| **MuSig2 compatibility** | No | Yes — aggregates protocol + user key into one key |
+| **MuSig2 compatibility** | No | Yes - aggregates protocol + user key into one key |
 
 ### Taproot design for Writz
 
-**Key-path spend (normal — loan repaid):**
-Using MuSig2, the protocol key and user key are **aggregated into a single tweaked public key**. When the loan is repaid, both parties cooperatively produce a single Schnorr signature that unlocks the funds. On-chain this looks identical to a standard single-key Bitcoin payment — no evidence that it was a 2-of-2 multi-sig or a bridge deposit.
+**Key-path spend (normal - loan repaid):**
+Using MuSig2, the protocol key and user key are **aggregated into a single tweaked public key**. When the loan is repaid, both parties cooperatively produce a single Schnorr signature that unlocks the funds. On-chain this looks identical to a standard single-key Bitcoin payment - no evidence that it was a 2-of-2 multi-sig or a bridge deposit.
 
-**Script-path spend (emergency — timelock):**
+**Script-path spend (emergency - timelock):**
 The timelock recovery script is embedded in a Tapscript leaf, committed to in the Taproot output. If the key-path spend is unavailable (Writz offline), the user reveals the leaf script and spends using only their key after the timelock.
 
 **Privacy benefit:** Chain surveillance firms cannot identify Writz deposits from normal Bitcoin payments in the common case. Only the emergency path reveals the script structure.
@@ -129,7 +129,7 @@ The timelock recovery script is embedded in a Tapscript leaf, committed to in th
 - MuSig2 for the key-path requires interactive signing protocols (nonce exchange) between the user and the Writz backend. This adds complexity to the UX flow (two round trips instead of one).
 - Hardware wallet support for Taproot key-path with MuSig2 is still limited in 2026.
 - P2WSH is universally supported, well-audited, and simpler to implement correctly.
-- The security properties are equivalent — only the on-chain privacy and fee efficiency differ.
+- The security properties are equivalent - only the on-chain privacy and fee efficiency differ.
 
 ---
 
@@ -142,7 +142,7 @@ Writz holds a co-signing private key for the `protocol_pubkey` in every locking 
 ### Solutions (in order of security)
 
 **Phase 1.5 (implemented): AWS KMS**
-The protocol private key is generated and held inside an AWS KMS asymmetric key (`ECC_SECG_P256K1` curve, `ECDSA_SHA_256` signing algorithm — natively matching Bitcoin's curve). The raw key material never leaves KMS; signing is a `kms:Sign` API call authenticated via IAM, with CloudTrail audit logging on every call. See `bitcoin-script/src/keys.ts`'s `KmsSigner` and `frontend/src/app/api/cosign/route.ts`. The `$50K` mainnet TVL cap bounds exposure on top of this custody model. See `docs/security/security-model.md` for the full trust-model discussion.
+The protocol private key is generated and held inside an AWS KMS asymmetric key (`ECC_SECG_P256K1` curve, `ECDSA_SHA_256` signing algorithm - natively matching Bitcoin's curve). The raw key material never leaves KMS; signing is a `kms:Sign` API call authenticated via IAM, with CloudTrail audit logging on every call. See `bitcoin-script/src/keys.ts`'s `KmsSigner` and `frontend/src/app/api/cosign/route.ts`. The `$50K` mainnet TVL cap bounds exposure on top of this custody model. See `docs/security/security-model.md` for the full trust-model discussion.
 
 **Phase 2: MPC (Multi-Party Computation)**
 Distribute the protocol private key across multiple parties using threshold ECDSA (e.g., GG20/21 or CGGMP21 protocols). No single party ever holds the complete key. A 2-of-3 or 3-of-5 MPC setup is standard in institutional custody. Used by Fireblocks, Copper, and major custodians.
@@ -157,7 +157,7 @@ If Writz moves to Taproot (Phase 2+), FROST enables threshold Schnorr signatures
 
 ## zkRelay Alternative: ZK-SNARK Bitcoin Relay
 
-Research uncovered an interesting alternative to pure stateless SPV: **zkRelay** — using ZK-SNARKs to batch-verify multiple Bitcoin block headers off-chain and post a single proof on-chain.
+Research uncovered an interesting alternative to pure stateless SPV: **zkRelay** - using ZK-SNARKs to batch-verify multiple Bitcoin block headers off-chain and post a single proof on-chain.
 
 ### zkRelay approach
 
@@ -166,7 +166,7 @@ Instead of the caller providing raw headers + Merkle proofs, a prover computes a
 - "Each header has valid PoW"
 - "Transaction T is included in block at height H"
 
-The on-chain verifier only checks the ZK proof — a constant-cost operation regardless of how many headers were validated off-chain.
+The on-chain verifier only checks the ZK proof - a constant-cost operation regardless of how many headers were validated off-chain.
 
 **Cost reduction achieved in research:** 187x cheaper than BTC Relay's per-header approach when batching 504 headers.
 
@@ -188,14 +188,16 @@ A Bitcoin block reorganization ("reorg") occurs when the network switches to a l
 - Reorgs of 3 blocks: extremely rare (a few times in Bitcoin's history)
 - Reorgs of 6 blocks: **never happened in Bitcoin's history**
 
-**Writz policy:** Require **6 confirmations** before accepting a deposit. This makes reorg risk negligibly small. The tradeoff is 60 minutes of user wait time — addressed in the UX section.
+**Writz policy:** Require **6 confirmations** before accepting a deposit. This makes reorg risk negligibly small. The tradeoff is 60 minutes of user wait time - addressed in the UX section.
 
-### Fast lane option
+### Fast lane option - considered, not adopted
 
 For users willing to pay a higher fee and accept slightly elevated risk:
 - Require 3 confirmations (~30 minutes)
 - Cap the maximum deposit size to $5,000 at 3-confirmation tier
 - Standard deposits (>$5,000) always require 6 confirmations
+
+**Status:** This option was evaluated but is not part of the current product spec. `docs/products/privatelend.md`, `docs/how-it-works/spv-verification.md`, and `docs/how-it-works/stellar-side.md` all specify a flat 6-confirmation requirement with no fast lane, and the contract's `min_confirmations` parameter is set by the caller with no fast-lane logic in `bitcoin-spv`. If the fast lane is revisited, update those three docs together with this one.
 
 ---
 
@@ -214,7 +216,7 @@ DEPOSIT:
 7. SPV contract verifies and signals PrivateLend contract
 8. PrivateLend creates ZK position commitment, allows USDC borrowing
 
-REPAYMENT (private-lend's plaintext flow — automated):
+REPAYMENT (private-lend's plaintext flow - automated):
 1. User repays USDC + interest via PrivateLend contract
 2. PrivateLend contract emits a repay_full event
 3. relayer/src/repay-watcher polls Soroban RPC for this event (persisted cursor,
@@ -223,12 +225,12 @@ REPAYMENT (private-lend's plaintext flow — automated):
    input: the P2WSH UTXO
    output: user's Bitcoin return address (derived from the on-chain user_pubkey)
    witness (once the user also signs): [user_sig, writz_sig, redeem_script]
-5. The half-signed PSBT is published on-chain via publish_release_psbt —
+5. The half-signed PSBT is published on-chain via publish_release_psbt -
    retrievable even if the Writz frontend is down
 6. User retrieves the PSBT, adds their own signature, and broadcasts it
 7. BTC arrives in user's wallet (standard Bitcoin transaction)
 
-REPAYMENT (commitment-tree's ZK flow — still manual): cosigning requires the
+REPAYMENT (commitment-tree's ZK flow - still manual): cosigning requires the
 user's own private witness to construct a zero-debt proof, which the backend
 does not have. The user submits this proof via the existing /api/cosign route
 themselves.
@@ -257,4 +259,4 @@ EMERGENCY RECOVERY (if Writz offline):
 ---
 
 *Last updated: 2026-06-22*
-*Sources: [Bitcoin P2WSH — learnmeabitcoin.com](https://learnmeabitcoin.com/technical/script/p2wsh/) · [Taproot Technical — learnmeabitcoin.com](https://learnmeabitcoin.com/technical/upgrades/taproot/) · [zkRelay paper — eprint.iacr.org](https://eprint.iacr.org/2020/433) · [SmartCustody Timelocks — BlockchainCommons](https://github.com/BlockchainCommons/SmartCustody/blob/master/Docs/Timelocks.md)*
+*Sources: [Bitcoin P2WSH - learnmeabitcoin.com](https://learnmeabitcoin.com/technical/script/p2wsh/) · [Taproot Technical - learnmeabitcoin.com](https://learnmeabitcoin.com/technical/upgrades/taproot/) · [zkRelay paper - eprint.iacr.org](https://eprint.iacr.org/2020/433) · [SmartCustody Timelocks - BlockchainCommons](https://github.com/BlockchainCommons/SmartCustody/blob/master/Docs/Timelocks.md)*

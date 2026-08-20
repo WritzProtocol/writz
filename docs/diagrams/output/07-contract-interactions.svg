@@ -8,7 +8,7 @@
  viewBox="0.00 0.00 2100.00 1031.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
 <g id="graph0" class="graph" transform="scale(1.65559 1.65559) rotate(0) translate(50.4 572.28)">
 <title>contract&#45;interactions</title>
-<text xml:space="preserve" text-anchor="start" x="8" y="-506.53" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="13.00" fill="#1c1917">Writz Protocol — Soroban Contract Interactions</text>
+<text xml:space="preserve" text-anchor="start" x="8" y="-506.53" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="13.00" fill="#1c1917">Writz Protocol - Soroban Contract Interactions</text>
 <text xml:space="preserve" text-anchor="start" x="15.12" y="-497.33" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#57534e">Four live contracts on testnet · all ZK verification goes through zk&#45;verifier</text>
 <g id="clust1" class="cluster">
 <title>cluster_actors</title>

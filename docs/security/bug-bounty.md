@@ -2,7 +2,7 @@
 
 **Responsible disclosure program for Writz Protocol.**
 
-> ### ⚠️ Not yet active — no cash rewards are payable today
+> ### [WARNING] Not yet active - no cash rewards are payable today
 >
 > Writz runs on **testnet only** and holds no user funds. The paid bug bounty
 > starts at mainnet launch (targeted Q4 2026); the reward amounts below are the
@@ -10,7 +10,7 @@
 >
 > **Please still report findings.** During testnet we acknowledge, fix, and
 > credit them, and a finding reported now is honoured at mainnet launch under
-> the bands below. What we cannot do today is pay on receipt — we would rather
+> the bands below. What we cannot do today is pay on receipt - we would rather
 > say so plainly than have you assume otherwise.
 
 If you find a security vulnerability in Writz Protocol, we want to hear from you
@@ -23,16 +23,16 @@ before it becomes a problem.
 The following are in-scope for the bug bounty program:
 
 **Soroban contracts (high priority):**
-- `commitment-tree` — ZK lending logic, nullifier set, Merkle tree
-- `zk-verifier` — Groth16 verification, verification key management
-- `bitcoin-spv` — SPV verification, SHA256d implementation, Merkle proofs
-- `private-lend` — Lending mechanics, interest accrual, liquidation
+- `commitment-tree` - ZK lending logic, nullifier set, Merkle tree
+- `zk-verifier` - Groth16 verification, verification key management
+- `bitcoin-spv` - SPV verification, SHA256d implementation, Merkle proofs
+- `private-lend` - Lending mechanics, interest accrual, liquidation
 
 **ZK circuits:**
-- `deposit.circom` — Soundness issues, underconstrained signals
-- `borrow_repay.circom` — Collateral ratio enforcement, state transition
-- `liquidation.circom` — Undercollateralization proof, usdc_debt binding
-- `merkle.circom` — Poseidon Merkle tree components
+- `deposit.circom` - Soundness issues, underconstrained signals
+- `borrow_repay.circom` - Collateral ratio enforcement, state transition
+- `liquidation.circom` - Undercollateralization proof, usdc_debt binding
+- `merkle.circom` - Poseidon Merkle tree components
 
 **Relayer service:**
 - SPV proof assembly correctness
@@ -49,10 +49,10 @@ The following are in-scope for the bug bounty program:
 
 ---
 
-## Severity Levels and Rewards (planned — from mainnet launch)
+## Severity Levels and Rewards (planned - from mainnet launch)
 
 Rewards will be paid in USDC on Stellar once the program is active. Amounts are
-guidelines — actual rewards depend on impact and quality of the report. **None of
+guidelines - actual rewards depend on impact and quality of the report. **None of
 these are payable during the testnet phase**; see the notice at the top.
 
 | Severity | Description | Reward |
@@ -80,7 +80,7 @@ the fix and the reward in. See [`SECURITY.md`](https://github.com/WritzProtocol/
 for the full policy.
 
 > **There is no security mailbox yet.** Earlier versions of this page pointed at
-> `security@writz.io`, a domain with no DNS at all — mail to it bounced, and at
+> `security@writz.io`, a domain with no DNS at all - mail to it bounced, and at
 > least one researcher's disclosure was lost that way. The project has since
 > moved to `writz.xyz`, which is registered but has no MX record yet, so email
 > there does not arrive either. Use the private advisory link above; this note
@@ -104,7 +104,7 @@ for the full policy.
 4. **We fix** the issue; Critical/High findings are patched within 14 days
 5. **We pay** the reward upon fix deployment
 6. **We publish** a post-mortem (for Critical/High findings) after the fix is live and users are safe
-7. **You can disclose** publicly after the fix is live and 30 days have passed — we will coordinate with you
+7. **You can disclose** publicly after the fix is live and 30 days have passed - we will coordinate with you
 
 We do not pursue legal action against researchers who follow this responsible disclosure process.
 
@@ -116,12 +116,12 @@ Researchers who responsibly disclose valid vulnerabilities will be acknowledged 
 
 | Researcher | Finding | Date |
 |---|---|---|
-| — | — | — |
+| - | - | - |
 
 ---
 
 ## Active Period
 
-The bug bounty program is active from mainnet launch (Q4 2026). During the testnet phase, reports are accepted and recognized, but cash rewards are not yet active — the protocol does not hold user funds until mainnet.
+The bug bounty program is active from mainnet launch (Q4 2026). During the testnet phase, reports are accepted and recognized, but cash rewards are not yet active - the protocol does not hold user funds until mainnet.
 
 If you find a critical issue during the testnet phase, report it anyway. We will honor the reward when mainnet launches.

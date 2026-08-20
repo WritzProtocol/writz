@@ -32,7 +32,7 @@ The model's job is to automatically adjust rates so that U gravitates toward a t
 
 ## The Kinked (Two-Slope) Interest Rate Model
 
-Aave v3, Compound v2, and Blend all use a **piecewise linear model** — often called the "kinked" model — with two distinct slopes separated by an optimal utilization point.
+Aave v3, Compound v2, and Blend all use a **piecewise linear model** - often called the "kinked" model - with two distinct slopes separated by an optimal utilization point.
 
 ```
           Borrow Rate
@@ -78,7 +78,7 @@ supply_rate = borrow_rate × U × (1 - protocol_fee)
 BTC-collateralized loans carry higher liquidation risk than stablecoin loans. In a BTC price crash, multiple positions may need liquidation simultaneously, requiring liquidity to be available. A lower Uoptimal ensures more USDC is always available for withdrawals during a crisis.
 
 **Slope 2 = 200%:**
-An aggressive slope 2 is essential. At 100% utilization, USDC cannot be withdrawn. The steep slope 2 creates a powerful price signal to repay loans or supply more USDC before the system is illiquid. At U=90%, the borrow rate would be: 0% + 8% + ((90%-75%)/(25%)) × 200% = 8% + 120% = 128% APR. Nobody stays borrowed at 128% — the slope works.
+An aggressive slope 2 is essential. At 100% utilization, USDC cannot be withdrawn. The steep slope 2 creates a powerful price signal to repay loans or supply more USDC before the system is illiquid. At U=90%, the borrow rate would be: 0% + 8% + ((90%-75%)/(25%)) × 200% = 8% + 120% = 128% APR. Nobody stays borrowed at 128% - the slope works.
 
 **Protocol fee = 15%:**
 Higher than Aave's 10%, justified by Writz's additional privacy infrastructure costs (ZK proof verification per transaction). The remaining 85% of interest goes to USDC lenders.
@@ -119,7 +119,7 @@ debt = outstanding_debt + interest_accrued;
 
 ### Compound interest
 
-Writz uses compound interest (interest on interest). This matches Aave/Compound behavior and simplifies the accounting model — the outstanding debt grows continuously, and the protocol fee is taken from the spread.
+Writz uses compound interest (interest on interest). This matches Aave/Compound behavior and simplifies the accounting model - the outstanding debt grows continuously, and the protocol fee is taken from the spread.
 
 ---
 
@@ -149,7 +149,7 @@ Protocol revenue breakdown:
 
 **Scenario:** BTC drops 40% in 24 hours. Many positions approach liquidation threshold.
 
-1. Liquidators activate — they need USDC to pay off loans
+1. Liquidators activate - they need USDC to pay off loans
 2. USDC demand spikes → U rises rapidly
 3. Borrow rate jumps (e.g., from 8% to 50%+)
 4. Existing borrowers are incentivized to repay immediately
@@ -172,14 +172,14 @@ Rather than building a standalone lending contract, Writz could **use Blend as t
 - Shared liquidity with the broader Stellar DeFi ecosystem
 
 **Cons:**
-- Blend controls collateral types and parameters — BTC support requires Blend to support it
+- Blend controls collateral types and parameters - BTC support requires Blend to support it
 - Privacy layer integration with Blend's architecture would require significant modification
 - Less control over the economic model
 - Revenue sharing with Blend protocol
 
-**Recommendation:** Build independent PrivateLend for Phase 1. The ZK privacy requirement necessitates deep integration with the position management system — Blend's architecture makes this very difficult to retrofit. Use Blend as inspiration, not as the foundation.
+**Recommendation:** Build independent PrivateLend for Phase 1. The ZK privacy requirement necessitates deep integration with the position management system - Blend's architecture makes this very difficult to retrofit. Use Blend as inspiration, not as the foundation.
 
 ---
 
 *Last updated: 2026-06-22*
-*Sources: [Aave Interest Rate Model — RareSkills](https://rareskills.io/post/aave-interest-rate-model) · [Aave v3 Rate Model Deep Dive — Medium](https://medium.com/@ancilartech/how-aave-calculates-interest-rates-a-deep-dive-into-defis-dynamic-rate-engine-23e75c5f1819) · [Blend Protocol — blend-capital/blend-contracts-v2](https://github.com/blend-capital/blend-contracts-v2)*
+*Sources: [Aave Interest Rate Model - RareSkills](https://rareskills.io/post/aave-interest-rate-model) · [Aave v3 Rate Model Deep Dive - Medium](https://medium.com/@ancilartech/how-aave-calculates-interest-rates-a-deep-dive-into-defis-dynamic-rate-engine-23e75c5f1819) · [Blend Protocol - blend-capital/blend-contracts-v2](https://github.com/blend-capital/blend-contracts-v2)*

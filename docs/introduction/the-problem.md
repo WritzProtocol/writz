@@ -2,7 +2,7 @@
 
 ## Your Financial Life Is Public
 
-Right now, if you deposit Bitcoin on any lending protocol — Aave, Compound, Blend — anyone in the world can look up your wallet address and see:
+Right now, if you deposit Bitcoin on any lending protocol - Aave, Compound, Blend - anyone in the world can look up your wallet address and see:
 
 - Exactly how much BTC you deposited as collateral
 - Exactly how much USDC you borrowed
@@ -11,7 +11,7 @@ Right now, if you deposit Bitcoin on any lending protocol — Aave, Compound, Bl
 
 This isn't a privacy concern. It is a **financial security vulnerability**.
 
-Trading bots monitor liquidation thresholds in real time. Sophisticated players see your position and trade against it. Your liquidation point becomes a target. MEV bots sandwich your transactions. The protocol is working as designed — but the design is working against you.
+Trading bots monitor liquidation thresholds in real time. Sophisticated players see your position and trade against it. Your liquidation point becomes a target. MEV bots sandwich your transactions. The protocol is working as designed - but the design is working against you.
 
 A bank does not post your loan balance outside the building. Every other DeFi lending protocol does exactly that.
 
@@ -33,9 +33,9 @@ In every case, you are trusting humans with your Bitcoin.
 
 ### Option B: Accept total public visibility
 
-If you use an on-chain Bitcoin derivative — sBTC on Stacks, RBTC on RSK — your position is public. Your collateral. Your debt. Your liquidation threshold. All visible to anyone watching the blockchain.
+If you use an on-chain Bitcoin derivative - sBTC on Stacks, RBTC on RSK - your position is public. Your collateral. Your debt. Your liquidation threshold. All visible to anyone watching the blockchain.
 
-Institutional players don't accept this. They won't put $1M of BTC collateral into a protocol where every competing fund can see their position. Privacy isn't a feature request — it's a table stake for serious capital.
+Institutional players don't accept this. They won't put $1M of BTC collateral into a protocol where every competing fund can see their position. Privacy isn't a feature request - it's a table stake for serious capital.
 
 ---
 
@@ -47,7 +47,7 @@ An estimated 77% of Bitcoin holders have never participated in DeFi. Not because
 2. They don't want their financial activity broadcast publicly.
 3. The UX of wrapped BTC across multiple chains is too complex.
 
-The BTCfi market grew 28x in 18 months — from $304M to $8.6B TVL between January 2024 and mid-2025. That growth happened despite these barriers. The market is still in early innings because the fundamental problems have never been solved.
+The BTCfi market grew 28x in 18 months - from $304M to $8.6B TVL between January 2024 and mid-2025. That growth happened despite these barriers. The market is still in early innings because the fundamental problems have never been solved.
 
 ---
 
@@ -55,9 +55,9 @@ The BTCfi market grew 28x in 18 months — from $304M to $8.6B TVL between Janua
 
 There is currently no protocol that is simultaneously:
 
-- **Trustless** — BTC secured by Bitcoin Script itself, not by any human or committee
-- **Private** — position amounts hidden behind zero-knowledge proofs
-- **On Stellar** — where native USDC lives and compliance-grade privacy infrastructure exists
+- **Trustless** - BTC secured by Bitcoin Script itself, not by any human or committee
+- **Private** - position amounts hidden behind zero-knowledge proofs
+- **On Stellar** - where native USDC lives and compliance-grade privacy infrastructure exists
 
 Writz is built to be all three.
 

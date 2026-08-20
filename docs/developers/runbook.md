@@ -14,8 +14,8 @@ The flow splits into two halves with very different reproducibility:
 
 | Half | Covered how | Automated? |
 |---|---|---|
-| Soroban + ZK: deploy → supply → deposit → insert commitment → borrow → repay | `scripts/deploy/e2e_zkflow.js`, real Groth16 proofs | Yes — scripted end to end |
-| Bitcoin: fund a P2WSH address → confirmations → real SPV proof → co-signed release | Manual, through the frontend | No — needs Signet coins and two browser wallets |
+| Soroban + ZK: deploy → supply → deposit → insert commitment → borrow → repay | `scripts/deploy/e2e_zkflow.js`, real Groth16 proofs | Yes - scripted end to end |
+| Bitcoin: fund a P2WSH address → confirmations → real SPV proof → co-signed release | Manual, through the frontend | No - needs Signet coins and two browser wallets |
 
 Be aware of what the scripted half does **not** prove: `e2e_zkflow.js` builds a
 **fabricated** Bitcoin transaction (`RAW_TX_HEX = '010000000000000000'`) and a
@@ -40,7 +40,7 @@ node --version   # >= 20
 bun --version    # >= 1.1  (CI pins 1.3.14)
 ```
 
-`circom` **2.x is a Rust binary**. Do not `npm install -g circom` — that
+`circom` **2.x is a Rust binary**. Do not `npm install -g circom` - that
 installs the legacy 1.x package, which cannot compile `pragma circom 2.0.0`:
 
 ```bash
@@ -50,7 +50,7 @@ chmod +x ~/.local/bin/circom     # macOS: circom-macos-amd64
 circom --version                 # expect: circom compiler 2.2.3
 ```
 
-`snarkjs` needs no global install — it is a dependency of `circuits/`.
+`snarkjs` needs no global install - it is a dependency of `circuits/`.
 
 ---
 
@@ -80,7 +80,7 @@ cd ../contracts/contracts/commitment-tree && make build
 
 ---
 
-## 3. Trusted setup — read before running `setup_dev.sh`
+## 3. Trusted setup - read before running `setup_dev.sh`
 
 `circuits/scripts/setup_dev.sh` generates the proving keys. It seeds its
 entropy with `$(date)`:
@@ -102,7 +102,7 @@ The deployed `zk-verifier` (`CDV45GLX…`) holds the verification keys from the
 **original** setup, whose `.zkey` files are not in git. So:
 
 - **To test against the shared testnet contracts:** you need the original
-  `.zkey` files. Ask a maintainer — regenerating will not reproduce them.
+  `.zkey` files. Ask a maintainer - regenerating will not reproduce them.
 - **To work fully from a clean checkout:** regenerate the setup, deploy your own
   `zk-verifier`, push your keys to it, and point the flow at it:
 
@@ -113,7 +113,7 @@ The deployed `zk-verifier` (`CDV45GLX…`) holds the verification keys from the
   ```
 
 Proofs from a regenerated setup submitted to the shared verifier fail with
-`InvalidZkProof` — that is a key mismatch, not a bug in your proof.
+`InvalidZkProof` - that is a key mismatch, not a bug in your proof.
 
 ---
 
@@ -132,8 +132,8 @@ npm install
 WRITZ_DEV_SECRET=<your-testnet-secret> node e2e_zkflow.js
 ```
 
-The script deploys a **fresh** commitment-tree per run — it never touches the
-production instance — then walks deposit → borrow → repay with real Groth16
+The script deploys a **fresh** commitment-tree per run - it never touches the
+production instance - then walks deposit → borrow → repay with real Groth16
 proofs, printing a `stellar.expert` link per transaction.
 
 Overridable via environment:
@@ -144,7 +144,7 @@ Overridable via environment:
 | `ZK_VERIFIER_ID` | `CDV45GLX…` | Point at your own verifier after regenerating keys |
 | `BITCOIN_SPV_ID` | `CAE5L7BO…` | Point at your own SPV contract |
 | `STELLAR_RPC_URL` | `https://soroban-testnet.stellar.org` | Alternative RPC |
-| `SEED_ONLY` | unset | Stop after `insert_commitment` and print the `NEXT_PUBLIC_*` values for `frontend/.env.local` — how you seed a funded pool plus one position for a frontend demo |
+| `SEED_ONLY` | unset | Stop after `insert_commitment` and print the `NEXT_PUBLIC_*` values for `frontend/.env.local` - how you seed a funded pool plus one position for a frontend demo |
 
 ### Last verified run
 
@@ -175,7 +175,7 @@ The scripted flow is **not** a faithful mainnet rehearsal. What differs:
 | BTC price | Stubbed at **$60,000** (`600_000_000_000` stroops) | No live oracle wired on testnet; the oracle address is accepted but ignored. |
 | Bitcoin transaction | **Fabricated** raw tx + synthetic header | Removes the ~10-minute Signet confirmation wait from the loop. |
 | `min_confirmations` | `1` | Same reason. Production default is 6. |
-| `min_deposit_satoshis` | `10_000` (0.0001 BTC) | Lowered so Signet faucet amounts are usable. **Hardcoded in `initialize`** — the deposit circuit binds it into a public signal, so the script's constant must match or deposit fails with `ProtocolParamMismatch`. |
+| `min_deposit_satoshis` | `10_000` (0.0001 BTC) | Lowered so Signet faucet amounts are usable. **Hardcoded in `initialize`** - the deposit circuit binds it into a public signal, so the script's constant must match or deposit fails with `ProtocolParamMismatch`. |
 | Lending pool | Pre-funded with 500 XLM by the script | No external suppliers on testnet. |
 | Trusted setup | `pot15` dev ceremony, single contributor | A real multi-party ceremony is a mainnet gate. Never use these keys in production. |
 | `enc_note` | Empty | The script exercises the interface, not the encryption round trip. |
@@ -184,7 +184,7 @@ The scripted flow is **not** a faithful mainnet rehearsal. What differs:
 
 ## 6. The Bitcoin half (manual)
 
-This part cannot be scripted — it needs Signet coins and two browser wallets.
+This part cannot be scripted - it needs Signet coins and two browser wallets.
 
 **You need:** [Xverse](https://www.xverse.app/) on Signet with ≥ 0.0001 sBTC
 (from a [Signet faucet](https://signetfaucet.com/)), and
@@ -207,7 +207,7 @@ This part cannot be scripted — it needs Signet coins and two browser wallets.
 
 3. In the browser: connect Xverse + Freighter, derive the deposit P2WSH
    address, send sBTC to it, and wait for confirmations. **Budget ~10 minutes
-   per Signet confirmation** — this is the slow step, and the reason the demo
+   per Signet confirmation** - this is the slow step, and the reason the demo
    script pre-stages deposits.
 
 4. Click **Deposit**. The relayer assembles the SPV bundle, `bitcoin-spv`
@@ -230,10 +230,10 @@ Errors seen while validating this runbook, and what they actually mean:
 | Symptom | Cause |
 |---|---|
 | `Func(MismatchingParameterLen)` on `deposit` | Caller passes the pre-#18 argument list. `deposit`/`borrow`/`repay` all take a trailing `enc_note: Bytes`. |
-| `Error(Contract, #11)` — `ProtocolParamMismatch` | The proof's `min_deposit_satoshis` public signal ≠ the contract's config (`10_000`). |
-| `Error(Contract, #6)` — `InvalidZkProof` | Usually a trusted-setup mismatch: your `.zkey` does not correspond to the verifier's on-chain vkey. See § 3. |
-| `jest.resetModules is not a function` in relayer tests | Ran `bun test` (Bun's runner). The relayer suite is Jest — use `bun run test`. |
-| `circom` errors on `pragma circom 2.0.0` | circom 1.x from npm. Install the 2.x release binary — see § 1. |
+| `Error(Contract, #11)` - `ProtocolParamMismatch` | The proof's `min_deposit_satoshis` public signal ≠ the contract's config (`10_000`). |
+| `Error(Contract, #6)` - `InvalidZkProof` | Usually a trusted-setup mismatch: your `.zkey` does not correspond to the verifier's on-chain vkey. See § 3. |
+| `jest.resetModules is not a function` in relayer tests | Ran `bun test` (Bun's runner). The relayer suite is Jest - use `bun run test`. |
+| `circom` errors on `pragma circom 2.0.0` | circom 1.x from npm. Install the 2.x release binary - see § 1. |
 | `keys/*_vkey.json` show as modified | `setup_dev.sh` regenerated them. Expected; see § 3. |
 
 ---

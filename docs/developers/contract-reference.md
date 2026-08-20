@@ -6,10 +6,10 @@ Complete public interface documentation for all four Writz Soroban contracts.
 
 | Contract | Address |
 |---|---|
-| `bitcoin-spv` | `CAE5L7BO2GNF7MIZWXB2BTUMLYNIMQZUSWN2BWLZQS7HRHLOUSL6VLWJ` |
-| `zk-verifier` | `CDV45GLXG4AOU6BDZSY5YHHVNGQIAYAPD3PUGXIIIYLIO6V2XGO6SMFV` |
-| `commitment-tree` | `CC2OZ3LG5U6RE3U7QC2R5QMID5GHQBE7QXTJQ4ZSTP5W73WDTKQPRW7E` |
-| `private-lend` | `CCLH2GJYG3QSHZJI7V7VK3DNMNK3I3QJCECBSFGX3AC6CK4I7EF7ZJ2G` |
+| `bitcoin-spv` | `CB2BD6QCSZVNZN5NLI7C5NF356WXVJDSXT6LVAQFWHHS4SZ4NCKKNIVA` |
+| `zk-verifier` | `CBNZU23QGCZATJB2QMNF2K6IST2SVP7FSGCKASQNBULTWDWGANDBYLFY` |
+| `commitment-tree` | `CDQCTFO3FK3M47QS47O2A4WLNPSQAQBSXBFPJ6RZEHFO5D7RY34FSBBP` |
+| `private-lend` | `CAAWVMDRUPEJNELSQ6RU2VMVX5EJLQ2E77T7IXDWGMW4DGSNAGECGSWR` |
 
 ---
 
@@ -17,7 +17,7 @@ Complete public interface documentation for all four Writz Soroban contracts.
 
 ### `verify_transaction`
 
-Verifies that a Bitcoin transaction is included in a confirmed block. Stateless — no headers are stored on-chain.
+Verifies that a Bitcoin transaction is included in a confirmed block. Stateless - no headers are stored on-chain.
 
 ```rust
 pub fn verify_transaction(
@@ -27,22 +27,19 @@ pub fn verify_transaction(
     tx_index: u32,                 // Position of the transaction in the block (0-indexed)
     raw_tx: Bytes,                 // Complete raw Bitcoin transaction (serialized)
     min_confirmations: u32,        // Minimum number of confirmations required
-) -> VerificationResult
+) -> SpvVerificationResult
 ```
 
-**Returns:**
+**Returns** (`SpvVerificationResult`, defined once in the shared `spv-types` crate and used by every contract that calls into `bitcoin-spv` - not a per-contract duplicate):
 ```rust
-pub struct VerificationResult {
-    pub txid: BytesN<32>,      // Double-SHA256 of the raw transaction (little-endian)
-    pub block_hash: BytesN<32>, // Double-SHA256 of the first header (little-endian)
+pub struct SpvVerificationResult {
+    pub txid: BytesN<32>,      // SHA256d of the non-witness raw transaction
+    pub block_hash: BytesN<32>, // SHA256d of the first header
     pub confirmations: u32,    // Number of headers provided (= number of confirmations)
-    pub outputs: Vec<TxOutput>,
 }
+```
 
-pub struct TxOutput {
-    pub value: u64,      // Output value in satoshis
-    pub address: String, // Bitcoin address derived from the output script
-}
+There is no output-parsing/address-matching helper on-chain - a caller that needs to know which output paid a given address parses `raw_tx` itself.
 ```
 
 **Panics if:**
@@ -158,7 +155,7 @@ pub fn insert_commitment(env: Env) -> BytesN<32>  // Returns new Merkle root
 
 ### `borrow`
 
-Issues a USDC loan. Amount is extracted from the ZK proof — not supplied by the caller.
+Issues a USDC loan. Amount is extracted from the ZK proof - not supplied by the caller.
 
 ```rust
 pub fn borrow(

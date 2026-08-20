@@ -1,5 +1,5 @@
 """
-Writz Protocol — 09 Bitcoin Script
+Writz Protocol - 09 Bitcoin Script
 P2WSH locking script: two spending paths (cooperative co-sign vs CLTV timelock).
 """
 import sys, os
@@ -13,7 +13,7 @@ g.attr(**base_graph_attr(
     splines="spline",
     size="14,10",
     label=hl(
-        "Writz Protocol — Bitcoin P2WSH Locking Script",
+        "Writz Protocol - Bitcoin P2WSH Locking Script",
         "BTC stays on Bitcoin · no custodian · two safe spending paths",
     ),
 ))
@@ -35,7 +35,7 @@ g.node("script", hl(
 
 # ── Path A ────────────────────────────────────────────────────────────────────
 with g.subgraph(name="cluster_path_a") as a:
-    a.attr(**cluster_attr("Path A — Cooperative Release", B_SUCCESS, "Normal case: loan fully repaid"))
+    a.attr(**cluster_attr("Path A - Cooperative Release", B_SUCCESS, "Normal case: loan fully repaid"))
     a.node("repay", hl(
         "User repays USDC",
         "commitment-tree · repay() verified on-chain",
@@ -57,7 +57,7 @@ with g.subgraph(name="cluster_path_a") as a:
 
 # ── Path B ────────────────────────────────────────────────────────────────────
 with g.subgraph(name="cluster_path_b") as b:
-    b.attr(**cluster_attr("Path B — Emergency Recovery", B_DANGER, "Timelock safety fallback · no Writz needed"))
+    b.attr(**cluster_attr("Path B - Emergency Recovery", B_DANGER, "Timelock safety fallback · no Writz needed"))
     b.node("timelock", hl(
         "CLTV Timelock Expires",
         "OP_CHECKLOCKTIMEVERIFY",

@@ -2,15 +2,15 @@
 
 **A safe, copy-pasteable reference for reclaiming BTC via the CLTV timelock, without relying on the Writz frontend.**
 
-Path B lets a user recover their locked BTC unilaterally once the CLTV timelock has expired — no Writz co-signature needed (see [Bitcoin Side](./bitcoin-side.md#spending-path-b-the-emergency-release)). The Writz frontend already builds this transaction correctly. This document exists for the case where the frontend is unavailable and you need to construct the recovery transaction yourself.
+Path B lets a user recover their locked BTC unilaterally once the CLTV timelock has expired - no Writz co-signature needed (see [Bitcoin Side](./bitcoin-side.md#spending-path-b-the-emergency-release)). `bitcoin-script`'s `buildEmergencyTransaction`/`finalizePathB` build this transaction correctly and are tested - **but nothing in the frontend calls them yet.** There is currently no in-app UI for Path B; this document is the only recovery path that exists today, and it requires running the Node.js script below yourself. Closing that gap with a guided in-app flow is specified in `docs/design/guided-recovery-spec.md` - until that ships, this document is not a "fallback for when the frontend is unavailable," it is the only path, full stop.
 
-**Do not build this transaction by hand in a generic wallet UI.** The most common way to get this wrong is `nSequence`: many wallets default to `0xFFFFFFFF`, which silently disables `OP_CHECKLOCKTIMEVERIFY` — your transaction will be rejected by the network with no clear error, and it's easy to mistakenly conclude the timelock hasn't expired when it actually has. `bitcoin-script`'s `buildEmergencyTransaction`/`finalizePathB` already set this correctly and — unlike a hand-built PSBT — make it **impossible to override**: `SpendParams` has no caller-settable `sequence` field for this path, so there is no way to accidentally regress this into `0xFFFFFFFF`. Use the canonical implementation below instead of a generic wallet.
+**Do not build this transaction by hand in a generic wallet UI.** The most common way to get this wrong is `nSequence`: many wallets default to `0xFFFFFFFF`, which silently disables `OP_CHECKLOCKTIMEVERIFY` - your transaction will be rejected by the network with no clear error, and it's easy to mistakenly conclude the timelock hasn't expired when it actually has. `bitcoin-script`'s `buildEmergencyTransaction`/`finalizePathB` already set this correctly and - unlike a hand-built PSBT - make it **impossible to override**: `SpendParams` has no caller-settable `sequence` field for this path, so there is no way to accidentally regress this into `0xFFFFFFFF`. Use the canonical implementation below instead of a generic wallet.
 
 ---
 
 ## What you need
 
-- Your deposit's redeem script and P2WSH scriptPubKey (derivable from your BTC pubkey, the protocol pubkey, and the CLTV `timelockHeight` — see `bitcoin-script/src/address.ts`'s `deriveDepositAddress`, or read them back from `PositionDashboard`/your original deposit record).
+- Your deposit's redeem script and P2WSH scriptPubKey (derivable from your BTC pubkey, the protocol pubkey, and the CLTV `timelockHeight` - see `bitcoin-script/src/address.ts`'s `deriveDepositAddress`, or read them back from `PositionDashboard`/your original deposit record).
 - The funding transaction's txid and output index (`vout`), and the amount locked (satoshis).
 - Your own Bitcoin private key (the one that derived your deposit).
 - Confirmation that the current Bitcoin block height has passed `timelockHeight`.
@@ -60,5 +60,5 @@ Broadcast the resulting hex via any Bitcoin node or block explorer's "broadcast 
 
 ## Verifying before you broadcast
 
-- Decode the raw tx (e.g. `bitcoin-cli decoderawtransaction <hex>`) and confirm `locktime` equals your `timelockHeight`, and the input's `sequence` is `4294967294` (`0xfffffffe`) — **not** `4294967295`.
-- Confirm the current chain tip height is `>= timelockHeight`. If it isn't yet, the transaction will be rejected regardless of `nSequence` — this is expected, not a bug.
+- Decode the raw tx (e.g. `bitcoin-cli decoderawtransaction <hex>`) and confirm `locktime` equals your `timelockHeight`, and the input's `sequence` is `4294967294` (`0xfffffffe`) - **not** `4294967295`.
+- Confirm the current chain tip height is `>= timelockHeight`. If it isn't yet, the transaction will be rejected regardless of `nSequence` - this is expected, not a bug.

@@ -1,7 +1,7 @@
 """
 Shared design system for all Writz Protocol diagrams.
 Professional palette · transparent background · light/dark compatible.
-Accent: amber (#E3A646) — the protocol's signature color.
+Accent: amber (#E3A646) - the protocol's signature color.
 """
 
 # ── Background ────────────────────────────────────────────────────────────────
@@ -9,20 +9,20 @@ BGCOLOR = "transparent"
 
 # ── Typography ────────────────────────────────────────────────────────────────
 FONT   = "Helvetica"
-T_DARK = "#1C1917"   # stone-900  — primary text
-T_MED  = "#57534E"   # stone-600  — secondary / edge labels
-T_LITE = "#A8A29E"   # stone-400  — minor annotations
+T_DARK = "#1C1917"   # stone-900  - primary text
+T_MED  = "#57534E"   # stone-600  - secondary / edge labels
+T_LITE = "#A8A29E"   # stone-400  - minor annotations
 
-# ── Node fills — light "card" look, readable on any background ───────────────
-F_DEFAULT  = "#FAFAF9"   # stone-50   — general nodes
-F_BITCOIN  = "#FFF7ED"   # orange-50  — Bitcoin layer
-F_ZK       = "#F0F9FF"   # sky-50     — ZK / circuit nodes
-F_STELLAR  = "#EFF6FF"   # blue-50    — Soroban / Stellar contracts
-F_FRONTEND = "#ECFDF5"   # emerald-50 — Frontend / browser
-F_RELAYER  = "#FAF5FF"   # purple-50  — Relayer / infra
-F_DECISION = "#FFFBEB"   # amber-50   — Decision / gate
-F_SUCCESS  = "#F0FDF4"   # green-50   — Success / terminal
-F_DANGER   = "#FEF2F2"   # red-50     — Error / liquidation
+# ── Node fills - light "card" look, readable on any background ───────────────
+F_DEFAULT  = "#FAFAF9"   # stone-50   - general nodes
+F_BITCOIN  = "#FFF7ED"   # orange-50  - Bitcoin layer
+F_ZK       = "#F0F9FF"   # sky-50     - ZK / circuit nodes
+F_STELLAR  = "#EFF6FF"   # blue-50    - Soroban / Stellar contracts
+F_FRONTEND = "#ECFDF5"   # emerald-50 - Frontend / browser
+F_RELAYER  = "#FAF5FF"   # purple-50  - Relayer / infra
+F_DECISION = "#FFFBEB"   # amber-50   - Decision / gate
+F_SUCCESS  = "#F0FDF4"   # green-50   - Success / terminal
+F_DANGER   = "#FEF2F2"   # red-50     - Error / liquidation
 
 # ── Borders ───────────────────────────────────────────────────────────────────
 B_DEFAULT  = "#78716C"   # stone-500
@@ -31,14 +31,14 @@ B_ZK       = "#0284C7"   # sky-600
 B_STELLAR  = "#2563EB"   # blue-600
 B_FRONTEND = "#059669"   # emerald-600
 B_RELAYER  = "#7C3AED"   # purple-600
-B_DECISION = "#D97706"   # amber-600  — same as protocol amber (approx)
+B_DECISION = "#D97706"   # amber-600  - same as protocol amber (approx)
 B_SUCCESS  = "#16A34A"   # green-600
 B_DANGER   = "#DC2626"   # red-600
-B_AMBER    = "#E3A646"   # Writz amber — used for key accent edges/nodes
+B_AMBER    = "#E3A646"   # Writz amber - used for key accent edges/nodes
 
 # ── Edges ─────────────────────────────────────────────────────────────────────
 E_DEFAULT  = "#A8A29E"   # stone-400
-E_MAIN     = "#E3A646"   # Writz amber — primary flow
+E_MAIN     = "#E3A646"   # Writz amber - primary flow
 E_BITCOIN  = "#EA580C"   # orange-600
 E_ZK       = "#0284C7"   # sky-600
 E_STELLAR  = "#2563EB"   # blue-600

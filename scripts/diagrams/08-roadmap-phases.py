@@ -1,5 +1,5 @@
 """
-Writz Protocol — 08 Roadmap Phases
+Writz Protocol - 08 Roadmap Phases
 Horizontal timeline: Phase 0 → 1 → 2 → 3 with status and key deliverables.
 """
 import sys, os
@@ -13,7 +13,7 @@ g.attr(**base_graph_attr(
     splines="ortho",
     size="18,6",
     label=hl(
-        "Writz Protocol — Roadmap",
+        "Writz Protocol - Roadmap",
         "Phase 0 complete · Phase 1 in progress · Mainnet target Q4 2026",
     ),
 ))

@@ -8,22 +8,22 @@
 
 ## Overview
 
-The supply side of PrivateLend — USDC lenders who provide the capital that borrowers draw against — depends on Stellar's existing USDC ecosystem. This document maps the USDC liquidity landscape on Stellar and evaluates how Writz fits into and potentially integrates with existing protocols.
+The supply side of PrivateLend - USDC lenders who provide the capital that borrowers draw against - depends on Stellar's existing USDC ecosystem. This document maps the USDC liquidity landscape on Stellar and evaluates how Writz fits into and potentially integrates with existing protocols.
 
 ---
 
-## USDC on Stellar — State of Play (2026)
+## USDC on Stellar - State of Play (2026)
 
 | Metric | Value |
 |---|---|
 | USDC monthly volume on Stellar | $500M+ |
-| USDC issuer | Circle (native issuance — not bridged) |
+| USDC issuer | Circle (native issuance - not bridged) |
 | Largest USDC protocol | Blend ($80M+ TVL as of early 2026) |
 | Network operations (Q3 2025) | 1 billion+ |
 | Typical transaction finality | 3–5 seconds |
 | Typical transaction fee | < $0.001 |
 
-**Critical point:** Stellar USDC is natively issued by Circle — not a bridged or wrapped version. This means:
+**Critical point:** Stellar USDC is natively issued by Circle - not a bridged or wrapped version. This means:
 - No bridge risk on the USDC side
 - Regulatory compliance built-in (Circle's USDC is fully regulated)
 - Stellar USDC is the same USDC used in MoneyGram, payments integrations, and enterprise contexts
@@ -31,7 +31,7 @@ The supply side of PrivateLend — USDC lenders who provide the capital that bor
 
 ---
 
-## Blend Protocol — The Primary Competitor and Reference
+## Blend Protocol - The Primary Competitor and Reference
 
 **Repository:** [blend-capital/blend-contracts-v2](https://github.com/blend-capital/blend-contracts-v2)
 **TVL:** $80M+ (early 2026)
@@ -39,7 +39,7 @@ The supply side of PrivateLend — USDC lenders who provide the capital that bor
 
 ### What Blend is
 
-Blend is Stellar's Aave equivalent — a lending protocol primitive that allows anyone to create isolated lending pools. It supports:
+Blend is Stellar's Aave equivalent - a lending protocol primitive that allows anyone to create isolated lending pools. It supports:
 - Pool creation by anyone (permissionless)
 - Per-pool interest rates and collateral factors
 - A unique backstop module (insurance against bad debt)
@@ -88,7 +88,7 @@ Target seed: $50,000–$100,000 USDC from protocol treasury to bootstrap initial
 Set initial protocol fee to 0% temporarily, routing 100% of interest to USDC suppliers. This creates above-market yields (e.g., 10–15% APY during bootstrap) that attract USDC lenders.
 
 **3. Target Stellar DeFi native users:**
-Stellar users who already hold USDC are the easiest to convert — they don't need to bridge anything. Target them via Stellar wallet integrations (Lobstr, Freighter), Stellar Discord communities, and integration with Stellar DeFi newsletters.
+Stellar users who already hold USDC are the easiest to convert - they don't need to bridge anything. Target them via Stellar wallet integrations (Lobstr, Freighter), Stellar Discord communities, and integration with Stellar DeFi newsletters.
 
 **4. Institutional lenders:**
 Post-FTX, institutional crypto funds are looking for compliant, audited DeFi yield. Writz's compliance-friendly privacy (ASPs, audit trail available) and Circle's native USDC make it attractive for institutions. Direct outreach to crypto-native family offices and funds.
@@ -120,12 +120,12 @@ For Phase 2+, Writz could offer multiple USDC pool tiers with different risk/rew
 
 ## Key Findings
 
-1. **Stellar USDC is ideal** — native issuance by Circle, $500M/month volume, real institutional liquidity
-2. **Blend is complementary, not a competitor** — Blend has no BTC and no privacy; Writz fills the gap
-3. **RedStone + SEP-40 is the oracle standard** — align with the broader Stellar DeFi ecosystem
-4. **Protocol-owned liquidity is the best bootstrap mechanism** — use initial grants to seed the pool
-5. **Institutional USDC lenders are a realistic target** — compliance-friendly privacy attracts institutional capital
-6. **Independent pools required** — ZK position privacy cannot be retrofitted onto Blend's architecture
+1. **Stellar USDC is ideal** - native issuance by Circle, $500M/month volume, real institutional liquidity
+2. **Blend is complementary, not a competitor** - Blend has no BTC and no privacy; Writz fills the gap
+3. **RedStone + SEP-40 is the oracle standard** - align with the broader Stellar DeFi ecosystem
+4. **Protocol-owned liquidity is the best bootstrap mechanism** - use initial grants to seed the pool
+5. **Institutional USDC lenders are a realistic target** - compliance-friendly privacy attracts institutional capital
+6. **Independent pools required** - ZK position privacy cannot be retrofitted onto Blend's architecture
 
 ---
 

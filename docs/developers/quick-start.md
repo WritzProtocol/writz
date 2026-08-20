@@ -1,6 +1,6 @@
 # Quick Start
 
-Everything in this repository is working code. There are no placeholders, no "coming soon" sections, no hand-waving. The contracts are deployed on Soroban testnet. The tests pass. Start here and have something running in under 5 minutes.
+The core lending and verification logic in this repository is working code, not a mockup: the contracts are deployed on Soroban testnet, the tests pass, and the deposit → borrow → repay ZK flow has run end-to-end on-chain (see `docs/developers/runbook.md`). One known placeholder: `get_btc_price_stroops` in `private-lend/src/oracle.rs` returns a hardcoded price pending the real SEP-40/RedStone integration (tracked in `docs/roadmap/phases.md`) - it does not affect the SPV, ZK, or lending-mechanics logic below, but position pricing is not yet live-market-driven. Start here and have something running in under 5 minutes.
 
 ---
 
@@ -22,19 +22,19 @@ cargo install --locked stellar-cli
 # Node.js 20+
 # https://nodejs.org/
 
-# Bun 1.1+ — bitcoin-script, relayer, frontend and packages/* install with Bun,
+# Bun 1.1+ - bitcoin-script, relayer, frontend and packages/* install with Bun,
 # not npm. Only circuits/ is npm-managed.
 curl -fsSL https://bun.sh/install | bash
 
 # circom (for ZK circuit tests only).
 # circom 2.x is a Rust binary. `npm install -g circom` installs the legacy 1.x
-# package and CANNOT compile `pragma circom 2.0.0` — use the release binary:
+# package and CANNOT compile `pragma circom 2.0.0` - use the release binary:
 curl -fL -o ~/.local/bin/circom \
   https://github.com/iden3/circom/releases/download/v2.2.3/circom-linux-amd64
 chmod +x ~/.local/bin/circom   # macOS: use circom-macos-amd64
 circom --version               # expect: circom compiler 2.2.3
 
-# snarkjs needs no global install — it is a dependency of circuits/
+# snarkjs needs no global install - it is a dependency of circuits/
 ```
 
 ---
@@ -57,7 +57,7 @@ cd contracts
 cargo test
 ```
 
-Expected output: 146 tests pass across `bitcoin-spv` (47), `zk-verifier` (18), `commitment-tree` (18), and `private-lend` (63).
+Expected output: 191 tests pass across `bitcoin-spv` (49), `zk-verifier` (25), `commitment-tree` (32), and `private-lend` (85).
 
 ### Bitcoin script toolkit (TypeScript, Bun)
 
@@ -72,7 +72,7 @@ Expected output: 60 tests pass.
 ### Relayer service (TypeScript, Bun install + Jest)
 
 The relayer installs with Bun but its suite is Jest (ts-jest), so it must run
-through the package script — plain `bun test` selects Bun's own runner and
+through the package script - plain `bun test` selects Bun's own runner and
 fails. It also imports the local `@writz/*` packages via their built `dist/`
 output, so build those first.
 
@@ -82,7 +82,7 @@ cd ../../bitcoin-script && bun run build
 cd ../relayer && bun install && bun run test
 ```
 
-Expected output: 48 tests pass.
+Expected output: 59 tests pass.
 
 ### ZK circuits (Circom + snarkjs, npm)
 
@@ -92,9 +92,11 @@ npm install
 npm test
 ```
 
-Expected output: 20 tests pass (proof generation, commitment correctness, ratio enforcement, nullifiers).
+Expected output: 29 tests pass (proof generation, commitment correctness, ratio enforcement, nullifiers).
 
-### All together: 274 tests, all passing.
+If `verify()` assertions fail here while `prove()` succeeds, your local `circuits/keys/*_final.zkey` (gitignored, regenerated locally) is out of sync with the committed `circuits/keys/*_vkey.json`. Run `bash scripts/compile_all.sh && bash scripts/setup_dev.sh` to regenerate both together from a fresh dev trusted setup, then re-run `npm test`.
+
+### All together: 339 tests, all passing.
 
 ---
 
@@ -106,10 +108,10 @@ stellar contract build
 ```
 
 This produces Wasm artifacts in `contracts/target/wasm32v1-none/release/`:
-- `bitcoin_spv.wasm` — 28.4 KB
-- `zk_verifier.wasm` — 11.8 KB
-- `commitment_tree.wasm` — ~38 KB
-- `private_lend.wasm` — 23.7 KB
+- `bitcoin_spv.wasm` - 28.4 KB
+- `zk_verifier.wasm` - 11.8 KB
+- `commitment_tree.wasm` - ~38 KB
+- `private_lend.wasm` - 23.7 KB
 
 ---
 
@@ -120,13 +122,13 @@ All four contracts are live on Soroban testnet. You can call them directly witho
 ```bash
 # Check the SPV contract is alive
 stellar contract invoke \
-  --id CAE5L7BO2GNF7MIZWXB2BTUMLYNIMQZUSWN2BWLZQS7HRHLOUSL6VLWJ \
+  --id CB2BD6QCSZVNZN5NLI7C5NF356WXVJDSXT6LVAQFWHHS4SZ4NCKKNIVA \
   --network testnet \
   -- get_version
 
 # Check the Merkle root
 stellar contract invoke \
-  --id CC2OZ3LG5U6RE3U7QC2R5QMID5GHQBE7QXTJQ4ZSTP5W73WDTKQPRW7E \
+  --id CDQCTFO3FK3M47QS47O2A4WLNPSQAQBSXBFPJ6RZEHFO5D7RY34FSBBP \
   --network testnet \
   -- get_merkle_root
 # Returns: 0x2134e76ac74b4b8765b6e37992aa15f0... (Poseidon-2 empty tree root)
@@ -168,10 +170,10 @@ This script tests the Bitcoin locking and release flow on Bitcoin Signet. No fun
 cd bitcoin-script
 npm run build
 
-# Dry run — builds and inspects the P2WSH transaction without broadcasting
+# Dry run - builds and inspects the P2WSH transaction without broadcasting
 node scripts/e2e_testnet.mjs --dry-run
 
-# Live broadcast (requires Signet BTC — get from a Signet faucet)
+# Live broadcast (requires Signet BTC - get from a Signet faucet)
 node scripts/e2e_testnet.mjs
 ```
 
@@ -233,41 +235,41 @@ See [`contracts/deployments/testnet.md`](../../contracts/deployments/testnet.md)
 contracts/
   contracts/
     bitcoin-spv/src/
-      lib.rs        — public contract interface
-      header.rs     — Bitcoin block header parsing + PoW verification
-      merkle.rs     — Merkle proof verification
-      crypto.rs     — SHA256d implementation in Soroban Wasm
-      types.rs      — BitcoinBlockHeader, VerificationResult
+      lib.rs        - public contract interface
+      header.rs     - Bitcoin block header parsing + PoW verification
+      merkle.rs     - Merkle proof verification
+      crypto.rs     - SHA256d implementation in Soroban Wasm
+      types.rs      - Config, Checkpoint (SpvVerificationResult now lives in the shared `spv-types` crate)
     zk-verifier/src/
-      lib.rs        — verify_groth16(), set_vkey()
+      lib.rs        - verify_groth16(), set_vkey()
     commitment-tree/src/
-      lib.rs        — deposit(), borrow(), repay(), liquidate()
-      oracle.rs     — SEP-40 oracle interface
+      lib.rs        - deposit(), borrow(), repay(), liquidate()
+      oracle.rs     - SEP-40 oracle interface
     private-lend/src/
-      lib.rs        — non-ZK lending skeleton
-      rates.rs      — kinked interest rate model
+      lib.rs        - non-ZK lending skeleton
+      rates.rs      - kinked interest rate model
 
 circuits/
   src/
-    deposit.circom      — Deposit ZK circuit
-    borrow_repay.circom — Borrow/Repay ZK circuit
-    liquidation.circom  — Liquidation ZK circuit
-    merkle.circom       — Shared Poseidon Merkle components
+    deposit.circom      - Deposit ZK circuit
+    borrow_repay.circom - Borrow/Repay ZK circuit
+    liquidation.circom  - Liquidation ZK circuit
+    merkle.circom       - Shared Poseidon Merkle components
   keys/
-    deposit.vkey.json       — Deposit verification key
-    borrow_repay.vkey.json  — Borrow/Repay verification key
-    liquidation.vkey.json   — Liquidation verification key
+    deposit.vkey.json       - Deposit verification key
+    borrow_repay.vkey.json  - Borrow/Repay verification key
+    liquidation.vkey.json   - Liquidation verification key
 
 relayer/src/
-  index.ts      — Express API: GET /spv-proof/:txid
-  spv.ts        — SPV proof assembly (Esplora + Merkle computation)
-  bitcoin.ts    — Bitcoin types and parsing
+  index.ts      - Express API: GET /spv-proof/:txid
+  spv.ts        - SPV proof assembly (Esplora + Merkle computation)
+  bitcoin.ts    - Bitcoin types and parsing
 
 bitcoin-script/src/
-  script.ts     — P2WSH redeem script builder
-  address.ts    — Deposit address derivation
-  spend.ts      — Path A/B PSBT signing
-  keys.ts       — Key management utilities
+  script.ts     - P2WSH redeem script builder
+  address.ts    - Deposit address derivation
+  spend.ts      - Path A/B PSBT signing
+  keys.ts       - Key management utilities
 ```
 
 ---
