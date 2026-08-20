@@ -26,7 +26,7 @@ pub const MAX_DIFFICULTY_EASE_SHIFT: u32 = 6;
 ///
 /// Equivalently: `hash_as_u256(hash)` is defined to equal
 /// `U256::from_be_bytes` applied to the conventional/display hex string of
-/// that same hash — an ordinary big-endian number, exactly as a human would
+/// that same hash - an ordinary big-endian number, exactly as a human would
 /// read a block hash from an explorer.
 pub fn hash_as_u256(env: &Env, hash: &BytesN<32>) -> U256 {
     let mut arr = hash.to_array();
@@ -38,7 +38,7 @@ pub fn hash_as_u256(env: &Env, hash: &BytesN<32>) -> U256 {
 /// field) into the full 256-bit target a block hash must be below.
 ///
 /// This replicates Bitcoin Core's `arith_uint256::SetCompact` exactly,
-/// including its negative/overflow edge cases — a naive
+/// including its negative/overflow edge cases - a naive
 /// `mantissa << 8*(exponent-3)` shift is not sufficient, since it would
 /// silently miscompute (rather than reject) a malformed `bits` value.
 /// `U256::checked_shl` in this SDK only guards against `bits >= 256`; it

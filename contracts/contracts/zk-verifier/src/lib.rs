@@ -1,6 +1,8 @@
 #![no_std]
 
 mod types;
+mod storage;
+mod events;
 #[cfg(test)]
 mod test;
 
@@ -8,9 +10,9 @@ pub use types::{CircuitId, G1Point, G2Point, Proof, VerificationKey};
 
 use soroban_sdk::{
     contract, contractimpl, contracterror, crypto::bn254::{Bn254Fr, Bn254G1Affine, Bn254G2Affine},
-    Address, BytesN, Env, Vec, U256,
+    Address, Bytes, BytesN, Env, Vec, U256,
 };
-use types::DataKey;
+use events::VkRotatedEvent;
 
 /// Convenience alias used only within this crate.
 type PublicSignals = Vec<BytesN<32>>;
@@ -26,7 +28,7 @@ pub enum ZkVerifierError {
     VerificationKeyNotSet   = 4,
     /// Number of public signals doesn't match the verification key's IC length.
     PublicInputCountMismatch = 5,
-    /// Proof verification failed — the proof is invalid.
+    /// Proof verification failed - the proof is invalid.
     InvalidProof            = 6,
 }
 
@@ -42,10 +44,10 @@ impl ZkVerifierContract {
     /// One-time setup: record the admin address.
     /// The admin is the only account that can call `set_verification_key`.
     pub fn initialize(env: Env, admin: Address) -> Result<(), ZkVerifierError> {
-        if env.storage().instance().has(&DataKey::Admin) {
+        if storage::has_admin(&env) {
             return Err(ZkVerifierError::AlreadyInitialized);
         }
-        env.storage().instance().set(&DataKey::Admin, &admin);
+        storage::set_admin(&env, &admin);
         Ok(())
     }
 
@@ -53,7 +55,18 @@ impl ZkVerifierContract {
 
     /// Store or replace the verification key for a circuit.
     ///
-    /// Called once after the trusted setup ceremony for each circuit.
+    /// Called once after the trusted setup ceremony for each circuit, and
+    /// potentially again later to rotate it. Rotation is immediate and
+    /// retroactive: the new key takes effect for every proof verified after
+    /// this call, with no grace period during which the old key is still
+    /// accepted. That's deliberate - accepting a proof against a stale VK is
+    /// a strictly *weaker* security posture than requiring the current one,
+    /// so dual-acceptance was not implemented even though it would smooth
+    /// over a rotation. What this call does provide is an audit trail: it
+    /// emits `VkRotatedEvent` with a fingerprint of the old and new key, so
+    /// there's an on-chain record of every rotation even though storage only
+    /// ever holds the current key.
+    ///
     /// The verification key is derived from the snarkjs `.zkey` file via
     /// `snarkjs zkey export verificationkey`.
     pub fn set_verification_key(
@@ -63,17 +76,21 @@ impl ZkVerifierContract {
         vk: VerificationKey,
     ) -> Result<(), ZkVerifierError> {
         caller.require_auth();
-        let admin: Address = env
-            .storage()
-            .instance()
-            .get(&DataKey::Admin)
-            .ok_or(ZkVerifierError::NotInitialized)?;
+        let admin: Address = storage::get_admin(&env).ok_or(ZkVerifierError::NotInitialized)?;
         if caller != admin {
             return Err(ZkVerifierError::Unauthorized);
         }
-        env.storage()
-            .persistent()
-            .set(&DataKey::VerificationKey(circuit), &vk);
+
+        let old_vk_hash = match storage::get_verification_key(&env, circuit) {
+            Some(old_vk) => vk_fingerprint(&env, &old_vk),
+            None => BytesN::from_array(&env, &[0u8; 32]),
+        };
+        let new_vk_hash = vk_fingerprint(&env, &vk);
+
+        storage::set_verification_key(&env, circuit, &vk);
+
+        VkRotatedEvent { new_vk_hash, circuit, old_vk_hash }.publish(&env);
+
         Ok(())
     }
 
@@ -82,9 +99,15 @@ impl ZkVerifierContract {
         env: Env,
         circuit: CircuitId,
     ) -> Option<VerificationKey> {
-        env.storage()
-            .persistent()
-            .get(&DataKey::VerificationKey(circuit))
+        storage::get_verification_key(&env, circuit)
+    }
+
+    /// Extends the TTL of the admin entry and every set verification key.
+    /// Permissionless - call on a schedule so an infrequently-used deployment
+    /// doesn't silently expire and start failing proof verification with
+    /// `VerificationKeyNotSet`.
+    pub fn refresh_ttl(env: Env) {
+        storage::refresh_ttl(&env);
     }
 
     // ── Proof verification ────────────────────────────────────────────────────
@@ -92,11 +115,11 @@ impl ZkVerifierContract {
     /// Verify a Groth16 proof for the deposit circuit.
     ///
     /// Public signals (in order, matching the circuit's public input declaration):
-    ///   [0] commitment        — Poseidon position commitment
-    ///   [1] nullifier         — Poseidon(secret, nonce)
-    ///   [2] btc_txid_lo       — low 128 bits of Bitcoin txid
-    ///   [3] btc_txid_hi       — high 128 bits of Bitcoin txid
-    ///   [4] min_deposit_sats  — minimum deposit threshold
+    ///   [0] commitment        - Poseidon position commitment
+    ///   [1] nullifier         - Poseidon(secret, nonce)
+    ///   [2] btc_txid_lo       - low 128 bits of Bitcoin txid
+    ///   [3] btc_txid_hi       - high 128 bits of Bitcoin txid
+    ///   [4] min_deposit_sats  - minimum deposit threshold
     pub fn verify_deposit(
         env: Env,
         proof: Proof,
@@ -108,14 +131,14 @@ impl ZkVerifierContract {
     /// Verify a Groth16 proof for the borrow/repay circuit.
     ///
     /// Public signals (in order):
-    ///   [0] new_root                  — updated Merkle root
-    ///   [1] old_nullifier             — nullifier for the old commitment
-    ///   [2] new_commitment            — new position commitment
-    ///   [3] old_root                  — previous Merkle root (must match on-chain state)
-    ///   [4] delta_stroops             — USDC amount borrowed (positive) or repaid (negative)
-    ///   [5] is_borrow                 — 1 = borrow, 0 = repay
-    ///   [6] btc_price_stroops_per_btc — oracle price used for ratio check
-    ///   [7] min_ratio_bp              — minimum collateral ratio (15_000 = 150%)
+    ///   [0] new_root                  - updated Merkle root
+    ///   [1] old_nullifier             - nullifier for the old commitment
+    ///   [2] new_commitment            - new position commitment
+    ///   [3] old_root                  - previous Merkle root (must match on-chain state)
+    ///   [4] delta_stroops             - USDC amount borrowed (positive) or repaid (negative)
+    ///   [5] is_borrow                 - 1 = borrow, 0 = repay
+    ///   [6] btc_price_stroops_per_btc - oracle price used for ratio check
+    ///   [7] min_ratio_bp              - minimum collateral ratio (15_000 = 150%)
     pub fn verify_borrow_repay(
         env: Env,
         proof: Proof,
@@ -127,10 +150,10 @@ impl ZkVerifierContract {
     /// Verify a Groth16 proof for the liquidation circuit.
     ///
     /// Public signals (in order):
-    ///   [0] nullifier                 — marks this position as liquidated
-    ///   [1] merkle_root               — Merkle root (must match on-chain state)
-    ///   [2] btc_price_stroops_per_btc — oracle price used for ratio check
-    ///   [3] liquidation_threshold_bp  — liquidation threshold (12_000 = 120%)
+    ///   [0] nullifier                 - marks this position as liquidated
+    ///   [1] merkle_root               - Merkle root (must match on-chain state)
+    ///   [2] btc_price_stroops_per_btc - oracle price used for ratio check
+    ///   [3] liquidation_threshold_bp  - liquidation threshold (12_000 = 120%)
     pub fn verify_liquidation(
         env: Env,
         proof: Proof,
@@ -147,11 +170,8 @@ impl ZkVerifierContract {
         proof: Proof,
         public_signals: PublicSignals,
     ) -> Result<bool, ZkVerifierError> {
-        let vk: VerificationKey = env
-            .storage()
-            .persistent()
-            .get(&DataKey::VerificationKey(circuit))
-            .ok_or(ZkVerifierError::VerificationKeyNotSet)?;
+        let vk: VerificationKey =
+            storage::get_verification_key(env, circuit).ok_or(ZkVerifierError::VerificationKeyNotSet)?;
 
         // IC has nPublic + 1 elements; public_signals must have exactly nPublic.
         if public_signals.len() + 1 != vk.ic.len() {
@@ -171,7 +191,7 @@ impl ZkVerifierContract {
 ///   2. Check: e(-A, B) · e(α, β) · e(vk_x, γ) · e(C, δ) = 1   [pairing_check]
 ///
 /// The pairing_check host function returns true when the product of all
-/// pairings equals 1 in the target group GT — this is the multi-pairing
+/// pairings equals 1 in the target group GT - this is the multi-pairing
 /// form of the Groth16 verification equation.
 fn verify_groth16(
     env: &Env,
@@ -229,6 +249,25 @@ fn verify_groth16(
     ]);
 
     bn254.pairing_check(g1_points, g2_points)
+}
+
+// ── Audit-trail helper ────────────────────────────────────────────────────────
+
+/// A cheap sha256 fingerprint of a verification key's fixed-size elements
+/// (alpha/beta/gamma/delta) plus every `ic` entry, for the `VkRotatedEvent`
+/// audit trail. Not a consensus-critical hash - just enough to tell two
+/// verification keys apart in an event log without re-publishing the full
+/// (multi-hundred-byte) key on every rotation.
+fn vk_fingerprint(env: &Env, vk: &VerificationKey) -> BytesN<32> {
+    let mut buf = Bytes::new(env);
+    buf.append(&vk.alpha_g1.bytes.clone().into());
+    buf.append(&vk.beta_g2.bytes.clone().into());
+    buf.append(&vk.gamma_g2.bytes.clone().into());
+    buf.append(&vk.delta_g2.bytes.clone().into());
+    for point in vk.ic.iter() {
+        buf.append(&point.bytes.clone().into());
+    }
+    env.crypto().sha256(&buf).into()
 }
 
 // ── Conversion helpers ────────────────────────────────────────────────────────

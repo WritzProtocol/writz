@@ -1,43 +1,16 @@
 /// BTC/USD price oracle interface.
 ///
-/// Phase 1: hardcoded stub that returns a fixed price.
-///
-/// Phase 2 migration: replace the body of `get_btc_price_stroops` with an
-/// actual SEP-40 cross-contract call to the RedStone oracle.  The SEP-40
-/// interface is:
-///
-/// ```text
-/// fn lastprice(asset: Asset) -> Option<PriceData>
-/// // where PriceData = { price: i128, timestamp: u64 }
-/// // price is denominated in the quote asset with 7 decimal places.
-/// ```
+/// `get_btc_price_stroops`/`STUB_PRICE_STROOPS_PER_BTC` live in the shared
+/// `spv-types` crate now - this file previously carried its own byte-for-byte
+/// copy (also duplicated in `commitment-tree/src/oracle.rs`). Re-exported
+/// here so existing call sites in this crate (`use oracle::get_btc_price_stroops`)
+/// don't need to change.
 ///
 /// The oracle address is stored in `Config.oracle` and passed at every call
-/// site so the integration point is explicit and easy to swap.
-
-use soroban_sdk::{Address, Env};
-
-/// Hardcoded testnet price: $60,000 USD per BTC.
-///
-/// Expressed in USDC stroops (7 decimal places) per BTC so that:
-///   collateral_usdc_stroops = btc_satoshis × STUB_PRICE / 100_000_000
-pub const STUB_PRICE_STROOPS_PER_BTC: i128 = 60_000 * 10_000_000; // = 600_000_000_000
-
-/// Returns the BTC/USD price as USDC stroops per BTC.
-///
-/// Phase 1: returns `STUB_PRICE_STROOPS_PER_BTC` unconditionally.
-/// The `_env` and `_oracle` parameters are present so that Phase 2 only
-/// needs to change this function body, not every call site.
-pub fn get_btc_price_stroops(_env: &Env, _oracle: &Address) -> i128 {
-    // TODO Phase 2: invoke SEP-40 oracle cross-contract call:
-    //   let price_data: PriceData = _env.invoke_contract(
-    //       _oracle,
-    //       &Symbol::new(_env, "lastprice"),
-    //       (btc_asset,).into_val(_env),
-    //   );
-    //   return price_data.price;
-    STUB_PRICE_STROOPS_PER_BTC
-}
+/// site so the integration point is explicit and easy to swap - though
+/// swapping the *implementation* still requires editing the shared function
+/// body in `spv-types`, not just the address; see that crate's doc comment.
+pub use spv_types::get_btc_price_stroops;
 
 /// Computes the USDC strop value of `btc_satoshis` at the given price.
 ///

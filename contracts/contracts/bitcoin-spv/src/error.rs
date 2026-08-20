@@ -2,7 +2,7 @@ use soroban_sdk::contracterror;
 
 /// All error conditions that can arise during SPV verification.
 ///
-/// Error codes are stable — never reassign or remove an existing code,
+/// Error codes are stable - never reassign or remove an existing code,
 /// as on-chain callers may branch on them.
 #[contracterror]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -31,7 +31,7 @@ pub enum SPVError {
     /// The raw transaction bytes are empty.
     EmptyTransaction = 7,
 
-    /// SHA256d(header) is not less than target(bits) — no valid
+    /// SHA256d(header) is not less than target(bits) - no valid
     /// proof-of-work behind this header.
     InsufficientProofOfWork = 8,
 
@@ -40,7 +40,7 @@ pub enum SPVError {
     /// `arith_uint256::SetCompact` checks).
     InvalidDifficultyBits = 9,
 
-    /// The contract has not been initialized yet — call `initialize` first.
+    /// The contract has not been initialized yet - call `initialize` first.
     NotInitialized = 10,
 
     /// The contract has already been initialized.
@@ -49,12 +49,12 @@ pub enum SPVError {
     /// The caller is not the admin.
     Unauthorized = 12,
 
-    /// No checkpoint has been set — call `set_checkpoint` before
+    /// No checkpoint has been set - call `set_checkpoint` before
     /// `verify_transaction` will succeed.
     CheckpointNotSet = 13,
 
     /// A submitted header's target is easier than the checkpoint's
-    /// difficulty floor allows — prevents a privately-mined,
+    /// difficulty floor allows - prevents a privately-mined,
     /// historically-easy chain from being accepted.
     DifficultyBelowCheckpointFloor = 14,
 }

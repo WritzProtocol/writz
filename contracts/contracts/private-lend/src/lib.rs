@@ -12,15 +12,19 @@ mod types;
 mod test;
 
 use error::PrivateLendError;
-use events::{BorrowEvent, DepositEvent, LiquidateEvent, RepayEvent, RepayFullEvent};
+use events::{
+    BorrowEvent, DepositEvent, LiquidateEvent, PausedSetEvent, RepayEvent, RepayFullEvent,
+    SupplyEvent, WithdrawEvent,
+};
 use oracle::{collateral_value_stroops, get_btc_price_stroops, health_ratio_bp};
 use rates::{borrow_rate_bp, interest_delta, supply_rate_bp};
 use soroban_sdk::{
     contract, contractimpl, token, Address, Bytes, BytesN, Env, IntoVal, Symbol, Vec,
 };
+use spv_types::SpvVerificationResult;
 use storage::{get_config, get_position, get_protocol, get_release_psbt, get_supply_balance,
                set_config, set_position, set_protocol, set_release_psbt, set_supply_balance};
-use types::{Config, Position, PositionStatus, ProtocolState, SpvResult};
+use types::{Config, Position, PositionStatus, ProtocolState};
 
 #[contract]
 pub struct PrivateLendContract;
@@ -32,12 +36,12 @@ impl PrivateLendContract {
     /// One-time contract initialization.  Can only be called once.
     ///
     /// # Parameters
-    /// - `admin`          — Address that can update the keeper.
-    /// - `spv_contract`   — Deployed `bitcoin-spv` Soroban contract address.
-    /// - `usdc_token`     — USDC Stellar Asset Contract address.
-    /// - `oracle`         — SEP-40 BTC/USD oracle address (RedStone).
-    /// - `keeper`         — Trusted liquidation keeper (Phase 1).
-    /// - `relayer`        — Auto-cosign relayer watcher address.
+    /// - `admin`          - Address that can update the keeper.
+    /// - `spv_contract`   - Deployed `bitcoin-spv` Soroban contract address.
+    /// - `usdc_token`     - USDC Stellar Asset Contract address.
+    /// - `oracle`         - SEP-40 BTC/USD oracle address (RedStone).
+    /// - `keeper`         - Trusted liquidation keeper (Phase 1).
+    /// - `relayer`        - Auto-cosign relayer watcher address.
     pub fn initialize(
         env: Env,
         admin: Address,
@@ -65,6 +69,7 @@ impl PrivateLendContract {
                 liquidation_bonus_bp: 1_000,          // 10%
                 min_confirmations: 6,
                 keeper_stale_after_secs: 86_400,      // 24h stale-keeper liveness window
+                paused: false,
             },
         );
         Ok(())
@@ -83,15 +88,15 @@ impl PrivateLendContract {
     /// After this call succeeds the user can borrow USDC against the position.
     ///
     /// # Parameters
-    /// - `depositor`          — Stellar address of the depositor (must authorize).
-    /// - `headers`            — Bitcoin block headers (80 bytes each).
-    /// - `merkle_proof`       — Sibling hashes for the Merkle inclusion proof.
-    /// - `tx_index`           — 0-based index of the transaction in its block.
-    /// - `raw_tx`             — Non-witness serialization of the Bitcoin transaction.
-    /// - `p2wsh_script_pubkey`— 34-byte P2WSH scriptPubKey (OP_0 + 32-byte hash)
+    /// - `depositor`          - Stellar address of the depositor (must authorize).
+    /// - `headers`            - Bitcoin block headers (80 bytes each).
+    /// - `merkle_proof`       - Sibling hashes for the Merkle inclusion proof.
+    /// - `tx_index`           - 0-based index of the transaction in its block.
+    /// - `raw_tx`             - Non-witness serialization of the Bitcoin transaction.
+    /// - `p2wsh_script_pubkey`- 34-byte P2WSH scriptPubKey (OP_0 + 32-byte hash)
     ///                          of the deposit output.
-    /// - `timelock_height`    — Bitcoin block height of the CLTV escape hatch.
-    /// - `user_pubkey`        — Depositor's 33-byte compressed Bitcoin public
+    /// - `timelock_height`    - Bitcoin block height of the CLTV escape hatch.
+    /// - `user_pubkey`        - Depositor's 33-byte compressed Bitcoin public
     ///                          key. Already public the moment
     ///                          either spending path is used; stored so the
     ///                          auto-cosign relayer watcher can reconstruct
@@ -111,6 +116,9 @@ impl PrivateLendContract {
         depositor.require_auth();
 
         let config = get_config(&env).ok_or(PrivateLendError::NotInitialized)?;
+        if config.paused {
+            return Err(PrivateLendError::Paused);
+        }
 
         // Validate the scriptPubKey is 34 bytes (OP_0 0x20 <32 bytes>).
         if p2wsh_script_pubkey.len() != 34 {
@@ -118,7 +126,7 @@ impl PrivateLendContract {
         }
 
         // 1. Cross-contract SPV verification.
-        let spv_result: SpvResult = env.invoke_contract(
+        let spv_result: SpvVerificationResult = env.invoke_contract(
             &config.spv_contract,
             &Symbol::new(&env, "verify_transaction"),
             (
@@ -182,6 +190,9 @@ impl PrivateLendContract {
     ) -> Result<(), PrivateLendError> {
         supplier.require_auth();
         let config = get_config(&env).ok_or(PrivateLendError::NotInitialized)?;
+        if config.paused {
+            return Err(PrivateLendError::Paused);
+        }
 
         let token = token::Client::new(&env, &config.usdc_token);
         token.transfer(&supplier, &env.current_contract_address(), &amount);
@@ -192,6 +203,9 @@ impl PrivateLendContract {
 
         let bal = get_supply_balance(&env, &supplier);
         set_supply_balance(&env, &supplier, bal.saturating_add(amount));
+
+        SupplyEvent { supplier, usdc_amount: amount, total_supplied: proto.total_supplied }
+            .publish(&env);
 
         Ok(())
     }
@@ -225,6 +239,9 @@ impl PrivateLendContract {
         let token = token::Client::new(&env, &config.usdc_token);
         token.transfer(&env.current_contract_address(), &supplier, &amount);
 
+        WithdrawEvent { supplier, usdc_amount: amount, total_supplied: proto2.total_supplied }
+            .publish(&env);
+
         Ok(())
     }
 
@@ -244,6 +261,9 @@ impl PrivateLendContract {
     ) -> Result<(), PrivateLendError> {
         borrower.require_auth();
         let config = get_config(&env).ok_or(PrivateLendError::NotInitialized)?;
+        if config.paused {
+            return Err(PrivateLendError::Paused);
+        }
 
         let mut pos = get_position(&env, &txid).ok_or(PrivateLendError::PositionNotFound)?;
         if pos.status != PositionStatus::Active {
@@ -349,12 +369,12 @@ impl PrivateLendContract {
 
     /// Liquidate an undercollateralized position.
     ///
-    /// Phase 1: only the authorized `keeper` may call this — *unless* the
+    /// Phase 1: only the authorized `keeper` may call this - *unless* the
     /// keeper has gone stale (no successful liquidation or explicit
     /// `keeper_heartbeat` in `config.keeper_stale_after_secs`, default 24h),
     /// in which case any caller with a genuinely undercollateralized
     /// position may liquidate it. This is a liveness/censorship
-    /// fallback, not a privacy mechanism — `private-lend` positions are
+    /// fallback, not a privacy mechanism - `private-lend` positions are
     /// already plaintext. Safety is unaffected by who calls: the
     /// undercollateralization check below is independent of caller identity.
     ///
@@ -371,7 +391,7 @@ impl PrivateLendContract {
     ///   refreshed (a keeper that successfully liquidates is provably alive).
     ///
     /// Phase 2 will replace the keeper check with a ZK proof of
-    /// undercollateralization — see `docs/research/liquidation-mechanism.md`.
+    /// undercollateralization - see `docs/research/liquidation-mechanism.md`.
     pub fn liquidate(
         env: Env,
         keeper: Address,
@@ -454,7 +474,7 @@ impl PrivateLendContract {
     ///
     /// Lets the keeper reset the stale-window clock even when there is
     /// nothing to liquidate right now (`liquidate` itself also refreshes
-    /// this on every successful call — this entrypoint covers idle periods).
+    /// this on every successful call - this entrypoint covers idle periods).
     pub fn keeper_heartbeat(env: Env, keeper: Address) -> Result<(), PrivateLendError> {
         keeper.require_auth();
         let config = get_config(&env).ok_or(PrivateLendError::NotInitialized)?;
@@ -498,6 +518,70 @@ impl PrivateLendContract {
         }
         config.relayer = new_relayer;
         set_config(&env, &config);
+        Ok(())
+    }
+
+    /// Updates the oracle contract address used for BTC/USD pricing. Admin only.
+    ///
+    /// Note: as of Phase 1, `oracle::get_btc_price_stroops` ignores the
+    /// `oracle` config field entirely and returns a hardcoded stub price -
+    /// see `oracle.rs`. This setter exists so that swapping to a real oracle
+    /// in Phase 2 is a config change plus one function-body edit in
+    /// `oracle.rs`, not also a migration to add the setter itself. It does
+    /// not, on its own, make oracle pricing live.
+    pub fn set_oracle(
+        env: Env,
+        caller: Address,
+        new_oracle: Address,
+    ) -> Result<(), PrivateLendError> {
+        caller.require_auth();
+        let mut config = get_config(&env).ok_or(PrivateLendError::NotInitialized)?;
+        if caller != config.admin {
+            return Err(PrivateLendError::Unauthorized);
+        }
+        config.oracle = new_oracle;
+        set_config(&env, &config);
+        Ok(())
+    }
+
+    /// Updates the bitcoin-spv contract address used for deposit verification.
+    /// Admin only. Changing this mid-flight affects only deposits submitted
+    /// after the change - an in-flight deposit's SPV proof was already
+    /// verified against the previous contract by the time this would run.
+    pub fn set_spv_contract(
+        env: Env,
+        caller: Address,
+        new_spv_contract: Address,
+    ) -> Result<(), PrivateLendError> {
+        caller.require_auth();
+        let mut config = get_config(&env).ok_or(PrivateLendError::NotInitialized)?;
+        if caller != config.admin {
+            return Err(PrivateLendError::Unauthorized);
+        }
+        config.spv_contract = new_spv_contract;
+        set_config(&env, &config);
+        Ok(())
+    }
+
+    /// Pauses or unpauses new deposits/borrows/USDC supply. Admin only.
+    ///
+    /// A pause never affects existing positions: `repay`, `withdraw_supply`,
+    /// `liquidate`, and `publish_release_psbt` all ignore `Config::paused` by
+    /// design, so users can always exit. This is an emergency brake on new
+    /// exposure, not a freeze - see `docs/architecture/contract-migration-runbook.md`.
+    pub fn set_paused(
+        env: Env,
+        caller: Address,
+        paused: bool,
+    ) -> Result<(), PrivateLendError> {
+        caller.require_auth();
+        let mut config = get_config(&env).ok_or(PrivateLendError::NotInitialized)?;
+        if caller != config.admin {
+            return Err(PrivateLendError::Unauthorized);
+        }
+        config.paused = paused;
+        set_config(&env, &config);
+        PausedSetEvent { admin: caller, paused }.publish(&env);
         Ok(())
     }
 
@@ -610,6 +694,18 @@ impl PrivateLendContract {
     /// Extend the TTL of the global protocol accounting entry.
     pub fn refresh_protocol_ttl(env: Env) {
         storage::refresh_protocol_ttl(&env);
+    }
+
+    /// Extend the TTL of a published release PSBT to another window.
+    ///
+    /// A repaid position's release PSBT is otherwise only bumped as a side
+    /// effect of fetching or re-publishing it. A user who has repaid but
+    /// hasn't yet broadcast their release transaction should call this (or
+    /// have their wallet call it periodically) rather than rely on activity
+    /// that may not happen for a while. Returns false if no PSBT is on
+    /// record for this txid.
+    pub fn refresh_release_psbt_ttl(env: Env, txid: BytesN<32>) -> bool {
+        storage::refresh_release_psbt_ttl(&env, &txid)
     }
 }
 

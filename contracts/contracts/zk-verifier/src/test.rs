@@ -13,6 +13,7 @@ mod vectors {
     include!("test_vectors.rs");
 }
 use vectors::deposit as tv;
+use vectors::borrow_repay as br_tv;
 use vectors::liquidation as lq_tv;
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -109,6 +110,88 @@ fn set_and_get_verification_key() {
 }
 
 #[test]
+fn set_verification_key_emits_vk_rotated_event_with_zero_old_hash_on_first_set() {
+    use crate::events::VkRotatedEvent;
+    use soroban_sdk::testutils::Events as _;
+    use soroban_sdk::Event as _;
+
+    let env = Env::default();
+    env.mock_all_auths();
+    let admin = Address::generate(&env);
+    let contract_id = env.register(ZkVerifierContract, ());
+    let client = ZkVerifierContractClient::new(&env, &contract_id);
+    client.initialize(&admin);
+
+    let vk = build_vk(&env);
+    client.set_verification_key(&admin, &CircuitId::Deposit, &vk);
+
+    let expected = VkRotatedEvent {
+        new_vk_hash: crate::vk_fingerprint(&env, &vk),
+        circuit: CircuitId::Deposit,
+        old_vk_hash: BytesN::from_array(&env, &[0u8; 32]),
+    };
+    assert_eq!(
+        env.events().all().filter_by_contract(&contract_id),
+        std::vec![expected.to_xdr(&env, &contract_id)],
+    );
+}
+
+#[test]
+fn set_verification_key_emits_vk_rotated_event_with_prior_hash_on_rotation() {
+    use crate::events::VkRotatedEvent;
+    use soroban_sdk::testutils::Events as _;
+    use soroban_sdk::Event as _;
+
+    let env = Env::default();
+    env.mock_all_auths();
+    let admin = Address::generate(&env);
+    let contract_id = env.register(ZkVerifierContract, ());
+    let client = ZkVerifierContractClient::new(&env, &contract_id);
+    client.initialize(&admin);
+
+    let vk1 = build_vk(&env);
+    client.set_verification_key(&admin, &CircuitId::Deposit, &vk1);
+
+    // Rotate to a second key that differs from the first (swap two IC
+    // entries) so old_vk_hash != new_vk_hash on this second call.
+    let mut vk2 = build_vk(&env);
+    let ic0 = vk2.ic.get(0).unwrap();
+    let ic1 = vk2.ic.get(1).unwrap();
+    vk2.ic.set(0, ic1);
+    vk2.ic.set(1, ic0);
+
+    client.set_verification_key(&admin, &CircuitId::Deposit, &vk2);
+
+    let expected = VkRotatedEvent {
+        new_vk_hash: crate::vk_fingerprint(&env, &vk2),
+        circuit: CircuitId::Deposit,
+        old_vk_hash: crate::vk_fingerprint(&env, &vk1),
+    };
+    assert_eq!(
+        env.events().all().filter_by_contract(&contract_id).events().last(),
+        Some(&expected.to_xdr(&env, &contract_id)),
+    );
+}
+
+#[test]
+fn refresh_ttl_does_not_panic_before_any_key_is_set() {
+    let (_env, _admin, client) = setup();
+    // Only the admin entry exists at this point; refresh_ttl must not assume
+    // any circuit's VerificationKey is present.
+    client.refresh_ttl();
+}
+
+#[test]
+fn refresh_ttl_does_not_panic_after_a_key_is_set() {
+    let (env, admin, client) = setup();
+    let vk = build_vk(&env);
+    client.set_verification_key(&admin, &CircuitId::Deposit, &vk);
+    // BorrowRepay/Liquidation are still unset - refresh_ttl must skip them
+    // rather than panic on a missing entry.
+    client.refresh_ttl();
+}
+
+#[test]
 #[should_panic]
 fn non_admin_cannot_set_verification_key() {
     let (env, _, client) = setup();
@@ -148,7 +231,7 @@ fn valid_deposit_proof_verifies() {
 
 /// Flipping high bits in a G1 X coordinate corrupts the Ethereum-format flag
 /// bits, so the Soroban host rejects the point at deserialization and the
-/// transaction panics.  This is the correct security behaviour — a malformed
+/// transaction panics.  This is the correct security behaviour - a malformed
 /// proof must never silently verify as false; it must abort the transaction.
 #[test]
 #[should_panic]
@@ -163,7 +246,7 @@ fn malformed_pi_a_flag_bits_panics() {
 }
 
 /// Flipping an interior byte of pi_c produces a point not on the BN254 curve;
-/// the host rejects it and the transaction panics — correct security behaviour.
+/// the host rejects it and the transaction panics - correct security behaviour.
 #[test]
 #[should_panic]
 fn malformed_pi_c_not_on_curve_panics() {
@@ -216,7 +299,7 @@ fn wrong_number_of_public_signals_panics() {
 #[should_panic]
 fn verify_without_verification_key_panics() {
     let (env, _, client) = setup();
-    // VK not set — should panic with VerificationKeyNotSet.
+    // VK not set - should panic with VerificationKeyNotSet.
     client.verify_deposit(&build_proof(&env), &build_signals(&env));
 }
 
@@ -245,6 +328,103 @@ fn admin_can_update_verification_key() {
     client.set_verification_key(&admin, &CircuitId::Deposit, &vk);
     let result = client.verify_deposit(&build_proof(&env), &build_signals(&env));
     assert_eq!(result, true);
+}
+
+// ── Borrow/repay circuit ─────────────────────────────────────────────────────
+//
+// No coverage existed for this circuit before - `test_vectors.rs` had no
+// `borrow_repay` module (see `circuits/scripts/gen_test_vectors.js`, updated
+// alongside this test to actually generate one). This is the entrypoint that
+// the `is_borrow` soundness fix in `circuits/src/borrow_repay.circom` lives
+// behind on-chain; it needs the same direct verifier coverage the other two
+// circuits already had.
+
+fn build_br_vk(env: &Env) -> VerificationKey {
+    let ic: Vec<G1Point> = Vec::from_array(env, [
+        g1(env, &br_tv::IC_0),
+        g1(env, &br_tv::IC_1),
+        g1(env, &br_tv::IC_2),
+        g1(env, &br_tv::IC_3),
+        g1(env, &br_tv::IC_4),
+        g1(env, &br_tv::IC_5),
+        g1(env, &br_tv::IC_6),
+        g1(env, &br_tv::IC_7),
+        g1(env, &br_tv::IC_8),
+    ]);
+    VerificationKey {
+        alpha_g1: g1(env, &br_tv::VK_ALPHA_G1),
+        beta_g2:  g2(env, &br_tv::VK_BETA_G2),
+        gamma_g2: g2(env, &br_tv::VK_GAMMA_G2),
+        delta_g2: g2(env, &br_tv::VK_DELTA_G2),
+        ic,
+    }
+}
+
+fn build_br_proof(env: &Env) -> Proof {
+    Proof {
+        pi_a: g1(env, &br_tv::PI_A),
+        pi_b: g2(env, &br_tv::PI_B),
+        pi_c: g1(env, &br_tv::PI_C),
+    }
+}
+
+fn build_br_signals(env: &Env) -> Vec<BytesN<32>> {
+    Vec::from_array(env, [
+        signal(env, &br_tv::SIGNAL_0), // new_root
+        signal(env, &br_tv::SIGNAL_1), // old_nullifier
+        signal(env, &br_tv::SIGNAL_2), // new_commitment
+        signal(env, &br_tv::SIGNAL_3), // old_root
+        signal(env, &br_tv::SIGNAL_4), // delta_stroops
+        signal(env, &br_tv::SIGNAL_5), // is_borrow
+        signal(env, &br_tv::SIGNAL_6), // btc_price_stroops_per_btc
+        signal(env, &br_tv::SIGNAL_7), // min_ratio_bp
+    ])
+}
+
+#[test]
+fn valid_borrow_repay_proof_verifies() {
+    let (env, admin, client) = setup();
+    client.set_verification_key(&admin, &CircuitId::BorrowRepay, &build_br_vk(&env));
+    let result = client.verify_borrow_repay(&build_br_proof(&env), &build_br_signals(&env));
+    assert_eq!(result, true);
+}
+
+#[test]
+fn tampered_borrow_repay_signal_fails() {
+    let (env, admin, client) = setup();
+    client.set_verification_key(&admin, &CircuitId::BorrowRepay, &build_br_vk(&env));
+
+    // Tamper with is_borrow (SIGNAL_5) - should invalidate the proof, since
+    // the circuit's public statement is bound to the exact signal values it
+    // was proven against.
+    let mut bad_is_borrow = br_tv::SIGNAL_5;
+    bad_is_borrow[31] ^= 0x01;
+
+    let bad_signals: Vec<BytesN<32>> = Vec::from_array(&env, [
+        signal(&env, &br_tv::SIGNAL_0),
+        signal(&env, &br_tv::SIGNAL_1),
+        signal(&env, &br_tv::SIGNAL_2),
+        signal(&env, &br_tv::SIGNAL_3),
+        signal(&env, &br_tv::SIGNAL_4),
+        signal(&env, &bad_is_borrow),
+        signal(&env, &br_tv::SIGNAL_6),
+        signal(&env, &br_tv::SIGNAL_7),
+    ]);
+    let result = client.verify_borrow_repay(&build_br_proof(&env), &bad_signals);
+    assert_eq!(result, false);
+}
+
+#[test]
+#[should_panic]
+fn borrow_repay_vk_rejects_deposit_shaped_signals() {
+    // Deposit has 5 public signals; borrow_repay's VK expects 8 (IC len 9).
+    // Submitting the wrong shape must be rejected outright, not silently
+    // padded or truncated - this hits PublicInputCountMismatch rather than
+    // a same-shape proof-swap case (no other circuit here shares
+    // borrow_repay's 8-signal shape to test that variant against).
+    let (env, admin, client) = setup();
+    client.set_verification_key(&admin, &CircuitId::BorrowRepay, &build_br_vk(&env));
+    client.verify_borrow_repay(&build_proof(&env), &build_signals(&env));
 }
 
 // ── Liquidation circuit ───────────────────────────────────────────────────────

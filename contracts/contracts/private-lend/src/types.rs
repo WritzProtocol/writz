@@ -14,14 +14,14 @@ pub enum PositionStatus {
 /// A single BTC-collateralized lending position.
 ///
 /// Stored in per-entry persistent storage keyed by Bitcoin txid.
-/// Never stored in a growing collection on the instance — see CertiK warning
+/// Never stored in a growing collection on the instance - see CertiK warning
 /// about unbounded instance storage growth.
 #[contracttype]
 #[derive(Clone, Debug)]
 pub struct Position {
     /// Bitcoin transaction ID (32 bytes, internal/little-endian byte order).
     pub btc_txid: BytesN<32>,
-    /// Satoshis locked in the P2WSH output — verified on-chain from raw_tx.
+    /// Satoshis locked in the P2WSH output - verified on-chain from raw_tx.
     pub btc_satoshis: u64,
     /// Outstanding USDC debt in stroops (1 USDC = 10_000_000 stroops).
     /// Grows with each interest accrual.
@@ -37,8 +37,8 @@ pub struct Position {
     pub depositor: Address,
     pub status: PositionStatus,
     /// The depositor's 33-byte compressed Bitcoin public key.
-    /// Already public information — it's revealed the moment either
-    /// spending path is used — so storing it plaintext is not a new privacy
+    /// Already public information - it's revealed the moment either
+    /// spending path is used - so storing it plaintext is not a new privacy
     /// leak. Lets the auto-cosign relayer watcher reconstruct the redeem
     /// script and the user's default return address (a P2WPKH address
     /// derived from this key) from on-chain state alone, without a separate
@@ -53,7 +53,7 @@ pub struct Position {
 #[derive(Clone, Debug)]
 pub struct ProtocolState {
     /// Total USDC supplied by lenders (in stroops). Does not decrease when
-    /// interest accrues — interest earned increases the effective value of
+    /// interest accrues - interest earned increases the effective value of
     /// each lender's share.
     pub total_supplied: i128,
     /// Total outstanding USDC debt across all active positions (in stroops).
@@ -67,13 +67,15 @@ pub struct ProtocolState {
     pub last_keeper_heartbeat: u64,
 }
 
-/// Immutable protocol configuration set at initialization.
+/// Protocol configuration, set at initialization. Most fields are fixed for
+/// the contract's lifetime; `keeper`, `relayer`, `keeper_stale_after_secs`,
+/// and `paused` are admin-mutable via their own setters - see `lib.rs`.
 ///
 /// Stored under `DataKey::Config` in persistent storage.
 #[contracttype]
 #[derive(Clone, Debug)]
 pub struct Config {
-    /// Admin address — can update the keeper address.
+    /// Admin address - can update the keeper address.
     pub admin: Address,
     /// Address of the deployed `bitcoin-spv` Soroban contract.
     pub spv_contract: Address,
@@ -101,16 +103,14 @@ pub struct Config {
     /// liveness/censorship fallback, not a privacy mechanism (this contract
     /// has no ZK privacy).
     pub keeper_stale_after_secs: u64,
+    /// When true, `deposit`/`borrow`/`supply_usdc` (new risk-taking actions)
+    /// are refused. `repay`/`withdraw_supply`/`liquidate`/`publish_release_psbt`
+    /// stay open so users can still exit - a pause is an emergency brake on
+    /// new exposure, not a freeze on existing positions. Admin-gated via
+    /// `set_paused`. See `docs/architecture/contract-migration-runbook.md`,
+    /// Track 2, for why this exists.
+    pub paused: bool,
 }
 
-/// Return type of the cross-contract SPV verification call.
-///
-/// Must match the `VerificationResult` contracttype in the `bitcoin-spv` contract
-/// field-for-field so that Soroban's Val encoding deserializes correctly.
-#[contracttype]
-#[derive(Clone, Debug)]
-pub struct SpvResult {
-    pub txid: BytesN<32>,
-    pub block_hash: BytesN<32>,
-    pub confirmations: u32,
-}
+// The cross-contract SPV verification call's return type, `SpvVerificationResult`,
+// lives in the shared `spv-types` crate - see that crate's doc comment for why.

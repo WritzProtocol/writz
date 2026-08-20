@@ -50,3 +50,34 @@ pub struct LiquidateEvent {
     pub p2wsh_script_pubkey: Bytes,
     pub liquidation_bonus_bp: u32,
 }
+
+/// Emitted when a lender supplies USDC to the pool.
+///
+/// Closes a gap noted in `docs/architecture/contract-migration-runbook.md`:
+/// without this event, lenders could not be enumerated off-chain at all
+/// (`get_supply_balance` requires already knowing the address).
+#[contractevent(topics = ["supply"])]
+pub struct SupplyEvent {
+    #[topic]
+    pub supplier:       Address,
+    pub usdc_amount:    i128,
+    pub total_supplied: i128,
+}
+
+/// Emitted when a lender withdraws USDC from the pool.
+#[contractevent(topics = ["withdraw"])]
+pub struct WithdrawEvent {
+    #[topic]
+    pub supplier:       Address,
+    pub usdc_amount:    i128,
+    pub total_supplied: i128,
+}
+
+/// Emitted when the admin pauses or unpauses new deposits/borrows/supply.
+/// Existing positions are never affected by a pause - see `Config::paused`.
+#[contractevent(topics = ["paused_set"])]
+pub struct PausedSetEvent {
+    #[topic]
+    pub admin:  Address,
+    pub paused: bool,
+}

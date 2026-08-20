@@ -9,14 +9,18 @@ mod types;
 mod test;
 
 use error::CommitmentTreeError;
-use events::{BorrowEvent, DepositEvent, InsertLeafEvent, LiquidateEvent, RepayEvent};
+use events::{
+    BorrowEvent, DepositEvent, InsertLeafEvent, LiquidateEvent, PausedSetEvent, RepayEvent,
+    SupplyEvent, WithdrawEvent,
+};
 use oracle::get_btc_price_stroops;
 use soroban_sdk::{
     contract, contractimpl, token, Address, Bytes, BytesN, Env, IntoVal, Symbol, Vec,
 };
+use spv_types::SpvVerificationResult;
 use types::{
     borrow_repay_signals as br, deposit_signals as ds, liquidation_signals as lq, Config,
-    DataKey, PoolState, Proof, SpvResult,
+    DataKey, PoolState, Proof,
 };
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -102,6 +106,7 @@ impl CommitmentTreeContract {
                 min_deposit_satoshis:     10_000,
                 min_collateral_ratio_bp:  15_000,
                 liquidation_threshold_bp: 12_000,
+                paused: false,
             },
         );
         env.storage().instance().extend_ttl(PERSISTENT_THRESHOLD, PERSISTENT_BUMP);
@@ -121,16 +126,16 @@ impl CommitmentTreeContract {
     ///
     /// The function performs the following checks, in order:
     ///
-    /// 1. **SPV** — the BTC transaction is confirmed with `min_confirmations`.
-    /// 2. **Duplicate guard** — the txid has not been deposited before.
-    /// 3. **Txid binding** — `signal[BTC_TXID_LO]` and `signal[BTC_TXID_HI]`
+    /// 1. **SPV** - the BTC transaction is confirmed with `min_confirmations`.
+    /// 2. **Duplicate guard** - the txid has not been deposited before.
+    /// 3. **Txid binding** - `signal[BTC_TXID_LO]` and `signal[BTC_TXID_HI]`
     ///    encode the same txid that the SPV call returned.  This prevents
     ///    replaying a proof from a different transaction.
-    /// 4. **Protocol param** — `signal[MIN_DEPOSIT_SATS]` equals the
+    /// 4. **Protocol param** - `signal[MIN_DEPOSIT_SATS]` equals the
     ///    configured minimum.  This prevents generating a proof with a lower
     ///    minimum to sneak in an undersized deposit.
-    /// 5. **Nullifier freshness** — the nullifier was not previously spent.
-    /// 6. **ZK proof** — Groth16 verification via the `zk-verifier` contract.
+    /// 5. **Nullifier freshness** - the nullifier was not previously spent.
+    /// 6. **ZK proof** - Groth16 verification via the `zk-verifier` contract.
     ///
     /// On success, the commitment is stored as *pending* tree insertion.
     /// Call `insert_commitment` (admin/relayer) to advance the Merkle root
@@ -160,13 +165,16 @@ impl CommitmentTreeContract {
     ) -> Result<BytesN<32>, CommitmentTreeError> {
         depositor.require_auth();
         let config = Self::load_config(&env)?;
+        if config.paused {
+            return Err(CommitmentTreeError::Paused);
+        }
 
         if public_signals.len() != ds::COUNT as u32 {
             return Err(CommitmentTreeError::InvalidZkProof);
         }
 
         // 1. Bitcoin SPV verification.
-        let spv: SpvResult = env.invoke_contract(
+        let spv: SpvVerificationResult = env.invoke_contract(
             &config.spv_contract,
             &Symbol::new(&env, "verify_transaction"),
             (headers, merkle_proof_btc, tx_index, raw_tx, config.min_confirmations)
@@ -275,8 +283,8 @@ impl CommitmentTreeContract {
 
     /// Borrow USDC against a BTC position using a ZK proof.
     ///
-    /// The borrow_repay proof (with `is_borrow = 1`) proves — without
-    /// revealing collateral, debt amount, or position owner — that:
+    /// The borrow_repay proof (with `is_borrow = 1`) proves - without
+    /// revealing collateral, debt amount, or position owner - that:
     /// * The caller's commitment exists in the tree at `old_root`.
     /// * After adding `delta_stroops`, collateral ratio ≥ 150%.
     /// * `new_root` correctly reflects the updated commitment.
@@ -288,11 +296,11 @@ impl CommitmentTreeContract {
     ///
     /// # Validations
     /// Beyond Groth16 correctness, the contract enforces:
-    /// * `old_root == stored_root` — no stale proofs.
-    /// * `is_borrow == 1` — prevents a repay proof being used here.
-    /// * `min_ratio_bp == config.min_collateral_ratio_bp` — no custom thresholds.
-    /// * `btc_price == oracle price` — no inflated collateral valuations.
-    /// * `old_nullifier` not spent — no double-borrow.
+    /// * `old_root == stored_root` - no stale proofs.
+    /// * `is_borrow == 1` - prevents a repay proof being used here.
+    /// * `min_ratio_bp == config.min_collateral_ratio_bp` - no custom thresholds.
+    /// * `btc_price == oracle price` - no inflated collateral valuations.
+    /// * `old_nullifier` not spent - no double-borrow.
     ///
     /// # Public signals (borrow_repay circuit)
     /// | Index | Signal |
@@ -314,6 +322,9 @@ impl CommitmentTreeContract {
     ) -> Result<(), CommitmentTreeError> {
         borrower.require_auth();
         let config = Self::load_config(&env)?;
+        if config.paused {
+            return Err(CommitmentTreeError::Paused);
+        }
 
         if public_signals.len() != br::COUNT as u32 {
             return Err(CommitmentTreeError::InvalidZkProof);
@@ -323,7 +334,7 @@ impl CommitmentTreeContract {
         let old_nullifier = public_signals.get(br::OLD_NULLIFIER as u32).unwrap();
         let new_root      = public_signals.get(br::NEW_ROOT      as u32).unwrap();
 
-        // old_root must match stored root — prevents stale proofs.
+        // old_root must match stored root - prevents stale proofs.
         if old_root_sig != Self::stored_root(&env) {
             return Err(CommitmentTreeError::RootMismatch);
         }
@@ -333,20 +344,20 @@ impl CommitmentTreeContract {
             return Err(CommitmentTreeError::NullifierAlreadySpent);
         }
 
-        // is_borrow must be 1 — prevents a repay proof being submitted here.
+        // is_borrow must be 1 - prevents a repay proof being submitted here.
         let is_borrow = sig_u32(&public_signals.get(br::IS_BORROW as u32).unwrap());
         if is_borrow != 1 {
             return Err(CommitmentTreeError::WrongCircuitMode);
         }
 
-        // min_ratio_bp must match the configured protocol parameter — prevents
+        // min_ratio_bp must match the configured protocol parameter - prevents
         // generating a proof with a lower threshold to exceed the allowed LTV.
         let min_ratio = sig_u32(&public_signals.get(br::MIN_RATIO_BP as u32).unwrap());
         if min_ratio != config.min_collateral_ratio_bp {
             return Err(CommitmentTreeError::ProtocolParamMismatch);
         }
 
-        // btc_price must match the oracle — prevents inflating collateral value
+        // btc_price must match the oracle - prevents inflating collateral value
         // with a stale or fabricated price to borrow beyond true LTV.
         let price_signal = sig_i128(&public_signals.get(br::BTC_PRICE as u32).unwrap())
             .ok_or(CommitmentTreeError::SignalOverflow)?;
@@ -354,7 +365,7 @@ impl CommitmentTreeContract {
             return Err(CommitmentTreeError::PriceMismatch);
         }
 
-        // Extract the borrow amount from the proof — not from the caller.
+        // Extract the borrow amount from the proof - not from the caller.
         // delta_stroops is a positive 120-bit number for borrow operations.
         let usdc_amount = sig_i128(&public_signals.get(br::DELTA_STROOPS as u32).unwrap())
             .ok_or(CommitmentTreeError::SignalOverflow)?;
@@ -366,7 +377,7 @@ impl CommitmentTreeContract {
             return Err(CommitmentTreeError::InsufficientLiquidity);
         }
 
-        // Groth16 proof verification — must come after all signal-level checks
+        // Groth16 proof verification - must come after all signal-level checks
         // so we don't pay the cross-contract call cost on a clearly invalid request.
         let verified: bool = env.invoke_contract(
             &config.zk_verifier,
@@ -450,7 +461,7 @@ impl CommitmentTreeContract {
             return Err(CommitmentTreeError::NullifierAlreadySpent);
         }
 
-        // is_borrow must be 0 — prevents a borrow proof being submitted here.
+        // is_borrow must be 0 - prevents a borrow proof being submitted here.
         let is_borrow = sig_u32(&public_signals.get(br::IS_BORROW as u32).unwrap());
         if is_borrow != 0 {
             return Err(CommitmentTreeError::WrongCircuitMode);
@@ -504,8 +515,8 @@ impl CommitmentTreeContract {
 
     /// Liquidate an undercollateralized position using a ZK proof.
     ///
-    /// The ZK liquidation proof proves — without revealing the position owner
-    /// or collateral amount — that:
+    /// The ZK liquidation proof proves - without revealing the position owner
+    /// or collateral amount - that:
     /// * The commitment is in the tree at `merkle_root`.
     /// * The collateral ratio is below `liquidation_threshold_bp`.
     /// * `usdc_debt` matches the private debt encoded in the commitment.
@@ -516,7 +527,7 @@ impl CommitmentTreeContract {
     /// hashed into the commitment, so a keeper cannot inflate or deflate the
     /// amount collected.
     ///
-    /// Liquidation reveals the debt amount by design — the position is being
+    /// Liquidation reveals the debt amount by design - the position is being
     /// publicly closed and the on-chain USDC transfer must match the proven debt.
     ///
     /// # Validations
@@ -530,7 +541,7 @@ impl CommitmentTreeContract {
     /// | Index | Signal |
     /// |-------|--------|
     /// | 0 | `nullifier` (circuit output) |
-    /// | 1 | `usdc_debt` (circuit output — proven debt from commitment) |
+    /// | 1 | `usdc_debt` (circuit output - proven debt from commitment) |
     /// | 2 | `merkle_root` |
     /// | 3 | `btc_price_stroops_per_btc` |
     /// | 4 | `liquidation_threshold_bp` |
@@ -557,14 +568,14 @@ impl CommitmentTreeContract {
             return Err(CommitmentTreeError::NullifierAlreadySpent);
         }
 
-        // liquidation_threshold_bp must match config — prevents proving
+        // liquidation_threshold_bp must match config - prevents proving
         // undercollateralization at a threshold looser than the protocol allows.
         let threshold = sig_u32(&public_signals.get(lq::LIQUIDATION_THRESHOLD as u32).unwrap());
         if threshold != config.liquidation_threshold_bp {
             return Err(CommitmentTreeError::ProtocolParamMismatch);
         }
 
-        // btc_price must match the oracle — prevents a keeper from using a
+        // btc_price must match the oracle - prevents a keeper from using a
         // deflated price to make a healthy position appear undercollateralized.
         let price_signal = sig_i128(&public_signals.get(lq::BTC_PRICE as u32).unwrap())
             .ok_or(CommitmentTreeError::SignalOverflow)?;
@@ -622,6 +633,9 @@ impl CommitmentTreeContract {
     ) -> Result<(), CommitmentTreeError> {
         supplier.require_auth();
         let config = Self::load_config(&env)?;
+        if config.paused {
+            return Err(CommitmentTreeError::Paused);
+        }
 
         token::Client::new(&env, &config.usdc_token).transfer(
             &supplier,
@@ -639,16 +653,19 @@ impl CommitmentTreeContract {
         env.storage().persistent().set(&bal_key, &bal.saturating_add(amount));
         env.storage().persistent().extend_ttl(&bal_key, NULLIFIER_THRESHOLD, NULLIFIER_BUMP);
 
+        SupplyEvent { supplier, usdc_amount: amount, total_supplied: pool.total_supplied }
+            .publish(&env);
+
         Ok(())
     }
 
     /// Lender withdraws USDC from the pool.
     ///
     /// Two limits are enforced:
-    /// 1. The supplier cannot withdraw more than their own deposited balance —
+    /// 1. The supplier cannot withdraw more than their own deposited balance -
     ///    prevents one lender from draining another lender's funds.
     /// 2. The pool must have sufficient undeployed liquidity
-    ///    (`total_supplied − total_borrowed`) — prevents withdrawing USDC that
+    ///    (`total_supplied − total_borrowed`) - prevents withdrawing USDC that
     ///    is currently lent out to borrowers.
     pub fn withdraw_supply(
         env: Env,
@@ -682,6 +699,94 @@ impl CommitmentTreeContract {
             &supplier,
             &amount,
         );
+
+        WithdrawEvent { supplier, usdc_amount: amount, total_supplied: pool.total_supplied }
+            .publish(&env);
+
+        Ok(())
+    }
+
+    // ── Admin ─────────────────────────────────────────────────────────────────
+
+    /// Updates the oracle contract address used for BTC/USD pricing. Admin only.
+    ///
+    /// Note: as of Phase 1, `oracle::get_btc_price_stroops` ignores the
+    /// `oracle` config field entirely and returns a hardcoded stub price -
+    /// see `oracle.rs`. This setter exists so that swapping to a real oracle
+    /// in Phase 2 is a config change plus one function-body edit in
+    /// `oracle.rs`, not also a migration to add the setter itself. It does
+    /// not, on its own, make oracle pricing live.
+    pub fn set_oracle(
+        env: Env,
+        caller: Address,
+        new_oracle: Address,
+    ) -> Result<(), CommitmentTreeError> {
+        caller.require_auth();
+        let mut config = Self::load_config(&env)?;
+        if caller != config.admin {
+            return Err(CommitmentTreeError::Unauthorized);
+        }
+        config.oracle = new_oracle;
+        env.storage().instance().set(&DataKey::Config, &config);
+        Ok(())
+    }
+
+    /// Updates the bitcoin-spv contract address used for deposit verification.
+    /// Admin only. Changing this mid-flight affects only deposits submitted
+    /// after the change - an in-flight deposit's SPV proof was already
+    /// verified against the previous contract by the time this would run.
+    pub fn set_spv_contract(
+        env: Env,
+        caller: Address,
+        new_spv_contract: Address,
+    ) -> Result<(), CommitmentTreeError> {
+        caller.require_auth();
+        let mut config = Self::load_config(&env)?;
+        if caller != config.admin {
+            return Err(CommitmentTreeError::Unauthorized);
+        }
+        config.spv_contract = new_spv_contract;
+        env.storage().instance().set(&DataKey::Config, &config);
+        Ok(())
+    }
+
+    /// Updates the zk-verifier contract address used for ZK proof verification.
+    /// Admin only. Changing this mid-flight affects only proofs submitted
+    /// after the change.
+    pub fn set_zk_verifier(
+        env: Env,
+        caller: Address,
+        new_zk_verifier: Address,
+    ) -> Result<(), CommitmentTreeError> {
+        caller.require_auth();
+        let mut config = Self::load_config(&env)?;
+        if caller != config.admin {
+            return Err(CommitmentTreeError::Unauthorized);
+        }
+        config.zk_verifier = new_zk_verifier;
+        env.storage().instance().set(&DataKey::Config, &config);
+        Ok(())
+    }
+
+    /// Pauses or unpauses new deposits/borrows/USDC supply. Admin only.
+    ///
+    /// A pause never affects existing positions: `repay`, `withdraw_supply`,
+    /// and `liquidate` all ignore `Config::paused` by design, so users can
+    /// always exit. This is an emergency brake on new exposure, not a freeze
+    /// - see `docs/architecture/contract-migration-runbook.md`.
+    pub fn set_paused(
+        env: Env,
+        caller: Address,
+        paused: bool,
+    ) -> Result<(), CommitmentTreeError> {
+        caller.require_auth();
+        let mut config = Self::load_config(&env)?;
+        if caller != config.admin {
+            return Err(CommitmentTreeError::Unauthorized);
+        }
+        config.paused = paused;
+        env.storage().instance().set(&DataKey::Config, &config);
+        PausedSetEvent { admin: caller, paused }.publish(&env);
         Ok(())
     }
 
@@ -851,7 +956,7 @@ pub(crate) fn sig_u64(sig: &BytesN<32>) -> u64 {
 /// Extracts a non-negative `i128` from the low 16 bytes of a 32-byte field element.
 ///
 /// Returns `None` if the high 16 bytes are non-zero, which would indicate a
-/// value exceeding 2^127 — impossible for any realistic USDC amount or price.
+/// value exceeding 2^127 - impossible for any realistic USDC amount or price.
 pub(crate) fn sig_i128(sig: &BytesN<32>) -> Option<i128> {
     let arr = sig.to_array();
     if arr[0..16] != [0u8; 16] {
