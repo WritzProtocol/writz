@@ -22,8 +22,10 @@ circuits/keys/*.zkey
 # ── AI agents (track skills + stellar-loop tooling; ignore local/runtime) ─────
 .claude/settings.json
 .claude/settings.local.json
+.claude/worktrees/
 .agents/settings.local.json
 **/CLAUDE.md
+**/superpowers/
 
 # stellar-loop runtime state (never commit traces or local session data)
 .stellar/traces/

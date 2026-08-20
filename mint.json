@@ -38,7 +38,7 @@
     {
       "name": "Testnet Explorer",
       "icon": "cube",
-      "url": "https://stellar.expert/explorer/testnet/contract/CC2OZ3LG5U6RE3U7QC2R5QMID5GHQBE7QXTJQ4ZSTP5W73WDTKQPRW7E"
+      "url": "https://stellar.expert/explorer/testnet/contract/CDQCTFO3FK3M47QS47O2A4WLNPSQAQBSXBFPJ6RZEHFO5D7RY34FSBBP"
     },
     {
       "name": "Bitcoin Signet Tx",
@@ -111,6 +111,13 @@
       "pages": [
         "docs/roadmap/vision",
         "docs/roadmap/phases"
+      ]
+    },
+    {
+      "group": "Legal",
+      "pages": [
+        "docs/legal/terms-of-service",
+        "docs/legal/privacy-policy"
       ]
     },
     {
