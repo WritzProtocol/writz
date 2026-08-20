@@ -36,7 +36,7 @@ export interface DepositAddress {
  * Derives the unique P2WSH deposit address for a given set of locking parameters.
  *
  * The same (protocolPubkey, userPubkey, timelockHeight) triple always
- * produces the same address — derivation is deterministic.
+ * produces the same address - derivation is deterministic.
  *
  * @param params  - The locking parameters for this deposit.
  * @param network - `bitcoin.networks.bitcoin` for mainnet, `.testnet` for testnet.

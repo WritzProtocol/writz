@@ -33,20 +33,20 @@ describe('buildRedeemScript', () => {
 
     // OP_IF
     expect(ops[0]).toBe(bitcoin.opcodes.OP_IF);
-    // <protocol_pubkey> — 33-byte buffer
+    // <protocol_pubkey> - 33-byte buffer
     expect(Buffer.isBuffer(ops[1])).toBe(true);
     expect((ops[1] as Buffer).length).toBe(33);
     expect((ops[1] as Buffer).equals(protocol.publicKey)).toBe(true);
     // OP_CHECKSIGVERIFY
     expect(ops[2]).toBe(bitcoin.opcodes.OP_CHECKSIGVERIFY);
-    // <user_pubkey> — 33-byte buffer
+    // <user_pubkey> - 33-byte buffer
     expect(Buffer.isBuffer(ops[3])).toBe(true);
     expect((ops[3] as Buffer).equals(user.publicKey)).toBe(true);
     // OP_CHECKSIG
     expect(ops[4]).toBe(bitcoin.opcodes.OP_CHECKSIG);
     // OP_ELSE
     expect(ops[5]).toBe(bitcoin.opcodes.OP_ELSE);
-    // <timelock> — encoded integer
+    // <timelock> - encoded integer
     expect(Buffer.isBuffer(ops[6])).toBe(true);
     // OP_CHECKLOCKTIMEVERIFY
     expect(ops[7]).toBe(bitcoin.opcodes.OP_CHECKLOCKTIMEVERIFY);

@@ -1,5 +1,5 @@
 /**
- * KmsSigner tests — exercised against a mocked KMS client, so
+ * KmsSigner tests - exercised against a mocked KMS client, so
  * no AWS credentials or network access are needed. Validates:
  *   - public key extraction from KMS's DER SubjectPublicKeyInfo response
  *   - DER-to-compact signature conversion produces a signature that
@@ -20,7 +20,7 @@ const SECP256K1_N = BigInt(
   '0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141',
 );
 
-// ── DER helpers (test-only — mirror what a real KMS response looks like) ────
+// ── DER helpers (test-only - mirror what a real KMS response looks like) ────
 
 /** DER-encodes an unsigned big-endian integer per ASN.1 INTEGER rules. */
 function derInteger(value: Buffer): Buffer {
@@ -65,7 +65,7 @@ function uncompressedPubkeyOf(compressedPubkey: Buffer): Buffer {
   return Buffer.from(ecc.pointCompress(compressedPubkey, false));
 }
 
-/** A fake KMSClient — routes GetPublicKeyCommand/SignCommand to canned
+/** A fake KMSClient - routes GetPublicKeyCommand/SignCommand to canned
  * responses without any network access. */
 function makeMockKmsClient(opts: {
   privateKey: Buffer;
@@ -136,7 +136,7 @@ describe('KmsSigner.sign', () => {
 
     // Compute the "natural" low-S signature once, then deliberately flip it
     // to the mathematically-equivalent high-S form and hand that back as
-    // the mocked KMS response — exactly the failure mode KmsSigner's low-S
+    // the mocked KMS response - exactly the failure mode KmsSigner's low-S
     // normalization must correct, since KMS does not guarantee low-S.
     const naturalCompact = Buffer.from(ecc.sign(hash, keypair.signer.privateKey!));
     const naturalS = BigInt('0x' + naturalCompact.subarray(32, 64).toString('hex'));

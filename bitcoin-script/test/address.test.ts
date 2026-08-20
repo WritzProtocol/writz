@@ -41,7 +41,7 @@ describe('deriveDepositAddress', () => {
     expect(addr.redeemScript.length).toBeGreaterThan(0);
   });
 
-  test('derivation is deterministic — same params, same address', () => {
+  test('derivation is deterministic - same params, same address', () => {
     const params = makeParams(testnet);
     const addr1 = deriveDepositAddress(params, testnet);
     const addr2 = deriveDepositAddress(params, testnet);
