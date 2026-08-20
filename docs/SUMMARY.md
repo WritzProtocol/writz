@@ -4,6 +4,11 @@
 
 ---
 
+## Architecture
+
+* [Technical Overview](architecture/technical-overview.md)
+* [Diagrams](architecture/diagrams.mdx)
+
 ## Introduction
 
 * [What is Writz?](introduction/what-is-writz.md)
@@ -30,7 +35,7 @@
 * [Quick Start](developers/quick-start.md)
 * [Bitcoin SPV SDK](developers/spv-sdk.md)
 * [Contract Reference](developers/contract-reference.md)
-* [Contributing](developers/contributing.md)
+* [Contributing](developers/contribution-guide.md)
 
 ## Security
 
@@ -42,6 +47,11 @@
 
 * [Vision](roadmap/vision.md)
 * [Phases](roadmap/phases.md)
+
+## Legal
+
+* [Terms of Service](legal/terms-of-service.md)
+* [Privacy Policy](legal/privacy-policy.md)
 
 ## Research
 

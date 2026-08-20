@@ -8,7 +8,7 @@
  viewBox="0.00 0.00 2700.00 242.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
 <g id="graph0" class="graph" transform="scale(0.906999 0.906999) rotate(0) translate(50.4 216.12)">
 <title>deposit&#45;flow</title>
-<text xml:space="preserve" text-anchor="start" x="71" y="-150.37" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="13.00" fill="#1c1917">Writz Protocol — Deposit Flow</text>
+<text xml:space="preserve" text-anchor="start" x="71" y="-150.37" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="13.00" fill="#1c1917">Writz Protocol - Deposit Flow</text>
 <text xml:space="preserve" text-anchor="start" x="8" y="-141.17" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#57534e">BTC locked on Bitcoin · ZK commitment registered on Soroban · 6&#45;step process</text>
 <!-- s1 -->
 <g id="node1" class="node">

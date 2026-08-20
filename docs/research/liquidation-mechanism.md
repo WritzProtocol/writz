@@ -40,7 +40,7 @@ Writz stores positions as ZK commitments:
 commitment = Poseidon(collateral_satoshis, usdc_debt, secret, nonce)
 ```
 
-On-chain, only the commitment hash is stored — not the collateral or debt amounts. A liquidation bot cannot determine which positions are undercollateralized by reading the chain.
+On-chain, only the commitment hash is stored - not the collateral or debt amounts. A liquidation bot cannot determine which positions are undercollateralized by reading the chain.
 
 ### Solutions
 
@@ -61,7 +61,7 @@ When a position becomes liquidatable, the protocol emits no signal. Users must p
 **Verdict:** Not recommended.
 
 #### Option C: ZK Proof of Undercollateralization (Recommended for Phase 2)
-A keeper (or any party with position knowledge) generates a ZK proof that a specific position is below the liquidation threshold — **without revealing the actual collateral amount or debt**.
+A keeper (or any party with position knowledge) generates a ZK proof that a specific position is below the liquidation threshold - **without revealing the actual collateral amount or debt**.
 
 **ZK proof statement:**
 ```
@@ -72,7 +72,7 @@ I know (commitment_preimage = {collateral, debt, secret, nonce}) such that:
   4. nullifier = Poseidon(secret, commitment_index)  [unique, prevents replay]
 ```
 
-The verifier (Soroban contract) checks the ZK proof using the current oracle price. If valid, it triggers the liquidation of the commitment — releasing the BTC co-sign to the liquidator and burning the USDC debt — without ever revealing the collateral amount or who the position belongs to.
+The verifier (Soroban contract) checks the ZK proof using the current oracle price. If valid, it triggers the liquidation of the commitment - releasing the BTC co-sign to the liquidator and burning the USDC debt - without ever revealing the collateral amount or who the position belongs to.
 
 **Pros:** Decentralized and privacy-preserving. Any party can liquidate if they can prove undercollateralization.
 **Cons:** The prover must know the position's preimage. This requires the keeper (or the user) to share the position details. In practice, the Writz keeper tracks all positions in encrypted off-chain storage.
@@ -97,10 +97,10 @@ Writz Keeper (off-chain)
     by anyone with a valid ZK proof (open liquidation with proof submission)
 ```
 
-**Emergency fallback mechanism — the two lending contracts differ here, by design:**
+**Emergency fallback mechanism - the two lending contracts differ here, by design:**
 
-1. **`commitment-tree::liquidate`** — Writz's ZK liquidation path — needs no fallback at all. It is fully permissionless from the start: it requires only `keeper.require_auth()` (the caller authorizing their own USDC payment) plus a valid Groth16 undercollateralization proof, with no keeper-address check to fall back from. "Anyone who can submit a valid ZK proof" already describes its normal operating mode, not an emergency-only path.
-2. **`private-lend::liquidate`** — the plaintext (non-ZK) lending contract — restricts liquidation to a designated keeper by default, with a **time-based** fallback: `Config.keeper_stale_after_secs` (default 86,400 = 24h) and `ProtocolState.last_keeper_heartbeat`. If the designated keeper hasn't successfully liquidated or called `keeper_heartbeat` within that window, `liquidate` opens to any caller who can satisfy the (caller-independent) undercollateralization check. See `contracts/contracts/private-lend/src/lib.rs`.
+1. **`commitment-tree::liquidate`** - Writz's ZK liquidation path - needs no fallback at all. It is fully permissionless from the start: it requires only `keeper.require_auth()` (the caller authorizing their own USDC payment) plus a valid Groth16 undercollateralization proof, with no keeper-address check to fall back from. "Anyone who can submit a valid ZK proof" already describes its normal operating mode, not an emergency-only path.
+2. **`private-lend::liquidate`** - the plaintext (non-ZK) lending contract - restricts liquidation to a designated keeper by default, with a **time-based** fallback: `Config.keeper_stale_after_secs` (default 86,400 = 24h) and `ProtocolState.last_keeper_heartbeat`. If the designated keeper hasn't successfully liquidated or called `keeper_heartbeat` within that window, `liquidate` opens to any caller who can satisfy the (caller-independent) undercollateralization check. See `contracts/contracts/private-lend/src/lib.rs`.
 
 ### Phase 2: Decentralized Keeper Network
 
@@ -117,7 +117,7 @@ Multiple keeper nodes compete to submit liquidation proofs. The first valid proo
 | **Minimum collateral ratio** | 150% | User can borrow up to 66.7% of BTC value in USDC |
 | **Liquidation threshold** | 120% | Position liquidated if BTC value drops to 1.2× the debt |
 | **Liquidation buffer** | 30% | Distance from min ratio to liquidation: safety margin for BTC volatility |
-| **Liquidation bonus** | 10% | Liquidator receives BTC at 10% below market — their profit |
+| **Liquidation bonus** | 10% | Liquidator receives BTC at 10% below market - their profit |
 | **Protocol liquidation fee** | 2% | Writz takes 2% of the liquidated collateral value |
 
 ### Example liquidation scenario
@@ -143,7 +143,7 @@ Liquidator profit:  $66,550 - $60,500 = $6,050 (~10%)
 
 ### Partial liquidations
 
-For large positions, full liquidation in one transaction may not be practical. Writz supports partial liquidations — a liquidator pays some of the debt and receives proportional collateral.
+For large positions, full liquidation in one transaction may not be practical. Writz supports partial liquidations - a liquidator pays some of the debt and receives proportional collateral.
 
 **Minimum liquidation amount:** 10% of outstanding debt per liquidation call. This prevents dust liquidations that waste gas without meaningful risk reduction.
 
@@ -197,7 +197,7 @@ template LiquidationProof() {
 Users should be notified well before liquidation:
 - **150% → 140%:** Warning notification (email, in-app)
 - **140% → 130%:** Urgent notification with one-click repay button
-- **130% → 120%:** Critical alert — liquidation imminent
+- **130% → 120%:** Critical alert - liquidation imminent
 - **< 120%:** Keeper initiates liquidation
 
 The Writz frontend should show users their health factor in real-time using their locally-stored position secret (the frontend knows the position details even though the chain doesn't).
@@ -205,4 +205,4 @@ The Writz frontend should show users their health factor in real-time using thei
 ---
 
 *Last updated: 2026-06-22*
-*Sources: [What is Health Factor in DeFi — Otomato](https://otomato.xyz/blog/what-is-health-factor-defi-lending) · [ZK Lending on Cardano — Catalyst](https://projectcatalyst.io/funds/13/cardano-open-developers/zero-knowledge-privacy-protocol-for-defi-lending-and-borrowing-on-cardano-open-source) · [Aave Liquidation Mechanism](https://docs.aave.com/faq/liquidations)*
+*Sources: [What is Health Factor in DeFi - Otomato](https://otomato.xyz/blog/what-is-health-factor-defi-lending) · [ZK Lending on Cardano - Catalyst](https://projectcatalyst.io/funds/13/cardano-open-developers/zero-knowledge-privacy-protocol-for-defi-lending-and-borrowing-on-cardano-open-source) · [Aave Liquidation Mechanism](https://docs.aave.com/faq/liquidations)*

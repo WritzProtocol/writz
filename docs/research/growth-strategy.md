@@ -15,7 +15,7 @@ The single most important market insight for Writz's growth strategy comes from 
 - Only **8%** use BTCfi regularly
 - **65%** couldn't name a single BTCfi project
 
-This is simultaneously the biggest obstacle and the biggest opportunity. The BTCfi market is massively underpenetrated relative to the value locked in Bitcoin ($1T+ in HODLers). The question is not whether the market exists — it's how to reach people who have never participated in DeFi before.
+This is simultaneously the biggest obstacle and the biggest opportunity. The BTCfi market is massively underpenetrated relative to the value locked in Bitcoin ($1T+ in HODLers). The question is not whether the market exists - it's how to reach people who have never participated in DeFi before.
 
 The second insight: **Bitcoin holders are not Ethereum users.** They are more conservative, more skeptical of complexity, and more likely to trust a product that feels simple and safe than one that feels like DeFi. Writz's UX and messaging must reflect this.
 
@@ -37,7 +37,7 @@ The second insight: **Bitcoin holders are not Ethereum users.** They are more co
 
 **Who they are:** Existing Stellar/Soroban DeFi users who already use Blend, the Stellar DEX, or hold USDC on Stellar. They understand the ecosystem and trust Stellar's infrastructure.
 
-**What they need:** BTC exposure in the ecosystem they already use. They may not even own BTC — they want to lend USDC and earn yield from BTC borrowers.
+**What they need:** BTC exposure in the ecosystem they already use. They may not even own BTC - they want to lend USDC and earn yield from BTC borrowers.
 
 **Where to find them:** Stellar Discord, Stellar subreddit, Lobstr/Freighter wallet users, Blend users.
 
@@ -107,14 +107,14 @@ More protocols built on Writz → more SPV API revenue
 
 ## Phase-by-Phase Growth Strategy
 
-### Phase 1: Builders and Early Adopters (Testnet — Q3/Q4 2026)
+### Phase 1: Builders and Early Adopters (Testnet - Q3/Q4 2026)
 
 **Goal:** Build technical credibility and a community of 500–1,000 highly engaged early users before mainnet.
 
 **Tactics:**
 
 1. **Public build in the open**
-Write technical threads on X about what we're building as we build it: how Bitcoin SPV works in Rust, how Circom circuits for lending work, what ZK-private liquidations look like. This is not marketing — it is education that positions Writz as the most technically credible BTCfi protocol on Stellar. Technical credibility is the only credibility that matters in this audience.
+Write technical threads on X about what we're building as we build it: how Bitcoin SPV works in Rust, how Circom circuits for lending work, what ZK-private liquidations look like. This is not marketing - it is education that positions Writz as the most technically credible BTCfi protocol on Stellar. Technical credibility is the only credibility that matters in this audience.
 
 2. **Testnet early access program**
 Invite 100–200 technical users to test the SPV client and PrivateLend on testnet before mainnet. Assign unique testnet NFTs or "early contributor" tags. These users become the first word-of-mouth advocates and beta testers who catch bugs before real money is at risk.
@@ -129,11 +129,11 @@ A well-documented, actively maintained public GitHub is a growth channel. Stella
 - Contribute to Stellar GitHub discussions (CAP proposals, SEP discussions)
 
 5. **ZK and BTCfi Twitter**
-Engage with ZK proof researchers and BTCfi builders. Not promotional — educational. Share insights from the Circom circuit design, the trusted setup ceremony, the Protocol 26 cost benchmarks. Earn follows through depth, not volume.
+Engage with ZK proof researchers and BTCfi builders. Not promotional - educational. Share insights from the Circom circuit design, the trusted setup ceremony, the Protocol 26 cost benchmarks. Earn follows through depth, not volume.
 
 ---
 
-### Phase 2: First 1,000 Users (Mainnet Launch — Q4 2026 to Q2 2027)
+### Phase 2: First 1,000 Users (Mainnet Launch - Q4 2026 to Q2 2027)
 
 **Goal:** $1M TVL, 1,000 active wallets, first institutional customer for Proof of Reserve.
 
@@ -146,7 +146,11 @@ Before the WRTZ token launches, run a points program. Users earn points for:
 - Using Dark Swap (points per dollar swapped)
 - Referring verified new users (flat bonus)
 
-Points convert to WRTZ token allocation at launch. Anti-Sybil: minimum deposit sizes, on-chain activity requirements, wallet age requirements.
+Points convert to WRTZ token allocation at launch. Anti-Sybil thresholds (defaults - revisit once real usage data exists):
+- **Minimum deposit size to earn points:** $250 equivalent in BTC collateral per position. Below this, deposits still work but earn zero points - deters wash-deposit farming without blocking small real users from using the product.
+- **On-chain activity requirement:** at least one borrow *and* one repay (or 30+ days of an open position) - a deposit-then-immediate-withdraw earns no points. Pure "touch and leave" farming is the main abuse pattern points programs face.
+- **Wallet age requirement:** the Bitcoin address funding the deposit must have on-chain history predating the points program's public announcement date; the connected Stellar account must be 14+ days old at first deposit. Both are checked at claim time, not deposit time, so late sign-ups can't game a moving cutoff.
+- **Owner:** whoever builds the points program (Phase 2 frontend work) - these thresholds need to ship in the same PR as the points logic, not be left as a follow-up. See `docs/design/points-program-ux-spec.md` for the UX flow this owner should build against.
 
 **Why points, not an immediate airdrop:** Points programs create sustained engagement over months. They reward the users who actually use the protocol (not farmers who deposit and immediately withdraw), and they create excitement around a future token event without committing to a specific date or distribution.
 
@@ -154,7 +158,7 @@ Points convert to WRTZ token allocation at launch. Anti-Sybil: minimum deposit s
 For the first 90 days, reduce the protocol fee to 0%. 100% of interest goes to USDC suppliers. This creates above-market APY for early lenders (10–15%+ vs. 5% elsewhere on Stellar), bootstrapping the liquidity pool.
 
 3. **Protocol-owned liquidity seed**
-Use $50,000–$100,000 from the SCF grant proceeds (after audit) to seed the USDC pool with protocol-owned capital. This ensures borrowers can actually borrow from day one without waiting for organic lenders.
+Seed the USDC pool with $50,000 of protocol-owned capital (matches the `docs/roadmap/phases.md` mainnet launch figure) so borrowers can actually borrow from day one without waiting for organic lenders. **Funding source is currently unresolved:** this was originally scoped as coming from SCF grant proceeds, but the SCF application has no short-term submission plan (see `docs/roadmap/phases.md`), so this $50K needs a funding source that doesn't depend on it - founder capital, a separate raise, or another mechanism - before it can be treated as a settled part of the mainnet launch checklist.
 
 4. **Integration with Stellar wallet ecosystem**
 Work with Freighter and Lobstr to list PrivateLend as a featured dApp. Both wallets have millions of users who are one click from becoming Writz lenders. This is the fastest path to Segment 2 (Stellar native users).
@@ -167,7 +171,7 @@ Publish 2 high-quality long-form pieces per month:
 - Technical: "How Writz verifies Bitcoin transactions in a Soroban smart contract" (targets technical audience)
 - Product: "Why your DeFi positions should be private" (targets general crypto audience)
 
-Distribute on Mirror.xyz, Medium, and the Writz blog. Quality over quantity — one genuinely insightful piece generates more inbound than 10 promotional ones.
+Distribute on Mirror.xyz, Medium, and the Writz blog. Quality over quantity - one genuinely insightful piece generates more inbound than 10 promotional ones.
 
 ---
 
@@ -178,7 +182,7 @@ Distribute on Mirror.xyz, Medium, and the Writz blog. Quality over quantity — 
 **Tactics:**
 
 1. **WRTZ token launch**
-Only after: $5M TVL sustained for 60+ days, 500+ active users, one completed external audit. Launch via a fair IDO or liquidity bootstrapping pool (LBP) — no VCs getting early access at 80% discount. Community-first distribution signals alignment with users.
+Only after: $5M TVL sustained for 60+ days, 500+ active users, one completed external audit. Launch via a fair IDO or liquidity bootstrapping pool (LBP) - no VCs getting early access at 80% discount. Community-first distribution signals alignment with users.
 
 2. **Institutional BD program**
 Dedicated institutional sales motion targeting:
@@ -195,7 +199,7 @@ Recruit 10–20 ambassadors from the Bitcoin and Stellar communities. Structure:
 - Clear expectations: 2 community posts/week, answer questions in Discord, represent Writz at local Bitcoin meetups
 
 4. **DeFi aggregator listings**
-Get Writz listed on DeFiLlama (TVL tracking), Nansen (wallet intelligence), and relevant DeFi dashboards. These are not marketing — they are credibility infrastructure. Being on DeFiLlama's protocol list means investors and serious DeFi users can find and track Writz without any active promotion.
+Get Writz listed on DeFiLlama (TVL tracking), Nansen (wallet intelligence), and relevant DeFi dashboards. These are not marketing - they are credibility infrastructure. Being on DeFiLlama's protocol list means investors and serious DeFi users can find and track Writz without any active promotion.
 
 5. **Cross-protocol integrations (ecosystem flywheel)**
 Work with other Stellar DeFi protocols (Blend, any Stellar AMM) to integrate Writz's SPV SDK. Each integration creates a technical partnership, distributes the SPV client further, and generates API revenue. Target: 3 integrations by end of 2027.
@@ -223,23 +227,23 @@ DeFi investors in 2026 have seen too many protocols with high TVL and no real us
 
 ### The metrics that make a great fundraising story
 
-When Writz raises its institutional round (2027, post-$1M TVL), the narrative is built on:
+When Writz raises its institutional round (2027, post-$1M TVL), the narrative is built on the lines below. **These are scripted future claims, only usable once each one is verifiably true at the time - do not lift any of them into current-tense marketing copy before then.**
 
-1. **First-mover in a specific niche** — "First trustless Bitcoin DeFi with ZK privacy on Stellar. Nobody can replicate this in less than 18 months."
+1. **First-mover in a specific niche** - "Trustless Bitcoin DeFi with ZK privacy on Stellar." (Not a "nobody can replicate" claim - Templar Protocol's Stellar infrastructure and native-BTC lending tech are already live separately as of 2026-08-04; their effective time-to-replicate is materially shorter than a from-scratch entrant's. See `docs/research/market-landscape.md`.)
 
-2. **Real revenue from day one** — "We generate protocol fees from every loan. At $5M TVL with 75% utilization, that's $45K/year in spread revenue — growing with TVL."
+2. **Real revenue from day one** - "We generate protocol fees from every loan. At $5M TVL with 75% utilization, that's $45K/year in spread revenue - growing with TVL."
 
-3. **Ecosystem moat** — "Our open Bitcoin SPV SDK is already used by 3 other Stellar protocols. Switching cost is high — they'd have to rebuild BTC verification from scratch."
+3. **Ecosystem moat** - "Our open Bitcoin SPV SDK is already used by 3 other Stellar protocols. Switching cost is high - they'd have to rebuild BTC verification from scratch." (True only once 3 integrations actually exist.)
 
-4. **Capital efficiency** — "Our TVL is productive. 75%+ utilization means almost every dollar of supplied USDC is earning yield. We don't have idle capital."
+4. **Capital efficiency** - "Our TVL is productive. 75%+ utilization means almost every dollar of supplied USDC is earning yield. We don't have idle capital."
 
-5. **Conservative risk management** — "150% collateral ratio, 120% liquidation threshold, 6-confirmation Bitcoin deposits. We have never had a bad debt event."
+5. **Conservative risk management** - "150% collateral ratio, 120% liquidation threshold, 6-confirmation Bitcoin deposits. We have never had a bad debt event." (Only true once there is a real operating history to back it - do not state before mainnet has run long enough to earn it.)
 
 ### How to make traction visible and verifiable
 
 **DeFiLlama listing (day 1 post-mainnet):** Submit to DeFiLlama immediately after mainnet. Every serious DeFi investor checks DeFiLlama. A protocol not listed doesn't exist to this audience.
 
-**On-chain transparency dashboard:** Build a public `/stats` page showing real-time: TVL, USDC utilization, total fees earned, number of active positions (without revealing amounts), total BTC locked. These numbers are all computable from public on-chain data — no trust required. Investors can verify independently.
+**On-chain transparency dashboard:** Build a public `/stats` page showing real-time: TVL, USDC utilization, total fees earned, number of active positions (without revealing amounts), total BTC locked. These numbers are all computable from public on-chain data - no trust required. Investors can verify independently.
 
 **Monthly protocol reports:** Publish a one-page monthly report: TVL, revenue, unique wallets, notable events, upcoming milestones. Archive all reports publicly. This creates a verifiable track record that compounds over time.
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// stellar-build learning loop — prompt capture (UserPromptSubmit).
+// stellar-build learning loop - prompt capture (UserPromptSubmit).
 //
 // Stashes the latest user prompt per session so trace-skill.js can pair the
 // natural-language trigger with whatever skill fires next. Writes nothing to

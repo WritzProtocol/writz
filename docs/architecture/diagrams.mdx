@@ -1,6 +1,6 @@
 ---
 title: "Architecture Diagrams"
-description: "Visual reference for the full Writz Protocol — from Bitcoin locking to ZK proofs on Soroban."
+description: "Visual reference for the full Writz Protocol - from Bitcoin locking to ZK proofs on Soroban."
 ---
 
 ## System Architecture
@@ -10,10 +10,10 @@ End-to-end view of how Bitcoin, the SPV Relayer, the four Soroban contracts, and
 ![Writz System Architecture](/docs/diagrams/output/01-system-architecture.png)
 
 **Key layers:**
-- **Bitcoin** — P2WSH locks collateral; two spending paths (cooperative co-sign or CLTV timelock)
-- **SPV Relayer** — watches Bitcoin, produces Merkle inclusion proofs on demand
-- **Soroban contracts** — `bitcoin-spv`, `zk-verifier`, `commitment-tree`, `private-lend` verify proofs and manage positions
-- **Browser** — generates all ZK proofs locally; private witness values never leave the device
+- **Bitcoin** - P2WSH locks collateral; two spending paths (cooperative co-sign or CLTV timelock)
+- **SPV Relayer** - watches Bitcoin, produces Merkle inclusion proofs on demand
+- **Soroban contracts** - `bitcoin-spv`, `zk-verifier`, `commitment-tree`, `private-lend` verify proofs and manage positions
+- **Browser** - generates all ZK proofs locally; private witness values never leave the device
 
 ---
 
@@ -29,7 +29,7 @@ Step-by-step path from connecting a Bitcoin wallet to having an active position 
 4. Relayer produces SPV proof (block headers + Merkle path)
 5. Browser generates Groth16 ZK proof binding commitment to the Bitcoin txid
 6. `commitment-tree.deposit()` verifies SPV proof + ZK proof on Soroban
-7. Admin calls `insert_commitment()` — position becomes active
+7. Admin calls `insert_commitment()` - position becomes active
 
 ---
 
@@ -52,7 +52,7 @@ Cooperative co-signed release after full repayment.
 ![BTC Release Flow](/docs/diagrams/output/04-btc-release-flow.png)
 
 - The server (`/api/cosign`) verifies the commitment is no longer pending before signing
-- `PROTOCOL_SIGNING_KEY` is server-only — never exposed to the browser
+- `PROTOCOL_SIGNING_KEY` is server-only - never exposed to the browser
 - Final witness: `[user_sig, protocol_sig, 0x01, redeemScript]`
 
 ---

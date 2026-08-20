@@ -1,5 +1,5 @@
 /**
- * Spending transaction tests — builds, signs, and finalizes PSBTs for both
+ * Spending transaction tests - builds, signs, and finalizes PSBTs for both
  * Path A (co-sign) and Path B (emergency timelock), then inspects the
  * resulting witness structure without broadcasting to any network.
  */
@@ -22,7 +22,7 @@ const AMOUNT_SAT = 100_000; // 0.001 BTC
 const FEE_SAT = 300;
 
 // bip174's `PsbtGlobal.unsignedTx` type only declares the methods its own
-// serialization code needs (`toBuffer`, `addInput`, ...) — not the `.tx`
+// serialization code needs (`toBuffer`, `addInput`, ...) - not the `.tx`
 // property bitcoinjs-lib's internal `PsbtTransaction` wrapper actually
 // carries. This narrow, purpose-built cast reaches exactly the shape these
 // tests need (the underlying real `Transaction`'s inputs) without resorting
@@ -47,7 +47,7 @@ function makeFixture() {
 
   const recipientAddress = pubkeyToP2WPKHAddress(user.publicKey, network);
 
-  // Fake UTXO — a 64-char hex txid (all `de` bytes), output index 0.
+  // Fake UTXO - a 64-char hex txid (all `de` bytes), output index 0.
   const txidHex = 'de'.repeat(32);
   const vout = 0;
 
@@ -104,7 +104,7 @@ describe('serializeWitness / deserializeWitness', () => {
 
 // ── Path A: co-sign release ───────────────────────────────────────────────────
 
-describe('Path A — co-sign release', () => {
+describe('Path A - co-sign release', () => {
   test('buildReleaseTransaction returns an unsigned PSBT', () => {
     const { spendParams } = makeFixture();
     const psbt = buildReleaseTransaction(spendParams);
@@ -189,7 +189,7 @@ describe('Path A — co-sign release', () => {
     const { protocol, user, spendParams } = makeFixture();
     const psbt = buildReleaseTransaction(spendParams);
 
-    // Only protocol signs — user signature missing
+    // Only protocol signs - user signature missing
     psbt.signInput(0, protocol.signer);
 
     expect(() => finalizePathA(psbt, 0, user.publicKey, protocol.publicKey))
@@ -200,7 +200,7 @@ describe('Path A — co-sign release', () => {
     const { protocol, user, spendParams } = makeFixture();
     const psbt = buildReleaseTransaction(spendParams);
 
-    // Only user signs — protocol signature missing
+    // Only user signs - protocol signature missing
     psbt.signInput(0, user.signer);
 
     expect(() => finalizePathA(psbt, 0, user.publicKey, protocol.publicKey))
@@ -229,7 +229,7 @@ describe('Path A — co-sign release', () => {
 
 // ── Path B: emergency timelock ────────────────────────────────────────────────
 
-describe('Path B — emergency timelock', () => {
+describe('Path B - emergency timelock', () => {
   test('buildEmergencyTransaction sets nLockTime to the timelock height', () => {
     const { spendParams } = makeFixture();
     const psbt = buildEmergencyTransaction(spendParams, TIMELOCK);
@@ -245,7 +245,7 @@ describe('Path B — emergency timelock', () => {
   });
 
   // Pins the exact production value, not just the inequality
-  // above — a future refactor that picked any value < 0xFFFFFFFF would
+  // above - a future refactor that picked any value < 0xFFFFFFFF would
   // still pass the inequality test but could reintroduce a subtly wrong
   // sequence (e.g. one that also fails to disable RBF as intended).
   test('input nSequence is exactly 0xFFFFFFFE for both Path A and Path B', () => {
@@ -260,7 +260,7 @@ describe('Path B — emergency timelock', () => {
     expect(pathBExtracted).toBe(0xffff_fffe);
   });
 
-  // Regression guard for this behavior — the whole point of
+  // Regression guard for this behavior - the whole point of
   // hardcoding nSequence inside buildEmergencyTransaction is that a caller
   // (a generic wallet, or a future refactor) cannot override it into the
   // unsafe 0xFFFFFFFF value. If SpendParams ever grows a `sequence` field,
@@ -271,7 +271,7 @@ describe('Path B — emergency timelock', () => {
     expect(Object.prototype.hasOwnProperty.call(spendParams, 'sequence')).toBe(false);
 
     // Even if a caller forges a params object with an unsafe sequence, the
-    // builder must not use it — it must still emit 0xFFFFFFFE.
+    // builder must not use it - it must still emit 0xFFFFFFFE.
     const forged = { ...spendParams, sequence: 0xffff_ffff } as typeof spendParams;
     const psbt = buildEmergencyTransaction(forged, TIMELOCK);
     const inputSeq = unsignedTxSequence(psbt, 0);
@@ -298,7 +298,7 @@ describe('Path B — emergency timelock', () => {
     expect(tx.ins[0].witness).toHaveLength(3);
   });
 
-  test('witness item [1] is empty (OP_FALSE — takes OP_ELSE branch)', () => {
+  test('witness item [1] is empty (OP_FALSE - takes OP_ELSE branch)', () => {
     const { user, spendParams } = makeFixture();
     const psbt = buildEmergencyTransaction(spendParams, TIMELOCK);
 

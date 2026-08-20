@@ -1,5 +1,5 @@
 """
-Writz Protocol — 03 Borrow / Repay Flow
+Writz Protocol - 03 Borrow / Repay Flow
 ZK proof updates the commitment tree; USDC transferred to/from the pool.
 """
 import sys, os
@@ -13,7 +13,7 @@ g.attr(**base_graph_attr(
     splines="spline",
     size="14,11",
     label=hl(
-        "Writz Protocol — Borrow / Repay Flow",
+        "Writz Protocol - Borrow / Repay Flow",
         "Private ZK proof · collateral ratio enforced on-chain · nonce rotates on every action",
     ),
 ))
@@ -53,7 +53,7 @@ with g.subgraph(name="cluster_repay") as r:
 g.node("nonce_rotate", hl("Nonce Rotation", "newNonce = randomFieldElement()", "new commitment = Poseidon(collateral, newDebt, secret, newNonce)"),
        fillcolor=F_ZK, color=B_ZK)
 
-g.node("save", hl("Update Position Store", "new commitment · nullifier · nonce · debt", "localStorage — device only"),
+g.node("save", hl("Update Position Store", "new commitment · nullifier · nonce · debt", "localStorage - device only"),
        fillcolor=F_FRONTEND, color=B_FRONTEND)
 
 # ── Edges ─────────────────────────────────────────────────────────────────────

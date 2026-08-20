@@ -1,8 +1,10 @@
 # ZK Proof of Reserve
 
+> **Scope status:** This is a problem-and-hypothesis exploration, not a committed roadmap item. No circuit, contract, or engineering work exists for ZK Proof of Reserve today - it is fully speculative. Before investing further spec or engineering time here, validate real user demand from PrivateLend's mainnet launch first; this document should not expand further until that validation exists.
+
 **Prove you hold Bitcoin. Without revealing your wallet.**
 
-ZK Proof of Reserve is a B2B product built on the Writz Protocol infrastructure. It allows companies — exchanges, fintechs, funds, custodians — to generate cryptographic proof that they control a specific amount of Bitcoin without revealing their wallet addresses, exact holdings, or any information that competitors or attackers could exploit.
+ZK Proof of Reserve is a B2B product built on the Writz Protocol infrastructure. It allows companies - exchanges, fintechs, funds, custodians - to generate cryptographic proof that they control a specific amount of Bitcoin without revealing their wallet addresses, exact holdings, or any information that competitors or attackers could exploit.
 
 ---
 
@@ -10,11 +12,11 @@ ZK Proof of Reserve is a B2B product built on the Writz Protocol infrastructure.
 
 After FTX collapsed in November 2022, "Proof of Reserve" became a regulatory and reputational expectation for any company that holds customer crypto assets. But the approaches used today are deeply flawed:
 
-**On-chain Merkle proofs (Kraken, Binance approach):** The exchange publishes a Merkle tree of customer balances. Anyone can verify their balance is included. But the exchange must also reveal the total balance — and connecting wallet addresses to exchange identity is trivial for a sophisticated chain analyst. This leaks competitive intelligence and creates security risk.
+**On-chain Merkle proofs (Kraken, Binance approach):** The exchange publishes a Merkle tree of customer balances. Anyone can verify their balance is included. But the exchange must also reveal the total balance - and connecting wallet addresses to exchange identity is trivial for a sophisticated chain analyst. This leaks competitive intelligence and creates security risk.
 
 **Attestation by auditors (Chainalysis, Nansen approach):** A third-party auditor signs off on the holdings. But this requires trusting the auditor, is expensive, and does not provide cryptographic verification. The customer must trust the attestation, not verify it.
 
-**What's needed:** A proof that says "this entity controls at least X BTC" — verifiable by anyone — without revealing wallet addresses, the exact amount, or any other sensitive information.
+**What's needed:** A proof that says "this entity controls at least X BTC" - verifiable by anyone - without revealing wallet addresses, the exact amount, or any other sensitive information.
 
 That is what ZK Proof of Reserve delivers.
 
@@ -27,7 +29,7 @@ That is what ZK Proof of Reserve delivers.
 1. You specify the BTC threshold you want to prove (e.g., "we hold at least 1,000 BTC").
 2. You run the Writz PoR client locally. It connects to your Bitcoin node (or a trusted Esplora instance) and fetches your UTXOs.
 3. The client generates a Groth16 ZK proof that your UTXO set sums to at least the claimed threshold.
-4. The proof is anchored to a specific Bitcoin block — providing a timestamp for the attestation.
+4. The proof is anchored to a specific Bitcoin block - providing a timestamp for the attestation.
 5. The proof and a verification key are published. Anyone can verify the proof independently.
 
 ### What the Proof Reveals
@@ -42,7 +44,7 @@ That is what ZK Proof of Reserve delivers.
 
 ### Verification
 
-Anyone — a regulator, an auditor, a counterparty, a retail customer — can run the public verification script against the published proof and verification key. No trust in Writz or the enterprise required. The math speaks.
+Anyone - a regulator, an auditor, a counterparty, a retail customer - can run the public verification script against the published proof and verification key. No trust in Writz or the enterprise required. The math speaks.
 
 ---
 
@@ -84,7 +86,7 @@ ZK Proof of Reserve uses the same Groth16 BN254 circuit infrastructure as Privat
 - Constraint: sum of UTXO values ≥ threshold
 - Output: A Groth16 proof that can be verified by anyone with the published verification key
 
-The circuit is compiled, the trusted setup ceremony is run publicly, and the verification key is published openly. The verification client is open source — any developer can inspect and run the verification independently.
+The circuit is compiled, the trusted setup ceremony is run publicly, and the verification key is published openly. The verification client is open source - any developer can inspect and run the verification independently.
 
 ---
 
@@ -103,7 +105,7 @@ Institutions interested in early access to ZK Proof of Reserve can contact the W
 **Contact:** open an issue at
 [github.com/WritzProtocol/writz/issues](https://github.com/WritzProtocol/writz/issues).
 (`writz.xyz` is registered but has no MX record yet, so `team@writz.xyz` does
-not receive mail — use GitHub until a mailbox is live.)
+not receive mail - use GitHub until a mailbox is live.)
 
 ---
 

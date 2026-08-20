@@ -6,7 +6,7 @@ import type { SignTransaction } from "@/lib/wallet/WalletProvider";
 /**
  * Lender-side flows: supply USDC to the pool and withdraw it later.
  *
- * Unlike borrow/repay these carry no ZK proof — they are plain authenticated
+ * Unlike borrow/repay these carry no ZK proof - they are plain authenticated
  * contract calls. The USDC token transfer happens inside the contract
  * (`supply_usdc` pulls from the lender; `withdraw_supply` pays back), and the
  * wallet authorizes it as part of signing the transaction.

@@ -7,7 +7,7 @@
  * Byte-order note:
  *   Esplora displays txids and block hashes in REVERSED (display) byte order,
  *   consistent with block explorers. The raw 80-byte block header returned by
- *   /block/{hash}/header is in native binary format — no reversal needed.
+ *   /block/{hash}/header is in native binary format - no reversal needed.
  *   The merkle proof sibling hashes returned by /tx/{txid}/merkle-proof are
  *   in INTERNAL byte order (suitable for direct use in SHA256d computation).
  */
@@ -30,8 +30,15 @@ export interface MerkleProofResponse {
   pos: number;      // 0-based index of the transaction in the block
 }
 
-/** Thin wrapper that adds timeout and basic error normalisation. */
-async function get(url: string, timeoutMs: number): Promise<string> {
+/**
+ * Fetches `url` with a timeout, throwing `EsploraError` on a non-2xx
+ * response. Returns the raw `Response` so callers can read the body in
+ * whichever form they need (text vs. arrayBuffer) - `get()` and
+ * `getRawTx()` used to each carry their own copy of this exact
+ * fetch/timeout/AbortController/error-handling block, able to drift
+ * independently; this is the one copy both build on now.
+ */
+async function fetchWithTimeout(url: string, timeoutMs: number): Promise<Response> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -40,10 +47,16 @@ async function get(url: string, timeoutMs: number): Promise<string> {
       const body = await res.text().catch(() => "");
       throw new EsploraError(res.status, url, body);
     }
-    return res.text();
+    return res;
   } finally {
     clearTimeout(timer);
   }
+}
+
+/** Thin wrapper that adds timeout and basic error normalisation. */
+async function get(url: string, timeoutMs: number): Promise<string> {
+  const res = await fetchWithTimeout(url, timeoutMs);
+  return res.text();
 }
 
 export class EsploraError extends Error {
@@ -77,20 +90,9 @@ export class EsploraClient {
    * `stripWitness()` from `./tx` before computing the txid.
    */
   async getRawTx(txid: string): Promise<string> {
-    const url = `${this.baseUrl}/tx/${txid}/raw`;
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), this.timeoutMs);
-    try {
-      const res = await fetch(url, { signal: controller.signal });
-      if (!res.ok) {
-        const body = await res.text().catch(() => "");
-        throw new EsploraError(res.status, url, body);
-      }
-      const arrayBuf = await res.arrayBuffer();
-      return Buffer.from(arrayBuf).toString("hex");
-    } finally {
-      clearTimeout(timer);
-    }
+    const res = await fetchWithTimeout(`${this.baseUrl}/tx/${txid}/raw`, this.timeoutMs);
+    const arrayBuf = await res.arrayBuffer();
+    return Buffer.from(arrayBuf).toString("hex");
   }
 
   /**
@@ -129,6 +131,14 @@ export class EsploraClient {
   /** Returns the current tip block height. */
   async getTipHeight(): Promise<number> {
     const body = await get(`${this.baseUrl}/blocks/tip/height`, this.timeoutMs);
-    return parseInt(body.trim(), 10);
+    const height = parseInt(body.trim(), 10);
+    if (Number.isNaN(height)) {
+      // A malformed response (e.g. an HTML error page from a misconfigured
+      // proxy in front of the Esplora instance) would otherwise silently
+      // propagate NaN into downstream height arithmetic instead of failing
+      // loudly here, where the actual bad response body is still available.
+      throw new Error(`getTipHeight: could not parse a block height from response: ${body.slice(0, 200)}`);
+    }
+    return height;
   }
 }

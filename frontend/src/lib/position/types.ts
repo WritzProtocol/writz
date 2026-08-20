@@ -1,13 +1,13 @@
 /**
  * A private lending position. Amounts live on the device; `secret`/`nonce` are
- * NOT persisted — they are derived on demand from the wallet-derived session seed
+ * NOT persisted - they are derived on demand from the wallet-derived session seed
  * plus `index`/`version` (see lib/position/derive). BigInt fields are decimal
  * strings for JSON-safe persistence.
  */
-export type PositionStatus = "pending" | "active" | "closed";
+export type PositionStatus = "pending" | "active" | "closed" | "liquidated";
 
 export interface Position {
-  /** Stable local id — the current commitment (decimal string). */
+  /** Stable local id - the current commitment (decimal string). */
   id: string;
   /** Stellar address this position belongs to. */
   owner: string;
@@ -17,13 +17,13 @@ export interface Position {
   collateralSats: string;
   /** Current USDC debt, in stroops. */
   debtStroops: string;
-  /** Derivation index — which position for this wallet. secret = derive(seed, index). */
+  /** Derivation index - which position for this wallet. secret = derive(seed, index). */
   index: number;
-  /** Nonce rotation counter — incremented on every borrow/repay. nonce = derive(seed, index, version). */
+  /** Nonce rotation counter - incremented on every borrow/repay. nonce = derive(seed, index, version). */
   version: number;
   /** Current commitment (decimal string). */
   commitment: string;
-  /** Current nullifier (decimal string) — spent when the position next changes. */
+  /** Current nullifier (decimal string) - spent when the position next changes. */
   nullifier: string;
   status: PositionStatus;
   /** Unix ms when created (stamped by the caller). */

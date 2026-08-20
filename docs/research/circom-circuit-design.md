@@ -9,9 +9,9 @@
 ## Overview
 
 Writz requires three distinct ZK circuits:
-1. **Deposit circuit** — prove BTC was deposited and create a private position commitment
-2. **Borrow/repay circuit** — prove the state transition of a position without revealing amounts
-3. **Liquidation circuit** — prove a position is undercollateralized without revealing amounts
+1. **Deposit circuit** - prove BTC was deposited and create a private position commitment
+2. **Borrow/repay circuit** - prove the state transition of a position without revealing amounts
+3. **Liquidation circuit** - prove a position is undercollateralized without revealing amounts
 
 This document designs each circuit's structure, constraints, and inputs/outputs, drawing from the Stellar Private Payments reference implementation.
 
@@ -21,7 +21,7 @@ This document designs each circuit's structure, constraints, and inputs/outputs,
 
 **Why Circom:**
 - Most mature ZK circuit language in production (Tornado Cash, Zcash Sapling, Stellar Private Payments)
-- Compiles to R1CS (Rank-1 Constraint System) — directly compatible with Groth16
+- Compiles to R1CS (Rank-1 Constraint System) - directly compatible with Groth16
 - Large library of reusable components (Poseidon hash, Merkle proofs, comparators, bit decomposition)
 - Browser-based proof generation via snarkjs + WebAssembly
 
@@ -29,13 +29,13 @@ This document designs each circuit's structure, constraints, and inputs/outputs,
 - Constant-size proofs: 192 bytes regardless of circuit complexity
 - Fastest verification: single bilinear pairing check
 - Production-proven on Soroban via Protocol X-Ray (BN254 pairing host function)
-- Stellar Private Payments uses exactly this stack — direct reference available
+- Stellar Private Payments uses exactly this stack - direct reference available
 
 **Why BN254:**
 - Protocol 25 added BN254 host functions specifically
 - Protocol 26 added BN254 MSM and scalar arithmetic host functions
 - Most Circom tooling targets BN254
-- Same curve as Ethereum EIP-196/197 — large ecosystem of audited tooling
+- Same curve as Ethereum EIP-196/197 - large ecosystem of audited tooling
 
 **Tradeoff acknowledged:** Groth16 requires a trusted setup ceremony per circuit. This is a one-time per-circuit event. Must be done carefully (Powers of Tau + circuit-specific setup). After setup, verification is fully trustless.
 
@@ -97,7 +97,7 @@ template MerkleProof(depth) {
 Prove that a valid BTC deposit has been made via SPV and create a private commitment to the position.
 
 ### Note on separation
-The SPV verification (Bitcoin Merkle proof + header chain) is done in a **separate Soroban contract**, not in this Circom circuit. SPV is verified on-chain using the Rust SPV library. The Circom circuit only handles the ZK privacy layer — creating the commitment.
+The SPV verification (Bitcoin Merkle proof + header chain) is done in a **separate Soroban contract**, not in this Circom circuit. SPV is verified on-chain using the Rust SPV library. The Circom circuit only handles the ZK privacy layer - creating the commitment.
 
 ### Inputs/Outputs
 
@@ -210,7 +210,9 @@ template BorrowRepayCircuit(DEPTH) {
 - Division for ratio: ~300 constraints (expensive in ZK)
 - **Total: ~10,500 constraints**
 
-For Groth16, ~10K constraints is a medium-sized circuit — proof generation should take under 5 seconds in WASM.
+For Groth16, ~10K constraints is a medium-sized circuit - proof generation should take under 5 seconds in WASM.
+
+*(This section is the original Phase 0 estimate, kept for historical context. The built circuit's real count, after an `is_borrow` soundness fix added a boolean constraint and two debt-direction range checks, is ~11,180 non-linear constraints - see `docs/how-it-works/zk-privacy-layer.md` for the measured figure and `circuits/src/borrow_repay.circom` for the source of truth.)*
 
 ---
 
@@ -219,7 +221,7 @@ For Groth16, ~10K constraints is a medium-sized circuit — proof generation sho
 ### Purpose
 Prove that a specific position (identified by its commitment) is undercollateralized, without revealing the collateral amount or position owner, enabling a liquidator to claim the collateral.
 
-> **Note (updated to match the shipped circuit):** the pseudocode below described an earlier design where `usdc_to_repay` was supplied as a separate **public input**, checked for equality against the private debt field. The circuit as implemented (`circuits/src/liquidation.circom`) is stronger: it has no `usdc_to_repay` input at all. `usdc_debt` is instead a circuit **output**, structurally bound to the private commitment (`usdc_debt <== debt_stroops`). This is a meaningful difference — see "Privacy tradeoff" below.
+> **Note (updated to match the shipped circuit):** the pseudocode below described an earlier design where `usdc_to_repay` was supplied as a separate **public input**, checked for equality against the private debt field. The circuit as implemented (`circuits/src/liquidation.circom`) is stronger: it has no `usdc_to_repay` input at all. `usdc_debt` is instead a circuit **output**, structurally bound to the private commitment (`usdc_debt <== debt_stroops`). This is a meaningful difference - see "Privacy tradeoff" below.
 
 ### Inputs/Outputs (as implemented)
 
@@ -240,7 +242,7 @@ template LiquidationCircuit(DEPTH) {
 
     // Public outputs
     signal output nullifier;  // Poseidon(secret, nonce)
-    signal output usdc_debt;  // bound to debt_stroops — not caller-supplied
+    signal output usdc_debt;  // bound to debt_stroops - not caller-supplied
 
     // Constraints
 
@@ -253,7 +255,7 @@ template LiquidationCircuit(DEPTH) {
     GreaterThan(128)(debt_stroops × 100_000_000 × liquidation_threshold_bp,
                       collateral_satoshis × btc_price_stroops_per_btc × 10_000) === 1;
 
-    // 3. Debt output is bound to the commitment's private debt field — a
+    // 3. Debt output is bound to the commitment's private debt field - a
     //    keeper cannot claim an arbitrary amount while proving a different
     //    commitment.
     usdc_debt <== debt_stroops;
@@ -265,17 +267,17 @@ template LiquidationCircuit(DEPTH) {
 
 ### Privacy tradeoff in liquidation
 
-There's a fundamental tension in private liquidations: the liquidator (or the contract, on the liquidator's behalf) needs to know how much USDC to pay to execute the liquidation. This means the debt amount is published on-chain at liquidation time regardless of circuit design — that part of the tradeoff is inherent and cannot be engineered away while liquidation remains permissionless.
+There's a fundamental tension in private liquidations: the liquidator (or the contract, on the liquidator's behalf) needs to know how much USDC to pay to execute the liquidation. This means the debt amount is published on-chain at liquidation time regardless of circuit design - that part of the tradeoff is inherent and cannot be engineered away while liquidation remains permissionless.
 
-What the circuit design *can* control is whether that published amount is **trustworthy** — i.e. whether a keeper (or anyone else constructing the liquidation call) could claim a different amount than what the position actually owes. The original pseudocode above modeled `usdc_to_repay` as a public input checked for equality against the private debt — functionally adequate, but it leaves the "declare the correct amount" burden on an external equality constraint, callable with any input. **The shipped circuit removes that input entirely**: `usdc_debt` is a circuit *output*, computed as `usdc_debt <== debt_stroops` directly from the private commitment. A malicious keeper cannot supply a different value — there is no signal for them to lie in. `contracts/contracts/commitment-tree/src/lib.rs` extracts `usdc_debt` from the proof's output signal, never from a caller-supplied parameter, so this guarantee is enforced on-chain as well as in the circuit.
+What the circuit design *can* control is whether that published amount is **trustworthy** - i.e. whether a keeper (or anyone else constructing the liquidation call) could claim a different amount than what the position actually owes. The original pseudocode above modeled `usdc_to_repay` as a public input checked for equality against the private debt - functionally adequate, but it leaves the "declare the correct amount" burden on an external equality constraint, callable with any input. **The shipped circuit removes that input entirely**: `usdc_debt` is a circuit *output*, computed as `usdc_debt <== debt_stroops` directly from the private commitment. A malicious keeper cannot supply a different value - there is no signal for them to lie in. `contracts/contracts/commitment-tree/src/lib.rs` extracts `usdc_debt` from the proof's output signal, never from a caller-supplied parameter, so this guarantee is enforced on-chain as well as in the circuit.
 
-**Phase 1 status:** debt amount is revealed on-chain at liquidation time (unavoidable given a permissionless/keeper-based liquidator model), but the amount is provably correct — see `docs/how-it-works/zk-privacy-layer.md`.
+**Phase 1 status:** debt amount is revealed on-chain at liquidation time (unavoidable given a permissionless/keeper-based liquidator model), but the amount is provably correct - see `docs/how-it-works/zk-privacy-layer.md`.
 
 **Phase 2 options (blocked on a decentralized keeper network):**
-1. **Encrypted debt in commitment** — liquidator receives an encrypted hint containing the debt amount, decryptable only with a specific key.
-2. **Committed-but-unrevealed liquidation bids** — multiple competing keepers commit to a bid without revealing it, settled without exposing the amount to losing bidders.
+1. **Encrypted debt in commitment** - liquidator receives an encrypted hint containing the debt amount, decryptable only with a specific key.
+2. **Committed-but-unrevealed liquidation bids** - multiple competing keepers commit to a bid without revealing it, settled without exposing the amount to losing bidders.
 
-Neither of these has a consumer today: a hidden-bid or encrypted-hint scheme only makes sense once there are multiple competing keepers to hide the amount *from*, and that decentralized keeper network is itself Phase 2 and not yet built. Designing this crypto now, before that network exists, would be speculative work against a documented, accepted, non-blocking tradeoff — revisit once that network exists.
+Neither of these has a consumer today: a hidden-bid or encrypted-hint scheme only makes sense once there are multiple competing keepers to hide the amount *from*, and that decentralized keeper network is itself Phase 2 and not yet built. Designing this crypto now, before that network exists, would be speculative work against a documented, accepted, non-blocking tradeoff - revisit once that network exists.
 
 ---
 
@@ -283,7 +285,7 @@ Neither of these has a consumer today: a hidden-bid or encrypted-hint scheme onl
 
 Groth16 requires a per-circuit trusted setup. The setup has two phases:
 
-**Phase 1 (Powers of Tau):** A multi-party ceremony generating universal SRS (Structured Reference String) parameters. Stellar Private Payments uses the Hermez Powers of Tau ceremony — Writz can reuse this. Already done.
+**Phase 1 (Powers of Tau):** A multi-party ceremony generating universal SRS (Structured Reference String) parameters. Stellar Private Payments uses the Hermez Powers of Tau ceremony - Writz can reuse this. Already done.
 
 **Phase 2 (Circuit-specific):** A circuit-specific setup generating the proving key and verification key. This must be done separately for each of Writz's **four** circuits (the three named throughout this doc, plus `zero_debt`, which gates the cooperative Path A release endpoint and is fund-loss-equivalent in severity to the others). It is a one-time event per circuit version.
 
@@ -295,7 +297,7 @@ Groth16 requires a per-circuit trusted setup. The setup has two phases:
 
 This is a **pre-mainnet requirement**. The ceremony must be completed and the results audited before any mainnet deployment.
 
-**Tooling:** the coordinator/participant scripts, transcript format, verification, and on-chain rotation runbook implementing all of the above are in `circuits/scripts/ceremony/` — see that directory's `README.md` for the exact step-by-step process. A CI job (`circuits-ceremony-verify` in `.github/workflows/ci.yml`) mechanically checks the committed manifest's hashes and rejects any transcript with a "dev"-labeled participant before a rotation is accepted; it does not replace the human verification steps in the runbook.
+**Tooling:** the coordinator/participant scripts, transcript format, verification, and on-chain rotation runbook implementing all of the above are in `circuits/scripts/ceremony/` - see that directory's `README.md` for the exact step-by-step process. A CI job (`circuits-ceremony-verify` in `.github/workflows/ci.yml`) mechanically checks the committed manifest's hashes and rejects any transcript with a "dev"-labeled participant before a rotation is accepted; it does not replace the human verification steps in the runbook.
 
 ---
 
@@ -305,7 +307,7 @@ Proof generation runs on the client side via WebAssembly. Users generate their o
 
 **Proof generation time benchmarks (Groth16, snarkjs in WASM):**
 - Deposit circuit (~280 constraints): < 1 second
-- Borrow/Repay circuit (~10,500 constraints): 3–8 seconds
+- Borrow/Repay circuit (~11,200 constraints): 3–8 seconds
 - Liquidation circuit (~9,000 constraints): 2–6 seconds
 
 This is acceptable UX for DeFi operations (users already wait for Bitcoin confirmations).
@@ -320,12 +322,12 @@ This is acceptable UX for DeFi operations (users already wait for Bitcoin confir
 ## Key Findings
 
 1. **Three circuits needed:** Deposit (light), Borrow/Repay (medium), Liquidation (medium)
-2. **Circom + Groth16 on BN254 is the right stack** — production-proven on Stellar
-3. **Merkle tree depth 20** — supports 1M positions, adds ~4,800 constraints per circuit
-4. **Division in ZK is expensive** — collateral ratio checks require range proofs; benchmark carefully
-5. **Trusted setup is required** — one-time ceremony per circuit; pre-mainnet mandatory item
-6. **Liquidation privacy is partially limited** — debt amount revealed in Phase 1; keeper-based approach mitigates
-7. **Browser-side proof generation is viable** — 3–8 second proof time is acceptable for DeFi
+2. **Circom + Groth16 on BN254 is the right stack** - production-proven on Stellar
+3. **Merkle tree depth 20** - supports 1M positions, adds ~4,800 constraints per circuit
+4. **Division in ZK is expensive** - collateral ratio checks require range proofs; benchmark carefully
+5. **Trusted setup is required** - one-time ceremony per circuit; pre-mainnet mandatory item
+6. **Liquidation privacy is partially limited** - debt amount revealed in Phase 1; keeper-based approach mitigates
+7. **Browser-side proof generation is viable** - 3–8 second proof time is acceptable for DeFi
 
 ---
 

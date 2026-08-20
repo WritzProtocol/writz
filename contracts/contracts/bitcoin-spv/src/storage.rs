@@ -2,7 +2,7 @@ use soroban_sdk::{contracttype, Env};
 
 use crate::types::{Checkpoint, Config};
 
-/// Storage keys — each variant maps to an isolated persistent storage entry.
+/// Storage keys - each variant maps to an isolated persistent storage entry.
 ///
 /// Using per-entry keying (not a single growing map) prevents unbounded
 /// instance storage growth, matching the convention already used in
@@ -66,7 +66,7 @@ pub fn set_checkpoint(env: &Env, checkpoint: &Checkpoint) {
         .extend_ttl(&key, PERSISTENT_THRESHOLD, PERSISTENT_BUMP);
 }
 
-/// Extends the TTL of both Config and Checkpoint. Permissionless — mirrors
+/// Extends the TTL of both Config and Checkpoint. Permissionless - mirrors
 /// `private-lend::refresh_protocol_ttl`. Extends both entries so an
 /// inactive deployment doesn't silently expire into
 /// `NotInitialized`/`CheckpointNotSet`.

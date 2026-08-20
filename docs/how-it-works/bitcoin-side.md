@@ -1,6 +1,6 @@
 # The Bitcoin Side
 
-**How your BTC is locked — and why nobody else can touch it.**
+**How your BTC is locked - and why nobody else can touch it.**
 
 Before anything happens on Stellar, a Bitcoin transaction secures your collateral. This page explains the Bitcoin locking mechanism: what it is, how it works, and what the security guarantees are.
 
@@ -10,15 +10,15 @@ Before anything happens on Stellar, a Bitcoin transaction secures your collatera
 
 When you make a standard Bitcoin payment, you send BTC to an address, and the recipient can spend it with their private key. That is a simple rule: "this key can spend this output."
 
-Bitcoin Script allows more complex rules. Writz uses a P2WSH — Pay to Witness Script Hash — which can encode multiple spending conditions. The address is a hash of a full script; to spend from it, you reveal the script and satisfy one of its conditions.
+Bitcoin Script allows more complex rules. Writz uses a P2WSH - Pay to Witness Script Hash - which can encode multiple spending conditions. The address is a hash of a full script; to spend from it, you reveal the script and satisfy one of its conditions.
 
 Writz's P2WSH script has exactly two conditions:
 
-**Condition A (normal — loan repaid):**  
-The BTC can be spent only if both the user's signature AND Writz's protocol signature are present. This is the cooperative release — it happens automatically when a loan is repaid and the Stellar contract generates the co-signature.
+**Condition A (normal - loan repaid):**  
+The BTC can be spent only if both the user's signature AND Writz's protocol signature are present. This is the cooperative release - it happens automatically when a loan is repaid and the Stellar contract generates the co-signature.
 
-**Condition B (emergency — timelock expiry):**  
-After a defined time-lock (loan duration + a 7-day safety buffer), the user can spend the BTC alone — no Writz signature required. This protects users if the protocol becomes unavailable, goes offline, or ceases to exist.
+**Condition B (emergency - timelock expiry):**  
+After a defined time-lock (loan duration + a 7-day safety buffer), the user can spend the BTC alone - no Writz signature required. This protects users if the protocol becomes unavailable, goes offline, or ceases to exist.
 
 The critical property: **neither Writz alone nor the user alone can move the BTC during the active loan period**. Both signatures are required for Condition A. The time-lock enforces Condition B.
 
@@ -38,7 +38,7 @@ OP_ENDIF
 ```
 
 **Spending Condition A** (OP_IF branch):
-- Requires protocol signature (`OP_CHECKSIGVERIFY` — fails without it)
+- Requires protocol signature (`OP_CHECKSIGVERIFY` - fails without it)
 - Then requires user signature (`OP_CHECKSIG`)
 - Both must be present. Either alone is insufficient.
 
@@ -47,7 +47,7 @@ OP_ENDIF
 - Then requires only the user signature
 - No protocol involvement needed after the time-lock expires
 
-The script is 114 bytes. Each deposit gets a **unique address** derived from the protocol key, the user key, and the time-lock value — ensuring no two deposits share an address.
+The script is 114 bytes. Each deposit gets a **unique address** derived from the protocol key, the user key, and the time-lock value - ensuring no two deposits share an address.
 
 ---
 
@@ -88,7 +88,7 @@ The witness structure for Condition A:
 [user_sig (71 bytes), protocol_sig (72 bytes), 0x01, redeemScript (114 bytes)]
 ```
 
-This produces a transaction of ~149 vbytes — efficient and inexpensive.
+This produces a transaction of ~149 vbytes - efficient and inexpensive.
 
 **Verified on Bitcoin Signet:**  
 A real Path A release transaction was broadcast and accepted by the Bitcoin Signet mempool: [`11932100`](https://blockstream.info/signet/tx/119321009b2f92dac8f25f6bcddb2ed6a3ae778e8748ec52910cce90742e4098)  
@@ -103,14 +103,14 @@ A real Path A release transaction was broadcast and accepted by the Bitcoin Sign
 If the time-lock has expired and a user wants to reclaim their BTC without a protocol co-signature:
 
 1. The user assembles a transaction with `nLockTime` set to `locktime`.
-2. **The input's `nSequence` must be set to a value less than `0xFFFFFFFF`** (Writz uses `0xFFFFFFFE`) — see the warning below.
+2. **The input's `nSequence` must be set to a value less than `0xFFFFFFFF`** (Writz uses `0xFFFFFFFE`) - see the warning below.
 3. The transaction is signed with the user's key only.
 4. Once the Bitcoin block height exceeds `locktime`, the transaction becomes valid.
-5. The user broadcasts it directly to the Bitcoin network — no Writz involvement.
+5. The user broadcasts it directly to the Bitcoin network - no Writz involvement.
 
 This ensures that user funds are never permanently inaccessible, even in a worst-case scenario where Writz stops operating.
 
-> **⚠️ `nSequence` warning:** `OP_CHECKLOCKTIMEVERIFY` has a non-obvious interaction with `nSequence` — if the spending input's `nSequence` is `0xFFFFFFFF` (Bitcoin's "final" value, which many wallets use by default), the Bitcoin Script interpreter causes `CLTV` to fail immediately, **even if the timelock has genuinely expired**. There is no clear error message — the transaction is simply rejected by the network, and it's easy to mistakenly conclude the timelock hasn't expired when it has. The Writz frontend and the `bitcoin-script` package's `buildEmergencyTransaction`/`finalizePathB` helpers already set this correctly and hardcode it (it cannot be overridden by a caller). If you are constructing this recovery transaction manually with a third-party wallet or library instead of using Writz's own tooling, you must set `nSequence` yourself — see [Manual Emergency Recovery](./manual-emergency-recovery.md) for a safe, copy-pasteable reference implementation.
+> **[WARNING] `nSequence` interaction:** `OP_CHECKLOCKTIMEVERIFY` has a non-obvious interaction with `nSequence` - if the spending input's `nSequence` is `0xFFFFFFFF` (Bitcoin's "final" value, which many wallets use by default), the Bitcoin Script interpreter causes `CLTV` to fail immediately, **even if the timelock has genuinely expired**. There is no clear error message - the transaction is simply rejected by the network, and it's easy to mistakenly conclude the timelock hasn't expired when it has. The Writz frontend and the `bitcoin-script` package's `buildEmergencyTransaction`/`finalizePathB` helpers already set this correctly and hardcode it (it cannot be overridden by a caller). If you are constructing this recovery transaction manually with a third-party wallet or library instead of using Writz's own tooling, you must set `nSequence` yourself - see [Manual Emergency Recovery](./manual-emergency-recovery.md) for a safe, copy-pasteable reference implementation.
 
 ---
 
@@ -136,7 +136,7 @@ This ensures that user funds are never permanently inaccessible, even in a worst
 
 **Phase 1 (current):** The protocol co-signing key is held in an HSM (Hardware Security Module) operated by the Writz team. It is used exclusively to sign BTC release transactions for fully repaid loans.
 
-**Phase 2 (after Protocol 27 ships, Q3 2026):** The co-signing key architecture is upgraded using Stellar's `delegate_account_auth` (Protocol 27 / Zipper). This enables threshold co-signing — multiple independent parties must agree before a release is signed — removing the single-point-of-failure of an HSM.
+**Phase 2 (after Protocol 27 ships, Q3 2026):** The co-signing key architecture is upgraded using Stellar's `delegate_account_auth` (Protocol 27 / Zipper). This enables threshold co-signing - multiple independent parties must agree before a release is signed - removing the single-point-of-failure of an HSM.
 
 **Phase 3 (2027):** Full MPC (Multi-Party Computation) for the protocol co-signing key, eliminating any single HSM as a trust assumption.
 
@@ -148,7 +148,7 @@ Phase 1 uses P2WSH for simplicity and auditability. P2WSH is well-understood, ba
 
 In Phase 2+, Writz will migrate to **Taproot (P2TR)**:
 - The normal release path (Condition A) becomes a simple key-path spend that looks like any ordinary Bitcoin payment
-- No script is revealed on-chain for the happy path — improving privacy on the Bitcoin side
+- No script is revealed on-chain for the happy path - improving privacy on the Bitcoin side
 - Script-path spending (Condition B emergency) is still available but is now a hidden alternative
 - Reduced transaction fees (~50% smaller for Condition A)
 

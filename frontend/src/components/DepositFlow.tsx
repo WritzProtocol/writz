@@ -11,6 +11,7 @@ import { positionsSnapshot } from "@/lib/position";
 import { stellarTxUrl } from "@/lib/explorer";
 import { TxLink } from "./TxLink";
 import { config } from "@/config";
+import { humanizeError } from "@/lib/errors";
 
 const MIN_DEPOSIT_BTC = 0.0001;
 const MIN_DEPOSIT_SATS = 10_000n; // 0.0001 BTC
@@ -51,6 +52,64 @@ function stepLabel(step: Step, statusMsg: string): string {
   }
 }
 
+/** Extracts the confirmation count from a pollSpvBundle status message, e.g. "Waiting for confirmation… (3 so far)". */
+function parseConfirmations(statusMsg: string): number | null {
+  const m = /\((\d+) so far\)/.exec(statusMsg);
+  return m ? Number(m[1]) : null;
+}
+
+function etaLabel(remainingConfirmations: number): string {
+  const minutes = remainingConfirmations * config.bitcoin.avgBlockMinutes;
+  if (minutes <= 0) return "any moment now";
+  if (minutes < 60) return `~${minutes} min remaining (average)`;
+  const hours = Math.round((minutes / 60) * 10) / 10;
+  return `~${hours} hr remaining (average)`;
+}
+
+/** Bitcoin confirmation progress: a determinate bar with a count and a rough ETA. */
+function ConfirmationProgress({ statusMsg }: { statusMsg: string }) {
+  const required = config.bitcoin.minConfirmations;
+  const confirmed = parseConfirmations(statusMsg);
+
+  if (confirmed === null) {
+    // Not polling confirmations yet (e.g. still locating the output, or a
+    // relayer-connectivity message) - show the raw status instead of a bar.
+    return <p className="text-xs text-zk">{statusMsg}</p>;
+  }
+
+  const pct = Math.min(100, Math.round((confirmed / required) * 100));
+  const remaining = Math.max(0, required - confirmed);
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="flex items-center justify-between text-xs text-zk">
+        <span>
+          {confirmed} of {required} confirmations
+        </span>
+        <span className="text-muted">{etaLabel(remaining)}</span>
+      </div>
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-2">
+        <div
+          className="h-full rounded-full bg-zk transition-[width] duration-500"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+/** Indeterminate progress treatment for steps with no countable denominator (ZK proving, Soroban submission). */
+function IndeterminateProgress({ label }: { label: string }) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <p className="text-xs text-zk">{label}</p>
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-2">
+        <div className="h-full w-1/3 animate-[indeterminate_1.4s_ease-in-out_infinite] rounded-full bg-zk" />
+      </div>
+    </div>
+  );
+}
+
 export function DepositFlow() {
   const { address, signTransaction, seed, unlocked, unlock } = useWallet();
   const btcWallet = useBitcoinWallet();
@@ -75,7 +134,7 @@ export function DepositFlow() {
       setAddressCopied(true);
       setTimeout(() => setAddressCopied(false), 2000);
     } catch {
-      // clipboard API unavailable — address is still selectable/visible
+      // clipboard API unavailable - address is still selectable/visible
     }
   }
 
@@ -134,7 +193,7 @@ export function DepositFlow() {
       setStep("idle");
     } catch (e) {
       setStep("error");
-      setErrorMsg(e instanceof Error ? e.message : String(e));
+      setErrorMsg(humanizeError(e, { flow: "deposit" }));
     }
   }
 
@@ -182,7 +241,7 @@ export function DepositFlow() {
       router.refresh();
     } catch (e) {
       setStep("error");
-      setErrorMsg(e instanceof Error ? e.message : String(e));
+      setErrorMsg(humanizeError(e, { flow: "deposit" }));
     }
   }
 
@@ -290,7 +349,8 @@ export function DepositFlow() {
                 </p>
               )}
               <p className="mt-2 text-xs text-muted">
-                Minimum {MIN_DEPOSIT_BTC} BTC · 1 confirmation required
+                Minimum {MIN_DEPOSIT_BTC} BTC · {config.bitcoin.minConfirmations} confirmation
+                {config.bitcoin.minConfirmations === 1 ? "" : "s"} required
               </p>
             </div>
 
@@ -298,7 +358,7 @@ export function DepositFlow() {
               {step === "done" ? (
                 <div className="flex flex-col gap-3">
                   <p className="text-sm font-semibold text-ok">
-                    Deposit complete — position created.
+                    Deposit complete - position created.
                   </p>
                   {txHash && (
                     <p className="text-xs text-muted">
@@ -366,7 +426,14 @@ export function DepositFlow() {
                   </div>
 
                   {/* Step progress */}
-                  {busy && (
+                  {busy && step === "polling" && <ConfirmationProgress statusMsg={statusMsg} />}
+                  {busy && step === "proving" && (
+                    <IndeterminateProgress label="Generating ZK proof in your browser… usually ~10 seconds" />
+                  )}
+                  {busy && (step === "depositing" || step === "inserting") && (
+                    <IndeterminateProgress label={stepLabel(step, statusMsg)} />
+                  )}
+                  {busy && step === "sending" && (
                     <p className="text-xs text-zk">{stepLabel(step, statusMsg)}</p>
                   )}
 
@@ -406,7 +473,7 @@ export function DepositFlow() {
       </div>
 
       <p className="text-xs text-muted">
-        Your position keys are derived from your wallet signature — no secret to
+        Your position keys are derived from your wallet signature - no secret to
         back up. Recover positions on any device by unlocking with the same wallet.
       </p>
     </section>

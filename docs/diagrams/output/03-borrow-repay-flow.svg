@@ -8,7 +8,7 @@
  viewBox="0.00 0.00 1672.00 1650.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
 <g id="graph0" class="graph" transform="scale(1.66783 1.66783) rotate(0) translate(50.4 938.91)">
 <title>borrow&#45;repay&#45;flow</title>
-<text xml:space="preserve" text-anchor="start" x="53" y="-873.16" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="13.00" fill="#1c1917">Writz Protocol — Borrow / Repay Flow</text>
+<text xml:space="preserve" text-anchor="start" x="53" y="-873.16" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="13.00" fill="#1c1917">Writz Protocol - Borrow / Repay Flow</text>
 <text xml:space="preserve" text-anchor="start" x="8" y="-863.96" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#57534e">Private ZK proof · collateral ratio enforced on&#45;chain · nonce rotates on every action</text>
 <g id="clust1" class="cluster">
 <title>cluster_borrow</title>
@@ -173,7 +173,7 @@
 <path fill="#ecfdf5" stroke="#059669" stroke-width="1.6" d="M537.22,-47.72C537.22,-47.72 366.78,-47.72 366.78,-47.72 360.78,-47.72 354.78,-41.72 354.78,-35.72 354.78,-35.72 354.78,-12 354.78,-12 354.78,-6 360.78,0 366.78,0 366.78,0 537.22,0 537.22,0 543.22,0 549.22,-6 549.22,-12 549.22,-12 549.22,-35.72 549.22,-35.72 549.22,-41.72 543.22,-47.72 537.22,-47.72"/>
 <text xml:space="preserve" text-anchor="start" x="394.25" y="-28.91" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="11.00" fill="#1c1917">Update Position Store</text>
 <text xml:space="preserve" text-anchor="start" x="370.62" y="-19.81" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#57534e">new commitment · nullifier · nonce · debt</text>
-<text xml:space="preserve" text-anchor="start" x="396.12" y="-10.81" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#a8a29e">localStorage — device only</text>
+<text xml:space="preserve" text-anchor="start" x="396.12" y="-10.81" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#a8a29e">localStorage - device only</text>
 </g>
 <!-- nonce_rotate&#45;&gt;save -->
 <g id="edge11" class="edge">

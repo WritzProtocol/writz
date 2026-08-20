@@ -19,7 +19,7 @@ const Footer = dynamic(() => import("./components/Footer").then((m) => m.Footer)
 
 /**
  * Orchestrator only: composes the marketing sections. No business logic
- * lives here. The palette is fixed (Gold & Black — see landing-tokens.css)
+ * lives here. The palette is fixed (Gold & Black - see landing-tokens.css)
  * so there's no runtime theme switcher.
  */
 export function LandingPage() {

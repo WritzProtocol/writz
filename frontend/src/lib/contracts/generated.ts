@@ -116,7 +116,7 @@ export type DataKey = {tag: "Config", values: void} | {tag: "Pool", values: void
 
 
 /**
- * BN254 G1 affine point — 64 bytes (X || Y, big-endian).
+ * BN254 G1 affine point - 64 bytes (X || Y, big-endian).
  * Mirrors `zk_verifier::G1Point`.
  */
 export interface G1Point {
@@ -125,7 +125,7 @@ export interface G1Point {
 
 
 /**
- * BN254 G2 affine point — 128 bytes (X.c1 || X.c0 || Y.c1 || Y.c0).
+ * BN254 G2 affine point - 128 bytes (X.c1 || X.c0 || Y.c1 || Y.c0).
  * Mirrors `zk_verifier::G2Point`.
  */
 export interface G2Point {
@@ -186,8 +186,8 @@ export interface Client {
    * Construct and simulate a borrow transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
    * Borrow USDC against a BTC position using a ZK proof.
    * 
-   * The borrow_repay proof (with `is_borrow = 1`) proves — without
-   * revealing collateral, debt amount, or position owner — that:
+   * The borrow_repay proof (with `is_borrow = 1`) proves - without
+   * revealing collateral, debt amount, or position owner - that:
    * * The caller's commitment exists in the tree at `old_root`.
    * * After adding `delta_stroops`, collateral ratio ≥ 150%.
    * * `new_root` correctly reflects the updated commitment.
@@ -199,11 +199,11 @@ export interface Client {
    * 
    * # Validations
    * Beyond Groth16 correctness, the contract enforces:
-   * * `old_root == stored_root` — no stale proofs.
-   * * `is_borrow == 1` — prevents a repay proof being used here.
-   * * `min_ratio_bp == config.min_collateral_ratio_bp` — no custom thresholds.
-   * * `btc_price == oracle price` — no inflated collateral valuations.
-   * * `old_nullifier` not spent — no double-borrow.
+   * * `old_root == stored_root` - no stale proofs.
+   * * `is_borrow == 1` - prevents a repay proof being used here.
+   * * `min_ratio_bp == config.min_collateral_ratio_bp` - no custom thresholds.
+   * * `btc_price == oracle price` - no inflated collateral valuations.
+   * * `old_nullifier` not spent - no double-borrow.
    * 
    * # Public signals (borrow_repay circuit)
    * | Index | Signal |
@@ -217,16 +217,16 @@ export interface Client {
    * 
    * The function performs the following checks, in order:
    * 
-   * 1. **SPV** — the BTC transaction is confirmed with `min_confirmations`.
-   * 2. **Duplicate guard** — the txid has not been deposited before.
-   * 3. **Txid binding** — `signal[BTC_TXID_LO]` and `signal[BTC_TXID_HI]`
+   * 1. **SPV** - the BTC transaction is confirmed with `min_confirmations`.
+   * 2. **Duplicate guard** - the txid has not been deposited before.
+   * 3. **Txid binding** - `signal[BTC_TXID_LO]` and `signal[BTC_TXID_HI]`
    * encode the same txid that the SPV call returned.  This prevents
    * replaying a proof from a different transaction.
-   * 4. **Protocol param** — `signal[MIN_DEPOSIT_SATS]` equals the
+   * 4. **Protocol param** - `signal[MIN_DEPOSIT_SATS]` equals the
    * configured minimum.  This prevents generating a proof with a lower
    * minimum to sneak in an undersized deposit.
-   * 5. **Nullifier freshness** — the nullifier was not previously spent.
-   * 6. **ZK proof** — Groth16 verification via the `zk-verifier` contract.
+   * 5. **Nullifier freshness** - the nullifier was not previously spent.
+   * 6. **ZK proof** - Groth16 verification via the `zk-verifier` contract.
    * 
    * On success, the commitment is stored as *pending* tree insertion.
    * Call `insert_commitment` (admin/relayer) to advance the Merkle root
@@ -243,8 +243,8 @@ export interface Client {
    * Construct and simulate a liquidate transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
    * Liquidate an undercollateralized position using a ZK proof.
    * 
-   * The ZK liquidation proof proves — without revealing the position owner
-   * or collateral amount — that:
+   * The ZK liquidation proof proves - without revealing the position owner
+   * or collateral amount - that:
    * * The commitment is in the tree at `merkle_root`.
    * * The collateral ratio is below `liquidation_threshold_bp`.
    * * `usdc_debt` matches the private debt encoded in the commitment.
@@ -255,7 +255,7 @@ export interface Client {
    * hashed into the commitment, so a keeper cannot inflate or deflate the
    * amount collected.
    * 
-   * Liquidation reveals the debt amount by design — the position is being
+   * Liquidation reveals the debt amount by design - the position is being
    * publicly closed and the on-chain USDC transfer must match the proven debt.
    * 
    * # Validations
@@ -314,10 +314,10 @@ export interface Client {
    * Lender withdraws USDC from the pool.
    * 
    * Two limits are enforced:
-   * 1. The supplier cannot withdraw more than their own deposited balance —
+   * 1. The supplier cannot withdraw more than their own deposited balance -
    * prevents one lender from draining another lender's funds.
    * 2. The pool must have sufficient undeployed liquidity
-   * (`total_supplied − total_borrowed`) — prevents withdrawing USDC that
+   * (`total_supplied − total_borrowed`) - prevents withdrawing USDC that
    * is currently lent out to borrowers.
    */
   withdraw_supply: ({supplier, amount}: {supplier: string, amount: i128}, options?: MethodOptions) => Promise<AssembledTransaction<Result<void>>>

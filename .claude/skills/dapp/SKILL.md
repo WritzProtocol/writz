@@ -1,6 +1,6 @@
 ---
 name: dapp
-description: Stellar dApp / frontend development. Covers the JavaScript stellar-sdk (browser + Node.js), Freighter wallet, Stellar Wallets Kit (multi-wallet), Wallet Standard, smart accounts with passkeys, transaction building / signing / submission, smart contract invocation from the client, simulation, and error handling. Use when building a React/Next.js/Node.js app that talks to Stellar — classic operations or smart contracts.
+description: Stellar dApp / frontend development. Covers the JavaScript stellar-sdk (browser + Node.js), Freighter wallet, Stellar Wallets Kit (multi-wallet), Wallet Standard, smart accounts with passkeys, transaction building / signing / submission, smart contract invocation from the client, simulation, and error handling. Use when building a React/Next.js/Node.js app that talks to Stellar - classic operations or smart contracts.
 user-invocable: true
 argument-hint: "[dapp task]"
 ---
@@ -42,7 +42,7 @@ Client-side development with `@stellar/stellar-sdk`, wallet connection, signing,
 
 ## Recommended Dependencies
 
-> **Requires Node.js 20+** — the Stellar SDK dropped Node 18 support.
+> **Requires Node.js 20+** - the Stellar SDK dropped Node 18 support.
 
 ```bash
 npm install @stellar/stellar-sdk @stellar/freighter-api

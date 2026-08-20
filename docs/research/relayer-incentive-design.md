@@ -23,7 +23,7 @@ Writz does NOT store Bitcoin block headers on Stellar. Instead:
 - The Soroban contract verifies the provided headers on-demand
 - No continuous relay is required
 
-**Implication:** The relayer is not a protocol-critical component — it's a **convenience service**. A user can fetch their own headers from any Bitcoin full node or public API. If the Writz relayer goes down, users can use alternative sources.
+**Implication:** The relayer is not a protocol-critical component - it's a **convenience service**. A user can fetch their own headers from any Bitcoin full node or public API. If the Writz relayer goes down, users can use alternative sources.
 
 This fundamentally changes the risk profile from BTC Relay.
 
@@ -107,7 +107,7 @@ When Writz launches a decentralized relayer network, relayers need economic ince
 
 ### Liveness guarantee
 
-Unlike BTC Relay, stateless SPV doesn't require 24/7 relayer availability. Users only need a relayer when making a transaction. A relayer that's offline 90% of the time is still useful — as long as it responds when a user needs it.
+Unlike BTC Relay, stateless SPV doesn't require 24/7 relayer availability. Users only need a relayer when making a transaction. A relayer that's offline 90% of the time is still useful - as long as it responds when a user needs it.
 
 **Minimum viable liveness:** A relayer that responds within 60 seconds and has >99% uptime over 30-day windows can participate.
 
@@ -129,7 +129,7 @@ Writz's frontend should include a "Manual proof submission" mode that walks tech
 
 ## Alternative: zkRelay (Phase 2+ Consideration)
 
-Research found **zkRelay** — a ZK-SNARK-based relay that batches Bitcoin header validation off-chain. Instead of submitting 6 raw headers, a prover submits one ZK proof that 6 (or 504) headers are all valid.
+Research found **zkRelay** - a ZK-SNARK-based relay that batches Bitcoin header validation off-chain. Instead of submitting 6 raw headers, a prover submits one ZK proof that 6 (or 504) headers are all valid.
 
 **Cost reduction:** 187× cheaper than per-header verification (achieved in Ethereum research).
 

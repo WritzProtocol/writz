@@ -34,8 +34,8 @@ export const productPlans: ProductPlan[] = [
     stat: "2027",
     statLabel: "roadmap",
     features: [
-      "Dark Swap — private BTC → USDC",
-      "BTC Savings — auto-routed yield",
+      "Dark Swap - private BTC → USDC",
+      "BTC Savings - auto-routed yield",
       "ZK Proof of Reserve (B2B)",
     ],
     cta: "Read the Roadmap",

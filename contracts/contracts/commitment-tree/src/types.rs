@@ -35,6 +35,12 @@ pub struct Config {
     pub min_deposit_satoshis:     u64,
     pub min_collateral_ratio_bp:  u32,
     pub liquidation_threshold_bp: u32,
+    /// When true, `deposit`/`borrow`/`supply_usdc` (new risk-taking actions)
+    /// are refused. `repay`/`withdraw_supply`/`liquidate` stay open so users
+    /// can always exit - a pause is an emergency brake on new exposure, not
+    /// a freeze on existing positions. Admin-gated via `set_paused`. See
+    /// `docs/architecture/contract-migration-runbook.md`, Track 2.
+    pub paused: bool,
 }
 
 // ── Pool accounting ───────────────────────────────────────────────────────────
@@ -48,18 +54,7 @@ pub struct PoolState {
 
 // ── Cross-contract mirrors ────────────────────────────────────────────────────
 
-/// Mirrors `bitcoin_spv::VerificationResult`.
-/// Field names must match exactly for XDR round-tripping through the
-/// cross-contract call to work.
-#[contracttype]
-#[derive(Clone, Debug)]
-pub struct SpvResult {
-    pub txid:          BytesN<32>,
-    pub block_hash:    BytesN<32>,
-    pub confirmations: u32,
-}
-
-/// BN254 G1 affine point — 64 bytes (X || Y, big-endian).
+/// BN254 G1 affine point - 64 bytes (X || Y, big-endian).
 /// Mirrors `zk_verifier::G1Point`.
 #[contracttype]
 #[derive(Clone, Debug)]
@@ -67,7 +62,7 @@ pub struct G1Point {
     pub bytes: BytesN<64>,
 }
 
-/// BN254 G2 affine point — 128 bytes (X.c1 || X.c0 || Y.c1 || Y.c0).
+/// BN254 G2 affine point - 128 bytes (X.c1 || X.c0 || Y.c1 || Y.c0).
 /// Mirrors `zk_verifier::G2Point`.
 #[contracttype]
 #[derive(Clone, Debug)]
@@ -87,12 +82,12 @@ pub struct Proof {
 // ── Public signal indices ─────────────────────────────────────────────────────
 //
 // These match the public input declaration order in each circom circuit.
-// The contract reads every signal — these constants are all used in lib.rs.
+// The contract reads every signal - these constants are all used in lib.rs.
 
 pub mod deposit_signals {
     /// Poseidon(collateral_satoshis, 0, secret, nonce)
     pub const COMMITMENT:       usize = 0;
-    /// Poseidon(secret, nonce) — prevents replay of the same position secret.
+    /// Poseidon(secret, nonce) - prevents replay of the same position secret.
     pub const NULLIFIER:        usize = 1;
     /// Low 128 bits of the Bitcoin txid as a BN254 field element.
     pub const BTC_TXID_LO:     usize = 2;
@@ -106,7 +101,7 @@ pub mod deposit_signals {
 pub mod borrow_repay_signals {
     /// Updated Merkle root after commitment swap.
     pub const NEW_ROOT:       usize = 0;
-    /// Nullifier of the old commitment — spent by this operation.
+    /// Nullifier of the old commitment - spent by this operation.
     pub const OLD_NULLIFIER:  usize = 1;
     /// New commitment (updated debt + new nonce).
     pub const NEW_COMMITMENT: usize = 2;

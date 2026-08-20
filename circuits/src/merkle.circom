@@ -4,7 +4,7 @@ include "circomlib/circuits/poseidon.circom";
 include "circomlib/circuits/mux1.circom";
 
 /*
- * Writz Protocol — Shared Merkle Tree Components
+ * Writz Protocol - Shared Merkle Tree Components
  *
  * Poseidon-based binary Merkle tree for the position commitment tree.
  * Leaf nodes: position commitments (Poseidon(collateral, debt, secret, nonce))
@@ -28,7 +28,7 @@ template HashLeftRight() {
 // Verifies that `leaf` exists in a Merkle tree with root `root`.
 //
 // Parameters:
-//   depth — height of the tree (use 20 for Writz's position tree)
+//   depth - height of the tree (use 20 for Writz's position tree)
 //
 // pathIndices[i]: 0 = current node is the left child at level i
 //                 1 = current node is the right child at level i

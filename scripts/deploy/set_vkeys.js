@@ -21,9 +21,9 @@ const ROOT = path.resolve(__dirname, '../..');
 
 const RPC_URL     = 'https://soroban-testnet.stellar.org';
 const NETWORK     = Networks.TESTNET;
-const ZK_VERIFIER = 'CDV45GLXG4AOU6BDZSY5YHHVNGQIAYAPD3PUGXIIIYLIO6V2XGO6SMFV';
+const ZK_VERIFIER = 'CBNZU23QGCZATJB2QMNF2K6IST2SVP7FSGCKASQNBULTWDWGANDBYLFY';
 
-// writz-dev secret key — testnet only, no real funds
+// writz-dev secret key - testnet only, no real funds
 const SECRET = process.env.WRITZ_DEV_SECRET;
 if (!SECRET) {
     console.error('Set WRITZ_DEV_SECRET env var to the writz-dev secret key');
@@ -45,7 +45,7 @@ function g1ToBytes(point) {
     return Buffer.from(hex, 'hex');
 }
 
-// G2: EIP-197 order — be(x.c1) || be(x.c0) || be(y.c1) || be(y.c0)
+// G2: EIP-197 order - be(x.c1) || be(x.c0) || be(y.c1) || be(y.c0)
 function g2ToBytes(point) {
     const xc0 = point[0][0], xc1 = point[0][1];
     const yc0 = point[1][0], yc1 = point[1][1];
@@ -131,7 +131,7 @@ async function invoke(contractId, method, args) {
         }
 
         if (getResult.status !== 'SUCCESS') {
-            // Not confirmed (e.g. dropped / NOT_FOUND) — rebuild with a fresh
+            // Not confirmed (e.g. dropped / NOT_FOUND) - rebuild with a fresh
             // sequence and retry.
             if (attempt < 5) {
                 await new Promise(r => setTimeout(r, 2500));
@@ -166,7 +166,7 @@ for (const { name, file } of circuits) {
         vkeyToScVal(vkey),
     ]);
 
-    console.log(`✓ ${name} VK set — tx ${hash}`);
+    console.log(`✓ ${name} VK set - tx ${hash}`);
     console.log(`  https://stellar.expert/explorer/testnet/tx/${hash}`);
 }
 

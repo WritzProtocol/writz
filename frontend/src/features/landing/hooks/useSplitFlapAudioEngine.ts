@@ -5,7 +5,7 @@ import type { SplitFlapAudioContextValue } from "../types/splitFlap.types";
 
 /**
  * Encapsulates the WebAudio "click" synth used by the split-flap animation.
- * Muted by default — nothing plays until the caller opts in via toggleMute.
+ * Muted by default - nothing plays until the caller opts in via toggleMute.
  */
 export function useSplitFlapAudioEngine(): SplitFlapAudioContextValue {
   const [isMuted, setIsMuted] = useState(true);
@@ -70,7 +70,7 @@ export function useSplitFlapAudioEngine(): SplitFlapAudioContextValue {
       oscillator.start(ctx.currentTime);
       oscillator.stop(ctx.currentTime + 0.02);
     } catch {
-      // Audio not supported in this environment — fail silently.
+      // Audio not supported in this environment - fail silently.
     }
   }, [isMuted, getAudioContext, triggerHaptic]);
 
@@ -82,7 +82,7 @@ export function useSplitFlapAudioEngine(): SplitFlapAudioContextValue {
         ctx.resume();
       }
     } catch {
-      // Audio not supported in this environment — fail silently.
+      // Audio not supported in this environment - fail silently.
     }
   }, [getAudioContext]);
 

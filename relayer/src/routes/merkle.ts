@@ -139,7 +139,7 @@ merkleRouter.post("/insert-commitment", async (req: Request, res: Response): Pro
 
 // ---------------------------------------------------------------------------
 // GET /merkle-path?leafIndex=<n>&commitment=<hex>
-// GET /merkle-path?commitment=<hex>   (legacy — only works for deposit commitment)
+// GET /merkle-path?commitment=<hex>   (legacy - only works for deposit commitment)
 //
 // Validates the local leaf store against the current on-chain Merkle root before
 // computing a path. If they diverge (e.g. a borrow/repay update-leaf was dropped),
@@ -179,7 +179,7 @@ merkleRouter.get("/merkle-path", async (req: Request, res: Response): Promise<vo
       if (localRoot !== onChainRoot) {
         res.status(409).json({
           error:
-            "Leaf store is out of sync with the on-chain Merkle root — " +
+            "Leaf store is out of sync with the on-chain Merkle root - " +
             "a prior borrow/repay update may not have been recorded. " +
             "Please contact the protocol operator to resync the relayer.",
           onChainRoot: onChainRoot.toString(16).padStart(64, "0"),
@@ -188,7 +188,7 @@ merkleRouter.get("/merkle-path", async (req: Request, res: Response): Promise<vo
         return;
       }
     } catch (e) {
-      // RPC unavailable — proceed without freshness check rather than blocking
+      // RPC unavailable - proceed without freshness check rather than blocking
       // all users. The ZK proof or cosign root-match check will catch staleness.
       console.warn("[merkle-path] root freshness check failed:", e instanceof Error ? e.message : e);
     }
@@ -214,7 +214,7 @@ merkleRouter.get("/merkle-path", async (req: Request, res: Response): Promise<vo
     leafIndex = leaves.findIndex((l) => l === commitment);
     if (leafIndex === -1) {
       res.status(404).json({
-        error: "commitment not found in leaf store — deposit may not yet be finalized",
+        error: "commitment not found in leaf store - deposit may not yet be finalized",
       });
       return;
     }
@@ -256,7 +256,7 @@ merkleRouter.post("/update-leaf", (req: Request, res: Response): void => {
   const leaves = readLeaves();
   if (leafIndex >= leaves.length) {
     res.status(400).json({
-      error: `leafIndex ${leafIndex} out of range — leaf store has ${leaves.length} leaves`,
+      error: `leafIndex ${leafIndex} out of range - leaf store has ${leaves.length} leaves`,
     });
     return;
   }

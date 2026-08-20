@@ -1,9 +1,15 @@
 # Position & secret management
 
 Client-side "wallet of positions" for Writz. Positions are private: the chain
-only stores a `commitment` and `nullifier`; the amounts, `secret`, and `nonce`
-live only here, on the user's device. Losing them locks the position until the
-Bitcoin CLTV timelock — hence export/import.
+only stores a `commitment` and `nullifier`; the amounts live in an on-chain
+encrypted recovery note, and `secret`/`nonce` are derived on demand from a
+deterministic signature of the owner's Stellar wallet (issue #18) - nothing
+sensitive is persisted locally. `exportPositions`/`importPositions` below
+predate #18 and have no UI caller anymore; `recoverPositions` (see
+`lib/flows/recover.ts`) is the live recovery path, wired to the "Recover
+positions" button in `PositionDashboard`. The one thing recovery does *not*
+restore is Bitcoin release metadata (`btcPubkey`/`timelockHeight`/`vout`) -
+see the caveat in `docs/products/privatelend.md` Step 5.
 
 ## Crypto (`crypto.ts`)
 
@@ -29,9 +35,9 @@ Backup: `exportPositions` / `importPositions` (versioned envelope).
 
 ## Helpers (`index.ts`)
 
-- `createDepositPosition({ owner, collateralSats, txid?, createdAt })` — new
+- `createDepositPosition({ owner, collateralSats, txid?, createdAt })` - new
   position with fresh secret/nonce and derived commitment/nullifier.
-- `positionWitness(position)` — the private fields fed to the ZK prover.
+- `positionWitness(position)` - the private fields fed to the ZK prover.
 
 ## Used by
 

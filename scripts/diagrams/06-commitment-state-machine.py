@@ -1,5 +1,5 @@
 """
-Writz Protocol — 06 Commitment State Machine
+Writz Protocol - 06 Commitment State Machine
 Lifecycle of a position commitment from creation to BTC release.
 """
 import sys, os
@@ -13,7 +13,7 @@ g.attr(**base_graph_attr(
     splines="spline",
     size="16,8",
     label=hl(
-        "Writz Protocol — Commitment State Machine",
+        "Writz Protocol - Commitment State Machine",
         "Each state transition requires a valid Groth16 proof · nonce rotates on every change",
     ),
 ))

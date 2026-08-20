@@ -1,11 +1,11 @@
-/// Writz Protocol — Kinked interest rate model.
+/// Writz Protocol - Kinked interest rate model.
 ///
 /// Parameters (from research doc):
 ///   Base rate:      0%
 ///   Uoptimal:      75%  (7_500 bp)
-///   Slope 1:        8%  (  800 bp)  — annual rate at 100% utilization below optimal
-///   Slope 2:      200%  (20_000 bp) — annual rate added per unit above optimal
-///   Protocol fee:  15%  (1_500 bp)  — share of borrow interest kept by protocol
+///   Slope 1:        8%  (  800 bp)  - annual rate at 100% utilization below optimal
+///   Slope 2:      200%  (20_000 bp) - annual rate added per unit above optimal
+///   Protocol fee:  15%  (1_500 bp)  - share of borrow interest kept by protocol
 ///
 /// At U = Uoptimal (75%):  borrow rate =   8%,  supply rate = 5.1%
 /// At U = 80%:             borrow rate =  48%,  supply rate ≈ 32.6%
@@ -71,7 +71,7 @@ pub fn supply_rate_bp(borrow_rate: i128, total_borrowed: i128, total_supplied: i
 /// interest = debt × rate_bp × ledgers / (LEDGERS_PER_YEAR × BP_SCALE)
 /// ```
 ///
-/// Uses saturating arithmetic — overflow silently caps rather than panics.
+/// Uses saturating arithmetic - overflow silently caps rather than panics.
 pub fn accrue_interest(debt: i128, rate_bp: i128, ledgers_elapsed: i128) -> i128 {
     if ledgers_elapsed == 0 || debt == 0 || rate_bp == 0 {
         return debt;

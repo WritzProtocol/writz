@@ -49,7 +49,7 @@ Returns an SPV proof bundle for the given Bitcoin transaction ID.
 
 ### `GET /health`
 
-Returns `{"status":"ok",...}` — used by load balancers.
+Returns `{"status":"ok",...}` - used by load balancers.
 
 ## Environment variables
 
@@ -60,7 +60,7 @@ Copy `.env.example` to `.env` and adjust as needed.
 | `PORT` | `3000` | TCP port |
 | `BITCOIN_NETWORK` | `mainnet` | `mainnet` or `signet` |
 | `ESPLORA_URL` | Blockstream public endpoint | Override for a self-hosted node |
-| `CORS_ORIGIN` | `*` | Allowed origin(s) — comma-separated or `*` |
+| `CORS_ORIGIN` | `*` | Allowed origin(s) - comma-separated or `*` |
 | `DEFAULT_CONFIRMATIONS` | `6` | Used when caller omits the query param |
 | `MAX_CONFIRMATIONS` | `20` | Hard cap on the confirmations param |
 | `REQUEST_TIMEOUT_MS` | `10000` | Esplora request timeout in ms |
@@ -69,7 +69,7 @@ Copy `.env.example` to `.env` and adjust as needed.
 
 ```bash
 cp .env.example .env
-# edit .env — set BITCOIN_NETWORK=signet for development
+# edit .env - set BITCOIN_NETWORK=signet for development
 bun install
 bun run dev       # tsx watch (hot reload)
 # or
@@ -157,7 +157,7 @@ Using the `@stellar/stellar-sdk`, format the values from `sorobanArgs` into Stel
 import { Contract, xdr, Address, nativeToScVal } from "@stellar/stellar-sdk";
 
 // Initialize contract instance
-const contractId = "CC2OZ3LG5U6RE3U7QC2R5QMID5GHQBE7QXTJQ4ZSTP5W73WDTKQPRW7E";
+const contractId = "CDQCTFO3FK3M47QS47O2A4WLNPSQAQBSXBFPJ6RZEHFO5D7RY34FSBBP";
 const commitmentTreeContract = new Contract(contractId);
 
 // Format the arguments retrieved from the relayer

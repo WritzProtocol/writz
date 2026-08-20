@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# stellar-build learning loop — per-turn trace writer wrapper (Stop).
+# stellar-build learning loop - per-turn trace writer wrapper (Stop).
 #
 # Registered as a Stop hook on Claude Code. Hands the event JSON (stdin) to
 # stop-trace.js, which appends one kind:"turn" record IF a skill is resident

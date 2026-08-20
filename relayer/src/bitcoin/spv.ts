@@ -14,12 +14,19 @@ import { stripWitness } from "./tx.js";
  *
  * Esplora returns Merkle-proof sibling hashes in display (reversed) byte order,
  * matching how txids are shown. The `bitcoin-spv` contract folds the proof in
- * internal byte order — its leaf is `SHA256d(raw_tx)` (internal) and it compares
+ * internal byte order - its leaf is `SHA256d(raw_tx)` (internal) and it compares
  * against the header's `merkle_root` field (internal). So each sibling must be
  * reversed to internal order before it is sent on-chain, or the fold yields a
  * root that doesn't match and `verify_transaction` fails with MerkleProofInvalid.
  */
 function toInternalByteOrder(hex: string): string {
+  if (hex.length % 2 !== 0) {
+    // `hex.match(/../g)` silently drops a trailing odd character instead of
+    // erroring - for a 32-byte hash that should never legitimately be
+    // odd-length, so treat it as a sign the upstream (Esplora) response was
+    // truncated or malformed rather than quietly reversing a corrupted value.
+    throw new Error(`toInternalByteOrder: odd-length hex input (${hex.length} chars): ${hex}`);
+  }
   const bytes = hex.match(/../g);
   if (!bytes) return hex;
   return bytes.reverse().join("");

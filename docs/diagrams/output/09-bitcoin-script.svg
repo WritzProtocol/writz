@@ -8,18 +8,18 @@
  viewBox="0.00 0.00 1189.00 1500.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
 <g id="graph0" class="graph" transform="scale(1.60935 1.60935) rotate(0) translate(50.4 881.65)">
 <title>bitcoin&#45;script</title>
-<text xml:space="preserve" text-anchor="start" x="8" y="-815.9" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="13.00" fill="#1c1917">Writz Protocol — Bitcoin P2WSH Locking Script</text>
+<text xml:space="preserve" text-anchor="start" x="8" y="-815.9" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="13.00" fill="#1c1917">Writz Protocol - Bitcoin P2WSH Locking Script</text>
 <text xml:space="preserve" text-anchor="start" x="36.12" y="-806.7" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#57534e">BTC stays on Bitcoin · no custodian · two safe spending paths</text>
 <g id="clust1" class="cluster">
 <title>cluster_path_a</title>
 <path fill="none" stroke="#16a34a" stroke-width="2.5" d="M20,-8C20,-8 314,-8 314,-8 320,-8 326,-14 326,-20 326,-20 326,-535.53 326,-535.53 326,-541.53 320,-547.53 314,-547.53 314,-547.53 20,-547.53 20,-547.53 14,-547.53 8,-541.53 8,-535.53 8,-535.53 8,-20 8,-20 8,-14 14,-8 20,-8"/>
-<text xml:space="preserve" text-anchor="start" x="16" y="-533.13" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="12.00" fill="#16a34a">Path A — Cooperative Release</text>
+<text xml:space="preserve" text-anchor="start" x="16" y="-533.13" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="12.00" fill="#16a34a">Path A - Cooperative Release</text>
 <text xml:space="preserve" text-anchor="start" x="42.25" y="-523.98" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#57534e">Normal case: loan fully repaid</text>
 </g>
 <g id="clust2" class="cluster">
 <title>cluster_path_b</title>
 <path fill="none" stroke="#dc2626" stroke-width="2.5" d="M346,-166.3C346,-166.3 618,-166.3 618,-166.3 624,-166.3 630,-172.3 630,-178.3 630,-178.3 630,-540.03 630,-540.03 630,-546.03 624,-552.03 618,-552.03 618,-552.03 346,-552.03 346,-552.03 340,-552.03 334,-546.03 334,-540.03 334,-540.03 334,-178.3 334,-178.3 334,-172.3 340,-166.3 346,-166.3"/>
-<text xml:space="preserve" text-anchor="start" x="342" y="-537.63" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="12.00" fill="#dc2626">Path B — Emergency Recovery</text>
+<text xml:space="preserve" text-anchor="start" x="342" y="-537.63" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="12.00" fill="#dc2626">Path B - Emergency Recovery</text>
 <text xml:space="preserve" text-anchor="start" x="346.88" y="-528.48" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#57534e">Timelock safety fallback · no Writz needed</text>
 </g>
 <!-- deposit -->

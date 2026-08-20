@@ -1,8 +1,8 @@
 # The ZK Privacy Layer
 
-**How your position stays hidden — even from the protocol.**
+**How your position stays hidden - even from the protocol.**
 
-Zero-knowledge proofs are the electric fence around the Writz house. They allow the protocol to verify facts about your position — that your loan is adequately collateralized, that you actually made the deposit you claim, that your repayment amount is correct — without ever learning the underlying numbers.
+Zero-knowledge proofs are the electric fence around the Writz house. They allow the protocol to verify facts about your position - that your loan is adequately collateralized, that you actually made the deposit you claim, that your repayment amount is correct - without ever learning the underlying numbers.
 
 This page explains how the ZK layer works, what it hides, and what the cryptographic guarantees are.
 
@@ -12,11 +12,11 @@ This page explains how the ZK layer works, what it hides, and what the cryptogra
 
 A zero-knowledge proof lets you prove something is true without revealing anything else.
 
-The classic analogy: imagine you want to prove to someone that you know the solution to a Sudoku puzzle, without revealing the solution. A ZK proof is a mathematical protocol that makes this possible — you can demonstrate you know the answer, and the verifier becomes convinced, without ever seeing the answer.
+The classic analogy: imagine you want to prove to someone that you know the solution to a Sudoku puzzle, without revealing the solution. A ZK proof is a mathematical protocol that makes this possible - you can demonstrate you know the answer, and the verifier becomes convinced, without ever seeing the answer.
 
 In Writz, the "fact" being proved is: *"I have a deposit commitment in this Merkle tree, my loan amount is X% or less of my collateral value, and I have the secret that unlocks this commitment."*
 
-The ZK proof convinces the Soroban contract that all of this is true — without the contract ever learning the deposit amount, the loan amount, or anything else about the position.
+The ZK proof convinces the Soroban contract that all of this is true - without the contract ever learning the deposit amount, the loan amount, or anything else about the position.
 
 ---
 
@@ -25,17 +25,17 @@ The ZK proof convinces the Soroban contract that all of this is true — without
 | Information | Visibility |
 |---|---|
 | That a commitment exists in the tree | Public (commitment hash stored on-chain) |
-| The collateral amount | **Private — never on-chain** |
-| The loan amount | **Private — never on-chain** |
-| The health factor | **Private — never on-chain** |
+| The collateral amount | **Private - never on-chain** |
+| The loan amount | **Private - never on-chain** |
+| The health factor | **Private - never on-chain** |
 | The user's public key linked to a position | **Private** |
 | That a liquidation occurred | Public (event emitted) |
 | Who was liquidated | **Private** (only a nullifier is revealed, not a user identity) |
-| How much debt was repaid in a liquidation | Public — the liquidator must know the amount to pay it. The published amount is provably correct (bound to the private commitment via a circuit constraint, not caller-supplied), but it is not hidden. |
+| How much debt was repaid in a liquidation | Public - the liquidator must know the amount to pay it. The published amount is provably correct (bound to the private commitment via a circuit constraint, not caller-supplied), but it is not hidden. |
 | Total TVL (aggregate) | Public |
 | Total USDC outstanding (aggregate) | Public |
 
-The protocol sees only commitments and nullifiers — opaque hashes that prove actions occurred without revealing the substance of those actions.
+The protocol sees only commitments and nullifiers - opaque hashes that prove actions occurred without revealing the substance of those actions.
 
 ---
 
@@ -52,7 +52,7 @@ Where:
 - `secret` is a random number only the user knows (private)
 - `nonce` is a unique value preventing commitment reuse (private)
 
-**Poseidon** is a ZK-friendly hash function — designed specifically to be efficient inside ZK circuits. It is collision-resistant and hiding: given only the commitment, computing the preimage (amount, secret, nonce) is computationally infeasible.
+**Poseidon** is a ZK-friendly hash function - designed specifically to be efficient inside ZK circuits. It is collision-resistant and hiding: given only the commitment, computing the preimage (amount, secret, nonce) is computationally infeasible.
 
 The commitment is stored on-chain in a Merkle tree. The preimage stays with the user.
 
@@ -66,7 +66,7 @@ When a commitment is "consumed" (used in a borrow, repay, or withdraw), a **null
 nullifier = Poseidon(secret, nonce)
 ```
 
-The nullifier is stored on-chain in a spent-nullifier set. It proves this commitment has been used — preventing double-spending — without revealing which commitment it corresponds to or what amount it represents.
+The nullifier is stored on-chain in a spent-nullifier set. It proves this commitment has been used - preventing double-spending - without revealing which commitment it corresponds to or what amount it represents.
 
 This is the same technique used by Tornado Cash, Aztec Network, and other ZK privacy protocols: the nullifier is the receipt that something happened, but it is unlinkable to the original commitment without the private `secret`.
 
@@ -114,11 +114,13 @@ Writz uses three Circom circuits, each compiled to a Groth16 proof system over t
 - Delta (borrow or repay amount)
 - Merkle path (proof of membership in the tree)
 
-**Constraint count:** ~10,935 non-linear + 12,114 linear constraints
+**Constraint count:** ~11,180 non-linear + 12,122 linear constraints (measured via `circom --r1cs`; grew slightly after the `is_borrow` soundness fix noted below added a boolean constraint plus two 120-bit debt-direction range checks)
 
-**Key design decision — no division in ZK circuits:** Division is expensive in ZK (requires a range proof for the denominator). The collateral ratio check is implemented as a multiplication: `loan_amount × min_ratio_bp ≤ collateral_amount × price × 10000`. This avoids division entirely.
+**Key design decision - no division in ZK circuits:** Division is expensive in ZK (requires a range proof for the denominator). The collateral ratio check is implemented as a multiplication: `loan_amount × min_ratio_bp ≤ collateral_amount × price × 10000`. This avoids division entirely.
 
-**Field negation for repay:** The repay amount is encoded as a field element negation — `p − delta_stroops` where `p` is the BN254 field prime. The circuit recovers the repay amount correctly. This was verified on-chain.
+**Field negation for repay:** The repay amount is encoded as a field element negation - `p − delta_stroops` where `p` is the BN254 field prime. The circuit recovers the repay amount correctly. This was verified on-chain.
+
+**`is_borrow` soundness fix:** earlier versions of this circuit left `is_borrow` unconstrained - nothing forced it to be `0` or `1`, and nothing tied it to the actual sign of `delta_stroops`. A prover could submit `is_borrow=0` (skipping the collateral-ratio check entirely, which is only gated on `is_borrow=1`) while still passing a positive `delta_stroops` that increases debt with zero ratio enforcement. The only thing that prevented this from being exploitable end-to-end was that `commitment-tree::repay`'s Rust-side decode of `delta_stroops` (field-negation, described above) happens to overflow `i128` for a non-negative delta - a property of that one caller, not a guarantee the circuit itself made. The circuit now directly constrains `is_borrow` to be boolean and requires `new_debt >= old_debt` when `is_borrow=1`, `new_debt <= old_debt` when `is_borrow=0` - see `circuits/src/borrow_repay.circom`, Step 3b, and the negative tests in `circuits/test/borrow_repay.test.js`.
 
 ---
 
@@ -129,7 +131,7 @@ Writz uses three Circom circuits, each compiled to a Groth16 proof system over t
 **Public inputs:**
 - The Merkle root
 - The oracle price
-- The usdc_debt (the debt amount — extracted from the proof so the liquidator cannot inflate it)
+- The usdc_debt (the debt amount - extracted from the proof so the liquidator cannot inflate it)
 - The liquidation threshold (120%)
 
 **Private inputs:**
@@ -139,46 +141,46 @@ Writz uses three Circom circuits, each compiled to a Groth16 proof system over t
 
 **Constraint count:** ~5,594 non-linear + ~6,196 linear constraints
 
-**Critical security property — `usdc_debt` binding:** The liquidation circuit's `usdc_debt` public output is computed inside the circuit from the private `debt_stroops` field. The liquidator cannot supply an arbitrary debt amount — it is derived from the private commitment and constrained by the circuit. This prevents a malicious keeper from claiming a larger debt than actually exists.
+**Critical security property - `usdc_debt` binding:** The liquidation circuit's `usdc_debt` public output is computed inside the circuit from the private `debt_stroops` field. The liquidator cannot supply an arbitrary debt amount - it is derived from the private commitment and constrained by the circuit. This prevents a malicious keeper from claiming a larger debt than actually exists.
 
 ---
 
 ## Groth16 and Protocol X-Ray
 
-All three circuits use **Groth16** — the most widely deployed ZK proof system, used by Zcash, Tornado Cash, and Stellar's own Private Payments reference implementation.
+All three circuits use **Groth16** - the most widely deployed ZK proof system, used by Zcash, Tornado Cash, and Stellar's own Private Payments reference implementation.
 
-A Groth16 proof is a small constant-size object (3 elliptic curve points, ~128 bytes on BN254) that can be verified in constant time — regardless of the size of the computation being proven.
+A Groth16 proof is a small constant-size object (3 elliptic curve points, ~128 bytes on BN254) that can be verified in constant time - regardless of the size of the computation being proven.
 
 Verification uses **BN254 pairing checks**: elliptic curve operations that confirm the relationship between the proof and the verification key. These are computationally expensive but deterministic.
 
 Stellar's **Protocol X-Ray** (Protocol 26) added native host functions for BN254 operations:
-- `bn254_g1_msm` — multi-scalar multiplication on the G1 curve
-- `bn254_pairing_check` — pairing check across multiple pairs
+- `bn254_g1_msm` - multi-scalar multiplication on the G1 curve
+- `bn254_pairing_check` - pairing check across multiple pairs
 
 The `zk-verifier` contract uses these host functions to run the Groth16 verification:
 ```
 verify = e(A, B) == e(vk.alpha, vk.beta) × e(vk_x, vk.gamma) × e(C, vk.delta)
 ```
 
-This is a 4-pair pairing check. Using Protocol 26 host functions, it costs approximately 15–20M instructions — within budget for a Soroban transaction.
+This is a 4-pair pairing check. Using Protocol 26 host functions, it costs approximately 15–20M instructions - within budget for a Soroban transaction.
 
 ---
 
 ## The Merkle Commitment Tree
 
-All commitments are stored in a Poseidon Merkle tree with depth 20 — supporting up to 1,048,576 (2²⁰) positions.
+All commitments are stored in a Poseidon Merkle tree with depth 20 - supporting up to 1,048,576 (2²⁰) positions.
 
-The tree root is stored on-chain. When a new commitment is inserted, the root is updated. Every ZK proof that references the tree must match the current root — ensuring ZK proofs are valid only against the current state of the protocol.
+The tree root is stored on-chain. When a new commitment is inserted, the root is updated. Every ZK proof that references the tree must match the current root - ensuring ZK proofs are valid only against the current state of the protocol.
 
 **Sparse tree:** The tree uses a sparse representation. Only occupied leaves require storage. Empty subtrees are represented by a precomputed empty-subtree hash.
 
-**On-chain initial root:** `0x2134e76ac74b4b8765b6e37992aa15f06ff... ` (Poseidon-2 empty tree root — verified on-chain on Soroban testnet)
+**On-chain initial root:** `0x2134e76ac74b4b8765b6e37992aa15f06ff... ` (Poseidon-2 empty tree root - verified on-chain on Soroban testnet)
 
 ---
 
 ## The Trusted Setup Ceremony
 
-Groth16 requires a one-time **trusted setup ceremony** — a multi-party computation event that generates the proving and verification keys for each circuit.
+Groth16 requires a one-time **trusted setup ceremony** - a multi-party computation event that generates the proving and verification keys for each circuit.
 
 The ceremony has two phases:
 1. **Powers of Tau (Phase 1):** A universal setup shared across all circuits. Writz will use the Hermez ceremony artifact (the same trusted setup used by Stellar's own Private Payments reference implementation).
@@ -188,7 +190,9 @@ The ceremony requires multiple independent participants. The security guarantee 
 
 The ceremony transcript is published publicly. Anyone can verify it was executed correctly.
 
-**When:** The trusted setup ceremony is planned for Q3–Q4 2026, before mainnet launch. The current development keys (`pot15` from snarkjs) are used for testing only — they are NOT suitable for production.
+**When:** The trusted setup ceremony is planned for Q3–Q4 2026, before mainnet launch. The current development keys (`pot15` from snarkjs) are used for testing only - they are NOT suitable for production.
+
+**Rotating the on-chain key once the real ceremony completes:** `zk-verifier.set_verification_key` (admin-only) replaces a circuit's key immediately - there is no grace period during which the previous key is also accepted. That's a deliberate choice: accepting proofs against a stale key is a strictly weaker security posture than requiring the current one. What the contract does provide is an audit trail - every call emits a `vk_rotated` event carrying a fingerprint of the old and new key, so there's an on-chain record of exactly when the dev key was replaced by the real ceremony's output, even though storage itself only ever holds the current key.
 
 ---
 
@@ -203,7 +207,7 @@ The ZK layer is designed to minimize on-chain storage while preventing double-sp
 | Merkle root | Instance persistent | 180-day window (refreshable) |
 | Verification keys | Instance persistent | Permanent |
 
-**TTL management:** Soroban's storage has a time-to-live (TTL) system. Entries that are not accessed expire. Writz provides permissionless `refresh_*` functions that any keeper can call to extend the TTL of critical entries — ensuring user positions never expire unexpectedly.
+**TTL management:** Soroban's storage has a time-to-live (TTL) system. Entries that are not accessed expire. Writz provides permissionless `refresh_*` functions that any keeper can call to extend the TTL of critical entries - ensuring user positions never expire unexpectedly.
 
 ---
 

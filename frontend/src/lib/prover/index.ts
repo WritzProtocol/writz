@@ -9,7 +9,7 @@ import { Buffer } from "buffer";
  *
  * Output is shaped for the generated contract bindings: `pi_a`/`pi_c` are
  * 64-byte G1 points, `pi_b` is a 128-byte G2 point, and each public signal is a
- * 32-byte big-endian value — matching `zk-verifier`'s expectations.
+ * 32-byte big-endian value - matching `zk-verifier`'s expectations.
  */
 
 type Circuit = "deposit" | "borrow_repay" | "liquidation" | "zero_debt";

@@ -1,5 +1,5 @@
 /**
- * Route integration tests — uses a standalone Express app built from the
+ * Route integration tests - uses a standalone Express app built from the
  * router so there's no port conflict with index.ts.
  *
  * buildSPVProof is mocked; the real EsploraClient is never called.
@@ -51,7 +51,7 @@ beforeEach(() => {
 
 // ── Happy path ────────────────────────────────────────────────────────────
 
-describe('GET /spv-proof/:txid — happy path', () => {
+describe('GET /spv-proof/:txid - happy path', () => {
   test('200 with proof bundle and sorobanArgs', async () => {
     mockBuildSPVProof.mockResolvedValue(FAKE_BUNDLE);
 
@@ -105,7 +105,7 @@ describe('GET /spv-proof/:txid — happy path', () => {
 
 // ── Input validation ──────────────────────────────────────────────────────
 
-describe('GET /spv-proof/:txid — input validation', () => {
+describe('GET /spv-proof/:txid - input validation', () => {
   test('400 for txid that is too short', async () => {
     const res = await request(app).get('/spv-proof/deadbeef');
     expect(res.status).toBe(400);
@@ -139,7 +139,7 @@ describe('GET /spv-proof/:txid — input validation', () => {
 
 // ── Error propagation ─────────────────────────────────────────────────────
 
-describe('GET /spv-proof/:txid — error propagation', () => {
+describe('GET /spv-proof/:txid - error propagation', () => {
   test('404 when the transaction is not yet confirmed', async () => {
     mockBuildSPVProof.mockRejectedValue(new UnconfirmedTxError(VALID_TXID));
 

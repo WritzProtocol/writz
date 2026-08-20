@@ -60,7 +60,7 @@ export function WalletButton() {
       <button
         type="button"
         onClick={disconnect}
-        title={`${address} — click to disconnect`}
+        title={`${address} - click to disconnect`}
         className={`${BASE} border border-line-2 bg-surface text-head hover:border-amber`}
       >
         <span className="h-1.5 w-1.5 rounded-full bg-ok" />

@@ -2,7 +2,7 @@
 ///
 /// All byte access goes through `soroban_sdk::Bytes::get(index)` which
 /// crosses the host-contract ABI boundary.  This is intentionally slower
-/// than slice-based parsing — we call this at most once per deposit and
+/// than slice-based parsing - we call this at most once per deposit and
 /// the overhead is negligible compared to the SPV cross-contract call.
 
 use soroban_sdk::Bytes;

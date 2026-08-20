@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// stellar-build learning loop — per-turn trace writer (Stop).
+// stellar-build learning loop - per-turn trace writer (Stop).
 //
 // This is the REAL writer. trace-skill.js only marks which skill is resident;
 // the actual work product shows up turn by turn. On each Stop we:
@@ -11,7 +11,7 @@
 // Then we bump the pointer's turn count (and stash the latest preview so the
 // SessionEnd span summary has a final work product even without the transcript).
 //
-// The activation counter is NOT bumped here — it is bumped once per span at
+// The activation counter is NOT bumped here - it is bumped once per span at
 // SessionEnd, so the "20 activations" auto-trigger keeps its meaning.
 //
 // Fully local, best-effort. Opt out: STELLAR_BUILD_NO_TRACE=1. Root: STELLAR_HOME.

@@ -14,6 +14,7 @@ import { proveZeroDebt, type ZeroDebtInput } from "@/lib/prover";
 import { stellarTxUrl, btcTxUrl } from "@/lib/explorer";
 import { TxLink } from "./TxLink";
 import { config } from "@/config";
+import { humanizeError } from "@/lib/errors";
 import {
   positionKeys,
   subscribePositions,
@@ -83,7 +84,7 @@ export function PositionDashboard() {
 
   const [demoLoading, setDemoLoading] = useState(false);
   const [demoError, setDemoError] = useState<string | null>(null);
-  // Reactive from the (localStorage-backed) positions list — a demo can only be
+  // Reactive from the (localStorage-backed) positions list - a demo can only be
   // loaded once per wallet, since insert_commitment consumes its pending entry.
   const demoLoaded = positions.some((p) => p.demo);
 
@@ -94,7 +95,7 @@ export function PositionDashboard() {
     try {
       await createDemoPosition({ owner: address, seed, index: positionsSnapshot(address).length });
     } catch (e) {
-      setDemoError(e instanceof Error ? e.message : String(e));
+      setDemoError(humanizeError(e));
     } finally {
       setDemoLoading(false);
     }
@@ -106,7 +107,7 @@ export function PositionDashboard() {
     try {
       await unlock();
     } catch (e) {
-      setUnlockError(e instanceof Error ? e.message : String(e));
+      setUnlockError(humanizeError(e));
     } finally {
       setUnlocking(false);
     }
@@ -125,7 +126,7 @@ export function PositionDashboard() {
           : `No positions for this wallet (scanned ${scanned}).`,
       );
     } catch (e) {
-      setRecoverError(e instanceof Error ? e.message : String(e));
+      setRecoverError(humanizeError(e, { flow: "recover" }));
     } finally {
       setRecovering(false);
     }
@@ -164,7 +165,7 @@ export function PositionDashboard() {
         <div className="flex flex-col gap-4">
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-surface px-4 py-3">
             <span className="text-xs text-muted">
-              Restore positions on this device — keys come from your wallet, no backup needed.
+              Restore positions on this device - keys come from your wallet, no backup needed.
             </span>
             <div className="flex items-center gap-3">
               {recoverMsg ? <span className="text-xs text-ok">{recoverMsg}</span> : null}
@@ -208,7 +209,7 @@ export function PositionDashboard() {
       )}
 
       <p className="text-xs text-muted">
-        Amounts are private — they never leave this device. Health uses the fixed
+        Amounts are private - they never leave this device. Health uses the fixed
         testnet BTC price ($60,000). Click a value to reveal it.
       </p>
     </section>
@@ -283,7 +284,7 @@ function PositionCard({ position }: { position: Position }) {
       router.refresh();
     } catch (e) {
       setStatus("error");
-      setMessage(e instanceof Error ? e.message : String(e));
+      setMessage(humanizeError(e, { flow: "borrow" }));
     }
   }
 
@@ -317,7 +318,7 @@ function PositionCard({ position }: { position: Position }) {
       router.refresh();
     } catch (e) {
       setRepayStatus("error");
-      setRepayMessage(e instanceof Error ? e.message : String(e));
+      setRepayMessage(humanizeError(e, { flow: "repay" }));
     }
   }
 
@@ -344,7 +345,7 @@ function PositionCard({ position }: { position: Position }) {
     }
     if (debtStroops !== 0n) {
       setReleaseStatus("error");
-      setReleaseMessage(`Outstanding debt of ${fmtUsdc(debtStroops)} USDC — repay before releasing.`);
+      setReleaseMessage(`Outstanding debt of ${fmtUsdc(debtStroops)} USDC - repay before releasing.`);
       return;
     }
 
@@ -389,7 +390,7 @@ function PositionCard({ position }: { position: Position }) {
         root: string;
       };
 
-      // Zero-debt proof — keys derived from the session seed (never persisted).
+      // Zero-debt proof - keys derived from the session seed (never persisted).
       setReleaseMessage("Generating zero-debt proof (this may take ~30 s)…");
       const { secret, nonce } = positionKeys(seed, position);
       const zeroDebtInput: ZeroDebtInput = {
@@ -431,12 +432,12 @@ function PositionCard({ position }: { position: Position }) {
       const btcTxid = await broadcastRes.text();
 
       setReleaseStatus("done");
-      setReleaseMessage("BTC released —");
+      setReleaseMessage("BTC released -");
       setReleaseTx(btcTxid);
       router.refresh();
     } catch (e) {
       setReleaseStatus("error");
-      setReleaseMessage(e instanceof Error ? e.message : String(e));
+      setReleaseMessage(humanizeError(e, { flow: "release" }));
     }
   }
 
@@ -446,10 +447,38 @@ function PositionCard({ position }: { position: Position }) {
         <span className="font-mono text-xs text-muted" title={position.commitment}>
           {position.commitment.slice(0, 8)}…{position.commitment.slice(-6)}
         </span>
-        <span className="inline-flex items-center gap-2 rounded-full border border-line-2 px-3 py-1 text-xs font-semibold capitalize text-body">
+        <span
+          className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold capitalize ${
+            position.status === "liquidated"
+              ? "border-crit/40 bg-crit/10 text-crit"
+              : "border-line-2 text-body"
+          }`}
+        >
           {position.status}
         </span>
       </div>
+
+      {position.status === "liquidated" ? (
+        <div className="mb-4 rounded-lg border border-crit/30 bg-crit/5 p-3">
+          <p className="text-xs font-semibold text-crit">This position was liquidated.</p>
+          <p className="mt-1 text-xs text-body">
+            Your health factor dropped below the 120% liquidation threshold, and a
+            keeper repaid your outstanding USDC debt in exchange for your BTC
+            collateral (at the standard 10% liquidation discount). Your debt on
+            this position is now zero - there is nothing left to repay - but the
+            BTC collateral is gone; it was not partially returned. This is the
+            protocol working as designed, not an error.{" "}
+            <a
+              href="/products/privatelend#liquidation"
+              className="underline decoration-crit/40 underline-offset-2 hover:text-crit"
+            >
+              Read how liquidation works
+            </a>{" "}
+            or lower your borrow amount on future deposits to keep more buffer
+            above the threshold.
+          </p>
+        </div>
+      ) : null}
 
       <div className="grid grid-cols-2 gap-5 sm:grid-cols-3">
         <Metric label="Collateral · BTC">
@@ -525,6 +554,18 @@ function PositionCard({ position }: { position: Position }) {
 
       {position.status === "closed" && position.btcPubkey ? (
         <div className="mt-4 flex flex-col gap-2 border-t border-line pt-4">
+          {releaseStatus !== "done" ? (
+            <div className="mb-1 rounded-lg border border-amber/30 bg-amber/5 p-3">
+              <p className="text-xs font-semibold text-amber">Action needed: release your BTC</p>
+              <p className="mt-1 text-xs text-body">
+                Your USDC debt is fully repaid on Stellar, but your BTC collateral
+                is still locked on Bitcoin - repaying does not release it
+                automatically. Enter a receive address below and click
+                &ldquo;Release&rdquo; to broadcast the transaction that sends
+                it back to you.
+              </p>
+            </div>
+          ) : null}
           <p className="text-xs font-semibold uppercase tracking-wider text-muted">Release BTC</p>
           {releaseStatus === "done" ? (
             <p className="break-all text-xs text-ok">
@@ -562,6 +603,26 @@ function PositionCard({ position }: { position: Position }) {
               </p>
             </>
           )}
+        </div>
+      ) : null}
+
+      {position.status === "closed" && !position.btcPubkey ? (
+        <div className="mt-4 rounded-lg border border-line-2 bg-surface-2 p-3">
+          <p className="text-xs font-semibold text-head">Your BTC release needs a manual check</p>
+          <p className="mt-1 text-xs text-muted">
+            Your debt is repaid, but the Bitcoin details needed to release your
+            collateral (your Bitcoin pubkey and deposit info) aren&apos;t available
+            on this device - this can happen after recovering a position on a
+            new device. Contact support with your original deposit txid so this
+            can be reconstructed, or use{" "}
+            <a
+              href="/how-it-works/manual-emergency-recovery"
+              className="underline decoration-line-2 underline-offset-2 hover:text-head"
+            >
+              manual emergency recovery
+            </a>{" "}
+            once the timelock expires.
+          </p>
         </div>
       ) : null}
     </div>

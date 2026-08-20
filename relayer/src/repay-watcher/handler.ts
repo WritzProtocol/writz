@@ -4,15 +4,15 @@
  * On a `repay_full` event: loads the position, reconstructs the redeem
  * script and P2WSH vout from on-chain + Bitcoin data, builds the Path A
  * release PSBT, co-signs it with the resolved protocol signer (KMS,
- * preferred, or the testnet/signet-only raw-WIF fallback — see
+ * preferred, or the testnet/signet-only raw-WIF fallback - see
  * `resolveProtocolSigner` in `@writz/bitcoin-script`), and publishes the
- * half-signed PSBT on-chain via `publish_release_psbt` — so the user can
+ * half-signed PSBT on-chain via `publish_release_psbt` - so the user can
  * retrieve and finish signing it even if the rest of the Writz stack is
  * down.
  *
  * Reuses `bitcoin-script`'s builders rather than reimplementing PSBT
  * construction a third time (the frontend's `address.ts` already carries a
- * documented duplication burden versus the same source — see that file's
+ * documented duplication burden versus the same source - see that file's
  * own comment).
  */
 import { Keypair, Transaction as StellarTransaction } from "@stellar/stellar-sdk";
@@ -29,7 +29,7 @@ import { parseOutput } from "../bitcoin/tx.js";
 import { config } from "../config.js";
 
 // A widely-used, publicly documented placeholder account with no known
-// private key — safe for read-only / simulation-only contract calls that
+// private key - safe for read-only / simulation-only contract calls that
 // never submit a transaction. Same value used in relayer/src/routes/merkle.ts
 // and frontend/src/app/api/cosign/route.ts's READ_ONLY_SOURCE.
 const READ_ONLY_SOURCE = "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF";
@@ -51,7 +51,7 @@ function readOnlyClient(): PrivateLendClient {
 /**
  * Finds the output index whose scriptPubKey matches `scriptPubKeyHex` in a
  * raw transaction. `parseOutput` (relayer/src/bitcoin/tx.ts) needs an index
- * up front — this is the reverse lookup, bounded at a generous 64 outputs.
+ * up front - this is the reverse lookup, bounded at a generous 64 outputs.
  */
 function findOutputIndex(rawTxHex: string, scriptPubKeyHex: string): number {
   for (let i = 0; i < 64; i++) {
@@ -100,14 +100,14 @@ export async function handleRepayFull(
     txid: txidInternal,
   });
   if (alreadyPublished) {
-    return; // Idempotent — already handled (e.g. a re-processed event after a crash).
+    return; // Idempotent - already handled (e.g. a re-processed event after a crash).
   }
 
   const txidDisplay = reverseHex(txidInternal.toString("hex"));
 
   // Sanity-check: the redeem script we're about to build must match the
   // scriptPubKey recorded on-chain at deposit time. If it doesn't, something
-  // is wrong (e.g. a protocol key rotation without a matching migration) —
+  // is wrong (e.g. a protocol key rotation without a matching migration) -
   // fail loudly rather than co-sign a release for the wrong script.
   const deposit = deriveDepositAddress(
     {
@@ -119,7 +119,7 @@ export async function handleRepayFull(
   );
   if (!deposit.scriptPubKey.equals(position.p2wsh_script_pubkey)) {
     throw new Error(
-      `derived scriptPubKey for txid ${txidDisplay} does not match the on-chain position — ` +
+      `derived scriptPubKey for txid ${txidDisplay} does not match the on-chain position - ` +
         "refusing to co-sign (possible protocol key mismatch)",
     );
   }
@@ -140,7 +140,7 @@ export async function handleRepayFull(
     network,
   });
 
-  // Protocol partial signature only — the user must add their own before
+  // Protocol partial signature only - the user must add their own before
   // this can be finalized and broadcast. Matches the existing
   // frontend /api/cosign route's behavior (never auto-finalizes).
   await psbt.signInputAsync(0, deps.signer);

@@ -20,14 +20,14 @@ function decToHex32(s) {
 }
 
 // Convert a G1 point [x_dec, y_dec, "1"] to 64-byte hex.
-// Format: be(x) || be(y) — Ethereum-compatible, matches G1Point in
+// Format: be(x) || be(y) - Ethereum-compatible, matches G1Point in
 // contracts/contracts/zk-verifier/src/types.rs.
 function g1ToHex(point) {
   return decToHex32(point[0]) + decToHex32(point[1]);
 }
 
 // Convert a G2 point [[x0,x1],[y0,y1],["1","0"]] to 128-byte hex.
-// Soroban / EIP-197 format: be(x.c1) || be(x.c0) || be(y.c1) || be(y.c0) —
+// Soroban / EIP-197 format: be(x.c1) || be(x.c0) || be(y.c1) || be(y.c0) -
 // matches G2Point in contracts/contracts/zk-verifier/src/types.rs.
 function g2ToHex(point) {
   const xc0 = point[0][0], xc1 = point[0][1];

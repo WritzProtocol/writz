@@ -8,7 +8,7 @@ const app = express();
 
 app.use(express.json());
 
-// CORS — allow configured origins (or all origins when CORS_ORIGIN="*").
+// CORS - allow configured origins (or all origins when CORS_ORIGIN="*").
 app.use((req, res, next) => {
   const origin = req.headers["origin"];
   const allowed = config.corsOrigin;
@@ -24,7 +24,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// Health check — used by monitors and load balancers.
+// Health check - used by monitors and load balancers.
 app.get("/health", (_req, res) => {
   res.json({
     status: "ok",
@@ -49,6 +49,6 @@ app.listen(config.port, () => {
   console.log(`Stellar RPC: ${config.stellarRpcUrl}`);
 });
 
-// Auto-cosign repay watcher — no-ops with a warning if its
+// Auto-cosign repay watcher - no-ops with a warning if its
 // required config isn't set, so this never blocks the HTTP API from starting.
 startRepayWatcher();

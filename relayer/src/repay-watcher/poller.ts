@@ -2,32 +2,32 @@
  * Repay-watcher poller.
  *
  * Polls Soroban RPC for `repay_full` events on the `private-lend` contract
- * from a persisted cursor (never from "now" — see cursor-store.ts), and
+ * from a persisted cursor (never from "now" - see cursor-store.ts), and
  * hands each matching event to a handler function.
  *
  * A batch's cursor is only persisted once every event in that batch has
  * been handled successfully. If any event fails, the cursor is left
  * unadvanced so the whole batch (including already-handled events, which
- * `handleRepayFull` treats idempotently) is retried on the next poll —
+ * `handleRepayFull` treats idempotently) is retried on the next poll -
  * this gives at-least-once, retry-until-success delivery per event rather
  * than silently skipping a transient failure.
  *
  * `runPollCycle` and `decodeRepayFullEvent` deliberately do not statically
  * import `@stellar/stellar-sdk`, `@writz/bitcoin-script`, or `./handler.js`
- * at module scope — those are lazily `require()`'d inside `decodeRepayFullEvent`
+ * at module scope - those are lazily `require()`'d inside `decodeRepayFullEvent`
  * and `startRepayWatcher` instead. `@stellar/stellar-sdk`'s CJS build
  * `require()`s an ESM-only `@noble/hashes` file, which Node's (and ts-jest's)
  * strict CJS loader cannot execute; Bun's runtime tolerates it, but the
  * relayer's Jest suite runs under ts-jest's CommonJS transform and does not.
- * Deferring the import keeps this file — and its unit-testable control flow
- * in particular — loadable under Jest without needing to fix that
+ * Deferring the import keeps this file - and its unit-testable control flow
+ * in particular - loadable under Jest without needing to fix that
  * interop gap in the test toolchain.
  */
 import { readCursor, writeCursor } from "./cursor-store.js";
 
 const REPAY_FULL_TOPIC = "repay_full";
 
-/** The subset of `rpc.Server` the poll cycle actually needs — narrowed so
+/** The subset of `rpc.Server` the poll cycle actually needs - narrowed so
  * tests can pass a plain mock object instead of a real RPC server. */
 export interface EventsServer {
   getEvents(
@@ -41,7 +41,7 @@ export interface EventsServer {
 /**
  * Decodes an event's topics into `{topic0, txid}` (both `undefined` if the
  * shape doesn't match what a `repay_full` event looks like). Isolated as
- * its own function — and injectable via `PollCycleDeps.decodeEvent` — so
+ * its own function - and injectable via `PollCycleDeps.decodeEvent` - so
  * `runPollCycle`'s batch/cursor control flow can be unit tested with plain
  * mock objects, independent of the Soroban SDK's real XDR decoding.
  */
@@ -123,7 +123,7 @@ export interface RepayWatcherHandle {
  *
  * No-op (with a warning) if the required configuration isn't present, so a
  * relayer deployment that hasn't configured the watcher yet doesn't crash on
- * startup — the rest of the relayer's HTTP API remains fully functional.
+ * startup - the rest of the relayer's HTTP API remains fully functional.
  */
 export function startRepayWatcher(): RepayWatcherHandle {
   // eslint-disable-next-line @typescript-eslint/no-require-imports -- see top-of-file comment: deliberately deferred to avoid the CJS/ESM interop crash under ts-jest.
@@ -133,7 +133,7 @@ export function startRepayWatcher(): RepayWatcherHandle {
   if (!config.privateLendId || !config.relayerSecret || !hasSignerConfig) {
     console.warn(
       "[repay-watcher] PRIVATE_LEND_ID / RELAYER_SECRET / (KMS_KEY_ID or " +
-        "PROTOCOL_SIGNING_KEY) not fully configured — auto-cosign watcher disabled",
+        "PROTOCOL_SIGNING_KEY) not fully configured - auto-cosign watcher disabled",
     );
     return { stop: () => {} };
   }

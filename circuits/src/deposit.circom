@@ -5,12 +5,12 @@ include "circomlib/circuits/comparators.circom";
 include "circomlib/circuits/bitify.circom";
 
 /*
- * Writz Protocol — Deposit Circuit
+ * Writz Protocol - Deposit Circuit
  *
  * Proves that a valid BTC deposit was made and creates a cryptographic
  * commitment to the position without revealing the deposited amount.
  *
- * The circuit does NOT verify the Bitcoin SPV proof — that is handled by the
+ * The circuit does NOT verify the Bitcoin SPV proof - that is handled by the
  * separate `bitcoin-spv` Soroban contract.  The circuit only handles the ZK
  * privacy layer: creating a hiding commitment to the position state.
  *
@@ -68,13 +68,13 @@ template DepositCircuit() {
     min_check.in[1] <== min_deposit_satoshis;
     min_check.out === 1;
 
-    // ── Constraint 4: Bind proof to the Bitcoin transaction ───────────────────
-    // btc_txid_lo and btc_txid_hi appear in the public inputs, so the proof is
-    // cryptographically bound to a specific Bitcoin txid.  This prevents the
-    // same ZK proof from being submitted for a different transaction.
-    // No additional constraints needed — being public inputs is sufficient.
-    signal txid_bind <== btc_txid_lo * btc_txid_hi;
-    _ <== txid_bind; // suppress unused warning; the signals are constrained by being inputs
+    // btc_txid_lo and btc_txid_hi are bound to this proof simply by being
+    // declared as public inputs above - Groth16's public statement already
+    // includes them, so the verifier cannot swap in different txid values
+    // without invalidating the proof. No additional in-circuit constraint is
+    // needed or possible to add here: a signal that is only ever multiplied
+    // and then discarded (as a previous version of this circuit did) adds no
+    // binding at all - it is dead code, not a security property.
 }
 
 // Public signals: btc_txid_lo, btc_txid_hi, min_deposit_satoshis

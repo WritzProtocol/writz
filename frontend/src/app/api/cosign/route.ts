@@ -5,9 +5,18 @@ import { groth16, type Groth16ProofJSON } from "snarkjs";
 import { Client } from "@/lib/contracts/generated";
 import { config, requireContract } from "@/config";
 import { getMerkleRoot } from "@/lib/contracts/commitmentTree";
+import { checkRateLimit, clientKeyFromHeaders } from "@/lib/rateLimit";
 import vKeyData from "@/circuits/zero_debt_vkey.json";
 
-// Force the Node.js runtime — snarkjs requires native BigInt and is incompatible
+// A legitimate caller signs a release once per repaid position - this is
+// generous headroom for retries after a transient failure, not a budget for
+// normal use. Tuned to block hammering (accidental retry loops, probing)
+// without needing a shared store; see docs/security/security-model.md for
+// the broader note on this endpoint being a hot signing surface.
+const RATE_LIMIT_MAX_REQUESTS = 10;
+const RATE_LIMIT_WINDOW_MS = 60_000;
+
+// Force the Node.js runtime - snarkjs requires native BigInt and is incompatible
 // with Vercel's Edge runtime.
 export const runtime = "nodejs";
 
@@ -24,7 +33,7 @@ function getNetwork(): bitcoin.networks.Network {
  * Ensures input 0 is locked to a Writz deposit P2WSH whose cooperative branch
  * designates THIS protocol key as the co-signer, and that the input's
  * scriptPubKey commits to exactly that script. Without this the endpoint would
- * be a blind signing oracle — it would add the protocol signature to any input.
+ * be a blind signing oracle - it would add the protocol signature to any input.
  */
 function assertWritzReleaseInput(
   psbt: bitcoin.Psbt,
@@ -87,10 +96,22 @@ interface ZkProofBody {
 }
 
 export async function POST(req: NextRequest) {
+  const clientKey = clientKeyFromHeaders(req.headers);
+  const rateLimit = checkRateLimit(clientKey, RATE_LIMIT_MAX_REQUESTS, RATE_LIMIT_WINDOW_MS);
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests - slow down and try again shortly" },
+      {
+        status: 429,
+        headers: { "Retry-After": String(Math.ceil((rateLimit.retryAfterMs ?? 0) / 1000)) },
+      },
+    );
+  }
+
   // The protocol signing key prefers AWS KMS (ECC_SECG_P256K1 /
   // ECDSA_SHA_256), which never reads it into process memory. If KMS isn't
   // configured, PROTOCOL_SIGNING_KEY is a testnet/signet-only raw-WIF
-  // fallback — resolveProtocolSigner refuses it on mainnet. See
+  // fallback - resolveProtocolSigner refuses it on mainnet. See
   // docs/security/security-model.md.
   const kmsKeyId = process.env.KMS_KEY_ID;
   const envPrivateKeyWif = process.env.PROTOCOL_SIGNING_KEY;
@@ -137,7 +158,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       {
         error:
-          "zero_debt circuit not set up — run: cd circuits && bash scripts/compile_all.sh && " +
+          "zero_debt circuit not set up - run: cd circuits && bash scripts/compile_all.sh && " +
           "bash scripts/setup_dev.sh, then copy zero_debt_vkey.json to frontend/src/circuits/ " +
           "and the .wasm/.zkey artifacts to frontend/public/circuits/",
       },
@@ -196,7 +217,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           error:
-            "Proof merkle_root does not match the current on-chain root — " +
+            "Proof merkle_root does not match the current on-chain root - " +
             "regenerate the proof against the latest tree state",
         },
         { status: 403 },
@@ -211,7 +232,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Co-sign the cooperative release. Only sign an input locked to a Writz
-  // deposit P2WSH where this protocol key is the co-signer — never act as a
+  // deposit P2WSH where this protocol key is the co-signer - never act as a
   // blind signing oracle for arbitrary inputs.
   try {
     const network = getNetwork();

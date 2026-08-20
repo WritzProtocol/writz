@@ -1,4 +1,4 @@
-// stellar-build learning loop — shared hook helpers.
+// stellar-build learning loop - shared hook helpers.
 //
 // A skill *use* is a multi-turn span, not a single synchronous tool call. These
 // helpers let the three writers cooperate on that model:
@@ -121,7 +121,7 @@ function bumpActivation(home, ts) {
 
 // Close an open span: write one kind:"span" summary record (opening prompt +
 // final work product accumulated across the span) and bump the activation
-// counter once. Does NOT remove the pointer file — the caller decides whether
+// counter once. Does NOT remove the pointer file - the caller decides whether
 // to clear it (SessionEnd) or overwrite it with a new span (handoff).
 function closeSpan(home, ptr, opts) {
   if (!ptr || !ptr.skill) return false;

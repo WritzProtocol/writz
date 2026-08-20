@@ -1,11 +1,11 @@
 /**
  * Transaction building and finalization for the two spending paths.
  *
- * Path A — normal repayment (co-sign):
+ * Path A - normal repayment (co-sign):
  *   Witness: [<user_sig>, <protocol_sig>, OP_1, <redeem_script>]
  *   OP_IF branch is taken. Requires both signatures.
  *
- * Path B — emergency recovery (timelock):
+ * Path B - emergency recovery (timelock):
  *   Witness: [<user_sig>, OP_0, <redeem_script>]
  *   OP_ELSE branch is taken. Requires only the user signature, but the
  *   transaction's nLockTime must be >= the CLTV value in the script, and
@@ -65,7 +65,7 @@ export function buildReleaseTransaction(params: SpendParams): bitcoin.Psbt {
       value: params.amountSat,
     },
     witnessScript: params.redeemScript,
-    // No locktime needed for Path A — set nSequence to the default non-RBF value.
+    // No locktime needed for Path A - set nSequence to the default non-RBF value.
     sequence: 0xffff_fffe,
   });
 

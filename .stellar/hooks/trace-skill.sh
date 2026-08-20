@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# stellar-build learning loop — trace capture hook wrapper.
+# stellar-build learning loop - trace capture hook wrapper.
 #
 # Registered as a PostToolUse hook on Claude Code (matcher "Skill") and Codex
 # (matcher ".*"). Hands the event JSON (stdin) to trace-skill.js, which appends
@@ -12,7 +12,7 @@ set +e
 
 HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd 2>/dev/null)" || exit 0
 
-# No node available — drain stdin and no-op. Tracing simply stays off;
+# No node available - drain stdin and no-op. Tracing simply stays off;
 # /optimize-skills and /bench-skills still work on whatever traces exist.
 command -v node >/dev/null 2>&1 || { cat >/dev/null 2>&1; exit 0; }
 

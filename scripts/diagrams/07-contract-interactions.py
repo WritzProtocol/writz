@@ -1,5 +1,5 @@
 """
-Writz Protocol — 07 Contract Interactions
+Writz Protocol - 07 Contract Interactions
 The four Soroban contracts and how they call each other.
 """
 import sys, os
@@ -13,7 +13,7 @@ g.attr(**base_graph_attr(
     splines="spline",
     size="14,10",
     label=hl(
-        "Writz Protocol — Soroban Contract Interactions",
+        "Writz Protocol - Soroban Contract Interactions",
         "Four live contracts on testnet · all ZK verification goes through zk-verifier",
     ),
 ))

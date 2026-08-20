@@ -35,4 +35,8 @@ pub enum PrivateLendError {
     Overflow = 15,
     /// The provided scriptPubKey is not a valid 34-byte P2WSH scriptPubKey.
     InvalidScriptPubKey = 16,
+    /// The contract is paused - new deposits, borrows, and USDC supply are
+    /// refused. Existing positions can still repay, withdraw, liquidate, and
+    /// release BTC; a pause only blocks new risk-taking.
+    Paused = 17,
 }

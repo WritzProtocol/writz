@@ -19,7 +19,7 @@ const DEMO_COLLATERAL_SATS = 1_000_000n;
 /**
  * Creates a position for testing the borrow/repay flow without a real BTC
  * deposit. The commitment is inserted into the on-chain Merkle tree (via the
- * relayer admin) so borrow/repay produce valid ZK proofs against the real root —
+ * relayer admin) so borrow/repay produce valid ZK proofs against the real root -
  * but no Bitcoin is locked, so the position has no `btcPubkey` and the release
  * flow stays hidden. Keys are derived from the wallet seed, so it's also
  * recoverable like any real position (#18).
@@ -71,7 +71,7 @@ export async function createDemoPosition(params: {
     createdAt: Date.now(),
     leafIndex: body.leafIndex,
     demo: true,
-    // No btcPubkey/timelockHeight/vout — no real BTC, so release stays hidden.
+    // No btcPubkey/timelockHeight/vout - no real BTC, so release stays hidden.
   };
   savePosition(position);
   return position;

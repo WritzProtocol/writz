@@ -5,7 +5,7 @@ import {
 } from '../src/bitcoin/spv.js';
 import { EsploraClient, TxInfo, MerkleProofResponse } from '../src/bitcoin/esplora.js';
 
-// 80-byte block header (all zeros — correct length, not a valid header).
+// 80-byte block header (all zeros - correct length, not a valid header).
 const FAKE_HEADER = '00'.repeat(80);
 
 // A 32-byte (64 hex chars) fake hash.
@@ -107,7 +107,7 @@ describe('buildSPVProof', () => {
     expect(bundle.headers[0]).toBe(FAKE_HEADER);
     expect(bundle.txIndex).toBe(5);
     expect(bundle.merkleProof).toEqual([FAKE_HASH]);
-    // Legacy tx has no witness data — rawTxNoWitness == rawTx.
+    // Legacy tx has no witness data - rawTxNoWitness == rawTx.
     expect(bundle.rawTxNoWitness).toBe(LEGACY_TX_HEX);
   });
 
@@ -172,5 +172,14 @@ describe('buildSPVProof', () => {
     await buildSPVProof(TXID, 6, esplora);
     expect(esplora.getMerkleProof).toHaveBeenCalledTimes(1);
     expect(esplora.getRawTx).toHaveBeenCalledTimes(1);
+  });
+
+  test('throws on an odd-length merkle sibling hash instead of silently reversing a truncated value', async () => {
+    // A 32-byte hash must be 64 hex chars; 63 is malformed and should never
+    // be silently accepted by the internal-byte-order reversal.
+    const esplora = makeMockEsplora({
+      merkleProof: { block_height: BLOCK_HEIGHT, merkle: [FAKE_HASH.slice(0, 63)], pos: 0 },
+    });
+    await expect(buildSPVProof(TXID, 6, esplora)).rejects.toThrow(/odd-length hex/);
   });
 });

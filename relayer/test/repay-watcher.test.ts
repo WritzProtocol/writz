@@ -2,7 +2,7 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 
-// cursor-store.ts opens its sqlite file at import time — point it at a
+// cursor-store.ts opens its sqlite file at import time - point it at a
 // fresh temp file *before* importing, so this suite doesn't touch the
 // real data/watcher.db and each `jest.resetModules()` + re-require below
 // genuinely simulates a process restart re-opening the same file.
@@ -14,7 +14,7 @@ process.env.WATCHER_SQLITE_PATH = TMP_DB;
 // That package's CJS build `require()`s an ESM-only `@noble/hashes` file,
 // which crashes under ts-jest's strict CommonJS loader (works fine under
 // Bun's own runtime, which the relayer actually ships on). `poller.ts`
-// defers all such imports into function bodies for exactly this reason —
+// defers all such imports into function bodies for exactly this reason -
 // see that file's top-of-file comment. Tests here exercise `runPollCycle`'s
 // batch/cursor control flow via an injected `decodeEvent` mock, never the
 // real XDR-decoding default.
@@ -58,7 +58,7 @@ describe("cursor-store", () => {
 });
 
 describe("runPollCycle", () => {
-  // Each test gets its own fresh cursor DB — these tests exercise
+  // Each test gets its own fresh cursor DB - these tests exercise
   // runPollCycle's per-call control flow, not cross-test persistence (that's
   // exclusively what the dedicated "resumes from the persisted cursor"
   // test below covers, which manages its own restart simulation).
@@ -69,7 +69,7 @@ describe("runPollCycle", () => {
   });
 
   // Fixture events carry a plain string tag in `topic[0]` and a hex string
-  // in `topic[1]` — not real XDR ScVal objects. `decodeEvent` below (the
+  // in `topic[1]` - not real XDR ScVal objects. `decodeEvent` below (the
   // mock injected into runPollCycle) knows how to read that shape; the real
   // `decodeRepayFullEvent` (which knows how to read genuine ScVal objects
   // via `scValToNative`) is never invoked by these tests.
@@ -137,7 +137,7 @@ describe("runPollCycle", () => {
     await runPollCycle({ server, contractId: "CCONTRACT", handle, decodeEvent: decodeFake });
 
     expect(handle).toHaveBeenCalledTimes(1);
-    // Cursor must be unchanged — the failed batch will be re-fetched (and
+    // Cursor must be unchanged - the failed batch will be re-fetched (and
     // retried) on the next poll, rather than silently skipped.
     expect(readCursor()).toBe("cursor-before-batch");
   });
@@ -195,7 +195,7 @@ describe("runPollCycle", () => {
     expect(readCursor()).toBe("cursor-first-run");
 
     // Simulate a full process restart: fresh module graph, fresh mock
-    // server instance — the only thing carried over is the sqlite file.
+    // server instance - the only thing carried over is the sqlite file.
     jest.resetModules();
     const { runPollCycle: runPollCycleAfterRestart } = require("../src/repay-watcher/poller.js");
     const serverAfterRestart = {
@@ -209,7 +209,7 @@ describe("runPollCycle", () => {
       decodeEvent: decodeFake,
     });
 
-    // Must resume via `cursor`, not re-derive a startLedger from the tip —
+    // Must resume via `cursor`, not re-derive a startLedger from the tip -
     // proves the restart didn't silently reset to "now".
     expect(serverAfterRestart.getEvents).toHaveBeenCalledWith(
       expect.objectContaining({ cursor: "cursor-first-run" }),

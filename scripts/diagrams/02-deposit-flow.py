@@ -1,5 +1,5 @@
 """
-Writz Protocol — 02 Deposit Flow
+Writz Protocol - 02 Deposit Flow
 Step-by-step: BTC funding → SPV proof → ZK proof → commitment insert.
 """
 import sys, os
@@ -13,7 +13,7 @@ g.attr(**base_graph_attr(
     splines="ortho",
     size="18,8",
     label=hl(
-        "Writz Protocol — Deposit Flow",
+        "Writz Protocol - Deposit Flow",
         "BTC locked on Bitcoin · ZK commitment registered on Soroban · 6-step process",
     ),
 ))

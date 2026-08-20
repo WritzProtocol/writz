@@ -56,7 +56,7 @@ export function BentoGrid() {
           animate={isInView ? "visible" : "hidden"}
           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
         >
-          {/* Large card — Bitcoin SPV Verification */}
+          {/* Large card - Bitcoin SPV Verification */}
           <motion.div variants={itemVariants} className={`md:col-span-2 ${cardBase} xoxno-card-accent`}>
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-8">
               <div>

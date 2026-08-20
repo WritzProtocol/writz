@@ -2,7 +2,7 @@
  * Centralized, environment-driven configuration.
  *
  * Contract addresses and service endpoints must never be hardcoded elsewhere in
- * the app — read them from here. Values come from `NEXT_PUBLIC_*` variables
+ * the app - read them from here. Values come from `NEXT_PUBLIC_*` variables
  * (see `.env.example`). RPC URL and network passphrase have safe public
  * testnet defaults so the app builds even without a local env file; contract
  * IDs default to empty and surface a clear error at read time when missing.
@@ -43,11 +43,25 @@ export const config = {
     apiUrl:
       process.env.NEXT_PUBLIC_BITCOIN_API_URL ??
       "https://blockstream.info/testnet/api",
+    /**
+     * Confirmations required before a deposit's SPV proof is accepted. Must
+     * match the contract's own `min_confirmations` expectation for this
+     * deployment (6 on mainnet per docs/products/privatelend.md; testnet/signet
+     * deployments commonly run with 1 to skip the wait - see
+     * contracts/deployments/testnet.md). Drives the deposit progress bar, so
+     * a mismatch here just shows the wrong denominator, not a functional bug.
+     */
+    minConfirmations: parseInt(
+      process.env.NEXT_PUBLIC_BITCOIN_MIN_CONFIRMATIONS ?? "6",
+      10,
+    ),
+    /** Average Bitcoin block time, minutes - used only for the ETA estimate shown while waiting for confirmations. */
+    avgBlockMinutes: 10,
   },
   /**
    * BTC/USD oracle price in USDC stroops per BTC (7 decimals).
    * Must match the value returned by the on-chain oracle at the time of
-   * borrow/repay — the contract validates the proof's price signal against it.
+   * borrow/repay - the contract validates the proof's price signal against it.
    * Override via NEXT_PUBLIC_BTC_PRICE_STROOPS when the oracle price changes.
    */
   btcPriceStroops: process.env.NEXT_PUBLIC_BTC_PRICE_STROOPS ?? "600000000000",

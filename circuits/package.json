@@ -1,7 +1,7 @@
 {
   "name": "@writz/circuits",
   "version": "0.1.0",
-  "description": "Writz Protocol ZK circuits — Groth16 on BN254 for private lending positions",
+  "description": "Writz Protocol ZK circuits - Groth16 on BN254 for private lending positions",
   "scripts": {
     "compile": "bash scripts/compile_all.sh",
     "setup:dev": "bash scripts/setup_dev.sh",

@@ -32,4 +32,8 @@ pub enum CommitmentTreeError {
     SignalOverflow          = 14,
     /// Withdrawal amount exceeds the supplier's own deposited balance.
     WithdrawExceedsBalance  = 15,
+    /// The contract is paused - new deposits, borrows, and USDC supply are
+    /// refused. Existing positions can still repay, withdraw, and liquidate;
+    /// a pause only blocks new risk-taking.
+    Paused                  = 16,
 }
