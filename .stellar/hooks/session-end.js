@@ -1,11 +1,11 @@
 #!/usr/bin/env node
-// stellar-build learning loop — span closer (SessionEnd).
+// stellar-build learning loop - span closer (SessionEnd).
 //
 // Closes the open skill span for the session: reads the active pointer (no-op
 // if none), writes ONE kind:"span" summary record (the opening prompt + the
 // final/concatenated work product seen across the span), clears the pointer,
-// and bumps the activation counter EXACTLY ONCE for the whole span — never per
-// turn — so the SessionStart auto-trigger's "20" still means "20 activations".
+// and bumps the activation counter EXACTLY ONCE for the whole span - never per
+// turn - so the SessionStart auto-trigger's "20" still means "20 activations".
 //
 // Fully local, best-effort. Opt out: STELLAR_BUILD_NO_TRACE=1. Root: STELLAR_HOME.
 'use strict';

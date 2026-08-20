@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# stellar-build learning loop — span closer wrapper (SessionEnd).
+# stellar-build learning loop - span closer wrapper (SessionEnd).
 #
 # Registered as a SessionEnd hook on Claude Code. Hands the event JSON (stdin)
 # to session-end.js, which closes any open skill span with one kind:"span"

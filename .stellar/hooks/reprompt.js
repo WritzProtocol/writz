@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// stellar-build learning loop — automatic prompt sharpener (UserPromptSubmit).
+// stellar-build learning loop - automatic prompt sharpener (UserPromptSubmit).
 //
 // reprompter, but automatic and every time. On each turn it injects a compact
 // directive that makes the agent silently rewrite the user's request into a
@@ -9,7 +9,7 @@
 //
 // The learning tie-in: if the optimizer has distilled a profile of how this
 // user works (~/.stellar/profile.md, written by /optimize-skills from real
-// traces), it's injected too — so the rewrite gets more personalized over time.
+// traces), it's injected too - so the rewrite gets more personalized over time.
 //
 // Skips trivial inputs, slash commands, and bare acknowledgements so it never
 // gets in the way. Opt out: STELLAR_BUILD_NO_REPROMPT=1.
@@ -49,7 +49,7 @@ process.stdin.on('end', () => {
       '- Context & constraints: infer unstated assumptions, scope, and limits.',
       '- Task: the smallest precise action(s) that achieve the goal.',
       '- Success criteria: how you will know it is done right.',
-      'If a genuine ambiguity would change the result, ask ONE tight clarifying question first; otherwise proceed. Keep this internal and brief — do not lecture the user about the process.',
+      'If a genuine ambiguity would change the result, ask ONE tight clarifying question first; otherwise proceed. Keep this internal and brief - do not lecture the user about the process.',
     ];
     if (profile) {
       lines.push('');

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# stellar-loop — control plane for the stellar-build learning loop.
+# stellar-loop - control plane for the stellar-build learning loop.
 #
 # The learning loop captures how you use stellar-build's skills (locally,
 # never transmitted) and lets you compile those traces back into sharper
@@ -240,7 +240,7 @@ cmd_ingest_codex() {
     echo "$roll" >> "$marker"
   done < <(find "$CODEX_SESSIONS" -type f -name 'rollout-*.jsonl' 2>/dev/null | sort)
   printf "  Processed %s new rollout file(s); added %s skill record(s).\n" "$files" "$added"
-  printf "  %sLive Codex tracing also runs via ~/.codex/hooks.json — this only backfills history.%s\n\n" "$C_D" "$C_R"
+  printf "  %sLive Codex tracing also runs via ~/.codex/hooks.json - this only backfills history.%s\n\n" "$C_D" "$C_R"
 }
 
 usage() {
