@@ -3,13 +3,13 @@
  * runs on Node, where `bun:sqlite` doesn't exist). Production code
  * (`cursor-store.ts`, `leaf-store.ts`) is untouched and continues to use
  * the real `bun:sqlite` when run under Bun (`bun src/index.ts`,
- * `bun test`) — this file is wired in only via jest.config.js's
+ * `bun test`) - this file is wired in only via jest.config.js's
  * `moduleNameMapper` for the `bun:sqlite` specifier.
  *
  * Implements just enough of the `Database` API surface `cursor-store.ts`
  * uses (`exec`, `query().get()`, `prepare().run()`) for a single
  * `watcher_cursor` table. State is persisted to a JSON sidecar file next
- * to the given DB path — not an in-memory object — so it genuinely
+ * to the given DB path - not an in-memory object - so it genuinely
  * survives `jest.resetModules()` within a test process, the same way the
  * real sqlite file survives a real process restart. This is what makes
  * repay-watcher.test.ts's "cursor survives a simulated restart" tests a
@@ -29,7 +29,7 @@ export class Database {
   }
 
   exec(_sql: string): void {
-    // CREATE TABLE / PRAGMA statements — no-op, this mock has one fixed shape.
+    // CREATE TABLE / PRAGMA statements - no-op, this mock has one fixed shape.
   }
 
   private readState(): { cursor?: string } {

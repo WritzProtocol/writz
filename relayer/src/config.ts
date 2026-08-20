@@ -25,7 +25,7 @@ export interface Config {
   privateLendId: string;
   relayerSecret: string | undefined;
   kmsKeyId: string | undefined;
-  /** WIF-encoded protocol signing key — testnet/signet-only fallback used
+  /** WIF-encoded protocol signing key - testnet/signet-only fallback used
    * when `kmsKeyId` isn't set. See `resolveProtocolSigner` in
    * `@writz/bitcoin-script` for why this is refused on mainnet. */
   protocolSigningKeyWif: string | undefined;

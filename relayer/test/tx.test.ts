@@ -114,7 +114,7 @@ function makeP2wshMultiItemWitnessTx(): { full: Buffer; noWitness: Buffer } {
 
 /**
  * A P2TR (Taproot key-path spend) transaction: single witness item, a
- * 64-byte Schnorr signature — a SegWit output type that otherwise had no
+ * 64-byte Schnorr signature - a SegWit output type that otherwise had no
  * test coverage.
  */
 function makeP2trTx(): { full: Buffer; noWitness: Buffer } {
@@ -161,7 +161,7 @@ function makeP2trTx(): { full: Buffer; noWitness: Buffer } {
  * A 2-input SegWit transaction, each input carrying its own distinct
  * witness stack (different item lengths). `stripWitness`'s witness-skipping
  * loop (`tx.ts:92-99`) iterates once per input; the single-input fixtures
- * above cannot detect an off-by-one or interleaving bug in that loop — this
+ * above cannot detect an off-by-one or interleaving bug in that loop - this
  * is the highest-value addition to this test suite.
  */
 function makeTwoInputSegwitTx(): { full: Buffer; noWitness: Buffer } {
@@ -295,6 +295,42 @@ describe('stripWitness', () => {
     const { full, noWitness } = makeTwoInputSegwitTx();
     expect(stripWitness(full.toString('hex'))).toBe(noWitness.toString('hex'));
   });
+
+  // ── Truncation must throw, not silently return corrupted output ──
+  // (Buffer.subarray clamps to buffer length instead of erroring on an
+  // out-of-range end index - every fixed/computed-length read in tx.ts must
+  // reject a truncated buffer explicitly instead of inheriting that default.)
+
+  test('throws when truncated mid-prevout (input 36-byte field)', () => {
+    const { full } = makeSegwitTx();
+    // Cut partway through the prevout hash, well before the input completes.
+    const truncated = full.subarray(0, 20).toString('hex');
+    expect(() => stripWitness(truncated)).toThrow(RangeError);
+  });
+
+  test('throws when truncated mid-scriptSig', () => {
+    const { full } = makeSegwitTx();
+    // version(4) + marker/flag(2) + inCount(1) + prevout(36) + partial scriptSig varint only
+    const truncated = full.subarray(0, 43).toString('hex');
+    expect(() => stripWitness(truncated)).toThrow(RangeError);
+  });
+
+  test('throws when truncated before locktime', () => {
+    const { full } = makeSegwitTx();
+    // Drop only the final 4 locktime bytes - everything else is intact.
+    const truncated = full.subarray(0, full.length - 4).toString('hex');
+    expect(() => stripWitness(truncated)).toThrow(RangeError);
+  });
+
+  test('throws when truncated by a single trailing byte, rather than returning a shortened result', () => {
+    // Before the fix, this specific case (truncated just inside the last
+    // field) was the one most likely to silently succeed with corrupted
+    // output - `subarray` clamping to the buffer's actual length looks like
+    // a normal read when the shortfall is small.
+    const { full } = makeSegwitTx();
+    const truncated = full.subarray(0, full.length - 1).toString('hex');
+    expect(() => stripWitness(truncated)).toThrow(RangeError);
+  });
 });
 
 // ── parseOutput ─────────────────────────────────────────────────────────────
@@ -328,5 +364,34 @@ describe('parseOutput', () => {
   test('throws RangeError for a negative-like large outputIndex', () => {
     const hex = makeLegacyTx().toString('hex');
     expect(() => parseOutput(hex, 999)).toThrow(RangeError);
+  });
+
+  test('throws when truncated mid-scriptPubKey, rather than returning a shortened script', () => {
+    const full = makeLegacyTx();
+    // The scriptPubKey is the last field before locktime - drop enough
+    // trailing bytes to cut it short without removing the whole tx.
+    const truncated = full.subarray(0, full.length - 10).toString('hex');
+    expect(() => parseOutput(truncated, 0)).toThrow(RangeError);
+  });
+
+  test('throws rather than losing precision for a satoshi value beyond MAX_SAFE_INTEGER', () => {
+    // 2^63 as an 8-byte LE value - comfortably beyond Number.MAX_SAFE_INTEGER
+    // (2^53-1) and beyond any value 21M BTC could ever encode, but a
+    // corrupted or adversarial buffer could still contain it.
+    const hugeValue = Buffer.alloc(8);
+    hugeValue.writeBigUInt64LE(1n << 63n);
+    const tx = Buffer.concat([
+      Buffer.from('01000000', 'hex'),
+      Buffer.from([0x01]),
+      Buffer.alloc(32, 0x00),
+      Buffer.from([0xff, 0xff, 0xff, 0xff]),
+      Buffer.from([0x00]), // empty scriptSig
+      Buffer.from([0xff, 0xff, 0xff, 0xff]),
+      Buffer.from([0x01]),
+      hugeValue,
+      Buffer.from([0x00]), // empty scriptPubKey
+      Buffer.from([0x00, 0x00, 0x00, 0x00]),
+    ]);
+    expect(() => parseOutput(tx.toString('hex'), 0)).toThrow(RangeError);
   });
 });

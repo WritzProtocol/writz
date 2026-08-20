@@ -12,7 +12,7 @@ export default tseslint.config(
       // `stellar contract bindings typescript` output (see the file's own
       // header comment for the regeneration command). Hand-editing it to
       // satisfy lint rules would fight every future regeneration and gains
-      // nothing — mirrors frontend/eslint.config.mjs's treatment of its own
+      // nothing - mirrors frontend/eslint.config.mjs's treatment of its own
       // generated contract bindings.
       "src/contracts/privateLend.ts",
     ],
@@ -21,7 +21,7 @@ export default tseslint.config(
     rules: {
       // Test mocks and generic helpers in this repo use a leading
       // underscore to mark intentionally-unused params/vars/type params
-      // (see e.g. test/__mocks__/bun-sqlite.ts) — recognize that
+      // (see e.g. test/__mocks__/bun-sqlite.ts) - recognize that
       // convention instead of flagging it.
       "@typescript-eslint/no-unused-vars": [
         "error",
@@ -44,7 +44,7 @@ export default tseslint.config(
     // This suite deliberately `require()`s modules inside each test body
     // (rather than static `import`s) so `jest.resetModules()` genuinely
     // reloads them, simulating a process restart re-opening the cursor
-    // sqlite file — see the file's own top-of-file comment. A static
+    // sqlite file - see the file's own top-of-file comment. A static
     // `import` is hoisted and evaluated once, which would defeat the
     // point of the test.
     files: ["test/repay-watcher.test.ts"],

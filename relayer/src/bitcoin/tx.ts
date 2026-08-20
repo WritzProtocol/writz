@@ -1,5 +1,5 @@
 /**
- * Bitcoin transaction parsing — non-witness serialization extraction.
+ * Bitcoin transaction parsing - non-witness serialization extraction.
  *
  * Bitcoin uses double-SHA256 of the NON-WITNESS serialization to compute
  * the txid. SegWit transactions (P2WPKH, P2WSH, P2TR) carry a 2-byte
@@ -8,6 +8,38 @@
  * Reference: BIP-141 § Serialization
  */
 
+/**
+ * Returns `buf.subarray(start, start + len)`, but throws instead of silently
+ * truncating when the requested range extends past `buf.length` - the
+ * default `Buffer.subarray` behavior on an out-of-range end index. Every
+ * fixed- or computed-length read in this file must go through this (or
+ * `readVarInt`, which self-checks) rather than a bare `subarray` call, or a
+ * truncated/malformed transaction produces silently corrupted output instead
+ * of a thrown error.
+ */
+function sliceExact(buf: Buffer, start: number, len: number, context: string): Buffer {
+  const end = start + len;
+  if (end > buf.length) {
+    throw new RangeError(
+      `${context}: need ${len} bytes at offset ${start}, but buffer is only ${buf.length} bytes`
+    );
+  }
+  return buf.subarray(start, end);
+}
+
+/**
+ * Converts a 64-bit satoshi value to `Number`, throwing if it would lose
+ * precision (i.e. it exceeds `Number.MAX_SAFE_INTEGER`, ~9.2 × 10^15 sats -
+ * far above Bitcoin's real 21M BTC supply cap, but not above what an
+ * adversarial or corrupted input byte sequence could encode).
+ */
+function bigUInt64ToSafeNumber(value: bigint, context: string): number {
+  if (value > BigInt(Number.MAX_SAFE_INTEGER)) {
+    throw new RangeError(`${context}: value ${value} exceeds Number.MAX_SAFE_INTEGER`);
+  }
+  return Number(value);
+}
+
 /** Reads a Bitcoin variable-length integer from `buf` at `offset`. */
 function readVarInt(buf: Buffer, offset: number): { value: number; size: number } {
   const first = buf[offset];
@@ -15,7 +47,7 @@ function readVarInt(buf: Buffer, offset: number): { value: number; size: number 
   if (first < 0xfd) return { value: first, size: 1 };
   if (first === 0xfd) return { value: buf.readUInt16LE(offset + 1), size: 3 };
   if (first === 0xfe) return { value: buf.readUInt32LE(offset + 1), size: 5 };
-  // 0xff: 8-byte int — safe to cap at Number.MAX_SAFE_INTEGER for tx counts
+  // 0xff: 8-byte int - safe to cap at Number.MAX_SAFE_INTEGER for tx counts
   const lo = buf.readUInt32LE(offset + 1);
   const hi = buf.readUInt32LE(offset + 5);
   if (hi > 0) throw new RangeError("varint exceeds Number.MAX_SAFE_INTEGER");
@@ -52,7 +84,7 @@ export function stripWitness(rawHex: string): string {
   let i = 0;
 
   // Version (4 bytes)
-  out.push(...buf.subarray(0, 4));
+  out.push(...sliceExact(buf, 0, 4, "stripWitness: version"));
   i = 4;
 
   // Skip SegWit marker (0x00) and flag (0x01)
@@ -60,35 +92,35 @@ export function stripWitness(rawHex: string): string {
 
   // Input count
   const { value: inputCount, size: inputCountLen } = readVarInt(buf, i);
-  out.push(...buf.subarray(i, i + inputCountLen));
+  out.push(...sliceExact(buf, i, inputCountLen, "stripWitness: input count"));
   i += inputCountLen;
 
   // Inputs: prevout (36 bytes) + scriptSig (varint + bytes) + sequence (4 bytes)
   for (let k = 0; k < inputCount; k++) {
-    out.push(...buf.subarray(i, i + 36)); // prev_hash (32) + prev_index (4)
+    out.push(...sliceExact(buf, i, 36, `stripWitness: input ${k} prevout`)); // prev_hash (32) + prev_index (4)
     i += 36;
     const { value: scriptLen, size: scriptLenSize } = readVarInt(buf, i);
-    out.push(...buf.subarray(i, i + scriptLenSize + scriptLen));
+    out.push(...sliceExact(buf, i, scriptLenSize + scriptLen, `stripWitness: input ${k} scriptSig`));
     i += scriptLenSize + scriptLen;
-    out.push(...buf.subarray(i, i + 4)); // sequence
+    out.push(...sliceExact(buf, i, 4, `stripWitness: input ${k} sequence`));
     i += 4;
   }
 
   // Output count
   const { value: outputCount, size: outputCountLen } = readVarInt(buf, i);
-  out.push(...buf.subarray(i, i + outputCountLen));
+  out.push(...sliceExact(buf, i, outputCountLen, "stripWitness: output count"));
   i += outputCountLen;
 
   // Outputs: value (8 bytes) + scriptPubKey (varint + bytes)
   for (let k = 0; k < outputCount; k++) {
-    out.push(...buf.subarray(i, i + 8)); // value (satoshis, LE)
+    out.push(...sliceExact(buf, i, 8, `stripWitness: output ${k} value`)); // value (satoshis, LE)
     i += 8;
     const { value: scriptLen, size: scriptLenSize } = readVarInt(buf, i);
-    out.push(...buf.subarray(i, i + scriptLenSize + scriptLen));
+    out.push(...sliceExact(buf, i, scriptLenSize + scriptLen, `stripWitness: output ${k} scriptPubKey`));
     i += scriptLenSize + scriptLen;
   }
 
-  // Witness data — skip one stack per input
+  // Witness data - skip one stack per input
   for (let k = 0; k < inputCount; k++) {
     const { value: stackItems, size: stackItemsSize } = readVarInt(buf, i);
     i += stackItemsSize;
@@ -99,8 +131,7 @@ export function stripWitness(rawHex: string): string {
   }
 
   // Locktime (4 bytes)
-  if (i + 4 > buf.length) throw new RangeError("stripWitness: buffer truncated before locktime");
-  out.push(...buf.subarray(i, i + 4));
+  out.push(...sliceExact(buf, i, 4, "stripWitness: locktime"));
 
   return Buffer.from(out).toString("hex");
 }
@@ -142,10 +173,12 @@ export function parseOutput(
   }
 
   for (let k = 0; k <= outputIndex; k++) {
-    const valueSat = Number(buf.readBigUInt64LE(i));
+    const valueSat = bigUInt64ToSafeNumber(buf.readBigUInt64LE(i), `parseOutput: output ${k} value`);
     i += 8;
     const { value: scriptLen, size: scriptLenSize } = readVarInt(buf, i);
-    const scriptPubKey = buf.subarray(i + scriptLenSize, i + scriptLenSize + scriptLen).toString("hex");
+    const scriptPubKey = sliceExact(
+      buf, i + scriptLenSize, scriptLen, `parseOutput: output ${k} scriptPubKey`
+    ).toString("hex");
     i += scriptLenSize + scriptLen;
     if (k === outputIndex) return { valueSat, scriptPubKey };
   }

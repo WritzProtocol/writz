@@ -7,7 +7,7 @@
  *     --wasm contracts/target/wasm32v1-none/release/private_lend.wasm \
  *     --output-dir packages/private-lend
  *
- * Copied directly into the relayer's source tree — generating this as a
+ * Copied directly into the relayer's source tree - generating this as a
  * separate local `file:` package (matching `commitment-tree`'s pattern)
  * triggered a reproducible bun dependency-resolution bug: with two local
  * `file:` packages both declaring `@stellar/stellar-sdk` as a dependency,
@@ -131,7 +131,7 @@ export const PrivateLendError = {
  */
 export interface Config {
   /**
- * Admin address — can update the keeper address.
+ * Admin address - can update the keeper address.
  */
 admin: string;
   /**
@@ -189,12 +189,12 @@ usdc_token: string;
  * A single BTC-collateralized lending position.
  * 
  * Stored in per-entry persistent storage keyed by Bitcoin txid.
- * Never stored in a growing collection on the instance — see CertiK warning
+ * Never stored in a growing collection on the instance - see CertiK warning
  * about unbounded instance storage growth.
  */
 export interface Position {
   /**
- * Satoshis locked in the P2WSH output — verified on-chain from raw_tx.
+ * Satoshis locked in the P2WSH output - verified on-chain from raw_tx.
  */
 btc_satoshis: u64;
   /**
@@ -226,8 +226,8 @@ timelock_height: u32;
 usdc_debt: i128;
   /**
  * The depositor's 33-byte compressed Bitcoin public key.
- * Already public information — it's revealed the moment either
- * spending path is used — so storing it plaintext is not a new privacy
+ * Already public information - it's revealed the moment either
+ * spending path is used - so storing it plaintext is not a new privacy
  * leak. Lets the auto-cosign relayer watcher reconstruct the redeem
  * script and the user's default return address (a P2WPKH address
  * derived from this key) from on-chain state alone, without a separate
@@ -271,7 +271,7 @@ last_keeper_heartbeat: u64;
 total_borrowed: i128;
   /**
  * Total USDC supplied by lenders (in stroops). Does not decrease when
- * interest accrues — interest earned increases the effective value of
+ * interest accrues - interest earned increases the effective value of
  * each lender's share.
  */
 total_supplied: i128;
@@ -288,7 +288,7 @@ export type PositionStatus = {tag: "Active", values: void} | {tag: "Closed", val
 
 
 /**
- * Storage keys — each variant maps to an isolated persistent storage entry.
+ * Storage keys - each variant maps to an isolated persistent storage entry.
  * 
  * Using per-entry keying (not a single growing map) prevents unbounded
  * instance storage growth, which is the #1 Soroban vulnerability class
@@ -332,15 +332,15 @@ export interface Client {
    * After this call succeeds the user can borrow USDC against the position.
    * 
    * # Parameters
-   * - `depositor`          — Stellar address of the depositor (must authorize).
-   * - `headers`            — Bitcoin block headers (80 bytes each).
-   * - `merkle_proof`       — Sibling hashes for the Merkle inclusion proof.
-   * - `tx_index`           — 0-based index of the transaction in its block.
-   * - `raw_tx`             — Non-witness serialization of the Bitcoin transaction.
-   * - `p2wsh_script_pubkey`— 34-byte P2WSH scriptPubKey (OP_0 + 32-byte hash)
+   * - `depositor`          - Stellar address of the depositor (must authorize).
+   * - `headers`            - Bitcoin block headers (80 bytes each).
+   * - `merkle_proof`       - Sibling hashes for the Merkle inclusion proof.
+   * - `tx_index`           - 0-based index of the transaction in its block.
+   * - `raw_tx`             - Non-witness serialization of the Bitcoin transaction.
+   * - `p2wsh_script_pubkey`- 34-byte P2WSH scriptPubKey (OP_0 + 32-byte hash)
    * of the deposit output.
-   * - `timelock_height`    — Bitcoin block height of the CLTV escape hatch.
-   * - `user_pubkey`        — Depositor's 33-byte compressed Bitcoin
+   * - `timelock_height`    - Bitcoin block height of the CLTV escape hatch.
+   * - `user_pubkey`        - Depositor's 33-byte compressed Bitcoin
    */
   deposit: ({depositor, headers, merkle_proof, tx_index, raw_tx, p2wsh_script_pubkey, timelock_height, user_pubkey}: {depositor: string, headers: Array<Buffer>, merkle_proof: Array<Buffer>, tx_index: u32, raw_tx: Buffer, p2wsh_script_pubkey: Buffer, timelock_height: u32, user_pubkey: Buffer}, options?: MethodOptions) => Promise<AssembledTransaction<Result<Buffer>>>
 
@@ -348,12 +348,12 @@ export interface Client {
    * Construct and simulate a liquidate transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
    * Liquidate an undercollateralized position.
    * 
-   * Phase 1: only the authorized `keeper` may call this — *unless* the
+   * Phase 1: only the authorized `keeper` may call this - *unless* the
    * keeper has gone stale (no successful liquidation or explicit
    * `keeper_heartbeat` in `config.keeper_stale_after_secs`, default 24h),
    * in which case any caller with a genuinely undercollateralized
    * position may liquidate it. This is a liveness/censorship
-   * fallback, not a privacy mechanism — `private-lend` positions are
+   * fallback, not a privacy mechanism - `private-lend` positions are
    * already plaintext. Safety is unaffected by who calls: the
    * undercollateralization check below is independent of caller identity.
    * 
@@ -375,12 +375,12 @@ export interface Client {
    * One-time contract initialization.  Can only be called once.
    * 
    * # Parameters
-   * - `admin`          — Address that can update the keeper.
-   * - `spv_contract`   — Deployed `bitcoin-spv` Soroban contract address.
-   * - `usdc_token`     — USDC Stellar Asset Contract address.
-   * - `oracle`         — SEP-40 BTC/USD oracle address (RedStone).
-   * - `keeper`         — Trusted liquidation keeper (Phase 1).
-   * - `relayer`        — Auto-cosign relayer watcher address.
+   * - `admin`          - Address that can update the keeper.
+   * - `spv_contract`   - Deployed `bitcoin-spv` Soroban contract address.
+   * - `usdc_token`     - USDC Stellar Asset Contract address.
+   * - `oracle`         - SEP-40 BTC/USD oracle address (RedStone).
+   * - `keeper`         - Trusted liquidation keeper (Phase 1).
+   * - `relayer`        - Auto-cosign relayer watcher address.
    */
   initialize: ({admin, spv_contract, usdc_token, oracle, keeper, relayer}: {admin: string, spv_contract: string, usdc_token: string, oracle: string, keeper: string, relayer: string}, options?: MethodOptions) => Promise<AssembledTransaction<Result<void>>>
 
@@ -430,7 +430,7 @@ export interface Client {
    * 
    * Lets the keeper reset the stale-window clock even when there is
    * nothing to liquidate right now (`liquidate` itself also refreshes
-   * this on every successful call — this entrypoint covers idle periods).
+   * this on every successful call - this entrypoint covers idle periods).
    */
   keeper_heartbeat: ({keeper}: {keeper: string}, options?: MethodOptions) => Promise<AssembledTransaction<Result<void>>>
 
