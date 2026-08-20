@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# stellar-build learning loop — self-trigger wrapper (SessionStart).
+# stellar-build learning loop - self-trigger wrapper (SessionStart).
 # Lets the loop decide, at session start, whether enough new usage has
 # accumulated to nudge or auto-optimize. stdout is injected as context by the
 # host agent, so loop-session-start.js prints at most one short line. Exits 0.

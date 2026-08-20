@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# stellar-build learning loop — prompt capture wrapper (UserPromptSubmit).
+# stellar-build learning loop - prompt capture wrapper (UserPromptSubmit).
 # Stashes the latest prompt per session for demo pairing. Prints nothing to
 # stdout (that would be injected into context). Always exits 0.
 set +e

@@ -1,13 +1,13 @@
 #!/usr/bin/env node
-// stellar-build learning loop — self-trigger (SessionStart).
+// stellar-build learning loop - self-trigger (SessionStart).
 //
 // This is what makes the loop *automatic*. On each new session it checks how
 // many skill invocations have accumulated since the last tune-up. Once that
 // crosses a threshold (and a cooldown has elapsed) it either:
 //
-//   • nudges (DEFAULT) — prints a one-line reminder that SessionStart injects
+//   • nudges (DEFAULT) - prints a one-line reminder that SessionStart injects
 //     into the model's context, so the agent can offer to optimize. Zero cost.
-//   • auto-runs (opt-in, STELLAR_BUILD_AUTO_OPTIMIZE=1) — spawns a detached
+//   • auto-runs (opt-in, STELLAR_BUILD_AUTO_OPTIMIZE=1) - spawns a detached
 //     `claude -p` that runs /optimize-skills in the background, hands-free.
 //
 // Hands-free auto-run is opt-in on purpose: it spends LLM tokens without the
@@ -50,7 +50,7 @@ function hasClaude() { try { cp.execSync('command -v claude', { stdio: 'ignore' 
     const last = st.last_optimize_ts ? Date.parse(st.last_optimize_ts) : 0;
     if (last && (now - last) < cooldownH * 3600 * 1000) return;
 
-    // Auto-run is ON by default — the loop closes itself. Disable with
+    // Auto-run is ON by default - the loop closes itself. Disable with
     // STELLAR_BUILD_AUTO_OPTIMIZE=0 (or NO_LOOP=1 to silence it entirely).
     const auto = !disabled(process.env.STELLAR_BUILD_AUTO_OPTIMIZE);
 

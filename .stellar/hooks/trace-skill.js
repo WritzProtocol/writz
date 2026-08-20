@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-// stellar-build learning loop — skill-activation capture (PostToolUse:Skill).
+// stellar-build learning loop - skill-activation capture (PostToolUse:Skill).
 //
 // A skill *use* is a multi-turn span, not a single tool call. The Skill tool
 // fires exactly ONCE when a skill mounts (the harness forbids re-invoking an
 // already-loaded skill), and at that instant the tool_response is only the
-// mount acknowledgment — `{"success":true,"commandName":"<skill>"}` — not any
+// mount acknowledgment - `{"success":true,"commandName":"<skill>"}` - not any
 // work the skill produced. So this hook no longer writes a trace record here.
 //
 // Instead it opens a per-session ACTIVE pointer at
@@ -41,7 +41,7 @@ process.stdin.on('end', () => {
     // Precise detection. A skill invocation either carries tool_input.skill
     // (the Skill tool's argument shape on both Claude Code and Codex) or the
     // tool itself is literally named "Skill". We deliberately do NOT fall back
-    // to a generic `name` field — that would mis-capture unrelated MCP tools.
+    // to a generic `name` field - that would mis-capture unrelated MCP tools.
     let skill = null;
     if (typeof ti.skill === 'string' && ti.skill) skill = ti.skill;
     else if (/^skill$/i.test(toolName) && typeof ti.skill === 'string') skill = ti.skill;

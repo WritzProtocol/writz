@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# stellar-build learning loop — automatic prompt sharpener wrapper.
+# stellar-build learning loop - automatic prompt sharpener wrapper.
 # Registered as a UserPromptSubmit hook on both Claude Code and Codex. Prints a
 # compact "sharpen the request" directive (+ learned profile) that the host
 # injects into context. Always exits 0. Opt out: STELLAR_BUILD_NO_REPROMPT=1.
