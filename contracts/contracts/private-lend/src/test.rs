@@ -8,8 +8,10 @@ use soroban_sdk::{
     Address, Bytes, BytesN, Env, Vec,
 };
 
+use spv_types::SpvVerificationResult;
+
 use crate::{
-    types::{Position, PositionStatus, SpvResult},
+    types::{Position, PositionStatus},
     PrivateLendContract, PrivateLendContractClient,
 };
 
@@ -29,8 +31,8 @@ impl MockSpv {
         _tx_index: u32,
         _raw_tx: Bytes,
         _min_confirmations: u32,
-    ) -> SpvResult {
-        SpvResult {
+    ) -> SpvVerificationResult {
+        SpvVerificationResult {
             txid: BytesN::from_array(&env, &[0xdeu8; 32]),
             block_hash: BytesN::from_array(&env, &[0xadu8; 32]),
             confirmations: 6,
@@ -83,7 +85,7 @@ fn fake_proof(env: &Env) -> Vec<BytesN<32>> {
 }
 
 /// A fake 33-byte compressed Bitcoin public key (compressed-prefix byte +
-/// 32 arbitrary bytes) — this test suite never validates curve membership.
+/// 32 arbitrary bytes) - this test suite never validates curve membership.
 fn fake_user_pubkey(env: &Env) -> BytesN<33> {
     let mut buf = [0x22u8; 33];
     buf[0] = 0x02;
@@ -299,6 +301,63 @@ fn publish_release_psbt_for_unknown_txid_panics() {
 }
 
 #[test]
+fn refresh_release_psbt_ttl_returns_true_after_publish() {
+    let s = setup();
+    let txid = do_deposit(&s);
+    let psbt = Bytes::from_slice(&s.env, &[0xaa, 0xbb, 0xcc]);
+    s.client.publish_release_psbt(&s.relayer, &txid, &psbt);
+    assert!(s.client.refresh_release_psbt_ttl(&txid));
+}
+
+#[test]
+fn refresh_release_psbt_ttl_returns_false_before_publish() {
+    let s = setup();
+    let txid = do_deposit(&s);
+    // No release PSBT has been published for this txid yet.
+    assert!(!s.client.refresh_release_psbt_ttl(&txid));
+}
+
+// ── TTL refresh (permissionless) ────────────────────────────────────────────
+
+#[test]
+fn refresh_position_ttl_returns_true_for_existing_position() {
+    let s = setup();
+    let txid = do_deposit(&s);
+    assert!(s.client.refresh_position_ttl(&txid));
+}
+
+#[test]
+fn refresh_position_ttl_returns_false_for_unknown_txid() {
+    let s = setup();
+    let unknown_txid = BytesN::from_array(&s.env, &[0x77u8; 32]);
+    assert!(!s.client.refresh_position_ttl(&unknown_txid));
+}
+
+#[test]
+fn refresh_supply_balance_ttl_returns_true_after_supply() {
+    let s = setup();
+    s.client.supply_usdc(&s.supplier, &1_000_i128);
+    assert!(s.client.refresh_supply_balance_ttl(&s.supplier));
+}
+
+#[test]
+fn refresh_supply_balance_ttl_returns_false_for_lender_with_no_balance() {
+    let s = setup();
+    let rando = Address::generate(&s.env);
+    assert!(!s.client.refresh_supply_balance_ttl(&rando));
+}
+
+#[test]
+fn refresh_protocol_ttl_does_not_panic() {
+    let s = setup();
+    // Permissionless and unconditional after initialization - asserting it
+    // simply doesn't panic is the whole contract here (storage.rs's own
+    // `.has()` guards are exercised, but there's no caller-visible signal
+    // beyond "the call completed").
+    s.client.refresh_protocol_ttl();
+}
+
+#[test]
 fn set_relayer_by_admin_succeeds() {
     let s = setup();
     let txid = do_deposit(&s);
@@ -319,6 +378,104 @@ fn set_relayer_by_non_admin_panics() {
     let s = setup();
     let rando = Address::generate(&s.env);
     s.client.set_relayer(&rando, &rando);
+}
+
+#[test]
+fn set_oracle_by_admin_succeeds() {
+    let s = setup();
+    let new_oracle = Address::generate(&s.env);
+    s.client.set_oracle(&s.admin, &new_oracle);
+    // No panic = success. (No public config getter exists to assert the
+    // stored value directly - see set_relayer_by_admin_succeeds for the
+    // pattern used when behavioral verification is worth the setup cost.)
+}
+
+#[test]
+#[should_panic]
+fn set_oracle_by_non_admin_panics() {
+    let s = setup();
+    let rando = Address::generate(&s.env);
+    s.client.set_oracle(&rando, &rando);
+}
+
+#[test]
+fn set_spv_contract_by_admin_succeeds() {
+    let s = setup();
+    let new_spv = Address::generate(&s.env);
+    s.client.set_spv_contract(&s.admin, &new_spv);
+}
+
+#[test]
+#[should_panic]
+fn set_spv_contract_by_non_admin_panics() {
+    let s = setup();
+    let rando = Address::generate(&s.env);
+    s.client.set_spv_contract(&rando, &rando);
+}
+
+// ── paused ───────────────────────────────────────────────────────────────────
+
+#[test]
+fn set_paused_by_admin_succeeds() {
+    let s = setup();
+    s.client.set_paused(&s.admin, &true);
+    s.client.set_paused(&s.admin, &false);
+}
+
+#[test]
+#[should_panic]
+fn set_paused_by_non_admin_panics() {
+    let s = setup();
+    let rando = Address::generate(&s.env);
+    s.client.set_paused(&rando, &true);
+}
+
+#[test]
+#[should_panic]
+fn deposit_while_paused_panics() {
+    let s = setup();
+    s.client.set_paused(&s.admin, &true);
+    do_deposit(&s);
+}
+
+#[test]
+#[should_panic]
+fn borrow_while_paused_panics() {
+    let s = setup();
+    let supply = 10_000_000_000_i128;
+    let txid = setup_with_supply_and_deposit(&s, supply);
+    s.client.set_paused(&s.admin, &true);
+    s.client.borrow(&s.depositor, &txid, &1_000_000_000_i128);
+}
+
+#[test]
+#[should_panic]
+fn supply_usdc_while_paused_panics() {
+    let s = setup();
+    s.client.set_paused(&s.admin, &true);
+    s.client.supply_usdc(&s.supplier, &1_000_000_000_i128);
+}
+
+#[test]
+fn withdraw_supply_works_while_paused() {
+    let s = setup();
+    let amount = 1_000_000_000_i128;
+    s.client.supply_usdc(&s.supplier, &amount);
+    s.client.set_paused(&s.admin, &true);
+    // Exiting is never blocked by a pause - only new deposits/borrows/supply are.
+    s.client.withdraw_supply(&s.supplier, &amount);
+}
+
+#[test]
+fn repay_works_while_paused() {
+    let s = setup();
+    let supply = 10_000_000_000_i128;
+    let txid = setup_with_supply_and_deposit(&s, supply);
+    let debt = 1_000_000_000_i128;
+    s.client.borrow(&s.depositor, &txid, &debt);
+    StellarAssetClient::new(&s.env, &s.usdc).mint(&s.depositor, &debt);
+    s.client.set_paused(&s.admin, &true);
+    s.client.repay(&s.depositor, &txid, &debt);
 }
 
 // ── supply_usdc / withdraw_supply ─────────────────────────────────────────────
@@ -466,14 +623,14 @@ fn interest_accrues_over_time() {
     let s = setup();
     // 500_000 sats × $60k = $300 collateral = 3_000_000_000 stroops.
     // Max borrow at 150%: 3_000_000_000 × 10_000 / 15_000 = 2_000_000_000 stroops.
-    // Borrow $199 (1_990_000_000 stroops) — just under the limit.
+    // Borrow $199 (1_990_000_000 stroops) - just under the limit.
     // Supply = borrow / 0.75 ≈ 2_654_000_000 to put utilization near optimal (75%).
     let supply = 2_654_000_000_i128;
     let txid = setup_with_supply_and_deposit(&s, supply);
     let borrow = 1_990_000_000_i128;
     s.client.borrow(&s.depositor, &txid, &borrow);
 
-    // Advance 1 year of ledgers — at ~75% utilization, rate = 800 bp (8% APR).
+    // Advance 1 year of ledgers - at ~75% utilization, rate = 800 bp (8% APR).
     // Expected interest ≈ 1_990_000_000 × 8% = 159_200_000 stroops.
     s.env.ledger().set_sequence_number(1_000 + 6_311_520);
 
@@ -574,7 +731,7 @@ fn liquidation_by_non_keeper_panics() {
 /// `liquidation_of_undercollateralized_position`'s exact numbers, but lets
 /// the caller control the ledger timestamp independently of the sequence
 /// number (interest accrual runs off sequence number; the stale-keeper
-/// check runs off timestamp — the two clocks are orthogonal).
+/// check runs off timestamp - the two clocks are orthogonal).
 fn setup_undercollateralized_at(s: &Setup, timestamp: u64) -> BytesN<32> {
     s.env.ledger().set_timestamp(timestamp);
     let supply = 2_654_000_000_i128;
@@ -591,7 +748,7 @@ fn liquidate_by_non_keeper_fails_before_stale_window() {
     let s = setup();
     let txid = setup_undercollateralized_at(&s, 1_000_000);
     // Timestamp unchanged since the position's first protocol-state access
-    // above — well within the default 24h (86_400s) stale window.
+    // above - well within the default 24h (86_400s) stale window.
     let rando = Address::generate(&s.env);
     StellarAssetClient::new(&s.env, &s.usdc).mint(&rando, &10_000_000_000_i128);
     s.client.liquidate(&rando, &txid);
@@ -603,7 +760,7 @@ fn liquidate_by_non_keeper_succeeds_after_stale_window() {
     let txid = setup_undercollateralized_at(&s, 1_000_000);
 
     // Advance well past the 24h default stale window with no keeper
-    // heartbeat — liquidation now opens to any caller.
+    // heartbeat - liquidation now opens to any caller.
     s.env.ledger().set_timestamp(1_000_000 + 86_400 + 1);
 
     let rando = Address::generate(&s.env);
@@ -650,6 +807,33 @@ fn liquidate_by_designated_keeper_refreshes_heartbeat() {
 }
 
 #[test]
+fn set_keeper_by_admin_reassigns_keeper_authority() {
+    let s = setup();
+    let new_keeper = Address::generate(&s.env);
+    s.client.set_keeper(&s.admin, &new_keeper);
+
+    // The old keeper is no longer the designated keeper: a heartbeat from
+    // them should not count as the designated-keeper's liveness signal.
+    // `keeper_heartbeat` itself checks `keeper == config.keeper`, so calling
+    // it as the old keeper now fails auth.
+    let old_result = s.client.try_keeper_heartbeat(&s.keeper);
+    assert!(old_result.is_err(), "old keeper must lose heartbeat authority after set_keeper");
+
+    // The new keeper can heartbeat successfully.
+    s.client.keeper_heartbeat(&new_keeper);
+    let state = s.client.get_protocol_state();
+    assert_eq!(state.last_keeper_heartbeat, s.env.ledger().timestamp());
+}
+
+#[test]
+#[should_panic]
+fn set_keeper_by_non_admin_panics() {
+    let s = setup();
+    let rando = Address::generate(&s.env);
+    s.client.set_keeper(&rando, &rando);
+}
+
+#[test]
 #[should_panic]
 fn set_keeper_stale_window_by_non_admin_panics() {
     let s = setup();
@@ -689,6 +873,24 @@ fn borrow_rate_at_optimal_utilization_is_slope1() {
     let txid = do_deposit(&s);
     s.client.borrow(&s.depositor, &txid, &75_000_i128);
     assert_eq!(s.client.get_borrow_rate_bp(), 800);
+}
+
+#[test]
+fn supply_rate_zero_when_nothing_borrowed() {
+    let s = setup();
+    assert_eq!(s.client.get_supply_rate_bp(), 0);
+}
+
+#[test]
+fn supply_rate_at_optimal_utilization_is_510bp() {
+    let s = setup();
+    // Same pool state as borrow_rate_at_optimal_utilization_is_slope1
+    // (borrow=800bp, U=75%, fee=15%): supply = 800 × 0.75 × 0.85 = 510 bp,
+    // matching rates::supply_rate_at_optimal_approximately_510_bp.
+    s.client.supply_usdc(&s.supplier, &100_000_i128);
+    let txid = do_deposit(&s);
+    s.client.borrow(&s.depositor, &txid, &75_000_i128);
+    assert_eq!(s.client.get_supply_rate_bp(), 510);
 }
 
 // ── full cycle ────────────────────────────────────────────────────────────────

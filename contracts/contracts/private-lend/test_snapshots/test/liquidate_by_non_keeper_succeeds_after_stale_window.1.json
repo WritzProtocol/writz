@@ -551,6 +551,14 @@
                   },
                   {
                     "key": {
+                      "symbol": "paused"
+                    },
+                    "val": {
+                      "bool": false
+                    }
+                  },
+                  {
+                    "key": {
                       "symbol": "relayer"
                     },
                     "val": {

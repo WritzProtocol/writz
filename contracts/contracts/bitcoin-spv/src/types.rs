@@ -27,25 +27,13 @@ pub struct Checkpoint {
     /// The real Bitcoin network's compact difficulty target at `height`.
     /// This is the value enforced by the difficulty-band check.
     pub bits: u32,
-    /// `env.ledger().sequence()` when this checkpoint was set — for
+    /// `env.ledger().sequence()` when this checkpoint was set - for
     /// operational staleness monitoring. The checkpoint should be refreshed
     /// periodically (operationally, weekly) to keep the difficulty floor
     /// meaningful as real Bitcoin difficulty rises.
     pub set_at_ledger: u32,
 }
 
-/// Returned by a successful `verify_transaction` call.
-#[contracttype]
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct VerificationResult {
-    /// The transaction identifier: SHA256d of the non-witness serialization.
-    pub txid: BytesN<32>,
-
-    /// The hash (SHA256d) of the block that contains the transaction.
-    /// This is the hash of `headers[0]`.
-    pub block_hash: BytesN<32>,
-
-    /// Number of block headers supplied by the caller.
-    /// Equal to the number of confirmations the caller is asserting.
-    pub confirmations: u32,
-}
+// `verify_transaction`'s return type, `SpvVerificationResult`, lives in the
+// shared `spv-types` crate - see that crate's doc comment for why. Re-exported
+// from `lib.rs`, not redefined here.

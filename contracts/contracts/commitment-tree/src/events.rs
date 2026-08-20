@@ -11,7 +11,7 @@ pub struct DepositEvent {
     pub nullifier:  BytesN<32>,
     /// Opaque ciphertext of the position note ({collateral, debt, nonce, ...})
     /// encrypted to the owner's viewing key, for cross-device recovery. The
-    /// contract never decrypts it — it only echoes the client-supplied blob.
+    /// contract never decrypts it - it only echoes the client-supplied blob.
     pub enc_note:   Bytes,
 }
 
@@ -38,7 +38,7 @@ pub struct BorrowEvent {
 }
 
 /// Emitted when a borrower repays USDC debt on a ZK position.
-/// `new_commitment` encodes the updated (lower) debt — a zero-debt commitment
+/// `new_commitment` encodes the updated (lower) debt - a zero-debt commitment
 /// signals full repayment; the backend co-signs the BTC release on seeing it.
 #[contractevent(topics = ["repay"])]
 pub struct RepayEvent {
@@ -60,4 +60,35 @@ pub struct LiquidateEvent {
     pub nullifier: BytesN<32>,
     pub keeper:    Address,
     pub usdc_debt: i128,
+}
+
+/// Emitted when a lender supplies USDC to the pool.
+///
+/// Closes a gap noted in `docs/architecture/contract-migration-runbook.md`:
+/// without this event, lenders could not be enumerated off-chain at all
+/// (`get_supply_balance` requires already knowing the address).
+#[contractevent(topics = ["supply"])]
+pub struct SupplyEvent {
+    #[topic]
+    pub supplier:       Address,
+    pub usdc_amount:    i128,
+    pub total_supplied: i128,
+}
+
+/// Emitted when a lender withdraws USDC from the pool.
+#[contractevent(topics = ["withdraw"])]
+pub struct WithdrawEvent {
+    #[topic]
+    pub supplier:       Address,
+    pub usdc_amount:    i128,
+    pub total_supplied: i128,
+}
+
+/// Emitted when the admin pauses or unpauses new deposits/borrows/supply.
+/// Existing positions are never affected by a pause - see `Config::paused`.
+#[contractevent(topics = ["paused_set"])]
+pub struct PausedSetEvent {
+    #[topic]
+    pub admin:  Address,
+    pub paused: bool,
 }

@@ -4,7 +4,7 @@ extern crate std;
 
 use soroban_sdk::{testutils::Address as _, Address, Bytes, BytesN, Env, Vec, U256};
 
-use crate::{BitcoinSpvContract, BitcoinSpvContractClient, SPVError, VerificationResult};
+use crate::{BitcoinSpvContract, BitcoinSpvContractClient, SPVError, SpvVerificationResult};
 use crate::crypto::{hash_merkle_pair, sha256d};
 use crate::difficulty::{bits_to_target, hash_as_u256, validate_proof_of_work};
 use crate::header::{hash_header, validate_header_chain};
@@ -26,7 +26,7 @@ use crate::merkle::verify_merkle_inclusion;
 /// Only safe to use in tests that never reach `validate_header_chain` (i.e.
 /// tests that assert an earlier guard in `verify_transaction`, or that call
 /// `merkle`/`crypto` functions directly). A header built here has
-/// `bits = 0`, which fails proof-of-work validation unconditionally — see
+/// `bits = 0`, which fails proof-of-work validation unconditionally - see
 /// `mine_valid_header` below for headers that must pass PoW.
 fn make_header(
     env: &Env,
@@ -44,7 +44,7 @@ fn make_header(
 }
 
 /// Compact `bits` used by every mined header fixture in this file: the
-/// standard Bitcoin "regtest" maximum-easiness target — the same constant
+/// standard Bitcoin "regtest" maximum-easiness target - the same constant
 /// bitcoind itself uses to make its own regtest network mineable in
 /// milliseconds. Target ≈ 2^254 (~50% of all possible SHA256d outputs
 /// satisfy it), so finding a passing nonce takes ~2 hash attempts on
@@ -54,7 +54,7 @@ const EASY_TEST_BITS: u32 = 0x207f_ffff;
 /// Builds and mines a real, PoW-valid 80-byte header: fills
 /// version/prev_hash/merkle_root/time/bits, then brute-forces the nonce
 /// until `difficulty::validate_proof_of_work` accepts it. This exercises the
-/// real, unmodified proof-of-work path end to end — it is not a bypass, just
+/// real, unmodified proof-of-work path end to end - it is not a bypass, just
 /// an easy (but 100% legitimate) difficulty. Deterministic: identical
 /// arguments always mine an identical header.
 fn mine_valid_header(
@@ -77,7 +77,7 @@ fn mine_valid_header(
             return candidate;
         }
     }
-    panic!("failed to mine a valid test header in 1,000,000 attempts — EASY_TEST_BITS misconfigured");
+    panic!("failed to mine a valid test header in 1,000,000 attempts - EASY_TEST_BITS misconfigured");
 }
 
 /// Computes SHA256d over a byte slice, returning a `[u8; 32]`.
@@ -164,7 +164,7 @@ fn run_full_verification(
     tx_index: usize,
     extra_headers: u32,
     min_confirmations: u32,
-) -> Result<VerificationResult, SPVError> {
+) -> Result<SpvVerificationResult, SPVError> {
     let contract_id = env.register(BitcoinSpvContract, ());
     let client = BitcoinSpvContractClient::new(env, &contract_id);
 
@@ -435,7 +435,7 @@ fn header_chain_two_valid_headers() {
 }
 
 /// Incorrect `prev_block_hash` in h1 must return HeaderChainBroken. Both
-/// headers are still real, mined PoW-valid headers — mining doesn't care
+/// headers are still real, mined PoW-valid headers - mining doesn't care
 /// whether `prev_hash` is semantically correct, only that the 80-byte
 /// prefix it's given satisfies the target, so this tests the link check in
 /// isolation from the PoW check.
@@ -483,7 +483,7 @@ fn header_chain_last_link_broken() {
 
 /// The genuine Bitcoin mainnet genesis block header, fetched independently
 /// from Blockstream's Esplora API (`GET /block/<hash>/header`) rather than
-/// transcribed from memory — a single transposed byte here would silently
+/// transcribed from memory - a single transposed byte here would silently
 /// produce a wrong-but-passing test. Cross-checked field-by-field against
 /// well-known genesis facts (version=1, time=1231006505, bits=0x1d00ffff,
 /// nonce=2083236893) before use.
@@ -497,7 +497,7 @@ const GENESIS_HEADER: [u8; 80] = [
 ];
 
 /// SHA256d of `GENESIS_HEADER`, in internal (little-endian-integer) byte
-/// order — i.e. what `hash_header` must return. Independently cross-checked:
+/// order - i.e. what `hash_header` must return. Independently cross-checked:
 /// reversing this and hex-encoding it reproduces the famous display-order
 /// genesis hash `000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f`.
 const GENESIS_HASH: [u8; 32] = [
@@ -563,7 +563,7 @@ fn bits_to_target_rejects_overflow() {
     );
 }
 
-/// A zero mantissa yields a zero target regardless of exponent — inherited
+/// A zero mantissa yields a zero target regardless of exponent - inherited
 /// Bitcoin Core behavior. No hash can ever be less than zero, so this is
 /// correctly rejected downstream by `InsufficientProofOfWork`, not treated
 /// as malformed input here. This test documents that this is intentional,
@@ -589,7 +589,7 @@ fn bits_to_target_exponent_le_3_shifts_right() {
 }
 
 /// `hash_as_u256` must equal `U256::from_be_bytes` of the conventional,
-/// display-order hex string of the same hash — verified against the real
+/// display-order hex string of the same hash - verified against the real
 /// genesis hash, sourced independently above (not re-derived from
 /// `hash_header`, so this pins the byte-order convention itself).
 #[test]
@@ -726,7 +726,7 @@ fn new_client(env: &Env) -> BitcoinSpvContractClient<'_> {
     client
 }
 
-/// A freshly registered client with no `initialize`/`set_checkpoint` calls —
+/// A freshly registered client with no `initialize`/`set_checkpoint` calls -
 /// for tests exercising the pre-setup error paths.
 fn new_uninitialized_client(env: &Env) -> BitcoinSpvContractClient<'_> {
     let id = env.register(BitcoinSpvContract, ());
@@ -801,7 +801,7 @@ fn error_merkle_proof_invalid() {
     let env = Env::default();
     let client = new_client(&env);
     let raw_tx = b"some_bitcoin_transaction";
-    // Header declares a different Merkle root than SHA256d(raw_tx) — proof will fail.
+    // Header declares a different Merkle root than SHA256d(raw_tx) - proof will fail.
     let wrong_root = [0xabu8; 32];
     let mut headers: Vec<BytesN<80>> = Vec::new(&env);
     headers.push_back(mine_valid_header(&env, 1, &[0u8; 32], &wrong_root, 0));
@@ -1014,6 +1014,32 @@ fn set_admin_by_non_admin_fails() {
 }
 
 #[test]
+fn refresh_ttl_does_not_panic_before_any_state_is_set() {
+    // Permissionless and unconditional: storage::refresh_ttl guards each
+    // entry with `.has()` before extending, so calling it against a
+    // freshly-deployed, uninitialized contract must be a no-op, not a panic.
+    let env = Env::default();
+    let client = new_uninitialized_client(&env);
+    client.refresh_ttl();
+}
+
+#[test]
+fn refresh_ttl_does_not_panic_after_initialize_and_checkpoint() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let client = new_uninitialized_client(&env);
+    let admin = Address::generate(&env);
+    client.initialize(&admin);
+    let block_hash = BytesN::<32>::from_array(&env, &[0x11u8; 32]);
+    client.set_checkpoint(&admin, &900_000u32, &block_hash, &0x1d00ffffu32);
+
+    client.refresh_ttl();
+
+    // Both entries must still be readable afterwards.
+    assert!(client.get_checkpoint().is_some());
+}
+
+#[test]
 fn verify_transaction_before_initialize_fails() {
     let env = Env::default();
     let client = new_uninitialized_client(&env);
@@ -1053,7 +1079,7 @@ fn verify_transaction_before_checkpoint_set_fails() {
 /// The regression test for the actual CVE-style scenario this checkpoint floor fixes: a
 /// header chain mined at a historically easy difficulty must be rejected
 /// once the checkpoint anchors the contract to a much harder, real-Bitcoin
-/// difficulty — even though the header's own declared PoW is internally
+/// difficulty - even though the header's own declared PoW is internally
 /// self-consistent (Step 1 alone would accept it).
 #[test]
 fn verify_transaction_rejects_header_below_checkpoint_floor() {
@@ -1063,7 +1089,7 @@ fn verify_transaction_rejects_header_below_checkpoint_floor() {
     let admin = Address::generate(&env);
     client.initialize(&admin);
 
-    // A real, hard, mainnet-era difficulty — far harder than EASY_TEST_BITS.
+    // A real, hard, mainnet-era difficulty - far harder than EASY_TEST_BITS.
     let block_hash = BytesN::<32>::from_array(&env, &[0u8; 32]);
     client.set_checkpoint(&admin, &900_000u32, &block_hash, &0x1d00ffffu32);
 

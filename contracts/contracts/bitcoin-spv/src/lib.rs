@@ -12,7 +12,8 @@ mod types;
 mod test;
 
 pub use error::SPVError;
-pub use types::{Checkpoint, Config, VerificationResult};
+pub use types::{Checkpoint, Config};
+pub use spv_types::SpvVerificationResult;
 
 use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, Vec};
 
@@ -22,7 +23,7 @@ use crate::header::{bits_of, merkle_root_of, validate_header_chain};
 use crate::merkle::verify_merkle_inclusion;
 use crate::storage::{get_checkpoint, get_config, set_checkpoint, set_config};
 
-/// Writz Protocol — Bitcoin SPV Verification Contract.
+/// Writz Protocol - Bitcoin SPV Verification Contract.
 ///
 /// Provides stateless verification that a Bitcoin transaction was included in
 /// a confirmed block. "Stateless" means the caller supplies all necessary data
@@ -43,7 +44,7 @@ impl BitcoinSpvContract {
     /// One-time contract initialization. Can only be called once.
     ///
     /// `verify_transaction` will not succeed until both `initialize` and
-    /// `set_checkpoint` have been called — the contract fails closed rather
+    /// `set_checkpoint` have been called - the contract fails closed rather
     /// than allowing an unanchored header chain through.
     pub fn initialize(env: Env, admin: Address) -> Result<(), SPVError> {
         if get_config(&env).is_some() {
@@ -62,7 +63,7 @@ impl BitcoinSpvContract {
     ///
     /// Operational requirement: the checkpoint should be refreshed
     /// periodically (recommended: weekly, matching Bitcoin's own retarget
-    /// cadence) — this is a live operational dependency, not "set and
+    /// cadence) - this is a live operational dependency, not "set and
     /// forget". See `docs/security/security-model.md` for the full
     /// trust-model discussion, including the recommendation to hold this
     /// admin address as a 2-of-3 Stellar multisig before mainnet.
@@ -109,7 +110,7 @@ impl BitcoinSpvContract {
     }
 
     /// Extends the TTL of the Config and Checkpoint storage entries.
-    /// Permissionless — anyone can call this to keep an inactive deployment
+    /// Permissionless - anyone can call this to keep an inactive deployment
     /// from expiring.
     pub fn refresh_ttl(env: Env) {
         storage::refresh_ttl(&env)
@@ -159,7 +160,7 @@ impl BitcoinSpvContract {
     ///
     /// # Returns
     ///
-    /// On success: a [`VerificationResult`] with the txid, block hash, and
+    /// On success: a [`SpvVerificationResult`] with the txid, block hash, and
     /// the number of confirmations supplied.
     ///
     /// On failure: an [`SPVError`] describing what went wrong.
@@ -170,7 +171,7 @@ impl BitcoinSpvContract {
         tx_index: u32,
         raw_tx: Bytes,
         min_confirmations: u32,
-    ) -> Result<VerificationResult, SPVError> {
+    ) -> Result<SpvVerificationResult, SPVError> {
         // ── Input guards ──────────────────────────────────────────────────────
         if min_confirmations == 0 {
             return Err(SPVError::ZeroMinConfirmations);
@@ -230,7 +231,7 @@ impl BitcoinSpvContract {
             &expected_merkle_root,
         )?;
 
-        Ok(VerificationResult {
+        Ok(SpvVerificationResult {
             txid,
             block_hash,
             confirmations: headers.len(),

@@ -2,7 +2,7 @@ use soroban_sdk::{contracttype, Address, Bytes, BytesN, Env};
 
 use crate::types::{Config, Position, ProtocolState};
 
-/// Storage keys — each variant maps to an isolated persistent storage entry.
+/// Storage keys - each variant maps to an isolated persistent storage entry.
 ///
 /// Using per-entry keying (not a single growing map) prevents unbounded
 /// instance storage growth, which is the #1 Soroban vulnerability class
@@ -72,7 +72,7 @@ pub fn get_protocol(env: &Env) -> ProtocolState {
             state
         }
         // No ProtocolState written yet (lazy-initialized on first activity).
-        // `last_keeper_heartbeat` defaults to "now", not epoch zero — this
+        // `last_keeper_heartbeat` defaults to "now", not epoch zero - this
         // starts the stale-keeper window fresh from first contact
         // rather than having liquidation open to anyone immediately after
         // `initialize()`, before the keeper has had any chance to act.
@@ -192,4 +192,22 @@ pub fn set_release_psbt(env: &Env, txid: &BytesN<32>, psbt: &Bytes) {
     env.storage()
         .persistent()
         .extend_ttl(&key, PERMANENT_THRESHOLD, PERMANENT_BUMP);
+}
+
+/// Extend the TTL of a published release PSBT.
+///
+/// Permissionless - mirrors `refresh_position_ttl`/`refresh_supply_balance_ttl`.
+/// Unlike those two, `ReleasePsbt` was previously only bumped as a side effect
+/// of `get_release_psbt`/`set_release_psbt`, with no standalone refresh path.
+/// A user who has repaid but hasn't yet fetched or broadcast their release
+/// transaction could otherwise let this entry expire with no way to bump it
+/// short of triggering another write. Returns false if no PSBT is on record
+/// for this txid.
+pub fn refresh_release_psbt_ttl(env: &Env, txid: &BytesN<32>) -> bool {
+    let key = DataKey::ReleasePsbt(txid.clone());
+    if !env.storage().persistent().has(&key) {
+        return false;
+    }
+    env.storage().persistent().extend_ttl(&key, 0, PERMANENT_BUMP);
+    true
 }
