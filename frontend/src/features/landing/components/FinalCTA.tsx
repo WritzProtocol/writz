@@ -6,7 +6,7 @@ import { useRef } from "react";
 import { ArrowRight } from "lucide-react";
 import { SplitFlapText } from "./SplitFlapText";
 import { SplitFlapAudioProvider } from "./SplitFlapAudioProvider";
-import { APP_ROUTE } from "../constants";
+import { APP_ROUTE, GITHUB_URL } from "../constants";
 import { LiquidGoldText } from "./LiquidGoldText";
 
 export function FinalCTA() {
@@ -47,16 +47,17 @@ export function FinalCTA() {
             <LiquidGoldText>Launch App</LiquidGoldText>
             <ArrowRight className="ml-2 w-5 h-5" />
           </Link>
-          <button
-            className="w-full sm:w-auto rounded-full px-8 h-14 text-base font-medium border transition-colors"
+          <a
+            href={GITHUB_URL}
+            className="w-full sm:w-auto rounded-full px-8 h-14 text-base font-medium border transition-colors inline-flex items-center justify-center"
             style={{ borderColor: "var(--border)", color: "var(--text-body)" }}
           >
             View on GitHub
-          </button>
+          </a>
         </div>
 
         <p className="mt-8 text-sm mb-10 sm:mb-16" style={{ color: "var(--text-dim)" }}>
-          Open source · MIT · Audits before mainnet.
+          Open source · Apache-2.0 · Audits before mainnet.
         </p>
 
         <motion.div

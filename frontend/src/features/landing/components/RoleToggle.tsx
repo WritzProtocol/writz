@@ -13,12 +13,16 @@ interface RoleToggleProps {
 export function RoleToggle({ role, onChange }: RoleToggleProps) {
   return (
     <div
+      role="group"
+      aria-label="Show products for"
       className="inline-flex items-center p-1 rounded-full border"
       style={{ background: "var(--card)", borderColor: "var(--border)" }}
     >
       {ROLES.map((r) => (
         <button
           key={r}
+          type="button"
+          aria-pressed={role === r}
           onClick={() => onChange(r)}
           className="relative px-4 py-2 text-sm font-medium rounded-full transition-colors capitalize"
           style={{ color: role === r ? "var(--text-hi)" : "var(--text-dim)" }}

@@ -11,4 +11,6 @@ export interface ProductPlan {
   ctaHref?: string;
   highlighted: boolean;
   badge?: string;
+  /** Roles this plan is shown for. Listing both keeps it visible on either side of the toggle. */
+  roles: ProtocolRole[];
 }

@@ -1,5 +1,5 @@
-import { APP_ROUTE } from "../constants";
-import type { ProductPlan } from "../types/products.types";
+import { APP_ROUTE, DOCS_URL } from "../constants";
+import type { ProductPlan, ProtocolRole } from "../types/products.types";
 
 export const productPlans: ProductPlan[] = [
   {
@@ -18,6 +18,7 @@ export const productPlans: ProductPlan[] = [
     ctaHref: APP_ROUTE,
     highlighted: true,
     badge: "Live Now",
+    roles: ["borrower"],
   },
   {
     name: "Lender Vault",
@@ -26,7 +27,9 @@ export const productPlans: ProductPlan[] = [
     statLabel: "from borrower interest",
     features: ["Supply USDC", "Withdraw anytime", "Pool transparency on-chain", "Yield from real loans"],
     cta: "Supply USDC",
-    highlighted: false,
+    ctaHref: APP_ROUTE,
+    highlighted: true,
+    roles: ["lender"],
   },
   {
     name: "Coming Next",
@@ -39,6 +42,17 @@ export const productPlans: ProductPlan[] = [
       "ZK Proof of Reserve (B2B)",
     ],
     cta: "Read the Roadmap",
+    ctaHref: `${DOCS_URL}/docs/roadmap/vision`,
     highlighted: false,
+    roles: ["borrower", "lender"],
   },
 ];
+
+export function plansForRole(role: ProtocolRole): ProductPlan[] {
+  return productPlans.filter((plan) => plan.roles.includes(role));
+}
+
+export const roleTaglines: Record<ProtocolRole, string> = {
+  borrower: "Lock real BTC, borrow USDC, keep the position private. More products as the protocol scales.",
+  lender: "Supply USDC to the pool and earn from over-collateralized BTC borrow demand.",
+};
