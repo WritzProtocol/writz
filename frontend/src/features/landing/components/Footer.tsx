@@ -48,10 +48,10 @@ export function Footer() {
                 {title}
               </h4>
               <ul className="space-y-3">
-                {links.map((link) => (
-                  <li key={link}>
-                    <a href="#" className="text-sm transition-colors hover:opacity-100" style={{ color: "var(--text-dim)" }}>
-                      {link}
+                {links.map(({ label, href }) => (
+                  <li key={label}>
+                    <a href={href} className="text-sm transition-colors hover:opacity-100" style={{ color: "var(--text-dim)" }}>
+                      {label}
                     </a>
                   </li>
                 ))}
@@ -68,12 +68,12 @@ export function Footer() {
           style={{ borderColor: "var(--border)" }}
         >
           <p className="text-sm" style={{ color: "var(--text-dim)" }}>
-            &copy; {new Date().getFullYear()} Writz Protocol. MIT License.
+            &copy; {new Date().getFullYear()} Writz Protocol. Apache-2.0 License.
           </p>
           <div className="flex items-center gap-6">
-            {footerBottomLinks.map((link) => (
-              <a key={link} href="#" className="text-sm transition-colors" style={{ color: "var(--text-dim)" }}>
-                {link}
+            {footerBottomLinks.map(({ label, href }) => (
+              <a key={label} href={href} className="text-sm transition-colors" style={{ color: "var(--text-dim)" }}>
+                {label}
               </a>
             ))}
           </div>
