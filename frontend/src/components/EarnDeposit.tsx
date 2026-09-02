@@ -38,17 +38,29 @@ export function EarnDeposit() {
 
   const walletBalance = read && read.address === address ? read.balance : null;
 
+  // A failed read leaves the last known balance in place. Blanking it would be
+  // worse than showing a slightly stale number: it happens right after a
+  // successful deposit, exactly when the user is checking that their money
+  // arrived somewhere.
   const reloadBalance = useCallback(async () => {
     if (!address) return;
-    setRead({ address, balance: await getUsdcBalance(address) });
+    try {
+      setRead({ address, balance: await getUsdcBalance(address) });
+    } catch {
+      // keep the previous value; Horizon may be momentarily unavailable
+    }
   }, [address]);
 
   useEffect(() => {
     if (!address) return;
     let cancelled = false;
     void (async () => {
-      const balance = await getUsdcBalance(address);
-      if (!cancelled) setRead({ address, balance });
+      try {
+        const balance = await getUsdcBalance(address);
+        if (!cancelled) setRead({ address, balance });
+      } catch {
+        // keep the previous value
+      }
     })();
     return () => {
       cancelled = true;

@@ -32,33 +32,33 @@ export async function hasUsdcTrustline(address: string): Promise<boolean> {
 }
 
 /**
- * The account's spendable USDC balance, in stroops (7 decimals), or null when
- * the account has no USDC trustline (or Horizon could not be read).
+ * The account's spendable USDC balance, in stroops (7 decimals).
+ *
+ * Returns null only when the account genuinely holds no USDC trustline, and
+ * throws when Horizon could not be read. The distinction matters: callers
+ * display this number and gate a deposit on it, so "you have no USDC" and "we
+ * could not check" must not collapse into the same value. Conflating them
+ * blanks a balance that is actually there whenever Horizon hiccups.
  *
  * Read from Horizon rather than the SAC contract because a classic asset's
  * authoritative balance is the trustline, and the trustline is what a deposit
- * actually spends. Callers use this to reject an over-large deposit before
- * asking the user to sign anything.
+ * actually spends.
  */
 export async function getUsdcBalance(address: string): Promise<bigint | null> {
   if (!config.usdc.issuer) return null;
   const horizon = new Horizon.Server(config.horizonUrl);
-  try {
-    const account = await horizon.loadAccount(address);
-    const line = account.balances.find(
-      (b) =>
-        "asset_code" in b &&
-        b.asset_code === config.usdc.code &&
-        "asset_issuer" in b &&
-        b.asset_issuer === config.usdc.issuer,
-    );
-    if (!line) return null;
-    // Horizon reports balances as decimal strings with 7 places, e.g. "12.5000000".
-    const [whole, frac = ""] = line.balance.split(".");
-    return BigInt(whole) * 10_000_000n + BigInt(frac.padEnd(7, "0").slice(0, 7));
-  } catch {
-    return null; // unfunded account or transient read error
-  }
+  const account = await horizon.loadAccount(address);
+  const line = account.balances.find(
+    (b) =>
+      "asset_code" in b &&
+      b.asset_code === config.usdc.code &&
+      "asset_issuer" in b &&
+      b.asset_issuer === config.usdc.issuer,
+  );
+  if (!line) return null;
+  // Horizon reports balances as decimal strings with 7 places, e.g. "12.5000000".
+  const [whole, frac = ""] = line.balance.split(".");
+  return BigInt(whole) * 10_000_000n + BigInt(frac.padEnd(7, "0").slice(0, 7));
 }
 
 /**
