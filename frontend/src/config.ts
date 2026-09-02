@@ -33,6 +33,20 @@ export const config = {
     proverUrl: process.env.NEXT_PUBLIC_PROVER_URL ?? "",
     depositAddress: process.env.NEXT_PUBLIC_DEPOSIT_ADDRESS ?? "",
   },
+  /**
+   * Earn: the DeFindex USDC vault product. The vault address and the DeFindex
+   * API key live relayer-side (server-only), so the frontend needs no vault id
+   * of its own - it reads and builds transactions through the relayer's
+   * `/defindex` routes.
+   */
+  earn: {
+    /**
+     * Serve the Earn tab from an in-memory mock instead of the relayer.
+     * Set to "1" only while the relayer routes (#103 to #105) do not exist.
+     * A mocked run produces no transaction and is not valid evidence.
+     */
+    mock: process.env.NEXT_PUBLIC_EARN_MOCK === "1",
+  },
   bitcoin: {
     network: process.env.NEXT_PUBLIC_BITCOIN_NETWORK ?? "testnet",
     protocolPubkey: process.env.NEXT_PUBLIC_PROTOCOL_BTC_PUBKEY ?? "",

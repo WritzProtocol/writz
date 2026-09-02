@@ -12,11 +12,22 @@
 
 export interface ErrorContext {
   /** Which flow the error came from, when the same contract error code needs different wording per flow. */
-  flow?: "deposit" | "borrow" | "repay" | "release" | "recover" | "lend" | "withdraw";
+  flow?:
+    | "deposit"
+    | "borrow"
+    | "repay"
+    | "release"
+    | "recover"
+    | "lend"
+    | "withdraw"
+    | "earn-deposit"
+    | "earn-withdraw";
   /** USDC available in the pool, for InsufficientLiquidity. */
   availableUsdc?: string;
   /** Caller's own supplied balance, for WithdrawExceedsBalance. */
   ownBalanceUsdc?: string;
+  /** Caller's spendable wallet USDC, for a deposit larger than they hold. */
+  walletUsdc?: string;
 }
 
 interface Rule {
@@ -159,6 +170,63 @@ const RULES: Rule[] = [
     pattern: /CheckpointNotSet|NotInitialized/,
     message: () =>
       "The verification contract isn't ready to accept proofs right now. This is a temporary configuration issue on our end - please try again shortly or check our status channel.",
+  },
+
+  // --- Wallet signature ---
+  {
+    pattern: /SignatureRejected/,
+    message: () =>
+      "You declined the signature, so nothing was submitted and no funds moved. Enter the amount again whenever you're ready.",
+  },
+
+  // --- Earn: submission and confirmation ---
+  {
+    pattern: /SubmissionThrottled/,
+    message: () =>
+      "The network is refusing new transactions right now and did not accept yours. Nothing was submitted and no funds moved - try again in a moment.",
+  },
+  {
+    pattern: /ConfirmationTimedOut/,
+    message: () =>
+      "Your transaction was signed and submitted, but we stopped waiting before the network confirmed it. It may still land. Do not send it again - refresh in a minute and check your balance first.",
+  },
+
+  // --- Earn: DeFindex vault ContractError (see integration-research/defindex.md) ---
+  {
+    pattern: /AmountNotAllowed/,
+    message: () => "The vault rejected that amount. Enter a positive amount and try again.",
+  },
+  {
+    pattern: /InsufficientAmount/,
+    message: (ctx) =>
+      ctx.flow === "earn-deposit"
+        ? "That deposit is too small for the vault to issue any shares for it. Try a larger amount."
+        : "The amount is below the vault's minimum for this operation. Try a larger amount.",
+  },
+  {
+    pattern: /AmountOverTotalSupply/,
+    message: () =>
+      "You're trying to withdraw more shares than the vault has issued. Refresh to reload your position - the balance shown is likely stale.",
+  },
+  {
+    pattern: /InsufficientOutputAmount/,
+    message: () =>
+      "The vault's price moved while your withdrawal was in flight, so it would have paid out less than the slippage limit allows. Nothing was withdrawn - try again.",
+  },
+  {
+    pattern: /StrategyPaused|StrategyPausedOrNotFound/,
+    message: () =>
+      "The vault's yield strategy is paused right now, so deposits can't be invested. Your existing balance is unaffected - try again later.",
+  },
+  {
+    pattern: /StrategyWithdrawError|StrategyInvestError/,
+    message: () =>
+      "The vault's underlying yield strategy failed to process this. Nothing moved - please try again, and report it if it keeps failing.",
+  },
+  {
+    pattern: /StrategyDoesNotSupportAsset|WrongAssetAddress/,
+    message: () =>
+      "This vault doesn't accept the asset the app is configured with. That's a configuration issue on our end, not a problem with your wallet - please report it.",
   },
 
   // --- Generic contract-level ---

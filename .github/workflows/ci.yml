@@ -61,7 +61,7 @@ jobs:
       - run: node scripts/check-docs-sync.mjs
 
   frontend:
-    name: frontend (bun · lint + build)
+    name: frontend (bun · lint + test + build)
     needs: changes
     if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
@@ -81,6 +81,7 @@ jobs:
             ${{ runner.os }}-bun-
       - run: bun install --frozen-lockfile
       - run: bun run lint
+      - run: bun run test
       - run: bun run build
 
   relayer:

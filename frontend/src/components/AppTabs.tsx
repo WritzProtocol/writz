@@ -4,12 +4,20 @@ import { useState } from "react";
 import { DepositFlow } from "./DepositFlow";
 import { PositionDashboard } from "./PositionDashboard";
 import { LenderPanel } from "./LenderPanel";
+import { EarnDeposit } from "./EarnDeposit";
 
-type Tab = "borrow" | "lend";
+type Tab = "borrow" | "lend" | "earn";
+
+const BLURBS: Record<Tab, string> = {
+  borrow: "Lock BTC as collateral and borrow USDC privately - no bridge, no custodian.",
+  lend: "Supply USDC to the pool and earn from borrower demand.",
+  earn: "Deposit USDC into the Writz vault and earn yield through DeFindex. Non-custodial - the vault shares are yours.",
+};
 
 /**
- * Separates the two distinct user journeys so neither has to scroll past the
- * other's UI: Borrow (deposit BTC + manage positions) and Lend (supply USDC).
+ * Separates the distinct user journeys so none has to scroll past another's
+ * UI: Borrow (deposit BTC + manage positions), Lend (supply USDC to the Writz
+ * pool), and Earn (deposit USDC into the DeFindex vault).
  */
 export function AppTabs() {
   const [tab, setTab] = useState<Tab>("borrow");
@@ -28,12 +36,11 @@ export function AppTabs() {
           <TabButton id="lend" active={tab === "lend"} onSelect={setTab}>
             Lend
           </TabButton>
+          <TabButton id="earn" active={tab === "earn"} onSelect={setTab}>
+            Earn
+          </TabButton>
         </div>
-        <p className="text-sm text-muted">
-          {tab === "borrow"
-            ? "Lock BTC as collateral and borrow USDC privately - no bridge, no custodian."
-            : "Supply USDC to the pool and earn from borrower demand."}
-        </p>
+        <p className="text-sm text-muted">{BLURBS[tab]}</p>
       </div>
 
       {tab === "borrow" ? (
@@ -41,8 +48,10 @@ export function AppTabs() {
           <DepositFlow />
           <PositionDashboard />
         </div>
-      ) : (
+      ) : tab === "lend" ? (
         <LenderPanel />
+      ) : (
+        <EarnDeposit />
       )}
     </div>
   );
