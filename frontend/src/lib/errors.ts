@@ -179,6 +179,18 @@ const RULES: Rule[] = [
       "You declined the signature, so nothing was submitted and no funds moved. Enter the amount again whenever you're ready.",
   },
 
+  // --- Earn: submission and confirmation ---
+  {
+    pattern: /SubmissionThrottled/,
+    message: () =>
+      "The network is refusing new transactions right now and did not accept yours. Nothing was submitted and no funds moved - try again in a moment.",
+  },
+  {
+    pattern: /ConfirmationTimedOut/,
+    message: () =>
+      "Your transaction was signed and submitted, but we stopped waiting before the network confirmed it. It may still land. Do not send it again - refresh in a minute and check your balance first.",
+  },
+
   // --- Earn: DeFindex vault ContractError (see integration-research/defindex.md) ---
   {
     pattern: /AmountNotAllowed/,
