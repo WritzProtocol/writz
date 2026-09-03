@@ -43,7 +43,7 @@ The headers and Merkle proof are fetched from a real confirmed Bitcoin mainnet t
 All code open-sourced under the Apache 2.0 license:
 - `contracts/contracts/bitcoin-spv/` - Soroban SPV contract
 - `contracts/contracts/private-lend/` - PrivateLend skeleton (85 tests)
-- `relayer/` - Node.js SPV proof relayer (104 tests)
+- `relayer/` - Node.js SPV proof relayer (117 tests)
 - `bitcoin-script/` - P2WSH locking script library (60 tests)
 
 ### Deliverable 3: Public documentation on Mintlify

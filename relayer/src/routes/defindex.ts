@@ -113,3 +113,48 @@ defindexRouter.post("/deposit", async (req: Request, res: Response): Promise<voi
     res.status(status).json({ error });
   }
 });
+
+/**
+ * POST /defindex/withdraw  { "caller": "G...", "amountStroops": "5000000" }
+ * Success 200: { "xdr": "AAAAAgAAAAA..." }
+ *
+ * Builds an unsigned withdraw transaction only - the relayer never signs or
+ * submits on the caller's behalf (epic #101's custody model). The connected
+ * wallet signs the returned XDR and the browser submits it to Soroban RPC.
+ *
+ * `amountStroops` is the underlying USDC amount to withdraw (7 decimals), the
+ * same wire convention as `/deposit`. Passed straight through to
+ * `withdrawFromVault`'s `amounts`, DeFindex's asset-amount withdrawal call -
+ * a "full" withdrawal is simply an amount equal to the caller's whole
+ * position, so no separate full/partial branch is needed here.
+ */
+defindexRouter.post("/withdraw", async (req: Request, res: Response): Promise<void> => {
+  const { caller, amountStroops } = req.body as { caller?: unknown; amountStroops?: unknown };
+  if (typeof caller !== "string" || !STELLAR_ADDRESS_RE.test(caller)) {
+    res.status(400).json({ error: "caller must be a Stellar G... public key" });
+    return;
+  }
+  if (typeof amountStroops !== "string" || !STROOP_AMOUNT_RE.test(amountStroops)) {
+    res.status(400).json({ error: "amountStroops must be a positive integer string (USDC stroops)" });
+    return;
+  }
+  if (!config.defindexVaultId) {
+    res.status(500).json({ error: "DEFINDEX_VAULT_ID not configured" });
+    return;
+  }
+  try {
+    const { xdr } = await defindexSdk.withdrawFromVault(
+      config.defindexVaultId,
+      { caller, amounts: [Number(amountStroops)] },
+      defindexNetwork,
+    );
+    if (!xdr) {
+      res.status(502).json({ error: "DeFindex API did not return a transaction to sign" });
+      return;
+    }
+    res.json({ xdr });
+  } catch (err) {
+    const { status, error } = mapDefindexError(err);
+    res.status(status).json({ error });
+  }
+});

@@ -134,7 +134,41 @@ curl -X POST http://localhost:3000/defindex/deposit \
 The deposit is invested into the vault's strategies immediately (`invest: true`), matching
 DeFindex's own documented deposit flow - it doesn't sit idle waiting on a manual rebalance.
 
-Withdraw (#105) is a separate, not-yet-built route.
+### `POST /defindex/withdraw`
+
+Builds an unsigned withdraw transaction for the Writz DeFindex vault. The relayer never signs or
+submits it - the connected wallet signs the returned XDR and the caller submits it to Soroban RPC
+(non-custodial custody model, epic #101).
+
+**Body**
+
+| Field | Type | Description |
+|---|---|---|
+| `caller` | Stellar `G...` public key | Required. The withdrawer - also the transaction's source account. |
+| `amountStroops` | decimal string | Required. USDC stroops (7 decimals) to withdraw, as a positive integer string. A full withdrawal is simply an amount equal to the caller's current position (see `GET /defindex/position`); there is no separate "withdraw all" flag. |
+
+**Responses**
+
+| Status | Meaning |
+|---|---|
+| `200` | Unsigned withdraw XDR returned |
+| `400` | Missing or malformed `caller` or `amountStroops` |
+| `500` | `DEFINDEX_VAULT_ID` not configured |
+| `502` | Upstream DeFindex error, or DeFindex resolved without an XDR to sign (`error` carries the `ContractError` variant name when the failure came from the vault contract) |
+
+**Example**
+
+```bash
+curl -X POST http://localhost:3000/defindex/withdraw \
+  -H 'Content-Type: application/json' \
+  -d '{"caller":"GB2BSYQS3FRJ5LZSSIDF3ZCSG5MKWJT5SZ3OZO4QRCAMCR357YAVPTWT","amountStroops":"5000000"}'
+```
+
+**200 body**
+
+```json
+{ "xdr": "AAAAAgAAAAA..." }
+```
 
 ### `GET /health`
 

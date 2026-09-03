@@ -57,7 +57,7 @@ Research    ──►  Foundation  ──►  Launch      ──►  Scale
 | **commitment-tree contract** | 32/32 tests. Full ZK cycle verified on-chain. Deployed: `CDQCTFO3FK3M47QS47O2A4WLNPSQAQBSXBFPJ6RZEHFO5D7RY34FSBBP` |
 | **private-lend contract** | 85/85 tests. Non-ZK skeleton with kinked interest model. Deployed: `CAAWVMDRUPEJNELSQ6RU2VMVX5EJLQ2E77T7IXDWGMW4DGSNAGECGSWR` |
 | **ZK circuits** | 29/29 tests. All 3 circuits compiled (Circom 2.2.3). Dev keys generated. |
-| **Relayer service** | 104/104 tests. REST API: `GET /spv-proof/:txid`. Esplora-backed. |
+| **Relayer service** | 117/117 tests. REST API: `GET /spv-proof/:txid`. Esplora-backed. |
 | **Bitcoin script toolkit** | 60/60 tests. P2WSH generation, PSBT signing, witness assembly. |
 | **Bitcoin Signet E2E** | Path A co-signed release broadcast and accepted. `11932100` |
 | **ZK testnet E2E** | Full deposit→borrow→repay cycle on Soroban testnet. 6 transactions. `8daddf52` |
