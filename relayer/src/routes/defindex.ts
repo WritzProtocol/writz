@@ -4,6 +4,7 @@ import { defindexSdk, defindexNetwork } from "../defindex/client.js";
 import { mapDefindexError } from "../defindex/errors.js";
 
 const STELLAR_ADDRESS_RE = /^G[A-Z2-7]{55}$/;
+const STROOP_AMOUNT_RE = /^[1-9]\d*$/;
 
 export const defindexRouter = Router();
 
@@ -61,6 +62,52 @@ defindexRouter.get("/position", async (req: Request, res: Response): Promise<voi
       dfTokens: String(balance.dfTokens),
       underlyingStroops: String(balance.underlyingBalance[0] ?? 0),
     });
+  } catch (err) {
+    const { status, error } = mapDefindexError(err);
+    res.status(status).json({ error });
+  }
+});
+
+/**
+ * POST /defindex/deposit  { "caller": "G...", "amountStroops": "10000000" }
+ * Success 200: { "xdr": "AAAAAgAAAAA..." }
+ *
+ * Builds an unsigned deposit transaction only - the relayer never signs or
+ * submits on the caller's behalf (epic #101's custody model). The connected
+ * wallet signs the returned XDR and the browser submits it to Soroban RPC.
+ *
+ * `amountStroops` is a decimal string of USDC stroops (7 decimals), matching
+ * the frontend's wire convention (frontend/src/lib/earn/amount.ts) - a JSON
+ * number above 2^53 loses precision. `invest: true` follows DeFindex's own
+ * documented deposit example (docs.defindex.io: "Auto-invest into
+ * strategies") so a deposit starts earning immediately instead of sitting
+ * idle until a manual rebalance.
+ */
+defindexRouter.post("/deposit", async (req: Request, res: Response): Promise<void> => {
+  const { caller, amountStroops } = req.body as { caller?: unknown; amountStroops?: unknown };
+  if (typeof caller !== "string" || !STELLAR_ADDRESS_RE.test(caller)) {
+    res.status(400).json({ error: "caller must be a Stellar G... public key" });
+    return;
+  }
+  if (typeof amountStroops !== "string" || !STROOP_AMOUNT_RE.test(amountStroops)) {
+    res.status(400).json({ error: "amountStroops must be a positive integer string (USDC stroops)" });
+    return;
+  }
+  if (!config.defindexVaultId) {
+    res.status(500).json({ error: "DEFINDEX_VAULT_ID not configured" });
+    return;
+  }
+  try {
+    const { xdr } = await defindexSdk.depositToVault(
+      config.defindexVaultId,
+      { caller, amounts: [Number(amountStroops)], invest: true },
+      defindexNetwork,
+    );
+    if (!xdr) {
+      res.status(502).json({ error: "DeFindex API did not return a transaction to sign" });
+      return;
+    }
+    res.json({ xdr });
   } catch (err) {
     const { status, error } = mapDefindexError(err);
     res.status(status).json({ error });
