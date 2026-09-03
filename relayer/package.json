@@ -11,6 +11,7 @@
     "test:watch": "jest --watch"
   },
   "dependencies": {
+    "@defindex/sdk": "^0.3.0",
     "@stellar/stellar-sdk": "^16.0.1",
     "@writz/bitcoin-script": "file:../bitcoin-script",
     "commitment-tree": "file:../packages/commitment-tree",

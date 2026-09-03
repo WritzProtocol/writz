@@ -36,12 +36,18 @@ export interface Config {
   /** How often (ms) the repay watcher polls Soroban RPC for new events. */
   repayWatcherPollIntervalMs: number;
   // DeFindex (Earn)
-  /** DeFindex API key (`sk_...`), from console.defindex.io. Not read by any
-   * relayer code path yet - wired here ahead of the `defindex` router
-   * (#103), which will need it for both reads and tx-building. */
+  /** DeFindex API key (`sk_...`), from console.defindex.io. Used by the
+   * `defindex` router for both reads and (eventually) tx-building. */
   defindexApiKey: string | undefined;
   /** DeFindex API base URL. */
   defindexApiUrl: string;
+  /** Writz's own DeFindex vault contract ID (testnet:
+   * CBMHGL7GGGHODEDDJ5H2LKJEFHJWBRSQUKOXMC4FKOFDZK5HBKW6PI2S, see
+   * contracts/deployments/defindex-vault-testnet.md). One vault per
+   * network; reads and writes always target this one - never a request
+   * parameter. Empty until set; routes that need it 500 clearly rather
+   * than the process crashing at boot. */
+  defindexVaultId: string;
 }
 
 const ESPLORA_URLS: Record<BitcoinNetwork, string> = {
@@ -79,6 +85,7 @@ function loadConfig(): Config {
     repayWatcherPollIntervalMs: parseInt(getEnv("REPAY_WATCHER_POLL_INTERVAL_MS", "30000"), 10),
     defindexApiKey: process.env["DEFINDEX_API_KEY"],
     defindexApiUrl: getEnv("DEFINDEX_API_URL", "https://api.defindex.io"),
+    defindexVaultId: getEnv("DEFINDEX_VAULT_ID", ""),
   };
 }
 

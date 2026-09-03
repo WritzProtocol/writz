@@ -47,6 +47,56 @@ Returns an SPV proof bundle for the given Bitcoin transaction ID.
 
 `sorobanArgs` is pre-formatted for direct use with the Stellar SDK / Soroban CLI.
 
+### `GET /defindex/apy`
+
+Returns the Writz DeFindex vault's current APY, read live through `@defindex/sdk`.
+
+**Responses**
+
+| Status | Meaning |
+|---|---|
+| `200` | APY returned |
+| `500` | `DEFINDEX_VAULT_ID` not configured |
+| `502` | Upstream DeFindex error (`error` carries the `ContractError` variant name when the failure came from the vault contract) |
+
+**200 body**
+
+```json
+{ "apy": 0.0721 }
+```
+
+`apy` is a fraction (`0.0721` = 7.21%), not a percentage - DeFindex's own API returns a percentage number, so this route converts it.
+
+### `GET /defindex/position`
+
+Returns a wallet's share of the Writz DeFindex vault.
+
+**Query parameters**
+
+| Parameter | Type | Description |
+|---|---|---|
+| `address` | Stellar `G...` public key | Required |
+
+**Responses**
+
+| Status | Meaning |
+|---|---|
+| `200` | Position returned |
+| `400` | Missing or malformed `address` |
+| `404` | Vault or position not found upstream |
+| `500` | `DEFINDEX_VAULT_ID` not configured |
+| `502` | Upstream DeFindex error (`error` carries the `ContractError` variant name when the failure came from the vault contract) |
+
+**200 body**
+
+```json
+{ "dfTokens": "12500000", "underlyingStroops": "12734512" }
+```
+
+Both fields are decimal strings of USDC stroops (7 decimals), never JSON numbers - a stroop amount above 2^53 loses precision as a double.
+
+Reads only - this router never builds, signs, or submits a transaction. Deposit and withdraw are separate, not-yet-built routes.
+
 ### `GET /health`
 
 Returns `{"status":"ok",...}` - used by load balancers.
@@ -64,6 +114,9 @@ Copy `.env.example` to `.env` and adjust as needed.
 | `DEFAULT_CONFIRMATIONS` | `6` | Used when caller omits the query param |
 | `MAX_CONFIRMATIONS` | `20` | Hard cap on the confirmations param |
 | `REQUEST_TIMEOUT_MS` | `10000` | Esplora request timeout in ms |
+| `DEFINDEX_API_KEY` | *(none)* | DeFindex API key (`sk_...`) from console.defindex.io |
+| `DEFINDEX_API_URL` | `https://api.defindex.io` | DeFindex API base URL |
+| `DEFINDEX_VAULT_ID` | *(none)* | Writz's own DeFindex vault contract ID - see `contracts/deployments/defindex-vault-testnet.md` |
 
 ## Running locally
 

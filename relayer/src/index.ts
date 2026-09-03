@@ -2,6 +2,7 @@ import express from "express";
 import { config } from "./config.js";
 import { proofRouter } from "./routes/proof.js";
 import { merkleRouter } from "./routes/merkle.js";
+import { defindexRouter } from "./routes/defindex.js";
 import { startRepayWatcher } from "./repay-watcher/poller.js";
 
 const app = express();
@@ -36,6 +37,7 @@ app.get("/health", (_req, res) => {
 
 app.use("/spv-proof", proofRouter);
 app.use("/", merkleRouter);
+app.use("/defindex", defindexRouter);
 
 // 404 fallback.
 app.use((_req, res) => {
