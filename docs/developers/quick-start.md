@@ -82,7 +82,7 @@ cd ../../bitcoin-script && bun run build
 cd ../relayer && bun install && bun run test
 ```
 
-Expected output: 104 tests pass.
+Expected output: 117 tests pass.
 
 ### ZK circuits (Circom + snarkjs, npm)
 
@@ -96,7 +96,7 @@ Expected output: 29 tests pass (proof generation, commitment correctness, ratio 
 
 If `verify()` assertions fail here while `prove()` succeeds, your local `circuits/keys/*_final.zkey` (gitignored, regenerated locally) is out of sync with the committed `circuits/keys/*_vkey.json`. Run `bash scripts/compile_all.sh && bash scripts/setup_dev.sh` to regenerate both together from a fresh dev trusted setup, then re-run `npm test`.
 
-### All together: 384 tests, all passing.
+### All together: 397 tests, all passing.
 
 ---
 
