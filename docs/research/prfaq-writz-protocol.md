@@ -7,8 +7,8 @@ stage: "1-ignition"
 inputs: ["docs/roadmap/vision.md", "docs/research/market-landscape.md", "docs/research/growth-strategy.md", "docs/brainstorming/brainstorming-session-2026-06-22-1000.md"]
 ---
 
-<!-- coaching-notes-stage-1 -->
-<!--
+{/* coaching-notes-stage-1 */}
+{/*
 Concept type: commercial product (DeFi protocol, eventual token).
 
 Explicit constraint from Sebastián: run this exercise ignoring the already-written
@@ -97,4 +97,4 @@ alone. Open tension to hold: vision.md's WRTZ section explicitly rejects VC-styl
 backers/LOIs for credibility must be reconciled with that stance, not silently
 contradict it (infra/strategic partners and token-investor VCs are not the same
 thing, but the doc doesn't yet draw that line).
--->
+*/}

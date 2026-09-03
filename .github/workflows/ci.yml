@@ -60,6 +60,30 @@ jobs:
           node-version: 22
       - run: node scripts/check-docs-sync.mjs
 
+  # Same always-run rationale as docs-sync: Mintlify parses pages as MDX and
+  # only re-parses what a push changed, so a syntax error can sit in a page
+  # for months and then break the deploy on an unrelated PR that merely
+  # touches it. Cheap, and gated by nothing.
+  docs-mdx:
+    name: docs mdx (mintlify parse check)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: scripts/docs-mdx
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+      - run: bun install --frozen-lockfile
+      - run: bun run check
+
   frontend:
     name: frontend (bun · lint + test + build)
     needs: changes
