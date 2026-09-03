@@ -106,7 +106,7 @@ Research    ──►  Foundation  ──►  Launch      ──►  Scale
 **Oracle integration (mainnet-blocking, not yet started):**
 - `get_btc_price_stroops` in `contracts/contracts/private-lend/src/oracle.rs` still returns a hardcoded `STUB_PRICE_STROOPS_PER_BTC` (`TODO Phase 2` in the code) - this is a hard dependency for real liquidations and has no owner or target date yet
 - Wire real SEP-40 cross-contract call to RedStone (primary) + Pyth (secondary), median aggregation per `docs/research/oracle-design.md`
-- **This also unblocks `commitment-tree` liquidation.** With the current fixed-price stub and no ZK-compatible accrual mechanism, no position can legitimately move from the ≥150% ratio `borrow` requires down to the <120% `liquidate` requires - see `docs/security/security-model.md`, "Keeper model and liquidation permissionlessness"
+- **This also unblocks `commitment-tree` liquidation.** With the current fixed-price stub and no ZK-compatible accrual mechanism, no position can legitimately move from the ≥150% ratio `borrow` requires down to the &lt;120% `liquidate` requires - see `docs/security/security-model.md`, "Keeper model and liquidation permissionlessness"
 - Implement the 60-minute staleness check and "price paused" fallback state described in `docs/research/oracle-design.md` and `docs/security/security-model.md` - neither exists in code today
 - **Do not schedule a mainnet date until this has an owner and a start date.**
 
