@@ -1,0 +1,12 @@
+{
+  "name": "writz-docs-mdx-check",
+  "private": true,
+  "type": "module",
+  "description": "Parses docs/ with Mintlify's MDX parser so syntax errors fail CI instead of the deploy.",
+  "scripts": {
+    "check": "node check.mjs"
+  },
+  "dependencies": {
+    "@mdx-js/mdx": "3.1.1"
+  }
+}
