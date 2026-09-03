@@ -4,9 +4,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "set-vkeys": "node set_vkeys.js"
+    "set-vkeys": "bun run set_vkeys.js",
+    "deploy-defindex-vault": "bun run deploy_defindex_vault.mjs",
+    "rebalance-defindex-vault": "bun run rebalance_defindex_vault.mjs"
   },
   "dependencies": {
+    "@defindex/sdk": "^0.3.0",
     "@stellar/stellar-sdk": "^16.0.1",
     "circomlibjs": "^0.1.7",
     "snarkjs": "^0.7.6"
