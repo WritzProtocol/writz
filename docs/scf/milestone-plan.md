@@ -114,7 +114,7 @@ First version of the STRIDE security analysis published in docs (`scf/stride-thr
 Each circuit:
 - Compiled to R1CS
 - Test witnesses generated and verified
-- Proving time measured in browser (target: &lt;8 seconds for borrow/repay)
+- Proving time measured in browser (target: <8 seconds for borrow/repay)
 
 ### Deliverable 2: Trusted setup ceremony executed
 
