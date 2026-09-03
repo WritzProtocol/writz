@@ -35,6 +35,13 @@ export interface Config {
   releaseFeeSat: number;
   /** How often (ms) the repay watcher polls Soroban RPC for new events. */
   repayWatcherPollIntervalMs: number;
+  // DeFindex (Earn)
+  /** DeFindex API key (`sk_...`), from console.defindex.io. Not read by any
+   * relayer code path yet - wired here ahead of the `defindex` router
+   * (#103), which will need it for both reads and tx-building. */
+  defindexApiKey: string | undefined;
+  /** DeFindex API base URL. */
+  defindexApiUrl: string;
 }
 
 const ESPLORA_URLS: Record<BitcoinNetwork, string> = {
@@ -70,6 +77,8 @@ function loadConfig(): Config {
     protocolSigningKeyWif: process.env["PROTOCOL_SIGNING_KEY"],
     releaseFeeSat: parseInt(getEnv("RELEASE_FEE_SAT", "1500"), 10),
     repayWatcherPollIntervalMs: parseInt(getEnv("REPAY_WATCHER_POLL_INTERVAL_MS", "30000"), 10),
+    defindexApiKey: process.env["DEFINDEX_API_KEY"],
+    defindexApiUrl: getEnv("DEFINDEX_API_URL", "https://api.defindex.io"),
   };
 }
 

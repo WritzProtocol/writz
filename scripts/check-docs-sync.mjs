@@ -93,8 +93,14 @@ const canonicalCounts = new Set([
 const ADDRESS_RE = /\bC[A-Z2-7]{55}\b/g;
 const COUNT_RE = /\b(\d+)(?:\s*\/\s*\d+)?\s+(?:unit\s+|integration\s+)?tests?\b/gi;
 
+// defindex-vault-testnet.md records a third-party (DeFindex factory / Blend
+// strategy) deployment, not a Writz-authored contract - its addresses live
+// outside testnet.md's source-of-truth model, so they're expected to be
+// "unknown" to it.
+const defindexVaultMdPath = path.join(repoRoot, "contracts/deployments/defindex-vault-testnet.md");
+
 const skipForCounts = new Set([testnetMdPath]); // deployment log has no test-count claims to check
-const skipForAddresses = new Set([testnetMdPath]); // this file IS the source of truth
+const skipForAddresses = new Set([testnetMdPath, defindexVaultMdPath]); // testnetMd IS the source of truth; the DeFindex file records external addresses
 
 let errors = 0;
 
