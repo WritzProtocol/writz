@@ -8,7 +8,12 @@
 
 // jest.mock must be called before any module imports so ts-jest can hoist it.
 jest.mock('../src/defindex/client.js', () => ({
-  defindexSdk: { getVaultAPY: jest.fn(), getVaultBalance: jest.fn(), depositToVault: jest.fn() },
+  defindexSdk: {
+    getVaultAPY: jest.fn(),
+    getVaultBalance: jest.fn(),
+    depositToVault: jest.fn(),
+    withdrawFromVault: jest.fn(),
+  },
   defindexNetwork: 'testnet',
 }));
 
@@ -21,6 +26,7 @@ import { config } from '../src/config.js';
 const mockGetVaultAPY = defindexSdk.getVaultAPY as jest.Mock;
 const mockGetVaultBalance = defindexSdk.getVaultBalance as jest.Mock;
 const mockDepositToVault = defindexSdk.depositToVault as jest.Mock;
+const mockWithdrawFromVault = defindexSdk.withdrawFromVault as jest.Mock;
 
 const VAULT_ID = 'CBMHGL7GGGHODEDDJ5H2LKJEFHJWBRSQUKOXMC4FKOFDZK5HBKW6PI2S';
 const VALID_ADDRESS = 'GB2BSYQS3FRJ5LZSSIDF3ZCSG5MKWJT5SZ3OZO4QRCAMCR357YAVPTWT';
@@ -38,6 +44,7 @@ beforeEach(() => {
   app = buildApp();
   mockGetVaultAPY.mockReset();
   mockGetVaultBalance.mockReset();
+  mockWithdrawFromVault.mockReset();
   mockDepositToVault.mockReset();
   config.defindexVaultId = VAULT_ID;
 });
@@ -231,6 +238,117 @@ describe('POST /defindex/deposit', () => {
     const res = await request(app)
       .post('/defindex/deposit')
       .send({ caller: VALID_ADDRESS, amountStroops: '10000000' });
+
+    expect(res.status).toBe(502);
+    expect(res.body).toEqual({ error: 'DeFindex API did not return a transaction to sign' });
+  });
+});
+
+// ── POST /defindex/withdraw ──────────────────────────────────────────────
+
+describe('POST /defindex/withdraw', () => {
+  test('200 with the unsigned withdraw XDR for a partial withdrawal', async () => {
+    mockWithdrawFromVault.mockResolvedValue({ xdr: 'AAAAAgAAAAA...', simulationResponse: {} });
+
+    const res = await request(app)
+      .post('/defindex/withdraw')
+      .send({ caller: VALID_ADDRESS, amountStroops: '5000000' });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ xdr: 'AAAAAgAAAAA...' });
+    expect(mockWithdrawFromVault).toHaveBeenCalledWith(
+      VAULT_ID,
+      { caller: VALID_ADDRESS, amounts: [5000000] },
+      'testnet',
+    );
+  });
+
+  test('200 with the unsigned withdraw XDR for a full withdrawal (amount equal to the whole position)', async () => {
+    mockWithdrawFromVault.mockResolvedValue({ xdr: 'AAAAAgAAAAB...', simulationResponse: {} });
+
+    const res = await request(app)
+      .post('/defindex/withdraw')
+      .send({ caller: VALID_ADDRESS, amountStroops: '12734512' });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ xdr: 'AAAAAgAAAAB...' });
+    expect(mockWithdrawFromVault).toHaveBeenCalledWith(
+      VAULT_ID,
+      { caller: VALID_ADDRESS, amounts: [12734512] },
+      'testnet',
+    );
+  });
+
+  test('400 when caller is missing, and the SDK is never called', async () => {
+    const res = await request(app).post('/defindex/withdraw').send({ amountStroops: '5000000' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('caller must be a Stellar G... public key');
+    expect(mockWithdrawFromVault).not.toHaveBeenCalled();
+  });
+
+  test('400 when caller is malformed (wrong prefix)', async () => {
+    const res = await request(app)
+      .post('/defindex/withdraw')
+      .send({ caller: `C${VALID_ADDRESS.slice(1)}`, amountStroops: '5000000' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('caller must be a Stellar G... public key');
+  });
+
+  test('400 when amountStroops is missing, and the SDK is never called', async () => {
+    const res = await request(app).post('/defindex/withdraw').send({ caller: VALID_ADDRESS });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('amountStroops must be a positive integer string (USDC stroops)');
+    expect(mockWithdrawFromVault).not.toHaveBeenCalled();
+  });
+
+  test.each(['0', '-5', '12.5', 'abc', '01000000'])(
+    '400 when amountStroops is malformed (%s)',
+    async (amountStroops) => {
+      const res = await request(app)
+        .post('/defindex/withdraw')
+        .send({ caller: VALID_ADDRESS, amountStroops });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toBe('amountStroops must be a positive integer string (USDC stroops)');
+    },
+  );
+
+  test('500 when DEFINDEX_VAULT_ID is not configured, and the SDK is never called', async () => {
+    config.defindexVaultId = '';
+
+    const res = await request(app)
+      .post('/defindex/withdraw')
+      .send({ caller: VALID_ADDRESS, amountStroops: '5000000' });
+
+    expect(res.status).toBe(500);
+    expect(res.body.error).toBe('DEFINDEX_VAULT_ID not configured');
+    expect(mockWithdrawFromVault).not.toHaveBeenCalled();
+  });
+
+  test('502 with the ContractError variant name when the SDK rejects (e.g. over-withdrawal)', async () => {
+    mockWithdrawFromVault.mockRejectedValue({
+      error: 'ContractError',
+      message: 'contract call failed',
+      networkDetails: { stellarErrorCode: '117' },
+    });
+
+    const res = await request(app)
+      .post('/defindex/withdraw')
+      .send({ caller: VALID_ADDRESS, amountStroops: '999999999' });
+
+    expect(res.status).toBe(502);
+    expect(res.body).toEqual({ error: 'InsufficientAmount' });
+  });
+
+  test('502 when the SDK resolves without an XDR to sign', async () => {
+    mockWithdrawFromVault.mockResolvedValue({ xdr: null, simulationResponse: {} });
+
+    const res = await request(app)
+      .post('/defindex/withdraw')
+      .send({ caller: VALID_ADDRESS, amountStroops: '5000000' });
 
     expect(res.status).toBe(502);
     expect(res.body).toEqual({ error: 'DeFindex API did not return a transaction to sign' });
