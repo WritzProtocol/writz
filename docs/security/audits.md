@@ -84,7 +84,7 @@ Before the formal Audit Bank engagement, Writz applies the following:
 - Custom constraint analysis for ZK circuits (circom-specific tooling)
 
 **Test coverage:**
-- 339 tests covering happy paths and error cases
+- 384 tests covering happy paths and error cases
 - End-to-end integration tests covering the full deposit→borrow→repay→liquidate cycle
 - ZK circuit tests verifying proof acceptance for valid inputs and rejection for invalid inputs
 - Bitcoin transaction tests verifying witness construction against real Bitcoin script interpretation

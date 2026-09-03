@@ -33,7 +33,7 @@ cd ../../relayer && bun install
 cd ../circuits && npm install
 ```
 
-All 339 tests should pass on a clean checkout.
+All 384 tests should pass on a clean checkout.
 
 ---
 

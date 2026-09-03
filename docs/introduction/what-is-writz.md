@@ -84,7 +84,7 @@ Writz's competitive position compounds with time:
 As of June 2026, Writz has completed Phase 1 - Foundation:
 
 - Four Soroban contracts deployed on testnet
-- 339 tests passing across all modules
+- 384 tests passing across all modules
 - Full ZK proof cycle (deposit → borrow → repay) verified on-chain
 - Real Bitcoin transactions broadcast and confirmed on Bitcoin Signet
 - SCF Build Award application drafted (not submitted; no short-term plan to submit)

@@ -95,7 +95,46 @@ Returns a wallet's share of the Writz DeFindex vault.
 
 Both fields are decimal strings of USDC stroops (7 decimals), never JSON numbers - a stroop amount above 2^53 loses precision as a double.
 
-Reads only - this router never builds, signs, or submits a transaction. Deposit and withdraw are separate, not-yet-built routes.
+### `POST /defindex/deposit`
+
+Builds an unsigned deposit transaction for the Writz DeFindex vault. The relayer never signs or
+submits it - the connected wallet signs the returned XDR and the caller submits it to Soroban RPC
+(non-custodial custody model, epic #101).
+
+**Body**
+
+| Field | Type | Description |
+|---|---|---|
+| `caller` | Stellar `G...` public key | Required. The depositor - also the transaction's source account. |
+| `amountStroops` | decimal string | Required. USDC stroops (7 decimals) to deposit, as a positive integer string. |
+
+**Responses**
+
+| Status | Meaning |
+|---|---|
+| `200` | Unsigned deposit XDR returned |
+| `400` | Missing or malformed `caller` or `amountStroops` |
+| `500` | `DEFINDEX_VAULT_ID` not configured |
+| `502` | Upstream DeFindex error, or DeFindex resolved without an XDR to sign (`error` carries the `ContractError` variant name when the failure came from the vault contract) |
+
+**Example**
+
+```bash
+curl -X POST http://localhost:3000/defindex/deposit \
+  -H 'Content-Type: application/json' \
+  -d '{"caller":"GB2BSYQS3FRJ5LZSSIDF3ZCSG5MKWJT5SZ3OZO4QRCAMCR357YAVPTWT","amountStroops":"10000000"}'
+```
+
+**200 body**
+
+```json
+{ "xdr": "AAAAAgAAAAA..." }
+```
+
+The deposit is invested into the vault's strategies immediately (`invest: true`), matching
+DeFindex's own documented deposit flow - it doesn't sit idle waiting on a manual rebalance.
+
+Withdraw (#105) is a separate, not-yet-built route.
 
 ### `GET /health`
 
