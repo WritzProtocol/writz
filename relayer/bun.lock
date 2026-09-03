@@ -5,6 +5,7 @@
     "": {
       "name": "@writz/relayer",
       "dependencies": {
+        "@defindex/sdk": "^0.3.0",
         "@stellar/stellar-sdk": "^16.0.1",
         "@writz/bitcoin-script": "file:../bitcoin-script",
         "commitment-tree": "file:../packages/commitment-tree",
@@ -132,6 +133,8 @@
     "@bcoe/v8-coverage": ["@bcoe/v8-coverage@0.2.3", "", {}, "sha512-0hYQ8SB4Db5zvZB4axdMHGwEaQjkZzFjQiN9LVYvIFB2nSUHW9tYpxWriPrWDASIxiaXax83REcLxuSdnGPZtw=="],
 
     "@bitcoinerlab/secp256k1": ["@bitcoinerlab/secp256k1@1.2.0", "", { "dependencies": { "@noble/curves": "^1.7.0" } }, "sha512-jeujZSzb3JOZfmJYI0ph1PVpCRV5oaexCgy+RvCXV8XlY+XFB/2n3WOcvBsKLsOw78KYgnQrQWb2HrKE4be88Q=="],
+
+    "@defindex/sdk": ["@defindex/sdk@0.3.0", "", { "dependencies": { "axios": "^1.10.0" } }, "sha512-44l8wHOvKiiS4oWqKJkC9SI7j/CSvphZLUA4DfjNauH2qIWLcfxovN6nFfIToSUrWw863iR2xmJn48jxG1CwDw=="],
 
     "@esbuild/aix-ppc64": ["@esbuild/aix-ppc64@0.28.1", "", { "os": "aix", "cpu": "ppc64" }, "sha512-Svl7tq8k/08+p6CXPpRjQ1fKX+1odH/BQbb48fV6fj3CWHhsoIOoY87w1oHXm0qEpkIK3ZfVgp0hed3XBXzXMQ=="],
 
