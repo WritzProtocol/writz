@@ -1,15 +1,15 @@
 {
   "generatedBy": "scripts/update-test-counts.mjs",
-  "generatedAt": "2026-09-03T01:10:43.294Z",
+  "generatedAt": "2026-09-03T01:30:19.205Z",
   "contractsTotal": 191,
-  "totalTests": 397,
+  "totalTests": 402,
   "modules": {
     "contracts/bitcoin-spv": 49,
     "contracts/zk-verifier": 25,
     "contracts/commitment-tree": 32,
     "contracts/private-lend": 85,
     "bitcoin-script": 60,
-    "relayer": 117,
+    "relayer": 122,
     "circuits": 29
   }
 }

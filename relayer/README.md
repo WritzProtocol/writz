@@ -209,6 +209,29 @@ curl http://localhost:3000/spv-proof/<txid>?confirmations=1
 curl http://localhost:3000/health
 ```
 
+## Testing
+
+```bash
+bun run test
+```
+
+Most of the suite is fast and deterministic - it mocks any external service
+(Esplora, `@defindex/sdk`, etc.), so it runs the same everywhere with no
+credentials required.
+
+`test/defindex.integration.test.ts` is the one exception: it makes no mocks
+and calls the real DeFindex API against the real deployed testnet vault (see
+`contracts/deployments/defindex-vault-testnet.md` for its address) to prove
+the reads
+(`/apy`, `/position`) and both tx-building routes (`/deposit`, `/withdraw`,
+including a real over-withdrawal rejection) actually work end to end, not
+just that the Express layer is wired correctly. It requires
+`DEFINDEX_API_KEY` and `DEFINDEX_VAULT_ID` to be set (e.g. a local `.env`);
+if either is missing - as in CI today - every test in that file logs a
+warning and passes trivially instead of failing, so `bun run test` stays
+fast and network-independent unless you deliberately configure real
+credentials.
+
 ## Docker
 
 Build from the **repo root** (the image needs `packages/commitment-tree/`

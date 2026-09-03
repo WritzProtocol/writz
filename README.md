@@ -28,7 +28,7 @@ No bridge. No custodian. No wrapped tokens. No public balance sheet.
 
 ## This Is Not a Whitepaper
 
-As of August 2026, four contracts are live on Soroban testnet, 397 tests pass, and real Bitcoin transactions have been verified on-chain.
+As of August 2026, four contracts are live on Soroban testnet, 402 tests pass, and real Bitcoin transactions have been verified on-chain.
 
 | What | Status |
 |---|---|
@@ -37,7 +37,7 @@ As of August 2026, four contracts are live on Soroban testnet, 397 tests pass, a
 | P2WSH locking + co-signed BTC release | ✓ Broadcast on Bitcoin Signet |
 | Poseidon Merkle commitment tree | ✓ Root updated on-chain |
 | Full deposit → borrow → repay ZK flow | ✓ 6 sequential testnet transactions |
-| 397 tests across all modules | ✓ All passing |
+| 402 tests across all modules | ✓ All passing |
 
 ### Live Testnet Contracts
 
@@ -284,7 +284,7 @@ cd contracts && cargo test
 # 2. Bitcoin script toolkit - 60 tests (Bun's own test runner)
 cd ../bitcoin-script && bun install && bun test
 
-# 3. Relayer service - 117 tests
+# 3. Relayer service - 122 tests
 #    Deps install with Bun, but the suite itself is Jest (ts-jest), so it must
 #    be run through the package script - plain `bun test` picks Bun's runner
 #    instead and fails. The relayer also imports the local @writz/* packages
@@ -297,7 +297,7 @@ cd ../relayer && bun install && bun run test
 cd ../circuits && npm install && npm test
 ```
 
-All 397 tests pass. If anything fails, [open an issue](https://github.com/WritzProtocol/writz/issues).
+All 402 tests pass. If anything fails, [open an issue](https://github.com/WritzProtocol/writz/issues).
 
 ### Full ZK End-to-End on Soroban Testnet
 
@@ -457,7 +457,7 @@ Full documentation lives in [`docs/`](docs/) and is published at **[docs.writz.x
 ## Contributing
 
 1. Fork the repo and create a branch from `main`.
-2. Run the full test suite before opening a PR - all 397 tests must pass.
+2. Run the full test suite before opening a PR - all 402 tests must pass.
 3. For new features, add tests. For bug fixes, add a regression test.
 4. Open a PR with a clear description of what changed and why.
 
