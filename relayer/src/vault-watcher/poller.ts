@@ -138,8 +138,16 @@ export async function runVaultPollCycle(deps: PollCycleDeps): Promise<void> {
     : await deps.server.getEvents({
         filters,
         // First run ever: start from the current tip, not a historical
-        // backfill. An outage longer than Soroban RPC's retention window
-        // (~days) requires a documented manual backfill.
+        // backfill. Unlike repay-watcher (see its own poller.ts comment and
+        // docs/developers/relayer-backfill-runbook.md), a gap here only
+        // undercounts metrics - no funds are at risk - so there's no
+        // dedicated runbook. Recovery is simple and doesn't need one:
+        // `insertVaultEvent` is idempotent (UNIQUE on tx_hash/depositor/
+        // kind/amount), so re-running `runVaultPollCycle` with the cursor
+        // manually rewound to an earlier ledger (via `writeCursor`, or a
+        // fresh `getEvents({ filters, startLedger })` call) safely re-scans
+        // and fills the gap without double-counting anything already
+        // persisted.
         startLedger: (await deps.server.getLatestLedger()).sequence,
       });
 
