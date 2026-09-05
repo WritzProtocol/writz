@@ -4,6 +4,7 @@ import { proofRouter } from "./routes/proof.js";
 import { merkleRouter } from "./routes/merkle.js";
 import { defindexRouter } from "./routes/defindex.js";
 import { startRepayWatcher } from "./repay-watcher/poller.js";
+import { startVaultWatcher } from "./vault-watcher/poller.js";
 
 const app = express();
 
@@ -54,3 +55,7 @@ app.listen(config.port, () => {
 // Auto-cosign repay watcher - no-ops with a warning if its
 // required config isn't set, so this never blocks the HTTP API from starting.
 startRepayWatcher();
+
+// DeFindex vault event watcher (#114) - no-ops with a warning until #102
+// deploys the vault and DEFINDEX_VAULT_ID is configured.
+startVaultWatcher();

@@ -47,7 +47,7 @@ export default tseslint.config(
     // sqlite file - see the file's own top-of-file comment. A static
     // `import` is hoisted and evaluated once, which would defeat the
     // point of the test.
-    files: ["test/repay-watcher.test.ts"],
+    files: ["test/repay-watcher.test.ts", "test/vault-watcher.test.ts"],
     rules: {
       "@typescript-eslint/no-require-imports": "off",
     },

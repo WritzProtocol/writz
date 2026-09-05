@@ -48,6 +48,9 @@ export interface Config {
    * parameter. Empty until set; routes that need it 500 clearly rather
    * than the process crashing at boot. */
   defindexVaultId: string;
+  /** How often (ms) the vault watcher (#114) polls Soroban RPC for new
+   * deposit/withdraw events. */
+  vaultWatcherPollIntervalMs: number;
 }
 
 const ESPLORA_URLS: Record<BitcoinNetwork, string> = {
@@ -86,6 +89,7 @@ function loadConfig(): Config {
     defindexApiKey: process.env["DEFINDEX_API_KEY"],
     defindexApiUrl: getEnv("DEFINDEX_API_URL", "https://api.defindex.io"),
     defindexVaultId: getEnv("DEFINDEX_VAULT_ID", ""),
+    vaultWatcherPollIntervalMs: parseInt(getEnv("VAULT_WATCHER_POLL_INTERVAL_MS", "30000"), 10),
   };
 }
 

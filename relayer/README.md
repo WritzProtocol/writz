@@ -190,6 +190,7 @@ Copy `.env.example` to `.env` and adjust as needed.
 | `DEFINDEX_API_KEY` | *(none)* | DeFindex API key (`sk_...`) from console.defindex.io |
 | `DEFINDEX_API_URL` | `https://api.defindex.io` | DeFindex API base URL |
 | `DEFINDEX_VAULT_ID` | *(none)* | Writz's own DeFindex vault contract ID - see `contracts/deployments/defindex-vault-testnet.md` |
+| `VAULT_WATCHER_POLL_INTERVAL_MS` | `30000` | How often the vault watcher polls for deposit/withdraw events |
 
 ## Running locally
 
