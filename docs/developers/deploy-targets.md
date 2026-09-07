@@ -1,0 +1,134 @@
+# Deploy Targets
+
+**Audience:** whoever operates the Writz deployments. **When to use:** provisioning, changing, or auditing a deploy target's configuration.
+
+Writz runs the same two applications - the Next.js frontend and the relayer - once per network. A *deploy target* is one such pairing plus the domain it answers on. The targets never share configuration, and this page is the contract that says so.
+
+| Target | Frontend origin | Stellar network | Bitcoin network | Status |
+|---|---|---|---|---|
+| `local` | `http://localhost:3000` | Testnet | Signet | Developer machines. Validates nothing. |
+| `testnet` | `testnet.writz.xyz` | Testnet | Signet | Live. Earn plus the existing dashboard. |
+| `mainnet` | `app.writz.xyz` | Public | Mainnet | **Not deployed.** Reserved for Milestone 2. |
+
+The apex `writz.xyz` serves the marketing site and is not a deploy target in this sense; it builds with `NEXT_PUBLIC_WRITZ_ENV` unset, which resolves to `local`.
+
+---
+
+## Why targets are declared rather than inferred
+
+Both applications read flat, independently-set environment variables. Nothing in that shape prevents a mainnet deployment from running with testnet contract addresses, the testnet Soroban RPC, the testnet vault, or the Earn mock left switched on - and none of those mistakes announce themselves. The realistic failure is not a typo; it is a **copy**: cloning the testnet service to create the mainnet one and changing nine of the twelve variables.
+
+So each target declares itself, and the declaration is checked against everything around it:
+
+- **Frontend** - `NEXT_PUBLIC_WRITZ_ENV`, validated at build time in [`frontend/src/config/target.ts`](../../frontend/src/config/target.ts). A contradiction fails the build.
+- **Relayer** - `WRITZ_ENV`, validated at startup in [`relayer/src/deploy-target.ts`](../../relayer/src/deploy-target.ts). A contradiction refuses to boot, before anything binds a port.
+
+Both report every conflict at once rather than one per failed attempt, because these values are edited on a hosting dashboard where a one-variable-per-build loop is miserable.
+
+Leaving the variable unset means `local` and validates nothing. That is deliberate: a developer running `bun run dev` against a scratch env file is not who this protects.
+
+### What each target enforces
+
+| Rule | `testnet` | `mainnet` |
+|---|---|---|
+| Stellar network passphrase must match the target | yes | yes |
+| Bitcoin network must match the target (relayer) | signet | mainnet |
+| `DEFINDEX_VAULT_ID` must be set (relayer) | yes | yes |
+| Soroban RPC must not be a test endpoint | - | yes |
+| All `NEXT_PUBLIC_*` contract addresses set (frontend) | - | yes |
+| `NEXT_PUBLIC_RELAYER_URL` set and https (frontend) | - | yes |
+| Earn mock forbidden (frontend) | - | yes |
+| `KMS_KEY_ID` required, `PROTOCOL_SIGNING_KEY` forbidden (relayer) | - | yes |
+| `CORS_ORIGIN` must name explicit origins, not `*` (relayer) | - | yes |
+
+Testnet is deliberately looser. It is allowed to run with the Earn mock and with pieces still missing while the epic is being built out; mainnet is allowed to inherit nothing by omission.
+
+---
+
+## Provisioning `testnet.writz.xyz`
+
+Steps 1 and 2 are dashboard and registrar actions - they cannot be done from this repository.
+
+### 1. Frontend (Vercel)
+
+1. Create a Vercel project from this repository, separate from the one serving the apex domain. Root directory `frontend/`; framework preset Next.js.
+2. Under **Settings → Domains**, add `testnet.writz.xyz`.
+3. Under **Settings → Environment Variables**, set the target's variables for the Production environment. At minimum:
+
+   ```
+   NEXT_PUBLIC_WRITZ_ENV=testnet
+   NEXT_PUBLIC_SITE_URL=https://testnet.writz.xyz
+   NEXT_PUBLIC_SOROBAN_RPC_URL=https://soroban-testnet.stellar.org
+   NEXT_PUBLIC_NETWORK_PASSPHRASE=Test SDF Network ; September 2015
+   NEXT_PUBLIC_RELAYER_URL=<the testnet relayer's origin>
+   ```
+
+   plus the contract addresses from [`frontend/.env.example`](../../frontend/.env.example), which tracks the current testnet deployment. Never copy these into the mainnet project.
+
+4. Set the production branch to `main`. Pushes to `main` then deploy to `testnet.writz.xyz`; pull requests get preview URLs, which build with the same `testnet` target.
+
+### 2. DNS
+
+At the registrar for `writz.xyz`, add the record Vercel shows for the domain:
+
+| Type | Name | Value |
+|---|---|---|
+| CNAME | `testnet` | `cname.vercel-dns.com` |
+
+Leave the apex `writz.xyz` records untouched - they serve the marketing site. Do not create `app.writz.xyz` yet; it is reserved for Milestone 2 and an unconfigured host answering on it is worse than one that does not resolve.
+
+Verify:
+
+```bash
+dig +short testnet.writz.xyz
+curl -sI https://testnet.writz.xyz | head -1
+```
+
+### 3. Relayer (Railway)
+
+The relayer's own service for this target needs, in addition to what [`relayer/.env.example`](../../relayer/.env.example) documents:
+
+```
+WRITZ_ENV=testnet
+BITCOIN_NETWORK=signet
+STELLAR_NETWORK_PASSPHRASE=Test SDF Network ; September 2015
+STELLAR_RPC_URL=https://soroban-testnet.stellar.org
+CORS_ORIGIN=https://testnet.writz.xyz
+DEFINDEX_VAULT_ID=<the testnet vault, from contracts/deployments/defindex-vault-testnet.md>
+DEFINDEX_API_KEY=<from console.defindex.io>
+```
+
+`DEFINDEX_VAULT_ID` is the piece this issue is really about: it is per-network, has no safe default, and a relayer without it serves errors from every `/defindex` route. The testnet vault address lives in [`contracts/deployments/defindex-vault-testnet.md`](../../contracts/deployments/defindex-vault-testnet.md) rather than being repeated here, so there is one place to change when it is redeployed.
+
+Confirm the running service is the target you think it is:
+
+```bash
+curl -s https://<relayer-origin>/health
+# {"status":"ok","service":"writz-relayer","target":"testnet","bitcoinNetwork":"signet",...}
+```
+
+A `target` of `local` in that response means `WRITZ_ENV` was never set on the service, and none of the checks above ran.
+
+---
+
+## Adding `app.writz.xyz` later
+
+Repeat the three steps with `mainnet` values, in a **new** Vercel project and a **new** Railway service. Do not clone the testnet ones - cloning is the failure this whole mechanism is built around, and the mainnet rules in the table above exist to catch it. Expect the first mainnet build to fail with a list of variables to fix; that list is the feature.
+
+Mainnet also requires things testnet does not have yet:
+
+- A DeFindex vault deployed on the public network, with roles split across dedicated keys rather than a single deployer (see the note at the end of [`defindex-vault-testnet.md`](../../contracts/deployments/defindex-vault-testnet.md)).
+- Co-signing through AWS KMS. The WIF `PROTOCOL_SIGNING_KEY` fallback is refused on mainnet in two places: at boot by the target check, and at signing time by `resolveProtocolSigner` (see [security model](../security/security-model.md)).
+
+---
+
+## Checking a target's configuration
+
+```bash
+# Frontend: a contradiction fails the build.
+cd frontend && NEXT_PUBLIC_WRITZ_ENV=testnet bun run build
+
+# The rules themselves.
+cd frontend && bun test src/config
+cd relayer  && bun run test -- deploy-target
+```

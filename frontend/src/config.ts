@@ -8,10 +8,36 @@
  * IDs default to empty and surface a clear error at read time when missing.
  */
 
+import { assertDeployTarget, TESTNET_PASSPHRASE } from "@/config/target";
+
 const TESTNET_RPC = "https://soroban-testnet.stellar.org";
-const TESTNET_PASSPHRASE = "Test SDF Network ; September 2015";
+
+/**
+ * Which deployment this build is for, validated against everything below.
+ *
+ * `NEXT_PUBLIC_*` reads must stay literal member expressions - Next.js inlines
+ * them at build time by matching the source text, so a computed lookup like
+ * `process.env[name]` would silently resolve to `undefined` in the browser
+ * bundle and defeat the whole check.
+ */
+const deployTarget = assertDeployTarget({
+  target: process.env.NEXT_PUBLIC_WRITZ_ENV,
+  networkPassphrase: process.env.NEXT_PUBLIC_NETWORK_PASSPHRASE,
+  rpcUrl: process.env.NEXT_PUBLIC_SOROBAN_RPC_URL,
+  earnMock: process.env.NEXT_PUBLIC_EARN_MOCK,
+  relayerUrl: process.env.NEXT_PUBLIC_RELAYER_URL,
+  contracts: {
+    NEXT_PUBLIC_COMMITMENT_TREE_ID: process.env.NEXT_PUBLIC_COMMITMENT_TREE_ID,
+    NEXT_PUBLIC_BITCOIN_SPV_ID: process.env.NEXT_PUBLIC_BITCOIN_SPV_ID,
+    NEXT_PUBLIC_ZK_VERIFIER_ID: process.env.NEXT_PUBLIC_ZK_VERIFIER_ID,
+    NEXT_PUBLIC_PRIVATE_LEND_ID: process.env.NEXT_PUBLIC_PRIVATE_LEND_ID,
+    NEXT_PUBLIC_USDC_TOKEN_ID: process.env.NEXT_PUBLIC_USDC_TOKEN_ID,
+  },
+});
 
 export const config = {
+  /** The validated deploy target ("local" | "testnet" | "mainnet"). */
+  target: deployTarget,
   rpcUrl: process.env.NEXT_PUBLIC_SOROBAN_RPC_URL ?? TESTNET_RPC,
   horizonUrl: process.env.NEXT_PUBLIC_HORIZON_URL ?? "https://horizon-testnet.stellar.org",
   networkPassphrase: process.env.NEXT_PUBLIC_NETWORK_PASSPHRASE ?? TESTNET_PASSPHRASE,
