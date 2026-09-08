@@ -26,11 +26,14 @@ app.use((req, res, next) => {
   next();
 });
 
-// Health check - used by monitors and load balancers.
+// Health check - used by monitors and load balancers. `target` is reported so
+// that "is testnet.writz.xyz actually talking to the testnet relayer?" is a
+// question one curl answers, rather than an inference from a dashboard.
 app.get("/health", (_req, res) => {
   res.json({
     status: "ok",
     service: "writz-relayer",
+    target: config.target,
     bitcoinNetwork: config.bitcoinNetwork,
     esploraBaseUrl: config.esploraBaseUrl,
   });
@@ -47,6 +50,7 @@ app.use((_req, res) => {
 
 app.listen(config.port, () => {
   console.log(`Writz relayer running on port ${config.port}`);
+  console.log(`Deploy target: ${config.target}`);
   console.log(`Bitcoin network: ${config.bitcoinNetwork}`);
   console.log(`Esplora: ${config.esploraBaseUrl}`);
   console.log(`Stellar RPC: ${config.stellarRpcUrl}`);

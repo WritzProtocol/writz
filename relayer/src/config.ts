@@ -1,3 +1,5 @@
+import { assertDeployTarget, type DeployTarget } from "./deploy-target.js";
+
 export type BitcoinNetwork = "mainnet" | "signet";
 
 function getEnv(key: string, fallback?: string): string {
@@ -9,6 +11,8 @@ function getEnv(key: string, fallback?: string): string {
 }
 
 export interface Config {
+  /** Validated deploy target ("local" | "testnet" | "mainnet"), from WRITZ_ENV. */
+  target: DeployTarget;
   port: number;
   bitcoinNetwork: BitcoinNetwork;
   esploraBaseUrl: string;
@@ -68,16 +72,36 @@ function loadConfig(): Config {
     throw new Error(`BITCOIN_NETWORK must be "mainnet" or "signet", got: ${rawNetwork}`);
   }
 
+  const corsOrigin = getEnv("CORS_ORIGIN", "*");
+  const networkPassphrase = getEnv("STELLAR_NETWORK_PASSPHRASE", TESTNET_PASSPHRASE);
+  const stellarRpcUrl = getEnv("STELLAR_RPC_URL", TESTNET_RPC);
+  const defindexVaultId = getEnv("DEFINDEX_VAULT_ID", "");
+
+  // Refuse to boot a declared deploy target whose config contradicts it. This
+  // runs before anything binds a port, so a mis-copied service fails loudly at
+  // startup instead of serving the wrong network's vault.
+  const target = assertDeployTarget({
+    target: process.env["WRITZ_ENV"],
+    bitcoinNetwork: rawNetwork,
+    networkPassphrase,
+    stellarRpcUrl,
+    corsOrigin,
+    defindexVaultId,
+    kmsKeyId: process.env["KMS_KEY_ID"],
+    protocolSigningKeyWif: process.env["PROTOCOL_SIGNING_KEY"],
+  });
+
   return {
+    target,
     port: parseInt(getEnv("PORT", "3000"), 10),
     bitcoinNetwork: network,
     esploraBaseUrl: getEnv("ESPLORA_URL", ESPLORA_URLS[network]),
-    corsOrigin: getEnv("CORS_ORIGIN", "*"),
+    corsOrigin,
     defaultConfirmations: parseInt(getEnv("DEFAULT_CONFIRMATIONS", "6"), 10),
     maxConfirmations: parseInt(getEnv("MAX_CONFIRMATIONS", "20"), 10),
     requestTimeoutMs: parseInt(getEnv("REQUEST_TIMEOUT_MS", "10000"), 10),
-    stellarRpcUrl: getEnv("STELLAR_RPC_URL", TESTNET_RPC),
-    networkPassphrase: getEnv("STELLAR_NETWORK_PASSPHRASE", TESTNET_PASSPHRASE),
+    stellarRpcUrl,
+    networkPassphrase,
     commitmentTreeId: getEnv("COMMITMENT_TREE_ID", ""),
     adminSecret: process.env["ADMIN_SECRET"],
     privateLendId: getEnv("PRIVATE_LEND_ID", ""),
@@ -88,7 +112,7 @@ function loadConfig(): Config {
     repayWatcherPollIntervalMs: parseInt(getEnv("REPAY_WATCHER_POLL_INTERVAL_MS", "30000"), 10),
     defindexApiKey: process.env["DEFINDEX_API_KEY"],
     defindexApiUrl: getEnv("DEFINDEX_API_URL", "https://api.defindex.io"),
-    defindexVaultId: getEnv("DEFINDEX_VAULT_ID", ""),
+    defindexVaultId,
     vaultWatcherPollIntervalMs: parseInt(getEnv("VAULT_WATCHER_POLL_INTERVAL_MS", "30000"), 10),
   };
 }
