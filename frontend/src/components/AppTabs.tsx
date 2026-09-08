@@ -4,7 +4,7 @@ import { useState } from "react";
 import { DepositFlow } from "./DepositFlow";
 import { PositionDashboard } from "./PositionDashboard";
 import { LenderPanel } from "./LenderPanel";
-import { EarnDeposit } from "./EarnDeposit";
+import { EarnPanel } from "./EarnPanel";
 
 type Tab = "borrow" | "lend" | "earn";
 
@@ -51,7 +51,7 @@ export function AppTabs() {
       ) : tab === "lend" ? (
         <LenderPanel />
       ) : (
-        <EarnDeposit />
+        <EarnPanel />
       )}
     </div>
   );

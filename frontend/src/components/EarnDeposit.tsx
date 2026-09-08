@@ -22,7 +22,12 @@ import { TxLink } from "./TxLink";
  * so a deposit larger than the user holds is refused before any signature is
  * requested.
  */
-export function EarnDeposit() {
+export function EarnDeposit({
+  onDeposited,
+}: {
+  /** Called once a deposit has landed, so the position above can re-read. */
+  onDeposited?: () => void;
+} = {}) {
   const { address, signTransaction } = useWallet();
 
   // Balance is stored with the address it was read for, so a wallet switch
@@ -109,6 +114,7 @@ export function EarnDeposit() {
       setTxHash(hash);
       setAmount("");
       await reloadBalance();
+      onDeposited?.();
     } catch (e) {
       setStatus("error");
       setMessage(
