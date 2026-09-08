@@ -191,6 +191,9 @@ Copy `.env.example` to `.env` and adjust as needed.
 | `DEFINDEX_API_URL` | `https://api.defindex.io` | DeFindex API base URL |
 | `DEFINDEX_VAULT_ID` | *(none)* | Writz's own DeFindex vault contract ID - see `contracts/deployments/defindex-vault-testnet.md` |
 | `VAULT_WATCHER_POLL_INTERVAL_MS` | `30000` | How often the vault watcher polls for deposit/withdraw events |
+| `EARN_E2E_SIGNER_SECRET` | *(none)* | Testnet `S...` key signing the Earn e2e cycle - see below |
+| `EARN_E2E_AMOUNT_STROOPS` | `1000000` | Amount the Earn e2e cycle deposits then withdraws (0.1 USDC) |
+| `EARN_E2E_REQUIRED` | *(unset)* | `1` makes the Earn e2e suite fail rather than skip when unconfigured |
 
 ## Running locally
 
@@ -232,6 +235,41 @@ if either is missing - as in CI today - every test in that file logs a
 warning and passes trivially instead of failing, so `bun run test` stays
 fast and network-independent unless you deliberately configure real
 credentials.
+
+### The Earn end-to-end cycle
+
+`test/earn-cycle.e2e.test.ts` goes one step further than any other suite: it
+**submits** transactions. The integration tests above prove the relayer builds
+a well-formed envelope, but a well-formed envelope the network rejects still
+passes them. The cycle test signs the built transaction with a test keypair,
+submits it to Soroban RPC, polls it to `SUCCESS`, and then checks the position
+the vault actually reports - deposit, balance and APY read back, withdraw.
+
+It walks the same three-party split the browser does (`frontend/src/lib/flows/earn.ts`),
+with a keypair standing in for the connected wallet. The relayer still never
+signs anything; it only builds.
+
+```bash
+# Needs DEFINDEX_API_KEY, DEFINDEX_VAULT_ID and EARN_E2E_SIGNER_SECRET.
+bun run test:e2e
+```
+
+The signer must be a **throwaway testnet account** holding XLM for fees and a
+balance of the vault's underlying asset. Every run really spends
+`EARN_E2E_AMOUNT_STROOPS` (0.1 USDC by default) and withdraws most of it back.
+
+Unconfigured, it warns and returns like the integration suite, so `bun run test`
+stays green anywhere and CI is unaffected. The cost of that default is that a
+run which was *meant* to exercise the cycle can pass by silently skipping, so
+`EARN_E2E_REQUIRED=1` turns missing configuration into a failure:
+
+```bash
+EARN_E2E_REQUIRED=1 bun run test:e2e
+```
+
+This suite is not wired into CI. It submits real transactions and spends a real
+testnet balance, and it needs credentials that CI does not hold - so it is run
+deliberately, by a person, not on every push.
 
 ## Docker
 
