@@ -3,12 +3,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { useWallet } from "@/lib/wallet/WalletProvider";
 import { depositToVault } from "@/lib/flows/earn";
-import { getUsdcBalance } from "@/lib/flows/trustline";
+import { EARN_ASSET, getAssetBalance } from "@/lib/flows/trustline";
 import { stellarTxUrl } from "@/lib/explorer";
 import { humanizeError } from "@/lib/errors";
 import { config } from "@/config";
 import { fmtUsdc, toStroops } from "@/lib/earn/amount";
-import { EnableUsdcButton } from "./EnableUsdcButton";
+import { EnableTrustlineButton } from "./EnableTrustlineButton";
 import { TxLink } from "./TxLink";
 
 /**
@@ -45,7 +45,7 @@ export function EarnDeposit() {
   const reloadBalance = useCallback(async () => {
     if (!address) return;
     try {
-      setRead({ address, balance: await getUsdcBalance(address) });
+      setRead({ address, balance: await getAssetBalance(address, EARN_ASSET) });
     } catch {
       // keep the previous value; Horizon may be momentarily unavailable
     }
@@ -56,7 +56,7 @@ export function EarnDeposit() {
     let cancelled = false;
     void (async () => {
       try {
-        const balance = await getUsdcBalance(address);
+        const balance = await getAssetBalance(address, EARN_ASSET);
         if (!cancelled) setRead({ address, balance });
       } catch {
         // keep the previous value
@@ -141,12 +141,28 @@ export function EarnDeposit() {
         </div>
       ) : (
         <div className="flex flex-col gap-4">
-          <EnableUsdcButton />
+          <EnableTrustlineButton asset={EARN_ASSET} reason="to deposit into the vault" />
+
+          {config.earn.faucetUrl && walletBalance === 0n ? (
+            <p className="rounded-xl border border-line bg-surface px-4 py-3 text-xs text-muted">
+              The vault runs on Blend&apos;s test {EARN_ASSET.code}, which is a
+              different asset from the one the lending pool uses. Get some at{" "}
+              <a
+                href={config.earn.faucetUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="text-amber underline-offset-2 hover:underline"
+              >
+                {new URL(config.earn.faucetUrl).host}
+              </a>
+              .
+            </p>
+          ) : null}
 
           <div className="rounded-xl border border-line bg-surface p-5">
             <div className="flex flex-col gap-1">
               <span className="text-xs uppercase tracking-wide text-muted">
-                Available to deposit · USDC
+                Available to deposit · {EARN_ASSET.code}
               </span>
               <span className="font-mono text-lg tabular-nums text-hi">
                 {walletBalance !== null ? fmtUsdc(walletBalance) : "-"}
@@ -159,7 +175,7 @@ export function EarnDeposit() {
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   inputMode="decimal"
-                  placeholder="USDC to deposit"
+                  placeholder={`${EARN_ASSET.code} to deposit`}
                   disabled={busy}
                   className="w-full rounded-lg border border-line bg-surface-2 px-3 py-2 font-mono text-sm text-head outline-none focus:border-amber disabled:opacity-60"
                 />

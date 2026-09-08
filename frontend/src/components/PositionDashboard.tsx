@@ -9,7 +9,8 @@ import { borrow } from "@/lib/flows/borrow";
 import { repay } from "@/lib/flows/repay";
 import { recoverPositions } from "@/lib/flows/recover";
 import { createDemoPosition } from "@/lib/flows/demo";
-import { EnableUsdcButton } from "./EnableUsdcButton";
+import { EnableTrustlineButton } from "./EnableTrustlineButton";
+import { POOL_ASSET } from "@/lib/flows/trustline";
 import { proveZeroDebt, type ZeroDebtInput } from "@/lib/prover";
 import { stellarTxUrl, btcTxUrl } from "@/lib/explorer";
 import { TxLink } from "./TxLink";
@@ -139,7 +140,7 @@ export function PositionDashboard() {
         <span className="text-xs text-muted">private · keys derived from your wallet</span>
       </div>
 
-      <EnableUsdcButton />
+      <EnableTrustlineButton asset={POOL_ASSET} reason="to receive borrowed funds" />
 
       {!address ? (
         <div className="rounded-xl border border-line bg-surface p-6 text-sm text-muted">

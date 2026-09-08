@@ -68,10 +68,40 @@ export const config = {
   earn: {
     /**
      * Serve the Earn tab from an in-memory mock instead of the relayer.
-     * Set to "1" only while the relayer routes (#103 to #105) do not exist.
      * A mocked run produces no transaction and is not valid evidence.
      */
     mock: process.env.NEXT_PUBLIC_EARN_MOCK === "1",
+    /**
+     * The classic Stellar asset the vault accepts, which is NOT the same asset
+     * as `usdc` above.
+     *
+     * On testnet the lending pool runs on a DEX-liquid USDC while the DeFindex
+     * vault was created against Blend's own test USDC, because a vault only
+     * accepts its strategy's asset (`strategy.asset() == asset.address`). Two
+     * different issuers, both with the asset code "USDC", and in Stellar an
+     * asset is code *and* issuer - holding one gives you nothing of the other.
+     * Reading the wrong one is not a cosmetic bug: it shows a balance the
+     * vault will not accept and offers a trustline that costs 0.5 XLM of
+     * reserve for nothing.
+     *
+     * On mainnet both converge on Circle's USDC and this will equal `usdc`.
+     * It stays a separate variable anyway, so the day they diverge again
+     * nothing silently inherits.
+     *
+     * Source of truth for the current value: the "Underlying asset" row of
+     * contracts/deployments/defindex-vault-testnet.md.
+     */
+    asset: {
+      code: process.env.NEXT_PUBLIC_EARN_ASSET_CODE ?? "USDC",
+      issuer: process.env.NEXT_PUBLIC_EARN_ASSET_ISSUER ?? "",
+    },
+    /**
+     * Where a tester obtains the vault's asset. Shown in the Earn UI when the
+     * connected account holds none of it: the SOW's Deliverable 2 evidence is
+     * "a testnet URL anyone can open to try the flow", and that is not true if
+     * the asset cannot be obtained.
+     */
+    faucetUrl: process.env.NEXT_PUBLIC_EARN_FAUCET_URL ?? "",
   },
   bitcoin: {
     network: process.env.NEXT_PUBLIC_BITCOIN_NETWORK ?? "testnet",
