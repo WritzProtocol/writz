@@ -37,6 +37,31 @@ All 402 tests should pass on a clean checkout.
 
 ---
 
+## Secrets
+
+`relayer/.env.example` and `frontend/.env.example` are tracked deliberately, so
+no `.gitignore` rule protects them, and a directory-wide `git add` stages
+whatever they happen to contain.
+
+A pre-commit hook scans staged additions for live-looking credentials, `sk_`
+keys, Stellar `S...` seeds, Bitcoin WIF keys, PEM private key blocks and AWS
+access key ids. Install it once per clone:
+
+```bash
+git config core.hooksPath scripts/hooks
+```
+
+It reads staged content only, so it costs nothing on an unrelated commit and a
+clean working tree cannot hide anything from it. Documentation placeholders like
+`sk_...` or `sk_your_api_key_here` do not trip it.
+
+Two habits the hook does not replace:
+
+- Review the staged diff, not the list of filenames. A file showing as modified
+  when you did not expect to touch it is the signal worth stopping on.
+- Treat a pushed secret as published. Deleting the commit does not un-publish
+  it, and an orphaned commit stays reachable by its SHA. Revoke first.
+
 ## Keeping the docs in sync
 
 Contract addresses and test counts are quoted in a lot of places (README, SCF docs, community posts) and drift easily after a redeploy or when tests are added. Two scripts guard against that:
