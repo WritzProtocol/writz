@@ -310,8 +310,16 @@ CORS_ORIGIN=https://your-frontend.vercel.app
 ## Deployed Relayer Instance
 
 The Writz SPV Proof Relayer is deployed on Railway for the **Bitcoin signet** network:
-- **Base URL:** `https://writz-relayer-production.up.railway.app`
-- **Health Check Endpoint:** `https://writz-relayer-production.up.railway.app/health`
+- **Base URL:** `https://api.testnet.writz.xyz`
+
+  A domain this project controls, deliberately, rather than the hosting
+  provider's own hostname. The origin is compiled into the frontend bundle at
+  build time via `NEXT_PUBLIC_RELAYER_URL`, so a provider migration behind a
+  provider-issued hostname would mean editing this repo and rebuilding the
+  frontend; behind this one it is a DNS change. The subdomain is scoped to the
+  deploy target for the same reason `WRITZ_ENV` exists: a mainnet relayer gets
+  its own host and cannot inherit this one by omission.
+- **Health Check Endpoint:** `https://api.testnet.writz.xyz/health`
 
 ### Connecting to the Relayer
 
@@ -325,7 +333,7 @@ Send a `GET` request to the relayer with the transaction ID (`txid`) and the des
 const txid = "a107055a66ed43c7a0dfae05c061c88bb07e91d589db43e78de017deb409254f"; // your signet txid
 const confirmations = 6;
 
-const response = await fetch(`https://writz-relayer-production.up.railway.app/spv-proof/${txid}?confirmations=${confirmations}`);
+const response = await fetch(`https://api.testnet.writz.xyz/spv-proof/${txid}?confirmations=${confirmations}`);
 
 if (!response.ok) {
   const errorData = await response.json();

@@ -69,11 +69,26 @@ Steps 1 and 2 are dashboard and registrar actions - they cannot be done from thi
 
 ### 2. DNS
 
-At the registrar for `writz.xyz`, add the record Vercel shows for the domain:
+At the registrar for `writz.xyz`, add one record per service. Vercel and the
+relayer's host each show their own CNAME target:
 
 | Type | Name | Value |
 |---|---|---|
 | CNAME | `testnet` | `cname.vercel-dns.com` |
+| CNAME | `api.testnet` | the target the relayer's host shows for its custom domain |
+
+The relayer gets a domain this project controls rather than being addressed at
+its hosting provider's hostname. `NEXT_PUBLIC_RELAYER_URL` is compiled into the
+frontend bundle at build time, so behind a provider-issued hostname a migration
+means editing the repo and rebuilding the frontend, while behind this one it is
+a DNS change. This is not hypothetical: the previously advertised
+`*.up.railway.app` origin went dead when the account paying for it lapsed, and
+every reference to it in the repo had to be rewritten.
+
+The subdomain is scoped to the deploy target on purpose, for the same reason
+`WRITZ_ENV` exists. A single `relayer.writz.xyz` would invite a mainnet relayer
+to inherit the testnet host by omission, which is the exact class of mistake
+target validation was added to prevent.
 
 Leave the apex `writz.xyz` records untouched - they serve the marketing site. Do not create `app.writz.xyz` yet; it is reserved for Milestone 2 and an unconfigured host answering on it is worse than one that does not resolve.
 

@@ -7,7 +7,7 @@
 [![Network](https://img.shields.io/badge/network-Soroban%20Testnet-blue)](https://stellar.expert/explorer/testnet)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
-**[Live App](https://writz.xyz)** · **[Docs](https://docs.writz.xyz)** · **[Relayer API](https://writz-relayer-production.up.railway.app)**
+**[Live App](https://writz.xyz)** · **[Docs](https://docs.writz.xyz)** · **[Relayer API](https://api.testnet.writz.xyz)**
 
 **Writz** is the first trustless Bitcoin lending protocol on Stellar. Lock real BTC directly from your Bitcoin wallet, borrow USDC on Stellar, and keep every position private - always.
 
@@ -317,7 +317,7 @@ This needs compiled circuit artifacts and a built contract wasm, neither of whic
 cd frontend
 cp .env.example .env.local
 # Fill in NEXT_PUBLIC_* contract addresses from contracts/deployments/testnet.md
-# Set NEXT_PUBLIC_RELAYER_URL=https://writz-relayer-production.up.railway.app
+# Set NEXT_PUBLIC_RELAYER_URL=https://api.testnet.writz.xyz
 bun install && bun dev
 # → http://localhost:3000
 ```

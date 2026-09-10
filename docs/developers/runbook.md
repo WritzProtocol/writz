@@ -195,7 +195,7 @@ This part cannot be scripted - it needs Signet coins and two browser wallets.
    cd relayer && cp .env.example .env   # set COMMITMENT_TREE_ID, ADMIN_SECRET
    bun install && bun start             # → http://localhost:3000
    ```
-   Hosted alternative: `https://writz-relayer-production.up.railway.app`.
+   Hosted alternative: `https://api.testnet.writz.xyz`.
 
 2. Start the frontend:
    ```bash
