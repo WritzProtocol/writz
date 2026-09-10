@@ -26,6 +26,53 @@ app.use((req, res, next) => {
   next();
 });
 
+// Nothing this API returns is cacheable, and the failure modes of a cache in
+// front of it are silent rather than loud.
+//
+// The read routes (`/defindex/apy`, `/defindex/position`, `/merkle/*`) are live
+// state: a stale hit shows a balance or an APY that is no longer true, with no
+// error anywhere, which defeats the point of reading them live at all. The
+// transaction-building routes are worse - a built envelope carries the source
+// account's sequence number, so a replayed cache hit produces a transaction the
+// network rejects for a reason that points nowhere near the cache.
+//
+// Express sends an ETag but no cache directives, which leaves the decision to
+// whatever sits in front. Stating it here removes that discretion from every
+// intermediary at once: CDNs, reverse proxies and browsers alike.
+app.use((_req, res, next) => {
+  res.setHeader("Cache-Control", "no-store");
+  next();
+});
+
+// Service index. Opening the bare origin in a browser is the first thing
+// anyone does with a new deployment, and answering `{"error":"not_found"}`
+// makes a working service look broken. Listing the routes also means the
+// health check and the API surface are discoverable without the repo, which
+// matters when the person checking is on call rather than on the team.
+//
+// A redirect to /health would answer "is it up" but not "what is this", and it
+// would answer the first question twice, since /health is one curl away and
+// listed below.
+app.get("/", (_req, res) => {
+  res.json({
+    service: "writz-relayer",
+    target: config.target,
+    docs: "https://docs.writz.xyz",
+    endpoints: {
+      health: "GET /health",
+      spvProof: "GET /spv-proof/:txid",
+      merklePath: "GET /merkle-path",
+      notes: "GET /notes",
+      insertCommitment: "POST /insert-commitment",
+      updateLeaf: "POST /update-leaf",
+      defindexApy: "GET /defindex/apy",
+      defindexPosition: "GET /defindex/position?address=G...",
+      defindexDeposit: "POST /defindex/deposit",
+      defindexWithdraw: "POST /defindex/withdraw",
+    },
+  });
+});
+
 // Health check - used by monitors and load balancers. `target` is reported so
 // that "is testnet.writz.xyz actually talking to the testnet relayer?" is a
 // question one curl answers, rather than an inference from a dashboard.
