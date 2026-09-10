@@ -1,7 +1,7 @@
 import { TransactionBuilder } from "@stellar/stellar-sdk";
 import { Server as RpcServer, Api, BasicSleepStrategy } from "@stellar/stellar-sdk/rpc";
 import { config } from "@/config";
-import { MOCK_XDR_SENTINEL, earnApi, settleMockTx } from "@/lib/earn/api";
+import { earnApi } from "@/lib/earn/api";
 import type { SignTransaction } from "@/lib/wallet/WalletProvider";
 
 /**
@@ -19,8 +19,8 @@ import type { SignTransaction } from "@/lib/wallet/WalletProvider";
  */
 
 export interface EarnTxResult {
-  /** Ledger transaction hash, or null in mock mode. */
-  txHash: string | null;
+  /** Ledger transaction hash of the confirmed transaction. */
+  txHash: string;
 }
 
 /**
@@ -121,11 +121,6 @@ export async function depositToVault(params: {
 }): Promise<EarnTxResult> {
   const { amountStroops, caller, signTransaction } = params;
   const { xdr } = await earnApi().buildDeposit({ caller, amountStroops });
-
-  if (xdr === MOCK_XDR_SENTINEL) {
-    settleMockTx(caller);
-    return { txHash: null };
-  }
   return { txHash: await signAndSubmit(xdr, signTransaction) };
 }
 
@@ -137,10 +132,5 @@ export async function withdrawFromVault(params: {
 }): Promise<EarnTxResult> {
   const { amountStroops, caller, signTransaction } = params;
   const { xdr } = await earnApi().buildWithdraw({ caller, amountStroops });
-
-  if (xdr === MOCK_XDR_SENTINEL) {
-    settleMockTx(caller);
-    return { txHash: null };
-  }
   return { txHash: await signAndSubmit(xdr, signTransaction) };
 }

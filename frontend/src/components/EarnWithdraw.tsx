@@ -7,7 +7,6 @@ import { fmtUsdc, toStroops } from "@/lib/earn/amount";
 import { EARN_ASSET } from "@/lib/flows/trustline";
 import { stellarTxUrl } from "@/lib/explorer";
 import { humanizeError } from "@/lib/errors";
-import { config } from "@/config";
 import { TxLink } from "./TxLink";
 
 /**
@@ -82,9 +81,7 @@ export function EarnWithdraw({
         signTransaction,
       });
       setStatus("done");
-      setMessage(
-        hash ? "Withdrawn." : "Withdrawn (mock mode - no transaction was submitted).",
-      );
+      setMessage("Withdrawn.");
       setTxHash(hash);
       setAmount("");
       onWithdrawn?.();
@@ -167,12 +164,6 @@ export function EarnWithdraw({
           )}
         </div>
       </div>
-
-      {config.earn.mock ? (
-        <p className="text-xs text-amber">
-          Mock mode: nothing is submitted and no funds move.
-        </p>
-      ) : null}
     </section>
   );
 }

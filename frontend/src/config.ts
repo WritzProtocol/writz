@@ -24,7 +24,6 @@ const deployTarget = assertDeployTarget({
   target: process.env.NEXT_PUBLIC_WRITZ_ENV,
   networkPassphrase: process.env.NEXT_PUBLIC_NETWORK_PASSPHRASE,
   rpcUrl: process.env.NEXT_PUBLIC_SOROBAN_RPC_URL,
-  earnMock: process.env.NEXT_PUBLIC_EARN_MOCK,
   relayerUrl: process.env.NEXT_PUBLIC_RELAYER_URL,
   contracts: {
     NEXT_PUBLIC_COMMITMENT_TREE_ID: process.env.NEXT_PUBLIC_COMMITMENT_TREE_ID,
@@ -66,11 +65,6 @@ export const config = {
    * `/defindex` routes.
    */
   earn: {
-    /**
-     * Serve the Earn tab from an in-memory mock instead of the relayer.
-     * A mocked run produces no transaction and is not valid evidence.
-     */
-    mock: process.env.NEXT_PUBLIC_EARN_MOCK === "1",
     /**
      * The classic Stellar asset the vault accepts, which is NOT the same asset
      * as `usdc` above.
