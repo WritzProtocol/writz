@@ -1,9 +1,8 @@
 "use client";
 
-import { useCallback } from "react";
 import { useWallet } from "@/lib/wallet/WalletProvider";
-import { earnApi, type VaultPosition } from "@/lib/earn/api";
-import { usePolledValue } from "@/lib/earn/usePolledValue";
+import type { VaultPosition } from "@/lib/earn/api";
+import type { Polled } from "@/lib/earn/usePolledValue";
 import { fmtUsdc } from "@/lib/earn/amount";
 import { EARN_ASSET } from "@/lib/flows/trustline";
 import { config } from "@/config";
@@ -18,34 +17,19 @@ import { config } from "@/config";
  * without a manual page reload, so the interval is the mechanism and the
  * timestamp is the proof.
  *
- * `refreshKey` lets the deposit and withdraw flows force a read the moment
- * their transaction lands, instead of leaving the user staring at a stale
- * balance until the next tick.
+ * The reads live in `EarnPanel` rather than here, because the withdraw flow
+ * needs the same position to cap what it will let the user take out. Polling
+ * it twice would let the number shown and the number enforced disagree, and
+ * the one the user would believe is the one on screen.
  */
-const POSITION_POLL_MS = 15_000;
-// APY is a vault-wide figure that moves with Blend's utilisation, not with
-// anything this user does, so it does not need the position's cadence.
-const APY_POLL_MS = 60_000;
-
-export function EarnPosition({ refreshKey = 0 }: { refreshKey?: number }) {
+export function EarnPosition({
+  position,
+  apy,
+}: {
+  position: Polled<VaultPosition>;
+  apy: Polled<number>;
+}) {
   const { address } = useWallet();
-
-  // Both readers derive everything from their `key` argument and close over
-  // nothing, so they are stable with an empty dependency list - which is what
-  // usePolledValue needs to keep its interval alive across renders.
-  const readPosition = useCallback(
-    (key: string) => earnApi().getPosition(key.split(":")[0]!),
-    [],
-  );
-  const readApy = useCallback(() => earnApi().getApy(), []);
-
-  // The key carries refreshKey so a landed deposit re-reads immediately.
-  const position = usePolledValue<VaultPosition>(
-    address ? `${address}:${refreshKey}` : null,
-    readPosition,
-    POSITION_POLL_MS,
-  );
-  const apy = usePolledValue<number>("vault", readApy, APY_POLL_MS);
 
   const balance = position.value?.underlyingStroops ?? null;
   const shares = position.value?.dfTokens ?? null;
