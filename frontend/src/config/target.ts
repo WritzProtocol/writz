@@ -27,12 +27,6 @@ export interface TargetProfile {
   networkPassphrase: string;
   /** Canonical public origin, used as the `metadataBase` default. */
   siteUrl: string;
-  /**
-   * Whether the Earn in-memory mock may be enabled. Only ever true off
-   * mainnet: a mocked run submits no transaction, so serving it from the
-   * production origin would show users a balance that does not exist.
-   */
-  allowsEarnMock: boolean;
 }
 
 /**
@@ -49,17 +43,14 @@ export const TARGET_PROFILES: Record<DeployTarget, TargetProfile> = {
   local: {
     networkPassphrase: TESTNET_PASSPHRASE,
     siteUrl: "https://writz.xyz",
-    allowsEarnMock: true,
   },
   testnet: {
     networkPassphrase: TESTNET_PASSPHRASE,
     siteUrl: "https://testnet.writz.xyz",
-    allowsEarnMock: true,
   },
   mainnet: {
     networkPassphrase: MAINNET_PASSPHRASE,
     siteUrl: "https://app.writz.xyz",
-    allowsEarnMock: false,
   },
 };
 
@@ -69,7 +60,6 @@ export interface RawTargetEnv {
   target?: string | undefined;
   networkPassphrase?: string | undefined;
   rpcUrl?: string | undefined;
-  earnMock?: string | undefined;
   relayerUrl?: string | undefined;
   contracts?: Record<string, string | undefined> | undefined;
 }
@@ -108,12 +98,6 @@ export function findTargetConflicts(env: RawTargetEnv): string[] {
   if (passphrase && passphrase !== profile.networkPassphrase) {
     problems.push(
       `NEXT_PUBLIC_NETWORK_PASSPHRASE is "${passphrase}", but the ${target} target runs against "${profile.networkPassphrase}".`,
-    );
-  }
-
-  if (!profile.allowsEarnMock && env.earnMock === "1") {
-    problems.push(
-      `NEXT_PUBLIC_EARN_MOCK is on, which the ${target} target forbids - a mocked Earn run submits no transaction and would show a balance that does not exist.`,
     );
   }
 

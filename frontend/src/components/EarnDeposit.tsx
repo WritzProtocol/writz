@@ -108,9 +108,7 @@ export function EarnDeposit({
         signTransaction,
       });
       setStatus("done");
-      setMessage(
-        hash ? "Deposited." : "Deposited (mock mode - no transaction was submitted).",
-      );
+      setMessage("Deposited.");
       setTxHash(hash);
       setAmount("");
       await reloadBalance();
@@ -132,13 +130,6 @@ export function EarnDeposit({
         <h2 className="font-serif text-2xl text-head">Deposit to Earn</h2>
         <span className="text-xs text-muted">USDC into the Writz vault</span>
       </div>
-
-      {config.earn.mock ? (
-        <p className="rounded-xl border border-amber/40 bg-amber/5 px-4 py-3 text-xs text-amber">
-          Mock mode. Amounts are held in memory for this tab only, no
-          transaction is built, signed or submitted, and nothing here is real.
-        </p>
-      ) : null}
 
       {!address ? (
         <div className="rounded-xl border border-line bg-surface p-6 text-sm text-muted">

@@ -20,10 +20,6 @@
  *     comes from the vault contract, `error` carries the DeFindex
  *     `ContractError` variant NAME (not its numeric code) so `humanizeError`
  *     can match on it.
- *
- * Until #103 to #105 land, `NEXT_PUBLIC_EARN_MOCK=1` swaps in an in-memory
- * mock so this UI is buildable and reviewable. The mock never produces a real
- * transaction and is never valid as Instaward evidence.
  */
 
 import { config } from "@/config";
@@ -119,62 +115,7 @@ const relayerApi: EarnApi = {
   },
 };
 
-// ── Mock ───────────────────────────────────────────────────────────────────
-// In-memory, per-tab, wiped on reload. Exists only so the Earn UI can be built
-// and reviewed before the relayer routes exist. `MOCK_XDR_SENTINEL` is what
-// tells the flow layer to skip signing and submission entirely - the string is
-// not a valid envelope and must never reach a wallet or Soroban RPC.
-
-export const MOCK_XDR_SENTINEL = "mock:unsigned-tx";
-
-const mockPositions = new Map<string, VaultPosition>();
-const mockPending = new Map<string, bigint>();
-
-function delay(ms: number): Promise<void> {
-  return new Promise((r) => setTimeout(r, ms));
-}
-
-const mockApi: EarnApi = {
-  async getApy() {
-    await delay(200);
-    return 0.0731;
-  },
-
-  async getPosition(address) {
-    await delay(200);
-    return mockPositions.get(address) ?? { dfTokens: 0n, underlyingStroops: 0n };
-  },
-
-  async buildDeposit({ caller, amountStroops }) {
-    await delay(400);
-    mockPending.set(caller, amountStroops);
-    return { xdr: MOCK_XDR_SENTINEL };
-  },
-
-  async buildWithdraw({ caller, amountStroops }) {
-    await delay(400);
-    mockPending.set(caller, -amountStroops);
-    return { xdr: MOCK_XDR_SENTINEL };
-  },
-};
-
-/**
- * Apply a mock transaction that the flow layer "submitted". Shares are minted
- * 1:1 with the underlying, which is wrong for a real vault and deliberately
- * so: nothing about the mock should look like a plausible source of numbers.
- */
-export function settleMockTx(caller: string): void {
-  const delta = mockPending.get(caller) ?? 0n;
-  mockPending.delete(caller);
-  const current = mockPositions.get(caller) ?? { dfTokens: 0n, underlyingStroops: 0n };
-  const next = current.underlyingStroops + delta;
-  mockPositions.set(caller, {
-    dfTokens: next < 0n ? 0n : next,
-    underlyingStroops: next < 0n ? 0n : next,
-  });
-}
-
-/** The active client: the relayer, or the mock when NEXT_PUBLIC_EARN_MOCK=1. */
+/** The client every Earn flow reads and builds through. */
 export function earnApi(): EarnApi {
-  return config.earn.mock ? mockApi : relayerApi;
+  return relayerApi;
 }

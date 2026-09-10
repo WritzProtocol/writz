@@ -13,7 +13,6 @@ const validMainnet = {
   target: "mainnet",
   networkPassphrase: MAINNET_PASSPHRASE,
   rpcUrl: "https://mainnet.sorobanrpc.com",
-  earnMock: "",
   relayerUrl: "https://relayer.writz.xyz",
   contracts: {
     NEXT_PUBLIC_COMMITMENT_TREE_ID: "CMAINNET1",
@@ -50,7 +49,6 @@ describe("findTargetConflicts - local", () => {
       findTargetConflicts({
         target: "local",
         networkPassphrase: MAINNET_PASSPHRASE,
-        earnMock: "1",
         relayerUrl: "",
       }),
     ).toEqual([]);
@@ -64,7 +62,6 @@ describe("findTargetConflicts - testnet", () => {
         target: "testnet",
         networkPassphrase: TESTNET_PASSPHRASE,
         rpcUrl: "https://soroban-testnet.stellar.org",
-        earnMock: "1",
         relayerUrl: "",
       }),
     ).toEqual([]);
@@ -79,11 +76,6 @@ describe("findTargetConflicts - testnet", () => {
     expect(problems[0]).toMatch(/NEXT_PUBLIC_NETWORK_PASSPHRASE/);
   });
 
-  it("still allows the Earn mock and an unset relayer while the epic is in progress", () => {
-    expect(
-      findTargetConflicts({ target: "testnet", earnMock: "1", relayerUrl: undefined }),
-    ).toEqual([]);
-  });
 });
 
 describe("findTargetConflicts - mainnet", () => {
@@ -109,11 +101,6 @@ describe("findTargetConflicts - mainnet", () => {
     expect(problems[0]).toMatch(/test network/);
   });
 
-  it("refuses the Earn mock, which would show a balance that does not exist", () => {
-    const problems = findTargetConflicts({ ...validMainnet, earnMock: "1" });
-    expect(problems).toHaveLength(1);
-    expect(problems[0]).toMatch(/NEXT_PUBLIC_EARN_MOCK/);
-  });
 
   it("requires the relayer URL to be set and https", () => {
     expect(findTargetConflicts({ ...validMainnet, relayerUrl: "" })[0]).toMatch(
@@ -143,11 +130,11 @@ describe("findTargetConflicts - mainnet", () => {
       target: "mainnet",
       networkPassphrase: TESTNET_PASSPHRASE,
       rpcUrl: "https://soroban-testnet.stellar.org",
-      earnMock: "1",
       relayerUrl: "",
       contracts: { NEXT_PUBLIC_COMMITMENT_TREE_ID: "" },
     });
-    expect(problems).toHaveLength(5);
+    // Passphrase, test RPC, unset relayer URL, unset contract address.
+    expect(problems).toHaveLength(4);
   });
 });
 
@@ -159,7 +146,11 @@ describe("assertDeployTarget", () => {
 
   it("throws one error naming the target and listing every conflict", () => {
     expect(() =>
-      assertDeployTarget({ ...validMainnet, earnMock: "1", relayerUrl: "" }),
+      assertDeployTarget({
+        ...validMainnet,
+        relayerUrl: "",
+        rpcUrl: "https://soroban-testnet.stellar.org",
+      }),
     ).toThrow(/Deploy target "mainnet" is misconfigured/);
   });
 });
@@ -177,9 +168,4 @@ describe("TARGET_PROFILES", () => {
     expect(TARGET_PROFILES.local.networkPassphrase).toBe(TESTNET_PASSPHRASE);
   });
 
-  it("forbids the Earn mock on mainnet only", () => {
-    expect(TARGET_PROFILES.mainnet.allowsEarnMock).toBe(false);
-    expect(TARGET_PROFILES.testnet.allowsEarnMock).toBe(true);
-    expect(TARGET_PROFILES.local.allowsEarnMock).toBe(true);
-  });
 });

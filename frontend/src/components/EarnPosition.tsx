@@ -5,7 +5,6 @@ import type { VaultPosition } from "@/lib/earn/api";
 import type { Polled } from "@/lib/earn/usePolledValue";
 import { fmtUsdc } from "@/lib/earn/amount";
 import { EARN_ASSET } from "@/lib/flows/trustline";
-import { config } from "@/config";
 
 /**
  * The signed-in user's live position in the Writz DeFindex vault, and the
@@ -104,12 +103,6 @@ export function EarnPosition({
           ) : null}
         </div>
       )}
-
-      {config.earn.mock ? (
-        <p className="text-xs text-amber">
-          Mock mode: these numbers are held in memory for this tab only.
-        </p>
-      ) : null}
     </section>
   );
 }
