@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+# Refuse to commit anything that looks like a live credential.
+#
+# The `.env.example` files are tracked deliberately, so no .gitignore rule
+# covers them, and a directory-wide `git add` stages whatever they happen to
+# contain. This closes that gap at the point where it matters.
+#
+# Install once, from the repo root:
+#   git config core.hooksPath scripts/hooks
+#
+# Scans staged content only, so it costs nothing on an unrelated commit and
+# cannot be fooled by a clean working tree.
+
+set -uo pipefail
+
+# Patterns, each with a name for the message. Kept narrow enough that a
+# placeholder like `sk_...` or `S...` in documentation does not trip it.
+declare -a NAMES=(
+  "DeFindex API key (sk_ + 32 or more chars)"
+  "Stellar secret seed (S + 55 base32 chars)"
+  "Bitcoin WIF private key"
+  "PEM private key block"
+  "AWS access key id"
+)
+declare -a PATTERNS=(
+  'sk_[A-Za-z0-9]{32,}'
+  '\bS[A-Z2-7]{55}\b'
+  '\b[5KL][1-9A-HJ-NP-Za-km-z]{50,51}\b'
+  '-----BEGIN [A-Z ]*PRIVATE KEY-----'
+  '\bAKIA[0-9A-Z]{16}\b'
+)
+
+staged=$(git diff --cached --name-only --diff-filter=ACM)
+[ -z "$staged" ] && exit 0
+
+found=0
+for i in "${!PATTERNS[@]}"; do
+  # Only added lines, and only the content, never the filename.
+  hits=$(git diff --cached -U0 -- $staged | grep -E "^\+" | grep -vE "^\+\+\+" \
+         | grep -nE -e "${PATTERNS[$i]}" || true)
+  if [ -n "$hits" ]; then
+    if [ $found -eq 0 ]; then
+      echo "" >&2
+      echo "Refusing to commit: staged changes contain what looks like a live credential." >&2
+      echo "" >&2
+    fi
+    found=1
+    echo "  ${NAMES[$i]}:" >&2
+    echo "$hits" | sed 's/^/    /' | cut -c1-140 >&2
+  fi
+done
+
+if [ $found -eq 1 ]; then
+  cat >&2 <<'MSG'
+
+If this is a real secret:
+  git restore --staged <file>     and keep it out of the repo entirely.
+  If it has already been pushed anywhere, revoke it. Removing the commit does
+  not un-publish it.
+
+If this is genuinely a placeholder and the pattern is too broad, fix the
+pattern in scripts/hooks/pre-commit rather than bypassing the hook, so the
+next person is protected too.
+
+MSG
+  exit 1
+fi
+
+exit 0
