@@ -100,6 +100,39 @@ DEFINDEX_API_KEY=<from console.defindex.io>
 
 `DEFINDEX_VAULT_ID` is the piece this issue is really about: it is per-network, has no safe default, and a relayer without it serves errors from every `/defindex` route. The testnet vault address lives in [`contracts/deployments/defindex-vault-testnet.md`](../../contracts/deployments/defindex-vault-testnet.md) rather than being repeated here, so there is one place to change when it is redeployed.
 
+#### Persistence: mount a volume, or the metrics history is lost on every deploy
+
+The relayer keeps four SQLite databases on local disk:
+
+| File | Written by | What is lost without it |
+|---|---|---|
+| `data/merkle.db` | `leaf-store.ts` | Merkle leaves |
+| `data/watcher.db` | `repay-watcher/cursor-store.ts` | The repay watcher's cursor |
+| `data/vault-events.db` | `vault-watcher/event-store.ts` | **Every indexed vault deposit and withdrawal** |
+| `data/vault-watcher.db` | `vault-watcher/cursor-store.ts` | The vault watcher's cursor |
+
+The container image declares no `VOLUME`, so on a fresh service that directory is ephemeral and every redeploy starts empty.
+
+That is recoverable for three of the four. It is not for `vault-events.db`. Soroban RPC retains events for days, not indefinitely (see `relayer-backfill-runbook.md`), and this database is the only durable record beyond that window. The metrics deliverable reports 30-day retention cohorts, which is longer than RPC will serve. Lose the file after the window closes and the history cannot be rebuilt from chain at all.
+
+**Mount a persistent volume at `/app/data`.** All four paths are overridable if the platform mounts elsewhere: `SQLITE_PATH`, `WATCHER_SQLITE_PATH`, `VAULT_EVENTS_SQLITE_PATH`, `VAULT_WATCHER_SQLITE_PATH`.
+
+Both watchers are always-on polling loops started in `src/index.ts`, not request-driven handlers. A platform that suspends the container when idle produces silent gaps in the same data, so scale-to-zero tiers are not suitable regardless of the volume.
+
+#### After the first deploy: rewind the cursor to capture existing history
+
+`runVaultPollCycle` starts a first-ever run from the current ledger tip rather than backfilling, which is deliberate (a gap here undercounts metrics, it does not risk funds). The consequence is that a newly deployed relayer indexes nothing that happened before it booted.
+
+If vault activity predates the deployment and should appear in the metrics, rewind once after the service is healthy. `insertVaultEvent` is idempotent, with a UNIQUE constraint across tx hash, depositor, kind and amount, so a re-scan cannot double count:
+
+```bash
+# The oldest ledger you want indexed, from the vault's transaction history
+# on a Stellar explorer.
+bun -e 'import {writeCursor} from "./src/vault-watcher/cursor-store.js"; writeCursor("<ledger>-0")'
+```
+
+Do this while the events are still inside RPC's retention window. After that, only a deep-history source such as Hubble can recover them.
+
 Confirm the running service is the target you think it is:
 
 ```bash
