@@ -141,10 +141,20 @@ Both watchers are always-on polling loops started in `src/index.ts`, not request
 If vault activity predates the deployment and should appear in the metrics, rewind once after the service is healthy. `insertVaultEvent` is idempotent, with a UNIQUE constraint across tx hash, depositor, kind and amount, so a re-scan cannot double count:
 
 ```bash
-# The oldest ledger you want indexed, from the vault's transaction history
-# on a Stellar explorer.
-bun -e 'import {writeCursor} from "./src/vault-watcher/cursor-store.js"; writeCursor("<ledger>-0")'
+# The oldest ledger you want indexed, from the vault's transaction history on a
+# Stellar explorer. cursorForLedger builds the cursor: an RPC events cursor is
+# a 19-digit zero-padded TOID plus a 10-digit index, not "<ledger>-<index>",
+# and a hand-written one is rejected by the RPC in a way that stalls the
+# watcher silently. `writeCursor` refuses a malformed cursor rather than
+# storing it, so a mistake here fails at the command instead of at the next
+# poll.
+bun -e 'import {writeCursor} from "./src/vault-watcher/cursor-store.js"; import {cursorForLedger} from "./src/rpc-cursor.js"; writeCursor(cursorForLedger(<ledger>))'
 ```
+
+Events arrive over several poll cycles rather than all at once: the RPC bounds
+the ledger span it will scan per call, so the poller walks forward in batches,
+persisting the cursor after each. Watch the count climb rather than expecting
+the final number on the first check.
 
 Do this while the events are still inside RPC's retention window. After that, only a deep-history source such as Hubble can recover them.
 
