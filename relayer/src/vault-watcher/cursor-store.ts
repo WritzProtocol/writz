@@ -7,6 +7,7 @@
  * watcher's and of `../vault-watcher/event-store.ts`'s lifecycle.
  */
 import { Database } from "bun:sqlite";
+import { assertValidCursor } from "../rpc-cursor.js";
 import path from "path";
 import fs from "fs";
 
@@ -42,5 +43,9 @@ export function readCursor(): string | null {
 /** Persists the RPC events cursor. Call this after every poll - even one
  * that found no matching events - so a restart never re-scans from "now". */
 export function writeCursor(cursor: string): void {
+  // Rejected here rather than at the next poll: a malformed cursor stalls
+  // the watcher silently, and the RPC's own error message points at ledger
+  // ranges instead of at the cursor. See ../rpc-cursor.ts.
+  assertValidCursor(cursor);
   _write.run(cursor);
 }

@@ -31,8 +31,8 @@ describe("vault-watcher cursor-store", () => {
 
   test("writeCursor then readCursor round-trips", () => {
     const { readCursor, writeCursor } = require("../src/vault-watcher/cursor-store.js");
-    writeCursor("cursor-abc-123");
-    expect(readCursor()).toBe("cursor-abc-123");
+    writeCursor("0019327357126967296-0000000000");
+    expect(readCursor()).toBe("0019327357126967296-0000000000");
   });
 });
 
@@ -42,7 +42,7 @@ describe("vault-watcher event-store", () => {
   });
 
   const fixture = {
-    cursor: "cursor-1",
+    cursor: "0019327400076640256-0000000000",
     kind: "deposit" as const,
     depositor: "GDEPOSITOR",
     amountStroops: "1000000000",
@@ -116,14 +116,14 @@ describe("runVaultPollCycle", () => {
     const server = {
       getEvents: jest.fn().mockResolvedValue({
         events: [fakeEvent("deposit", "GDEPOSITOR", "5000000000")],
-        cursor: "cursor-after-batch",
+        cursor: "0019327374306836480-0000000000",
       }),
       getLatestLedger: jest.fn().mockResolvedValue({ sequence: 1000 }),
     };
 
     await runVaultPollCycle({ server, contractId: "CVAULT", decodeEvent: decodeFake });
 
-    expect(readCursor()).toBe("cursor-after-batch");
+    expect(readCursor()).toBe("0019327374306836480-0000000000");
     const events = readAllVaultEvents();
     expect(events).toHaveLength(1);
     expect(events[0]).toMatchObject({
@@ -140,7 +140,7 @@ describe("runVaultPollCycle", () => {
     const server = {
       getEvents: jest.fn().mockResolvedValue({
         events: [fakeEvent("withdraw", "GWITHDRAWER", "1000000000")],
-        cursor: "cursor-2",
+        cursor: "0019327404371607552-0000000000",
       }),
       getLatestLedger: jest.fn().mockResolvedValue({ sequence: 1000 }),
     };
@@ -157,7 +157,7 @@ describe("runVaultPollCycle", () => {
     const server = {
       getEvents: jest.fn().mockResolvedValue({
         events: [fakeEvent("unrelated", "GX", "1")],
-        cursor: "cursor-3",
+        cursor: "0019327408666574848-0000000000",
       }),
       getLatestLedger: jest.fn().mockResolvedValue({ sequence: 1000 }),
     };
@@ -171,12 +171,12 @@ describe("runVaultPollCycle", () => {
     const { runVaultPollCycle } = require("../src/vault-watcher/poller.js");
     const { readCursor, writeCursor } = require("../src/vault-watcher/cursor-store.js");
 
-    writeCursor("cursor-before-batch");
+    writeCursor("0019327378601803776-0000000000");
 
     const server = {
       getEvents: jest.fn().mockResolvedValue({
         events: [fakeEvent("deposit", "GDEPOSITOR", "1")],
-        cursor: "cursor-after-failed-batch",
+        cursor: "0019327382896771072-0000000000",
       }),
       getLatestLedger: jest.fn().mockResolvedValue({ sequence: 1000 }),
     };
@@ -186,14 +186,14 @@ describe("runVaultPollCycle", () => {
 
     await runVaultPollCycle({ server, contractId: "CVAULT", decodeEvent: decodeFake, persist });
 
-    expect(readCursor()).toBe("cursor-before-batch");
+    expect(readCursor()).toBe("0019327378601803776-0000000000");
   });
 
   test("on first run (no persisted cursor), starts from the current ledger tip rather than a historical backfill", async () => {
     const { runVaultPollCycle } = require("../src/vault-watcher/poller.js");
 
     const server = {
-      getEvents: jest.fn().mockResolvedValue({ events: [], cursor: "cursor-4" }),
+      getEvents: jest.fn().mockResolvedValue({ events: [], cursor: "0019327412961542144-0000000000" }),
       getLatestLedger: jest.fn().mockResolvedValue({ sequence: 424242 }),
     };
 
@@ -210,22 +210,22 @@ describe("runVaultPollCycle", () => {
     const { readCursor } = require("../src/vault-watcher/cursor-store.js");
 
     const server = {
-      getEvents: jest.fn().mockResolvedValue({ events: [], cursor: "cursor-first-run" }),
+      getEvents: jest.fn().mockResolvedValue({ events: [], cursor: "0019327391486705664-0000000000" }),
       getLatestLedger: jest.fn().mockResolvedValue({ sequence: 1000 }),
     };
     await runVaultPollCycle({ server, contractId: "CVAULT", decodeEvent: decodeFake });
-    expect(readCursor()).toBe("cursor-first-run");
+    expect(readCursor()).toBe("0019327391486705664-0000000000");
 
     jest.resetModules();
     const { runVaultPollCycle: runAfterRestart } = require("../src/vault-watcher/poller.js");
     const serverAfterRestart = {
-      getEvents: jest.fn().mockResolvedValue({ events: [], cursor: "cursor-second-run" }),
+      getEvents: jest.fn().mockResolvedValue({ events: [], cursor: "0019327395781672960-0000000000" }),
       getLatestLedger: jest.fn(),
     };
     await runAfterRestart({ server: serverAfterRestart, contractId: "CVAULT", decodeEvent: decodeFake });
 
     expect(serverAfterRestart.getEvents).toHaveBeenCalledWith(
-      expect.objectContaining({ cursor: "cursor-first-run" }),
+      expect.objectContaining({ cursor: "0019327391486705664-0000000000" }),
     );
     expect(serverAfterRestart.getLatestLedger).not.toHaveBeenCalled();
   });

@@ -31,21 +31,21 @@ describe("cursor-store", () => {
 
   test("writeCursor then readCursor round-trips", () => {
     const { readCursor, writeCursor } = require("../src/repay-watcher/cursor-store.js");
-    writeCursor("cursor-abc-123");
-    expect(readCursor()).toBe("cursor-abc-123");
+    writeCursor("0019327357126967296-0000000000");
+    expect(readCursor()).toBe("0019327357126967296-0000000000");
   });
 
   test("a later writeCursor overwrites the earlier value", () => {
     const { readCursor, writeCursor } = require("../src/repay-watcher/cursor-store.js");
-    writeCursor("first");
-    writeCursor("second");
-    expect(readCursor()).toBe("second");
+    writeCursor("0019327361421934592-0000000000");
+    writeCursor("0019327365716901888-0000000000");
+    expect(readCursor()).toBe("0019327365716901888-0000000000");
   });
 
   test("the cursor survives a simulated process restart (same DB file, fresh module load)", () => {
     {
       const { writeCursor } = require("../src/repay-watcher/cursor-store.js");
-      writeCursor("survives-restart");
+      writeCursor("0019327370011869184-0000000000");
     }
 
     // Simulate a restart: drop the module from the cache and re-require it,
@@ -53,7 +53,7 @@ describe("cursor-store", () => {
     jest.resetModules();
 
     const { readCursor } = require("../src/repay-watcher/cursor-store.js");
-    expect(readCursor()).toBe("survives-restart");
+    expect(readCursor()).toBe("0019327370011869184-0000000000");
   });
 });
 
@@ -89,7 +89,7 @@ describe("runPollCycle", () => {
     const server = {
       getEvents: jest.fn().mockResolvedValue({
         events: [fakeEvent("repay_full", txidHex)],
-        cursor: "cursor-after-batch",
+        cursor: "0019327374306836480-0000000000",
       }),
       getLatestLedger: jest.fn().mockResolvedValue({ sequence: 1000 }),
     };
@@ -99,7 +99,7 @@ describe("runPollCycle", () => {
 
     expect(handle).toHaveBeenCalledTimes(1);
     expect((handle.mock.calls[0][0] as Buffer).toString("hex")).toBe(txidHex);
-    expect(readCursor()).toBe("cursor-after-batch");
+    expect(readCursor()).toBe("0019327374306836480-0000000000");
   });
 
   test("ignores events whose first topic is not repay_full", async () => {
@@ -108,7 +108,7 @@ describe("runPollCycle", () => {
     const server = {
       getEvents: jest.fn().mockResolvedValue({
         events: [fakeEvent("deposit", "bb".repeat(32))],
-        cursor: "cursor-2",
+        cursor: "0019327404371607552-0000000000",
       }),
       getLatestLedger: jest.fn().mockResolvedValue({ sequence: 1000 }),
     };
@@ -123,12 +123,12 @@ describe("runPollCycle", () => {
     const { runPollCycle } = require("../src/repay-watcher/poller.js");
     const { readCursor, writeCursor } = require("../src/repay-watcher/cursor-store.js");
 
-    writeCursor("cursor-before-batch");
+    writeCursor("0019327378601803776-0000000000");
 
     const server = {
       getEvents: jest.fn().mockResolvedValue({
         events: [fakeEvent("repay_full", "cc".repeat(32))],
-        cursor: "cursor-after-failed-batch",
+        cursor: "0019327382896771072-0000000000",
       }),
       getLatestLedger: jest.fn().mockResolvedValue({ sequence: 1000 }),
     };
@@ -139,14 +139,14 @@ describe("runPollCycle", () => {
     expect(handle).toHaveBeenCalledTimes(1);
     // Cursor must be unchanged - the failed batch will be re-fetched (and
     // retried) on the next poll, rather than silently skipped.
-    expect(readCursor()).toBe("cursor-before-batch");
+    expect(readCursor()).toBe("0019327378601803776-0000000000");
   });
 
   test("on first run (no persisted cursor), starts from the current ledger tip rather than a historical backfill", async () => {
     const { runPollCycle } = require("../src/repay-watcher/poller.js");
 
     const server = {
-      getEvents: jest.fn().mockResolvedValue({ events: [], cursor: "cursor-3" }),
+      getEvents: jest.fn().mockResolvedValue({ events: [], cursor: "0019327408666574848-0000000000" }),
       getLatestLedger: jest.fn().mockResolvedValue({ sequence: 424242 }),
     };
     const handle = jest.fn();
@@ -164,7 +164,7 @@ describe("runPollCycle", () => {
     const { readCursor } = require("../src/repay-watcher/cursor-store.js");
 
     const server = {
-      getEvents: jest.fn().mockResolvedValue({ events: [], cursor: "cursor-empty-batch" }),
+      getEvents: jest.fn().mockResolvedValue({ events: [], cursor: "0019327387191738368-0000000000" }),
       getLatestLedger: jest.fn().mockResolvedValue({ sequence: 1000 }),
     };
 
@@ -175,7 +175,7 @@ describe("runPollCycle", () => {
       decodeEvent: decodeFake,
     });
 
-    expect(readCursor()).toBe("cursor-empty-batch");
+    expect(readCursor()).toBe("0019327387191738368-0000000000");
   });
 
   test("resumes from the persisted cursor on the next poll (restart simulation)", async () => {
@@ -183,7 +183,7 @@ describe("runPollCycle", () => {
     const { readCursor } = require("../src/repay-watcher/cursor-store.js");
 
     const server = {
-      getEvents: jest.fn().mockResolvedValue({ events: [], cursor: "cursor-first-run" }),
+      getEvents: jest.fn().mockResolvedValue({ events: [], cursor: "0019327391486705664-0000000000" }),
       getLatestLedger: jest.fn().mockResolvedValue({ sequence: 1000 }),
     };
     await runPollCycle({
@@ -192,14 +192,14 @@ describe("runPollCycle", () => {
       handle: jest.fn(),
       decodeEvent: decodeFake,
     });
-    expect(readCursor()).toBe("cursor-first-run");
+    expect(readCursor()).toBe("0019327391486705664-0000000000");
 
     // Simulate a full process restart: fresh module graph, fresh mock
     // server instance - the only thing carried over is the sqlite file.
     jest.resetModules();
     const { runPollCycle: runPollCycleAfterRestart } = require("../src/repay-watcher/poller.js");
     const serverAfterRestart = {
-      getEvents: jest.fn().mockResolvedValue({ events: [], cursor: "cursor-second-run" }),
+      getEvents: jest.fn().mockResolvedValue({ events: [], cursor: "0019327395781672960-0000000000" }),
       getLatestLedger: jest.fn(),
     };
     await runPollCycleAfterRestart({
@@ -212,7 +212,7 @@ describe("runPollCycle", () => {
     // Must resume via `cursor`, not re-derive a startLedger from the tip -
     // proves the restart didn't silently reset to "now".
     expect(serverAfterRestart.getEvents).toHaveBeenCalledWith(
-      expect.objectContaining({ cursor: "cursor-first-run" }),
+      expect.objectContaining({ cursor: "0019327391486705664-0000000000" }),
     );
     expect(serverAfterRestart.getLatestLedger).not.toHaveBeenCalled();
   });
