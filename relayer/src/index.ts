@@ -3,6 +3,7 @@ import { config } from "./config.js";
 import { proofRouter } from "./routes/proof.js";
 import { merkleRouter } from "./routes/merkle.js";
 import { defindexRouter } from "./routes/defindex.js";
+import { metricsRouter } from "./routes/metrics.js";
 import { startRepayWatcher } from "./repay-watcher/poller.js";
 import { startVaultWatcher } from "./vault-watcher/poller.js";
 
@@ -69,6 +70,7 @@ app.get("/", (_req, res) => {
       defindexPosition: "GET /defindex/position?address=G...",
       defindexDeposit: "POST /defindex/deposit",
       defindexWithdraw: "POST /defindex/withdraw",
+      metricsTvl: "GET /metrics/tvl",
     },
   });
 });
@@ -89,6 +91,7 @@ app.get("/health", (_req, res) => {
 app.use("/spv-proof", proofRouter);
 app.use("/", merkleRouter);
 app.use("/defindex", defindexRouter);
+app.use("/metrics", metricsRouter);
 
 // 404 fallback.
 app.use((_req, res) => {
