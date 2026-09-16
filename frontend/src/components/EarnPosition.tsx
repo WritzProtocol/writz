@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useWallet } from "@/lib/wallet/WalletProvider";
 import type { VaultPosition } from "@/lib/earn/api";
 import type { Polled } from "@/lib/earn/usePolledValue";
@@ -62,15 +63,31 @@ export function EarnPosition({
                 : "-"}
             </Metric>
           </div>
-          <p className="mt-4 border-t border-line pt-3 text-xs text-muted">
-            The APY above is read live from the vault, no wallet needed. Sign in
-            to see your own position.
-          </p>
+          <div className="mt-4 flex flex-col items-start justify-between gap-2 border-t border-line pt-3 text-xs text-muted sm:flex-row sm:items-center">
+            <span>
+              The APY above is read live from the vault, no wallet needed. Sign in
+              to see your own position.
+            </span>
+            <Link
+              href="/metrics"
+              className="font-mono text-amber transition-colors hover:underline hover:text-amber-2 whitespace-nowrap"
+            >
+              Vault metrics &amp; 30d retention →
+            </Link>
+          </div>
         </div>
       ) : unreachable ? (
         <div className="rounded-xl border border-line bg-surface p-6 text-sm text-muted">
-          We can&apos;t reach the relayer to read your vault position right now.
-          Your funds are unaffected - this is a read, and it retries on its own.
+          <p>
+            We can&apos;t reach the relayer to read your vault position right now.
+            Your funds are unaffected - this is a read, and it retries on its own.
+          </p>
+          <Link
+            href="/metrics"
+            className="mt-3 inline-block font-mono text-xs text-amber transition-colors hover:underline hover:text-amber-2"
+          >
+            View public vault metrics &amp; retention →
+          </Link>
         </div>
       ) : (
         <div className="rounded-xl border border-line bg-surface p-5">
@@ -90,17 +107,26 @@ export function EarnPosition({
             </Metric>
           </div>
 
-          {balance !== null && shares !== null && balance > shares ? (
-            <p className="mt-4 border-t border-line pt-3 text-xs text-ok">
-              Your shares are worth {fmtUsdc(balance - shares)} {EARN_ASSET.code}{" "}
-              more than the shares themselves. That difference is the yield the
-              strategy has earned.
-            </p>
-          ) : balance === 0n ? (
-            <p className="mt-4 border-t border-line pt-3 text-xs text-muted">
-              No position yet. Deposit below to start earning.
-            </p>
-          ) : null}
+          <div className="mt-4 flex flex-col items-start justify-between gap-2 border-t border-line pt-3 text-xs text-muted sm:flex-row sm:items-center">
+            <span>
+              {balance !== null && shares !== null && balance > shares ? (
+                <span className="text-ok">
+                  Your shares are worth {fmtUsdc(balance - shares)} {EARN_ASSET.code}{" "}
+                  more than the shares themselves (yield earned).
+                </span>
+              ) : balance === 0n ? (
+                "No position yet. Deposit below to start earning."
+              ) : (
+                "Vault shares held directly in your Stellar account."
+              )}
+            </span>
+            <Link
+              href="/metrics"
+              className="font-mono text-amber transition-colors hover:underline hover:text-amber-2 whitespace-nowrap"
+            >
+              Vault metrics &amp; 30d retention →
+            </Link>
+          </div>
         </div>
       )}
     </section>

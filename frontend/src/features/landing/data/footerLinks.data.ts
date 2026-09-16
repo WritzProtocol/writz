@@ -6,6 +6,7 @@ export const footerLinkGroups: FooterLinkGroup[] = [
     title: "Protocol",
     links: [
       { label: "PrivateLend", href: `${DOCS_URL}/docs/products/privatelend` },
+      { label: "Earn Metrics", href: "/metrics" },
       { label: "Lender Vault", href: "#" },
       { label: "SPV SDK", href: `${DOCS_URL}/docs/developers/spv-sdk` },
       { label: "Roadmap", href: `${DOCS_URL}/docs/roadmap/vision` },

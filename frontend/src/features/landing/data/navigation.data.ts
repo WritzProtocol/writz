@@ -4,6 +4,7 @@ import { DOCS_URL } from "../constants";
 export const navItems: NavItem[] = [
   { label: "Products", href: "#products" },
   { label: "How it works", href: "#features" },
+  { label: "Metrics", href: "/metrics" },
   { label: "Docs", href: DOCS_URL },
   { label: "Security", href: "#" },
 ];
