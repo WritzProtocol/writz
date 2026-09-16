@@ -141,3 +141,34 @@ describe("GET /metrics/tvl", () => {
     warnSpy.mockRestore();
   });
 });
+
+describe("GET /metrics/retention", () => {
+  test("200 with cohorts derived from indexed events, no vault config required", async () => {
+    const { app, config, insertVaultEvent } = load();
+    config.defindexVaultId = ""; // Retention needs no on-chain call, unlike /tvl.
+    insertVaultEvent({
+      cursor: "c1",
+      kind: "deposit",
+      depositor: "GDEPOSITOR1",
+      amountStroops: "1000000",
+      ledger: 100,
+      txHash: "aa".repeat(32),
+      ledgerCloseTime: 1_700_000_000,
+    });
+
+    const res = await request(app).get("/metrics/retention");
+
+    expect(res.status).toBe(200);
+    expect(res.body.cohorts).toHaveLength(1);
+    expect(res.body.cohorts[0]).toMatchObject({ depositors: 1 });
+  });
+
+  test("200 with an empty cohort list when nothing has been indexed yet", async () => {
+    const { app } = load();
+
+    const res = await request(app).get("/metrics/retention");
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ cohorts: [] });
+  });
+});

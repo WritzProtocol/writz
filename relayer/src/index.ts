@@ -71,6 +71,7 @@ app.get("/", (_req, res) => {
       defindexDeposit: "POST /defindex/deposit",
       defindexWithdraw: "POST /defindex/withdraw",
       metricsTvl: "GET /metrics/tvl",
+      metricsRetention: "GET /metrics/retention",
     },
   });
 });

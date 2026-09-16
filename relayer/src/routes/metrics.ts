@@ -3,6 +3,7 @@ import { config } from "../config.js";
 import { defindexSdk, defindexNetwork } from "../defindex/client.js";
 import { mapDefindexError } from "../defindex/errors.js";
 import { computeTvlSummary } from "../vault-watcher/metrics.js";
+import { computeRetentionCohorts } from "../vault-watcher/retention.js";
 
 export const metricsRouter = Router();
 
@@ -53,4 +54,22 @@ metricsRouter.get("/tvl", async (_req: Request, res: Response): Promise<void> =>
     const { status, error } = mapDefindexError(err);
     res.status(status).json({ error });
   }
+});
+
+/**
+ * GET /metrics/retention
+ * Success 200: { "cohorts": [{ "cohort": "2026-09-02", "depositors": 1, "eligible": 0, "retained": 0 }] }
+ *
+ * Groups depositors by the UTC day of their first-ever deposit (this
+ * issue's "first-deposit ... day" wording). `eligible` is how many of a
+ * cohort's depositors have actually reached the 30-day mark as of now -
+ * a cohort younger than 30 days has depositors who are neither retained
+ * nor churned, just too early to tell, so they're excluded from
+ * `retained` rather than counted as churned. Of the eligible depositors,
+ * `retained` counts those who still held a positive net balance (their own
+ * deposits minus withdrawals) at their individual 30-day mark - i.e. hadn't
+ * fully withdrawn.
+ */
+metricsRouter.get("/retention", (_req: Request, res: Response): void => {
+  res.json({ cohorts: computeRetentionCohorts() });
 });
