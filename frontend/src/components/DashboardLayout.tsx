@@ -73,17 +73,12 @@ export function DashboardLayout({ children, breadcrumbs }: Props) {
         {/* Brand header */}
         <div className="flex h-16 items-center justify-between border-b border-line px-5">
           <Link href="/" className="flex items-center gap-2.5">
-            <span className="inline-block h-3.5 w-3.5 rotate-45 border border-amber" />
-            <div>
-              <span className="font-mono text-xs font-bold tracking-widest text-amber block">
-                WRITZ PROTOCOL
-              </span>
-              <span className="font-mono text-[10px] tracking-wider text-muted">
-                v0.1.0 TESTNET
-              </span>
-            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element -- matches this codebase's existing plain-<img> convention (no next/image usage anywhere else) */}
+            <img src="/brand/writz-mark.png" alt="Writz" className="h-7 w-7" />
+            <span className="font-mono text-xs font-bold tracking-widest text-amber">
+              WRITZ PROTOCOL
+            </span>
           </Link>
-          <span className="h-1.5 w-1.5 rounded-full bg-ok animate-pulse" />
         </div>
 
         {/* Navigation list */}
@@ -124,28 +119,6 @@ export function DashboardLayout({ children, breadcrumbs }: Props) {
             );
           })}
         </nav>
-
-        {/* Bottom system status box */}
-        <div className="p-3">
-          <div className="rounded-lg border border-line bg-surface-2/60 p-3 font-mono text-[11px] text-muted">
-            <div className="flex items-center gap-2 font-bold text-head mb-2">
-              <span className="h-2 w-2 rounded-full bg-ok animate-pulse" />
-              <span>SYSTEM ONLINE</span>
-            </div>
-            <div className="flex items-center justify-between py-0.5">
-              <span>NETWORK:</span>
-              <span className="text-body">STELLAR TESTNET</span>
-            </div>
-            <div className="flex items-center justify-between py-0.5">
-              <span>SOROBAN:</span>
-              <span className="text-body">PROTOCOL 22</span>
-            </div>
-            <div className="flex items-center justify-between py-0.5">
-              <span>BITCOIN:</span>
-              <span className="text-amber">{btcNetworkLabel.toUpperCase()}</span>
-            </div>
-          </div>
-        </div>
       </aside>
 
       {/* ── Main Layout Column ─────────────────────────────────────── */}
@@ -231,12 +204,6 @@ export function DashboardLayout({ children, breadcrumbs }: Props) {
                 </Link>
               );
             })}
-            <div className="pt-2 border-t border-line text-[11px] text-muted">
-              <span className="flex items-center gap-2 text-ok font-bold">
-                <span className="h-2 w-2 rounded-full bg-ok" />
-                SYSTEM ONLINE · STELLAR TESTNET
-              </span>
-            </div>
           </div>
         )}
 

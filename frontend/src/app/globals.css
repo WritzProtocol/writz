@@ -100,6 +100,19 @@
   }
 }
 
+/* Native smooth scroll for anchor-link jumps only - replaces the removed
+ * Lenis JS scroll-hijacking library. Lenis drove scroll with fractional
+ * (sub-pixel) scrollTop values every animation frame, which made text
+ * (serif display type especially) visibly shimmer/wobble during scroll -
+ * a rendering-precision artifact, not something main-thread optimization
+ * could fix. Native scroll has no such artifact, since the browser's own
+ * compositor handles it without any per-frame JS repositioning. */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
 @keyframes indeterminate {
   0% {
     transform: translateX(-100%);

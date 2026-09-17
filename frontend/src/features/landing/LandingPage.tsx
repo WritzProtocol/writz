@@ -4,7 +4,6 @@ import dynamic from "next/dynamic";
 import { Navbar } from "./components/Navbar";
 import { Hero } from "./components/Hero";
 import { LogoMarquee } from "./components/LogoMarquee";
-import { SmoothScroll } from "./components/SmoothScroll";
 import { workSans } from "./fonts";
 import "@/shared/design-system/landing-tokens.css";
 import "@/shared/design-system/landing-animations.css";
@@ -26,17 +25,15 @@ export function LandingPage() {
   return (
     <div className={`landing-root ${workSans.variable}`}>
       <div className="noise-overlay" aria-hidden="true" />
-      <SmoothScroll>
-        <main className="min-h-screen" style={{ background: "var(--bg)" }}>
-          <Navbar />
-          <Hero />
-          <LogoMarquee />
-          <BentoGrid />
-          <Products />
-          <FinalCTA />
-          <Footer />
-        </main>
-      </SmoothScroll>
+      <main className="min-h-screen" style={{ background: "var(--bg)" }}>
+        <Navbar />
+        <Hero />
+        <LogoMarquee />
+        <BentoGrid />
+        <Products />
+        <FinalCTA />
+        <Footer />
+      </main>
     </div>
   );
 }

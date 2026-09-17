@@ -56,9 +56,17 @@ function relayerBase(): string {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  // Deliberately outside the try/catch below: relayerBase()'s "not
+  // configured" error must propagate as-is, not get relabeled as "Relayer
+  // unreachable" - the two map to different, non-interchangeable messages
+  // in humanizeError (a deployment misconfiguration vs. a transient network
+  // failure during an in-flight deposit/withdraw). Conflating them told a
+  // depositor their Bitcoin transaction might be delayed when the real
+  // cause was a missing env var - no Bitcoin involved at all.
+  const base = relayerBase();
   let res: Response;
   try {
-    res = await fetch(`${relayerBase()}${path}`, {
+    res = await fetch(`${base}${path}`, {
       ...init,
       headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
     });

@@ -32,6 +32,9 @@ export const metadata: Metadata = {
   title: "Writz - Bitcoin was built to be yours",
   description:
     "Trustless, ZK-private Bitcoin lending on Stellar. Lock real BTC, borrow USDC, keep every position private.",
+  icons: {
+    icon: "/brand/writz-mark.png",
+  },
 };
 
 export default function RootLayout({

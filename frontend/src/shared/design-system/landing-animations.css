@@ -60,13 +60,17 @@
   animation: border-beam 8s linear infinite;
 }
 
-/* ── Shimmer sweep on primary buttons ────────────────────────────────── */
+/* ── Shimmer sweep on primary buttons ─────────────────────────────────────
+ * translateX on the pseudo-element instead of animating background-position
+ * on it directly - background-position is a paint property (repaints every
+ * frame, forever, on every .shimmer-btn on the page); transform is
+ * compositor-only. Same visual sweep, no ongoing paint cost. */
 @keyframes shimmer {
   0% {
-    background-position: -200% 0;
+    transform: translateX(-100%);
   }
   100% {
-    background-position: 200% 0;
+    transform: translateX(100%);
   }
 }
 
@@ -80,20 +84,24 @@
   position: absolute;
   inset: 0;
   background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.14) 50%, transparent 100%);
-  background-size: 200% 100%;
   animation: shimmer 3s ease-in-out infinite;
+  will-change: transform;
 }
 
-/* ── Pulse glow for live status dots ─────────────────────────────────── */
+/* ── Pulse glow for live status dots ───────────────────────────────────────
+ * scale + opacity instead of box-shadow - box-shadow is a paint property
+ * (repaints every frame, forever, on every .pulse-glow dot on the page);
+ * transform/opacity are compositor-only. Reads the same as a pulsing glow
+ * at this element's size, no ongoing paint cost. */
 @keyframes pulse-glow {
   0%,
   100% {
+    transform: scale(1);
     opacity: 1;
-    box-shadow: 0 0 4px currentColor;
   }
   50% {
-    opacity: 0.6;
-    box-shadow: 0 0 8px currentColor;
+    transform: scale(1.6);
+    opacity: 0.55;
   }
 }
 

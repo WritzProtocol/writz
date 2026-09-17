@@ -40,9 +40,16 @@ function relayerBase(): string {
 }
 
 async function request<T>(path: string): Promise<T> {
+  // Deliberately outside the try/catch below: relayerBase()'s "not
+  // configured" error must propagate as-is, not get relabeled as "Relayer
+  // unreachable" - the two map to different, non-interchangeable messages
+  // in humanizeError (a deployment misconfiguration vs. a transient network
+  // failure), and conflating them showed a misleading Bitcoin-confirmation
+  // message on this metrics page for what was actually a missing env var.
+  const base = relayerBase();
   let res: Response;
   try {
-    res = await fetch(`${relayerBase()}${path}`, { cache: "no-store" });
+    res = await fetch(`${base}${path}`, { cache: "no-store" });
   } catch {
     throw new Error("Relayer unreachable");
   }
