@@ -25,11 +25,8 @@ export function Navbar() {
       >
         {/* Logo */}
         <a href="#" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "var(--accent)" }}>
-            <span className="font-bold text-sm" style={{ color: "var(--accent-contrast)" }}>
-              W
-            </span>
-          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element -- matches this codebase's existing plain-<img> convention (no next/image usage anywhere else) */}
+          <img src="/brand/writz-mark.png" alt="Writz" className="h-8 w-8" />
           <span className="font-semibold text-sm hidden sm:block" style={{ color: "var(--text-hi)" }}>
             Writz
           </span>

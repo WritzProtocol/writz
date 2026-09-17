@@ -3,12 +3,18 @@
 import { useEffect, useRef } from "react";
 import { liquidGoldPalettes } from "../data/liquidGoldPalettes.data";
 import type { LiquidGoldTone } from "../types/liquidGoldText.types";
+import { subscribeTick } from "./sharedTicker";
 
 /**
  * Drives the drifting radial-gradient "liquid metal" background behind a
  * background-clip:text span. Pauses when off-screen, tab is hidden, or the
  * user prefers reduced motion; otherwise updates every 3rd frame (the drift
  * is slow enough that this stays visually smooth while cutting paint work).
+ *
+ * Subscribes to the shared ticker (see sharedTicker.ts) instead of running
+ * its own requestAnimationFrame loop - the landing page renders up to ~9 of
+ * these at once (Hero, Navbar, FinalCTA), and that many independent rAF
+ * registrations were adding unnecessary per-callback scheduling overhead.
  */
 export function useLiquidGoldAnimation(tone: LiquidGoldTone) {
   const ref = useRef<HTMLSpanElement>(null);
@@ -20,7 +26,6 @@ export function useLiquidGoldAnimation(tone: LiquidGoldTone) {
 
     const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
     let shouldReduceMotion = mediaQuery.matches;
-    let frame: number;
     let t = Math.random() * 10;
     let paused = false;
     let offscreen = false;
@@ -28,10 +33,8 @@ export function useLiquidGoldAnimation(tone: LiquidGoldTone) {
 
     const staticFallback = `linear-gradient(135deg, ${palette.highlight} 0%, ${palette.base} 45%, ${palette.bronze} 100%)`;
 
-    const animate = () => {
-      if (paused || shouldReduceMotion) return;
-      frame = requestAnimationFrame(animate);
-      if (offscreen) return;
+    const onTick = () => {
+      if (paused || shouldReduceMotion || offscreen) return;
 
       tick++;
       if (tick % 3 !== 0) return;
@@ -66,21 +69,12 @@ export function useLiquidGoldAnimation(tone: LiquidGoldTone) {
     const handleMediaChange = (e: MediaQueryListEvent) => {
       shouldReduceMotion = e.matches;
       if (shouldReduceMotion) {
-        cancelAnimationFrame(frame);
         el.style.backgroundImage = staticFallback;
-      } else {
-        frame = requestAnimationFrame(animate);
       }
     };
 
     const onVisibility = () => {
-      if (document.hidden) {
-        paused = true;
-        cancelAnimationFrame(frame);
-      } else {
-        paused = false;
-        if (!shouldReduceMotion) frame = requestAnimationFrame(animate);
-      }
+      paused = document.hidden;
     };
 
     mediaQuery.addEventListener("change", handleMediaChange);
@@ -96,12 +90,12 @@ export function useLiquidGoldAnimation(tone: LiquidGoldTone) {
 
     if (shouldReduceMotion) {
       el.style.backgroundImage = staticFallback;
-    } else {
-      frame = requestAnimationFrame(animate);
     }
 
+    const unsubscribe = subscribeTick(onTick);
+
     return () => {
-      cancelAnimationFrame(frame);
+      unsubscribe();
       observer.disconnect();
       document.removeEventListener("visibilitychange", onVisibility);
       mediaQuery.removeEventListener("change", handleMediaChange);
