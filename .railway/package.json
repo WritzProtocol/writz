@@ -1,0 +1,8 @@
+{
+  "name": "writz-railway-iac",
+  "private": true,
+  "version": "1.0.0",
+  "dependencies": {
+    "railway": "^3.11.0"
+  }
+}
