@@ -105,7 +105,7 @@ Research    ──►  Foundation  ──►  Launch      ──►  Scale
 
 **Oracle integration (mainnet-blocking, not yet started):**
 - `get_btc_price_stroops` in `contracts/contracts/private-lend/src/oracle.rs` still returns a hardcoded `STUB_PRICE_STROOPS_PER_BTC` (`TODO Phase 2` in the code) - this is a hard dependency for real liquidations and has no owner or target date yet
-- Wire real SEP-40 cross-contract call to RedStone (primary) + Pyth (secondary), median aggregation per `docs/research/oracle-design.md`
+- Wire real SEP-40 cross-contract call to Pyth (primary) + Reflector external-prices instance (secondary), median aggregation per `docs/research/oracle-design.md` (corrected 2026-09-16, on-chain verified - RedStone dropped; DIA parked, its documented testnet address returns "contract not found")
 - **This also unblocks `commitment-tree` liquidation.** With the current fixed-price stub and no ZK-compatible accrual mechanism, no position can legitimately move from the ≥150% ratio `borrow` requires down to the &lt;120% `liquidate` requires - see `docs/security/security-model.md`, "Keeper model and liquidation permissionlessness"
 - Implement the 60-minute staleness check and "price paused" fallback state described in `docs/research/oracle-design.md` and `docs/security/security-model.md` - neither exists in code today
 - **Do not schedule a mainnet date until this has an owner and a start date.**
@@ -168,7 +168,7 @@ Research    ──►  Foundation  ──►  Launch      ──►  Scale
 ### Phase 2 Exit Criteria
 
 - [ ] Legal entity formed and operating (hard gate before real-fund mainnet launch - see "Mainnet launch (gated)" above; not yet started, funding source unresolved)
-- [ ] Real oracle integration live (RedStone + Pyth median, staleness check) - replaces the current hardcoded stub; no owner or date assigned yet
+- [ ] Real oracle integration live (Pyth + Reflector median, staleness check) - replaces the current hardcoded stub; no owner or date assigned yet
 - [ ] Trusted setup ceremony: 5+ independent participants identified and ceremony run - participants not yet identified
 - [ ] Key-person / bus-factor mitigation plan in place, independent of SCF funding
 - [ ] Mainnet deployment with passing Audit Bank audit (0 critical findings) - contingent on resolving the Audit Bank/SCF gating dependency above

@@ -64,12 +64,13 @@ Rather than competing with Blend for USDC liquidity, Writz can potentially co-ex
 
 ---
 
-## Oracle Integration: RedStone + SEP-40
+## Oracle Integration: SEP-40
 
-Blend is already integrating RedStone for price feeds. This is important for Writz:
-- Writz should use the same oracle (RedStone) and same standard (SEP-40)
-- When a user's position health is evaluated in Writz, the BTC price comes from the same source Blend uses for its own collateral pricing
-- Consistent oracle standards across the Stellar DeFi ecosystem reduce the attack surface for oracle manipulation
+**Correction (2026-09-16, on-chain verified):** this section previously claimed "Blend is already integrating RedStone for price feeds." That was wrong - Blend uses **Reflector**, confirmed via Stellar's own oracle-providers documentation. A follow-up correction also turned out to be wrong: Reflector's *Stellar-assets* oracle instance (testnet `CAVLP5...`) has no plain BTC, but its separate *external CEXs & DEXs* instance (testnet `CCYOZJCOPG34LLQQ7N24YXBM7LL62R7ONMZ3G6WZAAYPB5OYKOMJRN63`) does - confirmed by directly calling `assets()`/`lastprice()` on testnet, see `docs/research/oracle-design.md`. Writz can share the same oracle standard, and now plausibly the same specific BTC feed, that Blend's ecosystem already runs on.
+
+- Writz should build against the **SEP-40 standard**, the same interface Blend's oracle (Reflector) also speaks - provider-agnostic by design, so this part of the original point holds
+- Reflector's external-prices instance lists a plain `{"Other":"BTC"}` asset with a live, updating price (confirmed on-chain 2026-09-16: ~$76,185, 5-minute resolution) - see `docs/research/oracle-design.md` for the full verified recommendation (Pyth primary, Reflector secondary; DIA parked - its documented testnet contract doesn't exist on-chain)
+- Consistent oracle standards (SEP-40) across the Stellar DeFi ecosystem still reduce the attack surface for oracle manipulation, independent of which specific provider is used
 
 ---
 
@@ -122,7 +123,7 @@ For Phase 2+, Writz could offer multiple USDC pool tiers with different risk/rew
 
 1. **Stellar USDC is ideal** - native issuance by Circle, $500M/month volume, real institutional liquidity
 2. **Blend is complementary, not a competitor** - Blend has no BTC and no privacy; Writz fills the gap
-3. **RedStone + SEP-40 is the oracle standard** - align with the broader Stellar DeFi ecosystem
+3. **SEP-40 is the oracle standard** - align with the broader Stellar DeFi ecosystem; see `docs/research/oracle-design.md` for the corrected provider choice (Pyth + DIA, not RedStone - Blend itself uses Reflector, not RedStone)
 4. **Protocol-owned liquidity is the best bootstrap mechanism** - use initial grants to seed the pool
 5. **Institutional USDC lenders are a realistic target** - compliance-friendly privacy attracts institutional capital
 6. **Independent pools required** - ZK position privacy cannot be retrofitted onto Blend's architecture
@@ -130,4 +131,4 @@ For Phase 2+, Writz could offer multiple USDC pool tiers with different risk/rew
 ---
 
 *Last updated: 2026-06-22*
-*Sources: [Blend Protocol Introduction](https://medium.com/script3/introducing-blend-95aaf66bdf41) · [Blend Contracts v2](https://github.com/blend-capital/blend-contracts-v2) · [RedStone on Stellar](https://blog.redstone.finance/2026/03/04/stellar-finally-gets-the-oracle-infrastructure-it-deserves/) · [Stellar DeFi Overview](https://stellar.org/blog/ecosystem/what-the-defi-is-happening-on-stellar)*
+*Sources: [Blend Protocol Introduction](https://medium.com/script3/introducing-blend-95aaf66bdf41) · [Blend Contracts v2](https://github.com/blend-capital/blend-contracts-v2) · [Stellar Oracle Providers](https://developers.stellar.org/docs/data/oracles/oracle-providers) · [Stellar DeFi Overview](https://stellar.org/blog/ecosystem/what-the-defi-is-happening-on-stellar)*

@@ -81,7 +81,7 @@ pub struct Config {
     pub spv_contract: Address,
     /// Address of the USDC Stellar Asset Contract on this network.
     pub usdc_token: Address,
-    /// Address of the SEP-40 BTC/USD price oracle (RedStone primary).
+    /// Address of the SEP-40 BTC/USD price oracle (Pyth primary, see docs/research/oracle-design.md).
     pub oracle: Address,
     /// Trusted keeper address for Phase 1 liquidations.
     pub keeper: Address,

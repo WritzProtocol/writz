@@ -1,6 +1,6 @@
 # Quick Start
 
-The core lending and verification logic in this repository is working code, not a mockup: the contracts are deployed on Soroban testnet, the tests pass, and the deposit → borrow → repay ZK flow has run end-to-end on-chain (see `docs/developers/runbook.md`). One known placeholder: `get_btc_price_stroops` in `private-lend/src/oracle.rs` returns a hardcoded price pending the real SEP-40/RedStone integration (tracked in `docs/roadmap/phases.md`) - it does not affect the SPV, ZK, or lending-mechanics logic below, but position pricing is not yet live-market-driven. Start here and have something running in under 5 minutes.
+The core lending and verification logic in this repository is working code, not a mockup: the contracts are deployed on Soroban testnet, the tests pass, and the deposit → borrow → repay ZK flow has run end-to-end on-chain (see `docs/developers/runbook.md`). One known placeholder: `get_btc_price_stroops` in `private-lend/src/oracle.rs` returns a hardcoded price pending the real SEP-40 oracle integration (Pyth + Reflector - tracked in `docs/roadmap/phases.md`) - it does not affect the SPV, ZK, or lending-mechanics logic below, but position pricing is not yet live-market-driven. Start here and have something running in under 5 minutes.
 
 ---
 

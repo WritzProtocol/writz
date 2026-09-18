@@ -15,7 +15,7 @@
 | `bitcoin-spv` Soroban contract | Stellar on-chain | Trustless - Soroban VM |
 | `private-lend` Soroban contract | Stellar on-chain | Trustless - Soroban VM |
 | Writz SPV relayer | Off-chain service | Untrusted - convenience only |
-| RedStone oracle | Off-chain + on-chain | Partially trusted |
+| Pyth / Reflector oracle | Off-chain + on-chain | Partially trusted |
 | Protocol co-signing key (HSM) | Off-chain | Trusted - Writz operator |
 | Liquidation keeper | Off-chain | Trusted - Phase 1 |
 | User Bitcoin wallet (Xverse) | Client-side | Untrusted |
@@ -46,7 +46,7 @@
         │         │         │
         │         │         │ BTC/USD price feed (SEP-40)
         │         │         ▼
-        │         │    [RedStone Oracle] ──────────────────── PARTIALLY TRUSTED
+        │         │    [Pyth / Reflector Oracle] ─────────────────── PARTIALLY TRUSTED
         │         │
         │    USDC transfer (Stellar Asset Contract)
         ▼         ▼
@@ -85,8 +85,8 @@
 **Threat:** An attacker manipulates the BTC/USD price fed to PrivateLend to artificially trigger liquidations or allow over-borrowing.
 
 **Mitigation:**
-- RedStone uses off-chain institutional price aggregation (30–60 publishers per feed). Cannot be manipulated by on-chain flash loans.
-- Phase 2 adds a second oracle (Pyth) and takes the median - requires compromising both simultaneously.
+- Pyth uses off-chain institutional price aggregation (30–60 publishers per feed). Cannot be manipulated by on-chain flash loans.
+- Phase 2 adds a second oracle (Reflector's external-prices instance) and takes the median - requires compromising both simultaneously. (Corrected 2026-09-16, on-chain verified: RedStone dropped as primary - Stellar isn't in its supported-chain list. DIA parked - its documented testnet contract address returns "contract not found" when queried directly. See `docs/research/oracle-design.md`.)
 - TWAP (time-weighted average price) delays as additional manipulation resistance considered for Phase 2.
 
 **Residual risk:** LOW for retail manipulation. Theoretical risk from compromised institutional publishers - mitigated by publisher diversity.

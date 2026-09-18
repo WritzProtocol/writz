@@ -164,8 +164,10 @@ Interest accrues continuously. Every position-touching call (borrow, repay, liqu
 
 Writz uses a multi-oracle approach for BTC/USD price feeds, with a **median aggregation** strategy to resist price manipulation.
 
-**Primary oracle:** RedStone (pull model, SEP-40 interface)  
-**Secondary oracle:** Pyth Network (pull model, SEP-40 interface)
+**Primary oracle:** Pyth Network (pull model, verifier contract - real cross-exchange BTC/USD)
+**Secondary oracle:** Reflector's external-prices instance (SEP-40 interface, `lastprice({"Other":"BTC"})`) - confirmed live on testnet with a real, updating BTC/USD price
+
+*(Corrected 2026-09-16, then re-verified by directly calling both contracts on testnet - see `docs/research/oracle-design.md`. RedStone was dropped: it doesn't list Stellar among its supported chains. DIA was parked: its documented testnet contract address returns "contract not found" when queried.)*
 
 **Staleness check:** Price data older than 60 minutes is rejected (corrected - previously stated 90 seconds; see `docs/research/oracle-design.md` for rationale). If both oracles are stale, borrowing and liquidation are paused until fresh prices are available.
 

@@ -39,7 +39,7 @@ impl PrivateLendContract {
     /// - `admin`          - Address that can update the keeper.
     /// - `spv_contract`   - Deployed `bitcoin-spv` Soroban contract address.
     /// - `usdc_token`     - USDC Stellar Asset Contract address.
-    /// - `oracle`         - SEP-40 BTC/USD oracle address (RedStone).
+    /// - `oracle`         - SEP-40 BTC/USD oracle address (Pyth, see docs/research/oracle-design.md).
     /// - `keeper`         - Trusted liquidation keeper (Phase 1).
     /// - `relayer`        - Auto-cosign relayer watcher address.
     pub fn initialize(

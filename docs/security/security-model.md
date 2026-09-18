@@ -151,8 +151,8 @@ If the BTC/USD price is manipulated downward:
 - Liquidations at the wrong price transfer BTC to liquidators at below-market value
 
 **Mitigations:**
-- Median of two independent oracles (RedStone + Pyth) - manipulating the median requires moving both
-- Staleness check: price data older than 60 minutes is rejected; liquidations are paused (aligned with `docs/research/oracle-design.md` - RedStone is a pull oracle, not a continuous push feed, so the threshold accounts for time between pulls, not just publish latency)
+- Median of two independent oracles (Pyth + Reflector - corrected 2026-09-16, then re-verified on-chain; RedStone dropped, DIA parked, see `docs/research/oracle-design.md`) - manipulating the median requires moving both
+- Staleness check: price data older than 60 minutes is rejected; liquidations are paused (aligned with `docs/research/oracle-design.md` - Pyth is a pull oracle, not a continuous push feed, so the threshold accounts for time between pulls, not just publish latency)
 - Progressive TVL caps limit the maximum exposure during early operation
 
 ### "A bug exists in the Soroban contracts"

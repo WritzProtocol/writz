@@ -95,7 +95,7 @@ Protocol X-Ray (Protocol 25, January 2026) added BN254 elliptic curve operations
 
 - **SPV Relayer** (Node.js): REST API that fetches Bitcoin block headers + Merkle proofs from Blockstream Esplora. Writz-operated for Phase 1, decentralized in Phase 2. Stateless SPV means the relayer is a convenience service, not a protocol dependency.
 - **P2WSH library** (TypeScript): generates deposit addresses, builds PSBTs for both spending paths, signs with the protocol key. Used by the frontend and backend.
-- **Oracle** (SEP-40): RedStone primary, Pyth secondary, median of both for manipulation resistance. Phase 1 uses a stub; Phase 2 wires real feeds.
+- **Oracle** (SEP-40): Pyth primary, Reflector secondary, median of both for manipulation resistance. Phase 1 uses a stub; Phase 2 wires real feeds. (Corrected 2026-09-16, on-chain verified - RedStone dropped, DIA parked pending a working contract address, see `docs/research/oracle-design.md`.)
 
 ---
 
