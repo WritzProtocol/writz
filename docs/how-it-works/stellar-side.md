@@ -169,13 +169,15 @@ Writz uses a multi-oracle approach for BTC/USD price feeds, with a **median aggr
 
 *(Corrected 2026-09-16, then re-verified by directly calling both contracts on testnet - see `docs/research/oracle-design.md`. RedStone was dropped: it doesn't list Stellar among its supported chains. DIA was parked: its documented testnet contract address returns "contract not found" when queried.)*
 
-**Staleness check:** Price data older than 60 minutes is rejected (corrected - previously stated 90 seconds; see `docs/research/oracle-design.md` for rationale). If both oracles are stale, borrowing and liquidation are paused until fresh prices are available.
+**Staleness check:** Price data older than 60 minutes is rejected (corrected - previously stated 90 seconds; see `docs/research/oracle-design.md` for rationale). At full design maturity, borrowing and liquidation pause when both oracles are stale.
+
+**Interim status (2026-09-17):** only Reflector is wired into `private-lend` today - see `contracts/contracts/private-lend/src/oracle.rs`. There is no median yet, so "both oracles stale" does not apply; a stale or unavailable Reflector price alone currently blocks the calling operation (`OraclePriceStale`/`OraclePriceUnavailable`) rather than silently mispricing. Do not treat this as the finished manipulation-resistance story until Pyth is also wired - see `docs/security/security-model.md` for the same caveat.
 
 **Manipulation resistance:**
 - Median of two oracles: a single oracle manipulation requires moving the median
 - Liquidation smoothing: large liquidations can be executed in tranches to prevent single-block oracle manipulation attacks
 
-**SEP-40 interface:** The oracle stub in both contracts follows the Stellar SEP-40 standard interface. Switching oracle providers requires only updating the oracle contract address - no changes to lending logic.
+**SEP-40 interface:** `private-lend` calls a real Reflector oracle live over the Stellar SEP-40 standard interface (`contracts/contracts/private-lend/src/oracle.rs`); `commitment-tree` still uses a hardcoded stub, deliberately, because its ZK circuits cannot yet tolerate a live, moving price (see `contracts/contracts/spv-types/src/lib.rs`). For `private-lend`, switching oracle providers requires only updating the oracle contract address - no changes to lending logic.
 
 ---
 

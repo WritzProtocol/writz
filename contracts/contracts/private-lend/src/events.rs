@@ -81,3 +81,14 @@ pub struct PausedSetEvent {
     pub admin:  Address,
     pub paused: bool,
 }
+
+/// Emitted when the admin changes the oracle contract address.
+/// Since `get_btc_price_stroops` calls this address live for every
+/// price-dependent operation, a change here is a change in real collateral
+/// pricing and should be observable off-chain - see `set_oracle`.
+#[contractevent(topics = ["oracle_set"])]
+pub struct OracleSetEvent {
+    #[topic]
+    pub admin:      Address,
+    pub new_oracle: Address,
+}

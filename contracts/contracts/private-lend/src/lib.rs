@@ -13,8 +13,8 @@ mod test;
 
 use error::PrivateLendError;
 use events::{
-    BorrowEvent, DepositEvent, LiquidateEvent, PausedSetEvent, RepayEvent, RepayFullEvent,
-    SupplyEvent, WithdrawEvent,
+    BorrowEvent, DepositEvent, LiquidateEvent, OracleSetEvent, PausedSetEvent, RepayEvent,
+    RepayFullEvent, SupplyEvent, WithdrawEvent,
 };
 use oracle::{collateral_value_stroops, get_btc_price_stroops, health_ratio_bp};
 use rates::{borrow_rate_bp, interest_delta, supply_rate_bp};
@@ -532,8 +532,9 @@ impl PrivateLendContract {
     /// immediately, including for any `borrow`/`liquidate`/
     /// `get_health_ratio_bp` call already in flight in the same ledger.
     /// Point this at a contract that does not genuinely speak Reflector's
-    /// `lastprice`/`decimals` shape and every price-dependent call starts
-    /// failing with `OraclePriceUnavailable` rather than silently
+    /// `lastprice`/`decimals` shape and price-dependent calls trap with a
+    /// host error (or return `OraclePriceUnavailable` if the contract
+    /// exists but reports no price) - both fail closed, neither silently
     /// mispricing - see `oracle.rs`.
     pub fn set_oracle(
         env: Env,
@@ -545,8 +546,9 @@ impl PrivateLendContract {
         if caller != config.admin {
             return Err(PrivateLendError::Unauthorized);
         }
-        config.oracle = new_oracle;
+        config.oracle = new_oracle.clone();
         set_config(&env, &config);
+        OracleSetEvent { admin: caller, new_oracle }.publish(&env);
         Ok(())
     }
 

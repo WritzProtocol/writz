@@ -123,7 +123,7 @@ For Phase 2+, Writz could offer multiple USDC pool tiers with different risk/rew
 
 1. **Stellar USDC is ideal** - native issuance by Circle, $500M/month volume, real institutional liquidity
 2. **Blend is complementary, not a competitor** - Blend has no BTC and no privacy; Writz fills the gap
-3. **SEP-40 is the oracle standard** - align with the broader Stellar DeFi ecosystem; see `docs/research/oracle-design.md` for the corrected provider choice (Pyth + DIA, not RedStone - Blend itself uses Reflector, not RedStone)
+3. **SEP-40 is the oracle standard** - align with the broader Stellar DeFi ecosystem; see `docs/research/oracle-design.md` for the corrected provider choice (Pyth + Reflector, not RedStone - Blend itself uses Reflector, not RedStone; DIA was parked, not chosen)
 4. **Protocol-owned liquidity is the best bootstrap mechanism** - use initial grants to seed the pool
 5. **Institutional USDC lenders are a realistic target** - compliance-friendly privacy attracts institutional capital
 6. **Independent pools required** - ZK position privacy cannot be retrofitted onto Blend's architecture

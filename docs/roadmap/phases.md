@@ -103,13 +103,13 @@ Research    ──►  Foundation  ──►  Launch      ──►  Scale
 - Update co-signing key architecture using `delegate_account_auth`
 - Update SDK imports (breaking change in `@stellar/stellar-sdk`)
 
-**Oracle integration (mainnet-blocking, not yet started):**
-- `get_btc_price_stroops` in `contracts/contracts/private-lend/src/oracle.rs` still returns a hardcoded `STUB_PRICE_STROOPS_PER_BTC` (`TODO Phase 2` in the code) - this is a hard dependency for real liquidations and has no owner or target date yet
+**Oracle integration (mainnet-blocking, partially complete):**
 - **Reflector wired for `private-lend` (2026-09-17)** - `get_btc_price_stroops` calls Reflector's external-prices instance live; see `contracts/contracts/private-lend/src/oracle.rs`. `commitment-tree` still stubbed, blocked on a circuit-level change (see `docs/research/oracle-design.md`).
+- `get_btc_price_stroops` in `contracts/contracts/spv-types/src/lib.rs` (used only by `commitment-tree` now) still returns a hardcoded `STUB_PRICE_STROOPS_PER_BTC` - this remains deliberate, not a TODO, because `commitment-tree`'s ZK circuits commit to an exact `btc_price` public signal with no tolerance window; see that file's doc comment. Wiring a real oracle in there still has no owner or target date.
 - **Still open:** Pyth cross-contract call not yet wired anywhere - `private-lend` is single-source until it is.
 - **This also unblocks `commitment-tree` liquidation.** With the current fixed-price stub and no ZK-compatible accrual mechanism, no position can legitimately move from the ≥150% ratio `borrow` requires down to the &lt;120% `liquidate` requires - see `docs/security/security-model.md`, "Keeper model and liquidation permissionlessness"
-- Implement the 60-minute staleness check and "price paused" fallback state described in `docs/research/oracle-design.md` and `docs/security/security-model.md` - neither exists in code today
-- **Do not schedule a mainnet date until this has an owner and a start date.**
+- The 60-minute staleness check now exists in code for `private-lend` (`MAX_PRICE_STALENESS_SECS` in `contracts/contracts/private-lend/src/oracle.rs`). It still needs implementing for `commitment-tree` once that crate gets a real oracle, and the "price paused" fallback state described in `docs/research/oracle-design.md` and `docs/security/security-model.md` does not exist anywhere yet.
+- **Do not schedule a mainnet date until `commitment-tree`'s oracle work has an owner and a start date.**
 
 **ZK circuits, production prep:**
 - Trusted setup ceremony: Powers of Tau Phase 2 for all 3 circuits (plus `zero_debt`, per `docs/scf/milestone-plan.md`)

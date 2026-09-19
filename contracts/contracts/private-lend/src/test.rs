@@ -74,10 +74,10 @@ impl MockReflector {
 
 /// Same price as `MockReflector` but at 7 decimals instead of 14, with the
 /// raw price already in USDC-stroops units (no scaling needed) - exercises
-/// the `decimals < USDC_DECIMALS`... no, `decimals == USDC_DECIMALS` branch
-/// of `get_btc_price_stroops`'s conversion math with a different value than
-/// the default mock, proving the scaling reads `decimals()` live rather
-/// than assuming 14.
+/// the `decimals >= USDC_DECIMALS` branch of `get_btc_price_stroops`'s
+/// conversion math at the `decimals == USDC_DECIMALS` boundary, where the
+/// divisor is `10^0 = 1` (no actual scaling), proving the scaling reads
+/// `decimals()` live rather than assuming 14.
 #[contract]
 struct MockReflectorSevenDecimals;
 
@@ -95,6 +95,32 @@ impl MockReflectorSevenDecimals {
 
     pub fn decimals(_env: Env) -> u32 {
         7
+    }
+}
+
+/// Exercises the decimals < USDC_DECIMALS (multiply) branch of
+/// get_btc_price_stroops's scaling math - no existing mock does, since
+/// Reflector's real decimals() (14) and the USDC_DECIMALS constant (7)
+/// both take the >= branch. price=6_000_000 at decimals=2 scales to
+/// 6_000_000 * 10^(7-2) = 600_000_000_000 stroops/BTC, the same effective
+/// price every other mock in this file uses.
+#[contract]
+struct MockReflectorTwoDecimals;
+
+#[contractimpl]
+impl MockReflectorTwoDecimals {
+    pub fn lastprice(
+        env: Env,
+        _asset: crate::oracle::Asset,
+    ) -> Option<crate::oracle::PriceData> {
+        Some(crate::oracle::PriceData {
+            price: 6_000_000,
+            timestamp: env.ledger().timestamp(),
+        })
+    }
+
+    pub fn decimals(_env: Env) -> u32 {
+        2
     }
 }
 
@@ -755,6 +781,33 @@ fn borrow_succeeds_with_a_seven_decimal_oracle() {
     // `health_ratio_at_150_pct_after_max_borrow` - borrowing the same
     // 2_000_000_000 should land at the same 150% health ratio, proving the
     // 7-decimal path produces an identical result to the 14-decimal path.
+    s.client.borrow(&s.depositor, &txid, &2_000_000_000_i128);
+    let health = s.client.get_health_ratio_bp(&txid);
+    assert_eq!(health, 15_000);
+}
+
+#[test]
+fn borrow_succeeds_with_a_two_decimal_oracle() {
+    let s = setup();
+    let txid = s.client.deposit(
+        &s.depositor,
+        &fake_headers(&s.env),
+        &fake_proof(&s.env),
+        &0,
+        &s.raw_tx,
+        &s.spk,
+        &2_000_000,
+        &fake_user_pubkey(&s.env),
+    );
+    s.client.supply_usdc(&s.supplier, &1_000_000_000_000_i128);
+
+    let two_decimal_oracle = s.env.register(MockReflectorTwoDecimals, ());
+    s.client.set_oracle(&s.admin, &two_decimal_oracle);
+
+    // Same effective price (600_000_000_000 stroops/BTC) as every other
+    // oracle-decimals test in this file, via the multiply branch this
+    // time (decimals=2 < USDC_DECIMALS=7) - proves that branch is correct
+    // too, not just the divide branch every other mock exercises.
     s.client.borrow(&s.depositor, &txid, &2_000_000_000_i128);
     let health = s.client.get_health_ratio_bp(&txid);
     assert_eq!(health, 15_000);
