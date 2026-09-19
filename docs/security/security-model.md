@@ -152,6 +152,8 @@ If the BTC/USD price is manipulated downward:
 
 **Mitigations:**
 - Median of two independent oracles (Pyth + Reflector - corrected 2026-09-16, then re-verified on-chain; RedStone dropped, DIA parked, see `docs/research/oracle-design.md`) - manipulating the median requires moving both
+
+**Interim status (2026-09-17):** only Reflector is wired into `private-lend` today - see `contracts/contracts/private-lend/src/oracle.rs`. There is no median yet; a single misbehaving or unavailable Reflector feed currently blocks (via `OraclePriceStale`/`OraclePriceUnavailable`) rather than silently mispricing, but it cannot yet be cross-checked against a second source the way the target design requires. Do not treat this as the finished manipulation-resistance story until Pyth is also wired.
 - Staleness check: price data older than 60 minutes is rejected; liquidations are paused (aligned with `docs/research/oracle-design.md` - Pyth is a pull oracle, not a continuous push feed, so the threshold accounts for time between pulls, not just publish latency)
 - Progressive TVL caps limit the maximum exposure during early operation
 

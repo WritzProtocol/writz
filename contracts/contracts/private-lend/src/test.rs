@@ -200,6 +200,10 @@ struct Setup {
     relayer: Address,
     client: PrivateLendContractClient<'static>,
     usdc: Address,
+    /// Default mock Reflector oracle's address, kept for any future test
+    /// that wants to switch back to it after swapping in a different mock
+    /// via `set_oracle` - none of the current tests read it back.
+    #[allow(dead_code)]
     oracle: Address,
     /// The 34-byte P2WSH scriptPubKey used in test deposit transactions.
     spk: Bytes,
