@@ -38,6 +38,10 @@ pub struct PriceData {
 /// Minimal client for the subset of Reflector's SEP-40 interface this
 /// contract needs. `#[contractclient]` generates `ReflectorClient` with a
 /// `new(env, address)` constructor and one method per trait function below.
+/// Only consumed via the #[contractclient] macro below, which generates
+/// ReflectorClient - rustc's dead_code lint doesn't see that as a use of
+/// this trait declaration itself.
+#[allow(dead_code)]
 #[contractclient(name = "ReflectorClient")]
 pub trait ReflectorInterface {
     fn lastprice(env: Env, asset: Asset) -> Option<PriceData>;
