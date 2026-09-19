@@ -55,7 +55,7 @@ Research    ──►  Foundation  ──►  Launch      ──►  Scale
 | **bitcoin-spv contract** | 49/49 tests. SHA256d, Merkle proofs, PoW validation. Deployed: `CB2BD6QCSZVNZN5NLI7C5NF356WXVJDSXT6LVAQFWHHS4SZ4NCKKNIVA` |
 | **zk-verifier contract** | 25/25 tests. Groth16 BN254 via Protocol 26 host functions. All 3 VKs set. Deployed: `CBNZU23QGCZATJB2QMNF2K6IST2SVP7FSGCKASQNBULTWDWGANDBYLFY` |
 | **commitment-tree contract** | 32/32 tests. Full ZK cycle verified on-chain. Deployed: `CDQCTFO3FK3M47QS47O2A4WLNPSQAQBSXBFPJ6RZEHFO5D7RY34FSBBP` |
-| **private-lend contract** | 85/85 tests. Non-ZK skeleton with kinked interest model. Deployed: `CAAWVMDRUPEJNELSQ6RU2VMVX5EJLQ2E77T7IXDWGMW4DGSNAGECGSWR` |
+| **private-lend contract** | 89/89 tests. Non-ZK skeleton with kinked interest model. Deployed: `CAAWVMDRUPEJNELSQ6RU2VMVX5EJLQ2E77T7IXDWGMW4DGSNAGECGSWR` |
 | **ZK circuits** | 29/29 tests. All 3 circuits compiled (Circom 2.2.3). Dev keys generated. |
 | **Relayer service** | 122/122 tests. REST API: `GET /spv-proof/:txid`. Esplora-backed. |
 | **Bitcoin script toolkit** | 60/60 tests. P2WSH generation, PSBT signing, witness assembly. |

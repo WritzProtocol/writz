@@ -80,7 +80,7 @@ Lending logic above the SPV layer. Key design decisions:
 - **Kinked interest rate model**: base=0%, Uoptimal=75%, slope1=8%, slope2=200%, protocol fee=15%
 - **Phase 1 liquidation**: trusted keeper detects undercollateralized positions and submits; Phase 2 uses ZK proof of undercollateralization
 
-Current state: 85 tests passing, 36.0 KB WASM, 26 exported functions.
+Current state: 89 tests passing, 36.0 KB WASM, 26 exported functions.
 
 ### Layer 4 - ZK privacy layer (Phase 2)
 
@@ -107,7 +107,7 @@ Deep understanding of the full technical stack: Bitcoin scripting (P2WSH, PSBT, 
 
 The protocol concept, architecture, research, and all current code were produced by Sebastian. The research phase (15 documents, covering SPV implementations, oracle design, interest rate modeling, ZK circuit architecture, regulatory landscape, and more) preceded any code, establishing deep domain knowledge before building.
 
-**Current state:** All Phase 0 research complete. Phase 1 foundation complete: SPV contract deployed on testnet, SPV relayer operational, P2WSH library with 60 tests, PrivateLend skeleton with 85 tests.
+**Current state:** All Phase 0 research complete. Phase 1 foundation complete: SPV contract deployed on testnet, SPV relayer operational, P2WSH library with 60 tests, PrivateLend skeleton with 89 tests.
 
 **Planned team growth with grant:** The $92K grant funds one additional Rust/Soroban developer for the ZK circuit implementation sprint (Phase 2) and frontend development (Phase 2–3).
 

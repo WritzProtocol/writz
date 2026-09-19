@@ -99,12 +99,33 @@ const COUNT_RE = /\b(\d+)(?:\s*\/\s*\d+)?\s+(?:unit\s+|integration\s+)?tests?\b/
 // "unknown" to it.
 const defindexVaultMdPath = path.join(repoRoot, "contracts/deployments/defindex-vault-testnet.md");
 
+// oracle-design.md and blend-usdc-integration.md document third-party price
+// oracle contracts (Reflector, Pyth, DIA) verified on-chain via
+// contracts/scripts/verify-oracles.sh - same "external addresses" situation
+// as the DeFindex file above, not Writz-authored deployments.
+const oracleDesignMdPath = path.join(repoRoot, "docs/research/oracle-design.md");
+const blendUsdcIntegrationMdPath = path.join(repoRoot, "docs/research/blend-usdc-integration.md");
+
 const skipForCounts = new Set([testnetMdPath]); // deployment log has no test-count claims to check
-const skipForAddresses = new Set([testnetMdPath, defindexVaultMdPath]); // testnetMd IS the source of truth; the DeFindex file records external addresses
+const skipForAddresses = new Set([
+  testnetMdPath,
+  defindexVaultMdPath,
+  oracleDesignMdPath,
+  blendUsdcIntegrationMdPath,
+]); // testnetMd IS the source of truth; these others record external addresses
+
+// docs/superpowers/plans/ holds point-in-time implementation plans, not
+// living documentation - they legitimately cite external addresses (or
+// other facts) verified at plan-writing time that this checker has no way
+// to know about, and aren't meant to be retroactively edited as things
+// change. Skip the whole directory for both checks.
+const plansDirPath = path.join(repoRoot, "docs/superpowers/plans") + path.sep;
 
 let errors = 0;
 
 for (const file of walk(repoRoot)) {
+  if (file.startsWith(plansDirPath)) continue;
+
   const rel = path.relative(repoRoot, file);
   const content = readFileSync(file, "utf8");
   const lines = content.split("\n");
