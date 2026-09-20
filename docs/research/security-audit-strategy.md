@@ -117,7 +117,7 @@ pub struct PoolState {
 **What it is:** If the BTC price oracle can be manipulated (even temporarily), an attacker can trigger artificial liquidations or borrow more USDC than their BTC is worth.
 
 **Writz mitigation:**
-- Multi-oracle median (RedStone + Pyth)
+- Multi-oracle median (Pyth + Reflector - see `docs/research/oracle-design.md` for why RedStone was dropped and DIA was parked)
 - Staleness check: reject prices >60 minutes old
 - Price deviation check: reject if sources disagree by >5%
 - Liquidation smoothing: use min(current, 5-min-ago price) for liquidations

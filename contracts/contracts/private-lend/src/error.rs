@@ -39,4 +39,10 @@ pub enum PrivateLendError {
     /// refused. Existing positions can still repay, withdraw, liquidate, and
     /// release BTC; a pause only blocks new risk-taking.
     Paused = 17,
+    /// The oracle returned no price for BTC/USD, or its raw price converted
+    /// to a zero or negative USDC-stroops value.
+    OraclePriceUnavailable = 18,
+    /// The oracle's last price update is older than
+    /// `oracle::MAX_PRICE_STALENESS_SECS`.
+    OraclePriceStale = 19,
 }

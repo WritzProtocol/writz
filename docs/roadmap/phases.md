@@ -55,7 +55,7 @@ Research    ──►  Foundation  ──►  Launch      ──►  Scale
 | **bitcoin-spv contract** | 49/49 tests. SHA256d, Merkle proofs, PoW validation. Deployed: `CB2BD6QCSZVNZN5NLI7C5NF356WXVJDSXT6LVAQFWHHS4SZ4NCKKNIVA` |
 | **zk-verifier contract** | 25/25 tests. Groth16 BN254 via Protocol 26 host functions. All 3 VKs set. Deployed: `CBNZU23QGCZATJB2QMNF2K6IST2SVP7FSGCKASQNBULTWDWGANDBYLFY` |
 | **commitment-tree contract** | 32/32 tests. Full ZK cycle verified on-chain. Deployed: `CDQCTFO3FK3M47QS47O2A4WLNPSQAQBSXBFPJ6RZEHFO5D7RY34FSBBP` |
-| **private-lend contract** | 85/85 tests. Non-ZK skeleton with kinked interest model. Deployed: `CAAWVMDRUPEJNELSQ6RU2VMVX5EJLQ2E77T7IXDWGMW4DGSNAGECGSWR` |
+| **private-lend contract** | 89/89 tests. Non-ZK skeleton with kinked interest model. Deployed: `CAAWVMDRUPEJNELSQ6RU2VMVX5EJLQ2E77T7IXDWGMW4DGSNAGECGSWR` |
 | **ZK circuits** | 29/29 tests. All 3 circuits compiled (Circom 2.2.3). Dev keys generated. |
 | **Relayer service** | 122/122 tests. REST API: `GET /spv-proof/:txid`. Esplora-backed. |
 | **Bitcoin script toolkit** | 60/60 tests. P2WSH generation, PSBT signing, witness assembly. |
@@ -103,12 +103,13 @@ Research    ──►  Foundation  ──►  Launch      ──►  Scale
 - Update co-signing key architecture using `delegate_account_auth`
 - Update SDK imports (breaking change in `@stellar/stellar-sdk`)
 
-**Oracle integration (mainnet-blocking, not yet started):**
-- `get_btc_price_stroops` in `contracts/contracts/private-lend/src/oracle.rs` still returns a hardcoded `STUB_PRICE_STROOPS_PER_BTC` (`TODO Phase 2` in the code) - this is a hard dependency for real liquidations and has no owner or target date yet
-- Wire real SEP-40 cross-contract call to RedStone (primary) + Pyth (secondary), median aggregation per `docs/research/oracle-design.md`
+**Oracle integration (mainnet-blocking, partially complete):**
+- **Reflector wired for `private-lend` (2026-09-17)** - `get_btc_price_stroops` calls Reflector's external-prices instance live; see `contracts/contracts/private-lend/src/oracle.rs`. `commitment-tree` still stubbed, blocked on a circuit-level change (see `docs/research/oracle-design.md`).
+- `get_btc_price_stroops` in `contracts/contracts/spv-types/src/lib.rs` (used only by `commitment-tree` now) still returns a hardcoded `STUB_PRICE_STROOPS_PER_BTC` - this remains deliberate, not a TODO, because `commitment-tree`'s ZK circuits commit to an exact `btc_price` public signal with no tolerance window; see that file's doc comment. Wiring a real oracle in there still has no owner or target date.
+- **Still open:** Pyth cross-contract call not yet wired anywhere - `private-lend` is single-source until it is.
 - **This also unblocks `commitment-tree` liquidation.** With the current fixed-price stub and no ZK-compatible accrual mechanism, no position can legitimately move from the ≥150% ratio `borrow` requires down to the &lt;120% `liquidate` requires - see `docs/security/security-model.md`, "Keeper model and liquidation permissionlessness"
-- Implement the 60-minute staleness check and "price paused" fallback state described in `docs/research/oracle-design.md` and `docs/security/security-model.md` - neither exists in code today
-- **Do not schedule a mainnet date until this has an owner and a start date.**
+- The 60-minute staleness check now exists in code for `private-lend` (`MAX_PRICE_STALENESS_SECS` in `contracts/contracts/private-lend/src/oracle.rs`). It still needs implementing for `commitment-tree` once that crate gets a real oracle, and the "price paused" fallback state described in `docs/research/oracle-design.md` and `docs/security/security-model.md` does not exist anywhere yet.
+- **Do not schedule a mainnet date until `commitment-tree`'s oracle work has an owner and a start date.**
 
 **ZK circuits, production prep:**
 - Trusted setup ceremony: Powers of Tau Phase 2 for all 3 circuits (plus `zero_debt`, per `docs/scf/milestone-plan.md`)
@@ -168,7 +169,7 @@ Research    ──►  Foundation  ──►  Launch      ──►  Scale
 ### Phase 2 Exit Criteria
 
 - [ ] Legal entity formed and operating (hard gate before real-fund mainnet launch - see "Mainnet launch (gated)" above; not yet started, funding source unresolved)
-- [ ] Real oracle integration live (RedStone + Pyth median, staleness check) - replaces the current hardcoded stub; no owner or date assigned yet
+- [ ] Real oracle integration live (Pyth + Reflector median, staleness check) - replaces the current hardcoded stub; no owner or date assigned yet
 - [ ] Trusted setup ceremony: 5+ independent participants identified and ceremony run - participants not yet identified
 - [ ] Key-person / bus-factor mitigation plan in place, independent of SCF funding
 - [ ] Mainnet deployment with passing Audit Bank audit (0 critical findings) - contingent on resolving the Audit Bank/SCF gating dependency above

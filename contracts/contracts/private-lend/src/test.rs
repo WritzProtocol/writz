@@ -11,6 +11,7 @@ use soroban_sdk::{
 use spv_types::SpvVerificationResult;
 
 use crate::{
+    error::PrivateLendError,
     types::{Position, PositionStatus},
     PrivateLendContract, PrivateLendContractClient,
 };
@@ -37,6 +38,130 @@ impl MockSpv {
             block_hash: BytesN::from_array(&env, &[0xadu8; 32]),
             confirmations: 6,
         }
+    }
+}
+
+// ── Mock Reflector oracle ──────────────────────────────────────────────────
+// Mirrors the real Reflector external-prices instance's confirmed shape
+// (decimals=14, see docs/research/oracle-design.md and
+// contracts/scripts/verify-oracles.sh). The price is scaled so it converts
+// to exactly 600_000_000_000 USDC-stroops-per-BTC -
+// 6_000_000_000_000_000_000 / 10^(14-7) = 600_000_000_000 - the same value
+// this test suite's collateral math was already written against under the
+// old stub, so no existing assertion needs to change.
+//
+// Returns the *current* ledger timestamp on every call, not a fixed one, so
+// the price never goes stale no matter how far other tests advance
+// `env.ledger().timestamp()` - tests that need a stale or missing price use
+// the dedicated mocks below instead.
+
+#[contract]
+struct MockReflector;
+
+#[contractimpl]
+impl MockReflector {
+    pub fn lastprice(env: Env, _asset: crate::oracle::Asset) -> Option<crate::oracle::PriceData> {
+        Some(crate::oracle::PriceData {
+            price: 6_000_000_000_000_000_000,
+            timestamp: env.ledger().timestamp(),
+        })
+    }
+
+    pub fn decimals(_env: Env) -> u32 {
+        14
+    }
+}
+
+/// Same price as `MockReflector` but at 7 decimals instead of 14, with the
+/// raw price already in USDC-stroops units (no scaling needed) - exercises
+/// the `decimals >= USDC_DECIMALS` branch of `get_btc_price_stroops`'s
+/// conversion math at the `decimals == USDC_DECIMALS` boundary, where the
+/// divisor is `10^0 = 1` (no actual scaling), proving the scaling reads
+/// `decimals()` live rather than assuming 14.
+#[contract]
+struct MockReflectorSevenDecimals;
+
+#[contractimpl]
+impl MockReflectorSevenDecimals {
+    pub fn lastprice(
+        env: Env,
+        _asset: crate::oracle::Asset,
+    ) -> Option<crate::oracle::PriceData> {
+        Some(crate::oracle::PriceData {
+            price: 600_000_000_000,
+            timestamp: env.ledger().timestamp(),
+        })
+    }
+
+    pub fn decimals(_env: Env) -> u32 {
+        7
+    }
+}
+
+/// Exercises the decimals < USDC_DECIMALS (multiply) branch of
+/// get_btc_price_stroops's scaling math - no existing mock does, since
+/// Reflector's real decimals() (14) and the USDC_DECIMALS constant (7)
+/// both take the >= branch. price=6_000_000 at decimals=2 scales to
+/// 6_000_000 * 10^(7-2) = 600_000_000_000 stroops/BTC, the same effective
+/// price every other mock in this file uses.
+#[contract]
+struct MockReflectorTwoDecimals;
+
+#[contractimpl]
+impl MockReflectorTwoDecimals {
+    pub fn lastprice(
+        env: Env,
+        _asset: crate::oracle::Asset,
+    ) -> Option<crate::oracle::PriceData> {
+        Some(crate::oracle::PriceData {
+            price: 6_000_000,
+            timestamp: env.ledger().timestamp(),
+        })
+    }
+
+    pub fn decimals(_env: Env) -> u32 {
+        2
+    }
+}
+
+#[contract]
+struct MockReflectorNoPrice;
+
+#[contractimpl]
+impl MockReflectorNoPrice {
+    pub fn lastprice(
+        _env: Env,
+        _asset: crate::oracle::Asset,
+    ) -> Option<crate::oracle::PriceData> {
+        None
+    }
+
+    pub fn decimals(_env: Env) -> u32 {
+        14
+    }
+}
+
+/// Always reports a fixed timestamp of 0, regardless of when it's called -
+/// paired with advancing `env.ledger().timestamp()` past
+/// `oracle::MAX_PRICE_STALENESS_SECS` in a test, this simulates an oracle
+/// that stopped updating.
+#[contract]
+struct MockReflectorStale;
+
+#[contractimpl]
+impl MockReflectorStale {
+    pub fn lastprice(
+        _env: Env,
+        _asset: crate::oracle::Asset,
+    ) -> Option<crate::oracle::PriceData> {
+        Some(crate::oracle::PriceData {
+            price: 6_000_000_000_000_000_000,
+            timestamp: 0,
+        })
+    }
+
+    pub fn decimals(_env: Env) -> u32 {
+        14
     }
 }
 
@@ -101,6 +226,11 @@ struct Setup {
     relayer: Address,
     client: PrivateLendContractClient<'static>,
     usdc: Address,
+    /// Default mock Reflector oracle's address, kept for any future test
+    /// that wants to switch back to it after swapping in a different mock
+    /// via `set_oracle` - none of the current tests read it back.
+    #[allow(dead_code)]
+    oracle: Address,
     /// The 34-byte P2WSH scriptPubKey used in test deposit transactions.
     spk: Bytes,
     /// Raw transaction bytes matching `spk` with 500_000 sats deposited.
@@ -127,14 +257,15 @@ fn setup() -> Setup {
     usdc_admin.mint(&supplier, &10_000_000_000_000_i128); // 1_000_000 USDC
     usdc_admin.mint(&keeper, &10_000_000_000_i128);       // 1_000 USDC
 
-    // Deploy mock SPV.
+    // Deploy mock SPV and mock Reflector oracle.
     let spv = env.register(MockSpv, ());
+    let oracle = env.register(MockReflector, ());
 
     // Deploy PrivateLend.
     let pl = env.register(PrivateLendContract, ());
     let client = PrivateLendContractClient::new(&env, &pl);
 
-    client.initialize(&admin, &spv, &usdc, &admin, &keeper, &relayer);
+    client.initialize(&admin, &spv, &usdc, &oracle, &keeper, &relayer);
 
     // Pre-build deposit transaction artifacts.
     let hash_byte = 0xabu8;
@@ -152,6 +283,7 @@ fn setup() -> Setup {
         relayer,
         client,
         usdc,
+        oracle,
         spk,
         raw_tx,
     }
@@ -569,6 +701,113 @@ fn health_ratio_at_150_pct_after_max_borrow() {
     // Borrow exactly at the limit.
     // collateral = 500_000 × 600_000_000_000 / 100_000_000 = 3_000_000_000
     // max_borrow = 3_000_000_000 × 10_000 / 15_000 = 2_000_000_000
+    s.client.borrow(&s.depositor, &txid, &2_000_000_000_i128);
+    let health = s.client.get_health_ratio_bp(&txid);
+    assert_eq!(health, 15_000);
+}
+
+// ── Oracle failure modes ────────────────────────────────────────────────────────
+
+#[test]
+fn borrow_fails_when_oracle_has_no_price() {
+    let s = setup();
+    let txid = s.client.deposit(
+        &s.depositor,
+        &fake_headers(&s.env),
+        &fake_proof(&s.env),
+        &0,
+        &s.raw_tx,
+        &s.spk,
+        &2_000_000,
+        &fake_user_pubkey(&s.env),
+    );
+    s.client.supply_usdc(&s.supplier, &1_000_000_000_000_i128);
+
+    let no_price_oracle = s.env.register(MockReflectorNoPrice, ());
+    s.client.set_oracle(&s.admin, &no_price_oracle);
+
+    let result = s.client.try_borrow(&s.depositor, &txid, &100_000_000_i128);
+    assert_eq!(
+        result,
+        Err(Ok(PrivateLendError::OraclePriceUnavailable))
+    );
+}
+
+#[test]
+fn borrow_fails_when_oracle_price_is_stale() {
+    let s = setup();
+    let txid = s.client.deposit(
+        &s.depositor,
+        &fake_headers(&s.env),
+        &fake_proof(&s.env),
+        &0,
+        &s.raw_tx,
+        &s.spk,
+        &2_000_000,
+        &fake_user_pubkey(&s.env),
+    );
+    s.client.supply_usdc(&s.supplier, &1_000_000_000_000_i128);
+
+    let stale_oracle = s.env.register(MockReflectorStale, ());
+    s.client.set_oracle(&s.admin, &stale_oracle);
+    s.env
+        .ledger()
+        .set_timestamp(crate::oracle::MAX_PRICE_STALENESS_SECS + 1);
+
+    let result = s.client.try_borrow(&s.depositor, &txid, &100_000_000_i128);
+    assert_eq!(result, Err(Ok(PrivateLendError::OraclePriceStale)));
+}
+
+#[test]
+fn borrow_succeeds_with_a_seven_decimal_oracle() {
+    let s = setup();
+    let txid = s.client.deposit(
+        &s.depositor,
+        &fake_headers(&s.env),
+        &fake_proof(&s.env),
+        &0,
+        &s.raw_tx,
+        &s.spk,
+        &2_000_000,
+        &fake_user_pubkey(&s.env),
+    );
+    s.client.supply_usdc(&s.supplier, &1_000_000_000_000_i128);
+
+    let seven_decimal_oracle = s.env.register(MockReflectorSevenDecimals, ());
+    s.client.set_oracle(&s.admin, &seven_decimal_oracle);
+
+    // Same collateral (500_000 sats) and same effective price
+    // (600_000_000_000 stroops/BTC) as the default-mock test at
+    // `health_ratio_at_150_pct_after_max_borrow` - borrowing the same
+    // 2_000_000_000 should land at the same 150% health ratio, proving the
+    // 7-decimal path produces an identical result to the 14-decimal path.
+    s.client.borrow(&s.depositor, &txid, &2_000_000_000_i128);
+    let health = s.client.get_health_ratio_bp(&txid);
+    assert_eq!(health, 15_000);
+}
+
+#[test]
+fn borrow_succeeds_with_a_two_decimal_oracle() {
+    let s = setup();
+    let txid = s.client.deposit(
+        &s.depositor,
+        &fake_headers(&s.env),
+        &fake_proof(&s.env),
+        &0,
+        &s.raw_tx,
+        &s.spk,
+        &2_000_000,
+        &fake_user_pubkey(&s.env),
+    );
+    s.client.supply_usdc(&s.supplier, &1_000_000_000_000_i128);
+
+    let two_decimal_oracle = s.env.register(MockReflectorTwoDecimals, ());
+    s.client.set_oracle(&s.admin, &two_decimal_oracle);
+
+    // Same effective price (600_000_000_000 stroops/BTC) as every other
+    // oracle-decimals test in this file, via the multiply branch this
+    // time (decimals=2 < USDC_DECIMALS=7) - proves that branch is correct
+    // too, not just the divide branch every other mock exercises.
     s.client.borrow(&s.depositor, &txid, &2_000_000_000_i128);
     let health = s.client.get_health_ratio_bp(&txid);
     assert_eq!(health, 15_000);

@@ -13,8 +13,8 @@ mod test;
 
 use error::PrivateLendError;
 use events::{
-    BorrowEvent, DepositEvent, LiquidateEvent, PausedSetEvent, RepayEvent, RepayFullEvent,
-    SupplyEvent, WithdrawEvent,
+    BorrowEvent, DepositEvent, LiquidateEvent, OracleSetEvent, PausedSetEvent, RepayEvent,
+    RepayFullEvent, SupplyEvent, WithdrawEvent,
 };
 use oracle::{collateral_value_stroops, get_btc_price_stroops, health_ratio_bp};
 use rates::{borrow_rate_bp, interest_delta, supply_rate_bp};
@@ -39,7 +39,10 @@ impl PrivateLendContract {
     /// - `admin`          - Address that can update the keeper.
     /// - `spv_contract`   - Deployed `bitcoin-spv` Soroban contract address.
     /// - `usdc_token`     - USDC Stellar Asset Contract address.
-    /// - `oracle`         - SEP-40 BTC/USD oracle address (RedStone).
+    /// - `oracle`         - Reflector's external-prices SEP-40 oracle address
+    ///                       (see docs/research/oracle-design.md). Pyth
+    ///                       cross-check not yet wired - single-source until
+    ///                       it is.
     /// - `keeper`         - Trusted liquidation keeper (Phase 1).
     /// - `relayer`        - Auto-cosign relayer watcher address.
     pub fn initialize(
@@ -286,7 +289,7 @@ impl PrivateLendContract {
 
         // Compute post-borrow collateral ratio.
         let new_debt = pos.usdc_debt.saturating_add(usdc_amount);
-        let price = get_btc_price_stroops(&env, &config.oracle);
+        let price = get_btc_price_stroops(&env, &config.oracle)?;
         let collateral = collateral_value_stroops(pos.btc_satoshis, price)
             .ok_or(PrivateLendError::Overflow)?;
         let health = health_ratio_bp(collateral, new_debt);
@@ -416,7 +419,7 @@ impl PrivateLendContract {
         accrue_position_interest(&env, &mut pos, &mut proto);
 
         // Check the position is actually undercollateralized.
-        let price = get_btc_price_stroops(&env, &config.oracle);
+        let price = get_btc_price_stroops(&env, &config.oracle)?;
         let collateral = collateral_value_stroops(pos.btc_satoshis, price)
             .ok_or(PrivateLendError::Overflow)?;
         let health = health_ratio_bp(collateral, pos.usdc_debt);
@@ -523,12 +526,16 @@ impl PrivateLendContract {
 
     /// Updates the oracle contract address used for BTC/USD pricing. Admin only.
     ///
-    /// Note: as of Phase 1, `oracle::get_btc_price_stroops` ignores the
-    /// `oracle` config field entirely and returns a hardcoded stub price -
-    /// see `oracle.rs`. This setter exists so that swapping to a real oracle
-    /// in Phase 2 is a config change plus one function-body edit in
-    /// `oracle.rs`, not also a migration to add the setter itself. It does
-    /// not, on its own, make oracle pricing live.
+    /// As of 2026-09-17, `oracle::get_btc_price_stroops` calls this address
+    /// live via Reflector's SEP-40 interface (`lastprice`/`decimals`) - it is
+    /// no longer a stub, and changing this address changes real pricing
+    /// immediately, including for any `borrow`/`liquidate`/
+    /// `get_health_ratio_bp` call already in flight in the same ledger.
+    /// Point this at a contract that does not genuinely speak Reflector's
+    /// `lastprice`/`decimals` shape and price-dependent calls trap with a
+    /// host error (or return `OraclePriceUnavailable` if the contract
+    /// exists but reports no price) - both fail closed, neither silently
+    /// mispricing - see `oracle.rs`.
     pub fn set_oracle(
         env: Env,
         caller: Address,
@@ -539,8 +546,9 @@ impl PrivateLendContract {
         if caller != config.admin {
             return Err(PrivateLendError::Unauthorized);
         }
-        config.oracle = new_oracle;
+        config.oracle = new_oracle.clone();
         set_config(&env, &config);
+        OracleSetEvent { admin: caller, new_oracle }.publish(&env);
         Ok(())
     }
 
@@ -640,7 +648,7 @@ impl PrivateLendContract {
         if pos.usdc_debt == 0 {
             return Ok(i128::MAX);
         }
-        let price = get_btc_price_stroops(&env, &config.oracle);
+        let price = get_btc_price_stroops(&env, &config.oracle)?;
         let collateral = collateral_value_stroops(pos.btc_satoshis, price)
             .ok_or(PrivateLendError::Overflow)?;
         Ok(health_ratio_bp(collateral, pos.usdc_debt))

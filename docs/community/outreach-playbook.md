@@ -131,7 +131,7 @@ I've been building Writz Protocol on Stellar/Soroban for the past month. It's a 
 - SPV verification is cryptographic, not based on oracle trust
 
 **What's working on testnet today:**
-SPV contract deployed, relayer service running, P2WSH address generation library complete, PrivateLend skeleton (85 tests) done.
+SPV contract deployed, relayer service running, P2WSH address generation library complete, PrivateLend skeleton (89 tests) done.
 
 Planning to apply to the Stellar Community Fund (Open Track) and go public with the GitHub repo shortly.
 
@@ -182,7 +182,7 @@ really appreciated [specific thing about their work].
 
 I'm building Writz Protocol on Stellar - a Bitcoin SPV client + ZK-private 
 lending on Soroban. SPV contract is live on testnet, PrivateLend skeleton is 
-working with 85 tests. Applying to SCF Open Track next month.
+working with 89 tests. Applying to SCF Open Track next month.
 
 Would you be open to providing a referral for the application? 
 It's just confirming you know me as a legitimate builder - there's a form 

@@ -189,7 +189,7 @@ jobs:
       - run: bun test
 
   contracts:
-    name: contracts (cargo test)
+    name: contracts (clippy + cargo test)
     needs: changes
     if: needs.changes.outputs.contracts == 'true'
     runs-on: ubuntu-latest
@@ -199,9 +199,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: contracts
+      # -D warnings with an explicit allow-list: a workspace-wide run
+      # (2026-09-19) surfaced pre-existing violations of these lints across
+      # the four crates, unrelated to any feature work landing alongside
+      # this step - none audited or fixed yet, so they stay non-blocking.
+      # Every other lint is denied, so a genuinely new violation still
+      # fails CI. Drop an entry here once its backlog is cleaned up.
+      - run: cargo clippy --workspace --all-targets --locked -- -D warnings -A clippy::bool-assert-comparison -A clippy::doc-overindented-list-items -A clippy::empty-line-after-doc-comments -A clippy::manual-is-multiple-of -A clippy::manual-repeat-n -A clippy::needless-borrows-for-generic-args -A clippy::too-many-arguments -A clippy::unnecessary-cast
       - run: cargo test --workspace --locked
 
   circuits:

@@ -33,7 +33,7 @@ cd ../../relayer && bun install
 cd ../circuits && npm install
 ```
 
-All 402 tests should pass on a clean checkout.
+All 406 tests should pass on a clean checkout.
 
 ---
 
@@ -120,6 +120,6 @@ The following areas are actively looking for contributors:
 | Phase 2 ceremony tooling | Scripts for Powers of Tau Phase 2 ceremony | snarkjs, cryptography |
 | Taproot migration | Upgrade P2WSH to P2TR for Phase 2 | Bitcoin Script, bitcoinjs-lib |
 | SDK npm package | `writz-sdk` TypeScript package for SPV proof assembly | TypeScript, npm |
-| Oracle integration | Integrate RedStone + Pyth SEP-40 adapters | Rust, Soroban |
+| Oracle integration | Integrate Pyth + Reflector SEP-40 adapters | Rust, Soroban |
 
 If you want to work on any of these, open an issue first to discuss the approach before writing code.

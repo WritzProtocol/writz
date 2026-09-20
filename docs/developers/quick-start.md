@@ -1,6 +1,6 @@
 # Quick Start
 
-The core lending and verification logic in this repository is working code, not a mockup: the contracts are deployed on Soroban testnet, the tests pass, and the deposit → borrow → repay ZK flow has run end-to-end on-chain (see `docs/developers/runbook.md`). One known placeholder: `get_btc_price_stroops` in `private-lend/src/oracle.rs` returns a hardcoded price pending the real SEP-40/RedStone integration (tracked in `docs/roadmap/phases.md`) - it does not affect the SPV, ZK, or lending-mechanics logic below, but position pricing is not yet live-market-driven. Start here and have something running in under 5 minutes.
+The core lending and verification logic in this repository is working code, not a mockup: the contracts are deployed on Soroban testnet, the tests pass, and the deposit → borrow → repay ZK flow has run end-to-end on-chain (see `docs/developers/runbook.md`). `private-lend/src/oracle.rs`'s `get_btc_price_stroops` now calls a real Reflector oracle on testnet (see `docs/research/oracle-design.md`) - the one remaining placeholder is `commitment-tree`, which still returns a hardcoded price pending a ZK circuit change (tracked in `docs/roadmap/phases.md`) - it does not affect the SPV or lending-mechanics logic below, but `commitment-tree` position pricing is not yet live-market-driven. Start here and have something running in under 5 minutes.
 
 ---
 
@@ -57,7 +57,7 @@ cd contracts
 cargo test
 ```
 
-Expected output: 191 tests pass across `bitcoin-spv` (49), `zk-verifier` (25), `commitment-tree` (32), and `private-lend` (85).
+Expected output: 195 tests pass across `bitcoin-spv` (49), `zk-verifier` (25), `commitment-tree` (32), and `private-lend` (89).
 
 ### Bitcoin script toolkit (TypeScript, Bun)
 
@@ -96,7 +96,7 @@ Expected output: 29 tests pass (proof generation, commitment correctness, ratio 
 
 If `verify()` assertions fail here while `prove()` succeeds, your local `circuits/keys/*_final.zkey` (gitignored, regenerated locally) is out of sync with the committed `circuits/keys/*_vkey.json`. Run `bash scripts/compile_all.sh && bash scripts/setup_dev.sh` to regenerate both together from a fresh dev trusted setup, then re-run `npm test`.
 
-### All together: 402 tests, all passing.
+### All together: 406 tests, all passing.
 
 ---
 

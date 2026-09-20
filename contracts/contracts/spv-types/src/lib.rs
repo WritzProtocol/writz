@@ -42,19 +42,29 @@ pub struct SpvVerificationResult {
 /// (7 decimal places) so that:
 ///   collateral_usdc = btc_satoshis × STUB_PRICE / 100_000_000
 ///
-/// Was previously hand-copied verbatim into `private-lend/src/oracle.rs` and
-/// `commitment-tree/src/oracle.rs` - same constant, same function, same
-/// `// TODO Phase 2` note, two places to keep in sync. Shared here instead.
+/// As of 2026-09-17, `private-lend` no longer uses this - it calls a real
+/// Reflector oracle via its own `oracle::get_btc_price_stroops`
+/// (`contracts/contracts/private-lend/src/oracle.rs`). This stub remains
+/// solely for `commitment-tree`, which cannot safely take a live, moving
+/// price yet: its ZK circuits commit to an exact `btc_price` public signal
+/// with no tolerance window or timestamp, so a price that changes between
+/// proof generation and on-chain submission would make legitimate
+/// borrows/repays fail intermittently. Wiring a real oracle into
+/// `commitment-tree` needs a circuit-level change first - see
+/// `docs/research/oracle-design.md` and the plan at
+/// `docs/superpowers/plans/2026-09-17-reflector-oracle-integration.md`,
+/// "Why commitment-tree is not included".
 pub const STUB_PRICE_STROOPS_PER_BTC: i128 = 60_000 * 10_000_000; // = 600_000_000_000
 
 /// Returns the BTC/USD price as USDC stroops per BTC.
 ///
-/// Phase 1: returns `STUB_PRICE_STROOPS_PER_BTC` unconditionally, ignoring
-/// `_oracle` - swapping in a real price feed requires changing this
-/// function's body (not just the `Config.oracle` address each contract
-/// already supports via its `set_oracle` setter), since the address alone
-/// is never read here yet. See `docs/roadmap/phases.md` for the Phase 2
-/// oracle integration this blocks on.
+/// Only `commitment-tree` still routes through this stub (`private-lend`
+/// now calls a real Reflector oracle via its own `oracle.rs` instead) -
+/// swapping in a real price feed here requires changing this function's
+/// body (not just the `Config.oracle` address this contract already
+/// supports via its `set_oracle` setter), since the address alone is never
+/// read here yet. See `docs/roadmap/phases.md` for the Phase 2 oracle
+/// integration this blocks on.
 ///
 /// Phase 2 migration: replace the body with a SEP-40 cross-contract call:
 /// ```text

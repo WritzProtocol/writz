@@ -42,7 +42,7 @@ The headers and Merkle proof are fetched from a real confirmed Bitcoin mainnet t
 
 All code open-sourced under the Apache 2.0 license:
 - `contracts/contracts/bitcoin-spv/` - Soroban SPV contract
-- `contracts/contracts/private-lend/` - PrivateLend skeleton (85 tests)
+- `contracts/contracts/private-lend/` - PrivateLend skeleton (89 tests)
 - `relayer/` - Node.js SPV proof relayer (122 tests)
 - `bitcoin-script/` - P2WSH locking script library (60 tests)
 
@@ -145,7 +145,7 @@ Functional testnet frontend with:
 ### Deliverable 4: Audit Bank application submitted
 
 Application to the Soroban Security Audit Bank submitted to SDF with:
-- Code deployed on testnet with extensive tests (191 tests across all contracts)
+- Code deployed on testnet with extensive tests (195 tests across all contracts)
 - STRIDE threat model complete
 - Self-service tooling scans complete (Mythril/Slither)
 - Dataflow diagram produced

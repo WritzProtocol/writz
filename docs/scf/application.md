@@ -80,7 +80,7 @@ Lending logic above the SPV layer. Key design decisions:
 - **Kinked interest rate model**: base=0%, Uoptimal=75%, slope1=8%, slope2=200%, protocol fee=15%
 - **Phase 1 liquidation**: trusted keeper detects undercollateralized positions and submits; Phase 2 uses ZK proof of undercollateralization
 
-Current state: 85 tests passing, 36.0 KB WASM, 26 exported functions.
+Current state: 89 tests passing, 36.0 KB WASM, 26 exported functions.
 
 ### Layer 4 - ZK privacy layer (Phase 2)
 
@@ -95,7 +95,7 @@ Protocol X-Ray (Protocol 25, January 2026) added BN254 elliptic curve operations
 
 - **SPV Relayer** (Node.js): REST API that fetches Bitcoin block headers + Merkle proofs from Blockstream Esplora. Writz-operated for Phase 1, decentralized in Phase 2. Stateless SPV means the relayer is a convenience service, not a protocol dependency.
 - **P2WSH library** (TypeScript): generates deposit addresses, builds PSBTs for both spending paths, signs with the protocol key. Used by the frontend and backend.
-- **Oracle** (SEP-40): RedStone primary, Pyth secondary, median of both for manipulation resistance. Phase 1 uses a stub; Phase 2 wires real feeds.
+- **Oracle** (SEP-40): Pyth primary, Reflector secondary, median of both for manipulation resistance. Phase 1 uses a stub; Phase 2 wires real feeds. (Corrected 2026-09-16, on-chain verified - RedStone dropped, DIA parked pending a working contract address, see `docs/research/oracle-design.md`.)
 
 ---
 
@@ -107,7 +107,7 @@ Deep understanding of the full technical stack: Bitcoin scripting (P2WSH, PSBT, 
 
 The protocol concept, architecture, research, and all current code were produced by Sebastian. The research phase (15 documents, covering SPV implementations, oracle design, interest rate modeling, ZK circuit architecture, regulatory landscape, and more) preceded any code, establishing deep domain knowledge before building.
 
-**Current state:** All Phase 0 research complete. Phase 1 foundation complete: SPV contract deployed on testnet, SPV relayer operational, P2WSH library with 60 tests, PrivateLend skeleton with 85 tests.
+**Current state:** All Phase 0 research complete. Phase 1 foundation complete: SPV contract deployed on testnet, SPV relayer operational, P2WSH library with 60 tests, PrivateLend skeleton with 89 tests.
 
 **Planned team growth with grant:** The $92K grant funds one additional Rust/Soroban developer for the ZK circuit implementation sprint (Phase 2) and frontend development (Phase 2–3).
 

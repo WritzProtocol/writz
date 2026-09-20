@@ -316,7 +316,7 @@ let result = spv.verify_payment(
 |---|---|
 | SPV contract bug | External audit; stateless approach limits attack surface |
 | ZK proof soundness failure | Use battle-tested Groth16; rely on Stellar's Protocol X-Ray rather than custom circuits |
-| Oracle/price feed manipulation | Use median of multiple price oracles (RedStone primary, Pyth secondary) - see `docs/research/oracle-design.md` |
+| Oracle/price feed manipulation | Use median of multiple price oracles (Pyth primary, Reflector secondary) - see `docs/research/oracle-design.md` |
 | Interest rate model edge cases | Stress-test model against historical volatility; cap max borrow rate |
 
 ### Economic risks
@@ -340,7 +340,7 @@ let result = spv.verify_payment(
 | Frontend | React/Next.js |
 | Bitcoin wallet | Xverse (via PSBT standard) |
 | Stellar wallet | Stellar Wallets Kit (Freighter, Lobstr, others) |
-| Price oracles | RedStone (primary) + Pyth (secondary), SEP-40 median - see `docs/research/oracle-design.md` |
+| Price oracles | Pyth (primary) + Reflector (secondary), SEP-40 median - see `docs/research/oracle-design.md` |
 | Header service | Custom Node.js service connecting to Bitcoin full node |
 
 ---
