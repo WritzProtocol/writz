@@ -208,10 +208,12 @@ export function startVaultWatcher(): VaultWatcherHandle {
   // and gated on the vault id, so the cost of repeating it is one ignored
   // INSERT, while the cost of a missed run is metrics that under-report and
   // publish the gap as yield. See ./genesis-events.ts.
-  const seeded = seedGenesisVaultEvents(config.defindexVaultId);
-  if (seeded > 0) {
-    console.log(`[vault-watcher] genesis backfill: ${seeded} event(s) offered to the event store`);
-  }
+  const seeded = seedGenesisVaultEvents(config.defindexVaultId, config.networkPassphrase);
+  console.log(
+    seeded > 0
+      ? `[vault-watcher] genesis backfill: ${seeded} event(s) offered to the event store`
+      : "[vault-watcher] genesis backfill: nothing to seed for this vault/network",
+  );
 
   // eslint-disable-next-line @typescript-eslint/no-require-imports -- see top-of-file comment: deliberately deferred to avoid the CJS/ESM interop crash under ts-jest.
   const { rpc } = require("@stellar/stellar-sdk") as typeof import("@stellar/stellar-sdk");

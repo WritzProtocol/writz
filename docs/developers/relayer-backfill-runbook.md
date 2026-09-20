@@ -137,7 +137,13 @@ Horizon - which keeps full transaction history - in
    RPC cursor position the row was never read at.
 3. Extend `relayer/test/vault-watcher-genesis.test.ts` to cover it.
 
-Seeding runs on every boot and is gated on the vault id, so a relayer
-pointed at a different vault never has this history injected. Re-running is
-a no-op: `insertVaultEvent` is idempotent on
-(tx_hash, depositor, kind, amount).
+Seeding runs on every boot and is gated on **both** the vault id and the
+network passphrase. The vault id alone is not enough: the accident
+`deploy-target.ts` exists to catch is a copied service, and a clone that
+keeps `DEFINDEX_VAULT_ID` would pass a vault-id-only check while running on
+mainnet. Re-running is a no-op - `insertVaultEvent` is idempotent on
+(tx_hash, depositor, kind, amount) - and a store failure is logged rather
+than thrown, so a full data volume cannot take the HTTP API down with it.
+
+Both branches log, so an operator can always tell from the boot line whether
+the backfill applied or was skipped.
