@@ -95,3 +95,49 @@ For each txid backfilled, confirm `get_release_psbt` on `private-lend` now retur
 - [ ] Confirm Step 3 actually works against whichever historical data source is chosen - this is the step most likely to be harder in practice than it reads here
 - [ ] Time the whole process once, so there's a real answer to "how long would users actually wait" the first time this is needed for real
 - [ ] Assign an owner for this runbook (who runs it, who's paged if the watcher goes down) - see `docs/roadmap/phases.md`, Phase 2 "Team / key-person risk"
+
+---
+
+## Appendix - Vault-watcher: events older than its first poll
+
+A different gap, with a different cause and a different fix. The
+vault-watcher (`relayer/src/vault-watcher/`) feeds #115's TVL and #116's
+cohorts, and `runVaultPollCycle` anchors its **first-ever** run to the
+current ledger tip rather than backfilling (see the comment in its
+`poller.ts`). Everything older than that first run is therefore absent from
+`vault_events` - not because of an outage, but by design.
+
+Nothing is at risk of being lost the way a missed `repay_full` strands a
+user's BTC; the damage is reporting. `/metrics` derives accrued yield as
+`onChainTvl - indexedTvl` (`frontend/src/app/metrics/page.tsx`), so a
+missing deposit is published as if it were yield. On testnet this showed a
+20 USDC creation deposit as +20 USDC of "Accrued Yield" against 10 USDC of
+indexed deposits.
+
+**The Step 3-5 recovery above does not apply.** Rewinding the cursor only
+works while RPC still retains the range; these ledgers are months past its
+window, so `getEvents` cannot return them at any cursor.
+
+Instead, such events are seeded at startup from constants verified against
+Horizon - which keeps full transaction history - in
+`relayer/src/vault-watcher/genesis-events.ts`. To add one:
+
+1. Get the transaction and its operations from Horizon:
+   ```bash
+   curl https://horizon-testnet.stellar.org/transactions/<txHash>
+   curl https://horizon-testnet.stellar.org/transactions/<txHash>/operations
+   ```
+   The transaction gives `ledger` and `created_at`; the operation's
+   `asset_balance_changes` gives the depositor (`from`), the vault (`to`)
+   and the amount. Horizon no longer returns `result_meta_xdr`, so the
+   contract event itself cannot be decoded from it - the balance change is
+   the record to use.
+2. Add the entry to `GENESIS_VAULT_EVENTS` with a `cursor` that names the
+   backfill (`backfill:horizon:tx-<prefix>`) rather than impersonating an
+   RPC cursor position the row was never read at.
+3. Extend `relayer/test/vault-watcher-genesis.test.ts` to cover it.
+
+Seeding runs on every boot and is gated on the vault id, so a relayer
+pointed at a different vault never has this history injected. Re-running is
+a no-op: `insertVaultEvent` is idempotent on
+(tx_hash, depositor, kind, amount).

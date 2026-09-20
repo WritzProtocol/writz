@@ -33,6 +33,7 @@
  */
 import { readCursor, writeCursor } from "./cursor-store.js";
 import { insertVaultEvent, type VaultEventKind } from "./event-store.js";
+import { seedGenesisVaultEvents } from "./genesis-events.js";
 
 // Every DeFindex vault event's first topic is the fixed contract tag
 // `symbol_short!("DeFindexVault")`; the second topic is the event kind.
@@ -199,6 +200,17 @@ export function startVaultWatcher(): VaultWatcherHandle {
   if (!config.defindexVaultId) {
     console.warn("[vault-watcher] DEFINDEX_VAULT_ID not configured - vault watcher disabled");
     return { stop: () => {} };
+  }
+
+  // Replay the events that predate this watcher's first-ever poll, which the
+  // tip-anchored start below can never reach and RPC no longer retains. Runs
+  // on every boot rather than behind a one-shot flag: seeding is idempotent
+  // and gated on the vault id, so the cost of repeating it is one ignored
+  // INSERT, while the cost of a missed run is metrics that under-report and
+  // publish the gap as yield. See ./genesis-events.ts.
+  const seeded = seedGenesisVaultEvents(config.defindexVaultId);
+  if (seeded > 0) {
+    console.log(`[vault-watcher] genesis backfill: ${seeded} event(s) offered to the event store`);
   }
 
   // eslint-disable-next-line @typescript-eslint/no-require-imports -- see top-of-file comment: deliberately deferred to avoid the CJS/ESM interop crash under ts-jest.
