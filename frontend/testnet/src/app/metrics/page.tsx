@@ -26,7 +26,7 @@ export default async function MetricsPage() {
     return (
       <DashboardLayout
         breadcrumbs={[
-          { label: "WRITZ COMMAND", href: "/app" },
+          { label: "WRITZ COMMAND", href: "/" },
           { label: "EARN METRICS", active: true },
         ]}
       >
@@ -55,7 +55,7 @@ export default async function MetricsPage() {
   return (
     <DashboardLayout
       breadcrumbs={[
-        { label: "WRITZ COMMAND", href: "/app" },
+        { label: "WRITZ COMMAND", href: "/" },
         { label: "EARN METRICS", active: true },
       ]}
     >
@@ -340,7 +340,7 @@ export default async function MetricsPage() {
             <span>
               A cohort younger than 30 days displays 0 eligible depositors — outcome is in flight until day 30.
             </span>
-            <Link href="/app" className="text-amber hover:underline shrink-0">
+            <Link href="/" className="text-amber hover:underline shrink-0">
               Enter Vault →
             </Link>
           </div>

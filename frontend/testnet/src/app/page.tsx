@@ -38,7 +38,7 @@ export default async function AppDashboardPage() {
   return (
     <DashboardLayout
       breadcrumbs={[
-        { label: "WRITZ COMMAND", href: "/app" },
+        { label: "WRITZ COMMAND", href: "/" },
         { label: "OVERVIEW", active: true },
       ]}
     >
