@@ -49,7 +49,13 @@
                   "bytes": "0000000000000000000000000000000000000000000000000000000000000000"
                 },
                 {
-                  "u32": 486604799
+                  "u32": 545259519
+                },
+                {
+                  "u32": 1700000000
+                },
+                {
+                  "u32": 1700000000
                 }
               ]
             }
@@ -62,13 +68,89 @@
   "ledger": {
     "protocol_version": 26,
     "sequence_number": 0,
-    "timestamp": 0,
+    "timestamp": 1800000000,
     "network_id": "0000000000000000000000000000000000000000000000000000000000000000",
     "base_reserve": 0,
     "min_persistent_entry_ttl": 4096,
     "min_temp_entry_ttl": 16,
     "max_entry_ttl": 6312000,
     "ledger_entries": [
+      {
+        "entry": {
+          "last_modified_ledger_seq": 0,
+          "data": {
+            "contract_data": {
+              "ext": "v0",
+              "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
+              "key": {
+                "vec": [
+                  {
+                    "symbol": "BestTip"
+                  }
+                ]
+              },
+              "durability": "persistent",
+              "val": {
+                "map": [
+                  {
+                    "key": {
+                      "symbol": "chainwork"
+                    },
+                    "val": {
+                      "u256": "0"
+                    }
+                  },
+                  {
+                    "key": {
+                      "symbol": "hash"
+                    },
+                    "val": {
+                      "bytes": "0000000000000000000000000000000000000000000000000000000000000000"
+                    }
+                  },
+                  {
+                    "key": {
+                      "symbol": "height"
+                    },
+                    "val": {
+                      "u32": 0
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "ext": "v0"
+        },
+        "live_until": 1555200
+      },
+      {
+        "entry": {
+          "last_modified_ledger_seq": 0,
+          "data": {
+            "contract_data": {
+              "ext": "v0",
+              "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
+              "key": {
+                "vec": [
+                  {
+                    "symbol": "Canonical"
+                  },
+                  {
+                    "u32": 0
+                  }
+                ]
+              },
+              "durability": "persistent",
+              "val": {
+                "bytes": "0000000000000000000000000000000000000000000000000000000000000000"
+              }
+            }
+          },
+          "ext": "v0"
+        },
+        "live_until": 1555200
+      },
       {
         "entry": {
           "last_modified_ledger_seq": 0,
@@ -91,7 +173,7 @@
                       "symbol": "bits"
                     },
                     "val": {
-                      "u32": 486604799
+                      "u32": 545259519
                     }
                   },
                   {
@@ -112,10 +194,26 @@
                   },
                   {
                     "key": {
+                      "symbol": "period_start_time"
+                    },
+                    "val": {
+                      "u32": 1700000000
+                    }
+                  },
+                  {
+                    "key": {
                       "symbol": "set_at_ledger"
                     },
                     "val": {
                       "u32": 0
+                    }
+                  },
+                  {
+                    "key": {
+                      "symbol": "time"
+                    },
+                    "val": {
+                      "u32": 1700000000
                     }
                   }
                 ]
@@ -149,6 +247,104 @@
                     },
                     "val": {
                       "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M"
+                    }
+                  },
+                  {
+                    "key": {
+                      "symbol": "pow_limit_bits"
+                    },
+                    "val": {
+                      "u32": 545259519
+                    }
+                  },
+                  {
+                    "key": {
+                      "symbol": "submitter"
+                    },
+                    "val": "void"
+                  }
+                ]
+              }
+            }
+          },
+          "ext": "v0"
+        },
+        "live_until": 1555200
+      },
+      {
+        "entry": {
+          "last_modified_ledger_seq": 0,
+          "data": {
+            "contract_data": {
+              "ext": "v0",
+              "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
+              "key": {
+                "vec": [
+                  {
+                    "symbol": "Header"
+                  },
+                  {
+                    "bytes": "0000000000000000000000000000000000000000000000000000000000000000"
+                  }
+                ]
+              },
+              "durability": "persistent",
+              "val": {
+                "map": [
+                  {
+                    "key": {
+                      "symbol": "bits"
+                    },
+                    "val": {
+                      "u32": 545259519
+                    }
+                  },
+                  {
+                    "key": {
+                      "symbol": "chainwork"
+                    },
+                    "val": {
+                      "u256": "0"
+                    }
+                  },
+                  {
+                    "key": {
+                      "symbol": "height"
+                    },
+                    "val": {
+                      "u32": 0
+                    }
+                  },
+                  {
+                    "key": {
+                      "symbol": "merkle_root"
+                    },
+                    "val": {
+                      "bytes": "0000000000000000000000000000000000000000000000000000000000000000"
+                    }
+                  },
+                  {
+                    "key": {
+                      "symbol": "period_start_time"
+                    },
+                    "val": {
+                      "u32": 1700000000
+                    }
+                  },
+                  {
+                    "key": {
+                      "symbol": "prev"
+                    },
+                    "val": {
+                      "bytes": "0000000000000000000000000000000000000000000000000000000000000000"
+                    }
+                  },
+                  {
+                    "key": {
+                      "symbol": "time"
+                    },
+                    "val": {
+                      "u32": 1700000000
                     }
                   }
                 ]

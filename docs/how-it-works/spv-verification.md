@@ -26,56 +26,52 @@ If these three things are consistent - the header has valid PoW, the Merkle proo
 
 ---
 
-## The Writz Approach: Stateless SPV
+## The Writz Approach: an On-Chain Header Light Client
 
-Most SPV implementations maintain state: they store a chain of Bitcoin block headers on-chain, and new headers are submitted by a relayer service. This creates a hard dependency on the relayer - if the relayer goes down, the system breaks.
+`bitcoin-spv` keeps a compact record of Bitcoin block headers on Stellar, and proves transactions against that record. A caller can no longer hand the contract a header chain it built itself - the earlier "stateless" design accepted exactly that, which is what allowed a privately mined chain to pass as real.
 
-Writz uses **stateless SPV**: the caller provides all necessary headers at the time of verification, and the contract validates the full chain in a single transaction rather than storing a growing header history.
+How it works:
 
-This has important implications:
+- **One trusted anchor.** The admin sets a checkpoint - a recent real Bitcoin block - exactly once. Every stored header must descend from it.
+- **Anyone can extend the chain.** `submit_headers` accepts a run of contiguous headers, checks each one (proof-of-work, link to a stored parent, the exact difficulty Bitcoin requires at that height, sane timestamp) and keeps the chain with the most cumulative work. The Writz relayer does this routinely, but any party can.
+- **Proofs are cheap.** `verify_transaction` names a stored block and checks a Merkle proof against its root. It no longer re-validates a header chain on every call.
 
-- **No relayer dependency for core security:** The SPV contract can be called by anyone with the right data. Writz runs a relayer service as a convenience, but it is not a critical path component.
-- **No growing on-chain state:** A stateful header chain would grow indefinitely; a per-call header submission never accumulates that way.
-- **Simpler audit surface:** The verification logic is a pure function of its inputs plus one small anchor value - given inputs, it returns a result. No header-chain state transitions to reason about.
+The trade-offs are honest ones: the contract now holds state that grows with each submitted header, and someone has to keep submitting headers (permissionless, so the system does not depend on a single relayer, but a deposit can only be proven once its block and the blocks above it have been submitted). In exchange, forging a deposit requires real Bitcoin proof-of-work rather than an internally consistent private chain.
 
-The one piece of state the contract does keep is a small, admin-set checkpoint singleton - a recent Bitcoin block's height, hash, and difficulty (`bits`) - used to reject a header chain mined at a historically low difficulty (real Bitcoin blocks from years ago had trivially small proof-of-work targets, so PoW validity alone isn't enough to rule out a privately-mined chain). This is a single fixed-size value, not a growing header chain - closer in spirit to a hardcoded constant than to the "stateful" designs this section argues against. See `contracts/contracts/bitcoin-spv/src/types.rs`'s `Checkpoint` type, and `docs/security/security-model.md` for the full trust-model discussion.
+On signet, where blocks are authenticated by a signature the contract does not verify, header submission is restricted to a configured submitter. See `docs/security/security-model.md` for the full trust model.
 
 ---
 
 ## What the Contract Verifies
 
-The `bitcoin-spv` contract's `verify_transaction` function takes:
+`verify_transaction` takes:
 
 ```rust
 pub fn verify_transaction(
     env: Env,
-    headers: Vec<BitcoinBlockHeader>,  // The block headers (starting from anchor)
-    merkle_proof: Vec<Bytes32>,        // Sibling hashes from tx to block root
-    tx_index: u32,                     // Transaction's index in the block
-    raw_tx: Bytes,                     // The raw Bitcoin transaction
-    min_confirmations: u32,            // Minimum depth required (default: 6)
+    block_hash: BytesN<32>,         // Hash of the (already stored) block holding the tx
+    merkle_proof: Vec<BytesN<32>>,  // Sibling hashes from tx to block root
+    tx_index: u32,                  // Transaction's index in the block
+    raw_tx: Bytes,                  // The raw Bitcoin transaction (non-witness)
+    min_confirmations: u32,         // Minimum depth required (default: 6)
 ) -> SpvVerificationResult
 ```
 
 (`SpvVerificationResult` is defined once, in the shared `spv-types` crate, and reused by every contract that calls into `bitcoin-spv` - not redefined per contract.)
 
-For each call, the contract:
+**Header ingestion - `submit_headers(headers)`:**
+- Each header's `prev_block_hash` must be a header the contract already stores (ultimately the checkpoint)
+- `SHA256d(header)` must meet the target encoded in `bits`
+- `bits` must equal what Bitcoin's difficulty rules require at that height: unchanged inside a 2016-block period, the exact retarget at each boundary
+- The timestamp may not be more than two hours ahead of ledger time
+- The chain with the most cumulative work becomes the best chain; a heavier fork replaces it
 
-**Step 1 - Validate each block header:**
-- Parse the 80-byte header into its fields (version, prev_block, merkle_root, time, bits, nonce)
-- Compute `SHA256d(header)` - Bitcoin's double-SHA256 block hash
-- Verify the hash meets the difficulty target encoded in `bits`
-- Verify the chain is continuous: `headers[i].prev_block == SHA256d(headers[i-1])`
-- Verify no header's target is more than 64× easier than the stored checkpoint's difficulty - this is what rules out a chain mined at a historically low (e.g. 2009-era) difficulty even though it would otherwise pass its own PoW check
-
-**Step 2 - Verify Merkle inclusion:**
-- Compute `txid = SHA256d(raw_tx)` (one double-SHA256, not a fourth-power hash)
-- Walk the Merkle proof: repeatedly hash `txid` with each sibling in the proof, alternating left/right based on `tx_index`
-- The final hash must equal `headers[0].merkle_root`
-
-**Step 3 - Check confirmations and return:**
-- `len(headers) >= min_confirmations` (checked up front, before Step 1's chain validation)
-- Return `SpvVerificationResult { txid, block_hash, confirmations }`
+**Verification - `verify_transaction`:**
+- The block must be stored, after the checkpoint, and on the best chain
+- Its depth below the best tip must be at least `min_confirmations`
+- `raw_tx` must not be exactly 64 bytes (the size of a Merkle inner-node preimage)
+- Compute `txid = SHA256d(raw_tx)`, walk the Merkle proof (alternating left/right by `tx_index`), and the result must equal the stored block's `merkle_root`
+- Return `SpvVerificationResult { txid, block_hash, confirmations }`, where `confirmations` is the block's real depth
 
 There is no output-parsing step - the contract does not extract or return the transaction's outputs. A caller that needs to know which output paid a given address parses `raw_tx` itself; see the accuracy note in `docs/developers/spv-sdk.md` for the same point.
 
@@ -101,13 +97,13 @@ Soroban does not natively provide SHA256 as a host function - the `bitcoin-spv` 
 | Full SPV verify (6 headers + proof) | ~37,000,000 |
 | Soroban transaction limit | ~100,000,000 |
 
-A full SPV verification uses ~37–55M instructions - comfortably within Soroban's 100M instruction budget, with room for the ZK verification that follows in the same transaction.
+These figures were measured for the earlier design, which validated a header chain inside every verification. With the light client, headers are validated once in `submit_headers` and `verify_transaction` only checks a Merkle proof, so the per-deposit cost is lower; the header-submission costs are being re-measured.
 
 ---
 
 ## The Relayer Service
 
-While stateless SPV means the relayer is not a critical security component, someone needs to assemble the proof bundle for users. The Writz relayer handles this.
+Header submission is permissionless, so the relayer is not a trust component, but someone has to keep the contract's header chain current and assemble proof bundles for users. The Writz relayer handles both.
 
 **What the relayer does:**
 1. Watches a Bitcoin Esplora API for transactions to monitored addresses

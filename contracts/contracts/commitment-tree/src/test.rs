@@ -429,7 +429,7 @@ struct MockSpv;
 impl MockSpv {
     pub fn verify_transaction(
         env: Env,
-        _headers: Vec<BytesN<80>>,
+        _block_hash: BytesN<32>,
         _merkle_proof: Vec<BytesN<32>>,
         _tx_index: u32,
         _raw_tx: Bytes,
@@ -581,7 +581,7 @@ fn liquidate_signals(env: &Env) -> Vec<BytesN<32>> {
 #[test]
 fn full_deposit_borrow_repay_cycle() {
     let s = setup_integration();
-    let empty_headers: Vec<BytesN<80>> = Vec::new(&s.env);
+    let block_hash = BytesN::<32>::from_array(&s.env, &[0xadu8; 32]);
     let empty_proof: Vec<BytesN<32>> = Vec::new(&s.env);
     let empty_bytes = Bytes::new(&s.env);
 
@@ -592,7 +592,7 @@ fn full_deposit_borrow_repay_cycle() {
     // ── Deposit ──
     let commitment = s.client.deposit(
         &s.depositor,
-        &empty_headers,
+        &block_hash,
         &empty_proof,
         &0u32,
         &empty_bytes,
@@ -636,7 +636,7 @@ fn borrow_with_tampered_signal_panics() {
     // Sanity check the negative direction too: a bit-flipped public signal
     // must not verify, even against a correctly-set-up chain.
     let s = setup_integration();
-    let empty_headers: Vec<BytesN<80>> = Vec::new(&s.env);
+    let block_hash = BytesN::<32>::from_array(&s.env, &[0xadu8; 32]);
     let empty_proof: Vec<BytesN<32>> = Vec::new(&s.env);
     let empty_bytes = Bytes::new(&s.env);
 
@@ -644,7 +644,7 @@ fn borrow_with_tampered_signal_panics() {
     s.client.supply_usdc(&s.supplier, &10_000_000_000_i128);
 
     let commitment = s.client.deposit(
-        &s.depositor, &empty_headers, &empty_proof, &0u32, &empty_bytes,
+        &s.depositor, &block_hash, &empty_proof, &0u32, &empty_bytes,
         &deposit_proof(&s.env), &deposit_signals(&s.env), &empty_bytes,
     );
     let root_after_deposit = sig32(&s.env, &iv::BORROW_SIGNAL_3);

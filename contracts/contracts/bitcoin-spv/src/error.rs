@@ -62,4 +62,42 @@ pub enum SPVError {
     /// preimage (`left || right`). Accepting it would let an attacker prove
     /// an inner node as if it were a transaction.
     AmbiguousTransactionLength = 15,
+
+    /// `set_checkpoint` was already called. The trust root is set once;
+    /// after that the chain only grows through `submit_headers`.
+    CheckpointAlreadySet = 16,
+
+    /// The checkpoint's fields are inconsistent (e.g. `bits` easier than the
+    /// network's proof-of-work limit, or a period start after its time).
+    InvalidCheckpoint = 17,
+
+    /// `submit_headers` received more headers than fit in one call.
+    TooManyHeaders = 18,
+
+    /// A submitted header's `prev_block_hash` is not a header this contract
+    /// already stores, so it does not descend from the checkpoint.
+    UnknownParent = 19,
+
+    /// A submitted header's `bits` differ from what Bitcoin's difficulty
+    /// rules require at its height.
+    UnexpectedDifficulty = 20,
+
+    /// A submitted header's timestamp is more than two hours ahead of the
+    /// ledger time.
+    TimestampTooFarInFuture = 21,
+
+    /// The block hash passed to `verify_transaction` is not stored.
+    HeaderNotFound = 22,
+
+    /// The block is stored but is not on the most-work chain (it was
+    /// orphaned, or is not yet buried under the current tip).
+    NotOnBestChain = 23,
+
+    /// The block is the checkpoint itself or older; only blocks after the
+    /// checkpoint can be proven.
+    BlockNotAfterCheckpoint = 24,
+
+    /// Switching to the heavier fork would rewrite more blocks than one
+    /// call may touch.
+    ReorgTooDeep = 25,
 }
