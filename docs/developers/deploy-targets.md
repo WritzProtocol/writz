@@ -65,7 +65,7 @@ Steps 1 and 2 are dashboard and registrar actions - they cannot be done from thi
 
    plus the contract addresses from [`frontend/app/.env.example`](../../frontend/app/.env.example), which tracks the current testnet deployment. Never copy these into the mainnet project.
 
-   The co-signing route (`/api/cosign`) runs in this project, so its server-only variables belong here too: `KMS_KEY_ID` with the AWS credentials, or the `PROTOCOL_SIGNING_KEY` fallback on testnet, plus `BITCOIN_NETWORK`. `NEXT_PUBLIC_PRIVY_APP_ID` enables Privy login; add `https://testnet.writz.xyz` to the allowed origins in the Privy dashboard, or login fails on this domain.
+   The co-signing route (`/api/cosign`) runs in this project, so its server-only variables belong here too: `KMS_KEY_ID` with the AWS credentials, or the `PROTOCOL_SIGNING_KEY` fallback on testnet, plus `BITCOIN_NETWORK`.
 
 4. Set the production branch to `main`. Pushes to `main` then deploy to `testnet.writz.xyz`; pull requests get preview URLs, which build with the same `testnet` target.
 

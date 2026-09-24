@@ -81,7 +81,7 @@ export function EarnDeposit({
 
     if (!address) {
       setStatus("error");
-      setMessage("Sign in to deposit USDC.");
+      setMessage("Connect a wallet to deposit USDC.");
       return;
     }
     if (parsed === null) {
@@ -133,8 +133,7 @@ export function EarnDeposit({
 
       {!address ? (
         <div className="rounded-xl border border-line bg-surface p-6 text-sm text-muted">
-          Sign in with email, social login, or a Stellar wallet to deposit USDC
-          and start earning.
+          Connect a Stellar wallet to deposit USDC and start earning.
         </div>
       ) : (
         <div className="flex flex-col gap-4">

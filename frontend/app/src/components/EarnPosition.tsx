@@ -65,8 +65,8 @@ export function EarnPosition({
           </div>
           <div className="mt-4 flex flex-col items-start justify-between gap-2 border-t border-line pt-3 text-xs text-muted sm:flex-row sm:items-center">
             <span>
-              The APY above is read live from the vault, no wallet needed. Sign in
-              to see your own position.
+              The APY above is read live from the vault, no wallet needed. Connect
+              a wallet to see your own position.
             </span>
             <Link
               href="/metrics"

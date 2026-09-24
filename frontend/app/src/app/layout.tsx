@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import { Fraunces, Hanken_Grotesk, Geist_Mono } from "next/font/google";
 import { config } from "@/config";
-import { Providers } from "@/app/Providers";
 import { WalletProvider } from "@/lib/wallet/WalletProvider";
 import { BitcoinWalletProvider } from "@/lib/bitcoin/useBitcoinWallet";
 import { env } from "@/config/env";
@@ -94,11 +93,9 @@ export default function RootLayout({
             strategy="afterInteractive"
           />
         )}
-        <Providers>
-          <WalletProvider>
-            <BitcoinWalletProvider>{children}</BitcoinWalletProvider>
-          </WalletProvider>
-        </Providers>
+        <WalletProvider>
+          <BitcoinWalletProvider>{children}</BitcoinWalletProvider>
+        </WalletProvider>
       </body>
     </html>
   );

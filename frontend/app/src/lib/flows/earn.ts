@@ -10,8 +10,8 @@ import type { SignTransaction } from "@/lib/wallet/WalletProvider";
  * Three parties, and the split matters:
  *   1. The relayer builds the unsigned transaction (it holds the DeFindex API
  *      key; the browser must never see it).
- *   2. The connected wallet signs it - Privy embedded or Stellar Wallets Kit,
- *      the `signTransaction` from `WalletProvider` covers both.
+ *   2. The connected wallet signs it, through Stellar Wallets Kit via the
+ *      `signTransaction` from `WalletProvider`.
  *   3. The browser submits to Soroban RPC and waits for the ledger.
  *
  * Nothing here is custodial: the relayer cannot move the user's USDC, and the
@@ -37,16 +37,16 @@ export const SIGNATURE_REJECTED = "SignatureRejected";
  *   Albedo     "Action canceled by the user"
  *   Rabet      "User rejected"
  *   Lobstr     "User rejected the request"
- *   Privy      "User rejected request", "User closed the modal"
  *
  * Matching on wording is unavoidable, so it is split by how much each word
  * proves. "Rejected", "declined" and "denied" only ever describe a decision,
  * so they stand alone. "Cancelled", "dismissed" and "closed" also describe
  * things that break on their own ("the connection was closed", "request
  * cancelled" from an aborted fetch), so they count only next to the actor who
- * would have done it deliberately. Privy signs over the network, so a dropped
- * connection mid-signing is a real case, and telling someone they declined
- * when the wallet actually broke sends them to the wrong fix.
+ * would have done it deliberately. Web wallets such as Albedo sign over the
+ * network, so a dropped connection mid-signing is a real case, and telling
+ * someone they declined when the wallet actually broke sends them to the
+ * wrong fix.
  */
 export function isUserRejection(message: string): boolean {
   const decision = /\b(reject(ed|s|ing)?|declin(e|ed|es|ing)|denied)\b/i;

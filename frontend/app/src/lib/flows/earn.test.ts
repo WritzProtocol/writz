@@ -11,8 +11,8 @@ describe("isUserRejection", () => {
       "User rejected the request", // xBull, Lobstr
       "Action canceled by the user", // Albedo
       "User rejected", // Rabet
-      "User rejected request", // Privy
-      "User closed the modal", // Privy
+      "User rejected request",
+      "User closed the modal",
       "Request cancelled by user",
       "Signature denied",
     ]) {
@@ -22,7 +22,7 @@ describe("isUserRejection", () => {
 
   it("does not mistake a real wallet or network failure for a rejection", () => {
     for (const message of [
-      "No Privy wallet connected",
+      "No wallet connected",
       "Request failed with status code 500",
       "Relayer unreachable",
       "Transaction failed on-chain: InsufficientAmount",

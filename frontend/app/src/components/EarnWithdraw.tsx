@@ -51,7 +51,7 @@ export function EarnWithdraw({
     // wallet can disconnect between render and click.
     if (!address) {
       setStatus("error");
-      setMessage("Sign in to withdraw.");
+      setMessage("Connect a wallet to withdraw.");
       return;
     }
 

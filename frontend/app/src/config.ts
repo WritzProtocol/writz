@@ -130,12 +130,6 @@ export const config = {
    */
   btcPriceStroops: process.env.NEXT_PUBLIC_BTC_PRICE_STROOPS ?? "600000000000",
   /**
-   * Privy app ID for embedded wallet support (email / social login).
-   * When unset, the Privy connect option is disabled and the Stellar Wallets Kit
-   * remains the only auth path.
-   */
-  privyAppId: process.env.NEXT_PUBLIC_PRIVY_APP_ID ?? "",
-  /**
    * Umami website ID for pageview analytics. When unset, the tracking
    * script is not injected (e.g. local dev without an env file).
    */
