@@ -99,6 +99,12 @@ const COUNT_RE = /\b(\d+)(?:\s*\/\s*\d+)?\s+(?:unit\s+|integration\s+)?tests?\b/
 // "unknown" to it.
 const defindexVaultMdPath = path.join(repoRoot, "contracts/deployments/defindex-vault-testnet.md");
 
+// Docs that cite the vault (docs/products/earn.md) are checked against that
+// record, so a redeployed vault flags them as stale like any other address.
+for (const address of readFileSync(defindexVaultMdPath, "utf8").match(/\bC[A-Z2-7]{55}\b/g) ?? []) {
+  knownAddresses.add(address);
+}
+
 // oracle-design.md and blend-usdc-integration.md document third-party price
 // oracle contracts (Reflector, Pyth, DIA) verified on-chain via
 // contracts/scripts/verify-oracles.sh - same "external addresses" situation

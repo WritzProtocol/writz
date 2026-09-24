@@ -19,6 +19,7 @@
 ## Products
 
 * [PrivateLend](products/privatelend.md)
+* [Earn](products/earn.md)
 * [Dark Swap](products/dark-swap.md)
 * [BTC Savings](products/btc-savings.md)
 * [ZK Proof of Reserve](products/zk-proof-of-reserve.md)

@@ -38,6 +38,7 @@
             "group": "Products",
             "pages": [
               "docs/products/privatelend",
+       "docs/products/earn",
               "docs/products/dark-swap",
               "docs/products/btc-savings",
               "docs/products/zk-proof-of-reserve"
