@@ -50,6 +50,7 @@ export const metadata: Metadata = {
     apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
   },
   manifest: "/manifest.webmanifest",
+  robots: config.target === "mainnet" ? undefined : { index: false, follow: false },
   openGraph: {
     type: "website",
     siteName: "Writz",

@@ -47,9 +47,9 @@ export function DashboardLayout({ children, breadcrumbs }: Props) {
   const navItems = [
     {
       label: "COMMAND CENTER",
-      href: "/app",
+      href: "/",
       icon: LayoutDashboard,
-      active: pathname === "/app",
+      active: pathname === "/",
     },
     {
       label: "EARN METRICS",
