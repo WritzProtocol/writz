@@ -185,6 +185,12 @@ impl BitcoinSpvContract {
         if raw_tx.is_empty() {
             return Err(SPVError::EmptyTransaction);
         }
+        // A Merkle inner node is SHA256d of exactly 64 bytes (left || right),
+        // so only a 64-byte preimage can collide with one. Rejecting that
+        // length closes the inner-node-as-transaction attack.
+        if raw_tx.len() == 64 {
+            return Err(SPVError::AmbiguousTransactionLength);
+        }
 
         // ── Step 0: Require initialization + a checkpoint ─────────────────────
         // `Config` is fetched only to enforce NotInitialized gating
