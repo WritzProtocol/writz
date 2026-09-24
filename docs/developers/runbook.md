@@ -4,7 +4,7 @@
 
 This is the operational companion to [Quick Start](quick-start.md). Quick Start
 gets the test suites green; this runbook gets the protocol *running* against
-Soroban testnet and Bitcoin Signet.
+Stellar testnet and Bitcoin Signet.
 
 ---
 

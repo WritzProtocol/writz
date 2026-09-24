@@ -63,7 +63,7 @@ Phase 1 uses HSM for the protocol key. Phase 2 migrates to MPC (multi-party comp
 
 A stateless Soroban contract that verifies Bitcoin transaction inclusion. "Stateless" means the caller provides all data at verification time - headers, Merkle proof, raw transaction - and the contract verifies without storing state. This eliminates the relayer dependency that caused BTC Relay (Ethereum, 2016) to fail.
 
-**Deployed on Soroban testnet:** `CB2BD6QCSZVNZN5NLI7C5NF356WXVJDSXT6LVAQFWHHS4SZ4NCKKNIVA`
+**Deployed on Stellar testnet:** `CB2BD6QCSZVNZN5NLI7C5NF356WXVJDSXT6LVAQFWHHS4SZ4NCKKNIVA`
 
 Core operations:
 - SHA256d (Bitcoin's double-SHA256) using Soroban host `env.crypto().sha256()`
@@ -189,7 +189,7 @@ Post-launch programs Writz intends to apply for: Growth Hack Program (after 60 d
 See [`scf/milestone-plan.md`](milestone-plan.md) for the detailed four-tranche breakdown.
 
 **Summary:**
-- **Tranche #0 (10%, ~$9,200):** SPV contract verifies a real Bitcoin mainnet tx on Soroban testnet. GitHub public. Docs on Mintlify. Demo video.
+- **Tranche #0 (10%, ~$9,200):** SPV contract verifies a real Bitcoin mainnet tx on Stellar testnet. GitHub public. Docs on Mintlify. Demo video.
 - **Tranche #1 (20%, ~$18,400):** PrivateLend v1 on testnet. ZK-private deposit + borrow flow end-to-end on testnet.
 - **Tranche #2 (30%, ~$27,600):** All three Circom circuits complete. Trusted setup ceremony. Frontend v1 on testnet. STRIDE threat model.
 - **Tranche #3 (40%, ~$36,800):** Mainnet deployment. First real BTC deposit. DeFiLlama listed. $50K TVL cap public launch.

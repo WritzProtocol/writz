@@ -20,7 +20,7 @@ Building a Bitcoin SPV verifier on Soroban from scratch requires:
 - Extensive testing against real Bitcoin transactions
 - A security audit of the cryptographic implementation
 
-The Writz SPV contract has done all of this. It has 47 passing tests, is deployed on Soroban testnet, and has been verified against real Bitcoin mainnet transactions. Use it instead.
+The Writz SPV contract has done all of this. It has 47 passing tests, is deployed on Stellar testnet, and has been verified against real Bitcoin mainnet transactions. Use it instead.
 
 ---
 

@@ -1,7 +1,7 @@
 # Writz frontend
 
 Next.js (App Router, React, TypeScript) web app for the Writz protocol. This is
-the scaffold from issue #4: it talks to the Soroban testnet contracts and reads
+the scaffold from issue #4: it talks to the Stellar testnet contracts and reads
 live on-chain state. Wallets, ZK proving, and the deposit/borrow/repay flows are
 added in subsequent issues.
 
@@ -36,7 +36,7 @@ to Soroban.
 
 All contract addresses and endpoints come from `NEXT_PUBLIC_*` environment
 variables, centralized in `src/config.ts`. Nothing is hardcoded in components.
-See `.env.example` for the full list. Defaults target Soroban testnet
+See `.env.example` for the full list. Defaults target Stellar testnet
 (addresses from `../contracts/deployments/testnet.md`).
 
 ## Contract bindings

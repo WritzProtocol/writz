@@ -5,7 +5,7 @@ import { useRef } from "react";
 import { ShieldCheck, EyeOff, MonitorSmartphone, Timer, Landmark } from "lucide-react";
 import { spvMetrics } from "../data/bentoMetrics.data";
 import { AnimatedCounter } from "./AnimatedCounter";
-import { SpvStatusIndicator } from "./SpvStatusIndicator";
+import { SpvDots } from "./SpvDots";
 import { ProofPulseBadge } from "./ProofPulseBadge";
 import { AnimatedChart } from "./AnimatedChart";
 
@@ -70,7 +70,7 @@ export function BentoGrid() {
                   The contract verifies Bitcoin transactions cryptographically. No oracle, no trust.
                 </p>
               </div>
-              <SpvStatusIndicator />
+              <SpvDots />
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-4">
               {spvMetrics.map((metric) => (

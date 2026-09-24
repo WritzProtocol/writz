@@ -129,7 +129,7 @@ The protocol can prove it is solvent without revealing any individual position t
 The flow above is not theoretical, but it has been proven in two separate pieces, not yet as one continuous real-money flow. As of June–July 2026:
 
 - A real Bitcoin Signet transaction was locked in a P2WSH script and co-signed released: [`11932100`](https://blockstream.info/signet/tx/119321009b2f92dac8f25f6bcddb2ed6a3ae778e8748ec52910cce90742e4098)
-- A full ZK cycle (deposit → borrow → repay) was executed on Soroban testnet across 6 transactions: [`8daddf52`](https://stellar.expert/explorer/testnet/tx/8daddf528c6f6254e67132265e3d9fea07fe1ce63622115b8dff4c335138bbd9). This run used a fabricated Bitcoin transaction and synthetic header to skip Signet's confirmation wait - it proves the Soroban and ZK layers, not the Bitcoin custody path.
+- A full ZK cycle (deposit → borrow → repay) was executed on Stellar testnet across 6 transactions: [`8daddf52`](https://stellar.expert/explorer/testnet/tx/8daddf528c6f6254e67132265e3d9fea07fe1ce63622115b8dff4c335138bbd9). This run used a fabricated Bitcoin transaction and synthetic header to skip Signet's confirmation wait - it proves the Soroban and ZK layers, not the Bitcoin custody path.
 - Groth16 BN254 pairing checks pass on-chain. Poseidon Merkle roots update correctly. ZK-enforced collateral ratios hold.
 
 The cryptography works. The contracts work. What has not yet been demonstrated is a single deposit flowing from a real Bitcoin transaction through SPV verification into a real ZK-private position in one continuous run - see `docs/developers/runbook.md` for the manual Bitcoin-side walkthrough that closes that gap. What remains beyond that is the frontend, the mainnet audit, and the trusted setup ceremony.

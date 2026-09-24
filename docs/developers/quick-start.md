@@ -1,6 +1,6 @@
 # Quick Start
 
-The core lending and verification logic in this repository is working code, not a mockup: the contracts are deployed on Soroban testnet, the tests pass, and the deposit → borrow → repay ZK flow has run end-to-end on-chain (see `docs/developers/runbook.md`). `private-lend/src/oracle.rs`'s `get_btc_price_stroops` now calls a real Reflector oracle on testnet (see `docs/research/oracle-design.md`) - the one remaining placeholder is `commitment-tree`, which still returns a hardcoded price pending a ZK circuit change (tracked in `docs/roadmap/phases.md`) - it does not affect the SPV or lending-mechanics logic below, but `commitment-tree` position pricing is not yet live-market-driven. Start here and have something running in under 5 minutes.
+The core lending and verification logic in this repository is working code, not a mockup: the contracts are deployed on Stellar testnet, the tests pass, and the deposit → borrow → repay ZK flow has run end-to-end on-chain (see `docs/developers/runbook.md`). `private-lend/src/oracle.rs`'s `get_btc_price_stroops` now calls a real Reflector oracle on testnet (see `docs/research/oracle-design.md`) - the one remaining placeholder is `commitment-tree`, which still returns a hardcoded price pending a ZK circuit change (tracked in `docs/roadmap/phases.md`) - it does not affect the SPV or lending-mechanics logic below, but `commitment-tree` position pricing is not yet live-market-driven. Start here and have something running in under 5 minutes.
 
 ---
 
@@ -117,7 +117,7 @@ This produces Wasm artifacts in `contracts/target/wasm32v1-none/release/`:
 
 ## Use the Testnet Deployments
 
-All four contracts are live on Soroban testnet. You can call them directly without deploying:
+All four contracts are live on Stellar testnet. You can call them directly without deploying:
 
 ```bash
 # Check the SPV contract is alive
@@ -138,7 +138,7 @@ stellar contract invoke \
 
 ## Run the Full ZK End-to-End Flow
 
-This script runs the complete deposit → borrow → repay cycle on Soroban testnet using the deployed contracts. It generates real ZK proofs and submits them on-chain.
+This script runs the complete deposit → borrow → repay cycle on Stellar testnet using the deployed contracts. It generates real ZK proofs and submits them on-chain.
 
 ```bash
 # You need a Stellar testnet key with XLM and USDC

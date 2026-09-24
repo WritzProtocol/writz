@@ -4,12 +4,12 @@
 
 [![CI](https://github.com/WritzProtocol/writz/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/WritzProtocol/writz/actions/workflows/ci.yml?query=branch%3Amain)
 [![Tests](https://img.shields.io/badge/tests-406%20passing-brightgreen)](https://github.com/WritzProtocol/writz/actions)
-[![Network](https://img.shields.io/badge/network-Soroban%20Testnet-blue)](https://stellar.expert/explorer/testnet)
+[![Network](https://img.shields.io/badge/network-Stellar%20Testnet-blue)](https://stellar.expert/explorer/testnet)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 **[Live App](https://writz.xyz)** · **[Docs](https://docs.writz.xyz)** · **[Relayer API](https://api.testnet.writz.xyz)**
 
-**Writz** is the first trustless Bitcoin lending protocol on Stellar. Lock real BTC directly from your Bitcoin wallet, borrow USDC on Stellar, and keep every position private - always.
+**Writz** is a Bitcoin lending protocol on Stellar where the collateral never leaves Bitcoin. Lock real BTC directly from your Bitcoin wallet, borrow USDC on Stellar, and keep every position private.
 
 No bridge. No custodian. No wrapped tokens. No public balance sheet.
 
@@ -28,7 +28,7 @@ No bridge. No custodian. No wrapped tokens. No public balance sheet.
 
 ## This Is Not a Whitepaper
 
-As of August 2026, four contracts are live on Soroban testnet, 406 tests pass, and real Bitcoin transactions have been verified on-chain.
+As of August 2026, four contracts are live on Stellar testnet, 406 tests pass, and real Bitcoin transactions have been verified on-chain.
 
 | What | Status |
 |---|---|
@@ -355,7 +355,7 @@ python3 scripts/diagrams/render-all.py
 
 **Phase 1 - Foundation** *(current, Jul–Sep 2026)*
 
-- [x] 4 contracts live on Soroban testnet
+- [x] 4 contracts live on Stellar testnet
 - [x] Full ZK E2E cycle verified on-chain
 - [x] P2WSH locking and release tested on Bitcoin Signet
 - [ ] SCF Build Award submitted (Open Track)

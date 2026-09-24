@@ -74,7 +74,7 @@ export function DashboardLayout({ children, breadcrumbs }: Props) {
         <div className="flex h-16 items-center justify-between border-b border-line px-5">
           <Link href="/" className="flex items-center gap-2.5">
             {/* eslint-disable-next-line @next/next/no-img-element -- matches this codebase's existing plain-<img> convention (no next/image usage anywhere else) */}
-            <img src="/brand/writz-mark.png" alt="Writz" className="h-7 w-7" />
+            <img src="/brand/writz-mark-white.svg" alt="Writz" className="h-6 w-auto" />
             <span className="font-mono text-xs font-bold tracking-widest text-amber">
               WRITZ PROTOCOL
             </span>

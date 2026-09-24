@@ -138,8 +138,8 @@ Per SCF v7.0's four-tranche disbursement: 10% / 20% / 30% / 40%
 
 | Tranche | % | Amount (XLM equiv.) | Deliverable |
 |---|---|---|---|
-| **#0** | 10% | ~$9,200 | Bitcoin SPV client verifies a Bitcoin mainnet transaction on Soroban testnet. GitHub repo public with technical documentation. |
-| **#1** | 20% | ~$18,400 | PrivateLend v1 on Soroban testnet: deposit BTC via SPV → borrow USDC with ZK-private position. End-to-end testnet demo published. |
+| **#0** | 10% | ~$9,200 | Bitcoin SPV client verifies a Bitcoin mainnet transaction on Stellar testnet. GitHub repo public with technical documentation. |
+| **#1** | 20% | ~$18,400 | PrivateLend v1 on Stellar testnet: deposit BTC via SPV → borrow USDC with ZK-private position. End-to-end testnet demo published. |
 | **#2** | 30% | ~$27,600 | Circom circuits (deposit, borrow/repay, liquidation) complete. Trusted setup ceremony executed. Frontend v1 (app.writz.xyz) on testnet. |
 | **#3** | 40% | ~$36,800 | Mainnet deployment. First real BTC deposit processed. Public launch with $50K TVL cap. |
 

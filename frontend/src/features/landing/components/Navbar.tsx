@@ -24,12 +24,15 @@ export function Navbar() {
         style={{ background: "color-mix(in srgb, var(--card) 94%, transparent)", borderColor: "var(--border)" }}
       >
         {/* Logo */}
-        <a href="#" className="flex items-center gap-2">
+        <a href="#" className="flex items-center">
           {/* eslint-disable-next-line @next/next/no-img-element -- matches this codebase's existing plain-<img> convention (no next/image usage anywhere else) */}
-          <img src="/brand/writz-mark.png" alt="Writz" className="h-8 w-8" />
-          <span className="font-semibold text-sm hidden sm:block" style={{ color: "var(--text-hi)" }}>
-            Writz
-          </span>
+          <img src="/brand/writz-mark-white.svg" alt="Writz" className="h-7 w-auto sm:hidden" />
+          {/* eslint-disable-next-line @next/next/no-img-element -- matches this codebase's existing plain-<img> convention (no next/image usage anywhere else) */}
+          <img
+            src="/brand/writz-lockup-white.svg"
+            alt="Writz"
+            className="hidden h-7 w-auto sm:block"
+          />
         </a>
 
         {/* Desktop Nav Items */}

@@ -94,7 +94,7 @@ The circuit is compiled, the trusted setup ceremony is run publicly, and the ver
 
 ZK Proof of Reserve is planned for Phase 3 (Q3 2027), after PrivateLend is live on mainnet and the ZK infrastructure has been audited.
 
-The circuit design is complete. The required ZK infrastructure (zk-verifier contract, Groth16 BN254 pairing) is already deployed on Soroban testnet as part of the PrivateLend stack.
+The circuit design is complete. The required ZK infrastructure (zk-verifier contract, Groth16 BN254 pairing) is already deployed on Stellar testnet as part of the PrivateLend stack.
 
 ---
 

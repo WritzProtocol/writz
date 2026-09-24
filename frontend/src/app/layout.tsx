@@ -27,13 +27,50 @@ const mono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const TITLE = "Writz - Bitcoin was built to be yours";
+
+// The published social bio, plus the network status any description of the
+// product has to carry.
+const DESCRIPTION =
+  "Lock real BTC. Borrow USDC on Stellar. No bridge, no custodian, no wrapped token. Live on testnet.";
+
 export const metadata: Metadata = {
   metadataBase: new URL(env.siteUrl),
-  title: "Writz - Bitcoin was built to be yours",
-  description:
-    "Trustless, ZK-private Bitcoin lending on Stellar. Lock real BTC, borrow USDC, keep every position private.",
+  title: TITLE,
+  description: DESCRIPTION,
+  applicationName: "Writz",
+  alternates: { canonical: "/" },
   icons: {
-    icon: "/brand/writz-mark.png",
+    // SVG first; the PNGs are the fallback for anything that will not take it.
+    icon: [
+      { url: "/brand/writz-icon.svg", type: "image/svg+xml" },
+      { url: "/favicon.ico", sizes: "16x16 32x32 48x48" },
+      { url: "/icon-192.png", type: "image/png", sizes: "192x192" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
+  },
+  manifest: "/manifest.webmanifest",
+  openGraph: {
+    type: "website",
+    siteName: "Writz",
+    title: TITLE,
+    description: DESCRIPTION,
+    url: "/",
+    images: [
+      {
+        url: "/og.png",
+        width: 1200,
+        height: 630,
+        alt: "Writz. Lock real BTC. Borrow USDC on Stellar. No bridge, no custodian, no wrapped token.",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    site: "@WritzProtocol",
+    title: TITLE,
+    description: DESCRIPTION,
+    images: ["/og.png"],
   },
 };
 

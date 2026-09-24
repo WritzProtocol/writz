@@ -25,7 +25,7 @@ The key differentiator vs. everything else in BTCfi: no custodian, no wrapped to
 
 **What's working on testnet today:**
 
-1. **Bitcoin SPV contract** (Soroban) - Verifies Bitcoin transaction inclusion using stateless SPV: the caller provides 6 block headers + Merkle proof + raw tx, the contract runs SHA256d, validates the header chain, and confirms Merkle inclusion. Deployed at `CB2BD6QCSZVNZN5NLI7C5NF356WXVJDSXT6LVAQFWHHS4SZ4NCKKNIVA` on Soroban testnet. 49 tests passing.
+1. **Bitcoin SPV contract** (Soroban) - Verifies Bitcoin transaction inclusion using stateless SPV: the caller provides 6 block headers + Merkle proof + raw tx, the contract runs SHA256d, validates the header chain, and confirms Merkle inclusion. Deployed at `CB2BD6QCSZVNZN5NLI7C5NF356WXVJDSXT6LVAQFWHHS4SZ4NCKKNIVA` on Stellar testnet. 49 tests passing.
 
 2. **SPV Relayer service** (Node.js / Blockstream Esplora) - REST API that fetches block headers + Merkle proof for any confirmed Bitcoin txid and formats the `sorobanArgs` ready for contract invocation. Running locally, will be hosted publicly before SCF application.
 
