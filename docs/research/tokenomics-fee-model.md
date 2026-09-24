@@ -1,4 +1,7 @@
-# Research: Tokenomics & Fee Model
+---
+title: "Research: Tokenomics & Fee Model"
+sidebarTitle: "Tokenomics & Fee Model"
+---
 
 **Author:** Research
 **Date:** 2026-06-22

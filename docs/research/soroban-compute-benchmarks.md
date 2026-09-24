@@ -1,4 +1,7 @@
-# Research: Soroban Compute Cost & Resource Limits
+---
+title: "Research: Soroban Compute Cost & Resource Limits"
+sidebarTitle: "Soroban Compute Cost & Resource Limits"
+---
 
 **Author:** Research
 **Date:** 2026-06-22

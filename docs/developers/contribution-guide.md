@@ -1,4 +1,6 @@
-# Contributing to Writz
+---
+title: "Contributing to Writz"
+---
 
 Writz is open source. Contributions - bug reports, code improvements, documentation, and security research - are welcome. This page explains how to contribute effectively.
 

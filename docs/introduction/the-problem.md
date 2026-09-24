@@ -1,4 +1,6 @@
-# The Problem
+---
+title: "The Problem"
+---
 
 ## Your Financial Life Is Public
 

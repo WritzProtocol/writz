@@ -1,4 +1,6 @@
-# Why Stellar, Why Now
+---
+title: "Why Stellar, Why Now"
+---
 
 Writz is not bringing Bitcoin to DeFi. Writz is making Bitcoin verifiable - on the most compliance-friendly blockchain that has ever shipped ZK proofs to mainnet.
 

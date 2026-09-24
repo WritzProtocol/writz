@@ -1,4 +1,7 @@
-# Research: Market Landscape - BTCfi + Privacy on Stellar
+---
+title: "Research: Market Landscape - BTCfi + Privacy on Stellar"
+sidebarTitle: "Market Landscape - BTCfi + Privacy on Stellar"
+---
 
 **Author:** Justin (Business Analyst)
 **Date:** 2026-06-22

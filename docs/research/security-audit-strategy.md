@@ -1,4 +1,7 @@
-# Research: Security Audit Strategy
+---
+title: "Research: Security Audit Strategy"
+sidebarTitle: "Security Audit Strategy"
+---
 
 **Author:** Research
 **Date:** 2026-06-22

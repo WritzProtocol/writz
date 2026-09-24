@@ -1,4 +1,6 @@
-# SPV Verification
+---
+title: "SPV Verification"
+---
 
 **How Writz proves a Bitcoin transaction happened - without trusting anyone.**
 

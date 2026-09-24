@@ -1,4 +1,6 @@
-# How Writz Works
+---
+title: "How Writz Works"
+---
 
 *No technical knowledge required. Read this first.*
 

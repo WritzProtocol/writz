@@ -1,4 +1,6 @@
-# Earn
+---
+title: "Earn"
+---
 
 **Deposit USDC. Earn yield. The vault shares stay in your wallet.**
 

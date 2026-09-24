@@ -1,4 +1,6 @@
-# Dark Swap
+---
+title: "Dark Swap"
+---
 
 > **Scope status:** This is a problem-and-hypothesis exploration, not a committed roadmap item. No circuit, contract, or engineering work exists for Dark Swap today - it is fully speculative. Before investing further spec or engineering time here, validate real user demand from PrivateLend's mainnet launch first; this document should not expand further until that validation exists.
 

@@ -1,4 +1,7 @@
-# Research: Bitcoin Locking Script Design
+---
+title: "Research: Bitcoin Locking Script Design"
+sidebarTitle: "Bitcoin Locking Script Design"
+---
 
 **Author:** Research
 **Date:** 2026-06-22

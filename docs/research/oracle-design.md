@@ -1,4 +1,7 @@
-# Research: BTC/USD Price Oracle on Stellar
+---
+title: "Research: BTC/USD Price Oracle on Stellar"
+sidebarTitle: "BTC/USD Price Oracle on Stellar"
+---
 
 **Author:** Research
 **Date:** 2026-06-22

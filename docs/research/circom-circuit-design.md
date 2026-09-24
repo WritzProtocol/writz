@@ -1,4 +1,7 @@
-# Research: Circom Circuit Design for Writz Protocol
+---
+title: "Research: Circom Circuit Design for Writz Protocol"
+sidebarTitle: "Circom Circuit Design for Writz Protocol"
+---
 
 **Author:** Research
 **Date:** 2026-06-22

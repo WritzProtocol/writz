@@ -1,4 +1,7 @@
-# Writz Protocol - Technical Architecture Overview
+---
+title: "Technical Architecture Overview"
+sidebarTitle: "Technical Overview"
+---
 
 **Version:** 0.1 (draft - pending Phase 0 validation)
 **Last updated:** 2026-06-22

@@ -8,11 +8,11 @@
     "dark": "#C47217"
   },
   "logo": {
-    "light": "/docs/brand/logo-light.png",
-    "dark": "/docs/brand/logo-dark.png",
+    "light": "/docs/brand/writz-lockup-black.svg",
+    "dark": "/docs/brand/writz-lockup-white.svg",
     "href": "https://writz.xyz"
   },
-  "favicon": "/docs/brand/favicon.png",
+  "favicon": "/docs/brand/writz-icon.svg",
   "navigation": {
     "tabs": [
       {

@@ -1,4 +1,6 @@
-# Contract Reference
+---
+title: "Contract Reference"
+---
 
 Complete public interface documentation for all four Writz Soroban contracts.
 

@@ -1,4 +1,6 @@
-# The Stellar Side
+---
+title: "The Stellar Side"
+---
 
 **Four contracts, one system - how Writz lives on Soroban.**
 

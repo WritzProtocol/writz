@@ -1,4 +1,6 @@
-# The Bitcoin Side
+---
+title: "The Bitcoin Side"
+---
 
 **How your BTC is locked - and why nobody else can touch it.**
 

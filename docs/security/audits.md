@@ -1,4 +1,6 @@
-# Audits
+---
+title: "Audits"
+---
 
 **Current status: Pre-audit. Mainnet will not launch before audit completion.**
 

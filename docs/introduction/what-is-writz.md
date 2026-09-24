@@ -1,4 +1,6 @@
-# What is Writz?
+---
+title: "What is Writz?"
+---
 
 Bitcoin is where wealth lives. It is the foundation - scarce, reliable, and built to hold value through anything. USDC is where wealth moves - the stablecoin that pays invoices, covers expenses, and flows through the real economy. And wrapped around both, an electric fence: zero-knowledge proofs that make your financial position visible only to you.
 

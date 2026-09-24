@@ -1,4 +1,6 @@
-# The ZK Privacy Layer
+---
+title: "The ZK Privacy Layer"
+---
 
 **How your position stays hidden - even from the protocol.**
 

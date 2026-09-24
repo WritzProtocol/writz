@@ -1,4 +1,6 @@
-# PrivateLend
+---
+title: "PrivateLend"
+---
 
 **Deposit Bitcoin. Borrow USDC. Your position is yours alone.**
 

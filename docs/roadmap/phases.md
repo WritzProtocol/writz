@@ -1,4 +1,6 @@
-# Phases
+---
+title: "Phases"
+---
 
 > **SCF status note:** Everything in this document related to the Stellar Community Fund (application, tranches, grant funding) is a draft. The application has not been submitted and there is no short-term plan to submit it. Do not read any SCF-tied line item, date, or amount below as scheduled or committed.
 

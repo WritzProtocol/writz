@@ -1,4 +1,7 @@
-# Research: Regulatory Landscape for Private DeFi
+---
+title: "Research: Regulatory Landscape for Private DeFi"
+sidebarTitle: "Regulatory Landscape for Private DeFi"
+---
 
 **Author:** Research
 **Date:** 2026-06-22

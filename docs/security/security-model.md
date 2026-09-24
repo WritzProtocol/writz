@@ -1,4 +1,6 @@
-# Security Model
+---
+title: "Security Model"
+---
 
 **What Writz protects, what it cannot protect, and what happens when things go wrong.**
 
