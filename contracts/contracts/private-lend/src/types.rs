@@ -90,6 +90,11 @@ pub struct Config {
     /// Address authorized to publish a co-signed release PSBT via
     /// `publish_release_psbt` (the auto-cosign relayer watcher).
     pub relayer: Address,
+    /// The protocol's 33-byte compressed Bitcoin co-signing public key - the
+    /// key embedded in every Writz redeem script (path A). `deposit` derives
+    /// the expected scriptPubKey from it, so it is fixed for the contract's
+    /// lifetime; rotating it means deploying a new contract.
+    pub protocol_pubkey: BytesN<33>,
     /// Minimum BTC deposit in satoshis (default: 100_000 = 0.001 BTC).
     pub min_deposit_satoshis: u64,
     /// Minimum collateral ratio in basis points (15_000 = 150%).

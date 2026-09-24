@@ -59,6 +59,12 @@ Until `initialize` and `set_checkpoint` have both been called, `verify_transacti
 
 A stronger design would have the contract accumulate its own validated chainwork across calls (a stateful "light client," as BTCRelay/tBTC-style bridges do) rather than trusting an admin-set checkpoint at all. That's a real architecture change, not a parameter tweak, and is tracked as future work rather than a mainnet blocker given the mitigations above.
 
+### Deposit script binding (`private-lend`)
+
+An SPV proof shows a Bitcoin transaction is real and confirmed; it does not show who controls its outputs. `private-lend::deposit` therefore never trusts the caller's scriptPubKey. It rebuilds the Writz redeem script from three values - the protocol co-signing key fixed in the contract's config, the depositor's key and the timelock - hashes it, and requires the deposit output to be exactly that P2WSH. An output the depositor can spend alone, or someone else's UTXO, cannot match, so it can never be registered as collateral. (`bitcoin-script`'s `buildRedeemScript` and the contract's `script.rs` are kept byte-identical; the contract tests pin them against reference vectors from the TypeScript builder.)
+
+The timelock must also fall 1,008 to 105,000 blocks (about 7 days to 2 years) above the block that confirmed the deposit, so the CLTV escape hatch is never an instant exit for a freshly-deposited position. The protocol key is fixed for the contract's lifetime; rotating it means deploying a new contract.
+
 ### Merkle proof integrity (duplicate-leaf ambiguity)
 
 Bitcoin's block Merkle tree duplicates the last transaction when a block has an odd transaction count - a well-known quirk (the class of issue behind CVE-2012-2459) that lets the same txid produce a valid-looking inclusion proof at two adjacent indices. Rather than special-casing the Merkle verifier (which would incorrectly reject the *legitimate* proof for the last transaction in any odd-count block - covered by the `merkle_seven_tx_odd_count` test), both `private-lend::deposit` and `commitment-tree::deposit` reject any deposit whose Bitcoin txid has already been recorded, independent of which Merkle index was supplied. This closes the double-collateralization path at the layer that actually needs to enforce uniqueness - the position/commitment store - rather than in the Merkle math itself.

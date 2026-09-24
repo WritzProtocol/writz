@@ -36,6 +36,7 @@ impl MockSpv {
         SpvVerificationResult {
             txid: BytesN::from_array(&env, &[0xdeu8; 32]),
             block_hash: BytesN::from_array(&env, &[0xadu8; 32]),
+            block_height: 2_900_000,
             confirmations: 6,
         }
     }
@@ -167,9 +168,11 @@ impl MockReflectorStale {
 
 // ── Test fixtures ─────────────────────────────────────────────────────────────
 
-/// Builds a minimal legacy Bitcoin transaction with a single P2WSH output.
-/// The P2WSH scriptPubKey is `0x00 0x20 [hash_byte; 32]`.
-fn build_deposit_tx(value_sat: u64, hash_byte: u8) -> std::vec::Vec<u8> {
+/// Builds a minimal legacy Bitcoin transaction with a single output paying
+/// `value_sat` to the given scriptPubKey.
+fn build_deposit_tx(value_sat: u64, spk: &Bytes) -> std::vec::Vec<u8> {
+    let mut spk_bytes = std::vec![0u8; spk.len() as usize];
+    spk.copy_into_slice(&mut spk_bytes);
     let mut tx = std::vec::Vec::new();
     // version
     tx.extend_from_slice(&1u32.to_le_bytes());
@@ -182,10 +185,8 @@ fn build_deposit_tx(value_sat: u64, hash_byte: u8) -> std::vec::Vec<u8> {
     // 1 output
     tx.push(0x01);
     tx.extend_from_slice(&value_sat.to_le_bytes());
-    tx.push(0x22); // scriptPubKey len = 34
-    tx.push(0x00); // OP_0
-    tx.push(0x20); // PUSH32
-    tx.extend_from_slice(&[hash_byte; 32]);
+    tx.push(spk_bytes.len() as u8); // scriptPubKey len
+    tx.extend_from_slice(&spk_bytes);
     // locktime
     tx.extend_from_slice(&0u32.to_le_bytes());
     tx
@@ -211,6 +212,29 @@ fn fake_user_pubkey(env: &Env) -> BytesN<33> {
     let mut buf = [0x22u8; 33];
     buf[0] = 0x02;
     BytesN::from_array(env, &buf)
+}
+
+/// Block height the mock SPV reports for the block holding the deposit.
+const MOCK_BLOCK_HEIGHT: u32 = 2_900_000;
+
+/// A valid default timelock: 5,328 blocks above the mock deposit block.
+const TEST_TIMELOCK: u32 = 2_905_328;
+
+/// A fake 33-byte compressed key standing in for the protocol co-signing key.
+fn fake_protocol_pubkey(env: &Env) -> BytesN<33> {
+    let mut buf = [0x11u8; 33];
+    buf[0] = 0x03;
+    BytesN::from_array(env, &buf)
+}
+
+/// The scriptPubKey a correct Writz deposit output carries for `timelock`.
+fn writz_spk(env: &Env, timelock: u32) -> Bytes {
+    crate::script::p2wsh_script_pubkey(
+        env,
+        &fake_protocol_pubkey(env),
+        &fake_user_pubkey(env),
+        timelock,
+    )
 }
 
 struct Setup {
@@ -261,14 +285,13 @@ fn setup() -> Setup {
     let pl = env.register(PrivateLendContract, ());
     let client = PrivateLendContractClient::new(&env, &pl);
 
-    client.initialize(&admin, &spv, &usdc, &oracle, &keeper, &relayer);
+    client.initialize(&admin, &spv, &usdc, &oracle, &keeper, &relayer, &fake_protocol_pubkey(&env));
 
     // Pre-build deposit transaction artifacts.
-    let hash_byte = 0xabu8;
     let sat_amount = 500_000u64; // 0.005 BTC
-    let raw_bytes = build_deposit_tx(sat_amount, hash_byte);
+    let spk = writz_spk(&env, TEST_TIMELOCK);
+    let raw_bytes = build_deposit_tx(sat_amount, &spk);
     let raw_tx = Bytes::from_slice(&env, &raw_bytes);
-    let spk = fake_p2wsh_spk(hash_byte, &env);
 
     Setup {
         env,
@@ -301,7 +324,7 @@ fn initialize_twice_panics() {
     let s = setup();
     let spv2 = Address::generate(&s.env);
     s.client
-        .initialize(&s.admin, &spv2, &s.usdc, &s.admin, &s.keeper, &s.relayer);
+        .initialize(&s.admin, &spv2, &s.usdc, &s.admin, &s.keeper, &s.relayer, &fake_protocol_pubkey(&s.env));
 }
 
 // ── deposit ───────────────────────────────────────────────────────────────────
@@ -314,7 +337,7 @@ fn do_deposit(s: &Setup) -> BytesN<32> {
         &0u32,
         &s.raw_tx,
         &s.spk,
-        &2_905_328u32,
+        &TEST_TIMELOCK,
         &fake_user_pubkey(&s.env),
     )
 }
@@ -346,21 +369,193 @@ fn deposit_duplicate_txid_panics() {
     do_deposit(&s); // same txid from mock SPV → should panic
 }
 
-#[test]
-#[should_panic]
-fn deposit_wrong_script_pubkey_panics() {
-    let s = setup();
-    let wrong_spk = fake_p2wsh_spk(0xffu8, &s.env); // doesn't match 0xab in raw_tx
-    s.client.deposit(
+/// Deposits an output with `spk` for `timelock` and returns the result.
+fn try_deposit_with(
+    s: &Setup,
+    spk: &Bytes,
+    timelock: u32,
+    user_pubkey: &BytesN<33>,
+) -> Result<BytesN<32>, PrivateLendError> {
+    let raw_tx = Bytes::from_slice(&s.env, &build_deposit_tx(500_000, spk));
+    match s.client.try_deposit(
         &s.depositor,
         &fake_block_hash(&s.env),
         &fake_proof(&s.env),
         &0u32,
-        &s.raw_tx,
-        &wrong_spk,
-        &2_905_328u32,
-        &fake_user_pubkey(&s.env),
+        &raw_tx,
+        spk,
+        &timelock,
+        user_pubkey,
+    ) {
+        Ok(Ok(txid)) => Ok(txid),
+        Err(Ok(err)) => Err(err),
+        other => panic!("unexpected deposit result: {:?}", other),
+    }
+}
+
+/// The advisories' PoC: pledging BTC the depositor can spend alone. A P2WSH
+/// over `OP_TRUE` carries no protocol key, so it must be refused.
+#[test]
+fn deposit_rejects_output_the_depositor_can_spend_alone() {
+    let s = setup();
+    let op_true_hash: BytesN<32> = s.env.crypto().sha256(&Bytes::from_slice(&s.env, &[0x51u8])).into();
+    let mut spk = Bytes::from_slice(&s.env, &[0x00, 0x20]);
+    spk.append(&op_true_hash.into());
+
+    assert_eq!(
+        try_deposit_with(&s, &spk, TEST_TIMELOCK, &fake_user_pubkey(&s.env)),
+        Err(PrivateLendError::ScriptPubKeyMismatch),
     );
+}
+
+/// A well-formed P2WSH that simply is not the Writz script for these
+/// arguments (e.g. someone else's UTXO) is refused.
+#[test]
+fn deposit_rejects_script_pubkey_not_derived_from_the_arguments() {
+    let s = setup();
+    let other = fake_p2wsh_spk(0xffu8, &s.env);
+
+    assert_eq!(
+        try_deposit_with(&s, &other, TEST_TIMELOCK, &fake_user_pubkey(&s.env)),
+        Err(PrivateLendError::ScriptPubKeyMismatch),
+    );
+}
+
+/// The script commits to the timelock: the same output cannot be registered
+/// under a different timelock than the one it was funded with.
+#[test]
+fn deposit_rejects_timelock_that_differs_from_the_funded_script() {
+    let s = setup();
+    let funded_for_other_timelock = writz_spk(&s.env, TEST_TIMELOCK + 1);
+
+    assert_eq!(
+        try_deposit_with(&s, &funded_for_other_timelock, TEST_TIMELOCK, &fake_user_pubkey(&s.env)),
+        Err(PrivateLendError::ScriptPubKeyMismatch),
+    );
+}
+
+/// A 34-byte Taproot-style scriptPubKey (`OP_1 0x20 <32>`) is not P2WSH.
+#[test]
+fn deposit_rejects_non_p2wsh_script_pubkey() {
+    let s = setup();
+    let mut buf = std::vec![0x51u8, 0x20];
+    buf.extend_from_slice(&[0xabu8; 32]);
+    let taproot = Bytes::from_slice(&s.env, &buf);
+
+    assert_eq!(
+        try_deposit_with(&s, &taproot, TEST_TIMELOCK, &fake_user_pubkey(&s.env)),
+        Err(PrivateLendError::InvalidScriptPubKey),
+    );
+}
+
+#[test]
+fn deposit_rejects_user_pubkey_that_is_not_compressed() {
+    let s = setup();
+    let mut buf = [0x22u8; 33];
+    buf[0] = 0x04;
+    let uncompressed_prefix = BytesN::<33>::from_array(&s.env, &buf);
+
+    assert_eq!(
+        try_deposit_with(&s, &s.spk, TEST_TIMELOCK, &uncompressed_prefix),
+        Err(PrivateLendError::InvalidUserPubkey),
+    );
+}
+
+/// The escape hatch may not be an instant exit: it must unlock at least
+/// 1,008 blocks after the deposit block, and at most 105,000.
+#[test]
+fn deposit_enforces_timelock_window() {
+    for (offset, ok) in [
+        (0u32, false),
+        (1_007, false),
+        (1_008, true),
+        (105_000, true),
+        (105_001, false),
+    ] {
+        let s = setup();
+        let user = fake_user_pubkey(&s.env);
+        let timelock = MOCK_BLOCK_HEIGHT + offset;
+        let spk = writz_spk(&s.env, timelock);
+        let result = try_deposit_with(&s, &spk, timelock, &user);
+        if ok {
+            assert!(result.is_ok(), "offset {} must be accepted: {:?}", offset, result);
+        } else {
+            assert_eq!(result, Err(PrivateLendError::InvalidTimelock), "offset {}", offset);
+        }
+    }
+}
+
+#[test]
+fn initialize_rejects_protocol_pubkey_that_is_not_compressed() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let pl = env.register(PrivateLendContract, ());
+    let client = PrivateLendContractClient::new(&env, &pl);
+    let a = Address::generate(&env);
+    let mut buf = [0x11u8; 33];
+    buf[0] = 0x05;
+
+    assert_eq!(
+        client.try_initialize(&a, &a, &a, &a, &a, &a, &BytesN::<33>::from_array(&env, &buf)),
+        Err(Ok(PrivateLendError::InvalidProtocolPubkey)),
+    );
+}
+
+fn hex(env: &Env, s: &str) -> Bytes {
+    let raw: std::vec::Vec<u8> = (0..s.len())
+        .step_by(2)
+        .map(|i| u8::from_str_radix(&s[i..i + 2], 16).unwrap())
+        .collect();
+    Bytes::from_slice(env, &raw)
+}
+
+/// Reference vectors generated by `buildRedeemScript` in
+/// `bitcoin-script/src/script.ts` (bitcoinjs-lib) with the secp256k1
+/// generator `G` as the protocol key and `2G` as the user key. The on-chain
+/// derivation must match it byte for byte, including the zero-pad byte a
+/// timelock with its top bit set needs (8,388,608 = 0x800000).
+#[test]
+fn script_derivation_matches_the_typescript_builder() {
+    let env = Env::default();
+    let mut protocol = [0u8; 33];
+    hex(&env, "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798").copy_into_slice(&mut protocol);
+    let mut user = [0u8; 33];
+    hex(&env, "02c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5").copy_into_slice(&mut user);
+    let protocol = BytesN::<33>::from_array(&env, &protocol);
+    let user = BytesN::<33>::from_array(&env, &user);
+
+    let vectors = [
+        (
+            900_000u32,
+            "63210279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798ad2102c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5ac6703a0bb0db1752102c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5ac68",
+            "00205c98f3165dbd13c2cdbba2e08e7f0248ec137889b58979b2fb7ac58705fe37ba",
+        ),
+        (
+            8_388_608,
+            "63210279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798ad2102c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5ac670400008000b1752102c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5ac68",
+            "00209203bc0b2a102072fb51a5c655b32fc3f6e8a303b7fbf86c4d31f57691f2397d",
+        ),
+        (
+            100_000,
+            "63210279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798ad2102c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5ac6703a08601b1752102c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5ac68",
+            "00202f0918371e3189114a80a20b3e13694cd4610520ea13dcc344b6898d11013557",
+        ),
+    ];
+
+    for (timelock, script_hex, spk_hex) in vectors {
+        assert_eq!(
+            crate::script::redeem_script(&env, &protocol, &user, timelock),
+            hex(&env, script_hex),
+            "redeem script for timelock {}",
+            timelock
+        );
+        assert_eq!(
+            crate::script::p2wsh_script_pubkey(&env, &protocol, &user, timelock),
+            hex(&env, spk_hex),
+            "scriptPubKey for timelock {}",
+            timelock
+        );
+    }
 }
 
 #[test]
@@ -368,7 +563,7 @@ fn deposit_wrong_script_pubkey_panics() {
 fn deposit_too_small_panics() {
     let s = setup();
     // Build a tx with only 1_000 satoshis (below 100_000 minimum).
-    let raw_bytes = build_deposit_tx(1_000, 0xab);
+    let raw_bytes = build_deposit_tx(1_000, &s.spk);
     let raw_tx = Bytes::from_slice(&s.env, &raw_bytes);
     s.client.deposit(
         &s.depositor,
@@ -377,7 +572,7 @@ fn deposit_too_small_panics() {
         &0u32,
         &raw_tx,
         &s.spk,
-        &2_905_328u32,
+        &TEST_TIMELOCK,
         &fake_user_pubkey(&s.env),
     );
 }
@@ -714,7 +909,7 @@ fn borrow_fails_when_oracle_has_no_price() {
         &0,
         &s.raw_tx,
         &s.spk,
-        &2_000_000,
+        &TEST_TIMELOCK,
         &fake_user_pubkey(&s.env),
     );
     s.client.supply_usdc(&s.supplier, &1_000_000_000_000_i128);
@@ -739,7 +934,7 @@ fn borrow_fails_when_oracle_price_is_stale() {
         &0,
         &s.raw_tx,
         &s.spk,
-        &2_000_000,
+        &TEST_TIMELOCK,
         &fake_user_pubkey(&s.env),
     );
     s.client.supply_usdc(&s.supplier, &1_000_000_000_000_i128);
@@ -764,7 +959,7 @@ fn borrow_succeeds_with_a_seven_decimal_oracle() {
         &0,
         &s.raw_tx,
         &s.spk,
-        &2_000_000,
+        &TEST_TIMELOCK,
         &fake_user_pubkey(&s.env),
     );
     s.client.supply_usdc(&s.supplier, &1_000_000_000_000_i128);
@@ -792,7 +987,7 @@ fn borrow_succeeds_with_a_two_decimal_oracle() {
         &0,
         &s.raw_tx,
         &s.spk,
-        &2_000_000,
+        &TEST_TIMELOCK,
         &fake_user_pubkey(&s.env),
     );
     s.client.supply_usdc(&s.supplier, &1_000_000_000_000_i128);
