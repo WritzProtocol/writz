@@ -1,4 +1,7 @@
-# Research: Bitcoin SPV Implementations on Other Chains
+---
+title: "Research: Bitcoin SPV Implementations on Other Chains"
+sidebarTitle: "Bitcoin SPV Implementations on Other Chains"
+---
 
 **Author:** Justin (Business Analyst)
 **Date:** 2026-06-22

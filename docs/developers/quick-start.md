@@ -1,4 +1,6 @@
-# Quick Start
+---
+title: "Quick Start"
+---
 
 The core lending and verification logic in this repository is working code, not a mockup: the contracts are deployed on Stellar testnet, the tests pass, and the deposit → borrow → repay ZK flow has run end-to-end on-chain (see `docs/developers/runbook.md`). `private-lend/src/oracle.rs`'s `get_btc_price_stroops` now calls a real Reflector oracle on testnet (see `docs/research/oracle-design.md`) - the one remaining placeholder is `commitment-tree`, which still returns a hardcoded price pending a ZK circuit change (tracked in `docs/roadmap/phases.md`) - it does not affect the SPV or lending-mechanics logic below, but `commitment-tree` position pricing is not yet live-market-driven. Start here and have something running in under 5 minutes.
 
@@ -225,7 +227,7 @@ stellar contract deploy \
   --network testnet
 ```
 
-See [`contracts/deployments/testnet.md`](../../contracts/deployments/testnet.md) for the full init sequence and verified transaction hashes.
+See [`contracts/deployments/testnet.md`](https://github.com/WritzProtocol/writz/blob/main/contracts/deployments/testnet.md) for the full init sequence and verified transaction hashes.
 
 ---
 
@@ -274,4 +276,4 @@ bitcoin-script/src/
 
 ---
 
-**Next:** [Bitcoin SPV SDK →](spv-sdk.md)
+**Next:** [Bitcoin SPV SDK →](/developers/spv-sdk)

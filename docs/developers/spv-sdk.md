@@ -1,4 +1,6 @@
-# Bitcoin SPV SDK
+---
+title: "Bitcoin SPV SDK"
+---
 
 > **Accuracy note:** the `outputs: Vec<TxOutput>` field and per-output extraction pattern shown below do not exist in the current `bitcoin-spv` contract - the real return type (`SpvVerificationResult`, defined in the shared `spv-types` crate) only has `txid`, `block_hash`, and `confirmations`. There is no on-chain output-parsing/address-matching helper today; a caller who needs that must parse `raw_tx` themselves. Treat the "Return Type" and "outputs" sections below as an aspirational SDK surface, not the current contract interface, until this is either implemented or removed.
 
@@ -193,4 +195,4 @@ The Writz SPV SDK verifies that a **transaction exists in the Bitcoin blockchain
 
 ---
 
-**Next:** [Contract Reference →](contract-reference.md)
+**Next:** [Contract Reference →](/developers/contract-reference)

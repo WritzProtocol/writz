@@ -1,4 +1,7 @@
-# Research: Growth Strategy & Business Development
+---
+title: "Research: Growth Strategy & Business Development"
+sidebarTitle: "Growth Strategy & Business Development"
+---
 
 **Author:** Research
 **Date:** 2026-06-22

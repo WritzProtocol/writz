@@ -95,7 +95,7 @@ This establishes the privacy-ready data model before full circuit integration.
 
 ### Deliverable 4: STRIDE threat model (draft)
 
-First version of the STRIDE security analysis published in docs (`scf/stride-threat-model.md`). See the [STRIDE document](stride-threat-model.md) for the current draft.
+First version of the STRIDE security analysis published in docs (`scf/stride-threat-model.md`). See the [STRIDE document](/scf/stride-threat-model) for the current draft.
 
 ---
 

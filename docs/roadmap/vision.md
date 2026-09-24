@@ -1,4 +1,6 @@
-# Vision
+---
+title: "Vision"
+---
 
 **In 2028, any Bitcoin holder in the world will be able to borrow USDC privately, in minutes, without giving up custody - from their phone.**
 
@@ -109,4 +111,4 @@ That step is months away.
 
 ---
 
-**See the execution plan:** [Phases →](phases.md)
+**See the execution plan:** [Phases →](/roadmap/phases)

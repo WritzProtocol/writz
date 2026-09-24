@@ -1,8 +1,10 @@
-# Phases
+---
+title: "Phases"
+---
 
 > **SCF status note:** Everything in this document related to the Stellar Community Fund (application, tranches, grant funding) is a draft. The application has not been submitted and there is no short-term plan to submit it. Do not read any SCF-tied line item, date, or amount below as scheduled or committed.
 
-Four phases, one goal: a trustless, private Bitcoin lending protocol on Stellar. (Not a "first on Stellar" claim - see the 2026-08-04 addendum in [Market Landscape](../research/market-landscape.md): Solv Protocol and Templar Protocol already have live Stellar BTC infrastructure. The differentiator is trustless native BTC plus ZK-private positions, not being first.)
+Four phases, one goal: a trustless, private Bitcoin lending protocol on Stellar. (Not a "first on Stellar" claim - see the 2026-08-04 addendum in [Market Landscape](/research/market-landscape): Solv Protocol and Templar Protocol already have live Stellar BTC infrastructure. The differentiator is trustless native BTC plus ZK-private positions, not being first.)
 
 ```
 Phase 0          Phase 1          Phase 2          Phase 3
@@ -29,16 +31,16 @@ Research    ──►  Foundation  ──►  Launch      ──►  Scale
 
 | Document | Key Finding |
 |---|---|
-| [Bitcoin SPV on Other Chains](../research/spv-implementations.md) | summa-tx is the reference; stateless SPV avoids relayer dependency |
-| [Protocol X-Ray Deep Dive](../research/protocol-x-ray-capabilities.md) | Circom + Groth16 on BN254 is production-ready today |
-| [Soroban Compute Benchmarks](../research/soroban-compute-benchmarks.md) | Full deposit fits in one transaction |
-| [Bitcoin Locking Script](../research/bitcoin-locking-script.md) | P2WSH + CLTV design complete; Taproot in Phase 2 |
-| [Market Landscape](../research/market-landscape.md) | 28x growth in BTCfi. Updated 2026-08-04: Solv Protocol and Templar Protocol both have live Stellar infrastructure now, so "zero BTCfi competition on Stellar" no longer holds. The differentiator is trustless native BTC plus ZK-private positions specifically, not being first on Stellar. See the doc's 2026-08-04 addendum |
-| [Interest Rate Model](../research/interest-rate-model.md) | Kinked curve: Uoptimal=75%, slope2=200% |
-| [Liquidation Mechanism](../research/liquidation-mechanism.md) | ZK undercollateral proof; 150% min, 120% threshold, 10% bonus |
-| [Circom Circuit Design](../research/circom-circuit-design.md) | Three circuits; Groth16 trusted setup required pre-mainnet |
-| [Tokenomics & Fee Model](../research/tokenomics-fee-model.md) | Real-yield model; WRTZ token after $5M TVL |
-| [Security Audit Strategy](../research/security-audit-strategy.md) | Audit Bank covers costs; Veridise for ZK circuits |
+| [Bitcoin SPV on Other Chains](/research/spv-implementations) | summa-tx is the reference; stateless SPV avoids relayer dependency |
+| [Protocol X-Ray Deep Dive](/research/protocol-x-ray-capabilities) | Circom + Groth16 on BN254 is production-ready today |
+| [Soroban Compute Benchmarks](/research/soroban-compute-benchmarks) | Full deposit fits in one transaction |
+| [Bitcoin Locking Script](/research/bitcoin-locking-script) | P2WSH + CLTV design complete; Taproot in Phase 2 |
+| [Market Landscape](/research/market-landscape) | 28x growth in BTCfi. Updated 2026-08-04: Solv Protocol and Templar Protocol both have live Stellar infrastructure now, so "zero BTCfi competition on Stellar" no longer holds. The differentiator is trustless native BTC plus ZK-private positions specifically, not being first on Stellar. See the doc's 2026-08-04 addendum |
+| [Interest Rate Model](/research/interest-rate-model) | Kinked curve: Uoptimal=75%, slope2=200% |
+| [Liquidation Mechanism](/research/liquidation-mechanism) | ZK undercollateral proof; 150% min, 120% threshold, 10% bonus |
+| [Circom Circuit Design](/research/circom-circuit-design) | Three circuits; Groth16 trusted setup required pre-mainnet |
+| [Tokenomics & Fee Model](/research/tokenomics-fee-model) | Real-yield model; WRTZ token after $5M TVL |
+| [Security Audit Strategy](/research/security-audit-strategy) | Audit Bank covers costs; Veridise for ZK circuits |
 
 ---
 
@@ -196,7 +198,7 @@ Private BTC-to-USDC conversions using the existing SPV infrastructure. AMM-style
 BTC collateral + automated USDC yield routing to Blend, Phoenix DEX, and other vetted Stellar protocols.
 
 **ZK Proof of Reserve, B2B (Q3 2027):**
-Enterprise attestation product. Direct sales. Target: 5 paying customers by end of 2027. See [ZK Proof of Reserve](../products/zk-proof-of-reserve.md).
+Enterprise attestation product. Direct sales. Target: 5 paying customers by end of 2027. See [ZK Proof of Reserve](/products/zk-proof-of-reserve).
 
 ### TVL Progression
 
@@ -257,4 +259,4 @@ Target integrations with demonstrated traction and open SDK:
 
 *Last reconciled against actual repo state: 2026-08-17.*
 
-**See the full vision:** [Vision →](vision.md)
+**See the full vision:** [Vision →](/roadmap/vision)

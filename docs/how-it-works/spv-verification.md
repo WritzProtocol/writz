@@ -1,4 +1,6 @@
-# SPV Verification
+---
+title: "SPV Verification"
+---
 
 **How Writz proves a Bitcoin transaction happened - without trusting anyone.**
 
@@ -160,4 +162,4 @@ The SPV contract has been tested against:
 
 ---
 
-**Next:** [The ZK Privacy Layer →](zk-privacy-layer.md)
+**Next:** [The ZK Privacy Layer →](/how-it-works/zk-privacy-layer)

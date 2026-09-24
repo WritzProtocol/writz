@@ -1,4 +1,7 @@
-# Research: Interest Rate Model
+---
+title: "Research: Interest Rate Model"
+sidebarTitle: "Interest Rate Model"
+---
 
 **Author:** Research
 **Date:** 2026-06-22

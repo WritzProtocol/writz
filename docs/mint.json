@@ -1,0 +1,149 @@
+{
+  "name": "Writz Protocol",
+  "favicon": "/brand/writz-icon.svg",
+  "colors": {
+    "primary": "#F7931A",
+    "light": "#FFB347",
+    "dark": "#C47217",
+    "anchors": {
+      "from": "#F7931A",
+      "to": "#FF6B35"
+    }
+  },
+  "topbarLinks": [
+    {
+      "name": "GitHub",
+      "url": "https://github.com/WritzProtocol/writz"
+    }
+  ],
+  "topbarCtaButton": {
+    "name": "Launch App",
+    "url": "https://writz.xyz"
+  },
+  "tabs": [
+    {
+      "name": "How It Works",
+      "url": "how-it-works"
+    },
+    {
+      "name": "Developers",
+      "url": "developers"
+    },
+    {
+      "name": "Research",
+      "url": "research"
+    }
+  ],
+  "anchors": [
+    {
+      "name": "Testnet Explorer",
+      "icon": "cube",
+      "url": "https://stellar.expert/explorer/testnet/contract/CDQCTFO3FK3M47QS47O2A4WLNPSQAQBSXBFPJ6RZEHFO5D7RY34FSBBP"
+    },
+    {
+      "name": "Bitcoin Signet Tx",
+      "icon": "bitcoin-sign",
+      "url": "https://blockstream.info/signet/tx/119321009b2f92dac8f25f6bcddb2ed6a3ae778e8748ec52910cce90742e4098"
+    },
+    {
+      "name": "Discord",
+      "icon": "discord",
+      "url": "https://discord.gg/stellar"
+    }
+  ],
+  "navigation": [
+    {
+      "group": "Architecture",
+      "pages": [
+        "architecture/technical-overview",
+        "architecture/diagrams"
+      ]
+    },
+    {
+      "group": "Introduction",
+      "pages": [
+        "introduction/what-is-writz",
+        "introduction/the-problem",
+        "introduction/how-writz-works",
+        "introduction/why-stellar-why-now"
+      ]
+    },
+    {
+      "group": "Products",
+      "pages": [
+        "products/privatelend",
+        "products/earn",
+        "products/dark-swap",
+        "products/btc-savings",
+        "products/zk-proof-of-reserve"
+      ]
+    },
+    {
+      "group": "How It Works",
+      "pages": [
+        "how-it-works/bitcoin-side",
+        "how-it-works/spv-verification",
+        "how-it-works/zk-privacy-layer",
+        "how-it-works/manual-proof-submission",
+        "how-it-works/manual-emergency-recovery",
+        "how-it-works/stellar-side"
+      ]
+    },
+    {
+      "group": "Developers",
+      "pages": [
+        "developers/quick-start",
+        "developers/runbook",
+        "developers/spv-sdk",
+        "developers/contract-reference",
+        "developers/contribution-guide"
+      ]
+    },
+    {
+      "group": "Security",
+      "pages": [
+        "security/security-model",
+        "security/audits",
+        "security/bug-bounty"
+      ]
+    },
+    {
+      "group": "Roadmap",
+      "pages": [
+        "roadmap/vision",
+        "roadmap/phases"
+      ]
+    },
+    {
+      "group": "Legal",
+      "pages": [
+        "legal/terms-of-service",
+        "legal/privacy-policy"
+      ]
+    },
+    {
+      "group": "Research",
+      "pages": [
+        "research/spv-implementations",
+        "research/market-landscape",
+        "research/protocol-x-ray-capabilities",
+        "research/soroban-compute-benchmarks",
+        "research/bitcoin-locking-script",
+        "research/oracle-design",
+        "research/interest-rate-model",
+        "research/liquidation-mechanism",
+        "research/circom-circuit-design",
+        "research/relayer-incentive-design",
+        "research/blend-usdc-integration",
+        "research/tokenomics-fee-model",
+        "research/security-audit-strategy",
+        "research/regulatory-landscape",
+        "research/growth-strategy"
+      ]
+    }
+  ],
+  "footerSocials": {
+    "twitter": "https://twitter.com/writz_protocol",
+    "github": "https://github.com/WritzProtocol/writz"
+  }
+}

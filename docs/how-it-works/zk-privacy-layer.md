@@ -1,4 +1,6 @@
-# The ZK Privacy Layer
+---
+title: "The ZK Privacy Layer"
+---
 
 **How your position stays hidden - even from the protocol.**
 
@@ -211,4 +213,4 @@ The ZK layer is designed to minimize on-chain storage while preventing double-sp
 
 ---
 
-**Next:** [The Stellar Side →](stellar-side.md)
+**Next:** [The Stellar Side →](/how-it-works/stellar-side)

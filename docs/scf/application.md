@@ -186,7 +186,7 @@ Post-launch programs Writz intends to apply for: Growth Hack Program (after 60 d
 
 ## 10. Milestones
 
-See [`scf/milestone-plan.md`](milestone-plan.md) for the detailed four-tranche breakdown.
+See [`scf/milestone-plan.md`](/scf/milestone-plan) for the detailed four-tranche breakdown.
 
 **Summary:**
 - **Tranche #0 (10%, ~$9,200):** SPV contract verifies a real Bitcoin mainnet tx on Stellar testnet. GitHub public. Docs on Mintlify. Demo video.

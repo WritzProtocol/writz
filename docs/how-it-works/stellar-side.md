@@ -1,4 +1,6 @@
-# The Stellar Side
+---
+title: "The Stellar Side"
+---
 
 **Four contracts, one system - how Writz lives on Soroban.**
 
@@ -289,4 +291,4 @@ commitment-tree.insert_commitment(commitment)
 
 ---
 
-**Next:** [Developer Quick Start →](../developers/quick-start.md)
+**Next:** [Developer Quick Start →](/developers/quick-start)

@@ -1,4 +1,6 @@
-# Why Stellar, Why Now
+---
+title: "Why Stellar, Why Now"
+---
 
 Writz is not bringing Bitcoin to DeFi. Writz is making Bitcoin verifiable - on the most compliance-friendly blockchain that has ever shipped ZK proofs to mainnet.
 
@@ -82,4 +84,4 @@ Protocol X-Ray shipped in January 2026. The compute budget was confirmed feasibl
 
 ---
 
-**Next:** [PrivateLend - the flagship product →](../products/privatelend.md)
+**Next:** [PrivateLend - the flagship product →](/products/privatelend)
