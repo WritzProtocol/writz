@@ -314,7 +314,7 @@ This needs compiled circuit artifacts and a built contract wasm, neither of whic
 ### Frontend Dev Server
 
 ```bash
-cd frontend
+cd frontend/app
 cp .env.example .env.local
 # Fill in NEXT_PUBLIC_* contract addresses from contracts/deployments/testnet.md
 # Set NEXT_PUBLIC_RELAYER_URL=https://api.testnet.writz.xyz

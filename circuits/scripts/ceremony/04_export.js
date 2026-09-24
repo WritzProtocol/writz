@@ -20,7 +20,7 @@
  *                                                      Soroban call
  *   circuits/keys/CEREMONY_MANIFEST.json      - updated with this circuit's entry
  *
- * Does NOT copy the final .zkey into `circuits/keys/` or `frontend/public/circuits/`
+ * Does NOT copy the final .zkey into `circuits/keys/` or `frontend/app/public/circuits/`
  * - those are large binaries intentionally excluded from git (see the ceremony
  * README's "why .zkey files aren't committed" note). Publish the .zkey as a
  * GitHub Release asset and record its URL + hash in the manifest by hand, or
@@ -128,8 +128,8 @@ function main() {
   console.log(`   1. Publish ${path.basename(finalZkey)} as a GitHub Release asset`);
   console.log(`      (tag: ceremony-${circuit}-v1), then fill in`);
   console.log(`      final_zkey_release_url in ${path.relative(CIRCUITS_DIR, MANIFEST_PATH)}.`);
-  console.log(`   2. Copy the .zkey to frontend/public/circuits/${circuit}_final.zkey`);
-  console.log(`      (and frontend/src/circuits/${circuit}_vkey.json if this is zero_debt).`);
+  console.log(`   2. Copy the .zkey to frontend/app/public/circuits/${circuit}_final.zkey`);
+  console.log(`      (and frontend/app/src/circuits/${circuit}_vkey.json if this is zero_debt).`);
   console.log('   3. Commit the updated keys/*_vkey.json, ceremony/ transcript, and manifest.');
   console.log('   4. Run the on-chain rotation (set_verification_key ×3/4, see the');
   console.log('      ceremony README\'s rotation runbook).');

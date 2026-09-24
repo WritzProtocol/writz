@@ -109,7 +109,7 @@ current ledger tip rather than backfilling (see the comment in its
 
 Nothing is at risk of being lost the way a missed `repay_full` strands a
 user's BTC; the damage is reporting. `/metrics` derives accrued yield as
-`onChainTvl - indexedTvl` (`frontend/src/app/metrics/page.tsx`), so a
+`onChainTvl - indexedTvl` (`frontend/app/src/app/metrics/page.tsx`), so a
 missing deposit is published as if it were yield. On testnet this showed a
 20 USDC creation deposit as +20 USDC of "Accrued Yield" against 10 USDC of
 indexed deposits.

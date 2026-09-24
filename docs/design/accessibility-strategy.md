@@ -79,7 +79,7 @@ someone using a screen reader decides whether the product is for them at all.
   deposit → borrow → repay → release cycle, plus a screen reader smoke test
   (VoiceOver or NVDA) of the same flow. This should be a named task with an
   owner, not an implicit expectation.
-- No new PR touching `frontend/src/components/` or `frontend/src/app/`
+- No new PR touching `frontend/app/src/components/` or `frontend/app/src/app/`
   should introduce a component with an interactive element that has no
   accessible name - this is cheap to catch in review once it's an explicit
   standard, expensive to retrofit later.

@@ -144,7 +144,7 @@ Overridable via environment:
 | `ZK_VERIFIER_ID` | `CDV45GLX…` | Point at your own verifier after regenerating keys |
 | `BITCOIN_SPV_ID` | `CAE5L7BO…` | Point at your own SPV contract |
 | `STELLAR_RPC_URL` | `https://soroban-testnet.stellar.org` | Alternative RPC |
-| `SEED_ONLY` | unset | Stop after `insert_commitment` and print the `NEXT_PUBLIC_*` values for `frontend/.env.local` - how you seed a funded pool plus one position for a frontend demo |
+| `SEED_ONLY` | unset | Stop after `insert_commitment` and print the `NEXT_PUBLIC_*` values for `frontend/app/.env.local` - how you seed a funded pool plus one position for a frontend demo |
 
 ### Last verified run
 
@@ -199,7 +199,7 @@ This part cannot be scripted - it needs Signet coins and two browser wallets.
 
 2. Start the frontend:
    ```bash
-   cd frontend && cp .env.example .env.local
+   cd frontend/app && cp .env.example .env.local
    # .env.example already carries the live testnet contract IDs.
    # Set NEXT_PUBLIC_RELAYER_URL to your relayer (local or hosted).
    bun install && bun dev              # → http://localhost:3000

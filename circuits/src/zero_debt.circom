@@ -33,8 +33,8 @@ include "./merkle.circom";
  *
  * Build:
  *   cd circuits && ./scripts/build_zero_debt.sh
- * Then copy the output artifacts to frontend/public/circuits/ and
- * frontend/src/circuits/zero_debt_vkey.json (see script for details).
+ * Then copy the output artifacts to frontend/app/public/circuits/ and
+ * frontend/app/src/circuits/zero_debt_vkey.json (see script for details).
  */
 template ZeroDebtCircuit(DEPTH) {
     // ── Private inputs ────────────────────────────────────────────────────────

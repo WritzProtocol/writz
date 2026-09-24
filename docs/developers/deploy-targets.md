@@ -2,7 +2,7 @@
 
 **Audience:** whoever operates the Writz deployments. **When to use:** provisioning, changing, or auditing a deploy target's configuration.
 
-Writz runs the same two applications - the Next.js frontend and the relayer - once per network. A *deploy target* is one such pairing plus the domain it answers on. The targets never share configuration, and this page is the contract that says so.
+Writz runs the same two applications - the Next.js app in `frontend/app` and the relayer - once per network. A *deploy target* is one such pairing plus the domain it answers on. The targets never share configuration, and this page is the contract that says so.
 
 | Target | Frontend origin | Stellar network | Bitcoin network | Status |
 |---|---|---|---|---|
@@ -10,7 +10,7 @@ Writz runs the same two applications - the Next.js frontend and the relayer - on
 | `testnet` | `testnet.writz.xyz` | Testnet | Signet | Live. Earn plus the existing dashboard. |
 | `mainnet` | `app.writz.xyz` | Public | Mainnet | **Not deployed.** Reserved for Milestone 2. |
 
-The apex `writz.xyz` serves the marketing site and is not a deploy target in this sense; it builds with `NEXT_PUBLIC_WRITZ_ENV` unset, which resolves to `local`.
+The apex `writz.xyz` serves the marketing site and press page from a separate Next.js app, `frontend/landing`. It is not a deploy target in this sense: it has no chain configuration and never reads `NEXT_PUBLIC_WRITZ_ENV`. Its only link to a target is `NEXT_PUBLIC_APP_URL`, where its "Launch App" buttons point.
 
 ---
 
@@ -20,7 +20,7 @@ Both applications read flat, independently-set environment variables. Nothing in
 
 So each target declares itself, and the declaration is checked against everything around it:
 
-- **Frontend** - `NEXT_PUBLIC_WRITZ_ENV`, validated at build time in [`frontend/src/config/target.ts`](../../frontend/src/config/target.ts). A contradiction fails the build.
+- **Frontend** - `NEXT_PUBLIC_WRITZ_ENV`, validated at build time in [`frontend/app/src/config/target.ts`](../../frontend/app/src/config/target.ts). A contradiction fails the build.
 - **Relayer** - `WRITZ_ENV`, validated at startup in [`relayer/src/deploy-target.ts`](../../relayer/src/deploy-target.ts). A contradiction refuses to boot, before anything binds a port.
 
 Both report every conflict at once rather than one per failed attempt, because these values are edited on a hosting dashboard where a one-variable-per-build loop is miserable.
@@ -51,7 +51,7 @@ Steps 1 and 2 are dashboard and registrar actions - they cannot be done from thi
 
 ### 1. Frontend (Vercel)
 
-1. Create a Vercel project from this repository, separate from the one serving the apex domain. Root directory `frontend/`; framework preset Next.js.
+1. Create a Vercel project from this repository, separate from the one serving the apex domain. Root directory `frontend/app`; framework preset Next.js. Under **Settings → Git → Ignored Build Step**, set `git diff --quiet HEAD^ HEAD ./` so a push that only touches the landing does not rebuild this project.
 2. Under **Settings → Domains**, add `testnet.writz.xyz`.
 3. Under **Settings → Environment Variables**, set the target's variables for the Production environment. At minimum:
 
@@ -63,9 +63,13 @@ Steps 1 and 2 are dashboard and registrar actions - they cannot be done from thi
    NEXT_PUBLIC_RELAYER_URL=<the testnet relayer's origin>
    ```
 
-   plus the contract addresses from [`frontend/.env.example`](../../frontend/.env.example), which tracks the current testnet deployment. Never copy these into the mainnet project.
+   plus the contract addresses from [`frontend/app/.env.example`](../../frontend/app/.env.example), which tracks the current testnet deployment. Never copy these into the mainnet project.
+
+   The co-signing route (`/api/cosign`) runs in this project, so its server-only variables belong here too: `KMS_KEY_ID` with the AWS credentials, or the `PROTOCOL_SIGNING_KEY` fallback on testnet, plus `BITCOIN_NETWORK`. `NEXT_PUBLIC_PRIVY_APP_ID` enables Privy login; add `https://testnet.writz.xyz` to the allowed origins in the Privy dashboard, or login fails on this domain.
 
 4. Set the production branch to `main`. Pushes to `main` then deploy to `testnet.writz.xyz`; pull requests get preview URLs, which build with the same `testnet` target.
+
+Builds outside `mainnet` serve a `robots.txt` that disallows everything and a `noindex` meta tag, so the testnet app never competes with the landing in search results.
 
 ### 2. DNS
 
@@ -169,9 +173,31 @@ A `target` of `local` in that response means `WRITZ_ENV` was never set on the se
 
 ---
 
+## Provisioning `writz.xyz` (landing)
+
+The existing Vercel project for the apex domain serves `frontend/landing`:
+
+1. Root directory `frontend/landing`; framework preset Next.js; the same Ignored Build Step as above.
+2. Environment variables, from [`frontend/landing/.env.example`](../../frontend/landing/.env.example):
+
+   ```
+   NEXT_PUBLIC_SITE_URL=https://writz.xyz
+   NEXT_PUBLIC_APP_URL=https://testnet.writz.xyz
+   NEXT_PUBLIC_UMAMI_WEBSITE_ID=<the Umami website ID>
+   ```
+
+   No RPC, contract, relayer or signing variables. The landing bundle carries no chain code.
+3. Domains `writz.xyz` and `www.writz.xyz`.
+
+Change the root directory in the same window the landing split reaches `main`. Before that, `frontend/landing` does not exist on `main` and the production build fails; after it, the old root directory has no `package.json`.
+
+When mainnet goes live, `NEXT_PUBLIC_APP_URL` moves to `https://app.writz.xyz`.
+
+---
+
 ## Adding `app.writz.xyz` later
 
-Repeat the three steps with `mainnet` values, in a **new** Vercel project and a **new** Railway service. Do not clone the testnet ones - cloning is the failure this whole mechanism is built around, and the mainnet rules in the table above exist to catch it. Expect the first mainnet build to fail with a list of variables to fix; that list is the feature.
+Repeat the three steps with `mainnet` values, in a **new** Vercel project (root directory `frontend/app`, the same code as testnet) and a **new** Railway service. Do not clone the testnet ones - cloning is the failure this whole mechanism is built around, and the mainnet rules in the table above exist to catch it. Expect the first mainnet build to fail with a list of variables to fix; that list is the feature.
 
 Mainnet also requires things testnet does not have yet:
 
@@ -183,10 +209,10 @@ Mainnet also requires things testnet does not have yet:
 ## Checking a target's configuration
 
 ```bash
-# Frontend: a contradiction fails the build.
-cd frontend && NEXT_PUBLIC_WRITZ_ENV=testnet bun run build
+# App: a contradiction fails the build.
+cd frontend/app && NEXT_PUBLIC_WRITZ_ENV=testnet bun run build
 
 # The rules themselves.
-cd frontend && bun test src/config
+cd frontend/app && bun test src/config
 cd relayer  && bun run test -- deploy-target
 ```
