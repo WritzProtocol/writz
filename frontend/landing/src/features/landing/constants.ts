@@ -1,5 +1,7 @@
-/** Route to the actual Writz dApp (wallet connect, on-chain stats, borrow/lend tabs). */
-export const APP_ROUTE = "/app";
+import { env } from "@/config/env";
+
+/** The Writz dApp. It is a separate deployment, so this is an absolute URL. */
+export const APP_ROUTE = env.appUrl;
 
 /** Public Mintlify docs. Lives on its own subdomain, so always link it absolutely. */
 export const DOCS_URL = "https://docs.writz.xyz";

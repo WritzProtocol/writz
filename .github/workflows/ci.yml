@@ -92,7 +92,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        app: [app]
+        app: [app, landing]
     defaults:
       run:
         working-directory: frontend/${{ matrix.app }}
