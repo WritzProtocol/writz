@@ -3,7 +3,7 @@ import { assertValidCursor, cursorForLedger, isValidCursor } from "../src/rpc-cu
 
 describe("cursorForLedger", () => {
   it("builds the cursor that precedes a ledger's first event", () => {
-    // Verified against Soroban testnet RPC: this cursor returns the events of
+    // Verified against Stellar testnet RPC: this cursor returns the events of
     // ledger 4575790 onward, where a hand-written "4575790-0" was rejected.
     expect(cursorForLedger(4575790)).toBe("0019652868403363840-0000000000");
   });

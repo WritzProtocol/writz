@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * End-to-end ZK flow test on Soroban testnet.
+ * End-to-end ZK flow test on Stellar testnet.
  *
  * Runs the full: deposit → insert_commitment → borrow → repay cycle
  * using real Groth16 ZK proofs generated with snarkjs.

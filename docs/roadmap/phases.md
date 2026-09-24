@@ -44,7 +44,7 @@ Research    ──►  Foundation  ──►  Launch      ──►  Scale
 
 ## Phase 1: Foundation (CURRENT)
 
-**Goal:** Working Bitcoin SPV client on Soroban testnet. SCF application drafted and ready to submit whenever the team decides to. Community presence established.  
+**Goal:** Working Bitcoin SPV client on Stellar testnet. SCF application drafted and ready to submit whenever the team decides to. Community presence established.  
 **Timeline:** July–September 2026  
 **Milestone:** SPV contract verified on testnet + SCF Tranche #0 received
 
@@ -60,7 +60,7 @@ Research    ──►  Foundation  ──►  Launch      ──►  Scale
 | **Relayer service** | 122/122 tests. REST API: `GET /spv-proof/:txid`. Esplora-backed. |
 | **Bitcoin script toolkit** | 60/60 tests. P2WSH generation, PSBT signing, witness assembly. |
 | **Bitcoin Signet E2E** | Path A co-signed release broadcast and accepted. `11932100` |
-| **ZK testnet E2E** | Full deposit→borrow→repay cycle on Soroban testnet. 6 transactions. `8daddf52` |
+| **ZK testnet E2E** | Full deposit→borrow→repay cycle on Stellar testnet. 6 transactions. `8daddf52` |
 | **SCF application** | **DRAFT - not submitted.** Content complete: full application, 4-tranche milestone plan, STRIDE threat model. No submission planned in the short term (deliberate hold, not a blocker); treat every SCF-tranche reference in this document as contingent on a decision that has not been made |
 | **Documentation** | Complete rewrite: 22 documents across introduction, products, how-it-works, developers, security, roadmap |
 
@@ -81,9 +81,9 @@ Research    ──►  Foundation  ──►  Launch      ──►  Scale
 
 ### Phase 1 Exit Criteria
 
-- [x] SPV contract verifies a real Bitcoin transaction on Soroban testnet ✓
+- [x] SPV contract verifies a real Bitcoin transaction on Stellar testnet ✓
 - [x] P2WSH locking and release tested E2E on Bitcoin Signet ✓
-- [x] ZK commitment-tree full cycle verified on Soroban testnet ✓
+- [x] ZK commitment-tree full cycle verified on Stellar testnet ✓
 - [ ] SCF application submitted (draft only - no submission planned short-term)
 - [ ] Trusted setup ceremony planned and participants identified
 - [ ] SCF Tranche #0 received (~$9,200) (contingent on submission above; not scheduled)

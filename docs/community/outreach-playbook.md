@@ -66,7 +66,7 @@ Reply to anyone who engages with your announcement. Ask follow-up questions to k
 ```
 Been building for a few weeks - here's what's live:
 
-• Bitcoin SPV verification on Soroban testnet (SHA256d + Merkle proof, stateless)
+• Bitcoin SPV verification on Stellar testnet (SHA256d + Merkle proof, stateless)
 • P2WSH locking script library for trustless BTC collateral
 • PrivateLend skeleton: deposit BTC → borrow USDC → ZK-private positions
 

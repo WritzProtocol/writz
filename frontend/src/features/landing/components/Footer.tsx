@@ -18,12 +18,9 @@ export function Footer() {
           className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8"
         >
           <div className="sm:col-span-2 md:col-span-1">
-            <a href="#" className="flex items-center gap-2 mb-4">
+            <a href="#" className="mb-4 flex items-center">
               {/* eslint-disable-next-line @next/next/no-img-element -- matches this codebase's existing plain-<img> convention (no next/image usage anywhere else) */}
-              <img src="/brand/writz-mark.png" alt="Writz" className="h-8 w-8" />
-              <span className="font-semibold" style={{ color: "var(--text-hi)" }}>
-                Writz
-              </span>
+              <img src="/brand/writz-lockup-white.svg" alt="Writz" className="h-8 w-auto" />
             </a>
             <p className="text-sm mb-4" style={{ color: "var(--text-dim)" }}>
               Trustless, ZK-private Bitcoin lending on Stellar.

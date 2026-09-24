@@ -174,7 +174,7 @@ The tree root is stored on-chain. When a new commitment is inserted, the root is
 
 **Sparse tree:** The tree uses a sparse representation. Only occupied leaves require storage. Empty subtrees are represented by a precomputed empty-subtree hash.
 
-**On-chain initial root:** `0x2134e76ac74b4b8765b6e37992aa15f06ff... ` (Poseidon-2 empty tree root - verified on-chain on Soroban testnet)
+**On-chain initial root:** `0x2134e76ac74b4b8765b6e37992aa15f06ff... ` (Poseidon-2 empty tree root - verified on-chain on Stellar testnet)
 
 ---
 
