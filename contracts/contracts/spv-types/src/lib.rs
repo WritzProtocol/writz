@@ -30,11 +30,9 @@ pub struct SpvVerificationResult {
     pub txid: BytesN<32>,
 
     /// The hash (SHA256d) of the block that contains the transaction.
-    /// This is the hash of `headers[0]`.
     pub block_hash: BytesN<32>,
 
-    /// Number of block headers supplied by the caller.
-    /// Equal to the number of confirmations the caller is asserting.
+    /// The block's depth below the best chain tip (the tip itself is 1).
     pub confirmations: u32,
 }
 

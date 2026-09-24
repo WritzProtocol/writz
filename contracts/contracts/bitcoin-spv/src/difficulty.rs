@@ -2,15 +2,13 @@ use soroban_sdk::{Bytes, BytesN, Env, U256};
 
 use crate::error::SPVError;
 use crate::header::{bits_of, hash_header};
+use crate::types::HeaderEntry;
 
-/// How many bits easier than the checkpoint's difficulty a submitted
-/// header's target is allowed to be. `6` (64×) is a compiled
-/// constant, not an admin-configurable value, so the admin cannot relax the
-/// band far enough to defeat the anchor: real Bitcoin consensus caps
-/// difficulty *decrease* at 4× per 2016-block retarget period, so 64× is
-/// already a generous multi-period buffer for checkpoint staleness, not a
-/// value that should routinely need tuning.
-pub const MAX_DIFFICULTY_EASE_SHIFT: u32 = 6;
+/// Blocks per difficulty period (Bitcoin consensus).
+pub const RETARGET_INTERVAL: u32 = 2016;
+
+/// Intended duration of a difficulty period, in seconds (two weeks).
+const TARGET_TIMESPAN: i64 = 14 * 24 * 60 * 60;
 
 /// Converts a raw SHA256d digest into a `U256` using the same integer
 /// interpretation Bitcoin's consensus rules use for the proof-of-work check.
@@ -94,4 +92,77 @@ pub fn validate_proof_of_work(env: &Env, header: &BytesN<80>) -> Result<(), SPVE
     } else {
         Err(SPVError::InsufficientProofOfWork)
     }
+}
+
+/// Work represented by a target: `floor(2^256 / (target + 1))`, computed as
+/// `(MAX - target) / (target + 1) + 1` so it never overflows 256 bits
+/// (same formula as Bitcoin Core's `GetBlockProof`).
+pub fn work_from_target(env: &Env, target: &U256) -> U256 {
+    let max = U256::from_be_bytes(env, &Bytes::from_array(env, &[0xffu8; 32]));
+    let one = U256::from_u32(env, 1);
+    max.sub(target).div(&target.add(&one)).add(&one)
+}
+
+/// Encodes a 256-bit target into Bitcoin's compact `bits` form, mirroring
+/// `arith_uint256::GetCompact` (including its mantissa truncation and the
+/// sign-bit adjustment). Retargets must reproduce this exactly, otherwise a
+/// valid header would not match the expected `bits`.
+pub fn target_to_bits(target: &U256) -> u32 {
+    let mut arr = [0u8; 32];
+    target.to_be_bytes().copy_into_slice(&mut arr);
+
+    let first_nonzero = arr.iter().position(|b| *b != 0);
+    let Some(first) = first_nonzero else {
+        return 0;
+    };
+    let bit_len = (32 - first) * 8 - arr[first].leading_zeros() as usize;
+    let mut size = bit_len.div_ceil(8) as u32;
+
+    let mut compact: u32 = if size <= 3 {
+        let low = target.to_u128().unwrap_or(0) as u32;
+        low << (8 * (3 - size))
+    } else {
+        let shifted = target.shr(8 * (size - 3));
+        shifted.to_u128().unwrap_or(0) as u32
+    };
+
+    if compact & 0x0080_0000 != 0 {
+        compact >>= 8;
+        size += 1;
+    }
+    compact | (size << 24)
+}
+
+/// The `bits` a header at `height` must carry given its parent, per
+/// Bitcoin's difficulty rules: unchanged inside a period, and at each
+/// 2016-block boundary `parent_target * clamp(timespan, 1/4, 4x) / 2 weeks`,
+/// capped at the network's proof-of-work limit.
+///
+/// Does not model testnet3/testnet4's minimum-difficulty exception; only
+/// mainnet and signet are supported. If `parent_target * timespan` overflows
+/// 256 bits (targets above ~2^233, which real mainnet and signet targets are
+/// far below) the result is capped at the proof-of-work limit.
+pub fn expected_bits(
+    env: &Env,
+    parent: &HeaderEntry,
+    height: u32,
+    pow_limit: &U256,
+) -> Result<u32, SPVError> {
+    if height % RETARGET_INTERVAL != 0 {
+        return Ok(parent.bits);
+    }
+
+    let timespan = (parent.time as i64 - parent.period_start_time as i64)
+        .clamp(TARGET_TIMESPAN / 4, TARGET_TIMESPAN * 4);
+
+    let parent_target = bits_to_target(env, parent.bits)?;
+    let scaled = parent_target
+        .checked_mul(&U256::from_u32(env, timespan as u32))
+        .map(|v| v.div(&U256::from_u32(env, TARGET_TIMESPAN as u32)));
+
+    let new_target = match scaled {
+        Some(t) if t <= *pow_limit => t,
+        _ => pow_limit.clone(),
+    };
+    Ok(target_to_bits(&new_target))
 }

@@ -1,7 +1,6 @@
-use soroban_sdk::{Bytes, BytesN, Env, Vec};
+use soroban_sdk::{Bytes, BytesN, Env};
 
 use crate::crypto::sha256d;
-use crate::error::SPVError;
 
 // ── Bitcoin block header layout (80 bytes) ──────────────────────────────────
 //  Offset  Length  Field
@@ -16,6 +15,7 @@ use crate::error::SPVError;
 const HEADER_LEN: usize = 80;
 const PREV_HASH_OFFSET: usize = 4;
 const MERKLE_ROOT_OFFSET: usize = 36;
+const TIME_OFFSET: usize = 68;
 const BITS_OFFSET: usize = 72;
 const HASH_LEN: usize = 32;
 
@@ -50,6 +50,18 @@ pub fn merkle_root_of(env: &Env, header: &BytesN<80>) -> BytesN<32> {
     extract_32_bytes(env, header, MERKLE_ROOT_OFFSET)
 }
 
+/// Returns the `time` field (bytes 68..72) of a header as a little-endian
+/// `u32` Unix timestamp.
+pub fn time_of(header: &BytesN<80>) -> u32 {
+    let arr: [u8; HEADER_LEN] = header.to_array();
+    u32::from_le_bytes([
+        arr[TIME_OFFSET],
+        arr[TIME_OFFSET + 1],
+        arr[TIME_OFFSET + 2],
+        arr[TIME_OFFSET + 3],
+    ])
+}
+
 /// Returns the `bits` field (bytes 72..76) of a header as a little-endian
 /// `u32` - the packed "compact" difficulty target. Unlike `extract_32_bytes`,
 /// this returns a plain integer rather than an SDK wrapper type, so it needs
@@ -63,49 +75,4 @@ pub fn bits_of(header: &BytesN<80>) -> u32 {
         arr[BITS_OFFSET + 2],
         arr[BITS_OFFSET + 3],
     ])
-}
-
-/// Validates a chain of block headers and returns the hash of `headers[0]`.
-///
-/// Every header must satisfy its own declared proof-of-work
-/// (`SHA256d(header) < target(header.bits)`), and each header's
-/// `prev_block_hash` must equal SHA256d of the preceding header. Together
-/// these bind every header to real proof-of-work expended on Bitcoin,
-/// making fabrication computationally infeasible.
-///
-/// # Arguments
-///
-/// - `headers`: One or more 80-byte Bitcoin block headers ordered oldest
-///   (the block containing the proven transaction) to newest.
-///
-/// # Returns
-///
-/// SHA256d of `headers[0]` - the hash of the block containing the transaction.
-/// Returns [`SPVError::InsufficientProofOfWork`] or
-/// [`SPVError::InvalidDifficultyBits`] if any header fails its own PoW check,
-/// or [`SPVError::HeaderChainBroken`] if any link is invalid.
-pub fn validate_header_chain(
-    env: &Env,
-    headers: &Vec<BytesN<80>>,
-) -> Result<BytesN<32>, SPVError> {
-    let first = headers.get(0).unwrap();
-    crate::difficulty::validate_proof_of_work(env, &first)?;
-    let first_hash = hash_header(env, &first);
-
-    // prev_of_next must equal the hash we just computed.
-    let mut expected_prev = first_hash.clone();
-
-    for i in 1..headers.len() {
-        let header = headers.get(i).unwrap();
-        crate::difficulty::validate_proof_of_work(env, &header)?;
-        let declared_prev = prev_hash_of(env, &header);
-
-        if declared_prev != expected_prev {
-            return Err(SPVError::HeaderChainBroken);
-        }
-
-        expected_prev = hash_header(env, &header);
-    }
-
-    Ok(first_hash)
 }

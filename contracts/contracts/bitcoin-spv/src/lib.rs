@@ -12,28 +12,43 @@ mod types;
 mod test;
 
 pub use error::SPVError;
-pub use types::{Checkpoint, Config};
 pub use spv_types::SpvVerificationResult;
+pub use types::{BestTip, Checkpoint, Config, HeaderEntry};
 
-use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, Vec};
+use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, Vec, U256};
 
 use crate::crypto::sha256d;
-use crate::difficulty::{bits_to_target, MAX_DIFFICULTY_EASE_SHIFT};
-use crate::header::{bits_of, merkle_root_of, validate_header_chain};
+use crate::difficulty::{
+    bits_to_target, expected_bits, validate_proof_of_work, work_from_target, RETARGET_INTERVAL,
+};
+use crate::header::{bits_of, hash_header, merkle_root_of, prev_hash_of, time_of};
 use crate::merkle::verify_merkle_inclusion;
-use crate::storage::{get_checkpoint, get_config, set_checkpoint, set_config};
+use crate::storage::{
+    get_best_tip, get_canonical, get_checkpoint, get_config, get_header, set_best_tip,
+    set_canonical, set_checkpoint, set_config, set_header,
+};
 
-/// Writz Protocol - Bitcoin SPV Verification Contract.
+/// Most headers one `submit_headers` call accepts. Keeps the call inside
+/// Soroban's per-transaction ledger-entry write limit.
+const MAX_HEADERS_PER_SUBMIT: u32 = 16;
+
+/// Most blocks one call may re-point in the canonical chain when a heavier
+/// fork takes over.
+const MAX_REORG_DEPTH: u32 = 20;
+
+/// Bitcoin rejects headers more than two hours ahead of network time.
+const MAX_FUTURE_DRIFT_SECS: u64 = 2 * 60 * 60;
+
+/// Writz Protocol - Bitcoin SPV light client.
 ///
-/// Provides stateless verification that a Bitcoin transaction was included in
-/// a confirmed block. "Stateless" means the caller supplies all necessary data
-/// (headers, Merkle proof, raw transaction) at call time; nothing is stored
-/// on-chain by this contract.
+/// Stores Bitcoin block headers that descend from an admin-set checkpoint,
+/// validating proof-of-work, hash linkage, Bitcoin's exact difficulty
+/// retargeting and cumulative chainwork, and tracks the most-work chain.
+/// `verify_transaction` then proves a transaction against a *stored* header,
+/// so a caller can no longer present a header chain it mined privately.
 ///
-/// This contract is the trust-minimized foundation of the Writz lending
-/// protocol. `verify_transaction` is called by `PrivateLend` to confirm that
-/// a user's BTC deposit has reached the required number of confirmations
-/// before USDC credit is issued.
+/// `PrivateLend` and `CommitmentTree` call `verify_transaction` to confirm a
+/// user's BTC deposit has the required confirmations before crediting USDC.
 #[contract]
 pub struct BitcoinSpvContract;
 
@@ -43,52 +58,112 @@ impl BitcoinSpvContract {
 
     /// One-time contract initialization. Can only be called once.
     ///
-    /// `verify_transaction` will not succeed until both `initialize` and
-    /// `set_checkpoint` have been called - the contract fails closed rather
-    /// than allowing an unanchored header chain through.
-    pub fn initialize(env: Env, admin: Address) -> Result<(), SPVError> {
+    /// `pow_limit_bits` is the tracked network's compact proof-of-work limit
+    /// (mainnet `0x1d00ffff`, signet `0x1e0377ae`). Header submission starts
+    /// permissionless; call `set_submitter` to restrict it.
+    pub fn initialize(env: Env, admin: Address, pow_limit_bits: u32) -> Result<(), SPVError> {
         if get_config(&env).is_some() {
             return Err(SPVError::AlreadyInitialized);
         }
-        set_config(&env, &Config { admin });
+        bits_to_target(&env, pow_limit_bits)?;
+        set_config(
+            &env,
+            &Config {
+                admin,
+                pow_limit_bits,
+                submitter: None,
+            },
+        );
         Ok(())
     }
 
-    /// Sets the difficulty-anchor checkpoint used to reject headers mined at
-    /// a historically low (e.g. 2009-era) difficulty. Admin-gated.
+    /// Sets the trust-root checkpoint. Admin-gated and callable exactly once:
+    /// after this the chain only grows through `submit_headers`, so the admin
+    /// cannot later rewrite which chain is trusted.
     ///
-    /// `bits` is validated up front (rejecting a malformed admin-supplied
-    /// value) so a bad checkpoint can never itself brick `verify_transaction`
-    /// with an opaque error.
-    ///
-    /// Operational requirement: the checkpoint should be refreshed
-    /// periodically (recommended: weekly, matching Bitcoin's own retarget
-    /// cadence) - this is a live operational dependency, not "set and
-    /// forget". See `docs/security/security-model.md` for the full
-    /// trust-model discussion, including the recommendation to hold this
-    /// admin address as a 2-of-3 Stellar multisig before mainnet.
+    /// - `height`/`block_hash`/`bits`/`time`: the checkpoint block's header
+    ///   fields.
+    /// - `period_start_time`: timestamp of the block at
+    ///   `height - height % 2016` (first block of the checkpoint's difficulty
+    ///   period), needed to compute the next retarget exactly.
     pub fn set_checkpoint(
         env: Env,
         caller: Address,
         height: u32,
         block_hash: BytesN<32>,
         bits: u32,
+        time: u32,
+        period_start_time: u32,
     ) -> Result<(), SPVError> {
         caller.require_auth();
         let config = get_config(&env).ok_or(SPVError::NotInitialized)?;
         if caller != config.admin {
             return Err(SPVError::Unauthorized);
         }
-        bits_to_target(&env, bits)?;
+        if get_checkpoint(&env).is_some() {
+            return Err(SPVError::CheckpointAlreadySet);
+        }
+
+        let target = bits_to_target(&env, bits)?;
+        let pow_limit = bits_to_target(&env, config.pow_limit_bits)?;
+        if target > pow_limit || period_start_time > time {
+            return Err(SPVError::InvalidCheckpoint);
+        }
+
         set_checkpoint(
             &env,
             &Checkpoint {
                 height,
-                block_hash,
+                block_hash: block_hash.clone(),
                 bits,
+                time,
+                period_start_time,
                 set_at_ledger: env.ledger().sequence(),
             },
         );
+        set_header(
+            &env,
+            &block_hash,
+            &HeaderEntry {
+                prev: BytesN::from_array(&env, &[0u8; 32]),
+                merkle_root: BytesN::from_array(&env, &[0u8; 32]),
+                height,
+                bits,
+                time,
+                period_start_time,
+                chainwork: U256::from_u32(&env, 0),
+            },
+        );
+        set_canonical(&env, height, &block_hash);
+        set_best_tip(
+            &env,
+            &BestTip {
+                hash: block_hash,
+                height,
+                chainwork: U256::from_u32(&env, 0),
+            },
+        );
+        Ok(())
+    }
+
+    /// Restricts `submit_headers` to `submitter`, or reopens it to everyone
+    /// with `None`. Admin-gated.
+    ///
+    /// Restrict it on signet: signet blocks are authenticated by a block
+    /// signature this contract does not verify, so its proof-of-work alone
+    /// does not prove a header is real.
+    pub fn set_submitter(
+        env: Env,
+        caller: Address,
+        submitter: Option<Address>,
+    ) -> Result<(), SPVError> {
+        caller.require_auth();
+        let mut config = get_config(&env).ok_or(SPVError::NotInitialized)?;
+        if caller != config.admin {
+            return Err(SPVError::Unauthorized);
+        }
+        config.submitter = submitter;
+        set_config(&env, &config);
         Ok(())
     }
 
@@ -104,35 +179,147 @@ impl BitcoinSpvContract {
         Ok(())
     }
 
-    /// Returns the current checkpoint, or `None` if never set.
+    // ── Reads ────────────────────────────────────────────────────────────────
+
+    /// Returns the checkpoint, or `None` if never set.
     pub fn get_checkpoint(env: Env) -> Option<Checkpoint> {
         get_checkpoint(&env)
     }
 
-    /// Extends the TTL of the Config and Checkpoint storage entries.
+    /// Returns the tip of the most-work chain, or `None` before the
+    /// checkpoint is set.
+    pub fn get_best_tip(env: Env) -> Option<BestTip> {
+        get_best_tip(&env)
+    }
+
+    /// Returns the stored header for `block_hash`, if any.
+    pub fn get_header(env: Env, block_hash: BytesN<32>) -> Option<HeaderEntry> {
+        get_header(&env, &block_hash)
+    }
+
+    /// Returns the most-work chain's block hash at `height`, if known.
+    pub fn get_canonical_hash(env: Env, height: u32) -> Option<BytesN<32>> {
+        get_canonical(&env, height)
+    }
+
+    /// Extends the TTL of the Config, Checkpoint and best-tip entries.
     /// Permissionless - anyone can call this to keep an inactive deployment
     /// from expiring.
     pub fn refresh_ttl(env: Env) {
         storage::refresh_ttl(&env)
     }
 
-    /// Verify that a Bitcoin transaction is included in a confirmed block.
+    // ── Header ingestion ─────────────────────────────────────────────────────
+
+    /// Adds a run of contiguous block headers to the light client.
     ///
-    /// Requires `initialize` and `set_checkpoint` to have been called first;
-    /// returns [`SPVError::NotInitialized`] or [`SPVError::CheckpointNotSet`]
-    /// otherwise.
+    /// Each header must descend from a header already stored (ultimately the
+    /// checkpoint), satisfy its own proof-of-work, carry exactly the `bits`
+    /// Bitcoin's difficulty rules require at its height, and not be more than
+    /// two hours ahead of ledger time. Headers already stored are skipped.
+    /// If the run makes a heavier chain than the current best, the best tip
+    /// and the height-to-hash index switch to it.
+    ///
+    /// Permissionless unless a submitter is configured (see `set_submitter`).
+    /// Returns the height of the best tip afterwards.
+    pub fn submit_headers(env: Env, headers: Vec<BytesN<80>>) -> Result<u32, SPVError> {
+        let config = get_config(&env).ok_or(SPVError::NotInitialized)?;
+        get_checkpoint(&env).ok_or(SPVError::CheckpointNotSet)?;
+
+        if let Some(submitter) = &config.submitter {
+            submitter.require_auth();
+        }
+        if headers.is_empty() {
+            return Err(SPVError::NoHeaders);
+        }
+        if headers.len() > MAX_HEADERS_PER_SUBMIT {
+            return Err(SPVError::TooManyHeaders);
+        }
+
+        let pow_limit = bits_to_target(&env, config.pow_limit_bits)?;
+        let now = env.ledger().timestamp();
+
+        let mut last: Option<(BytesN<32>, HeaderEntry)> = None;
+        for header in headers.iter() {
+            let hash = hash_header(&env, &header);
+            if let Some(existing) = get_header(&env, &hash) {
+                last = Some((hash, existing));
+                continue;
+            }
+
+            let parent = get_header(&env, &prev_hash_of(&env, &header))
+                .ok_or(SPVError::UnknownParent)?;
+
+            validate_proof_of_work(&env, &header)?;
+
+            let height = parent.height + 1;
+            let bits = bits_of(&header);
+            if bits != expected_bits(&env, &parent, height, &pow_limit)? {
+                return Err(SPVError::UnexpectedDifficulty);
+            }
+
+            let time = time_of(&header);
+            if time as u64 > now.saturating_add(MAX_FUTURE_DRIFT_SECS) {
+                return Err(SPVError::TimestampTooFarInFuture);
+            }
+
+            let work = work_from_target(&env, &bits_to_target(&env, bits)?);
+            let entry = HeaderEntry {
+                prev: prev_hash_of(&env, &header),
+                merkle_root: merkle_root_of(&env, &header),
+                height,
+                bits,
+                time,
+                period_start_time: if height % RETARGET_INTERVAL == 0 {
+                    time
+                } else {
+                    parent.period_start_time
+                },
+                chainwork: parent.chainwork.add(&work),
+            };
+            set_header(&env, &hash, &entry);
+            last = Some((hash, entry));
+        }
+
+        let (tip_hash, tip_entry) = last.ok_or(SPVError::NoHeaders)?;
+        let mut best = get_best_tip(&env).ok_or(SPVError::CheckpointNotSet)?;
+
+        if tip_entry.chainwork > best.chainwork {
+            let mut hash = tip_hash.clone();
+            let mut entry = tip_entry.clone();
+            let mut rewritten = 0u32;
+            while get_canonical(&env, entry.height).as_ref() != Some(&hash) {
+                rewritten += 1;
+                if rewritten > MAX_REORG_DEPTH {
+                    return Err(SPVError::ReorgTooDeep);
+                }
+                set_canonical(&env, entry.height, &hash);
+                let parent_hash = entry.prev.clone();
+                entry = get_header(&env, &parent_hash).ok_or(SPVError::UnknownParent)?;
+                hash = parent_hash;
+            }
+            best = BestTip {
+                hash: tip_hash,
+                height: tip_entry.height,
+                chainwork: tip_entry.chainwork,
+            };
+            set_best_tip(&env, &best);
+        }
+
+        Ok(best.height)
+    }
+
+    // ── Verification ─────────────────────────────────────────────────────────
+
+    /// Verify that a Bitcoin transaction is included in a confirmed block of
+    /// the most-work chain this contract tracks.
     ///
     /// # Parameters
     ///
-    /// - `headers`
-    ///   A sequence of 80-byte Bitcoin block headers. `headers[0]` is the
-    ///   block that contains the transaction. Subsequent headers extend the
-    ///   chain, providing additional confirmations. Must have at least
-    ///   `min_confirmations` entries.
-    ///
-    ///   Each header must pass the chain-continuity check: the
-    ///   `prev_block_hash` field (bytes 4–35) of `headers[i]` must equal
-    ///   SHA256d(`headers[i-1]`).
+    /// - `block_hash`
+    ///   Hash (internal byte order) of the block claimed to contain the
+    ///   transaction. It must already have been stored with `submit_headers`
+    ///   and be on the most-work chain.
     ///
     /// - `merkle_proof`
     ///   Sibling hashes for the Merkle inclusion proof, ordered from leaf
@@ -140,47 +327,31 @@ impl BitcoinSpvContract {
     ///   for a single-transaction block (where txid == merkle_root).
     ///
     /// - `tx_index`
-    ///   The 0-based index of the transaction within the block. Used to
-    ///   determine the left/right direction at each Merkle level.
+    ///   The 0-based index of the transaction within the block.
     ///
     /// - `raw_tx`
-    ///   Raw transaction bytes **without witness data** (the non-witness
-    ///   serialization). For legacy (pre-SegWit) transactions this is the
-    ///   complete serialization. For SegWit transactions, the caller or the
-    ///   Writz relayer service must strip the 2-byte segwit marker/flag and
-    ///   all witness fields before passing. The txid is SHA256d(raw_tx).
-    ///
-    ///   Rationale: Bitcoin's block Merkle tree uses non-witness txids.
-    ///   Including witness data would produce the wrong hash (wtxid ≠ txid).
+    ///   Raw transaction bytes **without witness data**. The txid is
+    ///   SHA256d(raw_tx). Exactly 64 bytes is rejected: that is the size of a
+    ///   Merkle inner-node preimage.
     ///
     /// - `min_confirmations`
-    ///   Minimum number of block headers required. Must be ≥ 1.
-    ///   Writz Protocol uses 6 for standard deposits and 3 for the fast lane
-    ///   (smaller amounts only).
+    ///   Minimum depth of the block below the best tip (the tip itself counts
+    ///   as 1). Must be ≥ 1.
     ///
     /// # Returns
     ///
-    /// On success: a [`SpvVerificationResult`] with the txid, block hash, and
-    /// the number of confirmations supplied.
-    ///
-    /// On failure: an [`SPVError`] describing what went wrong.
+    /// A [`SpvVerificationResult`] with the txid, the block hash and the
+    /// block's actual confirmation depth.
     pub fn verify_transaction(
         env: Env,
-        headers: Vec<BytesN<80>>,
+        block_hash: BytesN<32>,
         merkle_proof: Vec<BytesN<32>>,
         tx_index: u32,
         raw_tx: Bytes,
         min_confirmations: u32,
     ) -> Result<SpvVerificationResult, SPVError> {
-        // ── Input guards ──────────────────────────────────────────────────────
         if min_confirmations == 0 {
             return Err(SPVError::ZeroMinConfirmations);
-        }
-        if headers.is_empty() {
-            return Err(SPVError::NoHeaders);
-        }
-        if headers.len() < min_confirmations {
-            return Err(SPVError::InsufficientConfirmations);
         }
         if raw_tx.is_empty() {
             return Err(SPVError::EmptyTransaction);
@@ -192,55 +363,33 @@ impl BitcoinSpvContract {
             return Err(SPVError::AmbiguousTransactionLength);
         }
 
-        // ── Step 0: Require initialization + a checkpoint ─────────────────────
-        // `Config` is fetched only to enforce NotInitialized gating
-        // consistently with sibling contracts; `admin` isn't itself needed
-        // inside this call.
         get_config(&env).ok_or(SPVError::NotInitialized)?;
         let checkpoint = get_checkpoint(&env).ok_or(SPVError::CheckpointNotSet)?;
 
-        // ── Step 1: Validate header chain ─────────────────────────────────────
-        // Returns the hash of headers[0] (the block containing our transaction).
-        // Fails with HeaderChainBroken if any link is invalid. Each header's
-        // own proof-of-work is checked inside validate_header_chain.
-        let block_hash = validate_header_chain(&env, &headers)?;
-
-        // ── Step 1b: Difficulty-band check against the checkpoint ─────────────
-        // Rejects a chain mined at a historically low difficulty, even if
-        // each header individually satisfies its own declared (equally-low)
-        // target. See MAX_DIFFICULTY_EASE_SHIFT's doc comment for why this
-        // band can't be relaxed away by the admin.
-        let checkpoint_target = bits_to_target(&env, checkpoint.bits)?;
-        let max_allowed_target = checkpoint_target.shl(MAX_DIFFICULTY_EASE_SHIFT);
-        for i in 0..headers.len() {
-            let h = headers.get(i).unwrap();
-            let header_target = bits_to_target(&env, bits_of(&h))?;
-            if header_target > max_allowed_target {
-                return Err(SPVError::DifficultyBelowCheckpointFloor);
-            }
+        let entry = get_header(&env, &block_hash).ok_or(SPVError::HeaderNotFound)?;
+        if entry.height <= checkpoint.height {
+            return Err(SPVError::BlockNotAfterCheckpoint);
         }
 
-        // ── Step 2: Compute txid ──────────────────────────────────────────────
-        // txid = SHA256d(non-witness raw transaction bytes)
+        let best = get_best_tip(&env).ok_or(SPVError::CheckpointNotSet)?;
+        if entry.height > best.height
+            || get_canonical(&env, entry.height).as_ref() != Some(&block_hash)
+        {
+            return Err(SPVError::NotOnBestChain);
+        }
+
+        let confirmations = best.height - entry.height + 1;
+        if confirmations < min_confirmations {
+            return Err(SPVError::InsufficientConfirmations);
+        }
+
         let txid: BytesN<32> = sha256d(&env, &raw_tx);
-
-        // ── Step 3: Extract Merkle root from headers[0] ───────────────────────
-        let expected_merkle_root = merkle_root_of(&env, &headers.get(0).unwrap());
-
-        // ── Step 4: Verify Merkle inclusion proof ─────────────────────────────
-        // Walks from txid up to the Merkle root using the supplied sibling hashes.
-        verify_merkle_inclusion(
-            &env,
-            &txid,
-            tx_index,
-            &merkle_proof,
-            &expected_merkle_root,
-        )?;
+        verify_merkle_inclusion(&env, &txid, tx_index, &merkle_proof, &entry.merkle_root)?;
 
         Ok(SpvVerificationResult {
             txid,
             block_hash,
-            confirmations: headers.len(),
+            confirmations,
         })
     }
 }

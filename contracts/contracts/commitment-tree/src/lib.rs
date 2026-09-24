@@ -155,7 +155,7 @@ impl CommitmentTreeContract {
     pub fn deposit(
         env: Env,
         depositor: Address,
-        headers: Vec<BytesN<80>>,
+        block_hash: BytesN<32>,
         merkle_proof_btc: Vec<BytesN<32>>,
         tx_index: u32,
         raw_tx: Bytes,
@@ -177,7 +177,7 @@ impl CommitmentTreeContract {
         let spv: SpvVerificationResult = env.invoke_contract(
             &config.spv_contract,
             &Symbol::new(&env, "verify_transaction"),
-            (headers, merkle_proof_btc, tx_index, raw_tx, config.min_confirmations)
+            (block_hash, merkle_proof_btc, tx_index, raw_tx, config.min_confirmations)
                 .into_val(&env),
         );
 

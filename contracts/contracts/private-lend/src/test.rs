@@ -27,7 +27,7 @@ struct MockSpv;
 impl MockSpv {
     pub fn verify_transaction(
         env: Env,
-        _headers: Vec<BytesN<80>>,
+        _block_hash: BytesN<32>,
         _merkle_proof: Vec<BytesN<32>>,
         _tx_index: u32,
         _raw_tx: Bytes,
@@ -197,12 +197,8 @@ fn fake_p2wsh_spk(hash_byte: u8, env: &Env) -> Bytes {
     Bytes::from_slice(env, &spk)
 }
 
-fn fake_headers(env: &Env) -> Vec<BytesN<80>> {
-    let mut v = Vec::new(env);
-    for _ in 0..6 {
-        v.push_back(BytesN::from_array(env, &[0u8; 80]));
-    }
-    v
+fn fake_block_hash(env: &Env) -> BytesN<32> {
+    BytesN::from_array(env, &[0xadu8; 32])
 }
 
 fn fake_proof(env: &Env) -> Vec<BytesN<32>> {
@@ -313,7 +309,7 @@ fn initialize_twice_panics() {
 fn do_deposit(s: &Setup) -> BytesN<32> {
     s.client.deposit(
         &s.depositor,
-        &fake_headers(&s.env),
+        &fake_block_hash(&s.env),
         &fake_proof(&s.env),
         &0u32,
         &s.raw_tx,
@@ -357,7 +353,7 @@ fn deposit_wrong_script_pubkey_panics() {
     let wrong_spk = fake_p2wsh_spk(0xffu8, &s.env); // doesn't match 0xab in raw_tx
     s.client.deposit(
         &s.depositor,
-        &fake_headers(&s.env),
+        &fake_block_hash(&s.env),
         &fake_proof(&s.env),
         &0u32,
         &s.raw_tx,
@@ -376,7 +372,7 @@ fn deposit_too_small_panics() {
     let raw_tx = Bytes::from_slice(&s.env, &raw_bytes);
     s.client.deposit(
         &s.depositor,
-        &fake_headers(&s.env),
+        &fake_block_hash(&s.env),
         &fake_proof(&s.env),
         &0u32,
         &raw_tx,
@@ -713,7 +709,7 @@ fn borrow_fails_when_oracle_has_no_price() {
     let s = setup();
     let txid = s.client.deposit(
         &s.depositor,
-        &fake_headers(&s.env),
+        &fake_block_hash(&s.env),
         &fake_proof(&s.env),
         &0,
         &s.raw_tx,
@@ -738,7 +734,7 @@ fn borrow_fails_when_oracle_price_is_stale() {
     let s = setup();
     let txid = s.client.deposit(
         &s.depositor,
-        &fake_headers(&s.env),
+        &fake_block_hash(&s.env),
         &fake_proof(&s.env),
         &0,
         &s.raw_tx,
@@ -763,7 +759,7 @@ fn borrow_succeeds_with_a_seven_decimal_oracle() {
     let s = setup();
     let txid = s.client.deposit(
         &s.depositor,
-        &fake_headers(&s.env),
+        &fake_block_hash(&s.env),
         &fake_proof(&s.env),
         &0,
         &s.raw_tx,
@@ -791,7 +787,7 @@ fn borrow_succeeds_with_a_two_decimal_oracle() {
     let s = setup();
     let txid = s.client.deposit(
         &s.depositor,
-        &fake_headers(&s.env),
+        &fake_block_hash(&s.env),
         &fake_proof(&s.env),
         &0,
         &s.raw_tx,

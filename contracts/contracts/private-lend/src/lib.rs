@@ -92,7 +92,8 @@ impl PrivateLendContract {
     ///
     /// # Parameters
     /// - `depositor`          - Stellar address of the depositor (must authorize).
-    /// - `headers`            - Bitcoin block headers (80 bytes each).
+    /// - `block_hash`         - Hash of the Bitcoin block holding the deposit; it must
+    ///                          already be stored and on the best chain in `bitcoin-spv`.
     /// - `merkle_proof`       - Sibling hashes for the Merkle inclusion proof.
     /// - `tx_index`           - 0-based index of the transaction in its block.
     /// - `raw_tx`             - Non-witness serialization of the Bitcoin transaction.
@@ -108,7 +109,7 @@ impl PrivateLendContract {
     pub fn deposit(
         env: Env,
         depositor: Address,
-        headers: Vec<BytesN<80>>,
+        block_hash: BytesN<32>,
         merkle_proof: Vec<BytesN<32>>,
         tx_index: u32,
         raw_tx: Bytes,
@@ -133,7 +134,7 @@ impl PrivateLendContract {
             &config.spv_contract,
             &Symbol::new(&env, "verify_transaction"),
             (
-                headers,
+                block_hash,
                 merkle_proof,
                 tx_index,
                 raw_tx.clone(),
