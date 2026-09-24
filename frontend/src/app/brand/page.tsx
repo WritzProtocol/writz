@@ -382,14 +382,17 @@ export default function BrandPage() {
             </figure>
             <figure>
               <div className="stage">
-                <div
-                  className="mark"
-                  style={{
-                    height: 44,
-                    color: INK,
-                    filter: "drop-shadow(0 7px 9px rgba(0,0,0,0.42))",
-                  }}
-                />
+                {/* The filter sits on a wrapper: on the masked element itself the mask
+                    clips the shadow away and the tile shows a clean mark. */}
+                <div style={{ filter: "drop-shadow(0 8px 8px rgba(0,0,0,0.45))" }}>
+                  <div
+                    className="mark"
+                    style={{
+                      height: 44,
+                      background: `linear-gradient(135deg, ${GOLD}, #6C3FD1)`,
+                    }}
+                  />
+                </div>
               </div>
               <figcaption>Add shadow, glow or gradient</figcaption>
             </figure>
