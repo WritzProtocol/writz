@@ -105,9 +105,9 @@ part of a rotation.
    the `zk-verifier` Soroban contract into a **single Stellar transaction** -
    Soroban supports multiple `InvokeHostFunction` operations per transaction,
    so this is atomic at ledger-close granularity.
-2. In the same deploy window, swap `frontend/public/circuits/<circuit>_final.zkey`
+2. In the same deploy window, swap `frontend/app/public/circuits/<circuit>_final.zkey`
    for each rotated circuit, and - if `zero_debt` was rotated -
-   `frontend/src/circuits/zero_debt_vkey.json` (this one is bundled into the
+   `frontend/app/src/circuits/zero_debt_vkey.json` (this one is bundled into the
    Next.js build, not fetched at runtime; requires a frontend redeploy, not
    just a static asset swap).
 3. There is no legitimate reason to roll back to the old (dev) keys after a

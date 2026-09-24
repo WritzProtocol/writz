@@ -39,7 +39,7 @@ All 406 tests should pass on a clean checkout.
 
 ## Secrets
 
-`relayer/.env.example` and `frontend/.env.example` are tracked deliberately, so
+`relayer/.env.example` and `frontend/app/.env.example` are tracked deliberately, so
 no `.gitignore` rule protects them, and a directory-wide `git add` stages
 whatever they happen to contain.
 

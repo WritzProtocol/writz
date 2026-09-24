@@ -81,7 +81,7 @@ from the red liquidation banner.
    block 700,000 (currently ~X blocks / Y days away)" - turn the wait into
    the same kind of countable, ETA'd progress used for Bitcoin confirmations
    elsewhere in the app (see the confirmation progress bar in
-   `frontend/src/components/DepositFlow.tsx`), not a bare number.
+   `frontend/app/src/components/DepositFlow.tsx`), not a bare number.
 2. **Explain what's about to happen, in one paragraph.** "This sends your
    full BTC collateral back to a Bitcoin address you choose, using the
    timelock path - no signature from Writz is needed. This does not affect

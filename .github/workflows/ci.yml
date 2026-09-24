@@ -85,13 +85,17 @@ jobs:
       - run: bun run check
 
   frontend:
-    name: frontend (bun · lint + test + build)
+    name: frontend ${{ matrix.app }} (bun · lint + test + build)
     needs: changes
     if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [app, landing]
     defaults:
       run:
-        working-directory: frontend
+        working-directory: frontend/${{ matrix.app }}
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2

@@ -9,7 +9,7 @@
 
 Today, if a position is liquidated, the owner finds out only by noticing their
 BTC is gone - no notification, no explanation, no visible status change. The
-`PositionStatus` type now includes `"liquidated"` (`frontend/src/lib/position/types.ts`)
+`PositionStatus` type now includes `"liquidated"` (`frontend/app/src/lib/position/types.ts`)
 and `PositionCard` in `PositionDashboard.tsx` renders a red badge plus an
 explanatory message whenever a position's status is `"liquidated"` - but
 nothing currently sets that status. This spec closes that gap.

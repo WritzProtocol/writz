@@ -513,7 +513,7 @@ async function main() {
         console.log('\n══════════════════════════════════════════════════════════════');
         console.log('✅ DEMO SEED COMPLETE - funded pool + one inserted position');
         console.log('══════════════════════════════════════════════════════════════');
-        console.log('\nFrontend config - set in frontend/.env.local:');
+        console.log('\nFrontend config - set in frontend/app/.env.local:');
         console.log(`  NEXT_PUBLIC_COMMITMENT_TREE_ID=${ctId}`);
         console.log(`  NEXT_PUBLIC_USDC_TOKEN_ID=${XLM_SAC}`);
         console.log('\nSeeded position (debt 0) - the app must hold the same secret/nonce:');

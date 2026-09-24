@@ -142,7 +142,7 @@ Writz holds a co-signing private key for the `protocol_pubkey` in every locking 
 ### Solutions (in order of security)
 
 **Phase 1.5 (implemented): AWS KMS**
-The protocol private key is generated and held inside an AWS KMS asymmetric key (`ECC_SECG_P256K1` curve, `ECDSA_SHA_256` signing algorithm - natively matching Bitcoin's curve). The raw key material never leaves KMS; signing is a `kms:Sign` API call authenticated via IAM, with CloudTrail audit logging on every call. See `bitcoin-script/src/keys.ts`'s `KmsSigner` and `frontend/src/app/api/cosign/route.ts`. The `$50K` mainnet TVL cap bounds exposure on top of this custody model. See `docs/security/security-model.md` for the full trust-model discussion.
+The protocol private key is generated and held inside an AWS KMS asymmetric key (`ECC_SECG_P256K1` curve, `ECDSA_SHA_256` signing algorithm - natively matching Bitcoin's curve). The raw key material never leaves KMS; signing is a `kms:Sign` API call authenticated via IAM, with CloudTrail audit logging on every call. See `bitcoin-script/src/keys.ts`'s `KmsSigner` and `frontend/app/src/app/api/cosign/route.ts`. The `$50K` mainnet TVL cap bounds exposure on top of this custody model. See `docs/security/security-model.md` for the full trust-model discussion.
 
 **Phase 2: MPC (Multi-Party Computation)**
 Distribute the protocol private key across multiple parties using threshold ECDSA (e.g., GG20/21 or CGGMP21 protocols). No single party ever holds the complete key. A 2-of-3 or 3-of-5 MPC setup is standard in institutional custody. Used by Fireblocks, Copper, and major custodians.

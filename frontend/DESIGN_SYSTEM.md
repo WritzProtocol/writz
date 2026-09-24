@@ -5,7 +5,8 @@ Institutional in its restraint, precise in its data, built so a position stays
 invisible until you choose to look.
 
 Implemented as Tailwind v4 theme tokens in `src/app/globals.css` and fonts in
-`src/app/layout.tsx`. Use the generated utilities (`bg-surface`, `text-amber`,
+`src/app/layout.tsx`, once in each app: `app/` and `landing/` carry their own
+copy of both files and must be kept in step. Use the generated utilities (`bg-surface`, `text-amber`,
 `border-line`, `font-serif`, `font-mono`, …) - do not hardcode hex values.
 
 ## Principles

@@ -19,7 +19,7 @@ and didn't earn and why.
 ## Where it lives
 
 A "Points" tab alongside the existing `AppTabs` (`Borrow` / `Lend` today,
-per `frontend/src/components/AppTabs.tsx`) - not a separate page. Points are
+per `frontend/app/src/components/AppTabs.tsx`) - not a separate page. Points are
 a layer over the same positions the user already sees, not a distinct
 product surface.
 
