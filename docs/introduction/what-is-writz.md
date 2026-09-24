@@ -95,4 +95,4 @@ The protocol is not yet available on mainnet. Mainnet launch is targeted for Q4 
 
 ---
 
-**Next:** [How Writz Works →](how-writz-works.md) - A plain-English explanation anyone can follow.
+**Next:** [How Writz Works →](/introduction/how-writz-works) - A plain-English explanation anyone can follow.

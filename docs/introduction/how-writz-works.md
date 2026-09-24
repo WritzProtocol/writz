@@ -138,5 +138,5 @@ The cryptography works. The contracts work. What has not yet been demonstrated i
 
 ---
 
-**Next:** [Why Stellar, Why Now →](why-stellar-why-now.md)  
-**Or dive deeper:** [The Technical Architecture →](../how-it-works/bitcoin-side.md)
+**Next:** [Why Stellar, Why Now →](/introduction/why-stellar-why-now)  
+**Or dive deeper:** [The Technical Architecture →](/how-it-works/bitcoin-side)

@@ -4,7 +4,7 @@ title: "Testnet Runbook"
 
 **Reproduce the full Writz flow from a clean checkout.**
 
-This is the operational companion to [Quick Start](quick-start.md). Quick Start
+This is the operational companion to [Quick Start](/developers/quick-start). Quick Start
 gets the test suites green; this runbook gets the protocol *running* against
 Stellar testnet and Bitcoin Signet.
 
@@ -162,7 +162,7 @@ borrow       (ZK)   b7b83f750128df68b1cd2f91a375b6e5393d7daac764bba1fa87cf3484a6
 repay        (ZK)   261d8b14ab83414b712a0ba8a817ccbc0a6b36de2ef03896ea986beecdb82f14
 ```
 
-Full log in [`contracts/deployments/testnet.md`](../../contracts/deployments/testnet.md).
+Full log in [`contracts/deployments/testnet.md`](https://github.com/WritzProtocol/writz/blob/main/contracts/deployments/testnet.md).
 If your run diverges from these steps, § 7 lists the failures we hit getting here.
 
 ---
@@ -240,4 +240,4 @@ Errors seen while validating this runbook, and what they actually mean:
 
 ---
 
-**Next:** [Contribution Guide →](contribution-guide.md) · [Contract Reference →](contract-reference.md)
+**Next:** [Contribution Guide →](/developers/contribution-guide) · [Contract Reference →](/developers/contract-reference)

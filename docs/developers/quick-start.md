@@ -227,7 +227,7 @@ stellar contract deploy \
   --network testnet
 ```
 
-See [`contracts/deployments/testnet.md`](../../contracts/deployments/testnet.md) for the full init sequence and verified transaction hashes.
+See [`contracts/deployments/testnet.md`](https://github.com/WritzProtocol/writz/blob/main/contracts/deployments/testnet.md) for the full init sequence and verified transaction hashes.
 
 ---
 
@@ -276,4 +276,4 @@ bitcoin-script/src/
 
 ---
 
-**Next:** [Bitcoin SPV SDK →](spv-sdk.md)
+**Next:** [Bitcoin SPV SDK →](/developers/spv-sdk)

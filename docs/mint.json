@@ -1,6 +1,6 @@
 {
   "name": "Writz Protocol",
-  "favicon": "/docs/brand/writz-icon.svg",
+  "favicon": "/brand/writz-icon.svg",
   "colors": {
     "primary": "#F7931A",
     "light": "#FFB347",
@@ -23,15 +23,15 @@
   "tabs": [
     {
       "name": "How It Works",
-      "url": "docs/how-it-works"
+      "url": "how-it-works"
     },
     {
       "name": "Developers",
-      "url": "docs/developers"
+      "url": "developers"
     },
     {
       "name": "Research",
-      "url": "docs/research"
+      "url": "research"
     }
   ],
   "anchors": [
@@ -55,90 +55,90 @@
     {
       "group": "Architecture",
       "pages": [
-        "docs/architecture/technical-overview",
-        "docs/architecture/diagrams"
+        "architecture/technical-overview",
+        "architecture/diagrams"
       ]
     },
     {
       "group": "Introduction",
       "pages": [
-        "docs/introduction/what-is-writz",
-        "docs/introduction/the-problem",
-        "docs/introduction/how-writz-works",
-        "docs/introduction/why-stellar-why-now"
+        "introduction/what-is-writz",
+        "introduction/the-problem",
+        "introduction/how-writz-works",
+        "introduction/why-stellar-why-now"
       ]
     },
     {
       "group": "Products",
       "pages": [
-        "docs/products/privatelend",
-        "docs/products/earn",
-        "docs/products/dark-swap",
-        "docs/products/btc-savings",
-        "docs/products/zk-proof-of-reserve"
+        "products/privatelend",
+        "products/earn",
+        "products/dark-swap",
+        "products/btc-savings",
+        "products/zk-proof-of-reserve"
       ]
     },
     {
       "group": "How It Works",
       "pages": [
-        "docs/how-it-works/bitcoin-side",
-        "docs/how-it-works/spv-verification",
-        "docs/how-it-works/zk-privacy-layer",
-        "docs/how-it-works/manual-proof-submission",
-        "docs/how-it-works/manual-emergency-recovery",
-        "docs/how-it-works/stellar-side"
+        "how-it-works/bitcoin-side",
+        "how-it-works/spv-verification",
+        "how-it-works/zk-privacy-layer",
+        "how-it-works/manual-proof-submission",
+        "how-it-works/manual-emergency-recovery",
+        "how-it-works/stellar-side"
       ]
     },
     {
       "group": "Developers",
       "pages": [
-        "docs/developers/quick-start",
-        "docs/developers/runbook",
-        "docs/developers/spv-sdk",
-        "docs/developers/contract-reference",
-        "docs/developers/contribution-guide"
+        "developers/quick-start",
+        "developers/runbook",
+        "developers/spv-sdk",
+        "developers/contract-reference",
+        "developers/contribution-guide"
       ]
     },
     {
       "group": "Security",
       "pages": [
-        "docs/security/security-model",
-        "docs/security/audits",
-        "docs/security/bug-bounty"
+        "security/security-model",
+        "security/audits",
+        "security/bug-bounty"
       ]
     },
     {
       "group": "Roadmap",
       "pages": [
-        "docs/roadmap/vision",
-        "docs/roadmap/phases"
+        "roadmap/vision",
+        "roadmap/phases"
       ]
     },
     {
       "group": "Legal",
       "pages": [
-        "docs/legal/terms-of-service",
-        "docs/legal/privacy-policy"
+        "legal/terms-of-service",
+        "legal/privacy-policy"
       ]
     },
     {
       "group": "Research",
       "pages": [
-        "docs/research/spv-implementations",
-        "docs/research/market-landscape",
-        "docs/research/protocol-x-ray-capabilities",
-        "docs/research/soroban-compute-benchmarks",
-        "docs/research/bitcoin-locking-script",
-        "docs/research/oracle-design",
-        "docs/research/interest-rate-model",
-        "docs/research/liquidation-mechanism",
-        "docs/research/circom-circuit-design",
-        "docs/research/relayer-incentive-design",
-        "docs/research/blend-usdc-integration",
-        "docs/research/tokenomics-fee-model",
-        "docs/research/security-audit-strategy",
-        "docs/research/regulatory-landscape",
-        "docs/research/growth-strategy"
+        "research/spv-implementations",
+        "research/market-landscape",
+        "research/protocol-x-ray-capabilities",
+        "research/soroban-compute-benchmarks",
+        "research/bitcoin-locking-script",
+        "research/oracle-design",
+        "research/interest-rate-model",
+        "research/liquidation-mechanism",
+        "research/circom-circuit-design",
+        "research/relayer-incentive-design",
+        "research/blend-usdc-integration",
+        "research/tokenomics-fee-model",
+        "research/security-audit-strategy",
+        "research/regulatory-landscape",
+        "research/growth-strategy"
       ]
     }
   ],

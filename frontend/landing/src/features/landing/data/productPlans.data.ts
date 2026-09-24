@@ -42,7 +42,7 @@ export const productPlans: ProductPlan[] = [
       "ZK Proof of Reserve (B2B)",
     ],
     cta: "Read the Roadmap",
-    ctaHref: `${DOCS_URL}/docs/roadmap/vision`,
+    ctaHref: `${DOCS_URL}/roadmap/vision`,
     highlighted: false,
     roles: ["borrower", "lender"],
   },

@@ -213,4 +213,4 @@ The ZK layer is designed to minimize on-chain storage while preventing double-sp
 
 ---
 
-**Next:** [The Stellar Side →](stellar-side.md)
+**Next:** [The Stellar Side →](/how-it-works/stellar-side)

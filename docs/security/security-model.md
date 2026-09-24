@@ -71,7 +71,7 @@ For SegWit deposits, `verify_transaction` computes the txid as `SHA256d` of the 
 
 ### Emergency recovery timelock (CLTV / nSequence)
 
-The P2WSH cooperative-release path requires the protocol's co-signature; the fallback path uses `OP_CHECKLOCKTIMEVERIFY` so a user can always recover BTC unilaterally once the timelock expires. CLTV has a sharp edge: if the spending input's `nSequence` is `0xFFFFFFFF` (Bitcoin's "final" value, and many wallets' default), the Script interpreter fails the CLTV check immediately regardless of whether the timelock has actually expired, with no clear error message. Writz's own tooling (`buildEmergencyTransaction`/`finalizePathB` in `bitcoin-script`) hardcodes `nSequence = 0xFFFFFFFE` and gives `SpendParams` no caller-settable sequence field for this path, so it cannot regress. Users constructing this recovery transaction by hand with a third-party wallet must set this themselves - see [Manual Emergency Recovery](../how-it-works/manual-emergency-recovery.md).
+The P2WSH cooperative-release path requires the protocol's co-signature; the fallback path uses `OP_CHECKLOCKTIMEVERIFY` so a user can always recover BTC unilaterally once the timelock expires. CLTV has a sharp edge: if the spending input's `nSequence` is `0xFFFFFFFF` (Bitcoin's "final" value, and many wallets' default), the Script interpreter fails the CLTV check immediately regardless of whether the timelock has actually expired, with no clear error message. Writz's own tooling (`buildEmergencyTransaction`/`finalizePathB` in `bitcoin-script`) hardcodes `nSequence = 0xFFFFFFFE` and gives `SpendParams` no caller-settable sequence field for this path, so it cannot regress. Users constructing this recovery transaction by hand with a third-party wallet must set this themselves - see [Manual Emergency Recovery](/how-it-works/manual-emergency-recovery).
 
 ### Protocol co-signing key custody
 
@@ -83,7 +83,7 @@ When KMS isn't configured, the same function falls back to a WIF-encoded key rea
 
 ### Trusted setup ceremony
 
-Groth16 requires a per-circuit trusted setup. `circuits/scripts/ceremony/` implements the full production runbook: fetching and checksum-verifying the Hermez Phase-1 ptau (`00_fetch_ptau.sh`, deliberately requiring a human-pinned, PR-reviewed checksum rather than a hardcoded one), the coordinator's per-circuit setup (`01_new_zkey.sh`), interactive participant contribution with no scripted entropy (`02_contribute.sh`), independent transcript verification (`03_verify_transcript.sh`), and final key export plus manifest generation (`04_export.js`). A CI job re-verifies the committed manifest's hashes and IC lengths on every PR touching `circuits/keys/**`, and rejects any transcript containing a dev-labeled participant. Running the actual multi-party ceremony - recruiting independent participants and executing the runbook publicly - is an operational milestone tracked in the [roadmap](../roadmap/phases.md), not something further engineering work can complete on its own.
+Groth16 requires a per-circuit trusted setup. `circuits/scripts/ceremony/` implements the full production runbook: fetching and checksum-verifying the Hermez Phase-1 ptau (`00_fetch_ptau.sh`, deliberately requiring a human-pinned, PR-reviewed checksum rather than a hardcoded one), the coordinator's per-circuit setup (`01_new_zkey.sh`), interactive participant contribution with no scripted entropy (`02_contribute.sh`), independent transcript verification (`03_verify_transcript.sh`), and final key export plus manifest generation (`04_export.js`). A CI job re-verifies the committed manifest's hashes and IC lengths on every PR touching `circuits/keys/**`, and rejects any transcript containing a dev-labeled participant. Running the actual multi-party ceremony - recruiting independent participants and executing the runbook publicly - is an operational milestone tracked in the [roadmap](/roadmap/phases), not something further engineering work can complete on its own.
 
 ### Liquidation privacy and debt disclosure
 
@@ -210,4 +210,4 @@ As the fund grows and protocol governance decentralizes, the insurance fund allo
 
 ---
 
-**Next:** [Audits →](audits.md)
+**Next:** [Audits →](/security/audits)

@@ -7,7 +7,7 @@ description: "Visual reference for the full Writz Protocol - from Bitcoin lockin
 
 End-to-end view of how Bitcoin, the SPV Relayer, the four Soroban contracts, and the browser interact.
 
-![Writz System Architecture](/docs/diagrams/output/01-system-architecture.png)
+![Writz System Architecture](/diagrams/output/01-system-architecture.png)
 
 **Key layers:**
 - **Bitcoin** - P2WSH locks collateral; two spending paths (cooperative co-sign or CLTV timelock)
@@ -21,7 +21,7 @@ End-to-end view of how Bitcoin, the SPV Relayer, the four Soroban contracts, and
 
 Step-by-step path from connecting a Bitcoin wallet to having an active position on Stellar.
 
-![Deposit Flow](/docs/diagrams/output/02-deposit-flow.png)
+![Deposit Flow](/diagrams/output/02-deposit-flow.png)
 
 1. Connect Bitcoin wallet (Xverse) and Stellar wallet (Freighter)
 2. Derive unique P2WSH address from protocol key + user key + timelock height
@@ -37,7 +37,7 @@ Step-by-step path from connecting a Bitcoin wallet to having an active position 
 
 How the protocol updates the Merkle commitment on every borrow or repay, preserving privacy throughout.
 
-![Borrow and Repay Flow](/docs/diagrams/output/03-borrow-repay-flow.png)
+![Borrow and Repay Flow](/diagrams/output/03-borrow-repay-flow.png)
 
 - **Borrow:** `delta = amount_stroops`, `is_borrow = 1`
 - **Repay:** `delta = (FIELD_PRIME − amount) mod FIELD_PRIME`, `is_borrow = 0`
@@ -49,7 +49,7 @@ How the protocol updates the Merkle commitment on every borrow or repay, preserv
 
 Cooperative co-signed release after full repayment.
 
-![BTC Release Flow](/docs/diagrams/output/04-btc-release-flow.png)
+![BTC Release Flow](/diagrams/output/04-btc-release-flow.png)
 
 - The server (`/api/cosign`) verifies the commitment is no longer pending before signing
 - `PROTOCOL_SIGNING_KEY` is server-only - never exposed to the browser
@@ -61,7 +61,7 @@ Cooperative co-signed release after full repayment.
 
 All three Groth16 circuits (Circom / BN254), their private inputs, public inputs, and public outputs.
 
-![ZK Circuits](/docs/diagrams/output/05-zk-circuits.png)
+![ZK Circuits](/diagrams/output/05-zk-circuits.png)
 
 | Circuit | Purpose |
 |---|---|
@@ -75,7 +75,7 @@ All three Groth16 circuits (Circom / BN254), their private inputs, public inputs
 
 Complete lifecycle of a position from pending to BTC release (or liquidation).
 
-![Commitment State Machine](/docs/diagrams/output/06-commitment-state-machine.png)
+![Commitment State Machine](/diagrams/output/06-commitment-state-machine.png)
 
 | State | Description |
 |---|---|
@@ -92,7 +92,7 @@ Complete lifecycle of a position from pending to BTC release (or liquidation).
 
 How the four live testnet contracts call each other.
 
-![Contract Interactions](/docs/diagrams/output/07-contract-interactions.png)
+![Contract Interactions](/diagrams/output/07-contract-interactions.png)
 
 | Contract | Role |
 |---|---|

@@ -195,4 +195,4 @@ The Writz SPV SDK verifies that a **transaction exists in the Bitcoin blockchain
 
 ---
 
-**Next:** [Contract Reference →](contract-reference.md)
+**Next:** [Contract Reference →](/developers/contract-reference)

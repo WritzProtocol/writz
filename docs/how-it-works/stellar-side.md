@@ -291,4 +291,4 @@ commitment-tree.insert_commitment(commitment)
 
 ---
 
-**Next:** [Developer Quick Start →](../developers/quick-start.md)
+**Next:** [Developer Quick Start →](/developers/quick-start)

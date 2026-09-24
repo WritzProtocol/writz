@@ -14,7 +14,7 @@ Writz is open source. Contributions - bug reports, code improvements, documentat
 
 **Documentation:** Spotted something unclear, incorrect, or missing? Open a PR directly against the `docs/` directory.
 
-**Security research:** See the [Bug Bounty](../security/bug-bounty.md) page for responsible disclosure guidelines and rewards.
+**Security research:** See the [Bug Bounty](/security/bug-bounty) page for responsible disclosure guidelines and rewards.
 
 **ZK ceremony participation:** The Groth16 trusted setup ceremony requires independent participants. If you're interested in participating, [open an issue](https://github.com/WritzProtocol/writz/issues) (`writz.xyz` has no mailbox yet). No technical background required - participants just need to run a script and discard their randomness.
 

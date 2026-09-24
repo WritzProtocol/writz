@@ -66,4 +66,4 @@ BTC Savings is planned for Phase 3 (Q3–Q4 2027), after PrivateLend is live and
 
 ---
 
-**Back to:** [All Products →](privatelend.md)
+**Back to:** [All Products →](/products/privatelend)

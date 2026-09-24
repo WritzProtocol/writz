@@ -74,7 +74,7 @@ Select how much BTC you want to deposit as collateral. Writz will show you the m
 <details>
 <summary>How this works technically</summary>
 
-The generated address is a P2WSH (Pay-to-Witness-Script-Hash) address. It encodes your public key, Writz's co-signing key, and a time-lock specific to your loan term - see [Bitcoin Side](../how-it-works/bitcoin-side.md) for the full script design.
+The generated address is a P2WSH (Pay-to-Witness-Script-Hash) address. It encodes your public key, Writz's co-signing key, and a time-lock specific to your loan term - see [Bitcoin Side](/how-it-works/bitcoin-side) for the full script design.
 
 </details>
 
@@ -91,7 +91,7 @@ Once your transaction has 6 confirmations, the Writz app automatically proves yo
 <details>
 <summary>How this works technically</summary>
 
-The app assembles an SPV proof (Bitcoin block headers + Merkle proof + raw transaction) and submits it to the Soroban `bitcoin-spv` contract. The contract verifies your BTC transaction cryptographically - checking proof-of-work and Merkle inclusion, not trusting any third party's word for it - and signals the commitment-tree contract. See [SPV Verification](../how-it-works/spv-verification.md) for the full mechanics.
+The app assembles an SPV proof (Bitcoin block headers + Merkle proof + raw transaction) and submits it to the Soroban `bitcoin-spv` contract. The contract verifies your BTC transaction cryptographically - checking proof-of-work and Merkle inclusion, not trusting any third party's word for it - and signals the commitment-tree contract. See [SPV Verification](/how-it-works/spv-verification) for the full mechanics.
 
 </details>
 
@@ -106,7 +106,7 @@ Your position now exists on Stellar, visible only to you - not to other users, n
 
 Your browser generates a zero-knowledge proof of your deposit and submits it to the commitment-tree contract, which records a cryptographic commitment. Your position's spending keys are derived deterministically from a signature of your connected Stellar wallet (not randomly generated, so nothing to lose), and an encrypted recovery note is published on-chain alongside the commitment. "Recover positions" re-derives your keys, scans the on-chain notes, and rebuilds your position from them.
 
-One caveat: the Bitcoin-side details needed to release your BTC on repayment (your Bitcoin pubkey, the timelock height, and the deposit's output index) are cached locally and are not part of the recovery note. In the rare case those are lost on a device you never repaid from, contact support before repaying so they can be reconstructed from your original deposit transaction, or use the [manual emergency recovery path](../how-it-works/manual-emergency-recovery.md) once the CLTV timelock expires.
+One caveat: the Bitcoin-side details needed to release your BTC on repayment (your Bitcoin pubkey, the timelock height, and the deposit's output index) are cached locally and are not part of the recovery note. In the rare case those are lost on a device you never repaid from, contact support before repaying so they can be reconstructed from your original deposit transaction, or use the [manual emergency recovery path](/how-it-works/manual-emergency-recovery) once the CLTV timelock expires.
 
 </details>
 
@@ -148,7 +148,7 @@ The liquidator pays the outstanding USDC debt. The protocol co-signs the BTC rel
 - Maintain USDC reserves to repay quickly if needed
 - Borrow conservatively - taking 50% LTV instead of 66% gives you significant buffer
 
-**If you are liquidated:** your position's status updates to "liquidated" and the app explains what happened - your outstanding debt is cleared, but the BTC collateral is gone (see the [liquidation notification design](../design/liquidation-notification-spec.md) for how this is detected). There is no silent loss; you will not have to guess why your collateral disappeared.
+**If you are liquidated:** your position's status updates to "liquidated" and the app explains what happened - your outstanding debt is cleared, but the BTC collateral is gone (see the [liquidation notification design](/design/liquidation-notification-spec) for how this is detected). There is no silent loss; you will not have to guess why your collateral disappeared.
 
 ---
 
@@ -175,4 +175,4 @@ These caps will be raised after a 30-day clean operation period and the completi
 
 ---
 
-**Deeper reading:** [How the ZK Privacy Layer Works →](../how-it-works/zk-privacy-layer.md)
+**Deeper reading:** [How the ZK Privacy Layer Works →](/how-it-works/zk-privacy-layer)

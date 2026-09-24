@@ -20,8 +20,8 @@ Both applications read flat, independently-set environment variables. Nothing in
 
 So each target declares itself, and the declaration is checked against everything around it:
 
-- **Frontend** - `NEXT_PUBLIC_WRITZ_ENV`, validated at build time in [`frontend/app/src/config/target.ts`](../../frontend/app/src/config/target.ts). A contradiction fails the build.
-- **Relayer** - `WRITZ_ENV`, validated at startup in [`relayer/src/deploy-target.ts`](../../relayer/src/deploy-target.ts). A contradiction refuses to boot, before anything binds a port.
+- **Frontend** - `NEXT_PUBLIC_WRITZ_ENV`, validated at build time in [`frontend/app/src/config/target.ts`](https://github.com/WritzProtocol/writz/blob/main/frontend/app/src/config/target.ts). A contradiction fails the build.
+- **Relayer** - `WRITZ_ENV`, validated at startup in [`relayer/src/deploy-target.ts`](https://github.com/WritzProtocol/writz/blob/main/relayer/src/deploy-target.ts). A contradiction refuses to boot, before anything binds a port.
 
 Both report every conflict at once rather than one per failed attempt, because these values are edited on a hosting dashboard where a one-variable-per-build loop is miserable.
 
@@ -63,7 +63,7 @@ Steps 1 and 2 are dashboard and registrar actions - they cannot be done from thi
    NEXT_PUBLIC_RELAYER_URL=<the testnet relayer's origin>
    ```
 
-   plus the contract addresses from [`frontend/app/.env.example`](../../frontend/app/.env.example), which tracks the current testnet deployment. Never copy these into the mainnet project.
+   plus the contract addresses from [`frontend/app/.env.example`](https://github.com/WritzProtocol/writz/blob/main/frontend/app/.env.example), which tracks the current testnet deployment. Never copy these into the mainnet project.
 
    The co-signing route (`/api/cosign`) runs in this project, so its server-only variables belong here too: `KMS_KEY_ID` with the AWS credentials, or the `PROTOCOL_SIGNING_KEY` fallback on testnet, plus `BITCOIN_NETWORK`. `NEXT_PUBLIC_PRIVY_APP_ID` enables Privy login; add `https://testnet.writz.xyz` to the allowed origins in the Privy dashboard, or login fails on this domain.
 
@@ -105,7 +105,7 @@ curl -sI https://testnet.writz.xyz | head -1
 
 ### 3. Relayer (Railway)
 
-The relayer's own service for this target needs, in addition to what [`relayer/.env.example`](../../relayer/.env.example) documents:
+The relayer's own service for this target needs, in addition to what [`relayer/.env.example`](https://github.com/WritzProtocol/writz/blob/main/relayer/.env.example) documents:
 
 ```
 WRITZ_ENV=testnet
@@ -117,7 +117,7 @@ DEFINDEX_VAULT_ID=<the testnet vault, from contracts/deployments/defindex-vault-
 DEFINDEX_API_KEY=<from console.defindex.io>
 ```
 
-`DEFINDEX_VAULT_ID` is the piece this issue is really about: it is per-network, has no safe default, and a relayer without it serves errors from every `/defindex` route. The testnet vault address lives in [`contracts/deployments/defindex-vault-testnet.md`](../../contracts/deployments/defindex-vault-testnet.md) rather than being repeated here, so there is one place to change when it is redeployed.
+`DEFINDEX_VAULT_ID` is the piece this issue is really about: it is per-network, has no safe default, and a relayer without it serves errors from every `/defindex` route. The testnet vault address lives in [`contracts/deployments/defindex-vault-testnet.md`](https://github.com/WritzProtocol/writz/blob/main/contracts/deployments/defindex-vault-testnet.md) rather than being repeated here, so there is one place to change when it is redeployed.
 
 #### Persistence: mount a volume, or the metrics history is lost on every deploy
 
@@ -178,7 +178,7 @@ A `target` of `local` in that response means `WRITZ_ENV` was never set on the se
 The existing Vercel project for the apex domain serves `frontend/landing`:
 
 1. Root directory `frontend/landing`; framework preset Next.js; the same Ignored Build Step as above.
-2. Environment variables, from [`frontend/landing/.env.example`](../../frontend/landing/.env.example):
+2. Environment variables, from [`frontend/landing/.env.example`](https://github.com/WritzProtocol/writz/blob/main/frontend/landing/.env.example):
 
    ```
    NEXT_PUBLIC_SITE_URL=https://writz.xyz
@@ -201,8 +201,8 @@ Repeat the three steps with `mainnet` values, in a **new** Vercel project (root 
 
 Mainnet also requires things testnet does not have yet:
 
-- A DeFindex vault deployed on the public network, with roles split across dedicated keys rather than a single deployer (see the note at the end of [`defindex-vault-testnet.md`](../../contracts/deployments/defindex-vault-testnet.md)).
-- Co-signing through AWS KMS. The WIF `PROTOCOL_SIGNING_KEY` fallback is refused on mainnet in two places: at boot by the target check, and at signing time by `resolveProtocolSigner` (see [security model](../security/security-model.md)).
+- A DeFindex vault deployed on the public network, with roles split across dedicated keys rather than a single deployer (see the note at the end of [`defindex-vault-testnet.md`](https://github.com/WritzProtocol/writz/blob/main/contracts/deployments/defindex-vault-testnet.md)).
+- Co-signing through AWS KMS. The WIF `PROTOCOL_SIGNING_KEY` fallback is refused on mainnet in two places: at boot by the target check, and at signing time by `resolveProtocolSigner` (see [security model](/security/security-model)).
 
 ---
 

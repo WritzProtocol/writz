@@ -108,4 +108,4 @@ This table will be updated as audits are completed. All published audit reports 
 
 ---
 
-**Next:** [Bug Bounty →](bug-bounty.md)
+**Next:** [Bug Bounty →](/security/bug-bounty)

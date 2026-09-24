@@ -60,4 +60,4 @@ The SPV contract and ZK verifier required for Dark Swap are already deployed and
 
 ---
 
-**Back to:** [All Products →](privatelend.md)
+**Back to:** [All Products →](/products/privatelend)

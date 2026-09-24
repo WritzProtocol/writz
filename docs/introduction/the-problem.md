@@ -65,4 +65,4 @@ Writz is built to be all three.
 
 ---
 
-**Next:** [How Writz Works →](how-writz-works.md)
+**Next:** [How Writz Works →](/introduction/how-writz-works)

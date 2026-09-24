@@ -209,7 +209,7 @@ The SCF Open Track submission requires public documentation. Writz uses Mintlify
 1. Create account at [mintlify.com](https://mintlify.com)
 2. Create a new project: "Writz Protocol"
 3. Connect to your GitHub repo → select the `docs/` folder as the source root
-4. Mintlify reads `mint.json` for configuration and navigation - `docs/mint.json` is already created
+4. Mintlify reads `docs/docs.json` for configuration and navigation. Keep `docs/` as the source root: Mintlify injects every `.js` and `.css` file under the root into every page, so pointing it at the repo root ships the circuit and Node scripts to the browser
 5. Publish → your docs live at `[your-slug].mintlify.app`
 
 **Custom domain:**
@@ -219,7 +219,7 @@ The SCF Open Track submission requires public documentation. Writz uses Mintlify
 **Local preview (before publishing):**
 ```bash
 cd docs
-npx mintlify dev
+npx mint dev
 # Opens localhost:3000 with live reload
 ```
 
