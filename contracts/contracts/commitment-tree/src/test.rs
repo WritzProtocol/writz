@@ -438,6 +438,7 @@ impl MockSpv {
         SpvVerificationResult {
             txid: BytesN::from_array(&env, &iv::DEPOSIT_TXID),
             block_hash: BytesN::from_array(&env, &[0xadu8; 32]),
+            block_height: 2_900_000,
             confirmations: 6,
         }
     }

@@ -15,38 +15,89 @@ Complete public interface documentation for all four Writz Soroban contracts.
 
 ## bitcoin-spv
 
+A header-chain light client: it stores Bitcoin block headers that descend from a checkpoint and proves transactions against them. See [SPV Verification](../how-it-works/spv-verification.md).
+
+### `initialize`
+
+```rust
+pub fn initialize(env: Env, admin: Address, pow_limit_bits: u32)
+```
+
+`pow_limit_bits` is the tracked network's compact proof-of-work limit (mainnet `0x1d00ffff`, signet `0x1e0377ae`).
+
+### `set_checkpoint`
+
+Sets the trusted starting block. Admin only, and callable exactly once.
+
+```rust
+pub fn set_checkpoint(
+    env: Env,
+    caller: Address,
+    height: u32,
+    block_hash: BytesN<32>,
+    bits: u32,
+    time: u32,
+    period_start_time: u32,  // Time of the block at height - height % 2016
+)
+```
+
+### `set_submitter`
+
+Restricts `submit_headers` to one address (`Some`), or reopens it to everyone (`None`). Admin only. Configure it on signet, whose block signatures the contract cannot verify.
+
+```rust
+pub fn set_submitter(env: Env, caller: Address, submitter: Option<Address>)
+```
+
+### `submit_headers`
+
+Adds up to 16 contiguous headers. Each must link to a stored header, satisfy its proof-of-work, carry exactly the `bits` Bitcoin's difficulty rules require, and not be more than two hours in the future. Returns the best tip's height.
+
+```rust
+pub fn submit_headers(env: Env, headers: Vec<BytesN<80>>) -> u32
+```
+
 ### `verify_transaction`
 
-Verifies that a Bitcoin transaction is included in a confirmed block. Stateless - no headers are stored on-chain.
+Verifies that a Bitcoin transaction is included in a confirmed block of the most-work chain.
 
 ```rust
 pub fn verify_transaction(
     env: Env,
-    headers: Vec<Bytes>,          // Raw 80-byte Bitcoin block headers, ordered oldest→newest
+    block_hash: BytesN<32>,        // Stored block that holds the transaction
     merkle_proof: Vec<BytesN<32>>, // Sibling hashes from transaction to block Merkle root
     tx_index: u32,                 // Position of the transaction in the block (0-indexed)
-    raw_tx: Bytes,                 // Complete raw Bitcoin transaction (serialized)
-    min_confirmations: u32,        // Minimum number of confirmations required
+    raw_tx: Bytes,                 // Raw non-witness transaction (must not be exactly 64 bytes)
+    min_confirmations: u32,        // Minimum depth below the best tip
 ) -> SpvVerificationResult
 ```
 
 **Returns** (`SpvVerificationResult`, defined once in the shared `spv-types` crate and used by every contract that calls into `bitcoin-spv` - not a per-contract duplicate):
 ```rust
 pub struct SpvVerificationResult {
-    pub txid: BytesN<32>,      // SHA256d of the non-witness raw transaction
-    pub block_hash: BytesN<32>, // SHA256d of the first header
-    pub confirmations: u32,    // Number of headers provided (= number of confirmations)
+    pub txid: BytesN<32>,       // SHA256d of the non-witness raw transaction
+    pub block_hash: BytesN<32>, // Hash of the block holding the transaction
+    pub block_height: u32,      // Height of that block
+    pub confirmations: u32,     // The block's depth below the best tip
 }
 ```
 
 There is no output-parsing/address-matching helper on-chain - a caller that needs to know which output paid a given address parses `raw_tx` itself.
-```
 
-**Panics if:**
-- Any header fails PoW validation (`SHA256d(header) ≥ target`)
-- The header chain is not continuous (`headers[i].prev_block ≠ SHA256d(headers[i-1])`)
-- The Merkle proof does not reconstruct `headers[0].merkle_root`
-- `headers.len() < min_confirmations`
+**Errors if:**
+- The block was never submitted (`HeaderNotFound`), is at or before the checkpoint, or is not on the most-work chain (`NotOnBestChain`)
+- The block is buried under fewer than `min_confirmations` blocks
+- `raw_tx` is exactly 64 bytes
+- The Merkle proof does not reconstruct the stored block's Merkle root
+
+### Reads
+
+```rust
+pub fn get_checkpoint(env: Env) -> Option<Checkpoint>
+pub fn get_best_tip(env: Env) -> Option<BestTip>
+pub fn get_header(env: Env, block_hash: BytesN<32>) -> Option<HeaderEntry>
+pub fn get_canonical_hash(env: Env, height: u32) -> Option<BytesN<32>>
+```
 
 ---
 
@@ -245,17 +296,27 @@ pub fn initialize(
     spv_contract: Address,
     usdc_token: Address,
     oracle: Address,
+    keeper: Address,
+    relayer: Address,
+    protocol_pubkey: BytesN<33>,  // Protocol co-signing key embedded in every deposit script
 )
 ```
 
 ### `deposit`
 
+Registers a BTC deposit. The contract rebuilds the Writz redeem script from `protocol_pubkey`, `user_pubkey` and `timelock_height`, and requires `p2wsh_script_pubkey` to be exactly its P2WSH, so only outputs locked under the protocol's co-signing key count as collateral. The timelock must fall 1,008 to 105,000 blocks above the block that confirmed the deposit.
+
 ```rust
 pub fn deposit(
     env: Env,
     depositor: Address,
-    spv_proof: SpvProofArgs,
-    expected_address: String,
+    block_hash: BytesN<32>,          // Stored bitcoin-spv block holding the deposit
+    merkle_proof: Vec<BytesN<32>>,
+    tx_index: u32,
+    raw_tx: Bytes,
+    p2wsh_script_pubkey: Bytes,      // Must equal the derived Writz P2WSH scriptPubKey
+    timelock_height: u32,            // CLTV escape-hatch height
+    user_pubkey: BytesN<33>,         // Depositor's compressed Bitcoin key
 ) -> BytesN<32>  // position_id (= txid)
 ```
 
