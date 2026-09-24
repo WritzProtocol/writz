@@ -839,6 +839,29 @@ fn error_header_chain_broken() {
     );
 }
 
+#[test]
+fn error_64_byte_raw_tx_rejected_as_merkle_inner_node() {
+    let env = Env::default();
+    let client = new_client(&env);
+
+    // A 64-byte "transaction" is indistinguishable from the preimage of a
+    // Merkle inner node (left || right). It must never be accepted as a leaf.
+    let inner_node_preimage = [0x5au8; 64];
+    let fake_txid = sha256d_bytes(&env, &inner_node_preimage);
+
+    let h0 = mine_valid_header(&env, 1, &[0u8; 32], &fake_txid, 0);
+    let mut headers: Vec<BytesN<80>> = Vec::new(&env);
+    headers.push_back(h0);
+
+    let raw_tx = Bytes::from_slice(&env, &inner_node_preimage);
+    let proof: Vec<BytesN<32>> = Vec::new(&env);
+
+    assert_eq!(
+        client.try_verify_transaction(&headers, &proof, &0, &raw_tx, &1),
+        Err(Ok(SPVError::AmbiguousTransactionLength)),
+    );
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
 // Invariant tests
 // ══════════════════════════════════════════════════════════════════════════════

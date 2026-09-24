@@ -57,4 +57,9 @@ pub enum SPVError {
     /// difficulty floor allows - prevents a privately-mined,
     /// historically-easy chain from being accepted.
     DifficultyBelowCheckpointFloor = 14,
+
+    /// `raw_tx` is exactly 64 bytes, the size of a Merkle inner-node
+    /// preimage (`left || right`). Accepting it would let an attacker prove
+    /// an inner node as if it were a transaction.
+    AmbiguousTransactionLength = 15,
 }
