@@ -170,6 +170,47 @@ curl -X POST http://localhost:3000/defindex/withdraw \
 { "xdr": "AAAAAgAAAAA..." }
 ```
 
+### `GET /metrics/tvl`
+
+Returns the Writz DeFindex vault's total value locked and its unique depositor count. Backs the public `/metrics` dashboard.
+
+**Responses**
+
+| Status | Meaning |
+|---|---|
+| `200` | Metrics returned |
+| `500` | `DEFINDEX_VAULT_ID` not configured |
+| `502` | Upstream DeFindex error while reading the on-chain figure |
+
+**200 body**
+
+```json
+{ "tvlStroops": "300199987", "onChainTvlStroops": "300310339", "uniqueDepositors": 4 }
+```
+
+- `tvlStroops` is net deposits minus withdrawals, summed from the vault events the relayer indexes. It needs no network call.
+- `onChainTvlStroops` is the vault's live managed funds, read through `@defindex/sdk`. It includes the yield the strategy has accrued, so it is expected to sit slightly above `tvlStroops`. A gap larger than 20% of `tvlStroops` is logged as a warning rather than failing the request.
+- `uniqueDepositors` counts distinct accounts that have ever deposited.
+
+Both stroop fields are decimal strings (7 decimals), never JSON numbers.
+
+### `GET /metrics/retention`
+
+Returns 30-day retention cohorts for the vault, computed from the indexed events.
+
+**200 body**
+
+```json
+{ "cohorts": [{ "cohort": "2026-09-02", "depositors": 1, "eligible": 0, "retained": 0 }] }
+```
+
+| Field | Meaning |
+|---|---|
+| `cohort` | UTC day of the depositors' first-ever deposit |
+| `depositors` | Accounts whose first deposit fell on that day |
+| `eligible` | Of those, how many have reached their 30-day mark. Younger depositors are too early to count as retained or churned, so they are left out |
+| `retained` | Of the eligible, how many still held a positive net balance at their 30-day mark |
+
 ### `GET /health`
 
 Returns `{"status":"ok",...}` - used by load balancers.
