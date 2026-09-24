@@ -7,7 +7,12 @@
     "light": "#FFB347",
     "dark": "#C47217"
   },
-  "favicon": "/docs/favicon.svg",
+  "logo": {
+    "light": "/docs/brand/logo-light.png",
+    "dark": "/docs/brand/logo-dark.png",
+    "href": "https://writz.xyz"
+  },
+  "favicon": "/docs/brand/favicon.png",
   "navigation": {
     "tabs": [
       {
