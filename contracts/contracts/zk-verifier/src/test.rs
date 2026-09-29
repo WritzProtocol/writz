@@ -280,6 +280,42 @@ fn tampered_public_signal_fails_verification() {
     assert_eq!(result, false);
 }
 
+// GHSA-cq44-4536-mfm2: Bn254Fr::from_bytes reduces every public signal
+// modulo the BN254 scalar field r before the pairing check, but
+// commitment-tree stores the *raw* 32-byte signal as its nullifier/
+// commitment lookup key. So `nullifier` and `nullifier + r` are the same
+// field element (same proof accepted for both) but two different raw
+// storage keys - the exact alias from the advisory's PoC, reproduced here
+// against this crate's own test vectors rather than invented for this test.
+#[test]
+#[should_panic]
+fn non_canonical_public_signal_is_rejected() {
+    let (env, admin, client) = setup();
+    client.set_verification_key(&admin, &CircuitId::Deposit, &build_vk(&env));
+
+    // tv::SIGNAL_1 (nullifier) + r, still a canonical 32-byte encoding but
+    // a raw byte value distinct from tv::SIGNAL_1 despite being the same
+    // BN254 field element.
+    let aliased_nullifier: [u8; 32] = [
+        0x36, 0xa4, 0x6e, 0x18, 0x59, 0x33, 0x97, 0xcb, 0xda, 0x3c, 0xde, 0xc4, 0xd6, 0x0f, 0x4d,
+        0x09, 0x71, 0x3e, 0x8f, 0x4e, 0xbd, 0x8f, 0x8e, 0xb7, 0xb8, 0x26, 0xb4, 0x2f, 0x0b, 0xe2,
+        0x15, 0xfa,
+    ];
+    let aliased_signals: Vec<BytesN<32>> = Vec::from_array(&env, [
+        signal(&env, &tv::SIGNAL_0),
+        signal(&env, &aliased_nullifier),
+        signal(&env, &tv::SIGNAL_2),
+        signal(&env, &tv::SIGNAL_3),
+        signal(&env, &tv::SIGNAL_4),
+    ]);
+
+    // Rejected with NonCanonicalPublicSignal before the proof is even
+    // checked - the pairing check would otherwise accept it, since the
+    // host reduces both the canonical nullifier and its +r alias to the
+    // same field element.
+    client.verify_deposit(&build_proof(&env), &aliased_signals);
+}
+
 #[test]
 #[should_panic]
 fn wrong_number_of_public_signals_panics() {
