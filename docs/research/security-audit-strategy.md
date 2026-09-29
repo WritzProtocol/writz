@@ -36,8 +36,6 @@ The Stellar Development Foundation operates the **Soroban Security Audit Bank** 
 
 The primary pathway is through the **Stellar Community Fund (SCF)**. If Writz receives an SCF grant, it automatically qualifies for Audit Bank access. This aligns the grant strategy with the security strategy - SCF funding unlocks both capital AND audit support.
 
-**Open dependency - no Plan B currently defined:** The SCF application is a draft and has not been submitted, with no short-term plan to submit it (see `docs/roadmap/phases.md`). Since Audit Bank qualification is described here as SCF-gated, this is currently an unresolved blocker for the audit funding path, not a scheduled step. Before this becomes a pre-mainnet gate in practice, either (a) confirm whether Audit Bank has a qualification path independent of an SCF award, or (b) define an alternative audit-funding plan that doesn't depend on SCF.
-
 ---
 
 ## Approved Audit Firms (Official SDF Audit Bank List)

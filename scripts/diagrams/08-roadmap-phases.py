@@ -30,7 +30,7 @@ g.node("p0", hl(
 g.node("p1", hl(
     "Phase 1 · Foundation",
     "Jul – Sep 2026  ·  IN PROGRESS",
-    "4 contracts live · 268 tests · SCF application",
+    "4 contracts live · 268 tests",
 ), fillcolor=F_DECISION, color=B_DECISION)
 
 g.node("p2", hl(
