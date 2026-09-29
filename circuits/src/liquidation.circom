@@ -30,14 +30,16 @@ include "./merkle.circom";
  *   3: btc_price_stroops_per_btc  - public input, from oracle
  *   4: liquidation_threshold_bp   - public input, 12_000 = 120%
  *
- * Constraint count: measured via `circom --r1cs` after the collateral/price
- * range-check fix below - regenerate this comment if the circuit changes
- * again rather than trusting stale arithmetic here.
+ * Constraint count: 5,742 non-linear (measured via `circom --r1cs`, not an
+ * estimate - regenerate this comment if the circuit changes again rather
+ * than trusting stale arithmetic here).
  *   - Commitment hash: ~320
  *   - Merkle proof (depth 20): ~5,200
  *   - Undercollateral check: ~200
- *   - collateral_satoshis / btc_price_stroops_per_btc range checks: ~120
- *     (previously unconstrained here - see the comment at Step 3)
+ *   - collateral_satoshis / btc_price_stroops_per_btc / liquidation_threshold_bp
+ *     range checks: ~152
+ *     (collateral/price previously unconstrained here - see the comment at
+ *     Step 3; threshold range check added for GHSA-px5w-x8xp-wh2h)
  *   - Nullifier: ~160
  *   - usdc_debt binding: ~1
  */
@@ -92,6 +94,19 @@ template LiquidationCircuit(DEPTH) {
     collateral_range.in <== collateral_satoshis;
     component price_range = Num2Bits(64); // generous headroom over any realistic USD price
     price_range.in <== btc_price_stroops_per_btc;
+
+    // `liquidation_threshold_bp` had no range check at all: it feeds `rhs_bp`
+    // below as an unconstrained BN254 field element. The contract only
+    // checks it against the configured 12_000 via `sig_u32`, which reads the
+    // last 4 bytes of the 32-byte signal - so a prover could submit a field
+    // element whose low 32 bits read 12_000 but whose true value is
+    // enormous, making `rhs_bp` wrap modulo the field and mark a healthy
+    // position as undercollateralized (GHSA-px5w-x8xp-wh2h). 32 bits is
+    // generous headroom over any realistic basis-point value; once range-
+    // checked here, no value that reaches a valid proof can have non-zero
+    // high bytes, so the contract's `sig_u32` read is safe again.
+    component threshold_range = Num2Bits(32);
+    threshold_range.in <== liquidation_threshold_bp;
 
     // ── Step 3: Prove the position is undercollateralized ─────────────────────
     // Collateral ratio = (collateral_satoshis × price / 100_000_000) / debt
