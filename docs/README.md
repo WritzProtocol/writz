@@ -52,6 +52,7 @@ Writz is a trustless Bitcoin lending protocol on Stellar. Lock real BTC. Borrow 
 - [Security Model](/security/security-model) - Trust assumptions, failure scenarios, what Writz can't do.
 - [Audits](/security/audits) - Audit roadmap, target firms, Audit Bank process.
 - [Bug Bounty](/security/bug-bounty) - Responsible disclosure. Up to $50,000 for critical findings.
+- [STRIDE Threat Model](/security/stride-threat-model) - Threats by component, trust boundaries, mitigations.
 
 ### Roadmap
 - [Vision](/roadmap/vision) - Where Writz goes by 2028. The three-layer moat.
@@ -72,11 +73,6 @@ Writz is a trustless Bitcoin lending protocol on Stellar. Lock real BTC. Borrow 
 - [Security Audit Strategy](/research/security-audit-strategy)
 - [Regulatory Landscape](/research/regulatory-landscape)
 - [Growth Strategy](/research/growth-strategy)
-
-### SCF Application (draft - not submitted, no short-term plan to submit)
-- [Application](/scf/application) - Full Open Track Build Award application text.
-- [Milestone Plan](/scf/milestone-plan) - Four-tranche deliverables and verification steps.
-- [STRIDE Threat Model](/scf/stride-threat-model) - Security threat model for SCF review.
 
 ---
 

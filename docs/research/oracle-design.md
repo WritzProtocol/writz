@@ -79,7 +79,7 @@ Oracle manipulation is the #1 attack vector in DeFi lending protocols. This docu
 
 ### 4. RedStone - removed as a candidate
 
-Stellar isn't in RedStone's own list of 110+ supported chains; its Stellar-side SEP-40 feeds (per its own blog posts) target RWA assets (USDC, EURC, XLM, PYUSD, tokenized debt, Centrifuge tokens), not BTC/USD. Never had a testnet address to verify in the first place. Kept here only because earlier project docs (this file's pre-2026-09-16 versions, `docs/scf/application.md`, `docs/roadmap/phases.md`, `docs/security/security-model.md`, `docs/how-it-works/stellar-side.md`, `docs/architecture/technical-overview.md`, `docs/developers/contribution-guide.md`, `docs/scf/stride-threat-model.md`, `docs/research/security-audit-strategy.md`, `docs/research/blend-usdc-integration.md`, and Rust doc comments in `contracts/contracts/private-lend/src/{types,lib}.rs`) all named it as primary - those are now corrected to Pyth + Reflector.
+Stellar isn't in RedStone's own list of 110+ supported chains; its Stellar-side SEP-40 feeds (per its own blog posts) target RWA assets (USDC, EURC, XLM, PYUSD, tokenized debt, Centrifuge tokens), not BTC/USD. Never had a testnet address to verify in the first place. Kept here only because earlier project docs (this file's pre-2026-09-16 versions, `docs/roadmap/phases.md`, `docs/security/security-model.md`, `docs/how-it-works/stellar-side.md`, `docs/architecture/technical-overview.md`, `docs/developers/contribution-guide.md`, `docs/security/stride-threat-model.md`, `docs/research/security-audit-strategy.md`, `docs/research/blend-usdc-integration.md`, and Rust doc comments in `contracts/contracts/private-lend/src/{types,lib}.rs`) all named it as primary - those are now corrected to Pyth + Reflector.
 
 ---
 

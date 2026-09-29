@@ -16,9 +16,9 @@ Writz uses the **Stellar Foundation's Audit Bank** program, which subsidizes the
 
 | Criterion | Status |
 |---|---|
-| SCF Build Award received | **Not applied for.** Application exists only as a draft, no short-term plan to submit - see `docs/roadmap/phases.md`. Audit Bank qualification is described as SCF-gated in `docs/research/security-audit-strategy.md`, so this is an open blocker on the audit-funding path, not a scheduled step |
+| SCF Build Award received | Pending |
 | Contracts deployed on testnet with passing tests | ✓ Done - 195/195 tests |
-| STRIDE threat model completed | v0.1 draft complete - `docs/scf/stride-threat-model.md`. Full revision is planned to accompany a future Tranche #1 submission, which is not currently scheduled |
+| STRIDE threat model completed | v0.1 draft complete - [`docs/security/stride-threat-model.md`](/security/stride-threat-model). Full revision planned before the audit |
 | Self-service security scan completed | Pending - Phase 2 task |
 | Integration tests covering all flows | ✓ Done - e2e_zkflow.js |
 | Dataflow diagram produced | Pending - Phase 2 task |

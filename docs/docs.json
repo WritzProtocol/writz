@@ -49,7 +49,8 @@
             "pages": [
               "security/security-model",
               "security/audits",
-              "security/bug-bounty"
+              "security/bug-bounty",
+              "security/stride-threat-model"
             ]
           },
           {

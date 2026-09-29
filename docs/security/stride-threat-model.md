@@ -1,6 +1,6 @@
 # STRIDE Threat Model - Writz Protocol
 
-**Version:** 0.1 (Draft - intended to accompany a future Tranche #1 SCF submission; no SCF application has been submitted and none is planned short-term, see `docs/roadmap/phases.md`)
+**Version:** 0.1 (Draft)
 **Date:** June 2026
 **Scope:** Phase 1 architecture (SPV contract + PrivateLend + P2WSH locking script + relayer)
 **Methodology:** Microsoft STRIDE (Spoofing, Tampering, Repudiation, Information Disclosure, Denial of Service, Elevation of Privilege)
@@ -148,7 +148,7 @@
 
 **Residual risk:** HIGH in Phase 1 (testnet). LOW at mainnet launch (Phase 3 with ZK).
 
-**Note for SCF application:** The SCF tranche structure means ZK privacy is live before mainnet (Tranche #2 complete before Tranche #3). We will not launch on mainnet without ZK privacy in place.
+**Note:** ZK privacy ships before mainnet. We will not launch on mainnet without ZK privacy in place.
 
 #### I2: Relayer learns which Bitcoin transactions are being deposited
 **Threat:** The Writz-operated relayer can observe which Bitcoin transactions users are submitting for deposit, potentially de-anonymizing users.

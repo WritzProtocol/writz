@@ -2,8 +2,6 @@
 title: "Phases"
 ---
 
-> **SCF status note:** Everything in this document related to the Stellar Community Fund (application, tranches, grant funding) is a draft. The application has not been submitted and there is no short-term plan to submit it. Do not read any SCF-tied line item, date, or amount below as scheduled or committed.
-
 Four phases, one goal: a trustless, private Bitcoin lending protocol on Stellar. (Not a "first on Stellar" claim - see the 2026-08-04 addendum in [Market Landscape](/research/market-landscape): Solv Protocol and Templar Protocol already have live Stellar BTC infrastructure. The differentiator is trustless native BTC plus ZK-private positions, not being first.)
 
 ```
@@ -25,7 +23,6 @@ Research    ──►  Foundation  ──►  Launch      ──►  Scale
 - Stateless SPV on Soroban is feasible: ~37-55M instructions per full verification, within the 100M instruction budget
 - Protocol X-Ray (Protocol 26) BN254 host functions reduce ZK verification cost significantly
 - P2WSH locking script design complete and tested on Bitcoin Signet
-- SCF Build Award strategy defined ($92K, Open Track, one-time application)
 
 ### Research Produced
 
@@ -46,9 +43,9 @@ Research    ──►  Foundation  ──►  Launch      ──►  Scale
 
 ## Phase 1: Foundation (CURRENT)
 
-**Goal:** Working Bitcoin SPV client on Stellar testnet. SCF application drafted and ready to submit whenever the team decides to. Community presence established.  
+**Goal:** Working Bitcoin SPV client on Stellar testnet. Community presence established.  
 **Timeline:** July–September 2026  
-**Milestone:** SPV contract verified on testnet + SCF Tranche #0 received
+**Milestone:** SPV contract verified on testnet
 
 ### What's Complete ✓
 
@@ -63,7 +60,6 @@ Research    ──►  Foundation  ──►  Launch      ──►  Scale
 | **Bitcoin script toolkit** | 60/60 tests. P2WSH generation, PSBT signing, witness assembly. |
 | **Bitcoin Signet E2E** | Path A co-signed release broadcast and accepted. `11932100` |
 | **ZK testnet E2E** | Full deposit→borrow→repay cycle on Stellar testnet. 6 transactions. `8daddf52` |
-| **SCF application** | **DRAFT - not submitted.** Content complete: full application, 4-tranche milestone plan, STRIDE threat model. No submission planned in the short term (deliberate hold, not a blocker); treat every SCF-tranche reference in this document as contingent on a decision that has not been made |
 | **Documentation** | Complete rewrite: 22 documents across introduction, products, how-it-works, developers, security, roadmap |
 
 ### What Remains
@@ -77,8 +73,6 @@ Research    ──►  Foundation  ──►  Launch      ──►  Scale
 | SECURITY.md / disclosure process | Done. Published with a working disclosure contact |
 | Demo video (testnet) | Not started |
 | Community engagement | Discord, GitHub discussions, Stellar forum. Groundwork (public repo, live docs, live landing page) is in place; sustained engagement itself has not started |
-| SCF referral | Not secured yet. Deferred by choice, not blocked. Do not mark this done until an actual referral is in hand |
-| SCF application submission | **Not applied for. No plan to submit in the short term.** The application content exists as a draft only; do not treat any tranche funding, deadline, or exit criterion tied to it as scheduled until this changes |
 | Trusted setup ceremony, planning | Multi-party ceremony tooling and shared verification-key encoding built. Identifying 5+ independent participants and running the ceremony itself is still pending |
 
 ### Phase 1 Exit Criteria
@@ -86,9 +80,7 @@ Research    ──►  Foundation  ──►  Launch      ──►  Scale
 - [x] SPV contract verifies a real Bitcoin transaction on Stellar testnet ✓
 - [x] P2WSH locking and release tested E2E on Bitcoin Signet ✓
 - [x] ZK commitment-tree full cycle verified on Stellar testnet ✓
-- [ ] SCF application submitted (draft only - no submission planned short-term)
 - [ ] Trusted setup ceremony planned and participants identified
-- [ ] SCF Tranche #0 received (~$9,200) (contingent on submission above; not scheduled)
 
 ---
 
@@ -107,29 +99,24 @@ Research    ──►  Foundation  ──►  Launch      ──►  Scale
 
 **Oracle integration (mainnet-blocking, partially complete):**
 - **Reflector wired for `private-lend` (2026-09-17)** - `get_btc_price_stroops` calls Reflector's external-prices instance live; see `contracts/contracts/private-lend/src/oracle.rs`. `commitment-tree` still stubbed, blocked on a circuit-level change (see `docs/research/oracle-design.md`).
-- `get_btc_price_stroops` in `contracts/contracts/spv-types/src/lib.rs` (used only by `commitment-tree` now) still returns a hardcoded `STUB_PRICE_STROOPS_PER_BTC` - this remains deliberate, not a TODO, because `commitment-tree`'s ZK circuits commit to an exact `btc_price` public signal with no tolerance window; see that file's doc comment. Wiring a real oracle in there still has no owner or target date.
+- `get_btc_price_stroops` in `contracts/contracts/spv-types/src/lib.rs` (used only by `commitment-tree` now) still returns a hardcoded `STUB_PRICE_STROOPS_PER_BTC` - this remains deliberate, not a TODO, because `commitment-tree`'s ZK circuits commit to an exact `btc_price` public signal with no tolerance window; see that file's doc comment. Wiring a real oracle in there is still open.
 - **Still open:** Pyth cross-contract call not yet wired anywhere - `private-lend` is single-source until it is.
 - **This also unblocks `commitment-tree` liquidation.** With the current fixed-price stub and no ZK-compatible accrual mechanism, no position can legitimately move from the ≥150% ratio `borrow` requires down to the &lt;120% `liquidate` requires - see `docs/security/security-model.md`, "Keeper model and liquidation permissionlessness"
 - The 60-minute staleness check now exists in code for `private-lend` (`MAX_PRICE_STALENESS_SECS` in `contracts/contracts/private-lend/src/oracle.rs`). It still needs implementing for `commitment-tree` once that crate gets a real oracle, and the "price paused" fallback state described in `docs/research/oracle-design.md` and `docs/security/security-model.md` does not exist anywhere yet.
-- **Do not schedule a mainnet date until `commitment-tree`'s oracle work has an owner and a start date.**
+- **The mainnet date depends on `commitment-tree`'s oracle work.**
 
 **ZK circuits, production prep:**
-- Trusted setup ceremony: Powers of Tau Phase 2 for all 3 circuits (plus `zero_debt`, per `docs/scf/milestone-plan.md`)
-- **Blocking sub-task with no owner or date yet: identify 5+ independent ceremony participants.** Ceremony tooling exists (`circuits/scripts/ceremony/`), but the participants themselves are not identified - this is the actual bottleneck, not the tooling
+- Trusted setup ceremony: Powers of Tau Phase 2 for all 3 circuits (plus `zero_debt`, per `docs/research/circom-circuit-design.md`)
+- **Blocking sub-task: identify 5+ independent ceremony participants.** Ceremony tooling exists (`circuits/scripts/ceremony/`), but the participants themselves are not identified - this is the actual bottleneck, not the tooling
 - Publish ceremony transcript publicly
 - Recompile liquidation circuit artifacts after `usdc_debt` signal addition **before** running the ceremony - running the ceremony against circuits that still need this change risks having to redo it
 
 **Audit Bank:**
-- Submit intake form - **currently blocked:** the readiness criteria in `docs/security/audits.md` gate this on "SCF Build Award received," and the SCF application has no short-term submission plan (see Phase 1). Either confirm an SCF-independent Audit Bank qualification path, or define an alternative audit-funding plan; do not assume this unblocks itself
+- Submit intake form (readiness criteria in `docs/security/audits.md`)
 - Readiness review (~4 weeks)
 - Veridise audit: ZK circuits
 - OtterSec/Zellic audit: Soroban contracts
 - Remediate all Critical/High/Medium findings
-
-**Team / key-person risk (not conditioned on SCF funding):**
-- Current state: single founder-developer, sole custodian of protocol design knowledge and (pending KMS enforcement) the co-signing key process - see `docs/security/security-model.md`
-- The only mitigation on record (hiring a second developer) is funded by the SCF grant, which is not being pursued short-term - this leaves bus-factor risk unmitigated with no funding-independent fallback
-- Needs an explicit plan that does not depend on SCF: candidates include a paid technical advisor for spot-reviews, a documented incident-response runbook co-owned by someone outside the founder, or scoping a minimal paid contractor engagement funded from another source
 
 **Frontend (app.writz.xyz):**
 - Stellar Wallets Kit integration | Done. Wired into the /app dashboard, reading live testnet contract state (pool state, Merkle root)
@@ -149,38 +136,25 @@ Research    ──►  Foundation  ──►  Launch      ──►  Scale
 
 **Mainnet launch (gated):**
 - **All four contract admin accounts configured as 2-of-3 (or stricter) multisigs - not yet done for `private-lend`/`commitment-tree`.** Only `bitcoin-spv`/`zk-verifier` were previously called out for this in `docs/security/security-model.md`; that document now extends the same requirement to all four, since `private-lend`/`commitment-tree`'s admins gate equally sensitive functions (`insert_commitment`, `set_oracle`, `set_keeper`, `set_relayer`). External Stellar-account configuration, not a contract code change.
-- **Legal entity formed and operating - hard gate, not yet started.** Deploying contracts that custody real user BTC/USDC without a legal entity behind them is a founder personal-liability exposure, not just a compliance nicety. Budgeted at $8K for a Swiss GmbH in `docs/scf/application.md`, but that budget line is part of the SCF grant, which is not being pursued short-term - this needs its own funding source and owner (the founder) before it can be treated as scheduled. **Do not launch mainnet with real funds before this is resolved.**
+- **Legal entity formed and operating - hard gate.** No mainnet launch with real funds before this is in place.
 - TVL cap: $50,000 (raised to $250K after 30 days clean operation)
-- Whitelist-only for first 30 days. **Selection criteria and application process not yet defined** (owner: growth/community, before launch): default proposal - self-serve application form gated on (1) a connected wallet with prior testnet activity on Writz, or (2) referral from an existing testnet tester/community member, reviewed manually given expected low volume at this stage
+- Whitelist-only for first 30 days. Selection criteria to be defined before launch. Default proposal - self-serve application form gated on (1) a connected wallet with prior testnet activity on Writz, or (2) referral from an existing testnet tester/community member, reviewed manually given expected low volume at this stage
 - Protocol fee: 0% for 90-day bootstrap period (requires a launch-time change to `PROTOCOL_FEE_BP` in `contracts/contracts/private-lend/src/rates.rs`, currently hardcoded to 15% - not yet implemented, treat as a pre-mainnet task)
-- Protocol-owned USDC seed: $50,000 (funding source unresolved - see `docs/research/growth-strategy.md`)
+- Protocol-owned USDC seed: $50,000 (see `docs/research/growth-strategy.md`)
 - DeFiLlama submission (day 1)
 - Points program launch (pre-WRTZ)
 
-### SCF Tranche Delivery
-
-**Status: DRAFT / hypothetical.** The SCF application has not been submitted and there is no short-term plan to submit it. This table describes what tranche delivery would look like *if* the team decides to apply - funding and dates below are not committed, scheduled, or relied upon for the roadmap.
-
-| Tranche | Amount | Deliverable |
-|---|---|---|
-| #0 (10%) | ~$9,200 | Phase 1 milestone: SPV on testnet |
-| #1 (20%) | ~$18,400 | commitment-tree on testnet with ZK E2E |
-| #2 (30%) | ~$27,600 | Circuits + trusted setup + frontend on testnet |
-| #3 (40%) | ~$36,800 | Mainnet live, first real deposit |
-
 ### Phase 2 Exit Criteria
 
-- [ ] Legal entity formed and operating (hard gate before real-fund mainnet launch - see "Mainnet launch (gated)" above; not yet started, funding source unresolved)
-- [ ] Real oracle integration live (Pyth + Reflector median, staleness check) - replaces the current hardcoded stub; no owner or date assigned yet
+- [ ] Legal entity formed and operating (hard gate before real-fund mainnet launch)
+- [ ] Real oracle integration live (Pyth + Reflector median, staleness check) - replaces the current hardcoded stub
 - [ ] Trusted setup ceremony: 5+ independent participants identified and ceremony run - participants not yet identified
-- [ ] Key-person / bus-factor mitigation plan in place, independent of SCF funding
-- [ ] Mainnet deployment with passing Audit Bank audit (0 critical findings) - contingent on resolving the Audit Bank/SCF gating dependency above
+- [ ] Mainnet deployment with passing Audit Bank audit (0 critical findings)
 - [ ] 10+ real deposits processed with no security incidents
 - [ ] $50K TVL cap reached
 - [ ] TVL cap raised to $250K after 30 days clean operation
 - [ ] Open-source SPV SDK published (GitHub + npm)
 - [ ] DeFiLlama listing live
-- [ ] All SCF tranches delivered (only applicable if the SCF application is submitted - not currently planned)
 
 ---
 
@@ -222,7 +196,7 @@ Enterprise attestation product. Direct sales. Target: 5 paying customers by end 
 - Propose a SEP standard for Bitcoin SPV on Stellar
 - Co-market with SDF as the flagship BTCfi protocol on Stellar
 - Apply for SCF Growth Hack Program (after 60+ days mainnet, completed audit, no active SDF grants)
-- Apply for SCF Liquidity Award (after $250K TVL sustained 7 days)
+- Apply for SCF Liquidity Award (base award once audited and live on mainnet, supplemental after $250K TVL sustained 7 days)
 
 ### Wallet Integrations
 
@@ -244,7 +218,6 @@ Target integrations with demonstrated traction and open SDK:
 | Phase | Metric | Target |
 |---|---|---|
 | Phase 1 | SPV verifications on testnet | 100+ |
-| Phase 1 | SCF application submitted | ✓ (draft only - not currently pursued; see Phase 1 "What Remains") |
 | Phase 2 | Mainnet TVL (day 30) | $50K |
 | Phase 2 | Mainnet TVL (day 90) | $250K |
 | Phase 2 | Audit completed (0 critical findings) | ✓ |

@@ -94,7 +94,7 @@ For each txid backfilled, confirm `get_release_psbt` on `private-lend` now retur
 - [ ] Run this on testnet against a deliberately-induced gap (stop the watcher, let several `repay_full` events accumulate past a manufactured "stale cursor," then execute Steps 1–6)
 - [ ] Confirm Step 3 actually works against whichever historical data source is chosen - this is the step most likely to be harder in practice than it reads here
 - [ ] Time the whole process once, so there's a real answer to "how long would users actually wait" the first time this is needed for real
-- [ ] Assign an owner for this runbook (who runs it, who's paged if the watcher goes down) - see `docs/roadmap/phases.md`, Phase 2 "Team / key-person risk"
+- [ ] Assign an owner for this runbook (who runs it, who's paged if the watcher goes down)
 
 ---
 

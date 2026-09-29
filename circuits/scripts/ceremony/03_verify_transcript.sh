@@ -101,7 +101,7 @@ print(f"  ✓ {len(transcript)} contribution(s) recorded, hash chain is consiste
 
 if len(transcript) < 6:  # coordinator's 0000 entry + 5 real participants
     print(f"WARNING: only {len(transcript) - 1} participant contribution(s) recorded - "
-          "docs/scf/milestone-plan.md requires a minimum of 5 independent participants "
+          "docs/research/circom-circuit-design.md requires a minimum of 5 independent participants "
           "per circuit for a production ceremony.", file=sys.stderr)
 PYEOF
 
