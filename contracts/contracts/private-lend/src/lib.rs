@@ -5,6 +5,7 @@ mod error;
 mod events;
 mod oracle;
 mod rates;
+mod script;
 mod storage;
 mod types;
 
@@ -26,6 +27,17 @@ use storage::{get_config, get_position, get_protocol, get_release_psbt, get_supp
                set_config, set_position, set_protocol, set_release_psbt, set_supply_balance};
 use types::{Config, Position, PositionStatus, ProtocolState};
 
+/// A deposit's CLTV escape hatch must unlock at least this many Bitcoin blocks
+/// (~7 days) after the block that confirmed the deposit, so it is never an
+/// instant exit for a freshly-deposited position. Matches the safety buffer
+/// in `bitcoin-script`'s `computeTimelock`.
+const MIN_TIMELOCK_MARGIN_BLOCKS: u32 = 1_008;
+
+/// ...and at most this many blocks (~2 years) after it, mirroring
+/// `MAX_TIMELOCK_OFFSET` in `bitcoin-script`, so a bad value cannot lock the
+/// user out of the escape hatch for an unreasonable time.
+const MAX_TIMELOCK_MARGIN_BLOCKS: u32 = 105_000;
+
 #[contract]
 pub struct PrivateLendContract;
 
@@ -45,6 +57,9 @@ impl PrivateLendContract {
     ///                       it is.
     /// - `keeper`         - Trusted liquidation keeper (Phase 1).
     /// - `relayer`        - Auto-cosign relayer watcher address.
+    /// - `protocol_pubkey`- The protocol's 33-byte compressed Bitcoin
+    ///                       co-signing key; every deposit must be locked
+    ///                       under a script that contains it.
     pub fn initialize(
         env: Env,
         admin: Address,
@@ -53,9 +68,13 @@ impl PrivateLendContract {
         oracle: Address,
         keeper: Address,
         relayer: Address,
+        protocol_pubkey: BytesN<33>,
     ) -> Result<(), PrivateLendError> {
         if get_config(&env).is_some() {
             return Err(PrivateLendError::AlreadyInitialized);
+        }
+        if !script::is_compressed_pubkey(&protocol_pubkey) {
+            return Err(PrivateLendError::InvalidProtocolPubkey);
         }
         set_config(
             &env,
@@ -66,6 +85,7 @@ impl PrivateLendContract {
                 oracle,
                 keeper,
                 relayer,
+                protocol_pubkey,
                 min_deposit_satoshis: 100_000,       // 0.001 BTC
                 min_collateral_ratio_bp: 15_000,      // 150%
                 liquidation_threshold_bp: 12_000,     // 120%
@@ -83,10 +103,16 @@ impl PrivateLendContract {
     /// Register a BTC deposit by submitting an SPV proof.
     ///
     /// The contract:
-    /// 1. Calls the `bitcoin-spv` contract to verify the transaction inclusion.
-    /// 2. Parses the raw transaction on-chain to find the P2WSH output matching
+    /// 1. Rebuilds the Writz redeem script from the configured protocol key,
+    ///    `user_pubkey` and `timelock_height`, and requires
+    ///    `p2wsh_script_pubkey` to be exactly its P2WSH - so the collateral is
+    ///    provably locked under the protocol's co-signing key.
+    /// 2. Calls the `bitcoin-spv` contract to verify the transaction inclusion,
+    ///    and requires the timelock to lie 1,008..=105,000 blocks above the
+    ///    block that confirmed the deposit.
+    /// 3. Parses the raw transaction on-chain to find the P2WSH output matching
     ///    `p2wsh_script_pubkey` and read the deposited satoshi amount.
-    /// 3. Creates a `Position` entry in persistent storage.
+    /// 4. Creates a `Position` entry in persistent storage.
     ///
     /// After this call succeeds the user can borrow USDC against the position.
     ///
@@ -98,7 +124,8 @@ impl PrivateLendContract {
     /// - `tx_index`           - 0-based index of the transaction in its block.
     /// - `raw_tx`             - Non-witness serialization of the Bitcoin transaction.
     /// - `p2wsh_script_pubkey`- 34-byte P2WSH scriptPubKey (OP_0 + 32-byte hash)
-    ///                          of the deposit output.
+    ///                          of the deposit output. Must equal the P2WSH of
+    ///                          the Writz redeem script for the other arguments.
     /// - `timelock_height`    - Bitcoin block height of the CLTV escape hatch.
     /// - `user_pubkey`        - Depositor's 33-byte compressed Bitcoin public
     ///                          key. Already public the moment
@@ -124,9 +151,29 @@ impl PrivateLendContract {
             return Err(PrivateLendError::Paused);
         }
 
-        // Validate the scriptPubKey is 34 bytes (OP_0 0x20 <32 bytes>).
-        if p2wsh_script_pubkey.len() != 34 {
+        // Validate the scriptPubKey is P2WSH-shaped (OP_0 0x20 <32 bytes>).
+        if p2wsh_script_pubkey.len() != 34
+            || p2wsh_script_pubkey.get(0) != Some(0x00)
+            || p2wsh_script_pubkey.get(1) != Some(0x20)
+        {
             return Err(PrivateLendError::InvalidScriptPubKey);
+        }
+
+        // The output must be locked under the Writz script: the protocol's
+        // co-signing key, this depositor's key and this timelock. Deriving it
+        // here (rather than trusting the caller) is what stops a depositor
+        // from pledging BTC they can spend alone, or someone else's UTXO.
+        if !script::is_compressed_pubkey(&user_pubkey) {
+            return Err(PrivateLendError::InvalidUserPubkey);
+        }
+        let expected_spk = script::p2wsh_script_pubkey(
+            &env,
+            &config.protocol_pubkey,
+            &user_pubkey,
+            timelock_height,
+        );
+        if p2wsh_script_pubkey != expected_spk {
+            return Err(PrivateLendError::ScriptPubKeyMismatch);
         }
 
         // 1. Cross-contract SPV verification.
@@ -143,6 +190,14 @@ impl PrivateLendContract {
                 .into_val(&env),
         );
         let txid = spv_result.txid;
+
+        // The CLTV escape hatch must not be an instant exit, nor absurdly
+        // far away: bound it relative to the block that confirmed the deposit.
+        let earliest = spv_result.block_height.saturating_add(MIN_TIMELOCK_MARGIN_BLOCKS);
+        let latest = spv_result.block_height.saturating_add(MAX_TIMELOCK_MARGIN_BLOCKS);
+        if timelock_height < earliest || timelock_height > latest {
+            return Err(PrivateLendError::InvalidTimelock);
+        }
 
         // 2. Reject duplicate deposits.
         if get_position(&env, &txid).is_some() {

@@ -32,6 +32,9 @@ pub struct SpvVerificationResult {
     /// The hash (SHA256d) of the block that contains the transaction.
     pub block_hash: BytesN<32>,
 
+    /// Bitcoin height of the block that contains the transaction.
+    pub block_height: u32,
+
     /// The block's depth below the best chain tip (the tip itself is 1).
     pub confirmations: u32,
 }

@@ -340,8 +340,8 @@ impl BitcoinSpvContract {
     ///
     /// # Returns
     ///
-    /// A [`SpvVerificationResult`] with the txid, the block hash and the
-    /// block's actual confirmation depth.
+    /// A [`SpvVerificationResult`] with the txid, the block hash and height,
+    /// and the block's actual confirmation depth.
     pub fn verify_transaction(
         env: Env,
         block_hash: BytesN<32>,
@@ -389,6 +389,7 @@ impl BitcoinSpvContract {
         Ok(SpvVerificationResult {
             txid,
             block_hash,
+            block_height: entry.height,
             confirmations,
         })
     }

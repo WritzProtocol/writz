@@ -45,4 +45,16 @@ pub enum PrivateLendError {
     /// The oracle's last price update is older than
     /// `oracle::MAX_PRICE_STALENESS_SECS`.
     OraclePriceStale = 19,
+    /// `user_pubkey` is not a compressed secp256k1 public key encoding.
+    InvalidUserPubkey = 20,
+    /// The supplied scriptPubKey is not the P2WSH of the Writz redeem script
+    /// derived from the protocol key, `user_pubkey` and `timelock_height`,
+    /// so the output is not locked under the protocol's control.
+    ScriptPubKeyMismatch = 21,
+    /// `timelock_height` is not within the allowed window above the deposit
+    /// block: too soon (an instant exit for a fresh position) or too far.
+    InvalidTimelock = 22,
+    /// The configured protocol public key is not a compressed secp256k1
+    /// public key encoding.
+    InvalidProtocolPubkey = 23,
 }
