@@ -43,6 +43,7 @@
 * [Security Model](/security/security-model)
 * [Audits](/security/audits)
 * [Bug Bounty](/security/bug-bounty)
+* [STRIDE Threat Model](/security/stride-threat-model)
 
 ## Roadmap
 
@@ -72,8 +73,3 @@
 * [Regulatory Landscape](/research/regulatory-landscape)
 * [Growth Strategy](/research/growth-strategy)
 
-## SCF Application
-
-* [Application](/scf/application)
-* [Milestone Plan](/scf/milestone-plan)
-* [STRIDE Threat Model](/scf/stride-threat-model)

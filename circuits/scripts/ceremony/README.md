@@ -15,7 +15,7 @@ verification key gates the cooperative Path A release endpoint
 no BTC ever having been repaid - the same severity class as the other three.
 All four circuits go through this same ceremony process.
 
-## Requirements (from `docs/scf/milestone-plan.md` and `docs/research/circom-circuit-design.md`)
+## Requirements (from `docs/research/circom-circuit-design.md`)
 
 - **Minimum 5 independent participants** per circuit.
 - **Publicly verifiable transcript** - every contribution's hash is recorded

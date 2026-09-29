@@ -114,7 +114,7 @@ Research    ──►  Foundation  ──►  Launch      ──►  Scale
 - **Do not schedule a mainnet date until `commitment-tree`'s oracle work has an owner and a start date.**
 
 **ZK circuits, production prep:**
-- Trusted setup ceremony: Powers of Tau Phase 2 for all 3 circuits (plus `zero_debt`, per `docs/scf/milestone-plan.md`)
+- Trusted setup ceremony: Powers of Tau Phase 2 for all 3 circuits (plus `zero_debt`, per `docs/research/circom-circuit-design.md`)
 - **Blocking sub-task with no owner or date yet: identify 5+ independent ceremony participants.** Ceremony tooling exists (`circuits/scripts/ceremony/`), but the participants themselves are not identified - this is the actual bottleneck, not the tooling
 - Publish ceremony transcript publicly
 - Recompile liquidation circuit artifacts after `usdc_debt` signal addition **before** running the ceremony - running the ceremony against circuits that still need this change risks having to redo it
@@ -149,7 +149,7 @@ Research    ──►  Foundation  ──►  Launch      ──►  Scale
 
 **Mainnet launch (gated):**
 - **All four contract admin accounts configured as 2-of-3 (or stricter) multisigs - not yet done for `private-lend`/`commitment-tree`.** Only `bitcoin-spv`/`zk-verifier` were previously called out for this in `docs/security/security-model.md`; that document now extends the same requirement to all four, since `private-lend`/`commitment-tree`'s admins gate equally sensitive functions (`insert_commitment`, `set_oracle`, `set_keeper`, `set_relayer`). External Stellar-account configuration, not a contract code change.
-- **Legal entity formed and operating - hard gate, not yet started.** Deploying contracts that custody real user BTC/USDC without a legal entity behind them is a founder personal-liability exposure, not just a compliance nicety. Budgeted at $8K for a Swiss GmbH in `docs/scf/application.md`, but that budget line is part of the SCF grant, which is not being pursued short-term - this needs its own funding source and owner (the founder) before it can be treated as scheduled. **Do not launch mainnet with real funds before this is resolved.**
+- **Legal entity formed and operating - hard gate, not yet started.** Deploying contracts that custody real user BTC/USDC without a legal entity behind them is a founder personal-liability exposure, not just a compliance nicety. Budgeted at $8K for a Swiss GmbH as part of the SCF grant, which is not being pursued short-term - this needs its own funding source and owner (the founder) before it can be treated as scheduled. **Do not launch mainnet with real funds before this is resolved.**
 - TVL cap: $50,000 (raised to $250K after 30 days clean operation)
 - Whitelist-only for first 30 days. **Selection criteria and application process not yet defined** (owner: growth/community, before launch): default proposal - self-serve application form gated on (1) a connected wallet with prior testnet activity on Writz, or (2) referral from an existing testnet tester/community member, reviewed manually given expected low volume at this stage
 - Protocol fee: 0% for 90-day bootstrap period (requires a launch-time change to `PROTOCOL_FEE_BP` in `contracts/contracts/private-lend/src/rates.rs`, currently hardcoded to 15% - not yet implemented, treat as a pre-mainnet task)
