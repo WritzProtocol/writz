@@ -1,38 +1,32 @@
-import type { FooterLink, FooterLinkGroup } from "../types/footer.types";
+import type { FooterLinkGroup } from "../types/footer.types";
 import { APP_ROUTE, DOCS_URL, GITHUB_URL } from "../constants";
+
+export const X_URL = "https://x.com/WritzProtocol";
 
 export const footerLinkGroups: FooterLinkGroup[] = [
   {
-    title: "Protocol",
+    title: "Product",
     links: [
-      { label: "PrivateLend", href: `${DOCS_URL}/products/privatelend` },
-      { label: "Earn Metrics", href: `${APP_ROUTE}/metrics` },
-      { label: "Lender Vault", href: "#" },
-      { label: "SPV SDK", href: `${DOCS_URL}/developers/spv-sdk` },
-      { label: "Roadmap", href: `${DOCS_URL}/roadmap/vision` },
+      { label: "Open app", href: APP_ROUTE },
+      { label: "Borrow", href: `${DOCS_URL}/products/privatelend` },
+      { label: "Earn", href: `${DOCS_URL}/products/earn` },
+      { label: "Metrics", href: `${APP_ROUTE}/metrics` },
     ],
   },
   {
-    title: "Resources",
+    title: "Learn",
     links: [
-      { label: "Documentation", href: DOCS_URL },
-      { label: "Contract Reference", href: `${DOCS_URL}/developers/contract-reference` },
-      { label: "Quick Start", href: `${DOCS_URL}/developers/quick-start` },
-      { label: "Security Model", href: `${DOCS_URL}/security/security-model` },
+      { label: "Docs", href: DOCS_URL },
+      { label: "How it works", href: `${DOCS_URL}/introduction/how-writz-works` },
+      { label: "Security model", href: `${DOCS_URL}/security/security-model` },
+      { label: "Brand assets", href: "/brand" },
     ],
   },
   {
     title: "Community",
     links: [
       { label: "GitHub", href: GITHUB_URL },
-      { label: "X (Twitter)", href: "#" },
-      { label: "Stellar Community Fund", href: "https://communityfund.stellar.org" },
+      { label: "X", href: X_URL },
     ],
   },
-];
-
-export const footerBottomLinks: FooterLink[] = [
-  { label: "GitHub", href: GITHUB_URL },
-  { label: "X", href: "#" },
-  { label: "Docs", href: DOCS_URL },
 ];

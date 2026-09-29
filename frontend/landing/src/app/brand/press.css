@@ -10,7 +10,7 @@
   --deep: #003566;
   --gold: #ffc300;
   --body: #46566b;
-  --muted: #6a7688;
+  --muted: #5f6b7d;
   --rule: #e2e5e9;
   --midnight: #000814;
 
@@ -21,27 +21,12 @@
   min-height: 100%;
 }
 
-/* globals.css sets a dApp-wide ::selection of amber at 25% with near-white
-   text. That is built for the dark app; on this page's paper ground it blends
-   to cream and the selected text lands at 1.19:1. */
-.press-root ::selection {
-  background: rgba(255, 195, 0, 0.45);
-  color: var(--ink);
-}
-
-/* A gold ground would otherwise highlight gold on gold, and a dark one would
-   put Ink on a muddied gold. Both forms of the selector: the text sits directly
-   in the tile, so the descendant combinator alone never matches it. */
+/* Gold selection on a gold ground highlights nothing. Both selector forms: the
+   text sits directly in the tile, so the descendant one alone never matches. */
 .press-root .on-gold::selection,
 .press-root .on-gold ::selection {
   background: var(--ink);
   color: var(--gold);
-}
-
-.press-root .on-dark::selection,
-.press-root .on-dark ::selection {
-  background: var(--paper);
-  color: var(--ink);
 }
 
 .press-root .wrap {
