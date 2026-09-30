@@ -1,6 +1,5 @@
 #![no_std]
 
-mod btc_parser;
 mod error;
 mod events;
 mod oracle;
@@ -22,7 +21,7 @@ use rates::{borrow_rate_bp, interest_delta, supply_rate_bp};
 use soroban_sdk::{
     contract, contractimpl, token, Address, Bytes, BytesN, Env, IntoVal, Symbol, Vec,
 };
-use spv_types::SpvVerificationResult;
+use spv_types::{btc_parser, SpvVerificationResult};
 use storage::{get_config, get_position, get_protocol, get_release_psbt, get_supply_balance,
                set_config, set_position, set_protocol, set_release_psbt, set_supply_balance};
 use types::{Config, Position, PositionStatus, ProtocolState};
