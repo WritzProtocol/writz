@@ -7,7 +7,7 @@ Four phases, one goal: a trustless, private Bitcoin lending protocol on Stellar.
 ```
 Phase 0          Phase 1          Phase 2          Phase 3
 Research    ──►  Foundation  ──►  Launch      ──►  Scale
-✓ COMPLETE      ● CURRENT        Q4 2026          2027
+✓ COMPLETE      ● CURRENT        Q2 to Q3 2027    2027 to 2028
 ```
 
 ---
@@ -90,12 +90,12 @@ Research    ──►  Foundation  ──►  Launch      ──►  Scale
 
 ---
 
-## Phase 2: Launch *(Q4 2026)*
+## Phase 2: Launch *(Q2 to Q3 2027)*
 
 **Goal:** Mainnet launch of PrivateLend v1 with real BTC collateral and ZK-private USDC loans.  
 **Milestone:** First real mainnet deposit + first ZK-private USDC loan issued against real BTC
 
-**Timing note (added after the 2026-08-04 competitive review):** `market-landscape.md`'s addendum on Templar Protocol found that their Stellar Soroban vault and cross-chain bridge are already live and audited, and their native-BTC-no-wrap lending tech is already proven on NEAR mainnet. Templar is missing only the routing between the two and a privacy layer. That materially compresses the effective competitive window from the original 12-18 month assumption. Given that repo work is already ahead of what this roadmap previously reflected (frontend dashboard reading live testnet contract state, wallet connections wired, relayer deployed, ceremony tooling built), Q4 2026 still looks achievable, but it should be treated as a floor to defend, not a comfortable target, specifically because of Templar. Revisit this note at the next roadmap review.
+**Timing note (updated 2026-09-30):** `market-landscape.md`'s addendum on Templar Protocol found that their Stellar Soroban vault and cross-chain bridge are already live and audited, and their native-BTC-no-wrap lending tech is already proven on NEAR mainnet. Templar is missing only the routing between the two and a privacy layer. That materially compresses the effective competitive window from the original 12-18 month assumption. The mainnet target has since moved from the original Q4 2026 floor to Q2 to Q3 2027, so the Templar pressure this note originally flagged is now more acute, not less: the later the Writz launch, the more time Templar has to close the gap. Treat Q2 to Q3 2027 as the floor to defend now, not a comfortable target. Revisit this note at the next roadmap review.
 
 ### Remaining Work
 
@@ -182,32 +182,32 @@ Research    ──►  Foundation  ──►  Launch      ──►  Scale
 
 ---
 
-## Phase 3: Scale *(2027)*
+## Phase 3: Scale *(2027 to 2028)*
 
 **Goal:** $10M TVL, WRTZ token launch, full product suite, Stellar ecosystem alliance.  
-**Timeline:** Q1–Q4 2027
+**Timeline:** Q4 2027 to Q3 2028
 
 ### Product Expansion
 
-**Dark Swap (Q2 2027):**
+**Dark Swap (Q1 2028):**
 Private BTC-to-USDC conversions using the existing SPV infrastructure. AMM-style USDC liquidity. No exchange account, no visible order book.
 
-**BTC Savings (Q3 2027):**
+**BTC Savings (Q2 2028):**
 BTC collateral + automated USDC yield routing to Blend, Phoenix DEX, and other vetted Stellar protocols.
 
-**ZK Proof of Reserve, B2B (Q3 2027):**
-Enterprise attestation product. Direct sales. Target: 5 paying customers by end of 2027. See [ZK Proof of Reserve](../products/zk-proof-of-reserve.md).
+**ZK Proof of Reserve, B2B (Q2 2028):**
+Enterprise attestation product. Direct sales. Target: 5 paying customers by end of 2028. See [ZK Proof of Reserve](../products/zk-proof-of-reserve.md).
 
 ### TVL Progression
 
 | Quarter | TVL Cap |
 |---|---|
-| Q1 2027 | $1M |
-| Q2 2027 | $5M |
-| Q3 2027 | $20M |
-| Q4 2027 | Remove cap |
+| Q4 2027 | $1M |
+| Q1 2028 | $5M |
+| Q2 2028 | $20M |
+| Q3 2028 | Remove cap |
 
-### WRTZ Token (Q2–Q3 2027)
+### WRTZ Token (Q4 2027 to Q1 2028)
 
 **Launch criteria:** $5M TVL sustained 60+ days, 500+ active wallets, one completed Audit Bank audit.  
 **Structure:** Fair IDO / Liquidity Bootstrapping Pool, no VC cliff dumps.  
