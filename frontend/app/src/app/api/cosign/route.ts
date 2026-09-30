@@ -4,7 +4,8 @@ import { resolveProtocolSigner } from "@/lib/bitcoin/kmsSigner";
 import { groth16, type Groth16ProofJSON } from "snarkjs";
 import { Client } from "@/lib/contracts/generated";
 import { config, requireContract } from "@/config";
-import { getMerkleRoot } from "@/lib/contracts/commitmentTree";
+import { getMerkleRoot, lookupDepositTxid } from "@/lib/contracts/commitmentTree";
+import { verifyReleaseBinding } from "@/lib/cosign/binding";
 import { checkRateLimit, clientKeyFromHeaders } from "@/lib/rateLimit";
 import vKeyData from "@/circuits/zero_debt_vkey.json";
 
@@ -145,7 +146,7 @@ export async function POST(req: NextRequest) {
     typeof zkProof !== "object" ||
     !zkProof.proof ||
     !Array.isArray(zkProof.publicSignals) ||
-    zkProof.publicSignals.length < 1
+    zkProof.publicSignals.length < 2
   ) {
     return NextResponse.json(
       { error: "zkProof with proof and publicSignals is required" },
@@ -167,6 +168,8 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Eligibility checks (parallel): commitment finalized + ZK proof valid ──
+  let onChainRootHex: string;
+  let depositTxid: Buffer | undefined;
   try {
     const client = new Client({
       contractId: requireContract(
@@ -182,10 +185,12 @@ export async function POST(req: NextRequest) {
     const commitmentBuf = Buffer.from(commitmentHex, "hex");
 
     // Fetch on-chain state and verify the ZK proof in parallel.
-    const [{ result: isPending }, onChainRootHex, proofValid] =
+    let isPending: boolean, proofValid: boolean;
+    [{ result: isPending }, onChainRootHex, depositTxid, proofValid] =
       await Promise.all([
         client.is_commitment_pending({ commitment: commitmentBuf }),
         getMerkleRoot(),
+        lookupDepositTxid(commitmentHex),
         groth16.verify(
           // vKeyData is a valid Groth16 verification key at this point
           // (SETUP_REQUIRED guard above ensures this branch is only reached post-setup).
@@ -205,21 +210,6 @@ export async function POST(req: NextRequest) {
     if (!proofValid) {
       return NextResponse.json(
         { error: "Invalid zero-debt proof" },
-        { status: 403 },
-      );
-    }
-
-    // The proof's public merkle_root (publicSignals[0]) must match the current
-    // on-chain root. This prevents replay of a valid proof generated when the
-    // position had no debt but the tree has since changed.
-    const onChainRootDecimal = BigInt("0x" + onChainRootHex).toString();
-    if (zkProof.publicSignals[0] !== onChainRootDecimal) {
-      return NextResponse.json(
-        {
-          error:
-            "Proof merkle_root does not match the current on-chain root - " +
-            "regenerate the proof against the latest tree state",
-        },
         { status: 403 },
       );
     }
@@ -244,6 +234,24 @@ export async function POST(req: NextRequest) {
 
     const psbt = bitcoin.Psbt.fromBase64(psbtBase64, { network });
     assertWritzReleaseInput(psbt, signer.publicKey, network);
+
+    // Binds the proof to the exact commitment/position claimed
+    // (GHSA-6jmp-wf3x-3vxh) and that commitment to the exact Bitcoin UTXO
+    // this PSBT spends (GHSA-9j8g-prh5-jhhj) - see binding.ts. Without both,
+    // a valid zero-debt proof about the caller's OWN debt-free position
+    // could authorize releasing a DIFFERENT, still-indebted position's BTC.
+    const psbtInputHash = psbt.txInputs[0]?.hash;
+    const binding = verifyReleaseBinding({
+      publicSignals: zkProof.publicSignals,
+      commitmentHex,
+      onChainRootHex,
+      depositTxid,
+      psbtInputHash: psbtInputHash ? Buffer.from(psbtInputHash) : undefined,
+    });
+    if (!binding.ok) {
+      return NextResponse.json({ error: binding.error }, { status: 403 });
+    }
+
     // signInputAsync works for both KMS (a network call) and the sync
     // raw-WIF fallback signer.
     await psbt.signInputAsync(0, signer);
