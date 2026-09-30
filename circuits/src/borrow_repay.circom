@@ -24,6 +24,14 @@ include "./merkle.circom";
  *   6. The new commitment is correctly formed with the updated debt.
  *   7. The new Merkle root reflects the commitment update.
  *
+ * Recipient binding (GHSA-xxqv-6vhx-hhrx, GHSA-mhp9-jmvc-x9mw): `recipient_lo`
+ * and `recipient_hi` are declared public but referenced in no constraint -
+ * exactly like `btc_txid_lo/hi` in deposit.circom. The binding is Groth16
+ * itself: these values are part of the public statement the proof verifies
+ * against, so a proof copied from a pending transaction and resubmitted with
+ * a different recipient no longer verifies. See the borrow() doc comment in
+ * commitment-tree/src/lib.rs for how the contract recomputes and checks them.
+ *
  * Collateral ratio check (borrow only):
  *   collateral_satoshis × btc_price_stroops_per_btc ÷ 100_000_000 ÷ new_debt
  *   ≥ 1.5 (150%)
@@ -64,6 +72,18 @@ template BorrowRepayCircuit(DEPTH) {
     signal input btc_price_stroops_per_btc;
     // Protocol parameters (on-chain, not user-controlled)
     signal input min_ratio_bp;        // Minimum collateral ratio in bp (15_000 = 150%)
+
+    // Recipient binding (GHSA-xxqv-6vhx-hhrx, GHSA-mhp9-jmvc-x9mw): the
+    // sha256 digest of the recipient's Stellar strkey address, split into
+    // two 128-bit halves exactly like `btc_txid_lo/hi` in deposit.circom.
+    // Neither signal is referenced in any constraint below - like the txid
+    // halves, the binding comes entirely from being declared public: Groth16
+    // includes them in the statement it verifies, so a copied proof cannot
+    // be replayed with a different recipient without invalidating itself.
+    // The contract independently recomputes this digest from the address
+    // argument it authenticated and rejects a mismatch.
+    signal input recipient_lo;        // Low 128 bits of sha256(borrower strkey)
+    signal input recipient_hi;        // High 128 bits of sha256(borrower strkey)
 
     // ── Public outputs ────────────────────────────────────────────────────────
     signal output new_root;           // Updated Merkle root after commitment swap
@@ -211,7 +231,8 @@ template BorrowRepayCircuit(DEPTH) {
     new_root <== updater.new_root;
 }
 
-// Public: old_root, delta_stroops, is_borrow, btc_price_stroops_per_btc, min_ratio_bp
+// Public: old_root, delta_stroops, is_borrow, btc_price_stroops_per_btc, min_ratio_bp,
+//         recipient_lo, recipient_hi
 // Private: collateral_satoshis, old_debt_stroops, secret, nonce, new_nonce, path_elements, path_indices
 // Outputs (public): new_root, old_nullifier, new_commitment
 component main {public [
@@ -219,5 +240,7 @@ component main {public [
     delta_stroops,
     is_borrow,
     btc_price_stroops_per_btc,
-    min_ratio_bp
+    min_ratio_bp,
+    recipient_lo,
+    recipient_hi
 ]} = BorrowRepayCircuit(20);

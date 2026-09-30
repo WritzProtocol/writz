@@ -16,9 +16,28 @@
 'use strict';
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 const snarkjs = require('snarkjs');
 const { buildPoseidon } = require('circomlibjs');
 const { decToHex32, g1ToHex, g2ToHex, hexToRustBytes } = require('./lib/vkey_encode.js');
+
+// Fixed Stellar strkey used as the borrow recipient in this test chain -
+// must stay byte-identical to `BORROW_RECIPIENT` in
+// contracts/contracts/commitment-tree/src/test.rs (GHSA-xxqv-6vhx-hhrx,
+// GHSA-mhp9-jmvc-x9mw: the proof's recipient_lo/hi signals are sha256 of
+// this exact string, and the Rust test authenticates as this same address).
+// A contract-style (C...) strkey, not an ed25519 (G...) one: Soroban's test
+// `Address::generate` also produces C... addresses, and only classic G...
+// accounts need an established trustline before a Stellar Asset Contract
+// will transfer to them in the test environment.
+const RECIPIENT_STRKEY = 'CAIRCEIRCEIRCEIRCEIRCEIRCEIRCEIRCEIRCEIRCEIRCEIRCEIRDB3V';
+function recipientLoHi(strkey) {
+    const digest = crypto.createHash('sha256').update(strkey, 'ascii').digest();
+    return {
+        hi: BigInt('0x' + digest.subarray(0, 16).toString('hex')),
+        lo: BigInt('0x' + digest.subarray(16, 32).toString('hex')),
+    };
+}
 
 const ROOT = path.resolve(__dirname, '..');
 const OUT = path.resolve(__dirname, '../../contracts/contracts/commitment-tree/src/integration_test_vectors.rs');
@@ -85,6 +104,7 @@ async function main() {
     const PRICE = 600_000_000_000n; // $60k, stroops per BTC
     const MIN_RATIO_BP = 15_000n;
     const BORROW_AMOUNT = 2_000_000_000n; // $200 - within 150% ratio for $600 collateral
+    const { hi: RECIPIENT_HI, lo: RECIPIENT_LO } = recipientLoHi(RECIPIENT_STRKEY);
 
     // ── 1. Deposit: creates commitment0 = Poseidon(COLLATERAL, 0, SECRET, N0) ──
     const depositInput = {
@@ -130,6 +150,8 @@ async function main() {
         is_borrow: '1',
         btc_price_stroops_per_btc: PRICE.toString(),
         min_ratio_bp: MIN_RATIO_BP.toString(),
+        recipient_lo: RECIPIENT_LO.toString(),
+        recipient_hi: RECIPIENT_HI.toString(),
     };
     console.log('Generating chain step 2/4: borrow…');
     const { proof: borrowProof, publicSignals: borrowSignals } = await snarkjs.groth16.fullProve(borrowInput, brWasm, brZkey);
@@ -154,6 +176,10 @@ async function main() {
         is_borrow: '0',
         btc_price_stroops_per_btc: PRICE.toString(),
         min_ratio_bp: MIN_RATIO_BP.toString(),
+        // repay() doesn't check these (only borrow() binds a recipient) -
+        // reuse the same fixture value for a coherent proof.
+        recipient_lo: RECIPIENT_LO.toString(),
+        recipient_hi: RECIPIENT_HI.toString(),
     };
     console.log('Generating chain step 3/4: repay…');
     const { proof: repayProof, publicSignals: repaySignals } = await snarkjs.groth16.fullProve(repayInput, brWasm, brZkey);

@@ -15,6 +15,12 @@ const PRICE_STROOPS_PER_BTC = 600_000_000_000n;
 const MAX_BORROW = 4_000_000_000n;
 const MIN_RATIO_BP = 15_000n;  // 150%
 const DEPTH = 20;
+// Recipient binding (GHSA-xxqv-6vhx-hhrx, GHSA-mhp9-jmvc-x9mw): unconstrained
+// in-circuit (like btc_txid_lo/hi), so any fixed value keeps these tests
+// focused on what they actually check. See commitment-tree/src/test.rs for
+// the contract-side check against a real sha256(recipient strkey).
+const RECIPIENT_LO = 0n;
+const RECIPIENT_HI = 0n;
 
 async function buildBaseTree() {
     const oldCommitment = await poseidonHash([COLLATERAL, OLD_DEBT, SECRET, NONCE]);
@@ -36,6 +42,8 @@ function borrowInput({ tree, oldDebt = OLD_DEBT, newNonce = NEW_NONCE, delta, is
         is_borrow:                   String(isBorrow),
         btc_price_stroops_per_btc:   String(PRICE_STROOPS_PER_BTC),
         min_ratio_bp:                String(MIN_RATIO_BP),
+        recipient_lo:                String(RECIPIENT_LO),
+        recipient_hi:                String(RECIPIENT_HI),
     };
 }
 
@@ -159,6 +167,8 @@ describe('borrow_repay circuit', () => {
             is_borrow:                 '0',  // repay - skip ratio check
             btc_price_stroops_per_btc: String(PRICE_STROOPS_PER_BTC),
             min_ratio_bp:              String(MIN_RATIO_BP),
+            recipient_lo:              String(RECIPIENT_LO),
+            recipient_hi:              String(RECIPIENT_HI),
         };
 
         const { proof: repayProof, publicSignals: repaySigs } = await prove('borrow_repay', inputRepay);
