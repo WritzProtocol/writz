@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "test": "jest",
     "test:watch": "jest --watch",
+    "test:bun": "bun test test/insert-auth.bun.test.ts",
     "test:e2e": "bun test test/earn-cycle.e2e.test.ts"
   },
   "dependencies": {
