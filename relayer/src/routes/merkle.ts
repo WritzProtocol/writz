@@ -1,4 +1,5 @@
 import { Router, Request, Response } from "express";
+import { rateLimit } from "express-rate-limit";
 import { Keypair, Transaction, rpc } from "@stellar/stellar-sdk";
 import { Client } from "commitment-tree";
 import { config } from "../config.js";
@@ -10,6 +11,21 @@ const COMMITMENT_RE = /^[0-9a-f]{64}$/i;
 const HEX_RE = /^[0-9a-f]+$/i;
 
 export const merkleRouter = Router();
+
+// Per-IP limiter for the two mutating, previously-unauthenticated routes
+// (js/missing-rate-limiting, flagged by CodeQL on /insert-commitment once it
+// started doing real authorization - a check worth throttling regardless of
+// outcome, since /insert-commitment's failure path still does a Soroban RPC
+// event scan, and /update-leaf's still does a get_merkle_root() call). A
+// generous but finite budget: real deposits/borrows/repays are infrequent
+// per wallet, so this only bites a caller hammering the endpoint.
+const writeLimiter = rateLimit({
+  windowMs: 60_000,
+  limit: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many requests - please slow down and try again shortly." },
+});
 
 // Read-only calls use this fixed dummy address as `publicKey` - the
 // generated Client requires one to build a simulation envelope, but
@@ -62,7 +78,7 @@ async function simulateWithRetry<T>(
 // ---------------------------------------------------------------------------
 // POST /insert-commitment
 // ---------------------------------------------------------------------------
-merkleRouter.post("/insert-commitment", async (req: Request, res: Response): Promise<void> => {
+merkleRouter.post("/insert-commitment", writeLimiter, async (req: Request, res: Response): Promise<void> => {
   if (!config.adminSecret) {
     res.status(500).json({ error: "ADMIN_SECRET not configured" });
     return;
@@ -277,7 +293,7 @@ merkleRouter.get("/merkle-path", async (req: Request, res: Response): Promise<vo
 // accepted, so an attacker without a matching on-chain state transition can't
 // get anything persisted, no matter what they submit.
 // ---------------------------------------------------------------------------
-merkleRouter.post("/update-leaf", async (req: Request, res: Response): Promise<void> => {
+merkleRouter.post("/update-leaf", writeLimiter, async (req: Request, res: Response): Promise<void> => {
   const { leafIndex, newCommitment, encNote } = req.body as {
     leafIndex?: number;
     newCommitment?: string;

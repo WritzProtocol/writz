@@ -18,6 +18,7 @@
     "@writz/bitcoin-script": "file:../bitcoin-script",
     "commitment-tree": "file:../packages/commitment-tree",
     "express": "^4.19.2",
+    "express-rate-limit": "^8.7.0",
     "poseidon-lite": "^0.3.0"
   },
   "devDependencies": {
