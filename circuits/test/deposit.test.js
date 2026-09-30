@@ -17,6 +17,9 @@ function baseInput(overrides = {}) {
         btc_txid_lo:          String(TXID_LO),
         btc_txid_hi:          String(TXID_HI),
         min_deposit_satoshis: String(MIN_DEPOSIT),
+        // The honest case: what the prover claims equals what the contract
+        // parsed from the real Bitcoin transaction.
+        actual_satoshis:      String(COLLATERAL),
         ...overrides,
     };
 }
@@ -49,6 +52,7 @@ describe('deposit circuit', () => {
         const { publicSignals: sig1 } = await prove('deposit', baseInput());
         const { publicSignals: sig2 } = await prove('deposit', baseInput({
             collateral_satoshis: String(2_000_000n),
+            actual_satoshis: String(2_000_000n),
         }));
         expect(sig1[0]).not.toBe(sig2[0]);
     });
@@ -62,15 +66,35 @@ describe('deposit circuit', () => {
     });
 
     test('deposit below minimum is rejected', async () => {
-        const input = baseInput({ collateral_satoshis: String(MIN_DEPOSIT - 1n) });
+        const input = baseInput({
+            collateral_satoshis: String(MIN_DEPOSIT - 1n),
+            actual_satoshis: String(MIN_DEPOSIT - 1n),
+        });
         await expect(prove('deposit', input)).rejects.toThrow();
     });
 
     test('deposit at exactly minimum is accepted', async () => {
-        const input = baseInput({ collateral_satoshis: String(MIN_DEPOSIT) });
+        const input = baseInput({
+            collateral_satoshis: String(MIN_DEPOSIT),
+            actual_satoshis: String(MIN_DEPOSIT),
+        });
         const { proof, publicSignals } = await prove('deposit', input);
         const valid = await verify('deposit', proof, publicSignals);
         expect(valid).toBe(true);
+    });
+
+    // GHSA-2hjj-x5wr-4p68, GHSA-xp6j-g2rw-h5g6, GHSA-mg4x-cr23-4x3v: nothing
+    // used to bind the private collateral_satoshis to the amount the
+    // referenced Bitcoin transaction actually paid - a prover could declare
+    // any collateral, regardless of what (if anything) was really locked.
+    // 1_000_000_000_000 (10,000 BTC) declared against a real payment of only
+    // 1_000 sats mirrors the advisory's own inflated-claim reproduction.
+    test('collateral inflated beyond the real BTC amount is rejected (GHSA-2hjj-x5wr-4p68)', async () => {
+        const input = baseInput({
+            collateral_satoshis: String(1_000_000_000_000n), // claimed: 10,000 BTC
+            actual_satoshis: String(1_000n), // real: 0.00001 BTC actually paid
+        });
+        await expect(prove('deposit', input)).rejects.toThrow();
     });
 
     test('tampered public signal fails verification', async () => {

@@ -94,6 +94,10 @@ async function main() {
         btc_txid_lo: TXID_LO.toString(),
         btc_txid_hi: TXID_HI.toString(),
         min_deposit_satoshis: MIN_DEPOSIT.toString(),
+        // Honest case: matches COLLATERAL, same as commitment-tree's test.rs
+        // `build_deposit_tx(&s.env, 1_000_000, &vault_spk(&s.env))` fixture -
+        // that raw_tx must actually pay this exact amount (GHSA-2hjj-x5wr-4p68).
+        actual_satoshis: COLLATERAL.toString(),
     };
     const depositVkey = JSON.parse(fs.readFileSync(path.join(ROOT, 'keys/deposit_vkey.json'), 'utf8'));
     console.log('Generating chain step 1/4: deposit…');

@@ -53,13 +53,42 @@ fn setup(env: &Env) -> (CommitmentTreeContractClient<'_>, Address, Address, Addr
     (client, admin, spv, zk, usdc, oracle)
 }
 
+/// A fake 34-byte P2WSH scriptPubKey (`OP_0 <32-byte push>`), same pattern
+/// as `private-lend`'s own test fixture - used as the shared
+/// `zk_vault_script_pubkey` every test's `initialize()` registers.
+fn vault_spk(env: &Env) -> Bytes {
+    let mut spk = std::vec![0x00u8, 0x20];
+    spk.extend_from_slice(&[0xabu8; 32]);
+    Bytes::from_slice(env, &spk)
+}
+
+/// Builds a minimal legacy Bitcoin transaction with a single output paying
+/// `value_sat` to `spk`. Mirrors `private-lend`'s own `build_deposit_tx`.
+fn build_deposit_tx(env: &Env, value_sat: u64, spk: &Bytes) -> Bytes {
+    let mut spk_bytes = std::vec![0u8; spk.len() as usize];
+    spk.copy_into_slice(&mut spk_bytes);
+    let mut tx = std::vec::Vec::new();
+    tx.extend_from_slice(&1u32.to_le_bytes()); // version
+    tx.push(0x01); // 1 input
+    tx.extend_from_slice(&[0u8; 32]); // prev hash
+    tx.extend_from_slice(&0xffff_ffffu32.to_le_bytes()); // prev index
+    tx.push(0x00); // empty scriptSig
+    tx.extend_from_slice(&0xffff_fffeu32.to_le_bytes()); // sequence
+    tx.push(0x01); // 1 output
+    tx.extend_from_slice(&value_sat.to_le_bytes());
+    tx.push(spk_bytes.len() as u8); // scriptPubKey len
+    tx.extend_from_slice(&spk_bytes);
+    tx.extend_from_slice(&0u32.to_le_bytes()); // locktime
+    Bytes::from_slice(env, &tx)
+}
+
 // ── Initialization ────────────────────────────────────────────────────────────
 
 #[test]
 fn initialize_sets_empty_tree_root() {
     let env = Env::default();
     let (client, admin, spv, zk, usdc, oracle) = setup(&env);
-    client.initialize(&admin, &spv, &zk, &usdc, &oracle, &6);
+    client.initialize(&admin, &spv, &zk, &usdc, &oracle, &6, &vault_spk(&env));
     assert_eq!(client.get_merkle_root(), empty_root(&env));
 }
 
@@ -68,8 +97,8 @@ fn initialize_sets_empty_tree_root() {
 fn initialize_twice_panics() {
     let env = Env::default();
     let (client, admin, spv, zk, usdc, oracle) = setup(&env);
-    client.initialize(&admin, &spv, &zk, &usdc, &oracle, &6);
-    client.initialize(&admin, &spv, &zk, &usdc, &oracle, &6);
+    client.initialize(&admin, &spv, &zk, &usdc, &oracle, &6, &vault_spk(&env));
+    client.initialize(&admin, &spv, &zk, &usdc, &oracle, &6, &vault_spk(&env));
 }
 
 // ── View functions ────────────────────────────────────────────────────────────
@@ -78,7 +107,7 @@ fn initialize_twice_panics() {
 fn nullifier_not_spent_initially() {
     let env = Env::default();
     let (client, admin, spv, zk, usdc, oracle) = setup(&env);
-    client.initialize(&admin, &spv, &zk, &usdc, &oracle, &6);
+    client.initialize(&admin, &spv, &zk, &usdc, &oracle, &6, &vault_spk(&env));
     assert!(!client.is_nullifier_spent(&zero32(&env)));
 }
 
@@ -86,7 +115,7 @@ fn nullifier_not_spent_initially() {
 fn commitment_not_pending_initially() {
     let env = Env::default();
     let (client, admin, spv, zk, usdc, oracle) = setup(&env);
-    client.initialize(&admin, &spv, &zk, &usdc, &oracle, &6);
+    client.initialize(&admin, &spv, &zk, &usdc, &oracle, &6, &vault_spk(&env));
     assert!(!client.is_commitment_pending(&zero32(&env)));
 }
 
@@ -94,7 +123,7 @@ fn commitment_not_pending_initially() {
 fn get_commitment_returns_none_before_deposit() {
     let env = Env::default();
     let (client, admin, spv, zk, usdc, oracle) = setup(&env);
-    client.initialize(&admin, &spv, &zk, &usdc, &oracle, &6);
+    client.initialize(&admin, &spv, &zk, &usdc, &oracle, &6, &vault_spk(&env));
     assert_eq!(client.get_commitment(&zero32(&env)), None);
 }
 
@@ -102,7 +131,7 @@ fn get_commitment_returns_none_before_deposit() {
 fn pool_state_starts_at_zero() {
     let env = Env::default();
     let (client, admin, spv, zk, usdc, oracle) = setup(&env);
-    client.initialize(&admin, &spv, &zk, &usdc, &oracle, &6);
+    client.initialize(&admin, &spv, &zk, &usdc, &oracle, &6, &vault_spk(&env));
     assert_eq!(client.get_pool_state(), (0_i128, 0_i128));
 }
 
@@ -114,7 +143,7 @@ fn insert_commitment_by_non_admin_panics() {
     let env = Env::default();
     env.mock_all_auths();
     let (client, admin, spv, zk, usdc, oracle) = setup(&env);
-    client.initialize(&admin, &spv, &zk, &usdc, &oracle, &6);
+    client.initialize(&admin, &spv, &zk, &usdc, &oracle, &6, &vault_spk(&env));
     let non_admin = Address::generate(&env);
     client.insert_commitment(&non_admin, &zero32(&env), &zero32(&env));
 }
@@ -126,7 +155,7 @@ fn set_oracle_by_admin_succeeds() {
     let env = Env::default();
     env.mock_all_auths();
     let (client, admin, spv, zk, usdc, oracle) = setup(&env);
-    client.initialize(&admin, &spv, &zk, &usdc, &oracle, &6);
+    client.initialize(&admin, &spv, &zk, &usdc, &oracle, &6, &vault_spk(&env));
     let new_oracle = Address::generate(&env);
     client.set_oracle(&admin, &new_oracle);
     // No panic = success. No public config getter exists to assert the
@@ -139,7 +168,7 @@ fn set_oracle_by_non_admin_panics() {
     let env = Env::default();
     env.mock_all_auths();
     let (client, admin, spv, zk, usdc, oracle) = setup(&env);
-    client.initialize(&admin, &spv, &zk, &usdc, &oracle, &6);
+    client.initialize(&admin, &spv, &zk, &usdc, &oracle, &6, &vault_spk(&env));
     let non_admin = Address::generate(&env);
     client.set_oracle(&non_admin, &non_admin);
 }
@@ -149,7 +178,7 @@ fn set_spv_contract_by_admin_succeeds() {
     let env = Env::default();
     env.mock_all_auths();
     let (client, admin, spv, zk, usdc, oracle) = setup(&env);
-    client.initialize(&admin, &spv, &zk, &usdc, &oracle, &6);
+    client.initialize(&admin, &spv, &zk, &usdc, &oracle, &6, &vault_spk(&env));
     let new_spv = Address::generate(&env);
     client.set_spv_contract(&admin, &new_spv);
 }
@@ -160,7 +189,7 @@ fn set_spv_contract_by_non_admin_panics() {
     let env = Env::default();
     env.mock_all_auths();
     let (client, admin, spv, zk, usdc, oracle) = setup(&env);
-    client.initialize(&admin, &spv, &zk, &usdc, &oracle, &6);
+    client.initialize(&admin, &spv, &zk, &usdc, &oracle, &6, &vault_spk(&env));
     let non_admin = Address::generate(&env);
     client.set_spv_contract(&non_admin, &non_admin);
 }
@@ -170,7 +199,7 @@ fn set_zk_verifier_by_admin_succeeds() {
     let env = Env::default();
     env.mock_all_auths();
     let (client, admin, spv, zk, usdc, oracle) = setup(&env);
-    client.initialize(&admin, &spv, &zk, &usdc, &oracle, &6);
+    client.initialize(&admin, &spv, &zk, &usdc, &oracle, &6, &vault_spk(&env));
     let new_zk = Address::generate(&env);
     client.set_zk_verifier(&admin, &new_zk);
 }
@@ -181,7 +210,7 @@ fn set_zk_verifier_by_non_admin_panics() {
     let env = Env::default();
     env.mock_all_auths();
     let (client, admin, spv, zk, usdc, oracle) = setup(&env);
-    client.initialize(&admin, &spv, &zk, &usdc, &oracle, &6);
+    client.initialize(&admin, &spv, &zk, &usdc, &oracle, &6, &vault_spk(&env));
     let non_admin = Address::generate(&env);
     client.set_zk_verifier(&non_admin, &non_admin);
 }
@@ -207,7 +236,7 @@ fn setup_with_real_usdc(
     let usdc_id = env.register_stellar_asset_contract_v2(admin.clone());
     let usdc = usdc_id.address();
 
-    client.initialize(&admin, &spv, &zk, &usdc, &oracle, &6);
+    client.initialize(&admin, &spv, &zk, &usdc, &oracle, &6, &vault_spk(env));
     (client, admin, usdc, spv)
 }
 
@@ -283,7 +312,7 @@ fn insert_commitment_with_unknown_commitment_panics() {
     let env = Env::default();
     env.mock_all_auths();
     let (client, admin, spv, zk, usdc, oracle) = setup(&env);
-    client.initialize(&admin, &spv, &zk, &usdc, &oracle, &6);
+    client.initialize(&admin, &spv, &zk, &usdc, &oracle, &6, &vault_spk(&env));
     client.insert_commitment(&admin, &zero32(&env), &zero32(&env));
 }
 
@@ -475,6 +504,7 @@ fn setup_integration() -> IntegrationSetup {
         zk_g1(&env, &iv::DEPOSIT_IC_0), zk_g1(&env, &iv::DEPOSIT_IC_1),
         zk_g1(&env, &iv::DEPOSIT_IC_2), zk_g1(&env, &iv::DEPOSIT_IC_3),
         zk_g1(&env, &iv::DEPOSIT_IC_4), zk_g1(&env, &iv::DEPOSIT_IC_5),
+        zk_g1(&env, &iv::DEPOSIT_IC_6),
     ]);
     zk_client.set_verification_key(&admin, &zk_verifier::CircuitId::Deposit, &zk_verifier::VerificationKey {
         alpha_g1: zk_g1(&env, &iv::DEPOSIT_VK_ALPHA_G1),
@@ -515,7 +545,7 @@ fn setup_integration() -> IntegrationSetup {
     let ct_id = env.register(CommitmentTreeContract, ());
     let client = CommitmentTreeContractClient::new(&env, &ct_id);
     // min_confirmations=6, matching the fixed 6-confirmation policy elsewhere.
-    client.initialize(&admin, &spv, &zk_id, &usdc, &oracle, &6);
+    client.initialize(&admin, &spv, &zk_id, &usdc, &oracle, &6, &vault_spk(&env));
 
     IntegrationSetup { env, admin, depositor, supplier, usdc, contract_id: ct_id, client }
 }
@@ -531,7 +561,7 @@ fn deposit_signals(env: &Env) -> Vec<BytesN<32>> {
     Vec::from_array(env, [
         sig32(env, &iv::DEPOSIT_SIGNAL_0), sig32(env, &iv::DEPOSIT_SIGNAL_1),
         sig32(env, &iv::DEPOSIT_SIGNAL_2), sig32(env, &iv::DEPOSIT_SIGNAL_3),
-        sig32(env, &iv::DEPOSIT_SIGNAL_4),
+        sig32(env, &iv::DEPOSIT_SIGNAL_4), sig32(env, &iv::DEPOSIT_SIGNAL_5),
     ])
 }
 fn borrow_proof(env: &Env) -> Proof {
@@ -591,12 +621,16 @@ fn full_deposit_borrow_repay_cycle() {
     s.client.supply_usdc(&s.supplier, &10_000_000_000_i128);
 
     // ── Deposit ──
+    // 1_000_000 sats matches gen_commitment_tree_test_vectors.js's COLLATERAL -
+    // the proof's collateral_satoshis/actual_satoshis both commit to that
+    // exact figure, so the real amount this raw_tx pays must equal it too.
+    let raw_tx = build_deposit_tx(&s.env, 1_000_000, &vault_spk(&s.env));
     let commitment = s.client.deposit(
         &s.depositor,
         &block_hash,
         &empty_proof,
         &0u32,
-        &empty_bytes,
+        &raw_tx,
         &deposit_proof(&s.env),
         &deposit_signals(&s.env),
         &empty_bytes,
@@ -644,8 +678,9 @@ fn borrow_with_tampered_signal_panics() {
     StellarAssetClient::new(&s.env, &s.usdc).mint(&s.supplier, &10_000_000_000_i128);
     s.client.supply_usdc(&s.supplier, &10_000_000_000_i128);
 
+    let raw_tx = build_deposit_tx(&s.env, 1_000_000, &vault_spk(&s.env));
     let commitment = s.client.deposit(
-        &s.depositor, &block_hash, &empty_proof, &0u32, &empty_bytes,
+        &s.depositor, &block_hash, &empty_proof, &0u32, &raw_tx,
         &deposit_proof(&s.env), &deposit_signals(&s.env), &empty_bytes,
     );
     let root_after_deposit = sig32(&s.env, &iv::BORROW_SIGNAL_3);

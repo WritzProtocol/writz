@@ -22,7 +22,19 @@ include "circomlib/circuits/bitify.circom";
  *   nullifier = Poseidon(secret, nonce)
  *   Published on-chain so this commitment can never be re-deposited.
  *
- * Constraint count: ~320 (Poseidon(4) × 2 + range check)
+ * `actual_satoshis` (GHSA-2hjj-x5wr-4p68, GHSA-xp6j-g2rw-h5g6,
+ * GHSA-mg4x-cr23-4x3v): the contract parses the real BTC amount paid to the
+ * shared ZK vault script from `raw_tx` and passes it in as this public
+ * input; `collateral_satoshis === actual_satoshis` below is what actually
+ * binds the hidden collateral witness to Bitcoin reality - without it,
+ * nothing here (or in commitment-tree, before this fix) related the private
+ * collateral claim to what the referenced transaction paid, so a witness
+ * with sats=0 and a claimed collateral_satoshis of 10,000 BTC verified just
+ * as validly as an honest one.
+ *
+ * Constraint count: 596 non-linear (measured via `circom --r1cs`, not an
+ * estimate - regenerate this comment if the circuit changes again rather
+ * than trusting stale arithmetic here).
  */
 
 template DepositCircuit() {
@@ -35,6 +47,9 @@ template DepositCircuit() {
     signal input btc_txid_lo;         // Low 128 bits of the Bitcoin txid
     signal input btc_txid_hi;         // High 128 bits of the Bitcoin txid
     signal input min_deposit_satoshis; // Protocol minimum (100_000 = 0.001 BTC)
+    // Real amount the referenced transaction paid to the protocol's shared
+    // ZK vault script, as parsed on-chain by commitment-tree::deposit.
+    signal input actual_satoshis;
 
     // ── Public outputs ────────────────────────────────────────────────────────
     signal output commitment;  // Added to the on-chain Merkle tree
@@ -68,6 +83,15 @@ template DepositCircuit() {
     min_check.in[1] <== min_deposit_satoshis;
     min_check.out === 1;
 
+    // ── Constraint 4: Bind the private collateral to the real BTC amount ─────
+    // The whole soundness fix (GHSA-2hjj-x5wr-4p68, GHSA-xp6j-g2rw-h5g6,
+    // GHSA-mg4x-cr23-4x3v): forces the hidden collateral_satoshis used in the
+    // commitment above to equal the amount commitment-tree independently
+    // parsed from the real, SPV-verified Bitcoin transaction. A prover
+    // cannot commit to a larger private collateral_satoshis than what was
+    // actually paid, since a mismatched value cannot satisfy this equality.
+    collateral_satoshis === actual_satoshis;
+
     // btc_txid_lo and btc_txid_hi are bound to this proof simply by being
     // declared as public inputs above - Groth16's public statement already
     // includes them, so the verifier cannot swap in different txid values
@@ -77,7 +101,7 @@ template DepositCircuit() {
     // binding at all - it is dead code, not a security property.
 }
 
-// Public signals: btc_txid_lo, btc_txid_hi, min_deposit_satoshis
+// Public signals: btc_txid_lo, btc_txid_hi, min_deposit_satoshis, actual_satoshis
 // All other signals are private.
 // Outputs (commitment, nullifier) are public by virtue of being output signals.
-component main {public [btc_txid_lo, btc_txid_hi, min_deposit_satoshis]} = DepositCircuit();
+component main {public [btc_txid_lo, btc_txid_hi, min_deposit_satoshis, actual_satoshis]} = DepositCircuit();
