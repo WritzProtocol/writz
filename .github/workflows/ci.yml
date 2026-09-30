@@ -145,6 +145,11 @@ jobs:
         working-directory: relayer
       - run: bun run test
         working-directory: relayer
+      # insert-auth.bun.test.ts imports @stellar/stellar-sdk statically, which
+      # ts-jest's CommonJS loader can't parse (see jest.config.js) - run it
+      # under Bun instead, same as test:e2e.
+      - run: bun run test:bun
+        working-directory: relayer
 
   relayer-docker-build:
     name: relayer (docker build + boot smoke test)

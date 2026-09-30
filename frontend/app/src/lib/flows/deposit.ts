@@ -1,5 +1,6 @@
 import { Client } from "@/lib/contracts/generated";
 import { Buffer } from "buffer";
+import { Account, TransactionBuilder, Operation } from "@stellar/stellar-sdk";
 import { config, requireContract } from "@/config";
 import { proveDeposit } from "@/lib/prover";
 import { simulateWithRetry } from "./submit";
@@ -19,6 +20,41 @@ import type { SignTransaction } from "@/lib/wallet/WalletProvider";
 
 // Must match the contract's `min_deposit_satoshis` config (set at initialization).
 const MIN_DEPOSIT_SATS = "10000"; // 0.0001 BTC
+
+// Must match relayer/src/insert-auth.ts's INSERT_COMMITMENT_DATA_NAME.
+const INSERT_COMMITMENT_DATA_NAME = "writz-insert-commitment";
+
+/**
+ * Builds and signs a throwaway transaction (never submitted) authorizing
+ * `/insert-commitment` to insert exactly this commitment. The relayer
+ * verifies the signature is genuinely `depositor`'s and cross-checks it
+ * against the real on-chain DepositEvent before signing the admin-only
+ * insertion - without this, any network-reachable caller could hijack a
+ * pending deposit (GHSA-wqp4-3573-552v, GHSA-prw2-j3jx-43qh). The sequence
+ * number is a dummy "0": this transaction is only ever inspected for its
+ * signature, source account, and operation, never broadcast.
+ */
+async function buildInsertAuthTx(
+  depositor: string,
+  commitmentHex: string,
+  signTransaction: SignTransaction,
+): Promise<string> {
+  const account = new Account(depositor, "0");
+  const tx = new TransactionBuilder(account, {
+    fee: "100",
+    networkPassphrase: config.networkPassphrase,
+  })
+    .addOperation(
+      Operation.manageData({
+        name: INSERT_COMMITMENT_DATA_NAME,
+        value: Buffer.from(commitmentHex, "hex"),
+      }),
+    )
+    .setTimeout(30)
+    .build();
+  const { signedTxXdr } = await signTransaction(tx.toXDR());
+  return signedTxXdr;
+}
 
 async function sha256d(bytes: ArrayBuffer): Promise<Buffer> {
   const h1 = await crypto.subtle.digest("SHA-256", bytes);
@@ -177,12 +213,15 @@ export async function deposit(params: {
   onStatus("Finalizing position in Merkle tree… (step 2/2)");
   const relayerUrl = config.services.relayerUrl;
   if (!relayerUrl) throw new Error("NEXT_PUBLIC_RELAYER_URL is not configured");
+  const commitmentHex = commitment.toString(16).padStart(64, "0");
+  const authTxXdr = await buildInsertAuthTx(depositor, commitmentHex, signTransaction);
   const insertRes = await fetch(`${relayerUrl}/insert-commitment`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      commitment: commitment.toString(16).padStart(64, "0"),
+      commitment: commitmentHex,
       encNote: bytesToHex(encNote),
+      authTxXdr,
     }),
   });
   if (!insertRes.ok) {
