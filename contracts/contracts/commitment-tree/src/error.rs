@@ -36,4 +36,12 @@ pub enum CommitmentTreeError {
     /// refused. Existing positions can still repay, withdraw, and liquidate;
     /// a pause only blocks new risk-taking.
     Paused                  = 16,
+    /// `raw_tx` has no output paying `Config.zk_vault_script_pubkey` -
+    /// this deposit's Bitcoin transaction never funded the protocol at all
+    /// (GHSA-2hjj-x5wr-4p68, GHSA-xp6j-g2rw-h5g6, GHSA-mg4x-cr23-4x3v).
+    VaultOutputNotFound     = 17,
+    /// The proof's private `collateral_satoshis` (bound in-circuit to the
+    /// public `actual_satoshis` signal) does not match the amount this
+    /// contract independently parsed from `raw_tx`.
+    CollateralAmountMismatch = 18,
 }

@@ -23,6 +23,13 @@
 
 use soroban_sdk::{contracttype, Address, BytesN, Env};
 
+/// Bitcoin transaction output parsing. Moved here from `private-lend` (its
+/// original and, until now, only caller) so `commitment-tree` can share the
+/// same on-chain parser rather than re-implementing it - the "hand-copied
+/// verbatim into separate crates" problem this module's own doc comment
+/// above describes, applied to a parser instead of a struct.
+pub mod btc_parser;
+
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SpvVerificationResult {

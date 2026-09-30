@@ -17,7 +17,7 @@ use oracle::get_btc_price_stroops;
 use soroban_sdk::{
     contract, contractimpl, token, Address, Bytes, BytesN, Env, IntoVal, Symbol, Vec,
 };
-use spv_types::SpvVerificationResult;
+use spv_types::{btc_parser, SpvVerificationResult};
 use types::{
     borrow_repay_signals as br, deposit_signals as ds, liquidation_signals as lq, Config,
     DataKey, PoolState, Proof,
@@ -90,6 +90,7 @@ impl CommitmentTreeContract {
         usdc_token: Address,
         oracle: Address,
         min_confirmations: u32,
+        zk_vault_script_pubkey: Bytes,
     ) -> Result<(), CommitmentTreeError> {
         if env.storage().instance().has(&DataKey::Config) {
             return Err(CommitmentTreeError::AlreadyInitialized);
@@ -103,6 +104,7 @@ impl CommitmentTreeContract {
                 usdc_token,
                 oracle,
                 min_confirmations,
+                zk_vault_script_pubkey,
                 min_deposit_satoshis:     10_000,
                 min_collateral_ratio_bp:  15_000,
                 liquidation_threshold_bp: 12_000,
@@ -134,6 +136,11 @@ impl CommitmentTreeContract {
     /// 4. **Protocol param** - `signal[MIN_DEPOSIT_SATS]` equals the
     ///    configured minimum.  This prevents generating a proof with a lower
     ///    minimum to sneak in an undersized deposit.
+    /// 4b. **Collateral binding** - `raw_tx` actually pays
+    ///    `Config.zk_vault_script_pubkey`, and `signal[ACTUAL_SATOSHIS]`
+    ///    equals that real amount (the circuit separately binds it to the
+    ///    private `collateral_satoshis`). Without this, the referenced
+    ///    transaction need not pay the protocol anything at all.
     /// 5. **Nullifier freshness** - the nullifier was not previously spent.
     /// 6. **ZK proof** - Groth16 verification via the `zk-verifier` contract.
     ///
@@ -149,6 +156,7 @@ impl CommitmentTreeContract {
     /// | 2 | `btc_txid_lo` | Low 128 bits of txid as Fr element |
     /// | 3 | `btc_txid_hi` | High 128 bits of txid as Fr element |
     /// | 4 | `min_deposit_sats` | Must equal `Config.min_deposit_satoshis` |
+    /// | 5 | `actual_satoshis` | Must equal the real amount parsed from `raw_tx` |
     ///
     /// # Returns
     /// The commitment (the leaf value to be inserted into the Merkle tree).
@@ -177,7 +185,7 @@ impl CommitmentTreeContract {
         let spv: SpvVerificationResult = env.invoke_contract(
             &config.spv_contract,
             &Symbol::new(&env, "verify_transaction"),
-            (block_hash, merkle_proof_btc, tx_index, raw_tx, config.min_confirmations)
+            (block_hash, merkle_proof_btc, tx_index, raw_tx.clone(), config.min_confirmations)
                 .into_val(&env),
         );
 
@@ -207,6 +215,22 @@ impl CommitmentTreeContract {
         let min_sats_signal = sig_u64(&public_signals.get(ds::MIN_DEPOSIT_SATS as u32).unwrap());
         if min_sats_signal != config.min_deposit_satoshis {
             return Err(CommitmentTreeError::ProtocolParamMismatch);
+        }
+
+        // 4b. Collateral binding: parse the real amount this transaction paid
+        //     to the shared ZK vault script, and require the proof's public
+        //     actual_satoshis signal to equal it. The circuit separately
+        //     constrains collateral_satoshis === actual_satoshis, so this
+        //     one check transitively binds the private collateral witness to
+        //     Bitcoin reality - closes GHSA-2hjj-x5wr-4p68, GHSA-xp6j-g2rw-h5g6,
+        //     GHSA-mg4x-cr23-4x3v. Mirrors private-lend's own
+        //     btc_parser::find_p2wsh_output check, now shared via spv-types.
+        let actual_satoshis = btc_parser::find_p2wsh_output(&raw_tx, &config.zk_vault_script_pubkey)
+            .ok_or(CommitmentTreeError::VaultOutputNotFound)?;
+        let actual_satoshis_signal =
+            sig_u64(&public_signals.get(ds::ACTUAL_SATOSHIS as u32).unwrap());
+        if actual_satoshis_signal != actual_satoshis {
+            return Err(CommitmentTreeError::CollateralAmountMismatch);
         }
 
         let commitment: BytesN<32> = public_signals.get(ds::COMMITMENT as u32).unwrap();
