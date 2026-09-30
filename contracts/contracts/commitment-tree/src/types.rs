@@ -130,7 +130,14 @@ pub mod borrow_repay_signals {
     pub const BTC_PRICE:      usize = 6;
     /// Minimum collateral ratio in bp (must equal Config.min_collateral_ratio_bp).
     pub const MIN_RATIO_BP:   usize = 7;
-    pub const COUNT:          usize = 8;
+    /// Low 128 bits of sha256(recipient's Stellar strkey address). Checked
+    /// against the authenticated `borrower` in `borrow()` only - `repay()`
+    /// pulls funds FROM the caller so has no arbitrary-recipient risk
+    /// (GHSA-xxqv-6vhx-hhrx, GHSA-mhp9-jmvc-x9mw).
+    pub const RECIPIENT_LO:   usize = 8;
+    /// High 128 bits of sha256(recipient's Stellar strkey address).
+    pub const RECIPIENT_HI:   usize = 9;
+    pub const COUNT:          usize = 10;
 }
 
 pub mod liquidation_signals {

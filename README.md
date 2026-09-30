@@ -28,7 +28,7 @@ No bridge. No custodian. No wrapped tokens. No public balance sheet.
 
 ## This Is Not a Whitepaper
 
-As of August 2026, four contracts are live on Stellar testnet, 507 tests pass, and real Bitcoin transactions have been verified on-chain.
+As of August 2026, four contracts are live on Stellar testnet, 508 tests pass, and real Bitcoin transactions have been verified on-chain.
 
 | What | Status |
 |---|---|
@@ -37,7 +37,7 @@ As of August 2026, four contracts are live on Stellar testnet, 507 tests pass, a
 | P2WSH locking + co-signed BTC release | ✓ Broadcast on Bitcoin Signet |
 | Poseidon Merkle commitment tree | ✓ Root updated on-chain |
 | Full deposit → borrow → repay ZK flow | ✓ 6 sequential testnet transactions |
-| 507 tests across all modules | ✓ All passing |
+| 508 tests across all modules | ✓ All passing |
 
 ### Live Testnet Contracts
 
@@ -278,7 +278,7 @@ Each module has its own toolchain - there is no unifying root build, and the
 package manager is **not** the same everywhere. Run them from the repo root:
 
 ```bash
-# 1. Soroban contracts - 223 tests
+# 1. Soroban contracts - 224 tests
 cd contracts && cargo test
 
 # 2. Bitcoin script toolkit - 60 tests (Bun's own test runner)
@@ -297,7 +297,7 @@ cd ../relayer && bun install && bun run test
 cd ../circuits && npm install && npm test
 ```
 
-All 507 tests pass. If anything fails, [open an issue](https://github.com/WritzProtocol/writz/issues).
+All 508 tests pass. If anything fails, [open an issue](https://github.com/WritzProtocol/writz/issues).
 
 ### Full ZK End-to-End on Soroban Testnet
 
@@ -457,7 +457,7 @@ Full documentation lives in [`docs/`](docs/) and is published at **[docs.writz.x
 ## Contributing
 
 1. Fork the repo and create a branch from `main`.
-2. Run the full test suite before opening a PR - all 507 tests must pass.
+2. Run the full test suite before opening a PR - all 508 tests must pass.
 3. For new features, add tests. For bug fixes, add a regression test.
 4. Open a PR with a clear description of what changed and why.
 

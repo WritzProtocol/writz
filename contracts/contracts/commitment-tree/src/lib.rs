@@ -325,6 +325,11 @@ impl CommitmentTreeContract {
     /// * `min_ratio_bp == config.min_collateral_ratio_bp` - no custom thresholds.
     /// * `btc_price == oracle price` - no inflated collateral valuations.
     /// * `old_nullifier` not spent - no double-borrow.
+    /// * `signal[RECIPIENT_LO/HI] == sha256(borrower strkey)` - the proof
+    ///   commits to this exact recipient, so a proof copied from someone
+    ///   else's pending borrow transaction cannot be resubmitted with a
+    ///   different authenticated `borrower` to steal the payout
+    ///   (GHSA-xxqv-6vhx-hhrx, GHSA-mhp9-jmvc-x9mw).
     ///
     /// # Public signals (borrow_repay circuit)
     /// | Index | Signal |
@@ -337,6 +342,8 @@ impl CommitmentTreeContract {
     /// | 5 | `is_borrow` (1) |
     /// | 6 | `btc_price_stroops_per_btc` |
     /// | 7 | `min_ratio_bp` |
+    /// | 8 | `recipient_lo` (low 128 bits of sha256(borrower strkey)) |
+    /// | 9 | `recipient_hi` (high 128 bits of sha256(borrower strkey)) |
     pub fn borrow(
         env: Env,
         borrower: Address,
@@ -387,6 +394,24 @@ impl CommitmentTreeContract {
             .ok_or(CommitmentTreeError::SignalOverflow)?;
         if price_signal != get_btc_price_stroops(&env, &config.oracle) {
             return Err(CommitmentTreeError::PriceMismatch);
+        }
+
+        // Recipient binding: the proof must commit to this exact borrower,
+        // or a copy of it could be resubmitted by a different authenticated
+        // caller to redirect the payout (GHSA-xxqv-6vhx-hhrx,
+        // GHSA-mhp9-jmvc-x9mw). We recompute sha256(borrower strkey) the
+        // same way the prover does and split it into the same lo/hi halves
+        // as the circuit's public signals (mirrors the btc_txid_lo/hi
+        // pattern in `deposit`).
+        let addr_bytes = borrower.to_string().to_bytes();
+        let digest: BytesN<32> = env.crypto().sha256(&addr_bytes).into();
+        let digest_arr = digest.to_array();
+        let sig_lo = public_signals.get(br::RECIPIENT_LO as u32).unwrap().to_array();
+        let sig_hi = public_signals.get(br::RECIPIENT_HI as u32).unwrap().to_array();
+        let lo_ok = sig_lo[0..16] == [0u8; 16] && sig_lo[16..32] == digest_arr[16..32];
+        let hi_ok = sig_hi[0..16] == [0u8; 16] && sig_hi[16..32] == digest_arr[0..16];
+        if !lo_ok || !hi_ok {
+            return Err(CommitmentTreeError::RecipientMismatch);
         }
 
         // Extract the borrow amount from the proof - not from the caller.

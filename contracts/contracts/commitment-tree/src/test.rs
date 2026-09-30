@@ -519,7 +519,8 @@ fn setup_integration() -> IntegrationSetup {
         zk_g1(&env, &iv::BORROW_REPAY_IC_2), zk_g1(&env, &iv::BORROW_REPAY_IC_3),
         zk_g1(&env, &iv::BORROW_REPAY_IC_4), zk_g1(&env, &iv::BORROW_REPAY_IC_5),
         zk_g1(&env, &iv::BORROW_REPAY_IC_6), zk_g1(&env, &iv::BORROW_REPAY_IC_7),
-        zk_g1(&env, &iv::BORROW_REPAY_IC_8),
+        zk_g1(&env, &iv::BORROW_REPAY_IC_8), zk_g1(&env, &iv::BORROW_REPAY_IC_9),
+        zk_g1(&env, &iv::BORROW_REPAY_IC_10),
     ]);
     zk_client.set_verification_key(&admin, &zk_verifier::CircuitId::BorrowRepay, &zk_verifier::VerificationKey {
         alpha_g1: zk_g1(&env, &iv::BORROW_REPAY_VK_ALPHA_G1),
@@ -577,7 +578,17 @@ fn borrow_signals(env: &Env) -> Vec<BytesN<32>> {
         sig32(env, &iv::BORROW_SIGNAL_2), sig32(env, &iv::BORROW_SIGNAL_3),
         sig32(env, &iv::BORROW_SIGNAL_4), sig32(env, &iv::BORROW_SIGNAL_5),
         sig32(env, &iv::BORROW_SIGNAL_6), sig32(env, &iv::BORROW_SIGNAL_7),
+        sig32(env, &iv::BORROW_SIGNAL_8), sig32(env, &iv::BORROW_SIGNAL_9),
     ])
+}
+
+/// Must stay byte-identical to `RECIPIENT_STRKEY` in
+/// circuits/scripts/gen_commitment_tree_test_vectors.js - the fixture
+/// proof's recipient_lo/hi signals are sha256 of this exact string
+/// (GHSA-xxqv-6vhx-hhrx, GHSA-mhp9-jmvc-x9mw).
+const BORROW_RECIPIENT: &str = "CAIRCEIRCEIRCEIRCEIRCEIRCEIRCEIRCEIRCEIRCEIRCEIRCEIRDB3V";
+fn borrow_recipient(env: &Env) -> Address {
+    Address::from_string(&soroban_sdk::String::from_str(env, BORROW_RECIPIENT))
 }
 fn repay_proof(env: &Env) -> Proof {
     Proof {
@@ -592,6 +603,7 @@ fn repay_signals(env: &Env) -> Vec<BytesN<32>> {
         sig32(env, &iv::REPAY_SIGNAL_2), sig32(env, &iv::REPAY_SIGNAL_3),
         sig32(env, &iv::REPAY_SIGNAL_4), sig32(env, &iv::REPAY_SIGNAL_5),
         sig32(env, &iv::REPAY_SIGNAL_6), sig32(env, &iv::REPAY_SIGNAL_7),
+        sig32(env, &iv::REPAY_SIGNAL_8), sig32(env, &iv::REPAY_SIGNAL_9),
     ])
 }
 fn liquidate_proof(env: &Env) -> Proof {
@@ -646,23 +658,28 @@ fn full_deposit_borrow_repay_cycle() {
     assert_eq!(s.client.get_merkle_root(), root_after_deposit);
     assert!(!s.client.is_commitment_pending(&commitment));
 
-    // ── Borrow ──
-    s.client.borrow(&s.depositor, &borrow_proof(&s.env), &borrow_signals(&s.env), &empty_bytes);
+    // ── Borrow ── the proof's recipient_lo/hi signals commit to
+    // `borrow_recipient`, not `s.depositor` - the contract pays out to
+    // whichever address it authenticates that matches that binding.
+    let recipient = borrow_recipient(&s.env);
+    s.client.borrow(&recipient, &borrow_proof(&s.env), &borrow_signals(&s.env), &empty_bytes);
     let root_after_borrow = sig32(&s.env, &iv::BORROW_SIGNAL_0);
     assert_eq!(s.client.get_merkle_root(), root_after_borrow);
     let (_, total_borrowed) = s.client.get_pool_state();
     assert_eq!(total_borrowed, 2_000_000_000_i128);
     let usdc_client = soroban_sdk::token::Client::new(&s.env, &s.usdc);
-    assert_eq!(usdc_client.balance(&s.depositor), 2_000_000_000_i128);
+    assert_eq!(usdc_client.balance(&recipient), 2_000_000_000_i128);
 
-    // ── Repay (full) ── the depositor already holds exactly the borrowed
-    // amount from the step above, which is exactly what full repayment costs.
-    s.client.repay(&s.depositor, &repay_proof(&s.env), &repay_signals(&s.env), &empty_bytes);
+    // ── Repay (full) ── `recipient` already holds exactly the borrowed
+    // amount from the step above, which is exactly what full repayment
+    // costs. `repay()` has no recipient binding, so any authenticated
+    // address able to pay may do it.
+    s.client.repay(&recipient, &repay_proof(&s.env), &repay_signals(&s.env), &empty_bytes);
     let root_after_repay = sig32(&s.env, &iv::REPAY_SIGNAL_0);
     assert_eq!(s.client.get_merkle_root(), root_after_repay);
     let (_, total_borrowed_after_repay) = s.client.get_pool_state();
     assert_eq!(total_borrowed_after_repay, 0);
-    assert_eq!(usdc_client.balance(&s.depositor), 0);
+    assert_eq!(usdc_client.balance(&recipient), 0);
 }
 
 #[test]
@@ -691,7 +708,46 @@ fn borrow_with_tampered_signal_panics() {
     bad_delta[31] ^= 0x01;
     tampered_signals.set(4, sig32(&s.env, &bad_delta));
 
-    s.client.borrow(&s.depositor, &borrow_proof(&s.env), &tampered_signals, &empty_bytes);
+    // Use the recipient the proof actually binds to, so this specifically
+    // exercises the Groth16-rejects-tampering path rather than tripping the
+    // separate recipient-mismatch check first.
+    s.client.borrow(&borrow_recipient(&s.env), &borrow_proof(&s.env), &tampered_signals, &empty_bytes);
+}
+
+#[test]
+#[should_panic]
+fn borrow_proof_cannot_be_redirected_to_another_recipient() {
+    // PoC for GHSA-xxqv-6vhx-hhrx / GHSA-mhp9-jmvc-x9mw: a party who obtains
+    // a pending borrow transaction's proof + public signals could, before
+    // this fix, submit the identical proof/signals with a different
+    // authenticated address and receive the payout instead - the contract
+    // only checked `borrower.require_auth()`, never that the proof itself
+    // committed to that address. `borrow_signals()` here embeds
+    // `recipient_lo/hi = sha256(BORROW_RECIPIENT)`, so an attacker
+    // authenticating as a *different* address must now be rejected with
+    // `RecipientMismatch` before the transfer, Groth16 verification aside.
+    let s = setup_integration();
+    let block_hash = BytesN::<32>::from_array(&s.env, &[0xadu8; 32]);
+    let empty_proof: Vec<BytesN<32>> = Vec::new(&s.env);
+    let empty_bytes = Bytes::new(&s.env);
+
+    StellarAssetClient::new(&s.env, &s.usdc).mint(&s.supplier, &10_000_000_000_i128);
+    s.client.supply_usdc(&s.supplier, &10_000_000_000_i128);
+
+    let raw_tx = build_deposit_tx(&s.env, 1_000_000, &vault_spk(&s.env));
+    let commitment = s.client.deposit(
+        &s.depositor, &block_hash, &empty_proof, &0u32, &raw_tx,
+        &deposit_proof(&s.env), &deposit_signals(&s.env), &empty_bytes,
+    );
+    let root_after_deposit = sig32(&s.env, &iv::BORROW_SIGNAL_3);
+    s.client.insert_commitment(&s.admin, &commitment, &root_after_deposit);
+
+    // Attacker: a different address, not the one the proof's recipient_lo/hi
+    // signals commit to. `mock_all_auths()` lets them "authenticate" as
+    // themselves freely, exactly like a real attacker who only needs to sign
+    // for their own account, not the victim's.
+    let attacker = Address::generate(&s.env);
+    s.client.borrow(&attacker, &borrow_proof(&s.env), &borrow_signals(&s.env), &empty_bytes);
 }
 
 #[test]
