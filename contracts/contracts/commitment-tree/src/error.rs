@@ -44,4 +44,9 @@ pub enum CommitmentTreeError {
     /// public `actual_satoshis` signal) does not match the amount this
     /// contract independently parsed from `raw_tx`.
     CollateralAmountMismatch = 18,
+    /// `signal[RECIPIENT_LO/HI]` (sha256 of the recipient's strkey address)
+    /// does not match the authenticated `borrower` argument - the proof was
+    /// generated for a different recipient and cannot be redirected
+    /// (GHSA-xxqv-6vhx-hhrx, GHSA-mhp9-jmvc-x9mw).
+    RecipientMismatch        = 19,
 }
