@@ -31,15 +31,15 @@ include "./merkle.circom";
  *   Rearranged to avoid division (ZK-friendly):
  *   collateral_satoshis × btc_price × 10_000 ≥ new_debt × 100_000_000 × 15_000
  *
- * Constraint count: 11,296 non-linear (measured via `circom --r1cs`, not an
+ * Constraint count: 11,328 non-linear (measured via `circom --r1cs`, not an
  * estimate - regenerate this comment if the circuit changes again rather
  * than trusting stale arithmetic here).
  *   - Old commitment hash: ~320
  *   - Old Merkle proof (depth 20): ~5,200
  *   - New commitment hash: ~320
  *   - New Merkle root update: ~5,200 (shared path, no double-count)
- *   - Ratio check + is_borrow boolean + debt-direction + collateral/price
- *     range proofs: ~800
+ *   - Ratio check + is_borrow boolean + debt-direction + collateral/price/
+ *     min_ratio range proofs: ~832
  *
  * Tree depth parameter: DEPTH = 20 (supports 1M+ positions)
  */
@@ -107,6 +107,20 @@ template BorrowRepayCircuit(DEPTH) {
     collateral_range.in <== collateral_satoshis;
     component price_range = Num2Bits(64); // generous headroom over any realistic USD price
     price_range.in <== btc_price_stroops_per_btc;
+
+    // `min_ratio_bp` had no range check at all: it feeds `rhs_scaled` (Step 4)
+    // as an unconstrained BN254 field element. The contract only checks it
+    // against the configured 15_000 via `sig_u32`, which reads the last 4
+    // bytes of the 32-byte signal - so a prover could submit a field element
+    // whose low 32 bits read 15_000 but whose true value is enormous, making
+    // `rhs_scaled` wrap modulo the field to something *smaller* than
+    // `lhs_scaled` and passing the ratio check for a wildly under-
+    // collateralized borrow (GHSA-c73p-xqvh-xx96). 32 bits is generous
+    // headroom over any realistic basis-point value (max realistic ~10^5);
+    // once range-checked here, no value that reaches a valid proof can have
+    // non-zero high bytes, so the contract's `sig_u32` read is safe again.
+    component min_ratio_range = Num2Bits(32);
+    min_ratio_range.in <== min_ratio_bp;
 
     // ── Step 3b: is_borrow must be boolean, and must match the debt direction ──
     // Without these two constraints, is_borrow is an unconstrained public

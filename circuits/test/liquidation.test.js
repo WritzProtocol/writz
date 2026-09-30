@@ -81,6 +81,27 @@ describe('liquidation circuit', () => {
         await expect(prove('liquidation', input)).rejects.toThrow();
     });
 
+    // GHSA-px5w-x8xp-wh2h: liquidation_threshold_bp was an unconstrained
+    // public signal - the circuit used its full BN254 field value in
+    // rhs_bp, but the contract's sig_u32() read only the last 4 bytes to
+    // check it against the configured 12_000. A field element whose low 32
+    // bits read 12_000 but whose true value is enormous makes rhs_bp wrap
+    // modulo the field to something the comparator misreads, marking a
+    // healthy (300%) position as liquidatable. This crafted value is the
+    // exact reproduction from the advisory, not invented for this test -
+    // it must be reproducible against this fixture's HEALTHY position.
+    test('a crafted liquidation_threshold_bp whose low 32 bits alias 12_000 does not mark a healthy position liquidatable (GHSA-px5w-x8xp-wh2h)', async () => {
+        const CRAFTED_THRESHOLD_BP =
+            218882428718392752222464057452572750885483644004161787277024n;
+        expect(CRAFTED_THRESHOLD_BP % 2n ** 32n).toBe(12000n); // low 32 bits alias the real 12_000
+        const tree = await buildTree(COLLATERAL_HEALTHY, DEBT_HEALTHY);
+        const input = {
+            ...liquidateInput({ tree, collateral: COLLATERAL_HEALTHY, debt: DEBT_HEALTHY }),
+            liquidation_threshold_bp: String(CRAFTED_THRESHOLD_BP),
+        };
+        await expect(prove('liquidation', input)).rejects.toThrow();
+    });
+
     test('wrong merkle root fails proof generation', async () => {
         const tree = await buildTree(COLLATERAL_UNDER, DEBT_UNDER);
         const input = liquidateInput({ tree, collateral: COLLATERAL_UNDER, debt: DEBT_UNDER });

@@ -92,6 +92,29 @@ describe('borrow_repay circuit', () => {
         await expect(prove('borrow_repay', input)).rejects.toThrow();
     });
 
+    // GHSA-c73p-xqvh-xx96: min_ratio_bp was an unconstrained public signal -
+    // the circuit used its full BN254 field value in rhs_scaled, but the
+    // contract's sig_u32() read only the last 4 bytes to check it against
+    // the configured 15_000. A field element whose low 32 bits read 15_000
+    // but whose true value is enormous makes rhs_scaled wrap modulo the
+    // field to something *smaller* than lhs_scaled, so the ratio comparator
+    // accepts a borrow tens of thousands of times over the real limit.
+    // This crafted value and the 100,000,000,000-stroop over-borrow are the
+    // exact reproduction from the advisory, not invented for this test -
+    // both must be reproducible against this fixture's COLLATERAL/PRICE.
+    test('a crafted min_ratio_bp whose low 32 bits alias 15_000 does not bypass the real ratio check (GHSA-c73p-xqvh-xx96)', async () => {
+        const tree = await buildBaseTree();
+        const CRAFTED_MIN_RATIO_BP =
+            21888242871839275222246405745257275088548364400416034343698204186571781978776n;
+        expect(CRAFTED_MIN_RATIO_BP % 2n ** 32n).toBe(15000n); // low 32 bits alias the real 15_000
+        const HUGE_OVER_BORROW = 100_000_000_000n; // ~25,000x MAX_BORROW
+        const input = {
+            ...borrowInput({ tree, delta: HUGE_OVER_BORROW, isBorrow: 1 }),
+            min_ratio_bp: String(CRAFTED_MIN_RATIO_BP),
+        };
+        await expect(prove('borrow_repay', input)).rejects.toThrow();
+    });
+
     test('repay reduces debt without ratio check', async () => {
         // First borrow $200.
         const tree1 = await buildBaseTree();
