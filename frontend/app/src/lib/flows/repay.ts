@@ -13,6 +13,7 @@ import {
   deriveViewingKey,
   sealNote,
   bytesToHex,
+  recipientLoHi,
   removePosition,
   savePosition,
   type Position,
@@ -78,6 +79,11 @@ export async function repay(params: {
   // Repay amount encoded as the BN254 field negation of the delta.
   const delta = (FIELD_PRIME - amountStroops) % FIELD_PRIME;
 
+  // The circuit requires these signals on every call (shared with borrow),
+  // but `repay()` doesn't check them - it pulls funds FROM `repayer`, so
+  // there's no arbitrary-recipient risk to bind against here.
+  const { lo: recipientLo, hi: recipientHi } = await recipientLoHi(repayer);
+
   const { proof, publicSignals } = await proveBorrowRepay({
     collateral_satoshis: collateral.toString(),
     old_debt_stroops: oldDebt.toString(),
@@ -91,6 +97,8 @@ export async function repay(params: {
     is_borrow: "0",
     btc_price_stroops_per_btc: config.btcPriceStroops,
     min_ratio_bp: MIN_RATIO_BP,
+    recipient_lo: recipientLo,
+    recipient_hi: recipientHi,
   });
 
   const newDebt = oldDebt - amountStroops;

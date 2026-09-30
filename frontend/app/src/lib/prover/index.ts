@@ -108,6 +108,9 @@ export interface BorrowRepayInput {
   is_borrow: string | number;
   btc_price_stroops_per_btc: string;
   min_ratio_bp: string;
+  /** sha256(recipient strkey) split into halves - see `recipientLoHi`. */
+  recipient_lo: string;
+  recipient_hi: string;
 }
 
 export interface LiquidationInput {

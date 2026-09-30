@@ -12,6 +12,7 @@ import {
   deriveViewingKey,
   sealNote,
   bytesToHex,
+  recipientLoHi,
   removePosition,
   savePosition,
   type Position,
@@ -75,6 +76,11 @@ export async function borrow(params: {
   // commitment rotates each borrow, so value-based lookup fails after the first).
   const { root, pathElements, pathIndices } = await fetchMerklePath(commitmentHex, position.leafIndex);
 
+  // Binds this proof to `borrower` so it can't be copied from the mempool
+  // and resubmitted with a different recipient (GHSA-xxqv-6vhx-hhrx,
+  // GHSA-mhp9-jmvc-x9mw).
+  const { lo: recipientLo, hi: recipientHi } = await recipientLoHi(borrower);
+
   const { proof, publicSignals } = await proveBorrowRepay({
     collateral_satoshis: collateral.toString(),
     old_debt_stroops: oldDebt.toString(),
@@ -90,6 +96,8 @@ export async function borrow(params: {
     // contract rejects with PriceMismatch (#12).
     btc_price_stroops_per_btc: config.btcPriceStroops,
     min_ratio_bp: MIN_RATIO_BP,
+    recipient_lo: recipientLo,
+    recipient_hi: recipientHi,
   });
 
   const newDebt = oldDebt + amountStroops;

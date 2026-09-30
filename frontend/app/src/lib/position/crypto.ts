@@ -1,4 +1,5 @@
 import { poseidon2, poseidon4 } from "poseidon-lite";
+import { bytesToHex } from "./notes";
 
 /**
  * Position cryptography - must match the circuits in `circuits/src/` exactly,
@@ -36,4 +37,20 @@ export function computeCommitment(
 /** Nullifier - `Poseidon(secret, nonce)`. */
 export function computeNullifier(secret: bigint, nonce: bigint): bigint {
   return poseidon2([secret, nonce]);
+}
+
+/**
+ * Split sha256(strkey) into the two 128-bit halves the borrow_repay circuit
+ * expects as `recipient_lo` / `recipient_hi`. `commitment-tree::borrow()`
+ * independently recomputes the same digest from the authenticated address
+ * and rejects a mismatch - this binds the proof to its recipient so it
+ * can't be resubmitted with a different address (GHSA-xxqv-6vhx-hhrx,
+ * GHSA-mhp9-jmvc-x9mw).
+ */
+export async function recipientLoHi(strkey: string): Promise<{ lo: string; hi: string }> {
+  const bytes = new TextEncoder().encode(strkey);
+  const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", bytes.buffer as ArrayBuffer));
+  const hi = BigInt("0x" + bytesToHex(digest.subarray(0, 16))).toString();
+  const lo = BigInt("0x" + bytesToHex(digest.subarray(16, 32))).toString();
+  return { lo, hi };
 }
