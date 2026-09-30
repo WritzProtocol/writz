@@ -21,8 +21,21 @@ include "./merkle.circom";
  * debt signal. It is impossible to generate a valid proof with any non-zero
  * debt value.
  *
- * Public signal ordering (no circuit outputs, one declared public input):
- *   0: merkle_root  - must equal the current on-chain Merkle root at verify time
+ * `commitment` (GHSA-6jmp-wf3x-3vxh, GHSA-9j8g-prh5-jhhj): the circuit's only
+ * public signal used to be `merkle_root`, so a valid zero-debt proof carried
+ * no indication of *which* position it was about - /api/cosign verified the
+ * proof and separately trusted a caller-supplied `commitment` string with
+ * nothing tying the two together, letting a proof about position B authorize
+ * releasing position A's BTC. Publishing `commitment` as a circuit output
+ * closes that: the server can now check `publicSignals[0] == commitment` it
+ * was told to release, same as `publicSignals[1] == on-chain root`. This
+ * doesn't weaken privacy - the commitment is already public on-chain (it's
+ * the Merkle leaf itself, visible in DepositEvent/InsertLeafEvent); only
+ * collateral, secret and nonce stay hidden.
+ *
+ * Public signal ordering (one circuit output, one declared public input):
+ *   0: commitment   - Poseidon(collateral_satoshis, 0, secret, nonce)
+ *   1: merkle_root  - must equal the current on-chain Merkle root at verify time
  *
  * Private signals (never revealed):
  *   collateral_satoshis, secret, nonce, path_elements[20], path_indices[20]
@@ -47,6 +60,9 @@ template ZeroDebtCircuit(DEPTH) {
     // ── Public input ──────────────────────────────────────────────────────────
     signal input merkle_root;
 
+    // ── Public output ─────────────────────────────────────────────────────────
+    signal output commitment;
+
     // ── Step 1: Compute the zero-debt commitment ──────────────────────────────
     // commitment = Poseidon(collateral_satoshis, 0, secret, nonce)
     // The second input is the literal 0 - no private debt variable exists.
@@ -56,6 +72,7 @@ template ZeroDebtCircuit(DEPTH) {
     commit.inputs[1] <== 0;
     commit.inputs[2] <== secret;
     commit.inputs[3] <== nonce;
+    commitment <== commit.out;
 
     // ── Step 2: Verify Merkle inclusion ──────────────────────────────────────
     // Proves the commitment above exists in the tree rooted at merkle_root.
