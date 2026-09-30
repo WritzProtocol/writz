@@ -28,7 +28,7 @@ No bridge. No custodian. No wrapped tokens. No public balance sheet.
 
 ## This Is Not a Whitepaper
 
-As of August 2026, four contracts are live on Stellar testnet, 406 tests pass, and real Bitcoin transactions have been verified on-chain.
+As of August 2026, four contracts are live on Stellar testnet, 507 tests pass, and real Bitcoin transactions have been verified on-chain.
 
 | What | Status |
 |---|---|
@@ -37,7 +37,7 @@ As of August 2026, four contracts are live on Stellar testnet, 406 tests pass, a
 | P2WSH locking + co-signed BTC release | ✓ Broadcast on Bitcoin Signet |
 | Poseidon Merkle commitment tree | ✓ Root updated on-chain |
 | Full deposit → borrow → repay ZK flow | ✓ 6 sequential testnet transactions |
-| 406 tests across all modules | ✓ All passing |
+| 507 tests across all modules | ✓ All passing |
 
 ### Live Testnet Contracts
 
@@ -278,13 +278,13 @@ Each module has its own toolchain - there is no unifying root build, and the
 package manager is **not** the same everywhere. Run them from the repo root:
 
 ```bash
-# 1. Soroban contracts - 195 tests
+# 1. Soroban contracts - 223 tests
 cd contracts && cargo test
 
 # 2. Bitcoin script toolkit - 60 tests (Bun's own test runner)
 cd ../bitcoin-script && bun install && bun test
 
-# 3. Relayer service - 122 tests
+# 3. Relayer service - 192 tests
 #    Deps install with Bun, but the suite itself is Jest (ts-jest), so it must
 #    be run through the package script - plain `bun test` picks Bun's runner
 #    instead and fails. The relayer also imports the local @writz/* packages
@@ -293,11 +293,11 @@ cd ../packages/commitment-tree && bun install
 cd ../../bitcoin-script && bun run build
 cd ../relayer && bun install && bun run test
 
-# 4. ZK circuits - 29 tests (npm + Jest; needs circom on PATH)
+# 4. ZK circuits - 32 tests (npm + Jest; needs circom on PATH)
 cd ../circuits && npm install && npm test
 ```
 
-All 406 tests pass. If anything fails, [open an issue](https://github.com/WritzProtocol/writz/issues).
+All 507 tests pass. If anything fails, [open an issue](https://github.com/WritzProtocol/writz/issues).
 
 ### Full ZK End-to-End on Soroban Testnet
 
@@ -457,7 +457,7 @@ Full documentation lives in [`docs/`](docs/) and is published at **[docs.writz.x
 ## Contributing
 
 1. Fork the repo and create a branch from `main`.
-2. Run the full test suite before opening a PR - all 406 tests must pass.
+2. Run the full test suite before opening a PR - all 507 tests must pass.
 3. For new features, add tests. For bug fixes, add a regression test.
 4. Open a PR with a clear description of what changed and why.
 

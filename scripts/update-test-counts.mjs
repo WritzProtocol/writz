@@ -51,7 +51,7 @@ function parseJestResult(output) {
 }
 
 console.log("Running contracts (cargo test, per package)...");
-const contractPackages = ["bitcoin-spv", "zk-verifier", "commitment-tree", "private-lend"];
+const contractPackages = ["bitcoin-spv", "zk-verifier", "commitment-tree", "private-lend", "spv-types"];
 const modules = {};
 for (const pkg of contractPackages) {
   const out = run("cargo", ["test", "-p", pkg, "--lib"], path.join(repoRoot, "contracts"));

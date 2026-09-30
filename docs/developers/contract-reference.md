@@ -174,10 +174,12 @@ pub struct Groth16Proof {
 pub fn initialize(
     env: Env,
     admin: Address,
-    zk_verifier: Address,    // Address of the deployed zk-verifier contract
-    spv_contract: Address,   // Address of the deployed bitcoin-spv contract
-    usdc_token: Address,     // USDC token contract address
-    oracle: Address,         // BTC/USD oracle contract address (SEP-40)
+    spv_contract: Address,           // Address of the deployed bitcoin-spv contract
+    zk_verifier: Address,            // Address of the deployed zk-verifier contract
+    usdc_token: Address,              // USDC token contract address
+    oracle: Address,                  // BTC/USD oracle contract address (SEP-40)
+    min_confirmations: u32,
+    zk_vault_script_pubkey: Bytes,    // Shared P2WSH scriptPubKey every ZK deposit must pay - see docs/security/security-model.md
 )
 ```
 
