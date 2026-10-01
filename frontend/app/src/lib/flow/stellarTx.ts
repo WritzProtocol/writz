@@ -1,6 +1,6 @@
 import { contract, rpc } from "@stellar/stellar-sdk";
 import { config } from "@/config";
-import { isUserRejection, SIGNATURE_REJECTED } from "@/lib/flows/earn";
+import { asRejection } from "@/lib/wallet/rejection";
 import type { SignTransaction } from "@/lib/wallet/WalletProvider";
 import type { Emit } from "./engine";
 import type { TxStatus } from "./pendingTx";
@@ -14,7 +14,7 @@ export class TxTimedOutError extends Error {
 
 /**
  * Signs, records the hash through `onSigned` before anything reaches the
- * network, then submits and waits. A rejection becomes `SignatureRejected`,
+ * network, then submits and waits. A rejection becomes `SignatureRejectedError`,
  * a confirmation timeout becomes `TxTimedOutError` with the hash kept, and a
  * transaction that was refused or failed on chain calls `onDropped`.
  */
@@ -32,10 +32,10 @@ export async function signAndSubmit<T>(
   try {
     await tx.sign({ signTransaction });
   } catch (e) {
-    const message = e instanceof Error ? e.message : String(e);
-    if (isUserRejection(message)) {
-      emit?.({ type: "signature_cancelled" });
-      throw new Error(SIGNATURE_REJECTED);
+    const rejected = asRejection(e, "stellar");
+    if (rejected) {
+      emit?.({ type: "signature_cancelled", walletName: rejected.walletName });
+      throw rejected;
     }
     throw e;
   }

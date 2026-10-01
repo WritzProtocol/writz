@@ -5,6 +5,7 @@ import { earnApi } from "@/lib/earn/api";
 import type { SignTransaction } from "@/lib/wallet/WalletProvider";
 import type { Emit } from "@/lib/flow/engine";
 import { activity, type PendingTxKind } from "@/lib/flow/pendingTx";
+import { asRejection } from "@/lib/wallet/rejection";
 
 /**
  * Earn flows: deposit USDC into the Writz DeFindex vault and withdraw it.
@@ -25,38 +26,6 @@ export interface EarnTxResult {
   txHash: string;
 }
 
-/**
- * A wallet-level user rejection. Every wallet words this differently, so the
- * flow raises one canonical error and `humanizeError` handles the rest.
- */
-export const SIGNATURE_REJECTED = "SignatureRejected";
-
-/**
- * Every wallet words a user rejection differently, and none of them use an
- * error code:
- *   Freighter  "User declined access", "The user rejected this request."
- *   xBull      "User rejected the request"
- *   Albedo     "Action canceled by the user"
- *   Rabet      "User rejected"
- *   Lobstr     "User rejected the request"
- *   Privy      "User rejected request", "User closed the modal"
- *
- * Matching on wording is unavoidable, so it is split by how much each word
- * proves. "Rejected", "declined" and "denied" only ever describe a decision,
- * so they stand alone. "Cancelled", "dismissed" and "closed" also describe
- * things that break on their own ("the connection was closed", "request
- * cancelled" from an aborted fetch), so they count only next to the actor who
- * would have done it deliberately. Privy signs over the network, so a dropped
- * connection mid-signing is a real case, and telling someone they declined
- * when the wallet actually broke sends them to the wrong fix.
- */
-export function isUserRejection(message: string): boolean {
-  const decision = /\b(reject(ed|s|ing)?|declin(e|ed|es|ing)|denied)\b/i;
-  const ambiguous = /\b(cancel(ed|led|s)?|dismiss(ed)?|closed)\b/i;
-  const actor = /\b(user|you|modal|popup|window|prompt|request)\b/i;
-  return decision.test(message) || (ambiguous.test(message) && actor.test(message));
-}
-
 async function signAndSubmit(
   xdr: string,
   signTransaction: SignTransaction,
@@ -68,12 +37,10 @@ async function signAndSubmit(
   try {
     ({ signedTxXdr } = await signTransaction(xdr));
   } catch (e) {
-    const message = e instanceof Error ? e.message : String(e);
-    // A rejected signature is a normal outcome, not a failure worth surfacing
-    // raw. Anything else is a real wallet error and passes straight through.
-    if (isUserRejection(message)) {
-      emit?.({ type: "signature_cancelled" });
-      throw new Error(SIGNATURE_REJECTED);
+    const rejected = asRejection(e, "stellar");
+    if (rejected) {
+      emit?.({ type: "signature_cancelled", walletName: rejected.walletName });
+      throw rejected;
     }
     throw e;
   }
@@ -124,11 +91,7 @@ async function signAndSubmit(
   }
   activity.removeTx(owner, hash);
   if (final.status !== Api.GetTransactionStatus.SUCCESS) {
-    // The vault's own ContractError variant name is in here when the failure
-    // came from the contract, which is what humanizeError matches on.
-    // Only FAILED is left here, and a failed response always carries the
-    // result XDR: the vault's own ContractError variant name is inside it.
-    throw new Error(`Transaction failed on-chain: ${String(final.resultXdr)}`);
+    throw new Error(`Transaction failed on-chain: ${final.resultXdr.toXDR("base64")}`);
   }
   emit?.({ type: "settled", hash });
   return sent.hash;

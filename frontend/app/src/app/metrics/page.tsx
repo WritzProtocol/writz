@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getTvlMetrics, getRetentionCohorts, type RetentionCohort, type TvlMetrics } from "@/lib/metrics/api";
 import { analyzeCohort, summarizeCohorts } from "@/lib/metrics/cohort";
 import { fmtUsdc } from "@/lib/earn/amount";
-import { humanizeError } from "@/lib/errors";
+import { ErrorNotice } from "@/components/ErrorNotice";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { ExternalLink } from "lucide-react";
 
@@ -32,7 +32,9 @@ export default async function MetricsPage() {
       >
         <div className="rounded-xl border border-crit/40 bg-crit/10 p-5 text-sm text-crit">
           <p className="font-semibold">Could not read live metrics</p>
-          <p className="mt-1 font-mono text-xs break-all">{humanizeError(e)}</p>
+          <div className="mt-1">
+            <ErrorNotice error={e} context={{ flow: "read" }} className="text-xs" />
+          </div>
         </div>
       </DashboardLayout>
     );

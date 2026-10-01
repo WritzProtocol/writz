@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useWallet } from "@/lib/wallet/WalletProvider";
 import { hasTrustline, enableTrustline, type ClassicAsset } from "@/lib/flows/trustline";
-import { humanizeError } from "@/lib/errors";
+import { ErrorNotice } from "./ErrorNotice";
 
 /**
  * Shows a one-click prompt when the connected account lacks a trustline for
@@ -26,7 +26,7 @@ export function EnableTrustlineButton({
   const { address, signTransaction } = useWallet();
   const [enabled, setEnabled] = useState<boolean | null>(null);
   const [working, setWorking] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<unknown>(null);
 
   useEffect(() => {
     if (!address || !asset.issuer) return;
@@ -50,7 +50,7 @@ export function EnableTrustlineButton({
       await enableTrustline({ address, asset, signTransaction });
       setEnabled(true);
     } catch (e) {
-      setError(humanizeError(e));
+      setError(e);
     } finally {
       setWorking(false);
     }
@@ -72,7 +72,7 @@ export function EnableTrustlineButton({
           {working ? "Enabling…" : `Enable ${asset.code}`}
         </button>
       </div>
-      {error ? <p className="break-all text-xs text-crit">{error}</p> : null}
+      {error ? <ErrorNotice error={error} context={{ flow: "trustline" }} /> : null}
     </div>
   );
 }

@@ -141,6 +141,13 @@ function relayerUrl(): string {
   return url;
 }
 
+/** The relayer endpoint for a deposit's SPV bundle, at the confirmation count this app requires. */
+export function spvProofUrl(base: string, txid: string): string {
+  // The relayer accepts 1..20 confirmations.
+  const confirmations = Math.min(20, Math.max(1, config.bitcoin.minConfirmations));
+  return `${base}/spv-proof/${txid}?confirmations=${confirmations}`;
+}
+
 function abortableSleep(ms: number, signal?: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
     if (signal?.aborted) return reject(signal.reason ?? new Error("Aborted"));
@@ -211,7 +218,7 @@ async function realRegister(input: RegisterInput): Promise<{ hash: string }> {
 
 export const depositDeps: DepositDeps = {
   async pollSpv(txid) {
-    const res = await fetch(`${relayerUrl()}/spv-proof/${txid}`);
+    const res = await fetch(spvProofUrl(relayerUrl(), txid));
     if (res.status === 404 || res.status === 409) {
       const body = (await res.json().catch(() => ({}))) as { available?: number; requested?: number };
       return { ready: false, confirmations: body.available ?? 0, required: body.requested ?? null };

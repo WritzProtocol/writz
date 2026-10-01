@@ -1,7 +1,7 @@
 import { getPoolState, type PoolState } from "@/lib/contracts/commitmentTree";
 import { AppTabs } from "@/components/AppTabs";
 import { DashboardLayout } from "@/components/DashboardLayout";
-import { humanizeError } from "@/lib/errors";
+import { ErrorNotice } from "@/components/ErrorNotice";
 
 // Read on-chain state at request time; never statically prerendered.
 export const dynamic = "force-dynamic";
@@ -18,12 +18,12 @@ function formatStroops(value: bigint): string {
 
 export default async function AppDashboardPage() {
   let pool: PoolState | null = null;
-  let error: string | null = null;
+  let failure: { error: unknown } | null = null;
 
   try {
     pool = await getPoolState();
   } catch (e) {
-    error = humanizeError(e);
+    failure = { error: e };
   }
 
   return (
@@ -51,10 +51,12 @@ export default async function AppDashboardPage() {
         </div>
 
         {/* Contract State Stats Grid */}
-        {error ? (
+        {failure ? (
           <div className="rounded-xl border border-crit/40 bg-crit/10 p-5 text-sm text-crit">
             <p className="font-semibold">Could not read contract state</p>
-            <p className="mt-1 font-mono text-xs break-all">{error}</p>
+            <div className="mt-1">
+              <ErrorNotice error={failure.error} context={{ flow: "read" }} className="text-xs" />
+            </div>
           </div>
         ) : (
           <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
