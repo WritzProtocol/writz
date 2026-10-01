@@ -149,8 +149,8 @@ export function PositionDashboard() {
       ) : !unlocked ? (
         <div className="flex flex-col items-start gap-3 rounded-xl border border-line bg-surface p-6">
           <p className="text-sm text-muted">
-            Unlock to derive your position keys from your wallet. This signs a
-            message (no transaction, no fee) and works on any device.
+            Load your positions by signing a free message in your Stellar wallet.
+            No transaction, no fee, and it works on any device.
           </p>
           <button
             type="button"
@@ -158,7 +158,7 @@ export function PositionDashboard() {
             disabled={unlocking}
             className="rounded-full border border-line-2 px-3 py-1 text-xs font-semibold text-amber transition-colors hover:border-amber disabled:opacity-50"
           >
-            {unlocking ? "Waiting for signature…" : "Unlock positions"}
+            {unlocking ? "Waiting for signature…" : "Load my positions"}
           </button>
           {unlockError ? <p className="break-all text-xs text-crit">{unlockError}</p> : null}
         </div>
@@ -288,7 +288,7 @@ function PositionCard({ position }: { position: Position }) {
     setMessage(null);
     emitBorrow({ type: "reset" });
     if (!address || !seed) {
-      setMessage("Unlock your positions first.");
+      setMessage("Load your keys first: sign the free message in your Stellar wallet.");
       return;
     }
     const usdc = Number(amount);
@@ -311,7 +311,7 @@ function PositionCard({ position }: { position: Position }) {
     setRepayMessage(null);
     emitRepay({ type: "reset" });
     if (!address || !seed) {
-      setRepayMessage("Unlock your positions first.");
+      setRepayMessage("Load your keys first: sign the free message in your Stellar wallet.");
       return;
     }
     const usdc = Number(repayAmount);
@@ -341,7 +341,7 @@ function PositionCard({ position }: { position: Position }) {
     setReleaseMessage(null);
     emitRelease({ type: "reset" });
     if (!address || !seed) {
-      setReleaseMessage("Unlock your positions first.");
+      setReleaseMessage("Load your keys first: sign the free message in your Stellar wallet.");
       return;
     }
     if (!position.btcPubkey || !position.timelockHeight || !position.txid) {

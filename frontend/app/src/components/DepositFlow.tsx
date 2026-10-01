@@ -338,7 +338,7 @@ export function DepositFlow() {
   async function handleDeposit() {
     if (!address) return;
     if (!seed) {
-      setInputError("Unlock your positions first.");
+      setInputError("Load your keys first: sign the free message in your Stellar wallet.");
       return;
     }
     setInputError(null);
@@ -593,14 +593,27 @@ export function DepositFlow() {
                     <p className="text-xs text-muted">Waiting for your other transaction.</p>
                   )}
 
-                  {!unlocked && (
-                    <button
-                      type="button"
-                      onClick={() => unlock().catch(() => {})}
-                      className="self-start rounded-full border border-line-2 px-3 py-1 text-xs font-semibold text-amber transition-colors hover:border-amber"
-                    >
-                      Unlock to derive your keys
-                    </button>
+                  {!unlocked ? (
+                    <div className="flex flex-col items-start gap-2">
+                      <p className="text-xs text-muted">
+                        {flow.phase === "waiting_btc"
+                          ? "Before the last step you sign a free message in your Stellar wallet to load your keys. Do it now and only one signature is left."
+                          : "Sign a free message in your Stellar wallet to load your keys. No fee, no transaction."}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => unlock().catch(() => {})}
+                        className="rounded-full border border-line-2 px-3 py-1 text-xs font-semibold text-amber transition-colors hover:border-amber"
+                      >
+                        Load my keys
+                      </button>
+                    </div>
+                  ) : (
+                    flow.phase === "waiting_btc" && (
+                      <p className="text-xs text-muted">
+                        Keys loaded. One signature left when the confirmations finish.
+                      </p>
+                    )
                   )}
 
                   {needsFinish ? (
