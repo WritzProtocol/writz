@@ -19,7 +19,7 @@ jest.mock('../src/defindex/client.js', () => ({
 
 import express from 'express';
 import request from 'supertest';
-import { defindexRouter } from '../src/routes/defindex.js';
+import { defindexRouter, vaultReadLimiter, vaultTxLimiter } from '../src/routes/defindex.js';
 import { defindexSdk } from '../src/defindex/client.js';
 import { config } from '../src/config.js';
 
@@ -47,6 +47,15 @@ beforeEach(() => {
   mockWithdrawFromVault.mockReset();
   mockDepositToVault.mockReset();
   config.defindexVaultId = VAULT_ID;
+  vaultReadLimiter.reset();
+  vaultTxLimiter.reset();
+  jest.spyOn(console, 'log').mockImplementation(() => {});
+  jest.spyOn(console, 'warn').mockImplementation(() => {});
+  jest.spyOn(console, 'error').mockImplementation(() => {});
+});
+
+afterEach(() => {
+  jest.restoreAllMocks();
 });
 
 // ── GET /defindex/apy ────────────────────────────────────────────────────
