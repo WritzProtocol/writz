@@ -76,6 +76,14 @@ export async function isCommitmentPending(commitmentHex: string): Promise<boolea
   return result;
 }
 
+/** True once the nullifier has been consumed by a borrow, repay or liquidation. */
+export async function isNullifierSpent(nullifierHex: string): Promise<boolean> {
+  const { result } = await getClient().is_nullifier_spent({
+    nullifier: Buffer.from(nullifierHex, "hex"),
+  });
+  return result;
+}
+
 // Soroban RPC only retains events for a rolling window; a position being
 // released is expected to have deposited recently enough to still be
 // borrowable, so one day of ledgers (5s close time) is generous headroom.
