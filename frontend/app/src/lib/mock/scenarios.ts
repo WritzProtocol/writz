@@ -180,7 +180,9 @@ const HOME: Scenario[] = [
 const DEPOSIT: Scenario[] = [
   define("B1", "Fresh, disconnected", () => borrowNew({ wallets: NO_WALLETS })),
   define("B2", "Amount invalid", () => borrowNew({ wallets: NO_WALLETS, deposit: { amountSats: 1_000n, amountError: "below_min" } })),
-  define("B3", "Stellar not connected", () => borrowNew({ wallets: NO_WALLETS })),
+  define("B3", "Stellar not connected", () =>
+    borrowNew({ wallets: NO_WALLETS, deposit: { amountSats: 5_000_000n, amountConfirmed: true } }),
+  ),
   define("B4", "Stellar awaiting connect", () =>
     borrowNew({ wallets: { ...NO_WALLETS, connect: { wallet: "stellar", state: "awaiting" } } }),
   ),
