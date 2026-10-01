@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { Horizon, NotFoundError } from "@stellar/stellar-sdk";
 import type { User } from "@privy-io/react-auth";
 import type { WalletWithMetadata } from "@privy-io/react-auth";
 import { usePrivyBridge } from "@/lib/wallet/privy-bridge";
@@ -20,6 +21,7 @@ import {
   signTransactionWithPrivy,
 } from "@/lib/wallet/privy-stellar";
 import { withRejection } from "@/lib/wallet/rejection";
+import { preflightSign, type AccountSnapshot } from "@/lib/wallet/precheck";
 
 /**
  * Signs a transaction XDR with the connected wallet. The return shape is
@@ -67,6 +69,15 @@ function kitWalletName(): string | undefined {
     return ensureKit().selectedModule.productName;
   } catch {
     return undefined;
+  }
+}
+
+async function loadAccountSnapshot(address: string): Promise<AccountSnapshot | null> {
+  try {
+    return await new Horizon.Server(config.horizonUrl).loadAccount(address);
+  } catch (e) {
+    if (e instanceof NotFoundError) return null;
+    throw e;
   }
 }
 
@@ -241,6 +252,12 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       if (backend === "privy") {
         if (!address || !privy)
           throw new Error("No Privy wallet connected");
+        await preflightSign({
+          xdr,
+          expectedPassphrase: config.networkPassphrase,
+          getWalletPassphrase: async () => null,
+          loadAccount: () => loadAccountSnapshot(address),
+        });
         return withRejection("stellar", "Privy", () =>
           signTransactionWithPrivy(xdr, address, privy.signRawHash),
         );
@@ -248,6 +265,13 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       const kit = ensureKit();
       const walletName = kitWalletName();
       const { address: signerAddress } = await kit.getAddress();
+      await preflightSign({
+        xdr,
+        expectedPassphrase: config.networkPassphrase,
+        walletName,
+        getWalletPassphrase: async () => (await kit.getNetwork()).networkPassphrase,
+        loadAccount: () => loadAccountSnapshot(signerAddress),
+      });
       const { signedTxXdr, signerAddress: signer } = await withRejection("stellar", walletName, () =>
         kit.signTransaction(xdr, {
           address: signerAddress,
