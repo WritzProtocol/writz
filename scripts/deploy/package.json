@@ -7,7 +7,9 @@
     "set-vkeys": "bun run set_vkeys.js",
     "deploy-defindex-vault": "bun run deploy_defindex_vault.mjs",
     "rebalance-defindex-vault": "bun run rebalance_defindex_vault.mjs",
-    "create-manager-multisig": "bun run create_manager_multisig.mjs"
+    "create-manager-multisig": "bun run create_manager_multisig.mjs",
+    "deploy-defindex-vault-mainnet": "bun run deploy_defindex_vault_mainnet.mjs",
+    "rebalance-defindex-vault-mainnet": "bun run rebalance_defindex_vault_mainnet.mjs"
   },
   "dependencies": {
     "@defindex/sdk": "^0.3.0",
