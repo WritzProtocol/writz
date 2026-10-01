@@ -21,7 +21,7 @@ import { proveZeroDebt, type ZeroDebtInput } from "@/lib/prover";
 import { stellarTxUrl, btcTxUrl } from "@/lib/explorer";
 import { TxLink } from "./TxLink";
 import { config, BTC_NETWORK_LABEL } from "@/config";
-import { humanizeError } from "@/lib/errors";
+import { ErrorNotice } from "./ErrorNotice";
 import { GITHUB_ISSUES_URL, LIQUIDATION_DOCS_URL, RECLAIM_DOCS_URL } from "@/lib/links";
 import {
   positionKeys,
@@ -37,7 +37,7 @@ import { finishDeposit } from "@/lib/flows/deposit";
 import { isInFlight, type Emit, type FlowState } from "@/lib/flow/engine";
 import { useFlow, useTxLockState } from "@/lib/flow/useFlow";
 import { locks } from "@/lib/flow/lock";
-import { FlowOutcome, workingLabel } from "./FlowOutcome";
+import { FlowOutcome, declinedLine, workingLabel } from "./FlowOutcome";
 
 // USDC = 7 decimals (stroops), BTC = 8 decimals (sats).
 const STROOP = 10_000_000n;
@@ -71,14 +71,14 @@ export function PositionDashboard() {
   );
 
   const [unlocking, setUnlocking] = useState(false);
-  const [unlockError, setUnlockError] = useState<string | null>(null);
+  const [unlockError, setUnlockError] = useState<unknown>(null);
 
   const [recovering, setRecovering] = useState(false);
   const [recoverMsg, setRecoverMsg] = useState<string | null>(null);
-  const [recoverError, setRecoverError] = useState<string | null>(null);
+  const [recoverError, setRecoverError] = useState<unknown>(null);
 
   const [demoLoading, setDemoLoading] = useState(false);
-  const [demoError, setDemoError] = useState<string | null>(null);
+  const [demoError, setDemoError] = useState<unknown>(null);
   // Reactive from the (localStorage-backed) positions list - a demo can only be
   // loaded once per wallet, since insert_commitment consumes its pending entry.
   const demoLoaded = positions.some((p) => p.demo);
@@ -96,7 +96,7 @@ export function PositionDashboard() {
         await locks().releasePositionIndex(address, index);
       }
     } catch (e) {
-      setDemoError(humanizeError(e));
+      setDemoError(e);
     } finally {
       setDemoLoading(false);
     }
@@ -108,7 +108,7 @@ export function PositionDashboard() {
     try {
       await unlock();
     } catch (e) {
-      setUnlockError(humanizeError(e));
+      setUnlockError(e);
     } finally {
       setUnlocking(false);
     }
@@ -127,7 +127,7 @@ export function PositionDashboard() {
           : `No positions for this wallet (scanned ${scanned}).`,
       );
     } catch (e) {
-      setRecoverError(humanizeError(e, { flow: "recover" }));
+      setRecoverError(e);
     } finally {
       setRecovering(false);
     }
@@ -160,7 +160,7 @@ export function PositionDashboard() {
           >
             {unlocking ? "Waiting for signature…" : "Load my positions"}
           </button>
-          {unlockError ? <p className="break-all text-xs text-crit">{unlockError}</p> : null}
+          {unlockError ? <ErrorNotice error={unlockError} /> : null}
         </div>
       ) : (
         <div className="flex flex-col gap-4">
@@ -193,8 +193,8 @@ export function PositionDashboard() {
               </button>
             </div>
           </div>
-          {recoverError ? <p className="break-all text-xs text-crit">{recoverError}</p> : null}
-          {demoError ? <p className="break-all text-xs text-crit">{demoError}</p> : null}
+          {recoverError ? <ErrorNotice error={recoverError} context={{ flow: "recover" }} /> : null}
+          {demoError ? <ErrorNotice error={demoError} /> : null}
           {positions.length === 0 ? (
             <div className="rounded-xl border border-line bg-surface p-6 text-sm text-muted">
               No positions yet. Deposit BTC above to open one, or recover existing ones.
@@ -530,9 +530,7 @@ function PositionCard({ position }: { position: Position }) {
             {isInFlight(finishFlow) ? "Adding your loan…" : "Finish deposit"}
           </button>
           {finishFlow.phase === "needs_attention" && finishFlow.error ? (
-            <p className="break-all text-xs text-crit">
-              {humanizeError(finishFlow.error, { flow: "deposit" })}
-            </p>
+            <ErrorNotice error={finishFlow.error} context={{ flow: "deposit" }} hash={finishFlow.hash} />
           ) : (
             <FlowOutcome
               flow={finishFlow}
@@ -679,12 +677,10 @@ function PositionCard({ position }: { position: Position }) {
               )}
               {releaseMessage && <p className="break-all text-xs text-crit">{releaseMessage}</p>}
               {releaseFlow.phase === "failed" && (
-                <p className="break-all text-xs text-crit">
-                  {humanizeError(releaseFlow.error, { flow: "release" })}
-                </p>
+                <ErrorNotice error={releaseFlow.error} context={{ flow: "release" }} />
               )}
               {releaseFlow.phase === "signature_cancelled" && (
-                <p className="text-xs text-body">You declined in your wallet. Nothing was sent.</p>
+                <p className="text-xs text-body">{declinedLine(releaseFlow)}</p>
               )}
               <p className="text-xs text-muted">
                 You sign in Xverse and Writz co-signs. The Bitcoin network fee, about

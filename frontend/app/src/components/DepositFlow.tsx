@@ -16,7 +16,8 @@ import { positionsSnapshot, type Position } from "@/lib/position";
 import { stellarTxUrl } from "@/lib/explorer";
 import { TxLink } from "./TxLink";
 import { config, BTC_NETWORK_LABEL } from "@/config";
-import { humanizeError } from "@/lib/errors";
+import { ErrorNotice } from "./ErrorNotice";
+import { declinedLine } from "./FlowOutcome";
 import { hashOf, isInFlight, type FlowState } from "@/lib/flow/engine";
 import { useFlow, useTxLockState } from "@/lib/flow/useFlow";
 import { depositLockName, locks } from "@/lib/flow/lock";
@@ -157,21 +158,22 @@ function DepositProgress({ flow }: { flow: FlowState }) {
         </p>
       );
     case "signature_cancelled":
-      return <p className="text-xs text-body">You declined in your wallet. Nothing was sent.</p>;
+      return <p className="text-xs text-body">{declinedLine(flow)}</p>;
     case "needs_attention":
-      return (
-        <p className="break-all text-xs text-amber">
-          {flow.error
-            ? humanizeError(flow.error, { flow: "deposit" })
-            : "Your deposit is recorded on Stellar. One more step adds your loan."}{" "}
+      return flow.error ? (
+        <ErrorNotice error={flow.error} context={{ flow: "deposit" }} hash={hash} className="text-xs text-amber">
           {link}
+        </ErrorNotice>
+      ) : (
+        <p className="break-all text-xs text-amber">
+          Your deposit is recorded on Stellar. One more step adds your loan. {link}
         </p>
       );
     case "failed":
       return (
-        <p className="break-all text-xs text-crit">
-          {humanizeError(flow.error, { flow: "deposit" })} {link}
-        </p>
+        <ErrorNotice error={flow.error} context={{ flow: "deposit" }} hash={hash}>
+          {link}
+        </ErrorNotice>
       );
     default:
       return null;
@@ -186,6 +188,7 @@ export function DepositFlow() {
   const [txid, setTxid] = useState("");
   const [btcAmount, setBtcAmount] = useState("");
   const [inputError, setInputError] = useState<string | null>(null);
+  const [unlockError, setUnlockError] = useState<unknown>(null);
   const [addressCopied, setAddressCopied] = useState(false);
   const [flow, emit] = useFlow();
   const [drivenElsewhere, setDrivenElsewhere] = useState(false);
@@ -602,7 +605,10 @@ export function DepositFlow() {
                       </p>
                       <button
                         type="button"
-                        onClick={() => unlock().catch(() => {})}
+                        onClick={() => {
+                          setUnlockError(null);
+                          unlock().catch((e: unknown) => setUnlockError(e));
+                        }}
                         className="rounded-full border border-line-2 px-3 py-1 text-xs font-semibold text-amber transition-colors hover:border-amber"
                       >
                         Load my keys
@@ -615,6 +621,7 @@ export function DepositFlow() {
                       </p>
                     )
                   )}
+                  {!unlocked && unlockError ? <ErrorNotice error={unlockError} /> : null}
 
                   {needsFinish ? (
                     <button

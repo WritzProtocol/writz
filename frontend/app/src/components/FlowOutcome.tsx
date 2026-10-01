@@ -1,6 +1,13 @@
-import { humanizeError, type ErrorContext } from "@/lib/errors";
+import type { ErrorContext } from "@/lib/errors";
 import type { FlowState } from "@/lib/flow/engine";
+import { ErrorNotice } from "./ErrorNotice";
 import { TxLink } from "./TxLink";
+
+/** The neutral line for a declined signature, naming the wallet that asked. */
+export function declinedLine(flow: Extract<FlowState, { phase: "signature_cancelled" }>): string {
+  const wallet = flow.walletName ?? (flow.wallet === "bitcoin" ? "Xverse" : "your wallet");
+  return `You declined in ${wallet}. Nothing was sent.`;
+}
 
 /** Button label while a flow runs, by lifecycle phase. */
 export function workingLabel(flow: FlowState, idle: string): string {
@@ -43,7 +50,7 @@ export function FlowOutcome({
         </p>
       );
     case "signature_cancelled":
-      return <p className="text-xs text-body">You declined in your wallet. Nothing was sent.</p>;
+      return <p className="text-xs text-body">{declinedLine(flow)}</p>;
     case "timed_out":
       return (
         <p className="break-all text-xs text-amber">
@@ -53,9 +60,9 @@ export function FlowOutcome({
       );
     case "failed":
       return (
-        <p className="break-all text-xs text-crit">
-          {humanizeError(flow.error, errorContext)} {link}
-        </p>
+        <ErrorNotice error={flow.error} context={errorContext} hash={hash}>
+          {link}
+        </ErrorNotice>
       );
     default:
       return null;
