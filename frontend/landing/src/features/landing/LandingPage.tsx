@@ -1,39 +1,28 @@
-"use client";
+import { Navbar } from "./sections/Navbar";
+import { Hero } from "./sections/Hero";
+import { HowItWorks } from "./sections/HowItWorks";
+import { Products } from "./sections/Products";
+import { Evidence } from "./sections/Evidence";
+import { ClosingCard, Footer } from "./sections/Closing";
+import { ScrollReveal } from "./sections/ScrollReveal";
+import "./landing.css";
 
-import dynamic from "next/dynamic";
-import { Navbar } from "./components/Navbar";
-import { Hero } from "./components/Hero";
-import { LogoMarquee } from "./components/LogoMarquee";
-import { workSans } from "./fonts";
-import "@/shared/design-system/landing-tokens.css";
-import "@/shared/design-system/landing-animations.css";
-
-// Below-the-fold sections are code-split: the user never needs their JS
-// before they've scrolled past the hero/marquee, and each one carries its
-// own motion/SVG/interval-driven widgets.
-const BentoGrid = dynamic(() => import("./components/BentoGrid").then((m) => m.BentoGrid));
-const Products = dynamic(() => import("./components/Products").then((m) => m.Products));
-const FinalCTA = dynamic(() => import("./components/FinalCTA").then((m) => m.FinalCTA));
-const Footer = dynamic(() => import("./components/Footer").then((m) => m.Footer));
-
-/**
- * Orchestrator only: composes the marketing sections. No business logic
- * lives here. The palette is fixed (Gold & Black - see landing-tokens.css)
- * so there's no runtime theme switcher.
- */
 export function LandingPage() {
   return (
-    <div className={`landing-root ${workSans.variable}`}>
-      <div className="noise-overlay" aria-hidden="true" />
-      <main className="min-h-screen" style={{ background: "var(--bg)" }}>
-        <Navbar />
+    <div className="landing">
+      <a className="skip" href="#main">
+        Skip to content
+      </a>
+      <Navbar />
+      <main id="main">
         <Hero />
-        <LogoMarquee />
-        <BentoGrid />
+        <HowItWorks />
         <Products />
-        <FinalCTA />
-        <Footer />
+        <Evidence />
+        <ClosingCard />
       </main>
+      <Footer />
+      <ScrollReveal />
     </div>
   );
 }

@@ -1,23 +1,16 @@
 import type { Metadata } from "next";
 import Script from "next/script";
-import { Fraunces, Geist_Mono } from "next/font/google";
+import { Geist_Mono } from "next/font/google";
 import { env } from "@/config/env";
+import { workSans } from "@/features/landing/fonts";
 import "./globals.css";
 
-// Display - luxury editorial serif (used with restraint for wordmark + headings).
-const display = Fraunces({
-  variable: "--ff-display",
-  subsets: ["latin"],
-  style: ["normal", "italic"],
-});
-
-// Data - monospace with tabular figures for on-chain values, hashes, amounts.
 const mono = Geist_Mono({
   variable: "--ff-mono",
   subsets: ["latin"],
 });
 
-const TITLE = "Writz - Bitcoin was built to be yours";
+const TITLE = "Writz - Lock Bitcoin. Borrow dollars. Tell no one.";
 
 // The published social bio, plus the network status any description of the
 // product has to carry.
@@ -31,11 +24,9 @@ export const metadata: Metadata = {
   applicationName: "Writz",
   alternates: { canonical: "/" },
   icons: {
-    // SVG first; the PNGs are the fallback for anything that will not take it.
     icon: [
-      { url: "/brand/writz-icon.svg", type: "image/svg+xml" },
-      { url: "/favicon.ico", sizes: "16x16 32x32 48x48" },
-      { url: "/icon-192.png", type: "image/png", sizes: "192x192" },
+      { url: "/brand/writz-icon.svg?v=3", type: "image/svg+xml", sizes: "any" },
+      { url: "/favicon.ico?v=3", sizes: "32x32" },
     ],
     apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
   },
@@ -48,7 +39,7 @@ export const metadata: Metadata = {
     url: "/",
     images: [
       {
-        url: "/og.png",
+        url: "/og.png?v=2",
         width: 1200,
         height: 630,
         alt: "Writz. Lock real BTC. Borrow USDC on Stellar. No bridge, no custodian, no wrapped token.",
@@ -60,7 +51,7 @@ export const metadata: Metadata = {
     site: "@WritzProtocol",
     title: TITLE,
     description: DESCRIPTION,
-    images: ["/og.png"],
+    images: ["/og.png?v=2"],
   },
 };
 
@@ -73,9 +64,10 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${display.variable} ${mono.variable} h-full antialiased`}
+      data-scroll-behavior="smooth"
+      className={`${workSans.variable} ${mono.variable}`}
     >
-      <body className="min-h-full">
+      <body>
         {env.umamiWebsiteId && (
           <Script
             src="https://cloud.umami.is/script.js"
