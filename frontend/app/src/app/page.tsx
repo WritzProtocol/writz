@@ -1,8 +1,4 @@
-import {
-  getMerkleRoot,
-  getPoolState,
-  type PoolState,
-} from "@/lib/contracts/commitmentTree";
+import { getPoolState, type PoolState } from "@/lib/contracts/commitmentTree";
 import { AppTabs } from "@/components/AppTabs";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { humanizeError } from "@/lib/errors";
@@ -20,17 +16,12 @@ function formatStroops(value: bigint): string {
   return `${negative ? "-" : ""}${whole}${frac ? `.${frac}` : ""}`;
 }
 
-function truncate(hex: string): string {
-  return hex.length > 18 ? `${hex.slice(0, 10)}…${hex.slice(-6)}` : hex;
-}
-
 export default async function AppDashboardPage() {
-  let merkleRoot: string | null = null;
   let pool: PoolState | null = null;
   let error: string | null = null;
 
   try {
-    [merkleRoot, pool] = await Promise.all([getMerkleRoot(), getPoolState()]);
+    pool = await getPoolState();
   } catch (e) {
     error = humanizeError(e);
   }
@@ -47,15 +38,15 @@ export default async function AppDashboardPage() {
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2 font-mono text-xs text-amber tracking-wider uppercase">
             <span className="h-1.5 w-1.5 rounded-full bg-amber" />
-            <span>ZK-Private Bitcoin Lending on Stellar</span>
+            <span>Bitcoin-backed lending on Stellar testnet</span>
           </div>
           <h1 className="font-serif text-3xl sm:text-4xl text-hi leading-tight">
-            Bitcoin was built to be yours.{" "}
-            <span className="italic text-amber">Your loans should be too.</span>
+            Lock Bitcoin.{" "}
+            <span className="italic text-amber">Borrow dollars.</span>
           </h1>
           <p className="text-sm text-body max-w-2xl leading-relaxed">
-            Live on-chain state from the <span className="font-mono text-head">commitment-tree</span> contract.
-            Lock BTC collateral, borrow USDC anonymously, and maintain unlinked positions.
+            Lock BTC on Bitcoin and borrow USDC on Stellar. Repay and your BTC
+            comes back. No bridge, no custodian, no wrapped token. Test funds only.
           </p>
         </div>
 
@@ -66,13 +57,7 @@ export default async function AppDashboardPage() {
             <p className="mt-1 font-mono text-xs break-all">{error}</p>
           </div>
         ) : (
-          <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Stat
-              label="Merkle root"
-              value={merkleRoot ? truncate(merkleRoot) : "-"}
-              title={merkleRoot ?? undefined}
-              sub="empty-tree root"
-            />
+          <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Stat
               label="Available liquidity · USDC"
               value={pool ? formatStroops(pool.available) : "-"}
@@ -102,24 +87,17 @@ function Stat({
   label,
   value,
   sub,
-  title,
 }: {
   label: string;
   value: string;
   sub?: string;
-  title?: string;
 }) {
   return (
     <div className="rounded-xl border border-line bg-surface p-5 transition-colors hover:border-line-2">
       <p className="text-xs font-semibold uppercase tracking-wider text-muted font-mono">
         {label}
       </p>
-      <p
-        className="mt-3 font-mono text-2xl tabular-nums text-hi"
-        title={title}
-      >
-        {value}
-      </p>
+      <p className="mt-3 font-mono text-2xl tabular-nums text-hi">{value}</p>
       {sub ? <p className="mt-1 text-xs text-muted font-mono">{sub}</p> : null}
     </div>
   );
