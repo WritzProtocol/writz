@@ -170,8 +170,8 @@ export function LenderPanel() {
   return (
     <section className="flex flex-col gap-4">
       <div className="flex items-baseline justify-between gap-4">
-        <h2 className="font-serif text-2xl text-head">Lend liquidity</h2>
-        <span className="text-xs text-muted">earn from borrower demand</span>
+        <h2 className="font-serif text-2xl text-head">Lend USDC</h2>
+        <span className="text-xs text-muted">No interest yet on Stellar testnet</span>
       </div>
 
       {!address ? (
@@ -237,11 +237,14 @@ export function LenderPanel() {
                 {withdrawStatus === "working" ? "Withdrawing…" : "Withdraw"}
               </button>
             </div>
-            <p className="text-xs text-muted">
-              {maxWithdraw !== null
-                ? `Withdrawable now: ${fmtUsdc(maxWithdraw)} USDC (your balance, capped by available liquidity)`
-                : "Supply USDC to start earning from borrowers."}
-            </p>
+            {balance === 0n ? (
+              <p className="text-xs text-muted">You haven&apos;t supplied any USDC.</p>
+            ) : maxWithdraw !== null ? (
+              <p className="text-xs text-muted">
+                You can withdraw {fmtUsdc(maxWithdraw)} USDC now. If borrowers are using the
+                pool, this can be less than you supplied.
+              </p>
+            ) : null}
             {withdrawMessage ? (
               <p className={`break-all text-xs ${withdrawStatus === "error" ? "text-crit" : "text-ok"}`}>
                 {withdrawMessage}{" "}
@@ -253,8 +256,9 @@ export function LenderPanel() {
       )}
 
       <p className="text-xs text-muted">
-        No yield figure is shown - interest accrual is not yet wired into this
-        pool. You supply and withdraw at par.
+        The pool pays no interest yet on Stellar testnet, so you withdraw exactly
+        what you supplied. Suppliers carry Bitcoin credit risk. When borrowers are
+        using the pool, you may have to wait to withdraw.
       </p>
     </section>
   );

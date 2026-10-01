@@ -16,6 +16,7 @@ import { stellarTxUrl, btcTxUrl } from "@/lib/explorer";
 import { TxLink } from "./TxLink";
 import { config } from "@/config";
 import { humanizeError } from "@/lib/errors";
+import { GITHUB_ISSUES_URL, LIQUIDATION_DOCS_URL, RECLAIM_DOCS_URL } from "@/lib/links";
 import {
   positionKeys,
   subscribePositions,
@@ -41,31 +42,17 @@ function fmtBtc(sats: bigint): string {
   return `${whole}.${frac}`;
 }
 
+const STATUS_LABEL: Record<Position["status"], string> = {
+  pending: "Pending",
+  active: "Active",
+  closed: "Repaid, BTC still locked",
+  liquidated: "Liquidated",
+};
+
 function healthBp(collateralSats: bigint, debtStroops: bigint): bigint | null {
   if (debtStroops <= 0n) return null;
   const collateralStroops = (collateralSats * BTC_PRICE_STROOPS_PER_BTC) / SAT;
   return (collateralStroops * 10_000n) / debtStroops;
-}
-
-function Private({ children }: { children: React.ReactNode }) {
-  const [revealed, setRevealed] = useState(false);
-  return (
-    <span
-      role="button"
-      tabIndex={0}
-      title={revealed ? "Hide" : "Reveal"}
-      className={`private${revealed ? " revealed" : ""}`}
-      onClick={() => setRevealed((r) => !r)}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          setRevealed((r) => !r);
-        }
-      }}
-    >
-      {children}
-    </span>
-  );
 }
 
 export function PositionDashboard() {
@@ -137,7 +124,7 @@ export function PositionDashboard() {
     <section className="flex flex-col gap-4">
       <div className="flex items-baseline justify-between gap-4">
         <h2 className="font-serif text-2xl text-head">Your positions</h2>
-        <span className="text-xs text-muted">private · keys derived from your wallet</span>
+        <span className="text-xs text-muted">Loaded from your Stellar wallet</span>
       </div>
 
       <EnableTrustlineButton asset={POOL_ASSET} reason="to receive borrowed funds" />
@@ -166,7 +153,7 @@ export function PositionDashboard() {
         <div className="flex flex-col gap-4">
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-surface px-4 py-3">
             <span className="text-xs text-muted">
-              Restore positions on this device - keys come from your wallet, no backup needed.
+              Missing a loan? Load it again from your wallet.
             </span>
             <div className="flex items-center gap-3">
               {recoverMsg ? <span className="text-xs text-ok">{recoverMsg}</span> : null}
@@ -210,8 +197,9 @@ export function PositionDashboard() {
       )}
 
       <p className="text-xs text-muted">
-        Amounts are private - they never leave this device. Health uses the fixed
-        testnet BTC price ($60,000). Click a value to reveal it.
+        Borrow and repay amounts are public on Stellar testnet. Collateral ratio is
+        your BTC&apos;s value divided by what you owe, at a fixed test price of
+        $60,000 per BTC. Below 120%, a loan can be liquidated.
       </p>
     </section>
   );
@@ -449,46 +437,39 @@ function PositionCard({ position }: { position: Position }) {
           {position.commitment.slice(0, 8)}…{position.commitment.slice(-6)}
         </span>
         <span
-          className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold capitalize ${
+          className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold ${
             position.status === "liquidated"
               ? "border-crit/40 bg-crit/10 text-crit"
               : "border-line-2 text-body"
           }`}
         >
-          {position.status}
+          {STATUS_LABEL[position.status]}
         </span>
       </div>
 
       {position.status === "liquidated" ? (
         <div className="mb-4 rounded-lg border border-crit/30 bg-crit/5 p-3">
-          <p className="text-xs font-semibold text-crit">This position was liquidated.</p>
+          <p className="text-xs font-semibold text-crit">This loan was liquidated.</p>
           <p className="mt-1 text-xs text-body">
-            Your health factor dropped below the 120% liquidation threshold, and a
-            keeper repaid your outstanding USDC debt in exchange for your BTC
-            collateral (at the standard 10% liquidation discount). Your debt on
-            this position is now zero - there is nothing left to repay - but the
-            BTC collateral is gone; it was not partially returned. This is the
-            protocol working as designed, not an error.{" "}
+            Its collateral ratio fell below 120%, so a liquidator repaid your USDC
+            debt and took the BTC collateral. You owe nothing on this loan, and the
+            BTC is not returned.{" "}
             <a
-              href="/products/privatelend#liquidation"
+              href={LIQUIDATION_DOCS_URL}
+              target="_blank"
+              rel="noopener noreferrer"
               className="underline decoration-crit/40 underline-offset-2 hover:text-crit"
             >
               Read how liquidation works
-            </a>{" "}
-            or lower your borrow amount on future deposits to keep more buffer
-            above the threshold.
+            </a>
           </p>
         </div>
       ) : null}
 
       <div className="grid grid-cols-2 gap-5 sm:grid-cols-3">
-        <Metric label="Collateral · BTC">
-          <Private>{fmtBtc(collateralSats)}</Private>
-        </Metric>
-        <Metric label="Debt · USDC">
-          <Private>{fmtUsdc(debtStroops)}</Private>
-        </Metric>
-        <Metric label="Health factor">
+        <Metric label="Collateral · BTC">{fmtBtc(collateralSats)}</Metric>
+        <Metric label="You owe · USDC">{fmtUsdc(debtStroops)}</Metric>
+        <Metric label="Collateral ratio">
           <span className={health.tone}>{health.label}</span>
         </Metric>
       </div>
@@ -609,20 +590,32 @@ function PositionCard({ position }: { position: Position }) {
 
       {position.status === "closed" && !position.btcPubkey ? (
         <div className="mt-4 rounded-lg border border-line-2 bg-surface-2 p-3">
-          <p className="text-xs font-semibold text-head">Your BTC release needs a manual check</p>
+          <p className="text-xs font-semibold text-head">Release needs your deposit details</p>
           <p className="mt-1 text-xs text-muted">
-            Your debt is repaid, but the Bitcoin details needed to release your
-            collateral (your Bitcoin pubkey and deposit info) aren&apos;t available
-            on this device - this can happen after recovering a position on a
-            new device. Contact support with your original deposit txid so this
-            can be reconstructed, or use{" "}
+            This device doesn&apos;t have the Bitcoin details for this loan, which
+            happens after loading it on a new device. Open the device you deposited
+            from, or{" "}
             <a
-              href="/how-it-works/manual-emergency-recovery"
+              href={GITHUB_ISSUES_URL}
+              target="_blank"
+              rel="noopener noreferrer"
               className="underline decoration-line-2 underline-offset-2 hover:text-head"
             >
-              manual emergency recovery
+              report it on GitHub
             </a>{" "}
-            once the timelock expires.
+            with your deposit&apos;s Bitcoin transaction ID. After Bitcoin block{" "}
+            <span className="font-mono">
+              {(position.timelockHeight ?? config.bitcoin.timelockHeight).toLocaleString("en-US")}
+            </span>{" "}
+            you can also reclaim the BTC alone.{" "}
+            <a
+              href={RECLAIM_DOCS_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline decoration-line-2 underline-offset-2 hover:text-head"
+            >
+              How to reclaim BTC alone
+            </a>
           </p>
         </div>
       ) : null}

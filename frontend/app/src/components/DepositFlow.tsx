@@ -314,11 +314,11 @@ export function DepositFlow() {
                   {!isMainnet && (
                     <div className="mt-3 rounded-lg border border-line-2 bg-surface-2 p-3">
                       <p className="text-xs font-semibold text-head">
-                        Need {config.bitcoin.network} BTC?
+                        Need test BTC?
                       </p>
                       <p className="mt-1 text-xs text-muted">
-                        Copy the address above and fund it from a public faucet, then
-                        come back and send from your wallet.
+                        Get free {config.bitcoin.network} BTC from a faucet into your
+                        Xverse wallet, then come back and select Send BTC.
                       </p>
                       <div className="mt-2 flex flex-wrap gap-3">
                         <a
@@ -473,8 +473,9 @@ export function DepositFlow() {
       </div>
 
       <p className="text-xs text-muted">
-        Your position keys are derived from your wallet signature - no secret to
-        back up. Recover positions on any device by unlocking with the same wallet.
+        Your positions come from your Stellar wallet, so you can load them on any
+        device. To release your BTC from another device, you also need this
+        deposit&apos;s Bitcoin transaction ID. Keep a copy.
       </p>
     </section>
   );
