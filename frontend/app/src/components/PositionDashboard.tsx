@@ -467,8 +467,7 @@ function PositionCard({ position }: { position: Position }) {
           <p className="text-xs font-semibold text-crit">This loan was liquidated.</p>
           <p className="mt-1 text-xs text-body">
             Its collateral ratio fell below 120%, so a liquidator repaid your USDC
-            debt and took the BTC collateral. You owe nothing on this loan, and the
-            BTC is not returned.{" "}
+            debt and the loan is closed. You owe nothing on it.{" "}
             <a
               href={LIQUIDATION_DOCS_URL}
               target="_blank"
@@ -501,7 +500,7 @@ function PositionCard({ position }: { position: Position }) {
 
       <div className="grid grid-cols-2 gap-5 sm:grid-cols-3">
         <Metric label="Collateral · BTC">
-          {liquidated ? "0 (liquidated)" : fmtBtc(collateralSats)}
+          {fmtBtc(collateralSats)}
         </Metric>
         <Metric label="You owe · USDC">{fmtUsdc(debtStroops)}</Metric>
         <Metric label="Collateral ratio">

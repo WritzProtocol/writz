@@ -27,12 +27,12 @@ const mono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const TITLE = "Writz - Bitcoin was built to be yours";
+const TITLE = "Writz - Lock Bitcoin. Borrow dollars.";
 
 // The published social bio, plus the network status any description of the
 // product has to carry.
 const DESCRIPTION =
-  "Lock real BTC. Borrow USDC on Stellar. No bridge, no custodian, no wrapped token. Live on testnet.";
+  "Lock real BTC. Borrow USDC on Stellar. No bridge, no custodian, no wrapped token. Live on Stellar testnet.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(env.siteUrl),
