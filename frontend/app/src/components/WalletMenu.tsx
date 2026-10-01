@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useWallet } from "@/lib/wallet/WalletProvider";
 import { useBitcoinWallet } from "@/lib/bitcoin/useBitcoinWallet";
 import { useAnyFlowBusy } from "@/lib/activity";
-import { config } from "@/config";
+import { config, BTC_NETWORK_LABEL } from "@/config";
 import { GITHUB_ISSUES_URL, GITHUB_SECURITY_URL } from "@/lib/links";
 
 type Chain = "stellar" | "bitcoin";
@@ -245,7 +245,7 @@ export function WalletMenu() {
                 <span className="text-xs font-semibold text-head">
                   {btc.connecting ? "Connecting…" : "Connect Xverse"}
                 </span>
-                <span className="text-[10px] text-muted">Bitcoin {config.bitcoin.network} wallet</span>
+                <span className="text-[10px] text-muted">{BTC_NETWORK_LABEL} wallet</span>
               </button>
               {btc.error ? <p className="px-4 pb-2 text-[11px] text-crit">{btc.error}</p> : null}
             </>

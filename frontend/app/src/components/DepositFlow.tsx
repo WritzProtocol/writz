@@ -15,7 +15,7 @@ import {
 import { positionsSnapshot, type Position } from "@/lib/position";
 import { stellarTxUrl } from "@/lib/explorer";
 import { TxLink } from "./TxLink";
-import { config } from "@/config";
+import { config, BTC_NETWORK_LABEL } from "@/config";
 import { humanizeError } from "@/lib/errors";
 import { hashOf, isInFlight, type FlowState } from "@/lib/flow/engine";
 import { useFlow, useTxLockState } from "@/lib/flow/useFlow";
@@ -407,7 +407,7 @@ export function DepositFlow() {
     <section className="flex flex-col gap-4">
       <div className="flex items-baseline justify-between gap-4">
         <h2 className="font-serif text-2xl text-head">Deposit BTC</h2>
-        <span className="text-xs text-muted">{config.bitcoin.network} · P2WSH</span>
+        <span className="text-xs text-muted">{BTC_NETWORK_LABEL} · P2WSH</span>
       </div>
 
       <div className="rounded-xl border border-line bg-surface p-5">
@@ -463,7 +463,7 @@ export function DepositFlow() {
                         Need test BTC?
                       </p>
                       <p className="mt-1 text-xs text-muted">
-                        Get free {config.bitcoin.network} BTC from a faucet into your
+                        Get free test BTC on {BTC_NETWORK_LABEL} from a faucet into your
                         Xverse wallet, then come back and select Send BTC.
                       </p>
                       <div className="mt-2 flex flex-wrap gap-3">

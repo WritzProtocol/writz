@@ -12,6 +12,15 @@ import { assertDeployTarget, TESTNET_PASSPHRASE } from "@/config/target";
 
 const TESTNET_RPC = "https://soroban-testnet.stellar.org";
 
+// "testnet" is a legacy alias for signet, as in the relayer: the testnet deploy
+// and the SPV checkpoint both run on Bitcoin Signet.
+const BTC_NETWORK = ((n) => (n === "testnet" ? "signet" : n))(
+  process.env.NEXT_PUBLIC_BITCOIN_NETWORK ?? "signet",
+);
+
+/** How the Bitcoin network is named in the UI. */
+export const BTC_NETWORK_LABEL = BTC_NETWORK === "mainnet" ? "Bitcoin" : `Bitcoin ${BTC_NETWORK}`;
+
 /**
  * Which deployment this build is for, validated against everything below.
  *
@@ -98,7 +107,7 @@ export const config = {
     faucetUrl: process.env.NEXT_PUBLIC_EARN_FAUCET_URL ?? "",
   },
   bitcoin: {
-    network: process.env.NEXT_PUBLIC_BITCOIN_NETWORK ?? "testnet",
+    network: BTC_NETWORK,
     protocolPubkey: process.env.NEXT_PUBLIC_PROTOCOL_BTC_PUBKEY ?? "",
     timelockHeight: parseInt(
       process.env.NEXT_PUBLIC_BITCOIN_TIMELOCK_HEIGHT ?? "3000000",
@@ -106,7 +115,9 @@ export const config = {
     ),
     apiUrl:
       process.env.NEXT_PUBLIC_BITCOIN_API_URL ??
-      "https://blockstream.info/testnet/api",
+      (BTC_NETWORK === "mainnet"
+        ? "https://blockstream.info/api"
+        : `https://blockstream.info/${BTC_NETWORK}/api`),
     /**
      * Confirmations required before a deposit's SPV proof is accepted. Must
      * match the contract's own `min_confirmations` for this deployment: 6 on

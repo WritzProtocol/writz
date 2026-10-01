@@ -20,7 +20,7 @@ import { POOL_ASSET } from "@/lib/flows/trustline";
 import { proveZeroDebt, type ZeroDebtInput } from "@/lib/prover";
 import { stellarTxUrl, btcTxUrl } from "@/lib/explorer";
 import { TxLink } from "./TxLink";
-import { config } from "@/config";
+import { config, BTC_NETWORK_LABEL } from "@/config";
 import { humanizeError } from "@/lib/errors";
 import { GITHUB_ISSUES_URL, LIQUIDATION_DOCS_URL, RECLAIM_DOCS_URL } from "@/lib/links";
 import {
@@ -670,8 +670,8 @@ function PositionCard({ position }: { position: Position }) {
                 </p>
               ) : wrongBtcNetwork ? (
                 <p className="text-xs text-crit">
-                  This address isn&apos;t on Bitcoin {config.bitcoin.network}. Switch Xverse to{" "}
-                  {config.bitcoin.network} and connect again.
+                  This address isn&apos;t on {BTC_NETWORK_LABEL}. Switch Xverse to{" "}
+                  {BTC_NETWORK_LABEL} and connect again.
                 </p>
               ) : null}
               {isInFlight(releaseFlow) && (
