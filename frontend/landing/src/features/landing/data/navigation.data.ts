@@ -1,10 +1,9 @@
 import type { NavItem } from "../types/navigation.types";
-import { APP_ROUTE, DOCS_URL } from "../constants";
+import { DOCS_URL } from "../constants";
 
 export const navItems: NavItem[] = [
-  { label: "Products", href: "#products" },
-  { label: "How it works", href: "#features" },
-  { label: "Metrics", href: `${APP_ROUTE}/metrics` },
-  { label: "Docs", href: DOCS_URL },
-  { label: "Security", href: "#" },
+  { label: "How it works", href: "/#how" },
+  { label: "Earn", href: "/#earn" },
+  { label: "Borrow", href: "/#borrow" },
+  { label: "Docs", href: DOCS_URL, keepOnMobile: true },
 ];
