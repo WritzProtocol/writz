@@ -41,11 +41,11 @@ export const metadata: Metadata = {
   applicationName: "Writz",
   alternates: { canonical: "/" },
   icons: {
-    // SVG first; the PNGs are the fallback for anything that will not take it.
+    // Chrome takes the ICO over the SVG when the ICO declares more sizes; the
+    // SVG switches colour with the browser theme, the ICO is Safari's fallback.
     icon: [
-      { url: "/brand/writz-icon.svg", type: "image/svg+xml" },
-      { url: "/favicon.ico", sizes: "16x16 32x32 48x48" },
-      { url: "/icon-192.png", type: "image/png", sizes: "192x192" },
+      { url: "/brand/writz-icon.svg?v=3", type: "image/svg+xml", sizes: "any" },
+      { url: "/favicon.ico?v=3", sizes: "32x32" },
     ],
     apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
   },
@@ -59,7 +59,7 @@ export const metadata: Metadata = {
     url: "/",
     images: [
       {
-        url: "/og.png",
+        url: "/og.png?v=2",
         width: 1200,
         height: 630,
         alt: "Writz. Lock real BTC. Borrow USDC on Stellar. No bridge, no custodian, no wrapped token.",
@@ -71,7 +71,7 @@ export const metadata: Metadata = {
     site: "@WritzProtocol",
     title: TITLE,
     description: DESCRIPTION,
-    images: ["/og.png"],
+    images: ["/og.png?v=2"],
   },
 };
 
