@@ -92,9 +92,15 @@ describe("contract codes route through the deployed variant", () => {
   });
 
   it("falls back for a code the deployed table doesn't have, keeping the code for support", () => {
-    const e = describeError(code(16), { flow: "borrow" });
+    const e = describeError(code(99), { flow: "borrow" });
     expect(e.headline).toBe("Something went wrong and the action may not have gone through.");
-    expect(e.contract?.code).toBe(16);
+    expect(e.contract?.code).toBe(99);
+  });
+
+  it("names #16 Paused even though the generated binding stops at 15", () => {
+    const e = describeError(code(16), { flow: "borrow" });
+    expect(e.headline).toBe("Writz is paused for maintenance.");
+    expect(e.contract?.variant).toBe("Paused");
   });
 
   it("does not read vault failures with the commitment-tree table", () => {

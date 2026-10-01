@@ -1,6 +1,6 @@
 /**
  * Maps raw errors (contract failures, relayer HTTP errors, wallet errors,
- * thrown strings) to a message with three parts (ux-spec 12.3, 13.6): what
+ * thrown strings) to a message with three parts: what
  * happened, whether money moved, and what to do next. The raw text always
  * travels with it for the "Technical details" disclosure, so nothing is hidden
  * from a bug report.
@@ -427,6 +427,15 @@ const RULES: Rule[] = [
       headline: "That transaction ID doesn't match the Bitcoin transaction that was verified.",
       safety: "Nothing changed.",
       action: "Check the ID for this deposit and try again.",
+    }),
+  },
+  {
+    match: /^Paused$/,
+    contract: "commitment-tree",
+    build: () => ({
+      headline: "Writz is paused for maintenance.",
+      safety: "Nothing moved. Your BTC stays in its lock.",
+      action: "Try again later.",
     }),
   },
   {

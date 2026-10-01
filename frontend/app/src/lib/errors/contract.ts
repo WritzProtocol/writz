@@ -28,8 +28,11 @@ export const BitcoinSpvError: ErrorTable = {
   14: { message: "DifficultyBelowCheckpointFloor" },
 };
 
+// The deployed commitment tree also has #16 Paused; the generated binding stops at 15.
+const DeployedCommitmentTreeError: ErrorTable = { ...CommitmentTreeError, 16: { message: "Paused" } };
+
 const TABLES: Record<ContractName, ErrorTable> = {
-  "commitment-tree": CommitmentTreeError,
+  "commitment-tree": DeployedCommitmentTreeError,
   "bitcoin-spv": BitcoinSpvError,
 };
 
