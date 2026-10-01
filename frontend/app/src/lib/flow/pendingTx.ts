@@ -5,7 +5,7 @@ import { createJsonStore, type JsonStore } from "./storage";
 /**
  * Stellar transactions written before submit and reconciled on load with
  * `getTransaction`, so a reload mid-confirmation never leaves local state
- * behind the chain (audit E7).
+ * behind the chain.
  */
 export type PendingTxKind =
   | "deposit"
