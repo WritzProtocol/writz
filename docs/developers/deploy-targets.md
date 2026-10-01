@@ -203,6 +203,24 @@ Mainnet also requires things testnet does not have yet:
 
 - A DeFindex vault deployed on the public network, with roles split across dedicated keys rather than a single deployer (see the note at the end of [`defindex-vault-testnet.md`](https://github.com/WritzProtocol/writz/blob/main/contracts/deployments/defindex-vault-testnet.md)).
 - Co-signing through AWS KMS. The WIF `PROTOCOL_SIGNING_KEY` fallback is refused on mainnet in two places: at boot by the target check, and at signing time by `resolveProtocolSigner` (see [security model](/security/security-model)).
+- A log alert on the relayer's vault endpoints (see below) before real funds flow.
+
+---
+
+## Vault endpoint rate limits and monitoring
+
+The relayer's `/defindex/*` routes are rate limited per client IP (first `X-Forwarded-For` hop), with the same in-memory, per-process limiter shape as the frontend's `/api/cosign`:
+
+| Routes | Limit | Why |
+|---|---|---|
+| `GET /defindex/apy`, `GET /defindex/position` | 60 / minute | Page loads and refreshes, with headroom for several tabs. |
+| `POST /defindex/deposit`, `POST /defindex/withdraw` | 10 / minute | One call per user action; the budget covers retries, not normal use. |
+
+Over-limit requests get `429` with `Retry-After` and never reach DeFindex. The counters reset when the service restarts and are not shared across instances, which is fine while the relayer runs as one Railway service.
+
+Every vault request logs one JSON line (`{"evt":"defindex_request","route":...,"status":...,"durationMs":...}`), and `/health` reports per-route totals under `defindex` - requests, client and server errors, rate-limited count, average and max latency, and whether the route is currently `failing`.
+
+When one route returns five server errors in a row, the relayer logs a single line starting with `[ALERT] defindex <route>`, and `[RECOVERED] defindex <route>` on the next success. Wherever each target's relayer logs end up (Railway's log view or an external log drain), set an alert on lines matching `[ALERT] defindex` that notifies the operator channel. That wiring is a dashboard action and is not delivered by the code.
 
 ---
 
