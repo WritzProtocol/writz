@@ -64,6 +64,23 @@ transpiles each binding from TypeScript source (`transpilePackages` in
 build step or committed `dist/` is needed. App helpers that wrap a binding live
 in `src/lib/contracts/`.
 
+## UI mock harness (dev only)
+
+`src/lib/mock` holds fixtures for every state in the redesign spec's state
+index (wallets, positions, chain reads, relayer index, Earn, Lend, Protocol).
+It is off unless the build sets `NEXT_PUBLIC_UI_MOCK=1`, never runs on a
+`mainnet` target, and needs a known scenario in the URL:
+
+```bash
+NEXT_PUBLIC_UI_MOCK=1 bun run dev   # then open e.g. /?scenario=H11
+```
+
+Scenario IDs: `G1`-`G7`, `H1`-`H21`, `B1`-`B37`, `L1`-`L25`, `E1`-`E11`,
+`N1`-`N19`, `P1`-`P5`, `R1`-`R4`, `tx.<lifecycle>` and `status.<kind>`; the
+list lives in `src/lib/mock/scenarios.ts`. With a scenario selected,
+`StatusProvider` (`src/lib/status`) answers from its fixtures instead of the
+network.
+
 ## Structure
 
 ```
