@@ -109,14 +109,13 @@ export const config = {
       "https://blockstream.info/testnet/api",
     /**
      * Confirmations required before a deposit's SPV proof is accepted. Must
-     * match the contract's own `min_confirmations` expectation for this
-     * deployment (6 on mainnet per docs/products/privatelend.md; testnet/signet
-     * deployments commonly run with 1 to skip the wait - see
-     * contracts/deployments/testnet.md). Drives the deposit progress bar, so
-     * a mismatch here just shows the wrong denominator, not a functional bug.
+     * match the contract's own `min_confirmations` for this deployment: 6 on
+     * mainnet, 1 on testnet (contracts/deployments/testnet.md). The relayer's
+     * own count wins when it reports one; this is the denominator until then.
      */
     minConfirmations: parseInt(
-      process.env.NEXT_PUBLIC_BITCOIN_MIN_CONFIRMATIONS ?? "6",
+      process.env.NEXT_PUBLIC_BITCOIN_MIN_CONFIRMATIONS ??
+        (deployTarget === "mainnet" ? "6" : "1"),
       10,
     ),
     /** Average Bitcoin block time, minutes - used only for the ETA estimate shown while waiting for confirmations. */
