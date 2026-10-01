@@ -9,7 +9,7 @@ import "./landing.css";
 
 export function LandingPage() {
   return (
-    <div className="landing" id="top">
+    <div className="landing">
       <a className="skip" href="#main">
         Skip to content
       </a>

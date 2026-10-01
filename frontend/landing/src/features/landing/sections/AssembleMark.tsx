@@ -29,7 +29,7 @@ export function AssembleMark({ assembled }: { assembled: boolean }) {
             key={p.delay}
             d={p.d}
             style={{
-              fill: "var(--ink)",
+              fill: "var(--heading)",
               opacity: assembled ? 1 : 0.15,
               transform: assembled
                 ? "none"

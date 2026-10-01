@@ -1,4 +1,5 @@
 import { APP_ROUTE } from "../constants";
+import { BorrowCalculator } from "./BorrowCalculator";
 
 export function Products() {
   return (
@@ -40,11 +41,7 @@ export function Products() {
               Spend anyway.
             </h3>
             <p>Lock your Bitcoin, take dollars against it, and get it back when you repay.</p>
-            <div className="figure">
-              <span className="num">66%</span>
-              <span className="unit">of your BTC value</span>
-            </div>
-            <div className="sub">Variable interest, repay anytime. Below 120% collateral, it can be liquidated.</div>
+            <BorrowCalculator />
             <div className="foot">
               <a className="btn btn-ink" href={APP_ROUTE}>
                 Start borrowing
