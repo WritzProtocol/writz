@@ -736,7 +736,7 @@ function Metric({ label, children }: { label: string; children: React.ReactNode 
 }
 
 function releaseStepLabel(flow: FlowState): string {
-  if (flow.phase === "proving") return "Generating zero-debt proof (this may take ~30 s)…";
+  if (flow.phase === "proving") return "Generating zero-debt proof (this may take about 30 seconds)…";
   if (flow.phase === "awaiting_signature") return "Sign the release transaction with your Bitcoin wallet…";
   if (flow.phase !== "preparing") return "";
   switch (flow.step) {

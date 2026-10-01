@@ -43,10 +43,10 @@ function parseBtcToSats(btcStr: string): bigint {
 
 function etaLabel(remainingConfirmations: number): string {
   const minutes = remainingConfirmations * config.bitcoin.avgBlockMinutes;
-  if (minutes <= 0) return "any moment now";
-  if (minutes < 60) return `~${minutes} min remaining (average)`;
+  if (minutes <= 0) return "Any moment now";
+  if (minutes < 60) return `About ${minutes} minutes left`;
   const hours = Math.round((minutes / 60) * 10) / 10;
-  return `~${hours} hr remaining (average)`;
+  return `About ${hours} ${hours === 1 ? "hour" : "hours"} left`;
 }
 
 /** Bitcoin confirmation progress: a determinate bar with a count and a rough ETA. */
@@ -135,7 +135,7 @@ function DepositProgress({ flow }: { flow: FlowState }) {
     case "ready":
       return <p className="text-xs text-zk">Your BTC is locked. One signature left.</p>;
     case "proving":
-      return <IndeterminateProgress label="Generating ZK proof in your browser… usually ~10 seconds" />;
+      return <IndeterminateProgress label="Generating ZK proof in your browser… usually about 10 seconds" />;
     case "submitted":
       return (
         <div className="flex flex-col gap-1.5">
