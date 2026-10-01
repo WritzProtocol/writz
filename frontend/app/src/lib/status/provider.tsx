@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { config } from "@/config";
 import { activeScenario } from "@/lib/mock/gate";
 import { mockStatusSource } from "@/lib/mock/source";
@@ -35,6 +35,18 @@ export function StatusProvider({
 }
 
 export const DEFAULT_POLL_MS = 30_000;
+
+/** Re-reads one position's status now, for a "Check again" action. */
+export function useRefreshStatus(): (local: LocalInputs | null) => void {
+  const store = useContext(StatusContext);
+  return useCallback(
+    (local) => {
+      const key = local ? statusKey(local) : null;
+      if (store && key && local) void store.refresh(key, local);
+    },
+    [store],
+  );
+}
 
 /** Status of one position or pending deposit, refreshed on mount and every `pollMs`. */
 export function usePositionStatus(local: LocalInputs | null, pollMs = DEFAULT_POLL_MS): DerivedStatus {
