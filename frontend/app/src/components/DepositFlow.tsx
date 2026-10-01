@@ -12,6 +12,7 @@ import { stellarTxUrl } from "@/lib/explorer";
 import { TxLink } from "./TxLink";
 import { config } from "@/config";
 import { humanizeError } from "@/lib/errors";
+import { useReportBusy } from "@/lib/activity";
 
 const MIN_DEPOSIT_BTC = 0.0001;
 const MIN_DEPOSIT_SATS = 10_000n; // 0.0001 BTC
@@ -125,6 +126,7 @@ export function DepositFlow() {
   const [addressCopied, setAddressCopied] = useState(false);
 
   const busy = step !== "idle" && step !== "done" && step !== "error";
+  useReportBusy(busy);
   const isMainnet = config.bitcoin.network === "mainnet";
 
   async function handleCopyAddress() {

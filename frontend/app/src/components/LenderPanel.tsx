@@ -8,6 +8,7 @@ import { getPoolState, getSupplyBalance } from "@/lib/contracts/commitmentTree";
 import { stellarTxUrl } from "@/lib/explorer";
 import { TxLink } from "./TxLink";
 import { humanizeError } from "@/lib/errors";
+import { useReportBusy } from "@/lib/activity";
 
 // USDC uses 7 decimals (stroops).
 const STROOP = 10_000_000n;
@@ -83,6 +84,7 @@ export function LenderPanel() {
 
   // One transaction per account per ledger - lock both actions while in flight.
   const busy = supplyStatus === "working" || withdrawStatus === "working";
+  useReportBusy(busy);
 
   // Withdrawable = min(own balance, pool available liquidity).
   const maxWithdraw =

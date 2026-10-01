@@ -11,8 +11,7 @@ import {
   X,
   ExternalLink,
 } from "lucide-react";
-import { WalletButton } from "@/components/WalletButton";
-import { BitcoinWalletButton } from "@/components/BitcoinWalletButton";
+import { WalletMenu } from "@/components/WalletMenu";
 import { config } from "@/config";
 
 interface Props {
@@ -116,7 +115,12 @@ export function DashboardLayout({ children, breadcrumbs }: Props) {
               {mobileOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
 
-            <nav aria-label="Breadcrumb" className="flex items-center gap-2 font-mono text-xs tracking-wider">
+            <Link href="/" className="sm:hidden" aria-label="Writz home">
+              {/* eslint-disable-next-line @next/next/no-img-element -- matches the sidebar's plain-<img> mark */}
+              <img src="/brand/writz-mark-white.svg" alt="" className="h-6 w-auto" />
+            </Link>
+
+            <nav aria-label="Breadcrumb" className="hidden items-center gap-2 font-mono text-xs tracking-wider sm:flex">
               {breadcrumbs.map((crumb, idx) => (
                 <div key={crumb.label} className="flex items-center gap-2">
                   {idx > 0 && <span className="text-line-2">/</span>}
@@ -153,8 +157,7 @@ export function DashboardLayout({ children, breadcrumbs }: Props) {
                 Bitcoin {config.bitcoin.network}
               </span>
             </div>
-            <BitcoinWalletButton />
-            <WalletButton />
+            <WalletMenu />
           </div>
         </header>
 

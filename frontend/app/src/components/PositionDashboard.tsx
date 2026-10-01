@@ -33,6 +33,7 @@ import {
   EMPTY_POSITIONS,
   type Position,
 } from "@/lib/position";
+import { useReportBusy } from "@/lib/activity";
 
 // USDC = 7 decimals (stroops), BTC = 8 decimals (sats).
 const STROOP = 10_000_000n;
@@ -246,6 +247,7 @@ function PositionCard({ position }: { position: Position }) {
   const [releaseTx, setReleaseTx] = useState<string | null>(null);
 
   const busy = status === "working" || repayStatus === "working" || releaseStatus === "working";
+  useReportBusy(busy);
 
   // Release always goes to the connected Xverse account that made the deposit.
   const releaseRecipient = btcWallet.btcAddress;
