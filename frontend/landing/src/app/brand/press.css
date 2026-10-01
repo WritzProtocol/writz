@@ -1,99 +1,100 @@
 /*
-  Press page tokens - scoped under `.press-root` so the locked Navy & Gold
-  palette never leaks into the landing (still Gold & Black) or the dApp.
+  Brand page. It sits inside `.landing`, so it takes the landing's tokens,
+  navbar and footer; everything here is scoped under `.press-root`.
 */
 
 .press-root {
-  --paper: #f6f7f8;
-  --panel: #ffffff;
-  --ink: #001d3d;
-  --deep: #003566;
-  --gold: #ffc300;
-  --body: #46566b;
-  --muted: #6a7688;
-  --rule: #e2e5e9;
-  --midnight: #000814;
-
-  background: var(--paper);
-  color: var(--body);
-  font-family: var(--ff-landing-sans), ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   min-height: 100%;
 }
 
-/* globals.css sets a dApp-wide ::selection of amber at 25% with near-white
-   text. That is built for the dark app; on this page's paper ground it blends
-   to cream and the selected text lands at 1.19:1. */
-.press-root ::selection {
-  background: rgba(255, 195, 0, 0.45);
-  color: var(--ink);
-}
-
-/* A gold ground would otherwise highlight gold on gold, and a dark one would
-   put Ink on a muddied gold. Both forms of the selector: the text sits directly
-   in the tile, so the descendant combinator alone never matches it. */
+/* Gold selection on a gold ground highlights nothing. Both selector forms: the
+   text sits directly in the tile, so the descendant one alone never matches. */
 .press-root .on-gold::selection,
 .press-root .on-gold ::selection {
   background: var(--ink);
   color: var(--gold);
 }
 
-.press-root .on-dark::selection,
-.press-root .on-dark ::selection {
-  background: var(--paper);
-  color: var(--ink);
-}
-
-.press-root .wrap {
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 0 24px;
-}
-
-.press-root header.masthead {
-  border-bottom: 1px solid var(--rule);
-  padding: 40px 0 72px;
-}
-
-/* Masked rather than <img>, so the lockup takes Ink from CSS instead of
-   shipping a fourth colour variant of the file. */
-.press-root .masthead .lockup {
-  height: 32px;
-  aspect-ratio: 355.44 / 100;
-  background: var(--ink);
-  -webkit-mask: url("/brand/writz-lockup.svg") no-repeat center / contain;
-  mask: url("/brand/writz-lockup.svg") no-repeat center / contain;
-  margin-bottom: 64px;
+.press-root :is(.masthead, section, .colophon) a {
+  color: var(--heading);
+  text-decoration: underline;
+  text-decoration-color: var(--rule-strong);
+  text-underline-offset: 3px;
+  transition: text-decoration-color 120ms var(--ease-out);
 }
 
 .press-root code {
   font-family: var(--ff-mono), ui-monospace, monospace;
   font-size: 0.92em;
-  background: #eef0f3;
+  background: oklch(1 0 0 / 0.08);
   border-radius: 4px;
   padding: 1px 5px;
+  color: var(--heading);
+}
+
+/* ── Masthead ───────────────────────────────────────────────────────── */
+
+.press-root .masthead {
+  padding: calc(72px + 72px) 0 56px;
+  border-bottom: 1px solid var(--rule);
 }
 
 .press-root h1 {
-  font-size: 52px;
-  font-weight: 600;
-  letter-spacing: -0.028em;
-  line-height: 1.08;
-  color: var(--ink);
   margin: 0 0 20px;
+  font-size: 56px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  color: var(--heading);
 }
 
 .press-root .lead {
-  font-size: 21px;
-  font-weight: 400;
-  letter-spacing: -0.008em;
-  line-height: 1.45;
-  max-width: 680px;
+  max-width: 640px;
   margin: 0;
+  font-size: 21px;
+  line-height: 1.45;
+  text-wrap: pretty;
 }
 
+.press-root .index {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0 24px;
+  margin: 48px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.press-root .masthead .index a {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 12px 0;
+  border-top: 1px solid var(--rule);
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--body);
+  text-decoration: none;
+  transition: color 120ms var(--ease-out);
+}
+
+.press-root .num {
+  font-family: var(--ff-mono), ui-monospace, monospace;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--gold);
+}
+
+.press-root .eyebrow .num {
+  margin-right: -2px;
+}
+
+/* ── Sections ───────────────────────────────────────────────────────── */
+
 .press-root section {
-  padding: 72px 0;
+  padding: 88px 0;
   border-bottom: 1px solid var(--rule);
 }
 
@@ -102,207 +103,52 @@
 }
 
 .press-root h2 {
-  font-size: 36px;
-  font-weight: 600;
-  letter-spacing: -0.022em;
-  line-height: 1.15;
-  color: var(--ink);
   margin: 0 0 12px;
 }
 
 .press-root h3 {
+  margin: 48px 0 12px;
   font-size: 25px;
   font-weight: 600;
   letter-spacing: -0.014em;
   line-height: 1.25;
-  color: var(--ink);
-  margin: 40px 0 12px;
+  color: var(--heading);
 }
 
 .press-root p {
-  font-size: 17px;
-  line-height: 1.6;
   max-width: 680px;
   margin: 0 0 16px;
+  font-size: 17px;
+  line-height: 1.6;
 }
 
-.press-root .label {
-  font-size: 13px;
-  font-weight: 500;
-  letter-spacing: 0.06em;
-  line-height: 1.2;
-  text-transform: uppercase;
+.press-root .caption {
+  max-width: 680px;
+  margin: 16px 0 0;
+  font-size: 15px;
+  line-height: 1.55;
   color: var(--muted);
-  margin: 0 0 20px;
 }
 
-.press-root a {
-  color: var(--ink);
-  text-decoration-color: var(--rule);
-  text-underline-offset: 3px;
-  transition: text-decoration-color 120ms cubic-bezier(0.2, 0, 0, 1);
-}
-
-.press-root a:hover {
-  text-decoration-color: var(--ink);
-}
-
-.press-root .assets {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 20px;
-  margin-top: 32px;
-}
-
-.press-root .asset {
-  border: 1px solid var(--rule);
-  border-radius: 6px;
+/* One surface for every specimen: Ink card, faint edge, 12px radius. */
+.press-root .asset,
+.press-root .clearspace,
+.press-root .ladder,
+.press-root .specimen,
+.press-root .gfx .cell,
+.press-root blockquote,
+.press-root .dont figure {
   background: var(--panel);
-  overflow: hidden;
+  border-radius: 12px;
+  box-shadow: var(--shadow-border);
 }
-
-.press-root .asset .stage {
-  height: 140px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
-}
-
-.press-root .asset.reversed .stage {
-  background: var(--midnight);
-}
-
-.press-root .asset .meta {
-  border-top: 1px solid var(--rule);
-  padding: 14px 16px;
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.press-root .asset .name {
-  font-size: 15px;
-  font-weight: 500;
-  color: var(--ink);
-}
-
-.press-root .asset .files {
-  display: flex;
-  gap: 10px;
-  font-size: 13px;
-}
-
-.press-root .swatches {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-  gap: 16px;
-  margin-top: 32px;
-}
-
-.press-root .swatch .chip {
-  height: 104px;
-  border-radius: 6px;
-  border: 1px solid var(--rule);
-}
-
-.press-root .swatch .name {
-  font-size: 15px;
-  font-weight: 500;
-  color: var(--ink);
-  margin: 12px 0 2px;
-}
-
-.press-root .swatch .hex {
-  font-family: var(--ff-mono), ui-monospace, monospace;
-  font-size: 14px;
-  color: var(--muted);
-}
-
-.press-root .swatch .role {
-  font-size: 14px;
-  line-height: 1.45;
-  margin-top: 6px;
-}
-
-.press-root blockquote {
-  border-left: 0;
-  background: var(--panel);
-  border: 1px solid var(--rule);
-  border-radius: 6px;
-  padding: 24px 26px;
-  margin: 20px 0 0;
-  max-width: 760px;
-}
-
-.press-root blockquote p:last-child {
-  margin-bottom: 0;
-}
-
-.press-root .rules {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 32px;
-  margin-top: 32px;
-}
-
-.press-root .rules ul {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.press-root .rules li {
-  font-size: 16px;
-  line-height: 1.5;
-  padding: 10px 0 10px 22px;
-  border-top: 1px solid var(--rule);
-  position: relative;
-}
-
-.press-root .rules li::before {
-  position: absolute;
-  left: 0;
-  top: 10px;
-  font-weight: 600;
-}
-
-.press-root .rules .allowed li::before {
-  content: "+";
-  color: var(--deep);
-}
-
-.press-root .rules .forbidden li::before {
-  content: "\00d7";
-  color: #b0453a;
-}
-
-.press-root footer.colophon {
-  padding: 48px 0 72px;
-  font-size: 15px;
-  color: var(--muted);
-}
-
-@media (max-width: 720px) {
-  .press-root h1 { font-size: 34px; }
-  .press-root h2 { font-size: 27px; }
-  .press-root h3 { font-size: 21px; }
-  .press-root .lead { font-size: 18px; }
-  .press-root p { font-size: 16px; }
-  .press-root section { padding: 48px 0; }
-  .press-root header.masthead { padding: 32px 0 48px; }
-  .press-root .masthead .lockup { margin-bottom: 40px; }
-}
-
-/* ── Visual specimens ─────────────────────────────────────────────────── */
 
 /* Masked artwork, so a specimen can be tinted to any colour, including the
    wrong ones the misuse tiles have to show. */
 .press-root .mark,
 .press-root .lockup-art {
-  background: currentColor;
   flex: none;
+  background: currentColor;
 }
 
 .press-root .mark {
@@ -317,23 +163,59 @@
   mask: url("/brand/writz-lockup.svg") no-repeat center / contain;
 }
 
-.press-root .caption {
-  font-size: 14px;
-  line-height: 1.5;
-  color: var(--muted);
-  margin: 14px 0 0;
-  max-width: 680px;
+/* ── Logo ───────────────────────────────────────────────────────────── */
+
+.press-root .assets {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(196px, 1fr));
+  gap: 16px;
+  margin-top: 36px;
 }
 
-/* Clear space */
+.press-root .asset {
+  overflow: hidden;
+}
+
+.press-root .asset .stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 160px;
+  padding: 24px;
+  background: var(--midnight);
+}
+
+.press-root .asset.light .stage {
+  background: #f6f7f8;
+}
+
+.press-root .asset .meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 18px 16px;
+}
+
+.press-root .asset .name {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--heading);
+}
+
+.press-root .asset .files {
+  display: flex;
+  gap: 12px;
+  font-family: var(--ff-mono), ui-monospace, monospace;
+  font-size: 13px;
+}
+
+/* ── Clear space and size ───────────────────────────────────────────── */
+
 .press-root .clearspace {
   display: flex;
   justify-content: center;
-  padding: 36px 24px;
-  background: var(--panel);
-  border: 1px solid var(--rule);
-  border-radius: 6px;
-  margin-top: 28px;
+  margin-top: 32px;
+  padding: 40px 24px;
 }
 
 .press-root .clearspace .box {
@@ -352,18 +234,14 @@
   opacity: 0.55;
 }
 
-/* Size ladder */
 .press-root .ladder {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-end;
   justify-content: center;
   gap: 42px;
-  flex-wrap: wrap;
+  margin-top: 32px;
   padding: 40px 28px 28px;
-  background: var(--panel);
-  border: 1px solid var(--rule);
-  border-radius: 6px;
-  margin-top: 28px;
 }
 
 .press-root .ladder .step {
@@ -371,97 +249,74 @@
 }
 
 .press-root .ladder .slot {
-  height: 52px;
   display: flex;
   align-items: flex-end;
   justify-content: center;
+  height: 52px;
 }
 
 .press-root .ladder .tag {
+  margin-top: 12px;
   font-family: var(--ff-mono), ui-monospace, monospace;
   font-size: 11px;
-  color: var(--muted);
-  margin-top: 12px;
   white-space: nowrap;
+  color: var(--muted);
 }
 
 .press-root .ladder .step.floor .tag {
-  color: var(--ink);
   font-weight: 500;
+  color: var(--gold);
 }
 
 .press-root .ladder .step.dead .tag {
-  color: #b0453a;
+  color: #ef8a7a;
 }
 
-/* Misuse */
-.press-root .dont {
+/* ── Colour ─────────────────────────────────────────────────────────── */
+
+.press-root .swatches {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-  margin-top: 28px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 18px;
+  margin-top: 36px;
 }
 
-@media (max-width: 860px) {
-  .press-root .dont { grid-template-columns: repeat(2, 1fr); }
+.press-root .swatch .chip {
+  height: 112px;
+  border-radius: 12px;
+  box-shadow: 0 0 0 1px var(--rule-strong);
 }
 
-@media (max-width: 480px) {
-  .press-root .dont { grid-template-columns: 1fr; }
+.press-root .swatch .name {
+  margin: 14px 0 2px;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--heading);
 }
 
-.press-root .dont figure {
-  margin: 0;
-  border: 1px solid var(--rule);
-  border-radius: 6px;
-  overflow: hidden;
-  background: var(--panel);
+.press-root .swatch .hex {
+  font-family: var(--ff-mono), ui-monospace, monospace;
+  font-size: 14px;
+  color: var(--muted);
 }
 
-.press-root .dont .stage {
-  height: 118px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
+.press-root .swatch .role {
+  margin-top: 6px;
+  font-size: 14px;
+  line-height: 1.45;
 }
 
-.press-root .dont .busy {
-  background: repeating-linear-gradient(
-    -45deg,
-    var(--ink) 0 9px,
-    var(--deep) 9px 18px
-  );
-}
-
-.press-root .dont figcaption {
-  border-top: 1px solid var(--rule);
-  padding: 11px 14px;
-  font-size: 13px;
-  line-height: 1.4;
-  color: var(--body);
-  display: flex;
-  gap: 8px;
-}
-
-.press-root .dont figcaption::before {
-  content: "\00d7";
-  color: #b0453a;
-  font-weight: 600;
-}
-
-/* Contrast pairs */
 .press-root .pairs {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 16px;
+  gap: 18px;
   margin-top: 28px;
 }
 
 .press-root .pairs .pair {
-  border-radius: 6px;
-  border: 1px solid var(--rule);
   padding: 22px 18px 16px;
+  border-radius: 12px;
+  box-shadow: 0 0 0 1px var(--rule);
 }
 
 .press-root .pairs .aa {
@@ -472,22 +327,20 @@
 }
 
 .press-root .pairs .ratio {
+  margin-top: 14px;
   font-family: var(--ff-mono), ui-monospace, monospace;
   font-size: 12px;
-  margin-top: 14px;
   opacity: 0.75;
 }
 
 .press-root .pairs .pair.fail {
-  border-color: #b0453a;
+  box-shadow: 0 0 0 2px #ef8a7a;
 }
 
-/* Type specimen */
+/* ── Type ───────────────────────────────────────────────────────────── */
+
 .press-root .specimen {
-  border: 1px solid var(--rule);
-  border-radius: 6px;
-  background: var(--panel);
-  margin-top: 28px;
+  margin-top: 32px;
 }
 
 .press-root .specimen .row {
@@ -495,96 +348,48 @@
   align-items: baseline;
   gap: 24px;
   padding: 18px 24px;
-  border-bottom: 1px solid var(--rule);
 }
 
-.press-root .specimen .row:last-child {
-  border-bottom: 0;
+.press-root .specimen .row + .row {
+  border-top: 1px solid oklch(1 0 0 / 0.06);
 }
 
 .press-root .specimen .spec {
+  flex: none;
+  width: 172px;
   font-family: var(--ff-mono), ui-monospace, monospace;
   font-size: 11px;
-  color: var(--muted);
-  width: 172px;
-  flex: none;
   white-space: nowrap;
+  color: var(--muted);
 }
 
 .press-root .specimen .sample {
-  color: var(--ink);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: var(--heading);
 }
 
-/* Copy button */
-.press-root .copy {
-  font: inherit;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--ink);
-  background: transparent;
-  border: 1px solid var(--rule);
-  border-radius: 6px;
-  padding: 5px 11px;
-  cursor: pointer;
-  transition: border-color 120ms cubic-bezier(0.2, 0, 0, 1);
-}
-
-.press-root .copy:hover {
-  border-color: var(--ink);
-}
-
-.press-root blockquote .head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 14px;
-}
-
-.press-root blockquote .head .name {
-  font-size: 13px;
-  font-weight: 500;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-@media (max-width: 720px) {
-  .press-root .specimen .spec { width: 116px; }
-  .press-root .specimen .row { gap: 14px; padding: 14px 16px; }
-  .press-root .ladder { gap: 22px; }
-}
-
-/* ── Graphic language ─────────────────────────────────────────────────── */
+/* ── Graphic language ───────────────────────────────────────────────── */
 
 .press-root .gfx {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 18px;
-  margin-top: 28px;
-}
-
-@media (max-width: 720px) {
-  .press-root .gfx { grid-template-columns: 1fr; }
+  margin-top: 32px;
 }
 
 .press-root .gfx .cell {
-  border: 1px solid var(--rule);
-  border-radius: 6px;
-  background: var(--panel);
-  padding: 20px;
+  padding: 22px;
 }
 
 .press-root .gfx .cap {
-  font-size: 11px;
+  margin-bottom: 16px;
+  font-size: 12px;
   font-weight: 500;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--muted);
-  margin-bottom: 15px;
 }
 
 .press-root .gfx .note {
@@ -593,14 +398,14 @@
   color: var(--muted);
 }
 
-.press-root .strip {
-  height: 54px;
-  border-radius: 6px;
-  overflow: hidden;
+.press-root .shard {
   position: relative;
+  height: 54px;
+  overflow: hidden;
+  border-radius: 6px;
 }
 
-.press-root .strip span {
+.press-root .shard span {
   position: absolute;
   top: -12px;
   width: 18px;
@@ -626,4 +431,213 @@
   gap: 9px;
   font-size: 15px;
   color: var(--body);
+}
+
+/* ── Copy ───────────────────────────────────────────────────────────── */
+
+.press-root blockquote {
+  max-width: 780px;
+  margin: 24px 0 0;
+  padding: 24px 26px;
+}
+
+.press-root blockquote p {
+  color: var(--heading);
+}
+
+.press-root blockquote p:last-child {
+  margin-bottom: 0;
+}
+
+.press-root blockquote .head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.press-root blockquote .head .name {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.press-root .copy {
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  box-shadow: 0 0 0 1px var(--rule-strong);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--heading);
+  cursor: pointer;
+  transition: box-shadow 120ms var(--ease-out);
+}
+
+/* ── Misuse ─────────────────────────────────────────────────────────── */
+
+.press-root .dont {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+  margin-top: 32px;
+}
+
+.press-root .dont figure {
+  margin: 0;
+  overflow: hidden;
+}
+
+.press-root .dont .stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 128px;
+  overflow: hidden;
+  background: var(--midnight);
+}
+
+.press-root .dont .busy {
+  background: repeating-linear-gradient(-45deg, var(--ink) 0 9px, var(--deep) 9px 18px);
+}
+
+.press-root .dont figcaption {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--body);
+}
+
+.press-root .dont figcaption::before {
+  content: "\00d7";
+  font-weight: 600;
+  color: #ef8a7a;
+}
+
+/* ── Rules ──────────────────────────────────────────────────────────── */
+
+.press-root .rules {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 32px;
+  margin-top: 32px;
+}
+
+.press-root .rules ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.press-root .rules li {
+  position: relative;
+  padding: 12px 0 12px 24px;
+  border-top: 1px solid var(--rule);
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.press-root .rules li::before {
+  position: absolute;
+  top: 12px;
+  left: 0;
+  font-weight: 600;
+}
+
+.press-root .rules .allowed li::before {
+  content: "+";
+  color: var(--gold);
+}
+
+.press-root .rules .forbidden li::before {
+  content: "\00d7";
+  color: #ef8a7a;
+}
+
+.press-root .colophon {
+  padding-top: 8px;
+  padding-bottom: 72px;
+  font-size: 15px;
+  color: var(--muted);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .press-root :is(.masthead, section, .colophon) a:hover {
+    text-decoration-color: var(--gold);
+  }
+
+  .press-root .masthead .index a:hover {
+    color: var(--heading);
+  }
+
+  .press-root .copy:hover {
+    box-shadow: 0 0 0 1px var(--heading);
+  }
+}
+
+@media (max-width: 860px) {
+  .press-root .dont {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 720px) {
+  .press-root h1 {
+    font-size: 38px;
+  }
+
+  .press-root h3 {
+    font-size: 21px;
+  }
+
+  .press-root .lead {
+    font-size: 18px;
+  }
+
+  .press-root p {
+    font-size: 16px;
+  }
+
+  .press-root .masthead {
+    padding: calc(72px + 40px) 0 40px;
+  }
+
+  .press-root section {
+    padding: 56px 0;
+  }
+
+  .press-root .gfx {
+    grid-template-columns: 1fr;
+  }
+
+  .press-root .specimen .spec {
+    width: 116px;
+  }
+
+  .press-root .specimen .row {
+    gap: 14px;
+    padding: 14px 16px;
+  }
+
+  .press-root .ladder {
+    gap: 22px;
+  }
+
+  /* The diagram is drawn at a fixed 168px mark, wider than a phone. */
+  .press-root .clearspace .box {
+    zoom: 0.62;
+  }
+}
+
+@media (max-width: 480px) {
+  .press-root .dont {
+    grid-template-columns: 1fr;
+  }
 }

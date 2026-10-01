@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { workSans } from "@/features/landing/fonts";
+import { Navbar } from "@/features/landing/sections/Navbar";
+import { Footer } from "@/features/landing/sections/Closing";
 import { CopyButton } from "./CopyButton";
+import "@/features/landing/landing.css";
 import "./press.css";
 
 export const metadata: Metadata = {
@@ -80,6 +83,33 @@ const FORBIDDEN = [
   "Use it in the name of a token, fund or pool. There is no Writz token.",
 ];
 
+const SECTIONS = [
+  { id: "logo", label: "Logo" },
+  { id: "clear-space", label: "Clear space" },
+  { id: "size", label: "Size" },
+  { id: "colour", label: "Colour" },
+  { id: "type", label: "Type" },
+  { id: "graphics", label: "Graphic language" },
+  { id: "copy", label: "Copy" },
+  { id: "misuse", label: "Do not" },
+  { id: "rules", label: "Rules" },
+];
+
+const num = (i: number) => String(i + 1).padStart(2, "0");
+
+function Head({ id, title }: { id: string; title: string }) {
+  const i = SECTIONS.findIndex((s) => s.id === id);
+  return (
+    <>
+      <p className="eyebrow">
+        <span className="num">{num(i)}</span>
+        {SECTIONS[i].label}
+      </p>
+      <h2>{title}</h2>
+    </>
+  );
+}
+
 const TINTS = [1, 0.72, 0.44, 0.2, 0.1];
 // Pitch 46, bar 18. Generated past any cell width, the strip clips the rest.
 const BARS = Array.from({ length: 24 }, (_, i) => -12 + i * 46);
@@ -100,10 +130,11 @@ export default function BrandPage() {
   const markH = 168;
 
   return (
-    <div className={`${workSans.variable} press-root`}>
+    <div className={`${workSans.variable} landing press-root`}>
+      <Navbar />
       <header className="masthead">
         <div className="wrap">
-          <div className="lockup" role="img" aria-label="Writz" />
+          <p className="eyebrow">Press and partners</p>
           <h1>Brand assets</h1>
           <p className="lead">
             Free to use to refer to us. The rules are at the bottom. Anything else, ask on{" "}
@@ -112,20 +143,29 @@ export default function BrandPage() {
             </a>
             .
           </p>
+          <ol className="index">
+            {SECTIONS.map((sec, i) => (
+              <li key={sec.id}>
+                <a href={`#${sec.id}`}>
+                  <span className="num">{num(i)}</span>
+                  {sec.label}
+                </a>
+              </li>
+            ))}
+          </ol>
         </div>
       </header>
 
       <div className="wrap">
-        <section>
-          <p className="label">Logo</p>
-          <h2>Four forms, three fills</h2>
+        <section id="logo">
+          <Head id="logo" title="Four forms, three fills" />
 
           <div className="assets">
             {ASSETS.map((a) => (
               <div className="asset" key={a.file}>
                 <div className="stage">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={`/brand/${a.file}-black.svg`} alt={a.name} style={{ height: a.h }} />
+                  <img src={`/brand/${a.file}-white.svg`} alt={a.name} style={{ height: a.h }} />
                 </div>
                 <div className="meta">
                   <span className="name">{a.name}</span>
@@ -143,16 +183,16 @@ export default function BrandPage() {
                 </div>
               </div>
             ))}
-            <div className="asset reversed">
+            <div className="asset light">
               <div className="stage">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/brand/writz-lockup-white.svg" alt="Writz reversed" style={{ height: 40 }} />
+                <img src="/brand/writz-lockup-black.svg" alt="Writz on a light ground" style={{ height: 40 }} />
               </div>
               <div className="meta">
-                <span className="name">Reversed</span>
+                <span className="name">On light grounds</span>
                 <span className="files">
-                  <a href="/brand/writz-lockup-white.svg" download>
-                    svg
+                  <a href="/brand/writz-lockup-black.svg" download>
+                    black
                   </a>
                 </span>
               </div>
@@ -164,13 +204,12 @@ export default function BrandPage() {
           </p>
         </section>
 
-        <section>
-          <p className="label">Clear space</p>
-          <h2>Half the mark, on every side</h2>
+        <section id="clear-space">
+          <Head id="clear-space" title="Half the mark, on every side" />
           <div className="clearspace">
             <div className="box" style={{ padding: markH / 2 }}>
               <span className="unit" style={{ width: markH / 2, height: markH / 2 }} />
-              <div className="mark" style={{ height: markH, color: INK }} />
+              <div className="mark" style={{ height: markH, color: PAPER }} />
             </div>
           </div>
           <p className="caption">
@@ -179,14 +218,13 @@ export default function BrandPage() {
           </p>
         </section>
 
-        <section>
-          <p className="label">Size</p>
-          <h2>Twenty pixels tall, not wide</h2>
+        <section id="size">
+          <Head id="size" title="Twenty pixels tall, not wide" />
           <div className="ladder">
             {SIZES.map((s) => (
               <div className={`step ${s.state ?? ""}`} key={s.px}>
                 <div className="slot">
-                  <div className="mark" style={{ height: s.px, color: INK }} />
+                  <div className="mark" style={{ height: s.px, color: PAPER }} />
                 </div>
                 <div className="tag">{s.tag}</div>
               </div>
@@ -199,9 +237,8 @@ export default function BrandPage() {
           </p>
         </section>
 
-        <section>
-          <p className="label">Colour</p>
-          <h2>Navy and gold</h2>
+        <section id="colour">
+          <Head id="colour" title="Navy and gold" />
           <div className="swatches">
             {COLOURS.map((c) => (
               <div className="swatch" key={c.hex}>
@@ -234,9 +271,8 @@ export default function BrandPage() {
           </p>
         </section>
 
-        <section>
-          <p className="label">Type</p>
-          <h2>Work Sans</h2>
+        <section id="type">
+          <Head id="type" title="Work Sans" />
           <div className="specimen">
             {TYPE.map((t) => (
               <div className="row" key={t.spec}>
@@ -266,9 +302,8 @@ export default function BrandPage() {
           </p>
         </section>
 
-        <section>
-          <p className="label">Graphic language</p>
-          <h2>One angle, two colours</h2>
+        <section id="graphics">
+          <Head id="graphics" title="One angle, two colours" />
           <div className="gfx">
             <div className="cell">
               <div className="cap">The cut</div>
@@ -281,12 +316,12 @@ export default function BrandPage() {
 
             <div className="cell">
               <div className="cap">Shard rule</div>
-              <div className="strip" style={{ background: MIDNIGHT, marginBottom: 8 }}>
+              <div className="shard" style={{ background: MIDNIGHT, marginBottom: 8 }}>
                 {BARS.map((x) => (
                   <span key={x} style={{ left: x, background: GOLD }} />
                 ))}
               </div>
-              <div className="strip" style={{ background: PAPER }}>
+              <div className="shard" style={{ background: PAPER }}>
                 {BARS.map((x) => (
                   <span key={x} style={{ left: x, background: "#003566" }} />
                 ))}
@@ -297,7 +332,7 @@ export default function BrandPage() {
               <div className="cap">Redaction bar</div>
               <div className="redact">
                 <span>Collateral</span>
-                <span style={{ ...shear(92, 17), background: INK }} />
+                <span style={{ ...shear(92, 17), background: PAPER }} />
                 <span>BTC</span>
               </div>
               <p className="note" style={{ marginTop: 14, lineHeight: 1.5 }}>
@@ -326,9 +361,8 @@ export default function BrandPage() {
           </p>
         </section>
 
-        <section>
-          <p className="label">Copy</p>
-          <h2>Describing Writz</h2>
+        <section id="copy">
+          <Head id="copy" title="Describing Writz" />
 
           <blockquote>
             <div className="head">
@@ -352,15 +386,14 @@ export default function BrandPage() {
           </p>
         </section>
 
-        <section>
-          <p className="label">Do not</p>
-          <h2>Six ways to break it</h2>
+        <section id="misuse">
+          <Head id="misuse" title="Six ways to break it" />
           <div className="dont">
             <figure>
               <div className="stage">
                 <div
                   className="mark"
-                  style={{ height: 44, color: INK, transform: "scaleX(1.6)" }}
+                  style={{ height: 44, color: PAPER, transform: "scaleX(1.6)" }}
                 />
               </div>
               <figcaption>Stretch it</figcaption>
@@ -369,13 +402,13 @@ export default function BrandPage() {
               <div className="stage">
                 <div
                   className="mark"
-                  style={{ height: 44, color: INK, transform: "rotate(-14deg)" }}
+                  style={{ height: 44, color: PAPER, transform: "rotate(-14deg)" }}
                 />
               </div>
               <figcaption>Rotate or skew it</figcaption>
             </figure>
             <figure>
-              <div className="stage">
+              <div className="stage" style={{ background: PAPER }}>
                 <div className="mark" style={{ height: 44, color: GOLD }} />
               </div>
               <figcaption>Put gold on a light ground</figcaption>
@@ -417,9 +450,8 @@ export default function BrandPage() {
           </p>
         </section>
 
-        <section>
-          <p className="label">Rules</p>
-          <h2>What you can do with these</h2>
+        <section id="rules">
+          <Head id="rules" title="What you can do with these" />
           <div className="rules">
             <div>
               <ul className="allowed">
@@ -443,7 +475,7 @@ export default function BrandPage() {
         </section>
       </div>
 
-      <footer className="colophon">
+      <div className="colophon">
         <div className="wrap">
           Questions, or a use not covered here:{" "}
           <a href={CONTACT} rel="me noreferrer">
@@ -455,7 +487,8 @@ export default function BrandPage() {
           </a>
           .
         </div>
-      </footer>
+      </div>
+      <Footer />
     </div>
   );
 }

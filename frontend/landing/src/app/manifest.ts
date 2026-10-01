@@ -8,7 +8,7 @@ export default function manifest(): MetadataRoute.Manifest {
       "Borrow dollars against native BTC, without a custodian holding it and without anyone seeing the amount.",
     start_url: "/",
     display: "standalone",
-    background_color: "#F6F7F8",
+    background_color: "#000814",
     theme_color: "#001D3D",
     icons: [
       { src: "/icon-192.png", sizes: "192x192", type: "image/png" },
