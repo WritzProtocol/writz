@@ -16,6 +16,7 @@ import {
   shortAddress,
   timeLeft,
 } from "@/lib/borrow/journey";
+import { loanHref } from "@/lib/loan/model";
 import { useElapsed } from "@/components/redesign/hooks";
 import { ConfirmationSlots, ErrorBox, ExternalLink, Notice, SlideToConfirm, Spinner } from "@/components/redesign/ui";
 import type { JourneyModel } from "./model";
@@ -935,7 +936,7 @@ export function DoneStep({ m, heading }: { m: JourneyModel; heading: RefObject<H
         {`${btc ? `${btc} BTC locked. ` : ""}Your loan is ready.${max ? ` You can borrow up to ${max} USDC.` : ""}`}
       </p>
       <div className="wz-actions">
-        <Link href="/" className="wz-btn wz-btn-gold">
+        <Link href={m.done.index !== null ? loanHref(m.done.index, "borrow") : "/"} className="wz-btn wz-btn-gold">
           Borrow now
         </Link>
         <button type="button" className="wz-btn wz-btn-line" onClick={m.done.reset}>

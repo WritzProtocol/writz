@@ -1,40 +1,27 @@
-import { describe, expect, it, mock } from "bun:test";
+import { describe, expect, test } from "bun:test";
+import { releaseBlocker } from "./release";
 
-const calls: { method: string; args: unknown }[] = [];
-let signed = false;
+const PUBKEY = "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798";
+const position = { btcPubkey: PUBKEY, timelockHeight: 300_000, txid: "ab".repeat(32) };
+const onNetwork = (a: string) => a.startsWith("tb1");
 
-mock.module("@/lib/contracts/generated", () => ({
-  Client: class {
-    mark_released(args: unknown) {
-      calls.push({ method: "mark_released", args });
-      return Promise.resolve({
-        signAndSend: async () => {
-          signed = true;
-          return { sendTransactionResponse: { hash: "abc123" } };
-        },
-      });
-    }
-  },
-}));
-const { markReleased } = await import("./release");
+describe("releaseBlocker", () => {
+  test("needs the deposit's Bitcoin details", () => {
+    expect(releaseBlocker({ ...position, btcPubkey: undefined }, { address: "tb1q", pubkey: PUBKEY }, onNetwork)).toBe(
+      "missing_details",
+    );
+  });
 
-describe("markReleased", () => {
-  it("submits the zero-debt proof and signals to mark_released and returns the tx hash", async () => {
-    const proof = { pi_a: { bytes: Buffer.alloc(64) }, pi_b: { bytes: Buffer.alloc(128) }, pi_c: { bytes: Buffer.alloc(64) } };
-    const publicSignals = [Buffer.alloc(32, 1), Buffer.alloc(32, 2), Buffer.alloc(32, 3)];
+  test("needs a connected wallet", () => {
+    expect(releaseBlocker(position, { address: null, pubkey: null }, onNetwork)).toBe("no_wallet");
+  });
 
-    const result = await markReleased({
-      proof,
-      publicSignals,
-      sender: "GSENDER",
-      contractId: "CTEST",
-      signTransaction: (async () => ({ signedTxXdr: "", signerAddress: "GSENDER" })) as never,
-    });
+  test("the connected key must be the deposit's", () => {
+    expect(releaseBlocker(position, { address: "tb1q", pubkey: "02" + "33".repeat(32) }, onNetwork)).toBe("wrong_account");
+    expect(releaseBlocker(position, { address: "tb1q", pubkey: PUBKEY.toUpperCase() }, onNetwork)).toBeNull();
+  });
 
-    expect(result.txHash).toBe("abc123");
-    expect(signed).toBe(true);
-    expect(calls).toHaveLength(1);
-    expect(calls[0].method).toBe("mark_released");
-    expect(calls[0].args).toEqual({ zk_proof: proof, public_signals: publicSignals });
+  test("the destination must be on the configured network", () => {
+    expect(releaseBlocker(position, { address: "bc1q", pubkey: PUBKEY }, onNetwork)).toBe("wrong_network");
   });
 });

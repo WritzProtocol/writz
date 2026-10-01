@@ -60,7 +60,8 @@ export function useMockJourney(world: MockWorld): JourneyModel {
 
   const alreadyRegistered = Boolean(depositPos?.chain.commitmentForTxid && depositPos.chain.commitmentPending === false);
   const done = Boolean(d.done) || alreadyRegistered;
-  const loanSats = world.positions.find((p) => p.local.position)?.local.position?.collateralSats;
+  const loan = world.positions.find((p) => p.local.position)?.local.position;
+  const loanSats = loan?.collateralSats;
   const doneSats = loanSats ? BigInt(loanSats) : pending ? BigInt(pending.sats) : null;
 
   const wrongNetwork = sw?.network === "PUBLIC" ? "Stellar mainnet" : null;
@@ -169,6 +170,6 @@ export function useMockJourney(world: MockWorld): JourneyModel {
       register: noop,
       finish: noop,
     },
-    done: { sats: doneSats, reset: ui.reset },
+    done: { sats: doneSats, index: loan?.index ?? pending?.positionIndex ?? null, reset: ui.reset },
   };
 }

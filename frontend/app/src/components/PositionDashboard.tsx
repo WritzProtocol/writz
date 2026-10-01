@@ -4,32 +4,26 @@ import { useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { useWallet } from "@/lib/wallet/WalletProvider";
 import { useBitcoinWallet } from "@/lib/bitcoin/useBitcoinWallet";
-import {
-  deriveP2WSH,
-  buildReleasePsbt,
-  finalizePathA,
-  estimateReleaseFee,
-  isAddressForNetwork,
-} from "@/lib/bitcoin/address";
+import Link from "next/link";
+import { isAddressForNetwork } from "@/lib/bitcoin/address";
+import { releaseBtc } from "@/lib/flows/release";
+import { loanHref } from "@/lib/loan/model";
 import { borrow } from "@/lib/flows/borrow";
 import { repay } from "@/lib/flows/repay";
 import { recoverPositions } from "@/lib/flows/recover";
 import { createDemoPosition } from "@/lib/flows/demo";
 import { EnableTrustlineButton } from "./EnableTrustlineButton";
 import { POOL_ASSET } from "@/lib/flows/trustline";
-import { proveZeroDebt, type ZeroDebtInput } from "@/lib/prover";
 import { stellarTxUrl, btcTxUrl } from "@/lib/explorer";
 import { TxLink } from "./TxLink";
 import { config, BTC_NETWORK_LABEL } from "@/config";
 import { ErrorNotice } from "./ErrorNotice";
 import { GITHUB_ISSUES_URL, LIQUIDATION_DOCS_URL, RECLAIM_DOCS_URL } from "@/lib/links";
 import {
-  positionKeys,
   subscribePositions,
   positionsSnapshot,
   positionActions,
   positionStatusLabel,
-  savePosition,
   EMPTY_POSITIONS,
   type Position,
 } from "@/lib/position";
@@ -357,103 +351,36 @@ function PositionCard({ position }: { position: Position }) {
       setReleaseMessage(`You still owe ${fmtUsdc(debtStroops)} USDC. Repay it first, then release.`);
       return;
     }
-    const btcPubkey = position.btcPubkey;
-    const timelockHeight = position.timelockHeight;
-    const depositTxid = position.txid;
-
     setReleaseTx(null);
     await locked(emitRelease, async () => {
-      emitRelease({ type: "preparing", step: "building" });
-      const protocolPubkey = config.bitcoin.protocolPubkey;
-      if (!protocolPubkey) throw new Error("NEXT_PUBLIC_PROTOCOL_BTC_PUBKEY not configured");
-
-      const relayerUrl = config.services.relayerUrl;
-      if (!relayerUrl) throw new Error("NEXT_PUBLIC_RELAYER_URL not configured");
-
-      const p2wsh = deriveP2WSH(protocolPubkey, btcPubkey, timelockHeight);
-      const collateralSatsNum = Number(BigInt(position.collateralSats));
-      const feeSat = await estimateReleaseFee(config.bitcoin.apiUrl);
-
-      const psbt = buildReleasePsbt({
-        txidHex: depositTxid,
-        vout: position.vout ?? 0,
-        amountSat: collateralSatsNum,
-        scriptPubKey: p2wsh.scriptPubKey,
-        redeemScript: p2wsh.redeemScript,
-        recipientAddress: releaseRecipient,
-        feeSat,
+      const { btcTxid } = await releaseBtc({
+        position,
+        seed,
+        recipient: releaseRecipient,
+        signPsbt: btcWallet.signPsbt,
+        emit: emitRelease,
       });
-
-      emitRelease({ type: "preparing", step: "merkle_path" });
-      const commitmentHex = BigInt(position.commitment).toString(16).padStart(64, "0");
-      const qs =
-        position.leafIndex !== undefined
-          ? `?leafIndex=${position.leafIndex}&commitment=${commitmentHex}`
-          : `?commitment=${commitmentHex}`;
-      const pathRes = await fetch(`${relayerUrl}/merkle-path${qs}`);
-      if (!pathRes.ok) {
-        const pb = (await pathRes.json().catch(() => ({}))) as { error?: string };
-        throw new Error(`Merkle path fetch failed: ${pb.error ?? pathRes.status}`);
-      }
-      const { pathElements, pathIndices, root: merkleRoot } = (await pathRes.json()) as {
-        pathElements: string[];
-        pathIndices: number[];
-        root: string;
-      };
-
-      // Zero-debt proof - keys derived from the session seed (never persisted).
-      emitRelease({ type: "proving" });
-      const { secret, nonce } = positionKeys(seed, position);
-      const zeroDebtInput: ZeroDebtInput = {
-        collateral_satoshis: position.collateralSats,
-        secret: secret.toString(),
-        nonce: nonce.toString(),
-        path_elements: pathElements,
-        path_indices: pathIndices,
-        merkle_root: merkleRoot,
-      };
-      const { raw: zkRaw } = await proveZeroDebt(zeroDebtInput);
-
-      emitRelease({ type: "preparing", step: "cosign" });
-      const cosignRes = await fetch("/api/cosign", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          psbt: psbt.toBase64(),
-          commitment: commitmentHex,
-          zkProof: { proof: zkRaw.proof, publicSignals: zkRaw.publicSignals },
-        }),
-      });
-      if (!cosignRes.ok) {
-        const cbody = (await cosignRes.json().catch(() => ({}))) as { error?: string };
-        throw new Error(`Co-sign failed: ${cbody.error ?? cosignRes.status}`);
-      }
-      const { signedPsbt: protocolSignedPsbt } = (await cosignRes.json()) as { signedPsbt: string };
-
-      emitRelease({ type: "awaiting_signature", wallet: "bitcoin" });
-      const userSignedPsbt = await btcWallet.signPsbt(psbt.toBase64());
-
-      emitRelease({ type: "preparing", step: "broadcasting" });
-      const txHex = finalizePathA(protocolSignedPsbt, userSignedPsbt, protocolPubkey, btcPubkey);
-      const broadcastRes = await fetch(`${config.bitcoin.apiUrl}/tx`, { method: "POST", body: txHex });
-      if (!broadcastRes.ok) {
-        const errText = await broadcastRes.text().catch(() => String(broadcastRes.status));
-        throw new Error(`Broadcast failed: ${errText}`);
-      }
-      const btcTxid = await broadcastRes.text();
-
-      savePosition({ ...position, status: "released", releaseTxid: btcTxid, releaseAddress: releaseRecipient });
       setReleaseTx(btcTxid);
-      emitRelease({ type: "settled" });
     });
   }
 
   return (
     <div className="rounded-xl border border-line bg-surface p-5">
       <div className="mb-4 flex items-center justify-between">
-        <span className="font-mono text-xs text-muted" title={position.commitment}>
-          {position.commitment.slice(0, 8)}…{position.commitment.slice(-6)}
-        </span>
+        {position.status === "pending" ? (
+          <span className="font-mono text-xs text-muted" title={position.commitment}>
+            {position.commitment.slice(0, 8)}…{position.commitment.slice(-6)}
+          </span>
+        ) : (
+          <Link
+            href={loanHref(position.index)}
+            className="font-mono text-xs text-muted hover:text-amber"
+            title={position.commitment}
+            aria-label={`Open Loan ${position.index + 1}`}
+          >
+            {position.commitment.slice(0, 8)}…{position.commitment.slice(-6)}
+          </Link>
+        )}
         <span
           className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold ${
             liquidated

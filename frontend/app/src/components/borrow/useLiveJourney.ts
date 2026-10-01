@@ -88,6 +88,7 @@ export function useLiveJourney(): JourneyModel {
   const [action, setAction] = useState<"send" | "register" | "finish" | "txid" | null>(null);
   const [createdHere, setCreatedHere] = useState<string | null>(null);
   const [doneSats, setDoneSats] = useState<bigint | null>(null);
+  const [doneIndex, setDoneIndex] = useState<number | null>(null);
   const [drivenElsewhere, setDrivenElsewhere] = useState(false);
   const [registering, setRegistering] = useState<Position | null>(null);
   const [runKey, setRunKey] = useState(0);
@@ -133,6 +134,7 @@ export function useLiveJourney(): JourneyModel {
           emit({ type: "needs_attention", action: "finish_deposit", hash: result.position.stellarTxHash });
         } else if (result.status === "active") {
           setDoneSats(BigInt(result.position.collateralSats));
+          setDoneIndex(result.position.index);
           emit({ type: "settled", hash: result.position.stellarTxHash });
         }
       } catch (e) {
@@ -294,6 +296,7 @@ export function useLiveJourney(): JourneyModel {
     if (!address || !w.seed || !pending) return;
     setAction("register");
     setDoneSats(BigInt(pending.sats));
+    setDoneIndex(pending.positionIndex);
     emit({ type: "start" });
     try {
       await locks().withTxLock(address, () =>
@@ -315,6 +318,7 @@ export function useLiveJourney(): JourneyModel {
     }
     setAction("finish");
     setDoneSats(BigInt(position.collateralSats));
+    setDoneIndex(position.index);
     emit({ type: "start" });
     try {
       await locks().withTxLock(address, () =>
@@ -479,10 +483,12 @@ export function useLiveJourney(): JourneyModel {
     },
     done: {
       sats: doneSats,
+      index: doneIndex,
       reset: () => {
         emit({ type: "reset" });
         setAction(null);
         setDoneSats(null);
+        setDoneIndex(null);
         setRegistering(null);
         ui.reset();
       },

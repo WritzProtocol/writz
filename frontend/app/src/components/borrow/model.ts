@@ -113,7 +113,8 @@ export interface JourneyModel {
   review: ReviewModel;
   newDevice: NewDeviceModel;
   deposit: DepositModel;
-  done: { sats: bigint | null; reset(): void };
+  /** `index` is the new loan's local position index, once known. */
+  done: { sats: bigint | null; index: number | null; reset(): void };
   busy: boolean;
   back: EditableStep | null;
   canEdit(step: EditableStep): boolean;
