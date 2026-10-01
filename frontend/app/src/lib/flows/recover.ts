@@ -84,12 +84,20 @@ export async function recoverPositions(params: {
       version: note.version,
       commitment: commitment.toString(),
       nullifier: computeNullifier(secret, nonce).toString(),
-      status: debt > 0n ? "active" : "closed",
+      // A note cannot show a release or liquidation, so keep what this device already knows.
+      status:
+        prior?.status === "released" || prior?.status === "liquidated"
+          ? prior.status
+          : debt > 0n
+            ? "active"
+            : "closed",
       createdAt: prior?.createdAt ?? Date.now(),
       btcPubkey: prior?.btcPubkey,
       timelockHeight: prior?.timelockHeight,
       vout: prior?.vout,
       leafIndex: n.leafIndex,
+      releaseTxid: prior?.releaseTxid,
+      releaseAddress: prior?.releaseAddress,
     };
     savePosition(position);
     recovered++;

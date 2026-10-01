@@ -4,7 +4,13 @@ import { useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { useWallet } from "@/lib/wallet/WalletProvider";
 import { useBitcoinWallet } from "@/lib/bitcoin/useBitcoinWallet";
-import { deriveP2WSH, buildReleasePsbt, finalizePathA, estimateReleaseFee } from "@/lib/bitcoin/address";
+import {
+  deriveP2WSH,
+  buildReleasePsbt,
+  finalizePathA,
+  estimateReleaseFee,
+  isAddressForNetwork,
+} from "@/lib/bitcoin/address";
 import { borrow } from "@/lib/flows/borrow";
 import { repay } from "@/lib/flows/repay";
 import { recoverPositions } from "@/lib/flows/recover";
@@ -21,6 +27,9 @@ import {
   positionKeys,
   subscribePositions,
   positionsSnapshot,
+  positionActions,
+  positionStatusLabel,
+  savePosition,
   EMPTY_POSITIONS,
   type Position,
 } from "@/lib/position";
@@ -41,13 +50,6 @@ function fmtBtc(sats: bigint): string {
   const frac = (sats % SAT).toString().padStart(8, "0");
   return `${whole}.${frac}`;
 }
-
-const STATUS_LABEL: Record<Position["status"], string> = {
-  pending: "Pending",
-  active: "Active",
-  closed: "Repaid, BTC still locked",
-  liquidated: "Liquidated",
-};
 
 function healthBp(collateralSats: bigint, debtStroops: bigint): bigint | null {
   if (debtStroops <= 0n) return null;
@@ -209,8 +211,11 @@ function PositionCard({ position }: { position: Position }) {
   const { address, signTransaction, seed } = useWallet();
   const btcWallet = useBitcoinWallet();
   const router = useRouter();
+  const actions = positionActions(position);
+  const liquidated = position.status === "liquidated";
+  const released = position.status === "released";
   const collateralSats = BigInt(position.collateralSats);
-  const debtStroops = BigInt(position.debtStroops);
+  const debtStroops = liquidated || released ? 0n : BigInt(position.debtStroops);
   const bp = healthBp(collateralSats, debtStroops);
 
   const health =
@@ -236,12 +241,19 @@ function PositionCard({ position }: { position: Position }) {
   const [repayMessage, setRepayMessage] = useState<string | null>(null);
   const [repayTx, setRepayTx] = useState<string | null>(null);
 
-  const [releaseRecipient, setReleaseRecipient] = useState("");
   const [releaseStatus, setReleaseStatus] = useState<"idle" | "working" | "done" | "error">("idle");
   const [releaseMessage, setReleaseMessage] = useState<string | null>(null);
   const [releaseTx, setReleaseTx] = useState<string | null>(null);
 
   const busy = status === "working" || repayStatus === "working" || releaseStatus === "working";
+
+  // Release always goes to the connected Xverse account that made the deposit.
+  const releaseRecipient = btcWallet.btcAddress;
+  const wrongBtcAccount =
+    !!btcWallet.btcPubkey &&
+    !!position.btcPubkey &&
+    btcWallet.btcPubkey.toLowerCase() !== position.btcPubkey.toLowerCase();
+  const wrongBtcNetwork = !!releaseRecipient && !isAddressForNetwork(releaseRecipient);
 
   async function handleBorrow() {
     setMessage(null);
@@ -322,19 +334,15 @@ function PositionCard({ position }: { position: Position }) {
       setReleaseMessage("Position is missing Bitcoin metadata needed for release.");
       return;
     }
-    if (!releaseRecipient.trim()) {
+    if (!releaseRecipient) {
       setReleaseStatus("error");
-      setReleaseMessage("Enter the Bitcoin address to receive the released funds.");
+      setReleaseMessage("Connect Xverse to sign the release.");
       return;
     }
-    if (!btcWallet.btcAddress) {
+    if (wrongBtcAccount || wrongBtcNetwork) return;
+    if (!actions.release) {
       setReleaseStatus("error");
-      setReleaseMessage("Connect your Bitcoin wallet to sign the release transaction.");
-      return;
-    }
-    if (debtStroops !== 0n) {
-      setReleaseStatus("error");
-      setReleaseMessage(`Outstanding debt of ${fmtUsdc(debtStroops)} USDC - repay before releasing.`);
+      setReleaseMessage(`You still owe ${fmtUsdc(debtStroops)} USDC. Repay it first, then release.`);
       return;
     }
 
@@ -358,7 +366,7 @@ function PositionCard({ position }: { position: Position }) {
         amountSat: collateralSatsNum,
         scriptPubKey: p2wsh.scriptPubKey,
         redeemScript: p2wsh.redeemScript,
-        recipientAddress: releaseRecipient.trim(),
+        recipientAddress: releaseRecipient,
         feeSat,
       });
 
@@ -420,8 +428,11 @@ function PositionCard({ position }: { position: Position }) {
       }
       const btcTxid = await broadcastRes.text();
 
+      savePosition({ ...position, status: "released", releaseTxid: btcTxid, releaseAddress: releaseRecipient });
       setReleaseStatus("done");
-      setReleaseMessage("BTC released -");
+      setReleaseMessage(
+        `BTC released. ${fmtBtc(collateralSats)} BTC sent to ${releaseRecipient}. It arrives after 1 Bitcoin confirmation.`,
+      );
       setReleaseTx(btcTxid);
       router.refresh();
     } catch (e) {
@@ -438,16 +449,18 @@ function PositionCard({ position }: { position: Position }) {
         </span>
         <span
           className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold ${
-            position.status === "liquidated"
+            liquidated
               ? "border-crit/40 bg-crit/10 text-crit"
-              : "border-line-2 text-body"
+              : released
+                ? "border-ok/40 bg-ok/10 text-ok"
+                : "border-line-2 text-body"
           }`}
         >
-          {STATUS_LABEL[position.status]}
+          {positionStatusLabel(position)}
         </span>
       </div>
 
-      {position.status === "liquidated" ? (
+      {liquidated ? (
         <div className="mb-4 rounded-lg border border-crit/30 bg-crit/5 p-3">
           <p className="text-xs font-semibold text-crit">This loan was liquidated.</p>
           <p className="mt-1 text-xs text-body">
@@ -466,45 +479,69 @@ function PositionCard({ position }: { position: Position }) {
         </div>
       ) : null}
 
+      {released ? (
+        <div className="mb-4 rounded-lg border border-ok/30 bg-ok/5 p-3">
+          <p className="text-xs font-semibold text-ok">BTC released</p>
+          <p className="mt-1 break-all text-xs text-body">
+            {fmtBtc(collateralSats)} BTC sent
+            {position.releaseAddress ? (
+              <>
+                {" "}to <span className="font-mono">{position.releaseAddress}</span>
+              </>
+            ) : null}
+            . It arrives after 1 Bitcoin confirmation.{" "}
+            {position.releaseTxid && (
+              <TxLink url={btcTxUrl(position.releaseTxid)} hash={position.releaseTxid} />
+            )}
+          </p>
+        </div>
+      ) : null}
+
       <div className="grid grid-cols-2 gap-5 sm:grid-cols-3">
-        <Metric label="Collateral · BTC">{fmtBtc(collateralSats)}</Metric>
+        <Metric label="Collateral · BTC">
+          {liquidated ? "0 (liquidated)" : fmtBtc(collateralSats)}
+        </Metric>
         <Metric label="You owe · USDC">{fmtUsdc(debtStroops)}</Metric>
         <Metric label="Collateral ratio">
           <span className={health.tone}>{health.label}</span>
         </Metric>
       </div>
 
-      <div className="mt-5 flex flex-col gap-2 border-t border-line pt-4">
-        <div className="flex items-center gap-2">
-          <input
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            inputMode="decimal"
-            placeholder="USDC amount"
-            disabled={busy}
-            className="w-full rounded-lg border border-line bg-surface-2 px-3 py-2 font-mono text-sm text-head outline-none focus:border-amber disabled:opacity-60"
-          />
-          <button
-            type="button"
-            onClick={handleBorrow}
-            disabled={busy}
-            className="shrink-0 rounded-lg bg-amber px-4 py-2 text-sm font-semibold text-[#1a1206] transition-colors hover:bg-[#eeb459] disabled:opacity-50"
-          >
-            {status === "working" ? "Proving…" : "Borrow"}
-          </button>
-        </div>
-        <p className="text-xs text-muted">
-          Max {fmtUsdc(maxBorrow)} USDC · keeps a ≥150% collateral ratio
-        </p>
-        {message ? (
-          <p className={`break-all text-xs ${status === "error" ? "text-crit" : "text-ok"}`}>
-            {message}{" "}
-            {borrowTx && <TxLink url={stellarTxUrl(borrowTx)} hash={borrowTx} />}
+      {actions.borrow ? (
+        <div className="mt-5 flex flex-col gap-2 border-t border-line pt-4">
+          <div className="flex items-center gap-2">
+            <input
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              inputMode="decimal"
+              placeholder="USDC amount"
+              disabled={busy}
+              className="w-full rounded-lg border border-line bg-surface-2 px-3 py-2 font-mono text-sm text-head outline-none focus:border-amber disabled:opacity-60"
+            />
+            <button
+              type="button"
+              onClick={handleBorrow}
+              disabled={busy || maxBorrow === 0n}
+              className="shrink-0 rounded-lg bg-amber px-4 py-2 text-sm font-semibold text-[#1a1206] transition-colors hover:bg-[#eeb459] disabled:opacity-50"
+            >
+              {status === "working" ? "Proving…" : "Borrow"}
+            </button>
+          </div>
+          <p className="text-xs text-muted">
+            {maxBorrow === 0n
+              ? "Can't borrow more: the ratio is below 150%. Repay some USDC to raise it."
+              : `Max ${fmtUsdc(maxBorrow)} USDC · keeps a ≥150% collateral ratio`}
           </p>
-        ) : null}
-      </div>
+          {message ? (
+            <p className={`break-all text-xs ${status === "error" ? "text-crit" : "text-ok"}`}>
+              {message}{" "}
+              {borrowTx && <TxLink url={stellarTxUrl(borrowTx)} hash={borrowTx} />}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
 
-      {debtStroops > 0n ? (
+      {actions.repay ? (
         <div className="mt-3 flex flex-col gap-2">
           <div className="flex items-center gap-2">
             <input
@@ -534,17 +571,15 @@ function PositionCard({ position }: { position: Position }) {
         </div>
       ) : null}
 
-      {position.status === "closed" && position.btcPubkey ? (
+      {actions.release ? (
         <div className="mt-4 flex flex-col gap-2 border-t border-line pt-4">
-          {releaseStatus !== "done" ? (
+          {releaseStatus !== "done" && position.status === "closed" ? (
             <div className="mb-1 rounded-lg border border-amber/30 bg-amber/5 p-3">
-              <p className="text-xs font-semibold text-amber">Action needed: release your BTC</p>
+              <p className="text-xs font-semibold text-amber">
+                Loan repaid. Your BTC is still locked.
+              </p>
               <p className="mt-1 text-xs text-body">
-                Your USDC debt is fully repaid on Stellar, but your BTC collateral
-                is still locked on Bitcoin - repaying does not release it
-                automatically. Enter a receive address below and click
-                &ldquo;Release&rdquo; to broadcast the transaction that sends
-                it back to you.
+                Your loan is repaid, but your BTC stays locked until you release it.
               </p>
             </div>
           ) : null}
@@ -554,26 +589,47 @@ function PositionCard({ position }: { position: Position }) {
               {releaseMessage}{" "}
               {releaseTx && <TxLink url={btcTxUrl(releaseTx)} hash={releaseTx} />}
             </p>
+          ) : !releaseRecipient ? (
+            <div className="flex flex-col items-start gap-2">
+              <p className="text-xs text-body">Connect Xverse to sign the release.</p>
+              <button
+                type="button"
+                onClick={btcWallet.connect}
+                disabled={btcWallet.connecting}
+                className="rounded-lg border border-line-2 px-4 py-2 text-sm font-semibold text-head transition-colors hover:border-amber disabled:opacity-60"
+              >
+                {btcWallet.connecting ? "Connecting…" : "Connect Xverse"}
+              </button>
+              {btcWallet.error && <p className="text-xs text-crit">{btcWallet.error}</p>}
+            </div>
           ) : (
             <>
-              <div className="flex items-center gap-2">
-                <input
-                  value={releaseRecipient}
-                  onChange={(e) => setReleaseRecipient(e.target.value)}
-                  placeholder="Your Bitcoin receive address"
-                  disabled={busy}
-                  spellCheck={false}
-                  className="w-full rounded-lg border border-line bg-surface-2 px-3 py-2 font-mono text-sm text-head outline-none focus:border-amber disabled:opacity-60"
-                />
-                <button
-                  type="button"
-                  onClick={handleRelease}
-                  disabled={busy}
-                  className="shrink-0 rounded-lg bg-amber px-4 py-2 text-sm font-semibold text-[#1a1206] transition-colors hover:bg-[#eeb459] disabled:opacity-50"
-                >
-                  {releaseStatus === "working" ? "Releasing…" : "Release"}
-                </button>
+              <div className="flex flex-col gap-1">
+                <span className="text-xs text-muted">Send to your Xverse wallet</span>
+                <div className="flex items-center gap-2">
+                  <p className="w-full break-all rounded-lg border border-line bg-surface-2 px-3 py-2 font-mono text-sm text-head">
+                    {releaseRecipient}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleRelease}
+                    disabled={busy || wrongBtcAccount || wrongBtcNetwork}
+                    className="shrink-0 rounded-lg bg-amber px-4 py-2 text-sm font-semibold text-[#1a1206] transition-colors hover:bg-[#eeb459] disabled:opacity-50"
+                  >
+                    {releaseStatus === "working" ? "Releasing…" : "Release BTC"}
+                  </button>
+                </div>
               </div>
+              {wrongBtcAccount ? (
+                <p className="text-xs text-crit">
+                  Connect the Bitcoin account that made this deposit.
+                </p>
+              ) : wrongBtcNetwork ? (
+                <p className="text-xs text-crit">
+                  This address isn&apos;t on Bitcoin {config.bitcoin.network}. Switch Xverse to{" "}
+                  {config.bitcoin.network} and connect again.
+                </p>
+              ) : null}
               {releaseStatus === "working" && releaseMessage && (
                 <p className="text-xs text-zk">{releaseMessage}</p>
               )}
@@ -581,14 +637,15 @@ function PositionCard({ position }: { position: Position }) {
                 <p className="break-all text-xs text-crit">{releaseMessage}</p>
               )}
               <p className="text-xs text-muted">
-                Requires Bitcoin wallet signature + protocol co-signature. Fee ≈2 sat/vbyte.
+                You sign in Xverse and Writz co-signs. The Bitcoin network fee, about
+                2 sat/vB, comes out of the released amount.
               </p>
             </>
           )}
         </div>
       ) : null}
 
-      {position.status === "closed" && !position.btcPubkey ? (
+      {actions.missingBtcDetails ? (
         <div className="mt-4 rounded-lg border border-line-2 bg-surface-2 p-3">
           <p className="text-xs font-semibold text-head">Release needs your deposit details</p>
           <p className="mt-1 text-xs text-muted">
