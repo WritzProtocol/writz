@@ -1,5 +1,5 @@
 /**
- * Transaction lifecycle shared by every flow (ux-spec 7.2). Flows report
+ * Transaction lifecycle shared by every flow. Flows report
  * progress as typed events; components render from the reduced state and
  * never parse human-readable strings.
  */
@@ -148,7 +148,7 @@ export function isInFlight(state: FlowState): boolean {
   return !isTerminal(state);
 }
 
-/** Leaving now could lose a signature or a submission (ux-spec 6.4). */
+/** Leaving now could lose a signature or a submission. */
 export function guardsUnload(state: FlowState): boolean {
   return (
     state.phase === "awaiting_signature" ||

@@ -1,5 +1,5 @@
 /**
- * One Stellar transaction in flight per account across tabs (ux-spec 6.4):
+ * One Stellar transaction in flight per account across tabs:
  * Web Locks hold the lock, BroadcastChannel tells the other tabs so they can
  * disable their actions. Falls back to a per-tab lock where Web Locks are
  * missing.
