@@ -1,18 +1,26 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { useWallet } from "@/lib/wallet/WalletProvider";
 import { useBitcoinWallet } from "@/lib/bitcoin/useBitcoinWallet";
 import { deriveP2WSH } from "@/lib/bitcoin/address";
-import { deposit } from "@/lib/flows/deposit";
-import { resolveVout } from "@/lib/bitcoin/address";
-import { positionsSnapshot } from "@/lib/position";
+import {
+  finishDeposit,
+  registerDeposit,
+  startDepositBySending,
+  startDepositFromTxid,
+  trackDeposit,
+} from "@/lib/flows/deposit";
+import { positionsSnapshot, type Position } from "@/lib/position";
 import { stellarTxUrl } from "@/lib/explorer";
 import { TxLink } from "./TxLink";
 import { config } from "@/config";
 import { humanizeError } from "@/lib/errors";
-import { useReportBusy } from "@/lib/activity";
+import { hashOf, isInFlight, type FlowState } from "@/lib/flow/engine";
+import { useFlow, useTxLockState } from "@/lib/flow/useFlow";
+import { depositLockName, locks } from "@/lib/flow/lock";
+import { pendingDeposits } from "@/lib/flow/pendingDeposit";
 
 const MIN_DEPOSIT_BTC = 0.0001;
 const MIN_DEPOSIT_SATS = 10_000n; // 0.0001 BTC
@@ -32,33 +40,6 @@ function parseBtcToSats(btcStr: string): bigint {
   return BigInt(whole) * 100_000_000n + BigInt(frac);
 }
 
-type Step =
-  | "idle"
-  | "sending"
-  | "polling"
-  | "proving"
-  | "depositing"
-  | "inserting"
-  | "done"
-  | "error";
-
-function stepLabel(step: Step, statusMsg: string): string {
-  switch (step) {
-    case "sending":    return "Waiting for Bitcoin wallet…";
-    case "polling":
-    case "proving":
-    case "depositing":
-    case "inserting":  return statusMsg;
-    default:           return "";
-  }
-}
-
-/** Extracts the confirmation count from a pollSpvBundle status message, e.g. "Waiting for confirmation… (3 so far)". */
-function parseConfirmations(statusMsg: string): number | null {
-  const m = /\((\d+) so far\)/.exec(statusMsg);
-  return m ? Number(m[1]) : null;
-}
-
 function etaLabel(remainingConfirmations: number): string {
   const minutes = remainingConfirmations * config.bitcoin.avgBlockMinutes;
   if (minutes <= 0) return "any moment now";
@@ -68,14 +49,21 @@ function etaLabel(remainingConfirmations: number): string {
 }
 
 /** Bitcoin confirmation progress: a determinate bar with a count and a rough ETA. */
-function ConfirmationProgress({ statusMsg }: { statusMsg: string }) {
-  const required = config.bitcoin.minConfirmations;
-  const confirmed = parseConfirmations(statusMsg);
-
-  if (confirmed === null) {
-    // Not polling confirmations yet (e.g. still locating the output, or a
-    // relayer-connectivity message) - show the raw status instead of a bar.
-    return <p className="text-xs text-zk">{statusMsg}</p>;
+function ConfirmationProgress({
+  confirmed,
+  required,
+  relayerReachable,
+}: {
+  confirmed: number;
+  required: number;
+  relayerReachable: boolean;
+}) {
+  if (!relayerReachable) {
+    return (
+      <p className="text-xs text-zk">
+        Can&apos;t reach the Writz relayer. Retrying on its own. Your BTC is safe on Bitcoin.
+      </p>
+    );
   }
 
   const pct = Math.min(100, Math.round((confirmed / required) * 100));
@@ -95,6 +83,9 @@ function ConfirmationProgress({ statusMsg }: { statusMsg: string }) {
           style={{ width: `${pct}%` }}
         />
       </div>
+      <p className="text-xs text-muted">
+        You can close this page. Your progress is saved in this browser for this Stellar wallet.
+      </p>
     </div>
   );
 }
@@ -111,22 +102,107 @@ function IndeterminateProgress({ label }: { label: string }) {
   );
 }
 
+function fmtBtc(sats: string): string {
+  const v = BigInt(sats);
+  return `${v / 100_000_000n}.${(v % 100_000_000n).toString().padStart(8, "0")}`;
+}
+
+/** The inline progress line for the current deposit state. */
+function DepositProgress({ flow }: { flow: FlowState }) {
+  const hash = hashOf(flow);
+  const link = hash ? <TxLink url={stellarTxUrl(hash)} hash={hash} /> : null;
+  switch (flow.phase) {
+    case "waiting_btc":
+      return (
+        <ConfirmationProgress
+          confirmed={flow.confirmations}
+          required={flow.required}
+          relayerReachable={flow.relayerReachable}
+        />
+      );
+    case "preparing":
+      if (flow.step === "locating_output") {
+        return <p className="text-xs text-zk">Locating output in transaction…</p>;
+      }
+      return <IndeterminateProgress label="Preparing your deposit…" />;
+    case "awaiting_signature":
+      return flow.wallet === "bitcoin" ? (
+        <p className="text-xs text-zk">Waiting for Bitcoin wallet…</p>
+      ) : (
+        <IndeterminateProgress label="Confirm in your Stellar wallet." />
+      );
+    case "ready":
+      return <p className="text-xs text-zk">Your BTC is locked. One signature left.</p>;
+    case "proving":
+      return <IndeterminateProgress label="Generating ZK proof in your browser… usually ~10 seconds" />;
+    case "submitted":
+      return (
+        <div className="flex flex-col gap-1.5">
+          <IndeterminateProgress label="Recording your deposit on Stellar (step 1 of 2)" />
+          <p className="text-xs text-muted">Tx {link}</p>
+        </div>
+      );
+    case "post_processing":
+      return (
+        <div className="flex flex-col gap-1.5">
+          <IndeterminateProgress label="Adding your loan (step 2 of 2)" />
+          {link && <p className="text-xs text-muted">Tx {link}</p>}
+        </div>
+      );
+    case "timed_out":
+      return (
+        <p className="break-all text-xs text-amber">
+          Your transaction was sent but isn&apos;t confirmed yet. It may still go through.
+          Don&apos;t send it again. {link}
+        </p>
+      );
+    case "signature_cancelled":
+      return <p className="text-xs text-body">You declined in your wallet. Nothing was sent.</p>;
+    case "needs_attention":
+      return (
+        <p className="break-all text-xs text-amber">
+          {flow.error
+            ? humanizeError(flow.error, { flow: "deposit" })
+            : "Your deposit is recorded on Stellar. One more step adds your loan."}{" "}
+          {link}
+        </p>
+      );
+    case "failed":
+      return (
+        <p className="break-all text-xs text-crit">
+          {humanizeError(flow.error, { flow: "deposit" })} {link}
+        </p>
+      );
+    default:
+      return null;
+  }
+}
+
 export function DepositFlow() {
   const { address, signTransaction, seed, unlocked, unlock } = useWallet();
   const btcWallet = useBitcoinWallet();
   const router = useRouter();
 
   const [txid, setTxid] = useState("");
-  const [sentVout, setSentVout] = useState<number | null>(null);
   const [btcAmount, setBtcAmount] = useState("");
-  const [step, setStep] = useState<Step>("idle");
-  const [statusMsg, setStatusMsg] = useState("");
-  const [txHash, setTxHash] = useState<string | null>(null);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [inputError, setInputError] = useState<string | null>(null);
   const [addressCopied, setAddressCopied] = useState(false);
+  const [flow, emit] = useFlow();
+  const [drivenElsewhere, setDrivenElsewhere] = useState(false);
+  const [runKey, setRunKey] = useState(0);
+  const [registering, setRegistering] = useState<Position | null>(null);
+  const autoContinue = useRef(false);
+  const signalRef = useRef<AbortSignal | undefined>(undefined);
 
-  const busy = step !== "idle" && step !== "done" && step !== "error";
-  useReportBusy(busy);
+  const pending = useSyncExternalStore(
+    pendingDeposits.subscribe,
+    () => (address ? pendingDeposits.snapshot(address) : null),
+    () => null,
+  );
+  const pendingTxid = pending?.btcTxid ?? null;
+  const txLock = useTxLockState(address);
+
+  const busy = isInFlight(flow);
   const isMainnet = config.bitcoin.network === "mainnet";
 
   async function handleCopyAddress() {
@@ -151,111 +227,179 @@ export function DepositFlow() {
     }
   }, [btcWallet.btcPubkey]);
 
-  const depositAddress = p2wsh?.address ?? null;
+  const depositAddress = pending?.p2wsh ?? p2wsh?.address ?? null;
 
-  function validate(): string | null {
+  const runRegister = useCallback(async () => {
+    if (!address || !seed) return;
+    autoContinue.current = false;
+    emit({ type: "start" });
+    try {
+      await locks().withTxLock(address, () =>
+        registerDeposit({ owner: address, seed, signTransaction, emit, signal: signalRef.current }),
+      );
+      router.refresh();
+    } catch (e) {
+      emit({ type: "failed", error: e });
+    }
+  }, [address, seed, signTransaction, emit, router]);
+
+  const runRegisterRef = useRef(runRegister);
+  useEffect(() => {
+    runRegisterRef.current = runRegister;
+  }, [runRegister]);
+
+  useEffect(() => {
+    emit({ type: "reset" });
+  }, [address, emit]);
+
+  // One tab drives a pending deposit; the others wait for its lock and take
+  // over if that tab closes.
+  useEffect(() => {
+    if (!address || !pendingTxid) return;
+    const controller = new AbortController();
+    signalRef.current = controller.signal;
+    let release: (() => void) | null = null;
+
+    void (async () => {
+      try {
+        release = await locks().holdLock(depositLockName(address), { ifAvailable: true });
+        if (!release) {
+          setDrivenElsewhere(true);
+          release = await locks().holdLock(depositLockName(address), { signal: controller.signal });
+        }
+        if (controller.signal.aborted) return;
+        setDrivenElsewhere(false);
+        const result = await trackDeposit(address, { emit, signal: controller.signal });
+        if (result.status === "ready") {
+          if (autoContinue.current) await runRegisterRef.current();
+        } else if (result.status === "registering") {
+          setRegistering(result.position);
+          emit({
+            type: "needs_attention",
+            action: "finish_deposit",
+            hash: result.position.stellarTxHash,
+          });
+        } else {
+          emit({ type: "settled", hash: result.position.stellarTxHash });
+        }
+      } catch (e) {
+        if (!controller.signal.aborted) emit({ type: "failed", error: e });
+      }
+    })();
+
+    return () => {
+      controller.abort();
+      release?.();
+      setDrivenElsewhere(false);
+    };
+  }, [address, pendingTxid, runKey, emit]);
+
+  function validateTxid(): string | null {
     if (!txid.trim() || !/^[0-9a-f]{64}$/i.test(txid.trim())) {
       return "Enter a valid 64-character Bitcoin txid.";
-    }
-    try {
-      const sats = parseBtcToSats(btcAmount);
-      if (sats < MIN_DEPOSIT_SATS) {
-        return `Minimum deposit is ${MIN_DEPOSIT_BTC} BTC.`;
-      }
-    } catch {
-      return `Invalid BTC amount.`;
     }
     return null;
   }
 
+  function usedIndices(): number[] {
+    return address ? positionsSnapshot(address).map((p) => p.index) : [];
+  }
+
   async function handleSendBtc() {
-    if (!depositAddress) return;
+    if (!depositAddress || !address || !btcWallet.btcPubkey || pending) return;
     let amountSats: bigint;
     try {
       amountSats = parseBtcToSats(btcAmount);
     } catch {
-      setStep("error");
-      setErrorMsg("Invalid BTC amount.");
+      setInputError("Invalid BTC amount.");
       return;
     }
     if (amountSats < MIN_DEPOSIT_SATS) {
-      setStep("error");
-      setErrorMsg(`Minimum deposit is ${MIN_DEPOSIT_BTC} BTC.`);
+      setInputError(`Minimum deposit is ${MIN_DEPOSIT_BTC} BTC.`);
       return;
     }
-    setErrorMsg(null);
-    setStep("sending");
+    setInputError(null);
+    emit({ type: "start" });
     try {
-      const sentTxid = await btcWallet.sendBtc(depositAddress, Number(amountSats));
-      setTxid(sentTxid);
-      setStep("sending");
-      setStatusMsg("Locating output in transaction…");
-      const vout = await resolveVout(sentTxid, depositAddress, config.bitcoin.apiUrl);
-      setSentVout(vout);
-      setStep("idle");
+      await startDepositBySending({
+        owner: address,
+        p2wsh: depositAddress,
+        btcPubkey: btcWallet.btcPubkey,
+        usedIndices: usedIndices(),
+        emit,
+        sats: amountSats,
+        send: btcWallet.sendBtc,
+      });
     } catch (e) {
-      setStep("error");
-      setErrorMsg(humanizeError(e, { flow: "deposit" }));
+      emit({ type: "failed", error: e });
     }
   }
 
   async function handleDeposit() {
     if (!address) return;
     if (!seed) {
-      setStep("error");
-      setErrorMsg("Unlock your positions first.");
+      setInputError("Unlock your positions first.");
       return;
     }
-    const validationError = validate();
+    setInputError(null);
+
+    if (pending) {
+      autoContinue.current = true;
+      if (flow.phase === "ready") await runRegister();
+      else if (!isInFlight(flow)) setRunKey((k) => k + 1);
+      return;
+    }
+
+    const validationError = validateTxid();
     if (validationError) {
-      setStep("error");
-      setErrorMsg(validationError);
+      setInputError(validationError);
       return;
     }
-
-    setErrorMsg(null);
-    setStep("polling");
-
-    const collateralSats = parseBtcToSats(btcAmount);
-
-    const onStatus = (msg: string) => {
-      if (msg.toLowerCase().includes("zk proof")) setStep("proving");
-      else if (msg.includes("1/2")) setStep("depositing");
-      else if (msg.includes("2/2")) setStep("inserting");
-      setStatusMsg(msg);
-    };
-
+    if (!depositAddress || !btcWallet.btcPubkey) return;
+    autoContinue.current = true;
+    emit({ type: "start" });
     try {
-      const result = await deposit({
-        txid: txid.trim().toLowerCase(),
-        collateralSats,
-        depositor: address,
-        seed,
-        index: positionsSnapshot(address).length,
-        signTransaction,
-        onStatus,
-        btcPubkey: btcWallet.btcPubkey ?? undefined,
-        timelockHeight: config.bitcoin.timelockHeight,
-        vout: sentVout ?? 0,
+      await startDepositFromTxid({
+        owner: address,
+        p2wsh: depositAddress,
+        btcPubkey: btcWallet.btcPubkey,
+        usedIndices: usedIndices(),
+        emit,
+        txid,
       });
-      setTxHash(result.txHash ?? null);
-      setStep("done");
+    } catch (e) {
+      autoContinue.current = false;
+      emit({ type: "failed", error: e });
+    }
+  }
+
+  async function handleFinish() {
+    if (!address || !seed) return;
+    const position =
+      registering ??
+      positionsSnapshot(address).find((p) => p.status === "registering" && p.txid === pendingTxid);
+    if (!position) return;
+    emit({ type: "start" });
+    try {
+      await locks().withTxLock(address, () =>
+        finishDeposit({ position, seed, signTransaction, emit }),
+      );
       router.refresh();
     } catch (e) {
-      setStep("error");
-      setErrorMsg(humanizeError(e, { flow: "deposit" }));
+      emit({ type: "failed", error: e });
     }
   }
 
   function reset() {
-    setStep("idle");
-    setErrorMsg(null);
+    emit({ type: "reset" });
+    setInputError(null);
     setTxid("");
-    setSentVout(null);
     setBtcAmount("");
-    setTxHash(null);
-    setStatusMsg("");
+    setRegistering(null);
   }
+
+  const otherTx = txLock === "elsewhere" || (txLock === "here" && !busy);
+  const needsFinish = flow.phase === "needs_attention";
 
   if (!address) return null;
 
@@ -268,7 +412,7 @@ export function DepositFlow() {
 
       <div className="rounded-xl border border-line bg-surface p-5">
         {/* Bitcoin wallet connection */}
-        {!btcWallet.btcAddress ? (
+        {!btcWallet.btcAddress && !pending && flow.phase !== "settled" ? (
           <div className="mb-5">
             <p className="text-sm text-body">
               Connect a Bitcoin wallet to derive your personal P2WSH deposit address.
@@ -357,14 +501,14 @@ export function DepositFlow() {
             </div>
 
             <div className="border-t border-line pt-4">
-              {step === "done" ? (
+              {flow.phase === "settled" ? (
                 <div className="flex flex-col gap-3">
                   <p className="text-sm font-semibold text-ok">
                     Deposit complete - position created.
                   </p>
-                  {txHash && (
+                  {flow.hash && (
                     <p className="text-xs text-muted">
-                      Tx <TxLink url={stellarTxUrl(txHash)} hash={txHash} />
+                      Tx <TxLink url={stellarTxUrl(flow.hash)} hash={flow.hash} />
                     </p>
                   )}
                   <p className="text-xs text-muted">
@@ -387,25 +531,25 @@ export function DepositFlow() {
                     </label>
                     <div className="flex gap-2">
                       <input
-                        value={btcAmount}
+                        value={pending ? fmtBtc(pending.sats) : btcAmount}
                         onChange={(e) => setBtcAmount(e.target.value)}
                         inputMode="decimal"
                         placeholder="e.g. 0.01"
-                        disabled={busy}
+                        disabled={busy || !!pending}
                         className="w-full rounded-lg border border-line bg-surface-2 px-3 py-2 font-mono text-sm text-head outline-none focus:border-amber disabled:opacity-60"
                       />
                       {depositAddress && (
                         <button
                           type="button"
                           onClick={handleSendBtc}
-                          disabled={busy}
+                          disabled={busy || !!pending || otherTx}
                           className="shrink-0 rounded-lg border border-line-2 px-3 py-2 text-sm font-semibold text-head transition-colors hover:border-amber disabled:opacity-50"
                         >
                           Send BTC
                         </button>
                       )}
                     </div>
-                    {btcAmount && (() => { try { return parseBtcToSats(btcAmount); } catch { return null; } })() !== null && (
+                    {!pending && btcAmount && (() => { try { return parseBtcToSats(btcAmount); } catch { return null; } })() !== null && (
                       <p className="text-xs text-muted">
                         = {(() => { try { return parseBtcToSats(btcAmount).toLocaleString(); } catch { return ""; } })()} sats
                       </p>
@@ -418,29 +562,35 @@ export function DepositFlow() {
                       Bitcoin txid
                     </label>
                     <input
-                      value={txid}
+                      value={pending ? pending.btcTxid : txid}
                       onChange={(e) => setTxid(e.target.value)}
                       placeholder="64-character hex (auto-filled when using Send BTC)"
-                      disabled={busy}
+                      disabled={busy || !!pending}
                       spellCheck={false}
                       className="w-full rounded-lg border border-line bg-surface-2 px-3 py-2 font-mono text-sm text-head outline-none focus:border-amber disabled:opacity-60"
                     />
                   </div>
 
                   {/* Step progress */}
-                  {busy && step === "polling" && <ConfirmationProgress statusMsg={statusMsg} />}
-                  {busy && step === "proving" && (
-                    <IndeterminateProgress label="Generating ZK proof in your browser… usually ~10 seconds" />
-                  )}
-                  {busy && (step === "depositing" || step === "inserting") && (
-                    <IndeterminateProgress label={stepLabel(step, statusMsg)} />
-                  )}
-                  {busy && step === "sending" && (
-                    <p className="text-xs text-zk">{stepLabel(step, statusMsg)}</p>
+                  {drivenElsewhere ? (
+                    <div className="flex flex-col gap-1.5">
+                      <p className="text-xs text-zk">This deposit is running in another tab.</p>
+                      {pending?.confirmations !== undefined && (
+                        <ConfirmationProgress
+                          confirmed={pending.confirmations}
+                          required={pending.required ?? config.bitcoin.minConfirmations}
+                          relayerReachable
+                        />
+                      )}
+                    </div>
+                  ) : (
+                    <DepositProgress flow={flow} />
                   )}
 
-                  {step === "error" && errorMsg && (
-                    <p className="break-all text-xs text-crit">{errorMsg}</p>
+                  {inputError && <p className="break-all text-xs text-crit">{inputError}</p>}
+
+                  {otherTx && !drivenElsewhere && (
+                    <p className="text-xs text-muted">Waiting for your other transaction.</p>
                   )}
 
                   {!unlocked && (
@@ -453,20 +603,31 @@ export function DepositFlow() {
                     </button>
                   )}
 
-                  <button
-                    type="button"
-                    onClick={handleDeposit}
-                    disabled={busy || !unlocked}
-                    className="self-start rounded-lg bg-amber px-4 py-2 text-sm font-semibold text-[#1a1206] transition-colors hover:bg-[#eeb459] disabled:opacity-50"
-                  >
-                    {busy
-                      ? step === "polling"
-                        ? "Waiting for confirmations…"
-                        : step === "proving"
-                          ? "Proving…"
-                          : "Submitting…"
-                      : "Deposit"}
-                  </button>
+                  {needsFinish ? (
+                    <button
+                      type="button"
+                      onClick={handleFinish}
+                      disabled={!unlocked || otherTx}
+                      className="self-start rounded-lg bg-amber px-4 py-2 text-sm font-semibold text-[#1a1206] transition-colors hover:bg-[#eeb459] disabled:opacity-50"
+                    >
+                      Finish deposit
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleDeposit}
+                      disabled={busy || !unlocked || drivenElsewhere || otherTx}
+                      className="self-start rounded-lg bg-amber px-4 py-2 text-sm font-semibold text-[#1a1206] transition-colors hover:bg-[#eeb459] disabled:opacity-50"
+                    >
+                      {busy
+                        ? flow.phase === "waiting_btc"
+                          ? "Waiting for confirmations…"
+                          : flow.phase === "proving"
+                            ? "Proving…"
+                            : "Submitting…"
+                        : "Deposit"}
+                    </button>
+                  )}
                 </div>
               )}
             </div>

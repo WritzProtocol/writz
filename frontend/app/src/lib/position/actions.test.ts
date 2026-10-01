@@ -74,4 +74,15 @@ describe("positionStatusLabel", () => {
     expect(positionStatusLabel(pos({ status: "released" }))).toBe("BTC released");
     expect(positionStatusLabel(pos({ status: "liquidated" }))).toBe("Liquidated");
   });
+
+  test("a deposit waiting for its tree insert offers no loan actions", () => {
+    const registering = pos({ status: "registering" });
+    expect(positionStatusLabel(registering)).toBe("Registering on Stellar");
+    expect(positionActions(registering)).toEqual({
+      borrow: false,
+      repay: false,
+      release: false,
+      missingBtcDetails: false,
+    });
+  });
 });
