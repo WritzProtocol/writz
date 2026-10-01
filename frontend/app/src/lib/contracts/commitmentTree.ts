@@ -58,6 +58,24 @@ export async function getSupplyBalance(lender: string): Promise<bigint> {
   return result;
 }
 
+/**
+ * `get_commitment` for a Bitcoin txid given in display (Esplora) order. The
+ * contract keys deposits by the internal order, so the bytes are reversed.
+ */
+export async function getCommitmentForTxid(btcTxidDisplay: string): Promise<string | null> {
+  const internal = Buffer.from(btcTxidDisplay, "hex").reverse();
+  const { result } = await getClient().get_commitment({ txid: internal });
+  return result ? bytesToHex(result) : null;
+}
+
+/** True while a deposited commitment still waits for the relayer's tree insertion. */
+export async function isCommitmentPending(commitmentHex: string): Promise<boolean> {
+  const { result } = await getClient().is_commitment_pending({
+    commitment: Buffer.from(commitmentHex, "hex"),
+  });
+  return result;
+}
+
 // Soroban RPC only retains events for a rolling window; a position being
 // released is expected to have deposited recently enough to still be
 // borrowable, so one day of ledgers (5s close time) is generous headroom.

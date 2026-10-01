@@ -4,7 +4,13 @@
  * plus `index`/`version` (see lib/position/derive). BigInt fields are decimal
  * strings for JSON-safe persistence.
  */
-export type PositionStatus = "pending" | "active" | "closed" | "released" | "liquidated";
+export type PositionStatus =
+  | "pending"
+  | "registering"
+  | "active"
+  | "closed"
+  | "released"
+  | "liquidated";
 
 export interface Position {
   /** Stable local id - the current commitment (decimal string). */
@@ -43,6 +49,8 @@ export interface Position {
   releaseTxid?: string;
   /** Bitcoin address the collateral was released to. */
   releaseAddress?: string;
+  /** Stellar transaction that registered the deposit. */
+  stellarTxHash?: string;
 }
 
 /** A versioned export envelope for backup / restore. */

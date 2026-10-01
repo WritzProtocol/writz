@@ -12,7 +12,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { WalletMenu } from "@/components/WalletMenu";
-import { config } from "@/config";
+import { config, BTC_NETWORK_LABEL } from "@/config";
 
 interface Props {
   children: React.ReactNode;
@@ -154,7 +154,7 @@ export function DashboardLayout({ children, breadcrumbs }: Props) {
               </span>
               <span className="inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-2.5 py-1 text-xs font-mono text-muted">
                 <span className="h-1.5 w-1.5 rounded-full bg-amber" />
-                Bitcoin {config.bitcoin.network}
+                {BTC_NETWORK_LABEL}
               </span>
             </div>
             <WalletMenu />

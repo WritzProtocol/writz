@@ -20,7 +20,7 @@ import { POOL_ASSET } from "@/lib/flows/trustline";
 import { proveZeroDebt, type ZeroDebtInput } from "@/lib/prover";
 import { stellarTxUrl, btcTxUrl } from "@/lib/explorer";
 import { TxLink } from "./TxLink";
-import { config } from "@/config";
+import { config, BTC_NETWORK_LABEL } from "@/config";
 import { humanizeError } from "@/lib/errors";
 import { GITHUB_ISSUES_URL, LIQUIDATION_DOCS_URL, RECLAIM_DOCS_URL } from "@/lib/links";
 import {
@@ -33,7 +33,11 @@ import {
   EMPTY_POSITIONS,
   type Position,
 } from "@/lib/position";
-import { useReportBusy } from "@/lib/activity";
+import { finishDeposit } from "@/lib/flows/deposit";
+import { isInFlight, type Emit, type FlowState } from "@/lib/flow/engine";
+import { useFlow, useTxLockState } from "@/lib/flow/useFlow";
+import { locks } from "@/lib/flow/lock";
+import { FlowOutcome, workingLabel } from "./FlowOutcome";
 
 // USDC = 7 decimals (stroops), BTC = 8 decimals (sats).
 const STROOP = 10_000_000n;
@@ -84,7 +88,13 @@ export function PositionDashboard() {
     setDemoError(null);
     setDemoLoading(true);
     try {
-      await createDemoPosition({ owner: address, seed, index: positionsSnapshot(address).length });
+      const used = positionsSnapshot(address).map((p) => p.index);
+      const index = await locks().reservePositionIndex(address, used);
+      try {
+        await createDemoPosition({ owner: address, seed, index });
+      } finally {
+        await locks().releasePositionIndex(address, index);
+      }
     } catch (e) {
       setDemoError(humanizeError(e));
     } finally {
@@ -139,8 +149,8 @@ export function PositionDashboard() {
       ) : !unlocked ? (
         <div className="flex flex-col items-start gap-3 rounded-xl border border-line bg-surface p-6">
           <p className="text-sm text-muted">
-            Unlock to derive your position keys from your wallet. This signs a
-            message (no transaction, no fee) and works on any device.
+            Load your positions by signing a free message in your Stellar wallet.
+            No transaction, no fee, and it works on any device.
           </p>
           <button
             type="button"
@@ -148,7 +158,7 @@ export function PositionDashboard() {
             disabled={unlocking}
             className="rounded-full border border-line-2 px-3 py-1 text-xs font-semibold text-amber transition-colors hover:border-amber disabled:opacity-50"
           >
-            {unlocking ? "Waiting for signature…" : "Unlock positions"}
+            {unlocking ? "Waiting for signature…" : "Load my positions"}
           </button>
           {unlockError ? <p className="break-all text-xs text-crit">{unlockError}</p> : null}
         </div>
@@ -233,21 +243,38 @@ function PositionCard({ position }: { position: Position }) {
   const maxBorrow = maxDebt > debtStroops ? maxDebt - debtStroops : 0n;
 
   const [amount, setAmount] = useState("");
-  const [status, setStatus] = useState<"idle" | "working" | "done" | "error">("idle");
   const [message, setMessage] = useState<string | null>(null);
-  const [borrowTx, setBorrowTx] = useState<string | null>(null);
+  const [borrowFlow, emitBorrow] = useFlow();
 
   const [repayAmount, setRepayAmount] = useState("");
-  const [repayStatus, setRepayStatus] = useState<"idle" | "working" | "done" | "error">("idle");
   const [repayMessage, setRepayMessage] = useState<string | null>(null);
-  const [repayTx, setRepayTx] = useState<string | null>(null);
+  const [repayFlow, emitRepay] = useFlow();
 
-  const [releaseStatus, setReleaseStatus] = useState<"idle" | "working" | "done" | "error">("idle");
   const [releaseMessage, setReleaseMessage] = useState<string | null>(null);
+  const [releaseFlow, emitRelease] = useFlow();
   const [releaseTx, setReleaseTx] = useState<string | null>(null);
 
-  const busy = status === "working" || repayStatus === "working" || releaseStatus === "working";
-  useReportBusy(busy);
+  const [finishFlow, emitFinish] = useFlow();
+
+  const busy =
+    isInFlight(borrowFlow) ||
+    isInFlight(repayFlow) ||
+    isInFlight(releaseFlow) ||
+    isInFlight(finishFlow);
+  const txLock = useTxLockState(address);
+  const otherTx = txLock === "elsewhere" || (txLock === "here" && !busy);
+
+  /** Runs `fn` under the account's transaction lock, reporting a lock conflict like any other failure. */
+  async function locked(emit: Emit, fn: () => Promise<unknown>) {
+    if (!address) return;
+    emit({ type: "start" });
+    try {
+      await locks().withTxLock(address, fn);
+      router.refresh();
+    } catch (e) {
+      emit({ type: "failed", error: e });
+    }
+  }
 
   // Release always goes to the connected Xverse account that made the deposit.
   const releaseRecipient = btcWallet.btcAddress;
@@ -259,111 +286,96 @@ function PositionCard({ position }: { position: Position }) {
 
   async function handleBorrow() {
     setMessage(null);
-    setBorrowTx(null);
+    emitBorrow({ type: "reset" });
     if (!address || !seed) {
-      setStatus("error");
-      setMessage("Unlock your positions first.");
+      setMessage("Load your keys first: sign the free message in your Stellar wallet.");
       return;
     }
     const usdc = Number(amount);
     if (!Number.isFinite(usdc) || usdc <= 0) {
-      setStatus("error");
       setMessage("Enter an amount.");
       return;
     }
     const amountStroops = BigInt(Math.round(usdc * 1e7));
     if (amountStroops > maxBorrow) {
-      setStatus("error");
       setMessage(`Max borrow is ${fmtUsdc(maxBorrow)} USDC (keeps ≥150%).`);
       return;
     }
-    setStatus("working");
-    try {
-      const { txHash } = await borrow({ position, amountStroops, borrower: address, seed, signTransaction });
-      setStatus("done");
-      setMessage("Borrowed.");
-      setBorrowTx(txHash ?? null);
+    await locked(emitBorrow, async () => {
+      await borrow({ position, amountStroops, borrower: address, seed, signTransaction, emit: emitBorrow });
       setAmount("");
-      router.refresh();
-    } catch (e) {
-      setStatus("error");
-      setMessage(humanizeError(e, { flow: "borrow" }));
-    }
+    });
   }
 
   async function handleRepay() {
     setRepayMessage(null);
-    setRepayTx(null);
+    emitRepay({ type: "reset" });
     if (!address || !seed) {
-      setRepayStatus("error");
-      setRepayMessage("Unlock your positions first.");
+      setRepayMessage("Load your keys first: sign the free message in your Stellar wallet.");
       return;
     }
     const usdc = Number(repayAmount);
     if (!Number.isFinite(usdc) || usdc <= 0) {
-      setRepayStatus("error");
       setRepayMessage("Enter an amount.");
       return;
     }
     const amountStroops = BigInt(Math.round(usdc * 1e7));
     if (amountStroops > debtStroops) {
-      setRepayStatus("error");
       setRepayMessage(`You owe ${fmtUsdc(debtStroops)} USDC.`);
       return;
     }
-    setRepayStatus("working");
-    try {
-      const { txHash } = await repay({ position, amountStroops, repayer: address, seed, signTransaction });
-      setRepayStatus("done");
-      setRepayMessage("Repaid.");
-      setRepayTx(txHash ?? null);
+    await locked(emitRepay, async () => {
+      await repay({ position, amountStroops, repayer: address, seed, signTransaction, emit: emitRepay });
       setRepayAmount("");
-      router.refresh();
-    } catch (e) {
-      setRepayStatus("error");
-      setRepayMessage(humanizeError(e, { flow: "repay" }));
-    }
+    });
+  }
+
+  async function handleFinish() {
+    if (!seed) return;
+    await locked(emitFinish, () =>
+      finishDeposit({ position, seed, signTransaction, emit: emitFinish }),
+    );
   }
 
   async function handleRelease() {
+    setReleaseMessage(null);
+    emitRelease({ type: "reset" });
     if (!address || !seed) {
-      setReleaseStatus("error");
-      setReleaseMessage("Unlock your positions first.");
+      setReleaseMessage("Load your keys first: sign the free message in your Stellar wallet.");
       return;
     }
     if (!position.btcPubkey || !position.timelockHeight || !position.txid) {
-      setReleaseStatus("error");
       setReleaseMessage("Position is missing Bitcoin metadata needed for release.");
       return;
     }
     if (!releaseRecipient) {
-      setReleaseStatus("error");
       setReleaseMessage("Connect Xverse to sign the release.");
       return;
     }
     if (wrongBtcAccount || wrongBtcNetwork) return;
     if (!actions.release) {
-      setReleaseStatus("error");
       setReleaseMessage(`You still owe ${fmtUsdc(debtStroops)} USDC. Repay it first, then release.`);
       return;
     }
+    const btcPubkey = position.btcPubkey;
+    const timelockHeight = position.timelockHeight;
+    const depositTxid = position.txid;
 
-    setReleaseStatus("working");
     setReleaseTx(null);
-    setReleaseMessage("Building release transaction…");
-    try {
+    await locked(emitRelease, async () => {
+      emitRelease({ type: "preparing", step: "building" });
       const protocolPubkey = config.bitcoin.protocolPubkey;
       if (!protocolPubkey) throw new Error("NEXT_PUBLIC_PROTOCOL_BTC_PUBKEY not configured");
 
       const relayerUrl = config.services.relayerUrl;
       if (!relayerUrl) throw new Error("NEXT_PUBLIC_RELAYER_URL not configured");
 
-      const p2wsh = deriveP2WSH(protocolPubkey, position.btcPubkey, position.timelockHeight);
+      const p2wsh = deriveP2WSH(protocolPubkey, btcPubkey, timelockHeight);
       const collateralSatsNum = Number(BigInt(position.collateralSats));
       const feeSat = await estimateReleaseFee(config.bitcoin.apiUrl);
 
       const psbt = buildReleasePsbt({
-        txidHex: position.txid,
+        txidHex: depositTxid,
         vout: position.vout ?? 0,
         amountSat: collateralSatsNum,
         scriptPubKey: p2wsh.scriptPubKey,
@@ -372,7 +384,7 @@ function PositionCard({ position }: { position: Position }) {
         feeSat,
       });
 
-      setReleaseMessage("Fetching Merkle inclusion path…");
+      emitRelease({ type: "preparing", step: "merkle_path" });
       const commitmentHex = BigInt(position.commitment).toString(16).padStart(64, "0");
       const qs =
         position.leafIndex !== undefined
@@ -390,7 +402,7 @@ function PositionCard({ position }: { position: Position }) {
       };
 
       // Zero-debt proof - keys derived from the session seed (never persisted).
-      setReleaseMessage("Generating zero-debt proof (this may take ~30 s)…");
+      emitRelease({ type: "proving" });
       const { secret, nonce } = positionKeys(seed, position);
       const zeroDebtInput: ZeroDebtInput = {
         collateral_satoshis: position.collateralSats,
@@ -402,7 +414,7 @@ function PositionCard({ position }: { position: Position }) {
       };
       const { raw: zkRaw } = await proveZeroDebt(zeroDebtInput);
 
-      setReleaseMessage("Requesting protocol co-signature…");
+      emitRelease({ type: "preparing", step: "cosign" });
       const cosignRes = await fetch("/api/cosign", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -418,11 +430,11 @@ function PositionCard({ position }: { position: Position }) {
       }
       const { signedPsbt: protocolSignedPsbt } = (await cosignRes.json()) as { signedPsbt: string };
 
-      setReleaseMessage("Sign the release transaction with your Bitcoin wallet…");
+      emitRelease({ type: "awaiting_signature", wallet: "bitcoin" });
       const userSignedPsbt = await btcWallet.signPsbt(psbt.toBase64());
 
-      setReleaseMessage("Finalizing and broadcasting…");
-      const txHex = finalizePathA(protocolSignedPsbt, userSignedPsbt, protocolPubkey, position.btcPubkey);
+      emitRelease({ type: "preparing", step: "broadcasting" });
+      const txHex = finalizePathA(protocolSignedPsbt, userSignedPsbt, protocolPubkey, btcPubkey);
       const broadcastRes = await fetch(`${config.bitcoin.apiUrl}/tx`, { method: "POST", body: txHex });
       if (!broadcastRes.ok) {
         const errText = await broadcastRes.text().catch(() => String(broadcastRes.status));
@@ -431,16 +443,9 @@ function PositionCard({ position }: { position: Position }) {
       const btcTxid = await broadcastRes.text();
 
       savePosition({ ...position, status: "released", releaseTxid: btcTxid, releaseAddress: releaseRecipient });
-      setReleaseStatus("done");
-      setReleaseMessage(
-        `BTC released. ${fmtBtc(collateralSats)} BTC sent to ${releaseRecipient}. It arrives after 1 Bitcoin confirmation.`,
-      );
       setReleaseTx(btcTxid);
-      router.refresh();
-    } catch (e) {
-      setReleaseStatus("error");
-      setReleaseMessage(humanizeError(e, { flow: "release" }));
-    }
+      emitRelease({ type: "settled" });
+    });
   }
 
   return (
@@ -508,6 +513,41 @@ function PositionCard({ position }: { position: Position }) {
         </Metric>
       </div>
 
+      {position.status === "registering" ? (
+        <div className="mt-5 flex flex-col gap-2 border-t border-line pt-4">
+          <p className="text-xs text-body">
+            Your deposit is recorded on Stellar. One more step adds your loan.{" "}
+            {position.stellarTxHash && (
+              <TxLink url={stellarTxUrl(position.stellarTxHash)} hash={position.stellarTxHash} />
+            )}
+          </p>
+          <button
+            type="button"
+            onClick={handleFinish}
+            disabled={busy || otherTx}
+            className="self-start rounded-lg bg-amber px-4 py-2 text-sm font-semibold text-[#1a1206] transition-colors hover:bg-[#eeb459] disabled:opacity-50"
+          >
+            {isInFlight(finishFlow) ? "Adding your loan…" : "Finish deposit"}
+          </button>
+          {finishFlow.phase === "needs_attention" && finishFlow.error ? (
+            <p className="break-all text-xs text-crit">
+              {humanizeError(finishFlow.error, { flow: "deposit" })}
+            </p>
+          ) : (
+            <FlowOutcome
+              flow={finishFlow}
+              success="Deposit complete."
+              errorContext={{ flow: "deposit" }}
+              txUrl={stellarTxUrl}
+            />
+          )}
+        </div>
+      ) : null}
+
+      {otherTx && (actions.borrow || actions.repay || actions.release) ? (
+        <p className="mt-4 text-xs text-muted">Waiting for your other transaction.</p>
+      ) : null}
+
       {actions.borrow ? (
         <div className="mt-5 flex flex-col gap-2 border-t border-line pt-4">
           <div className="flex items-center gap-2">
@@ -522,10 +562,10 @@ function PositionCard({ position }: { position: Position }) {
             <button
               type="button"
               onClick={handleBorrow}
-              disabled={busy || maxBorrow === 0n}
+              disabled={busy || otherTx || maxBorrow === 0n}
               className="shrink-0 rounded-lg bg-amber px-4 py-2 text-sm font-semibold text-[#1a1206] transition-colors hover:bg-[#eeb459] disabled:opacity-50"
             >
-              {status === "working" ? "Proving…" : "Borrow"}
+              {workingLabel(borrowFlow, "Borrow")}
             </button>
           </div>
           <p className="text-xs text-muted">
@@ -533,12 +573,13 @@ function PositionCard({ position }: { position: Position }) {
               ? "Can't borrow more: the ratio is below 150%. Repay some USDC to raise it."
               : `Max ${fmtUsdc(maxBorrow)} USDC · keeps a ≥150% collateral ratio`}
           </p>
-          {message ? (
-            <p className={`break-all text-xs ${status === "error" ? "text-crit" : "text-ok"}`}>
-              {message}{" "}
-              {borrowTx && <TxLink url={stellarTxUrl(borrowTx)} hash={borrowTx} />}
-            </p>
-          ) : null}
+          {message ? <p className="break-all text-xs text-crit">{message}</p> : null}
+          <FlowOutcome
+            flow={borrowFlow}
+            success="Borrowed."
+            errorContext={{ flow: "borrow" }}
+            txUrl={stellarTxUrl}
+          />
         </div>
       ) : null}
 
@@ -556,25 +597,26 @@ function PositionCard({ position }: { position: Position }) {
             <button
               type="button"
               onClick={handleRepay}
-              disabled={busy}
+              disabled={busy || otherTx}
               className="shrink-0 rounded-lg border border-line-2 px-4 py-2 text-sm font-semibold text-head transition-colors hover:border-amber disabled:opacity-50"
             >
-              {repayStatus === "working" ? "Proving…" : "Repay"}
+              {workingLabel(repayFlow, "Repay")}
             </button>
           </div>
           <p className="text-xs text-muted">You owe {fmtUsdc(debtStroops)} USDC</p>
-          {repayMessage ? (
-            <p className={`break-all text-xs ${repayStatus === "error" ? "text-crit" : "text-ok"}`}>
-              {repayMessage}{" "}
-              {repayTx && <TxLink url={stellarTxUrl(repayTx)} hash={repayTx} />}
-            </p>
-          ) : null}
+          {repayMessage ? <p className="break-all text-xs text-crit">{repayMessage}</p> : null}
+          <FlowOutcome
+            flow={repayFlow}
+            success="Repaid."
+            errorContext={{ flow: "repay" }}
+            txUrl={stellarTxUrl}
+          />
         </div>
       ) : null}
 
       {actions.release ? (
         <div className="mt-4 flex flex-col gap-2 border-t border-line pt-4">
-          {releaseStatus !== "done" && position.status === "closed" ? (
+          {releaseFlow.phase !== "settled" && position.status === "closed" ? (
             <div className="mb-1 rounded-lg border border-amber/30 bg-amber/5 p-3">
               <p className="text-xs font-semibold text-amber">
                 Loan repaid. Your BTC is still locked.
@@ -585,9 +627,10 @@ function PositionCard({ position }: { position: Position }) {
             </div>
           ) : null}
           <p className="text-xs font-semibold uppercase tracking-wider text-muted">Release BTC</p>
-          {releaseStatus === "done" ? (
+          {releaseFlow.phase === "settled" ? (
             <p className="break-all text-xs text-ok">
-              {releaseMessage}{" "}
+              BTC released. {fmtBtc(collateralSats)} BTC sent to {releaseRecipient}. It arrives
+              after 1 Bitcoin confirmation.{" "}
               {releaseTx && <TxLink url={btcTxUrl(releaseTx)} hash={releaseTx} />}
             </p>
           ) : !releaseRecipient ? (
@@ -614,10 +657,10 @@ function PositionCard({ position }: { position: Position }) {
                   <button
                     type="button"
                     onClick={handleRelease}
-                    disabled={busy || wrongBtcAccount || wrongBtcNetwork}
+                    disabled={busy || otherTx || wrongBtcAccount || wrongBtcNetwork}
                     className="shrink-0 rounded-lg bg-amber px-4 py-2 text-sm font-semibold text-[#1a1206] transition-colors hover:bg-[#eeb459] disabled:opacity-50"
                   >
-                    {releaseStatus === "working" ? "Releasing…" : "Release BTC"}
+                    {isInFlight(releaseFlow) ? "Releasing…" : "Release BTC"}
                   </button>
                 </div>
               </div>
@@ -627,15 +670,21 @@ function PositionCard({ position }: { position: Position }) {
                 </p>
               ) : wrongBtcNetwork ? (
                 <p className="text-xs text-crit">
-                  This address isn&apos;t on Bitcoin {config.bitcoin.network}. Switch Xverse to{" "}
-                  {config.bitcoin.network} and connect again.
+                  This address isn&apos;t on {BTC_NETWORK_LABEL}. Switch Xverse to{" "}
+                  {BTC_NETWORK_LABEL} and connect again.
                 </p>
               ) : null}
-              {releaseStatus === "working" && releaseMessage && (
-                <p className="text-xs text-zk">{releaseMessage}</p>
+              {isInFlight(releaseFlow) && (
+                <p className="text-xs text-zk">{releaseStepLabel(releaseFlow)}</p>
               )}
-              {releaseStatus === "error" && releaseMessage && (
-                <p className="break-all text-xs text-crit">{releaseMessage}</p>
+              {releaseMessage && <p className="break-all text-xs text-crit">{releaseMessage}</p>}
+              {releaseFlow.phase === "failed" && (
+                <p className="break-all text-xs text-crit">
+                  {humanizeError(releaseFlow.error, { flow: "release" })}
+                </p>
+              )}
+              {releaseFlow.phase === "signature_cancelled" && (
+                <p className="text-xs text-body">You declined in your wallet. Nothing was sent.</p>
               )}
               <p className="text-xs text-muted">
                 You sign in Xverse and Writz co-signs. The Bitcoin network fee, about
@@ -688,4 +737,20 @@ function Metric({ label, children }: { label: string; children: React.ReactNode 
       <span className="font-mono text-lg tabular-nums text-hi">{children}</span>
     </div>
   );
+}
+
+function releaseStepLabel(flow: FlowState): string {
+  if (flow.phase === "proving") return "Generating zero-debt proof (this may take ~30 s)…";
+  if (flow.phase === "awaiting_signature") return "Sign the release transaction with your Bitcoin wallet…";
+  if (flow.phase !== "preparing") return "";
+  switch (flow.step) {
+    case "merkle_path":
+      return "Fetching Merkle inclusion path…";
+    case "cosign":
+      return "Requesting protocol co-signature…";
+    case "broadcasting":
+      return "Finalizing and broadcasting…";
+    default:
+      return "Building release transaction…";
+  }
 }
