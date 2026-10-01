@@ -6,9 +6,10 @@ import { useWallet } from "@/lib/wallet/WalletProvider";
 import { supply, withdraw } from "@/lib/flows/lend";
 import { getPoolState, getSupplyBalance } from "@/lib/contracts/commitmentTree";
 import { stellarTxUrl } from "@/lib/explorer";
-import { TxLink } from "./TxLink";
-import { humanizeError } from "@/lib/errors";
-import { useReportBusy } from "@/lib/activity";
+import { isInFlight, type Emit } from "@/lib/flow/engine";
+import { useFlow, useTxLockState } from "@/lib/flow/useFlow";
+import { locks } from "@/lib/flow/lock";
+import { FlowOutcome } from "./FlowOutcome";
 
 // USDC uses 7 decimals (stroops).
 const STROOP = 10_000_000n;
@@ -73,18 +74,33 @@ export function LenderPanel() {
   }, [address]);
 
   const [supplyAmount, setSupplyAmount] = useState("");
-  const [supplyStatus, setSupplyStatus] = useState<"idle" | "working" | "done" | "error">("idle");
   const [supplyMessage, setSupplyMessage] = useState<string | null>(null);
-  const [supplyTx, setSupplyTx] = useState<string | null>(null);
+  const [supplyFlow, emitSupply] = useFlow();
 
   const [withdrawAmount, setWithdrawAmount] = useState("");
-  const [withdrawStatus, setWithdrawStatus] = useState<"idle" | "working" | "done" | "error">("idle");
   const [withdrawMessage, setWithdrawMessage] = useState<string | null>(null);
-  const [withdrawTx, setWithdrawTx] = useState<string | null>(null);
+  const [withdrawFlow, emitWithdraw] = useFlow();
 
-  // One transaction per account per ledger - lock both actions while in flight.
-  const busy = supplyStatus === "working" || withdrawStatus === "working";
-  useReportBusy(busy);
+  const busy = isInFlight(supplyFlow) || isInFlight(withdrawFlow);
+  const txLock = useTxLockState(address);
+  const otherTx = txLock === "elsewhere" || (txLock === "here" && !busy);
+
+  async function locked(emit: Emit, fn: () => Promise<unknown>) {
+    if (!address) return;
+    emit({ type: "start" });
+    try {
+      await locks().withTxLock(address, fn);
+      await reload();
+      router.refresh();
+    } catch (e) {
+      emit({ type: "failed", error: e });
+    }
+  }
+
+  const errorContext = {
+    ownBalanceUsdc: fmtUsdc(balance ?? 0n),
+    availableUsdc: fmtUsdc(available ?? 0n),
+  };
 
   // Withdrawable = min(own balance, pool available liquidity).
   const maxWithdraw =
@@ -96,77 +112,42 @@ export function LenderPanel() {
 
   async function handleSupply() {
     setSupplyMessage(null);
-    setSupplyTx(null);
+    emitSupply({ type: "reset" });
     if (!address) {
-      setSupplyStatus("error");
       setSupplyMessage("Connect your Stellar wallet first.");
       return;
     }
     const amountStroops = toStroops(supplyAmount);
     if (amountStroops === null) {
-      setSupplyStatus("error");
       setSupplyMessage("Enter an amount.");
       return;
     }
-    setSupplyStatus("working");
-    try {
-      const { txHash } = await supply({ amountStroops, supplier: address, signTransaction });
-      setSupplyStatus("done");
-      setSupplyMessage("Supplied.");
-      setSupplyTx(txHash ?? null);
+    await locked(emitSupply, async () => {
+      await supply({ amountStroops, supplier: address, signTransaction, emit: emitSupply });
       setSupplyAmount("");
-      await reload();
-      router.refresh();
-    } catch (e) {
-      setSupplyStatus("error");
-      setSupplyMessage(
-        humanizeError(e, {
-          flow: "lend",
-          ownBalanceUsdc: fmtUsdc(balance ?? 0n),
-          availableUsdc: fmtUsdc(available ?? 0n),
-        }),
-      );
-    }
+    });
   }
 
   async function handleWithdraw() {
     setWithdrawMessage(null);
-    setWithdrawTx(null);
+    emitWithdraw({ type: "reset" });
     if (!address) {
-      setWithdrawStatus("error");
       setWithdrawMessage("Connect your Stellar wallet first.");
       return;
     }
     const amountStroops = toStroops(withdrawAmount);
     if (amountStroops === null) {
-      setWithdrawStatus("error");
       setWithdrawMessage("Enter an amount.");
       return;
     }
     if (maxWithdraw !== null && amountStroops > maxWithdraw) {
-      setWithdrawStatus("error");
       setWithdrawMessage(`You can withdraw at most ${fmtUsdc(maxWithdraw)} USDC.`);
       return;
     }
-    setWithdrawStatus("working");
-    try {
-      const { txHash } = await withdraw({ amountStroops, supplier: address, signTransaction });
-      setWithdrawStatus("done");
-      setWithdrawMessage("Withdrew.");
-      setWithdrawTx(txHash ?? null);
+    await locked(emitWithdraw, async () => {
+      await withdraw({ amountStroops, supplier: address, signTransaction, emit: emitWithdraw });
       setWithdrawAmount("");
-      await reload();
-      router.refresh();
-    } catch (e) {
-      setWithdrawStatus("error");
-      setWithdrawMessage(
-        humanizeError(e, {
-          flow: "withdraw",
-          ownBalanceUsdc: fmtUsdc(balance ?? 0n),
-          availableUsdc: fmtUsdc(available ?? 0n),
-        }),
-      );
-    }
+    });
   }
 
   return (
@@ -205,18 +186,19 @@ export function LenderPanel() {
               <button
                 type="button"
                 onClick={handleSupply}
-                disabled={busy}
+                disabled={busy || otherTx}
                 className="shrink-0 rounded-lg bg-amber px-4 py-2 text-sm font-semibold text-[#1a1206] transition-colors hover:bg-[#eeb459] disabled:opacity-50"
               >
-                {supplyStatus === "working" ? "Supplying…" : "Supply"}
+                {isInFlight(supplyFlow) ? "Supplying…" : "Supply"}
               </button>
             </div>
-            {supplyMessage ? (
-              <p className={`break-all text-xs ${supplyStatus === "error" ? "text-crit" : "text-ok"}`}>
-                {supplyMessage}{" "}
-                {supplyTx && <TxLink url={stellarTxUrl(supplyTx)} hash={supplyTx} />}
-              </p>
-            ) : null}
+            {supplyMessage ? <p className="break-all text-xs text-crit">{supplyMessage}</p> : null}
+            <FlowOutcome
+              flow={supplyFlow}
+              success="Supplied."
+              errorContext={{ flow: "lend", ...errorContext }}
+              txUrl={stellarTxUrl}
+            />
           </div>
 
           {/* Withdraw */}
@@ -233,10 +215,10 @@ export function LenderPanel() {
               <button
                 type="button"
                 onClick={handleWithdraw}
-                disabled={busy}
+                disabled={busy || otherTx}
                 className="shrink-0 rounded-lg border border-line-2 px-4 py-2 text-sm font-semibold text-head transition-colors hover:border-amber disabled:opacity-50"
               >
-                {withdrawStatus === "working" ? "Withdrawing…" : "Withdraw"}
+                {isInFlight(withdrawFlow) ? "Withdrawing…" : "Withdraw"}
               </button>
             </div>
             {balance === 0n ? (
@@ -247,11 +229,15 @@ export function LenderPanel() {
                 pool, this can be less than you supplied.
               </p>
             ) : null}
-            {withdrawMessage ? (
-              <p className={`break-all text-xs ${withdrawStatus === "error" ? "text-crit" : "text-ok"}`}>
-                {withdrawMessage}{" "}
-                {withdrawTx && <TxLink url={stellarTxUrl(withdrawTx)} hash={withdrawTx} />}
-              </p>
+            {withdrawMessage ? <p className="break-all text-xs text-crit">{withdrawMessage}</p> : null}
+            <FlowOutcome
+              flow={withdrawFlow}
+              success="Withdrew."
+              errorContext={{ flow: "withdraw", ...errorContext }}
+              txUrl={stellarTxUrl}
+            />
+            {otherTx ? (
+              <p className="text-xs text-muted">Waiting for your other transaction.</p>
             ) : null}
           </div>
         </div>

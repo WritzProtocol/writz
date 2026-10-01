@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useWallet } from "@/lib/wallet/WalletProvider";
+import { reconcileActivity, syncLeafUpdates } from "@/lib/flows/positionTx";
 import { DepositFlow } from "./DepositFlow";
 import { PositionDashboard } from "./PositionDashboard";
 import { LenderPanel } from "./LenderPanel";
@@ -21,6 +23,15 @@ const BLURBS: Record<Tab, string> = {
  */
 export function AppTabs() {
   const [tab, setTab] = useState<Tab>("borrow");
+  const { address } = useWallet();
+
+  // Transactions a closed tab left in flight, and relayer leaf updates it never delivered.
+  useEffect(() => {
+    if (!address) return;
+    void reconcileActivity(address)
+      .then(() => syncLeafUpdates(address))
+      .catch(() => {});
+  }, [address]);
 
   return (
     <div className="flex flex-col gap-8">

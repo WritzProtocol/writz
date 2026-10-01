@@ -31,6 +31,8 @@ export function positionStatusLabel(p: Position): string {
       return "BTC released";
     case "closed":
       return "Repaid, BTC still locked";
+    case "registering":
+      return "Registering on Stellar";
     case "pending":
       return "Pending";
     default:

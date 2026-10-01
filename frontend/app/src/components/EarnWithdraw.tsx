@@ -6,9 +6,10 @@ import { withdrawFromVault } from "@/lib/flows/earn";
 import { fmtUsdc, toStroops } from "@/lib/earn/amount";
 import { EARN_ASSET } from "@/lib/flows/trustline";
 import { stellarTxUrl } from "@/lib/explorer";
-import { humanizeError } from "@/lib/errors";
-import { TxLink } from "./TxLink";
-import { useReportBusy } from "@/lib/activity";
+import { isInFlight } from "@/lib/flow/engine";
+import { useFlow, useTxLockState } from "@/lib/flow/useFlow";
+import { locks } from "@/lib/flow/lock";
+import { FlowOutcome } from "./FlowOutcome";
 
 /**
  * Earn withdraw flow (#111). Takes USDC back out of the Writz DeFindex vault:
@@ -31,36 +32,33 @@ export function EarnWithdraw({
   const { address, signTransaction } = useWallet();
 
   const [amount, setAmount] = useState("");
-  const [status, setStatus] = useState<"idle" | "working" | "done" | "error">("idle");
   const [message, setMessage] = useState<string | null>(null);
-  const [txHash, setTxHash] = useState<string | null>(null);
-
-  useReportBusy(status === "working");
+  const [flow, emit] = useFlow();
+  const txLock = useTxLockState(address);
 
   // Nothing to show signed out, unlike the APY above: a withdraw form with no
   // position behind it is noise, and the deposit panel already carries the
   // sign-in call to action.
   if (!address) return null;
 
-  const busy = status === "working";
+  const busy = isInFlight(flow);
+  const otherTx = txLock === "elsewhere" || (txLock === "here" && !busy);
   const nothingToWithdraw = available === 0n;
 
   async function handleWithdraw() {
     setMessage(null);
-    setTxHash(null);
+    emit({ type: "reset" });
 
     // Re-checked inside the handler rather than relying on the early return
     // above: TypeScript cannot carry that narrowing into a closure, and the
     // wallet can disconnect between render and click.
     if (!address) {
-      setStatus("error");
       setMessage("Sign in to withdraw.");
       return;
     }
 
     const parsed = toStroops(amount);
     if (parsed === null) {
-      setStatus("error");
       setMessage(`Enter an amount in ${EARN_ASSET.code}, up to 7 decimal places.`);
       return;
     }
@@ -69,33 +67,21 @@ export function EarnWithdraw({
     // Skipped when the read failed, since refusing on a number we do not have
     // would block a withdrawal the user is entitled to make.
     if (available !== null && parsed > available) {
-      setStatus("error");
       setMessage(
         `You can withdraw at most ${fmtUsdc(available)} ${EARN_ASSET.code}, which is your full position.`,
       );
       return;
     }
 
-    setStatus("working");
+    emit({ type: "start" });
     try {
-      const { txHash: hash } = await withdrawFromVault({
-        amountStroops: parsed,
-        caller: address,
-        signTransaction,
-      });
-      setStatus("done");
-      setMessage("Withdrawn.");
-      setTxHash(hash);
+      await locks().withTxLock(address, () =>
+        withdrawFromVault({ amountStroops: parsed, caller: address, signTransaction, emit }),
+      );
       setAmount("");
       onWithdrawn?.();
     } catch (e) {
-      setStatus("error");
-      setMessage(
-        humanizeError(e, {
-          flow: "earn-withdraw",
-          ownBalanceUsdc: available !== null ? fmtUsdc(available) : undefined,
-        }),
-      );
+      emit({ type: "failed", error: e });
     }
   }
 
@@ -139,7 +125,7 @@ export function EarnWithdraw({
             <button
               type="button"
               onClick={handleWithdraw}
-              disabled={busy || nothingToWithdraw}
+              disabled={busy || otherTx || nothingToWithdraw}
               className="shrink-0 rounded-lg border border-line-2 px-4 py-2 text-sm font-semibold text-head transition-colors hover:border-amber disabled:opacity-50"
             >
               {busy ? "Withdrawing…" : "Withdraw"}
@@ -147,13 +133,19 @@ export function EarnWithdraw({
           </div>
 
           {message ? (
-            <p
-              className={`break-all text-xs ${
-                status === "error" ? "text-crit" : "text-ok"
-              }`}
-            >
-              {message} {txHash && <TxLink url={stellarTxUrl(txHash)} hash={txHash} />}
-            </p>
+            <p className="break-all text-xs text-crit">{message}</p>
+          ) : flow.phase !== "idle" && !busy ? (
+            <FlowOutcome
+              flow={flow}
+              success="Withdrawn."
+              errorContext={{
+                flow: "earn-withdraw",
+                ownBalanceUsdc: available !== null ? fmtUsdc(available) : undefined,
+              }}
+              txUrl={stellarTxUrl}
+            />
+          ) : otherTx ? (
+            <p className="text-xs text-muted">Waiting for your other transaction.</p>
           ) : nothingToWithdraw ? (
             <p className="text-xs text-muted">
               Nothing to withdraw yet. Deposit above to open a position.

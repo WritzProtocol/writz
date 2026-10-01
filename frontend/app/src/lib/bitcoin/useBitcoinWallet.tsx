@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
 import Wallet, { AddressPurpose, BitcoinNetworkType, RpcErrorCode } from "sats-connect";
-import { config } from "@/config";
+import { config, BTC_NETWORK_LABEL } from "@/config";
 
 /** Map the configured BTC network string to the sats-connect network type. */
 function walletNetwork(): BitcoinNetworkType {
@@ -70,7 +70,7 @@ export function BitcoinWalletProvider({ children }: { children: React.ReactNode 
       const active = res.result.network.bitcoin.name;
       if (active !== walletNetwork()) {
         throw new Error(
-          `Switch your Bitcoin wallet to ${config.bitcoin.network} (currently ${active}).`,
+          `Switch your Bitcoin wallet to ${BTC_NETWORK_LABEL} (currently ${active}).`,
         );
       }
       setBtcAddress(payment.address);

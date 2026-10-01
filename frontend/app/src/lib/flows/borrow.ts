@@ -13,11 +13,11 @@ import {
   sealNote,
   bytesToHex,
   recipientLoHi,
-  removePosition,
-  savePosition,
   type Position,
 } from "@/lib/position";
 import type { SignTransaction } from "@/lib/wallet/WalletProvider";
+import type { Emit } from "@/lib/flow/engine";
+import { submitPositionTx } from "./positionTx";
 
 const MIN_RATIO_BP = "15000"; // 150% - must match contract's min_collateral_ratio_bp
 
@@ -46,6 +46,8 @@ async function fetchMerklePath(commitmentHex: string, leafIndex?: number): Promi
 export interface BorrowResult {
   txHash?: string;
   updated: Position;
+  /** The relayer leaf store has not accepted the update yet; it is retried on the next load. */
+  syncPending: boolean;
 }
 
 /**
@@ -59,8 +61,9 @@ export async function borrow(params: {
   borrower: string;
   seed: Uint8Array;
   signTransaction: SignTransaction;
+  emit?: Emit;
 }): Promise<BorrowResult> {
-  const { position, amountStroops, borrower, seed, signTransaction } = params;
+  const { position, amountStroops, borrower, seed, signTransaction, emit } = params;
 
   const collateral = BigInt(position.collateralSats);
   const oldDebt = BigInt(position.debtStroops);
@@ -74,6 +77,7 @@ export async function borrow(params: {
 
   // Real Merkle path from the relayer; leafIndex looks up by position (the
   // commitment rotates each borrow, so value-based lookup fails after the first).
+  emit?.({ type: "preparing", step: "merkle_path" });
   const { root, pathElements, pathIndices } = await fetchMerklePath(commitmentHex, position.leafIndex);
 
   // Binds this proof to `borrower` so it can't be copied from the mempool
@@ -81,6 +85,7 @@ export async function borrow(params: {
   // GHSA-mhp9-jmvc-x9mw).
   const { lo: recipientLo, hi: recipientHi } = await recipientLoHi(borrower);
 
+  emit?.({ type: "proving" });
   const { proof, publicSignals } = await proveBorrowRepay({
     collateral_satoshis: collateral.toString(),
     old_debt_stroops: oldDebt.toString(),
@@ -128,8 +133,6 @@ export async function borrow(params: {
       enc_note: Buffer.from(encNote),
     }),
   );
-  const sent = await tx.signAndSend({ signTransaction });
-
   const newCommitment = computeCommitment(collateral, newDebt, secret, newNonce);
   const updated: Position = {
     ...position,
@@ -140,26 +143,23 @@ export async function borrow(params: {
     nullifier: computeNullifier(secret, newNonce).toString(),
     status: "active",
   };
-  removePosition(position.owner, position.id);
-  savePosition(updated);
 
-  // Sync the relayer leaf store so subsequent ops get correct sibling values.
-  if (position.leafIndex !== undefined && config.services.relayerUrl) {
-    const syncRes = await fetch(`${config.services.relayerUrl}/update-leaf`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        leafIndex: position.leafIndex,
-        newCommitment: newCommitment.toString(16).padStart(64, "0"),
-        encNote: bytesToHex(encNote),
-      }),
-    }).catch(() => null);
-    if (!syncRes || !syncRes.ok) {
-      throw new Error(
-        "Borrowed on-chain, but failed to sync the relayer leaf store - resync the relayer before the next operation.",
-      );
-    }
-  }
+  const { hash, syncPending } = await submitPositionTx({
+    kind: "borrow",
+    tx,
+    position,
+    updated,
+    leafUpdate:
+      position.leafIndex !== undefined
+        ? {
+            leafIndex: position.leafIndex,
+            newCommitment: newCommitment.toString(16).padStart(64, "0"),
+            encNote: bytesToHex(encNote),
+          }
+        : undefined,
+    signTransaction,
+    emit,
+  });
 
-  return { txHash: sent.sendTransactionResponse?.hash, updated };
+  return { txHash: hash, updated, syncPending };
 }

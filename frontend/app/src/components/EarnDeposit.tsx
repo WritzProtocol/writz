@@ -5,12 +5,14 @@ import { useWallet } from "@/lib/wallet/WalletProvider";
 import { depositToVault } from "@/lib/flows/earn";
 import { EARN_ASSET, getAssetBalance } from "@/lib/flows/trustline";
 import { stellarTxUrl } from "@/lib/explorer";
-import { humanizeError } from "@/lib/errors";
+import { isInFlight } from "@/lib/flow/engine";
+import { useFlow, useTxLockState } from "@/lib/flow/useFlow";
+import { locks } from "@/lib/flow/lock";
+import { FlowOutcome } from "./FlowOutcome";
 import { config } from "@/config";
 import { fmtUsdc, toStroops } from "@/lib/earn/amount";
 import { EnableTrustlineButton } from "./EnableTrustlineButton";
-import { TxLink } from "./TxLink";
-import { useReportBusy } from "@/lib/activity";
+
 
 /**
  * Earn deposit flow (#109). Deposits USDC from the connected account into the
@@ -38,9 +40,9 @@ export function EarnDeposit({
     null,
   );
   const [amount, setAmount] = useState("");
-  const [status, setStatus] = useState<"idle" | "working" | "done" | "error">("idle");
   const [message, setMessage] = useState<string | null>(null);
-  const [txHash, setTxHash] = useState<string | null>(null);
+  const [flow, emit] = useFlow();
+  const txLock = useTxLockState(address);
 
   const walletBalance = read && read.address === address ? read.balance : null;
 
@@ -73,21 +75,19 @@ export function EarnDeposit({
     };
   }, [address]);
 
-  const busy = status === "working";
-  useReportBusy(busy);
+  const busy = isInFlight(flow);
+  const otherTx = txLock === "elsewhere" || (txLock === "here" && !busy);
   const parsed = toStroops(amount);
 
   async function handleDeposit() {
     setMessage(null);
-    setTxHash(null);
+    emit({ type: "reset" });
 
     if (!address) {
-      setStatus("error");
       setMessage("Sign in to deposit USDC.");
       return;
     }
     if (parsed === null) {
-      setStatus("error");
       setMessage("Enter an amount in USDC, up to 7 decimal places.");
       return;
     }
@@ -95,34 +95,22 @@ export function EarnDeposit({
     // client-side, and asking for a signature that is certain to fail is worse
     // UX than refusing it outright.
     if (walletBalance !== null && parsed > walletBalance) {
-      setStatus("error");
       setMessage(
         `You have ${fmtUsdc(walletBalance)} USDC available. Enter that or less.`,
       );
       return;
     }
 
-    setStatus("working");
+    emit({ type: "start" });
     try {
-      const { txHash: hash } = await depositToVault({
-        amountStroops: parsed,
-        caller: address,
-        signTransaction,
-      });
-      setStatus("done");
-      setMessage("Deposited.");
-      setTxHash(hash);
+      await locks().withTxLock(address, () =>
+        depositToVault({ amountStroops: parsed, caller: address, signTransaction, emit }),
+      );
       setAmount("");
       await reloadBalance();
       onDeposited?.();
     } catch (e) {
-      setStatus("error");
-      setMessage(
-        humanizeError(e, {
-          flow: "earn-deposit",
-          walletUsdc: walletBalance !== null ? fmtUsdc(walletBalance) : undefined,
-        }),
-      );
+      emit({ type: "failed", error: e });
     }
   }
 
@@ -191,7 +179,7 @@ export function EarnDeposit({
                 <button
                   type="button"
                   onClick={handleDeposit}
-                  disabled={busy}
+                  disabled={busy || otherTx}
                   className="shrink-0 rounded-lg bg-amber px-4 py-2 text-sm font-semibold text-[#1a1206] transition-colors hover:bg-[#eeb459] disabled:opacity-50"
                 >
                   {busy ? "Depositing…" : "Deposit"}
@@ -199,14 +187,19 @@ export function EarnDeposit({
               </div>
 
               {message ? (
-                <p
-                  className={`break-all text-xs ${
-                    status === "error" ? "text-crit" : "text-ok"
-                  }`}
-                >
-                  {message}{" "}
-                  {txHash && <TxLink url={stellarTxUrl(txHash)} hash={txHash} />}
-                </p>
+                <p className="break-all text-xs text-crit">{message}</p>
+              ) : flow.phase !== "idle" && !busy ? (
+                <FlowOutcome
+                  flow={flow}
+                  success="Deposited."
+                  errorContext={{
+                    flow: "earn-deposit",
+                    walletUsdc: walletBalance !== null ? fmtUsdc(walletBalance) : undefined,
+                  }}
+                  txUrl={stellarTxUrl}
+                />
+              ) : otherTx ? (
+                <p className="text-xs text-muted">Waiting for your other transaction.</p>
               ) : (
                 <p className="text-xs text-muted">
                   One signature. Your funds stay yours - the vault issues shares

@@ -176,6 +176,12 @@ const RULES: Rule[] = [
       "Bitcoin verification on Stellar isn't ready right now. Nothing was sent. Try again later.",
   },
 
+  // --- One transaction at a time per account ---
+  {
+    pattern: /TxLockBusy/,
+    message: () => "Waiting for your other transaction. Try again when it finishes.",
+  },
+
   // --- Wallet signature ---
   {
     pattern: /SignatureRejected/,

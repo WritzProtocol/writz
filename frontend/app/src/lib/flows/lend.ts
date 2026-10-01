@@ -2,6 +2,8 @@ import { Client } from "@/lib/contracts/generated";
 import { config, requireContract } from "@/config";
 import { simulateWithRetry } from "./submit";
 import type { SignTransaction } from "@/lib/wallet/WalletProvider";
+import type { Emit } from "@/lib/flow/engine";
+import { submitTrackedTx } from "./positionTx";
 
 /**
  * Lender-side flows: supply USDC to the pool and withdraw it later.
@@ -31,16 +33,16 @@ export async function supply(params: {
   amountStroops: bigint;
   supplier: string;
   signTransaction: SignTransaction;
+  emit?: Emit;
 }): Promise<LendResult> {
-  const { amountStroops, supplier, signTransaction } = params;
+  const { amountStroops, supplier, signTransaction, emit } = params;
   const client = lendClient(supplier);
 
   const tx = await simulateWithRetry(() =>
     client.supply_usdc({ supplier, amount: amountStroops }),
   );
-  const sent = await tx.signAndSend({ signTransaction });
-
-  return { txHash: sent.sendTransactionResponse?.hash };
+  const { hash } = await submitTrackedTx({ kind: "supply", owner: supplier, tx, signTransaction, emit });
+  return { txHash: hash };
 }
 
 /**
@@ -53,14 +55,14 @@ export async function withdraw(params: {
   amountStroops: bigint;
   supplier: string;
   signTransaction: SignTransaction;
+  emit?: Emit;
 }): Promise<LendResult> {
-  const { amountStroops, supplier, signTransaction } = params;
+  const { amountStroops, supplier, signTransaction, emit } = params;
   const client = lendClient(supplier);
 
   const tx = await simulateWithRetry(() =>
     client.withdraw_supply({ supplier, amount: amountStroops }),
   );
-  const sent = await tx.signAndSend({ signTransaction });
-
-  return { txHash: sent.sendTransactionResponse?.hash };
+  const { hash } = await submitTrackedTx({ kind: "withdraw", owner: supplier, tx, signTransaction, emit });
+  return { txHash: hash };
 }
