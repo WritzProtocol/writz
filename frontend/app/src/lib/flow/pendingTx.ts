@@ -75,6 +75,7 @@ export function createActivityStore(
         b();
       };
     },
+    txSnapshot: (owner: string) => txStore.snapshot(owner),
     leafSnapshot: (owner: string) => leafStore.snapshot(owner),
     addTx(owner: string, tx: PendingTx) {
       txStore.write(owner, [...txs(owner).filter((t) => t.hash !== tx.hash), tx]);
