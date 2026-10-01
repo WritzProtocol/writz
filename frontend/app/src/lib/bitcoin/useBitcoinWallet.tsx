@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
 import Wallet, { AddressPurpose, BitcoinNetworkType, RpcErrorCode } from "sats-connect";
 import { config, BTC_NETWORK_LABEL } from "@/config";
+import { xverseRequest } from "./xverse";
 
 /** Map the configured BTC network string to the sats-connect network type. */
 function walletNetwork(): BitcoinNetworkType {
@@ -90,13 +91,12 @@ export function BitcoinWalletProvider({ children }: { children: React.ReactNode 
 
   const sendBtc = useCallback(
     async (toAddress: string, amountSats: number): Promise<string> => {
-      const res = await Wallet.request("sendTransfer", {
-        recipients: [{ address: toAddress, amount: amountSats }],
-      });
-      if (res.status === "error") {
-        throw new Error(res.error.message ?? "Bitcoin transfer failed");
-      }
-      return res.result.txid;
+      const res = await xverseRequest(() =>
+        Wallet.request("sendTransfer", {
+          recipients: [{ address: toAddress, amount: amountSats }],
+        }),
+      );
+      return res.txid;
     },
     [],
   );
@@ -104,17 +104,16 @@ export function BitcoinWalletProvider({ children }: { children: React.ReactNode 
   const signPsbt = useCallback(
     async (psbtBase64: string): Promise<string> => {
       if (!btcAddress) throw new Error("Connect your Bitcoin wallet first");
-      const res = await Wallet.request("signPsbt", {
-        psbt: psbtBase64,
-        // signInputs is keyed by address → input indices it should sign. The
-        // release PSBT has a single P2WSH input (index 0) the user must sign.
-        signInputs: { [btcAddress]: [0] },
-        broadcast: false,
-      });
-      if (res.status === "error") {
-        throw new Error(res.error.message ?? "PSBT signing failed");
-      }
-      return res.result.psbt;
+      const res = await xverseRequest(() =>
+        Wallet.request("signPsbt", {
+          psbt: psbtBase64,
+          // signInputs is keyed by address → input indices it should sign. The
+          // release PSBT has a single P2WSH input (index 0) the user must sign.
+          signInputs: { [btcAddress]: [0] },
+          broadcast: false,
+        }),
+      );
+      return res.psbt;
     },
     [btcAddress],
   );

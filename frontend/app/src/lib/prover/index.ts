@@ -76,7 +76,11 @@ async function prove(
   input: Record<string, unknown>,
 ): Promise<ProofResult> {
   const { wasm, zkey } = ARTIFACTS[circuit];
-  const { proof, publicSignals } = await groth16.fullProve(input, wasm, zkey);
+  const { proof, publicSignals } = await groth16.fullProve(input, wasm, zkey).catch((e: unknown) => {
+    // Witness errors (an input the circuit refuses) keep their own text; anything else is the artifact download.
+    if (e instanceof Error && /Assert Failed|signal/i.test(e.message)) throw e;
+    throw new Error(`ProverUnavailable: ${e instanceof Error ? e.message : String(e)}`);
+  });
   return {
     proof: toContractProof(proof),
     publicSignals: publicSignals.map(feToBytes),
