@@ -19,6 +19,7 @@ import {
   signMessageWithPrivy,
   signTransactionWithPrivy,
 } from "@/lib/wallet/privy-stellar";
+import { withRejection } from "@/lib/wallet/rejection";
 
 /**
  * Signs a transaction XDR with the connected wallet. The return shape is
@@ -60,6 +61,14 @@ interface WalletState {
 }
 
 const BACKEND_KEY = "writz.walletBackend";
+
+function kitWalletName(): string | undefined {
+  try {
+    return ensureKit().selectedModule.productName;
+  } catch {
+    return undefined;
+  }
+}
 
 function getStellarAddress(user: User | null): string | null {
   if (!user) return null;
@@ -232,13 +241,18 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       if (backend === "privy") {
         if (!address || !privy)
           throw new Error("No Privy wallet connected");
-        return signTransactionWithPrivy(xdr, address, privy.signRawHash);
+        return withRejection("stellar", "Privy", () =>
+          signTransactionWithPrivy(xdr, address, privy.signRawHash),
+        );
       }
       const kit = ensureKit();
+      const walletName = kitWalletName();
       const { address: signerAddress } = await kit.getAddress();
-      const { signedTxXdr, signerAddress: signer } = await kit.signTransaction(
-        xdr,
-        { address: signerAddress, networkPassphrase: config.networkPassphrase },
+      const { signedTxXdr, signerAddress: signer } = await withRejection("stellar", walletName, () =>
+        kit.signTransaction(xdr, {
+          address: signerAddress,
+          networkPassphrase: config.networkPassphrase,
+        }),
       );
       return { signedTxXdr, signerAddress: signer ?? signerAddress };
     },
@@ -250,14 +264,19 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       if (backend === "privy") {
         if (!address || !privy)
           throw new Error("No Privy wallet connected");
-        return signMessageWithPrivy(message, address, privy.signRawHash);
+        return withRejection("stellar", "Privy", () =>
+          signMessageWithPrivy(message, address, privy.signRawHash),
+        );
       }
       const kit = ensureKit();
+      const walletName = kitWalletName();
       const { address: addr } = await kit.getAddress();
-      const { signedMessage } = await kit.signMessage(message, {
-        address: addr,
-        networkPassphrase: config.networkPassphrase,
-      });
+      const { signedMessage } = await withRejection("stellar", walletName, () =>
+        kit.signMessage(message, {
+          address: addr,
+          networkPassphrase: config.networkPassphrase,
+        }),
+      );
       return signedMessage;
     },
     [backend, address, privy],

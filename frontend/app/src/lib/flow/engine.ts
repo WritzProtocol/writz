@@ -4,6 +4,8 @@
  * never parse human-readable strings.
  */
 
+import { isSignatureRejected, SignatureRejectedError } from "@/lib/wallet/rejection";
+
 export type Wallet = "stellar" | "bitcoin";
 
 export type PrepareStep =
@@ -30,7 +32,7 @@ export type FlowState =
   | { phase: "submitted"; hash: string }
   | { phase: "post_processing"; step: "insert" | "update_leaf"; hash?: string }
   | { phase: "settled"; hash?: string; syncPending?: boolean }
-  | { phase: "signature_cancelled"; wallet: Wallet; hash?: string }
+  | { phase: "signature_cancelled"; wallet: Wallet; walletName?: string; hash?: string }
   | { phase: "timed_out"; hash: string }
   | { phase: "failed"; error: unknown; hash?: string }
   | { phase: "needs_attention"; action: AttentionAction; error?: unknown; hash?: string };
@@ -46,7 +48,7 @@ export type FlowEvent =
   | { type: "ready" }
   | { type: "proving" }
   | { type: "awaiting_signature"; wallet: Wallet }
-  | { type: "signature_cancelled" }
+  | { type: "signature_cancelled"; walletName?: string }
   | { type: "submitted"; hash: string }
   | { type: "post_processing"; step: "insert" | "update_leaf" }
   | { type: "settled"; hash?: string; syncPending?: boolean }
@@ -122,7 +124,7 @@ export function reduceFlow(state: FlowState, event: FlowEvent): FlowState {
       return { phase: "awaiting_signature", wallet: event.wallet, hash };
     case "signature_cancelled":
       if (state.phase !== "awaiting_signature") return state;
-      return { phase: "signature_cancelled", wallet: state.wallet, hash };
+      return { phase: "signature_cancelled", wallet: state.wallet, walletName: event.walletName, hash };
     case "submitted":
       return { phase: "submitted", hash: event.hash };
     case "post_processing":
@@ -132,6 +134,10 @@ export function reduceFlow(state: FlowState, event: FlowEvent): FlowState {
     case "timed_out":
       return { phase: "timed_out", hash: event.hash };
     case "failed":
+      if (state.phase === "awaiting_signature" && isSignatureRejected(event.error)) {
+        const walletName = event.error instanceof SignatureRejectedError ? event.error.walletName : undefined;
+        return { phase: "signature_cancelled", wallet: state.wallet, walletName, hash };
+      }
       return { phase: "failed", error: event.error, hash };
     case "needs_attention":
       return {
