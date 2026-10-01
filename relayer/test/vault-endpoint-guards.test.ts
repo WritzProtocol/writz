@@ -14,6 +14,12 @@ import { defindexRouter, vaultReadLimiter, vaultTxLimiter } from '../src/routes/
 import { defindexSdk } from '../src/defindex/client.js';
 import { config } from '../src/config.js';
 import { rateLimit } from '../src/rate-limit.js';
+import {
+  ALERT_AFTER_CONSECUTIVE_FAILURES,
+  recordVaultRequest,
+  resetVaultMetrics,
+  vaultMetricsSnapshot,
+} from '../src/defindex/metrics.js';
 
 const mockGetVaultAPY = defindexSdk.getVaultAPY as jest.Mock;
 const mockDepositToVault = defindexSdk.depositToVault as jest.Mock;
@@ -28,15 +34,18 @@ function buildApp() {
   return app;
 }
 
+let errorSpy: jest.SpyInstance;
+
 beforeEach(() => {
   mockGetVaultAPY.mockReset();
   mockDepositToVault.mockReset();
   config.defindexVaultId = VAULT_ID;
   vaultReadLimiter.reset();
   vaultTxLimiter.reset();
+  resetVaultMetrics();
   jest.spyOn(console, 'log').mockImplementation(() => {});
   jest.spyOn(console, 'warn').mockImplementation(() => {});
-  jest.spyOn(console, 'error').mockImplementation(() => {});
+  errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 });
 
 afterEach(() => {
@@ -111,5 +120,59 @@ describe('vault route limits', () => {
     const read = await request(app).get('/defindex/apy').set('X-Forwarded-For', '4.4.4.4');
 
     expect(read.status).toBe(200);
+  });
+
+  test('responses, including 429s, are counted per route', async () => {
+    mockGetVaultAPY.mockResolvedValue({ apy: 7 });
+    const app = buildApp();
+
+    for (let i = 0; i < 61; i++) {
+      await request(app).get('/defindex/apy').set('X-Forwarded-For', '5.5.5.5');
+    }
+    await request(app).get('/defindex/position?address=nope').set('X-Forwarded-For', '6.6.6.6');
+
+    const snap = vaultMetricsSnapshot();
+    expect(snap.apy.requests).toBe(61);
+    expect(snap.apy.rateLimited).toBe(1);
+    expect(snap.position.clientErrors).toBe(1);
+    expect(snap.deposit.requests).toBe(0);
+  });
+});
+
+describe('vault failure alerting', () => {
+  const alertLines = () =>
+    errorSpy.mock.calls.map((c) => String(c[0])).filter((l) => l.startsWith('[ALERT]'));
+
+  test('logs one alert when a route reaches the consecutive-failure threshold', () => {
+    for (let i = 0; i < ALERT_AFTER_CONSECUTIVE_FAILURES + 3; i++) {
+      recordVaultRequest('deposit', 502, 10);
+    }
+
+    expect(alertLines()).toHaveLength(1);
+    expect(alertLines()[0]).toContain('defindex deposit');
+    expect(vaultMetricsSnapshot().deposit.failing).toBe(true);
+  });
+
+  test('a success clears the streak, and client errors never count toward it', () => {
+    for (let i = 0; i < ALERT_AFTER_CONSECUTIVE_FAILURES - 1; i++) recordVaultRequest('apy', 502, 10);
+    recordVaultRequest('apy', 200, 10);
+    for (let i = 0; i < ALERT_AFTER_CONSECUTIVE_FAILURES - 1; i++) recordVaultRequest('apy', 502, 10);
+    for (let i = 0; i < 20; i++) recordVaultRequest('apy', 400, 10);
+
+    expect(alertLines()).toHaveLength(0);
+    expect(vaultMetricsSnapshot().apy.failing).toBe(false);
+  });
+
+  test('upstream failures through the real route feed the alert', async () => {
+    mockGetVaultAPY.mockRejectedValue(new Error('boom'));
+    const app = buildApp();
+
+    for (let i = 0; i < ALERT_AFTER_CONSECUTIVE_FAILURES; i++) {
+      const res = await request(app).get('/defindex/apy').set('X-Forwarded-For', '7.7.7.7');
+      expect(res.status).toBeGreaterThanOrEqual(500);
+    }
+
+    expect(alertLines()).toHaveLength(1);
+    expect(vaultMetricsSnapshot().apy.serverErrors).toBe(ALERT_AFTER_CONSECUTIVE_FAILURES);
   });
 });

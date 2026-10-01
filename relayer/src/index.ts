@@ -4,6 +4,7 @@ import { proofRouter } from "./routes/proof.js";
 import { merkleRouter } from "./routes/merkle.js";
 import { defindexRouter } from "./routes/defindex.js";
 import { metricsRouter } from "./routes/metrics.js";
+import { vaultMetricsSnapshot } from "./defindex/metrics.js";
 import { startRepayWatcher } from "./repay-watcher/poller.js";
 import { startVaultWatcher } from "./vault-watcher/poller.js";
 
@@ -86,6 +87,7 @@ app.get("/health", (_req, res) => {
     target: config.target,
     bitcoinNetwork: config.bitcoinNetwork,
     esploraBaseUrl: config.esploraBaseUrl,
+    defindex: vaultMetricsSnapshot(),
   });
 });
 
