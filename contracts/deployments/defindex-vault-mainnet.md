@@ -25,7 +25,7 @@ verified that the multisig can authorize Soroban invocations.
 | **Vault fee** | 100 bps (1%); DeFindex reports `defindexFee` 5000 |
 | **Upgradable** | Yes (controlled by the Manager multisig) |
 | **Seed deposit** | 20 USDC from the Manager multisig; it holds 199,999,000 dfTokens (1,000 locked as minimum liquidity) |
-| **First rebalance** | Pending - the seed deposit is idle until the Rebalance Manager invests it: `cd scripts/deploy && bun run rebalance-defindex-vault-mainnet --submit` |
+| **First rebalance** | [`85b3819274...`](https://stellar.expert/explorer/public/tx/85b381927492196310e7457cb928b3ff3831fdf3d81feaa114ce3f8db354e5ae) (2026-10-01, ledger 64706504) - full 20 USDC invested into the Blend fixed strategy by the Rebalance Manager; `fetch_total_managed_funds` read back on-chain as idle `0`, invested `200000008` |
 
 The mainnet relayer serves this vault with `DEFINDEX_VAULT_ID=CDODNWQY54F4WS7AZ5Z3AAIWRLKBFUMXHNOFEM4H3UNCTMFK4RF2A6GU`
 and a mainnet-only `DEFINDEX_API_KEY` (see [deploy targets](../../docs/developers/deploy-targets.md)).
