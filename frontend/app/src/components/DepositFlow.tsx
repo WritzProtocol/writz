@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useWallet } from "@/lib/wallet/WalletProvider";
 import { useBitcoinWallet } from "@/lib/bitcoin/useBitcoinWallet";
@@ -12,6 +12,7 @@ import { stellarTxUrl } from "@/lib/explorer";
 import { TxLink } from "./TxLink";
 import { config } from "@/config";
 import { humanizeError } from "@/lib/errors";
+import { MOCK_BTC_TXID, MOCK_ERRORS, MOCK_STELLAR_TX, mockParam } from "@/lib/mock";
 
 const MIN_DEPOSIT_BTC = 0.0001;
 const MIN_DEPOSIT_SATS = 10_000n; // 0.0001 BTC
@@ -123,6 +124,31 @@ export function DepositFlow() {
   const [txHash, setTxHash] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [addressCopied, setAddressCopied] = useState(false);
+
+  useEffect(() => {
+    const d = mockParam("deposit");
+    if (!d || d === "idle") return;
+    setBtcAmount("0.05");
+    if (d === "address") return;
+    setTxid(MOCK_BTC_TXID);
+    const messages: Partial<Record<Step, string>> = {
+      sending: "Locating output in transaction…",
+      polling: "Waiting for confirmation… (2 so far)",
+      proving: "Generating ZK proof…",
+      depositing: "Submitting deposit (1/2)…",
+      inserting: "Inserting commitment (2/2)…",
+    };
+    if (d === "done") {
+      setTxHash(MOCK_STELLAR_TX);
+      setStep("done");
+    } else if (d === "error") {
+      setErrorMsg(MOCK_ERRORS.deposit);
+      setStep("error");
+    } else if (d in messages) {
+      setStatusMsg(messages[d as Step] ?? "");
+      setStep(d as Step);
+    }
+  }, []);
 
   const busy = step !== "idle" && step !== "done" && step !== "error";
   const isMainnet = config.bitcoin.network === "mainnet";

@@ -9,6 +9,7 @@
  * connected address.
  */
 import { config } from "@/config";
+import { MOCK } from "@/lib/mock";
 
 export interface TvlMetrics {
   /** Net deposits minus withdrawals, from indexed events, in USDC stroops. */
@@ -64,6 +65,7 @@ async function request<T>(path: string): Promise<T> {
  * GET /metrics/tvl -> { tvlStroops: string, onChainTvlStroops: string, uniqueDepositors: number }
  */
 export async function getTvlMetrics(): Promise<TvlMetrics> {
+  if (MOCK) return { tvlStroops: 41_820n * 10_000_000n, onChainTvlStroops: 42_377n * 10_000_000n, uniqueDepositors: 37 };
   const raw = await request<{ tvlStroops: string; onChainTvlStroops: string; uniqueDepositors: number }>(
     "/metrics/tvl",
   );
@@ -78,6 +80,16 @@ export async function getTvlMetrics(): Promise<TvlMetrics> {
  * GET /metrics/retention -> { cohorts: RetentionCohort[] }
  */
 export async function getRetentionCohorts(): Promise<RetentionCohort[]> {
+  if (MOCK) {
+    return [
+      { cohort: "2026-08-04", depositors: 9, eligible: 9, retained: 7 },
+      { cohort: "2026-08-11", depositors: 6, eligible: 6, retained: 4 },
+      { cohort: "2026-08-18", depositors: 8, eligible: 8, retained: 5 },
+      { cohort: "2026-08-25", depositors: 5, eligible: 3, retained: 2 },
+      { cohort: "2026-09-08", depositors: 4, eligible: 0, retained: 0 },
+      { cohort: "2026-09-22", depositors: 5, eligible: 0, retained: 0 },
+    ];
+  }
   const raw = await request<{ cohorts: RetentionCohort[] }>("/metrics/retention");
   return raw.cohorts;
 }

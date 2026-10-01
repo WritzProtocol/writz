@@ -7,6 +7,7 @@ import {
 } from "@stellar/stellar-sdk";
 import { config } from "@/config";
 import type { SignTransaction } from "@/lib/wallet/WalletProvider";
+import { MOCK, mockAssetBalance, mockHasTrustline } from "@/lib/mock";
 
 /**
  * Classic Stellar asset operations: check a trustline, read a balance, add a
@@ -57,6 +58,7 @@ export async function hasTrustline(
   address: string,
   asset: ClassicAsset,
 ): Promise<boolean> {
+  if (MOCK) return mockHasTrustline();
   if (!asset.issuer) return false;
   const horizon = new Horizon.Server(config.horizonUrl);
   try {
@@ -84,6 +86,7 @@ export async function getAssetBalance(
   address: string,
   asset: ClassicAsset,
 ): Promise<bigint | null> {
+  if (MOCK) return mockAssetBalance();
   if (!asset.issuer) return null;
   const horizon = new Horizon.Server(config.horizonUrl);
   const account = await horizon.loadAccount(address);

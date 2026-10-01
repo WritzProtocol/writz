@@ -8,6 +8,7 @@ import { getPoolState, getSupplyBalance } from "@/lib/contracts/commitmentTree";
 import { stellarTxUrl } from "@/lib/explorer";
 import { TxLink } from "./TxLink";
 import { humanizeError } from "@/lib/errors";
+import { MOCK_ERRORS, MOCK_STELLAR_TX, mockStatus } from "@/lib/mock";
 
 // USDC uses 7 decimals (stroops).
 const STROOP = 10_000_000n;
@@ -80,6 +81,23 @@ export function LenderPanel() {
   const [withdrawStatus, setWithdrawStatus] = useState<"idle" | "working" | "done" | "error">("idle");
   const [withdrawMessage, setWithdrawMessage] = useState<string | null>(null);
   const [withdrawTx, setWithdrawTx] = useState<string | null>(null);
+
+  useEffect(() => {
+    const s = mockStatus("supply");
+    if (s && s !== "idle") {
+      setSupplyAmount("250");
+      setSupplyStatus(s);
+      setSupplyMessage(s === "done" ? "Supplied." : s === "error" ? MOCK_ERRORS.supply : null);
+      if (s === "done") setSupplyTx(MOCK_STELLAR_TX);
+    }
+    const w = mockStatus("withdraw");
+    if (w && w !== "idle") {
+      setWithdrawAmount("100");
+      setWithdrawStatus(w);
+      setWithdrawMessage(w === "done" ? "Withdrew." : w === "error" ? MOCK_ERRORS.withdraw : null);
+      if (w === "done") setWithdrawTx(MOCK_STELLAR_TX);
+    }
+  }, []);
 
   // One transaction per account per ledger - lock both actions while in flight.
   const busy = supplyStatus === "working" || withdrawStatus === "working";

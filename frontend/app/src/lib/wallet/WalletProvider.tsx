@@ -19,6 +19,7 @@ import {
   signMessageWithPrivy,
   signTransactionWithPrivy,
 } from "@/lib/wallet/privy-stellar";
+import { MOCK_SEED, MOCK_STELLAR_ADDRESS, mockParam } from "@/lib/mock";
 
 /**
  * Signs a transaction XDR with the connected wallet. The return shape is
@@ -91,6 +92,17 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
 
   // Guard against duplicate Stellar wallet creation in the Privy flow.
   const creatingPrivyWallet = useRef(false);
+
+  const [mockWallet, setMockWallet] = useState<{ address: string; seed: Uint8Array | null } | null>(null);
+  useEffect(() => {
+    const w = mockParam("w");
+    if (w === "stellar" || w === "both") {
+      setMockWallet({
+        address: MOCK_STELLAR_ADDRESS,
+        seed: mockParam("unlocked") === "0" ? null : MOCK_SEED,
+      });
+    }
+  }, []);
 
   // ── Kit session restore on mount ──
   useEffect(() => {
@@ -298,8 +310,26 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     ],
   );
 
+  const provided = useMemo<WalletState>(
+    () =>
+      mockWallet
+        ? {
+            ...value,
+            address: mockWallet.address,
+            seed: mockWallet.seed,
+            unlocked: mockWallet.seed !== null,
+            unlock: async () => setMockWallet((m) => (m ? { ...m, seed: MOCK_SEED } : m)),
+            disconnect: () => setMockWallet(null),
+            signTransaction: async (xdr) => ({ signedTxXdr: xdr, signerAddress: mockWallet.address }),
+            signMessage: async () => "mock-signature",
+            walletBackend: "kit",
+          }
+        : value,
+    [mockWallet, value],
+  );
+
   return (
-    <WalletContext.Provider value={value}>{children}</WalletContext.Provider>
+    <WalletContext.Provider value={provided}>{children}</WalletContext.Provider>
   );
 }
 

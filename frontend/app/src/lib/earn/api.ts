@@ -23,6 +23,7 @@
  */
 
 import { config } from "@/config";
+import { MOCK, mockApy, mockVaultPosition } from "@/lib/mock";
 
 /** A vault deposit/withdraw transaction, built but not signed. */
 export interface UnsignedTx {
@@ -125,5 +126,12 @@ const relayerApi: EarnApi = {
 
 /** The client every Earn flow reads and builds through. */
 export function earnApi(): EarnApi {
+  if (MOCK) {
+    return {
+      ...relayerApi,
+      getApy: async () => mockApy,
+      getPosition: async () => mockVaultPosition(),
+    };
+  }
   return relayerApi;
 }

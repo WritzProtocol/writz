@@ -1,5 +1,6 @@
 import { Client } from "@/lib/contracts/generated";
 import { config, requireContract } from "@/config";
+import { MOCK, MOCK_MERKLE_ROOT, mockPool, mockSupplyBalance } from "@/lib/mock";
 
 /**
  * Typed client for the `commitment-tree` contract, built on the generated
@@ -27,6 +28,7 @@ function bytesToHex(bytes: Buffer | Uint8Array): string {
 
 /** Current Poseidon Merkle root of the commitment tree, as a hex string. */
 export async function getMerkleRoot(): Promise<string> {
+  if (MOCK) return MOCK_MERKLE_ROOT;
   const { result } = await getClient().get_merkle_root();
   return bytesToHex(result);
 }
@@ -42,6 +44,7 @@ export interface PoolState {
 
 /** Pool accounting from `get_pool_state`, which returns `(supplied, borrowed)`. */
 export async function getPoolState(): Promise<PoolState> {
+  if (MOCK) return mockPool;
   const { result } = await getClient().get_pool_state();
   const [totalSupplied, totalBorrowed] = result;
   return {
@@ -53,6 +56,7 @@ export async function getPoolState(): Promise<PoolState> {
 
 /** A lender's supplied balance (stroops) from `get_supply_balance`. */
 export async function getSupplyBalance(lender: string): Promise<bigint> {
+  if (MOCK) return mockSupplyBalance();
   const { result } = await getClient().get_supply_balance({ lender });
   return result;
 }

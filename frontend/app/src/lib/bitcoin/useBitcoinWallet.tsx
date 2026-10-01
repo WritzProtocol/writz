@@ -1,8 +1,9 @@
 "use client";
 
-import { createContext, useCallback, useContext, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import Wallet, { AddressPurpose, BitcoinNetworkType, RpcErrorCode } from "sats-connect";
 import { config } from "@/config";
+import { MOCK_BTC_ADDRESS, MOCK_BTC_PUBKEY, MOCK_BTC_TXID, mockParam } from "@/lib/mock";
 
 /** Map the configured BTC network string to the sats-connect network type. */
 function walletNetwork(): BitcoinNetworkType {
@@ -42,6 +43,15 @@ export function BitcoinWalletProvider({ children }: { children: React.ReactNode 
   const [btcPubkey, setBtcPubkey] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mocked, setMocked] = useState(false);
+
+  useEffect(() => {
+    if (mockParam("w") === "both") {
+      setMocked(true);
+      setBtcAddress(MOCK_BTC_ADDRESS);
+      setBtcPubkey(MOCK_BTC_PUBKEY);
+    }
+  }, []);
 
   const connect = useCallback(async () => {
     setError(null);
@@ -90,6 +100,7 @@ export function BitcoinWalletProvider({ children }: { children: React.ReactNode 
 
   const sendBtc = useCallback(
     async (toAddress: string, amountSats: number): Promise<string> => {
+      if (mocked) return MOCK_BTC_TXID;
       const res = await Wallet.request("sendTransfer", {
         recipients: [{ address: toAddress, amount: amountSats }],
       });
@@ -98,7 +109,7 @@ export function BitcoinWalletProvider({ children }: { children: React.ReactNode 
       }
       return res.result.txid;
     },
-    [],
+    [mocked],
   );
 
   const signPsbt = useCallback(

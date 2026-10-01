@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useWallet } from "@/lib/wallet/WalletProvider";
 import { withdrawFromVault } from "@/lib/flows/earn";
 import { fmtUsdc, toStroops } from "@/lib/earn/amount";
@@ -8,6 +8,7 @@ import { EARN_ASSET } from "@/lib/flows/trustline";
 import { stellarTxUrl } from "@/lib/explorer";
 import { humanizeError } from "@/lib/errors";
 import { TxLink } from "./TxLink";
+import { MOCK_ERRORS, MOCK_STELLAR_TX, mockStatus } from "@/lib/mock";
 
 /**
  * Earn withdraw flow (#111). Takes USDC back out of the Writz DeFindex vault:
@@ -33,6 +34,16 @@ export function EarnWithdraw({
   const [status, setStatus] = useState<"idle" | "working" | "done" | "error">("idle");
   const [message, setMessage] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
+
+  useEffect(() => {
+    const s = mockStatus("earnWithdraw");
+    if (s && s !== "idle") {
+      setAmount("150");
+      setStatus(s);
+      setMessage(s === "done" ? "Withdrawn." : s === "error" ? MOCK_ERRORS.earnWithdraw : null);
+      if (s === "done") setTxHash(MOCK_STELLAR_TX);
+    }
+  }, []);
 
   // Nothing to show signed out, unlike the APY above: a withdraw form with no
   // position behind it is noise, and the deposit panel already carries the

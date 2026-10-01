@@ -10,6 +10,7 @@ import { config } from "@/config";
 import { fmtUsdc, toStroops } from "@/lib/earn/amount";
 import { EnableTrustlineButton } from "./EnableTrustlineButton";
 import { TxLink } from "./TxLink";
+import { MOCK_ERRORS, MOCK_STELLAR_TX, mockStatus } from "@/lib/mock";
 
 /**
  * Earn deposit flow (#109). Deposits USDC from the connected account into the
@@ -40,6 +41,16 @@ export function EarnDeposit({
   const [status, setStatus] = useState<"idle" | "working" | "done" | "error">("idle");
   const [message, setMessage] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
+
+  useEffect(() => {
+    const s = mockStatus("earnDeposit");
+    if (s && s !== "idle") {
+      setAmount("200");
+      setStatus(s);
+      setMessage(s === "done" ? "Deposited." : s === "error" ? MOCK_ERRORS.earnDeposit : null);
+      if (s === "done") setTxHash(MOCK_STELLAR_TX);
+    }
+  }, []);
 
   const walletBalance = read && read.address === address ? read.balance : null;
 

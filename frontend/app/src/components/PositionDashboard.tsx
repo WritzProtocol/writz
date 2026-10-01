@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { useWallet } from "@/lib/wallet/WalletProvider";
 import { useBitcoinWallet } from "@/lib/bitcoin/useBitcoinWallet";
@@ -23,6 +23,7 @@ import {
   EMPTY_POSITIONS,
   type Position,
 } from "@/lib/position";
+import { MOCK_BTC_ADDRESS, MOCK_BTC_TXID, MOCK_ERRORS, MOCK_STELLAR_TX, MOCK_WORKING, mockStatus } from "@/lib/mock";
 
 // USDC = 7 decimals (stroops), BTC = 8 decimals (sats).
 const STROOP = 10_000_000n;
@@ -254,6 +255,32 @@ function PositionCard({ position }: { position: Position }) {
   const [releaseTx, setReleaseTx] = useState<string | null>(null);
 
   const busy = status === "working" || repayStatus === "working" || releaseStatus === "working";
+
+  useEffect(() => {
+    const b = mockStatus("borrow");
+    if (b && b !== "idle") {
+      setAmount("1500");
+      setStatus(b);
+      setMessage(b === "done" ? "Borrowed." : b === "error" ? MOCK_ERRORS.borrow : null);
+      if (b === "done") setBorrowTx(MOCK_STELLAR_TX);
+    }
+    const r = mockStatus("repay");
+    if (r && r !== "idle") {
+      setRepayAmount("500");
+      setRepayStatus(r);
+      setRepayMessage(r === "done" ? "Repaid." : r === "error" ? MOCK_ERRORS.repay : null);
+      if (r === "done") setRepayTx(MOCK_STELLAR_TX);
+    }
+    const rel = mockStatus("release");
+    if (rel && rel !== "idle") {
+      setReleaseRecipient(MOCK_BTC_ADDRESS);
+      setReleaseStatus(rel);
+      setReleaseMessage(
+        rel === "done" ? "BTC released -" : rel === "error" ? MOCK_ERRORS.release : MOCK_WORKING.release,
+      );
+      if (rel === "done") setReleaseTx(MOCK_BTC_TXID);
+    }
+  }, []);
 
   async function handleBorrow() {
     setMessage(null);

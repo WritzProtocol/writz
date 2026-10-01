@@ -6,6 +6,7 @@ import {
 import { AppTabs } from "@/components/AppTabs";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { humanizeError } from "@/lib/errors";
+import { MOCK } from "@/lib/mock";
 
 // Read on-chain state at request time; never statically prerendered.
 export const dynamic = "force-dynamic";
@@ -24,12 +25,18 @@ function truncate(hex: string): string {
   return hex.length > 18 ? `${hex.slice(0, 10)}…${hex.slice(-6)}` : hex;
 }
 
-export default async function AppDashboardPage() {
+export default async function AppDashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const readFail = MOCK && (await searchParams).readfail === "1";
   let merkleRoot: string | null = null;
   let pool: PoolState | null = null;
   let error: string | null = null;
 
   try {
+    if (readFail) throw new Error("Soroban RPC request failed: 503 Service Unavailable");
     [merkleRoot, pool] = await Promise.all([getMerkleRoot(), getPoolState()]);
   } catch (e) {
     error = humanizeError(e);
