@@ -2,9 +2,17 @@ import { Router, Request, Response } from "express";
 import { config } from "../config.js";
 import { defindexSdk, defindexNetwork } from "../defindex/client.js";
 import { mapDefindexError } from "../defindex/errors.js";
+import { trackVaultRoute } from "../defindex/metrics.js";
+import { rateLimit } from "../rate-limit.js";
 
 const STELLAR_ADDRESS_RE = /^G[A-Z2-7]{55}$/;
 const STROOP_AMOUNT_RE = /^[1-9]\d*$/;
+
+// Per client IP. Reads cover page loads and refreshes across several tabs;
+// tx-building is one call per user-initiated deposit or withdraw, so its
+// budget covers retries, not normal use.
+export const vaultReadLimiter = rateLimit({ name: "defindex-read", limit: 60, windowMs: 60_000 });
+export const vaultTxLimiter = rateLimit({ name: "defindex-tx", limit: 10, windowMs: 60_000 });
 
 export const defindexRouter = Router();
 
@@ -21,7 +29,7 @@ export const defindexRouter = Router();
  * mock (`0.0731`), so this route divides by 100 to honor that contract
  * rather than passing DeFindex's raw value straight through.
  */
-defindexRouter.get("/apy", async (_req: Request, res: Response): Promise<void> => {
+defindexRouter.get("/apy", trackVaultRoute("apy"), vaultReadLimiter, async (_req: Request, res: Response): Promise<void> => {
   if (!config.defindexVaultId) {
     res.status(500).json({ error: "DEFINDEX_VAULT_ID not configured" });
     return;
@@ -46,7 +54,7 @@ defindexRouter.get("/apy", async (_req: Request, res: Response): Promise<void> =
  * number, precision is already lost before this code runs; stringifying
  * afterward can't recover it. Not a risk at this vault's current scale.
  */
-defindexRouter.get("/position", async (req: Request, res: Response): Promise<void> => {
+defindexRouter.get("/position", trackVaultRoute("position"), vaultReadLimiter, async (req: Request, res: Response): Promise<void> => {
   const address = req.query["address"];
   if (typeof address !== "string" || !STELLAR_ADDRESS_RE.test(address)) {
     res.status(400).json({ error: "address must be a Stellar G... public key" });
@@ -83,7 +91,7 @@ defindexRouter.get("/position", async (req: Request, res: Response): Promise<voi
  * strategies") so a deposit starts earning immediately instead of sitting
  * idle until a manual rebalance.
  */
-defindexRouter.post("/deposit", async (req: Request, res: Response): Promise<void> => {
+defindexRouter.post("/deposit", trackVaultRoute("deposit"), vaultTxLimiter, async (req: Request, res: Response): Promise<void> => {
   const { caller, amountStroops } = req.body as { caller?: unknown; amountStroops?: unknown };
   if (typeof caller !== "string" || !STELLAR_ADDRESS_RE.test(caller)) {
     res.status(400).json({ error: "caller must be a Stellar G... public key" });
@@ -128,7 +136,7 @@ defindexRouter.post("/deposit", async (req: Request, res: Response): Promise<voi
  * a "full" withdrawal is simply an amount equal to the caller's whole
  * position, so no separate full/partial branch is needed here.
  */
-defindexRouter.post("/withdraw", async (req: Request, res: Response): Promise<void> => {
+defindexRouter.post("/withdraw", trackVaultRoute("withdraw"), vaultTxLimiter, async (req: Request, res: Response): Promise<void> => {
   const { caller, amountStroops } = req.body as { caller?: unknown; amountStroops?: unknown };
   if (typeof caller !== "string" || !STELLAR_ADDRESS_RE.test(caller)) {
     res.status(400).json({ error: "caller must be a Stellar G... public key" });
