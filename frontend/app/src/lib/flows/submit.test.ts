@@ -1,5 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { isTransientSimulationError, simulateWithRetry } from "./submit";
+import { spvProofUrl } from "./deposit";
+import { config } from "@/config";
 
 describe("isTransientSimulationError", () => {
   it("retries state lag and throttling", () => {
@@ -33,5 +35,13 @@ describe("simulateWithRetry", () => {
     }, 8, 1, 1);
     expect(out).toBe("ok");
     expect(calls).toBe(3);
+  });
+});
+
+describe("spvProofUrl", () => {
+  it("asks the relayer for the confirmation count this app requires", () => {
+    expect(spvProofUrl("https://relayer.example", "ab".repeat(32))).toBe(
+      `https://relayer.example/spv-proof/${"ab".repeat(32)}?confirmations=${config.bitcoin.minConfirmations}`,
+    );
   });
 });
