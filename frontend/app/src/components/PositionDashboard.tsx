@@ -4,8 +4,10 @@ import { useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { useWallet } from "@/lib/wallet/WalletProvider";
 import { useBitcoinWallet } from "@/lib/bitcoin/useBitcoinWallet";
+import Link from "next/link";
 import { isAddressForNetwork } from "@/lib/bitcoin/address";
 import { releaseBtc } from "@/lib/flows/release";
+import { loanHref } from "@/lib/loan/model";
 import { borrow } from "@/lib/flows/borrow";
 import { repay } from "@/lib/flows/repay";
 import { recoverPositions } from "@/lib/flows/recover";
@@ -365,9 +367,20 @@ function PositionCard({ position }: { position: Position }) {
   return (
     <div className="rounded-xl border border-line bg-surface p-5">
       <div className="mb-4 flex items-center justify-between">
-        <span className="font-mono text-xs text-muted" title={position.commitment}>
-          {position.commitment.slice(0, 8)}…{position.commitment.slice(-6)}
-        </span>
+        {position.status === "pending" ? (
+          <span className="font-mono text-xs text-muted" title={position.commitment}>
+            {position.commitment.slice(0, 8)}…{position.commitment.slice(-6)}
+          </span>
+        ) : (
+          <Link
+            href={loanHref(position.index)}
+            className="font-mono text-xs text-muted hover:text-amber"
+            title={position.commitment}
+            aria-label={`Open Loan ${position.index + 1}`}
+          >
+            {position.commitment.slice(0, 8)}…{position.commitment.slice(-6)}
+          </Link>
+        )}
         <span
           className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold ${
             liquidated
