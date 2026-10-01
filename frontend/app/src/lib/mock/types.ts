@@ -75,6 +75,8 @@ export interface MockFlow {
 
 export interface MockDeposit {
   amountSats?: bigint;
+  /** The amount step is done; implied once a wallet is connected or connecting. */
+  amountConfirmed?: boolean;
   amountError?: "below_min" | "above_balance" | "not_a_number";
   reviewAcknowledged?: boolean;
   timelockTooClose?: boolean;
