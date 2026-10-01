@@ -45,7 +45,7 @@ const STATUS_ROWS = [
   "syncing",
 ];
 
-/** ux-spec Appendix A. */
+/** Every screen state the redesign renders. */
 const APPENDIX_A = [
   ...range("G", 7),
   ...range("H", 21),
@@ -69,7 +69,7 @@ async function derived(world: MockWorld) {
 }
 
 describe("mock scenarios", () => {
-  test("cover every Appendix A state ID exactly once", () => {
+  test("cover every screen state ID exactly once", () => {
     const ids = SCENARIOS.map((s) => s.id);
     expect(new Set(ids).size).toBe(ids.length);
     expect([...ids].sort()).toEqual([...APPENDIX_A].sort());

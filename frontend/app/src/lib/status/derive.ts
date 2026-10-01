@@ -162,7 +162,7 @@ function timelockOf(inputs: StatusInputs): Timelock | null {
   return { height, blocksLeft: tip === undefined ? null : Math.max(0, height - tip) };
 }
 
-/** ux-spec 7.1. Pure: the same inputs always give the same status. */
+/** Pure: the same inputs always give the same status. */
 export function derivePositionStatus(inputs: StatusInputs): DerivedStatus {
   const status = coreStatus(inputs);
   const timelock = timelockOf(inputs);

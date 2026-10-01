@@ -34,7 +34,7 @@ import type {
 } from "./types";
 
 /**
- * Mock harness scenarios, one per state ID in ux-spec Appendix A. Select one
+ * Mock harness scenarios, one per screen state ID. Select one
  * with `?scenario=<id>` while NEXT_PUBLIC_UI_MOCK=1 (see `gate.ts`).
  *
  *   G1-G7     global states            /  (any client route)
@@ -47,7 +47,7 @@ import type {
  *   R1-R4     reclaim help             /help/reclaim
  *   tx.<id>   transaction lifecycle    draft, preparing, awaiting_signature, signature_cancelled,
  *                                      submitted, confirming, confirmed, timed_out, failed, needs_attention
- *   status.<kind>  position status rows of ux-spec 7.1, e.g. status.at_risk, status.reclaimable
+ *   status.<kind>  position status rows, e.g. status.at_risk, status.reclaimable
  */
 
 const AREAS: Record<string, MockArea> = {

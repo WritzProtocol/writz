@@ -72,7 +72,7 @@ function inputs(
 
 const kindOf = (i: StatusInputs) => derivePositionStatus(i).status;
 
-describe("derivePositionStatus, one test per ux-spec 7.1 row", () => {
+describe("derivePositionStatus, one test per status", () => {
   test("checking: a required read is missing", () => {
     expect(kindOf(inputs({ position: position({ debtStroops: debtForRatio(200) }) }))).toEqual({
       kind: "checking",

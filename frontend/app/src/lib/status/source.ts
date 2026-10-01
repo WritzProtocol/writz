@@ -10,7 +10,7 @@ import type {
 } from "./types";
 
 /**
- * Relayer-indexed reads (ux-spec 16, R). The client fallback implements them
+ * Relayer-indexed reads. The client fallback implements them
  * from today's endpoints and RPC; the relayer `/status` endpoints replace it
  * behind this same interface, with no screen changes.
  */

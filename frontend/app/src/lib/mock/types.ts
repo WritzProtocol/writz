@@ -2,7 +2,7 @@ import type { FlowState } from "@/lib/flow/engine";
 import type { PendingTx } from "@/lib/flow/pendingTx";
 import type { ChainReads, LocalInputs, PositionStatusKind, RelayerIndex } from "@/lib/status/types";
 
-/** ux-spec 12.7: unknown, empty and failed are different states. */
+/** Unknown, empty and failed are different states. */
 export type Reading<T> =
   | { state: "loading" }
   | { state: "failed"; lastGood?: T; at?: number }

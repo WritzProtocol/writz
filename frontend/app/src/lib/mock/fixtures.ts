@@ -108,7 +108,7 @@ function open(n: number, now: number, over: Partial<Position>, expect: MockPosit
   return { local: { position: note(n, now, over), pendingDeposit: null }, chain: unspentOpen, relayer: {}, expect };
 }
 
-/** Position fixtures, one per ux-spec 7.1 row and the variants screens need. */
+/** Position fixtures, one per position status and the variants screens need. */
 export const loans = {
   healthy: (n: number, now: number) => open(n, now, { debtStroops: debtForRatio(200).toString() }, "active"),
   belowLimit: (n: number, now: number) => open(n, now, { debtStroops: debtForRatio(140).toString() }, "active"),
@@ -239,7 +239,7 @@ export const deposits = {
 
 const HASH = STELLAR_TX;
 
-/** The engine state for each ux-spec 7.2 lifecycle state; it folds confirming into submitted. */
+/** The engine state for each transaction lifecycle state; it folds confirming into submitted. */
 export function lifecycleState(id: TxLifecycleId): FlowState {
   switch (id) {
     case "draft":

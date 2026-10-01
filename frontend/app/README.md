@@ -66,8 +66,8 @@ in `src/lib/contracts/`.
 
 ## UI mock harness (dev only)
 
-`src/lib/mock` holds fixtures for every state in the redesign spec's state
-index (wallets, positions, chain reads, relayer index, Earn, Lend, Protocol).
+`src/lib/mock` holds fixtures for every screen state the app renders
+(wallets, positions, chain reads, relayer index, Earn, Lend, Protocol).
 It is off unless the build sets `NEXT_PUBLIC_UI_MOCK=1`, never runs on a
 `mainnet` target, and needs a known scenario in the URL:
 

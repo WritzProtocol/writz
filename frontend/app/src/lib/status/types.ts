@@ -3,7 +3,7 @@ import type { PendingTx } from "@/lib/flow/pendingTx";
 import type { Position } from "@/lib/position/types";
 
 /**
- * Position status per ux-spec 7.1: derive(local note, chain reads, relayer
+ * Position status: derive(local note, chain reads, relayer
  * index). Local data is a hint, the chain decides, and a missing read yields
  * `checking` rather than a guess.
  */
@@ -50,7 +50,7 @@ export type LiquidationLookup =
   | { found: false; complete: boolean };
 
 /**
- * Relayer-indexed fields (ux-spec 16, marked R). Filled by the relayer
+ * Relayer-indexed fields. Filled by the relayer
  * `/status` endpoints once they exist, by client fallbacks until then.
  */
 export interface RelayerIndex {
