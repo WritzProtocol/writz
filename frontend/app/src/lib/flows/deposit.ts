@@ -201,7 +201,7 @@ export async function deposit(params: {
   );
 
   // 6. Submit deposit() - user signs with their Stellar wallet.
-  onStatus("Submitting deposit to Soroban… (step 1/2)");
+  onStatus("Recording your deposit on Stellar testnet… (step 1/2)");
   const client = new Client({
     contractId: requireContract(config.contracts.commitmentTree, "commitment-tree"),
     networkPassphrase: config.networkPassphrase,

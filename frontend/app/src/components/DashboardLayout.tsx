@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -11,8 +11,7 @@ import {
   X,
   ExternalLink,
 } from "lucide-react";
-import { WalletButton } from "@/components/WalletButton";
-import { BitcoinWalletButton } from "@/components/BitcoinWalletButton";
+import { WalletMenu } from "@/components/WalletMenu";
 import { config } from "@/config";
 
 interface Props {
@@ -23,26 +22,6 @@ interface Props {
 export function DashboardLayout({ children, breadcrumbs }: Props) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [utcTime, setUtcTime] = useState<string>("");
-
-  useEffect(() => {
-    const update = () => {
-      const now = new Date();
-      setUtcTime(
-        now.toISOString().slice(0, 10) +
-          " " +
-          now.toISOString().slice(11, 16) +
-          " UTC",
-      );
-    };
-    update();
-    const timer = setInterval(update, 30_000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const btcNetworkLabel =
-    config.bitcoin.network.charAt(0).toUpperCase() +
-    config.bitcoin.network.slice(1);
 
   const navItems = [
     {
@@ -136,7 +115,12 @@ export function DashboardLayout({ children, breadcrumbs }: Props) {
               {mobileOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
 
-            <nav aria-label="Breadcrumb" className="flex items-center gap-2 font-mono text-xs tracking-wider">
+            <Link href="/" className="sm:hidden" aria-label="Writz home">
+              {/* eslint-disable-next-line @next/next/no-img-element -- matches the sidebar's plain-<img> mark */}
+              <img src="/brand/writz-mark-white.svg" alt="" className="h-6 w-auto" />
+            </Link>
+
+            <nav aria-label="Breadcrumb" className="hidden items-center gap-2 font-mono text-xs tracking-wider sm:flex">
               {breadcrumbs.map((crumb, idx) => (
                 <div key={crumb.label} className="flex items-center gap-2">
                   {idx > 0 && <span className="text-line-2">/</span>}
@@ -161,25 +145,19 @@ export function DashboardLayout({ children, breadcrumbs }: Props) {
             </nav>
           </div>
 
-          {/* Right actions: time + wallet buttons */}
+          {/* Right actions: network pills + wallet buttons */}
           <div className="flex items-center gap-2.5 sm:gap-4">
-            {utcTime && (
-              <span className="hidden xl:inline-block font-mono text-[11px] text-muted">
-                LAST UPDATE: {utcTime}
-              </span>
-            )}
             <div className="hidden sm:flex items-center gap-2">
               <span className="inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-2.5 py-1 text-xs font-mono text-muted">
                 <span className="h-1.5 w-1.5 rounded-full bg-zk" />
-                Stellar
+                {config.target === "mainnet" ? "Stellar" : "Stellar testnet"}
               </span>
               <span className="inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-2.5 py-1 text-xs font-mono text-muted">
                 <span className="h-1.5 w-1.5 rounded-full bg-amber" />
-                {btcNetworkLabel}
+                Bitcoin {config.bitcoin.network}
               </span>
             </div>
-            <BitcoinWalletButton />
-            <WalletButton />
+            <WalletMenu />
           </div>
         </header>
 

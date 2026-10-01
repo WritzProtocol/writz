@@ -100,10 +100,6 @@ export default async function MetricsPage() {
               </div>
             </div>
 
-            <div className="mt-4 border-t border-line pt-2.5 text-[11px] font-mono text-muted flex justify-between">
-              <span>PRECISION: 7 DECIMALS</span>
-              <span className="text-ok">SYNCED</span>
-            </div>
           </div>
 
           {/* Card 2: Unique Depositors */}
@@ -158,7 +154,7 @@ export default async function MetricsPage() {
                   VAULT PARAMETERS
                 </span>
                 <span className="rounded border border-line bg-surface-2 px-1.5 py-0.5 font-mono text-[10px] uppercase text-muted">
-                  Soroban 22
+                  Stellar testnet
                 </span>
               </div>
 

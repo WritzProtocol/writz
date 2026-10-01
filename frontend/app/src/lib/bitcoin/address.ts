@@ -250,3 +250,13 @@ export async function resolveVout(
     `Check that the transaction was broadcast and the Esplora API (${apiUrl}) is reachable.`,
   );
 }
+
+/** True when `address` is a valid address on the configured Bitcoin network. */
+export function isAddressForNetwork(address: string): boolean {
+  try {
+    bitcoin.address.toOutputScript(address, getBitcoinNetwork());
+    return true;
+  } catch {
+    return false;
+  }
+}

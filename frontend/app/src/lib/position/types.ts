@@ -4,7 +4,7 @@
  * plus `index`/`version` (see lib/position/derive). BigInt fields are decimal
  * strings for JSON-safe persistence.
  */
-export type PositionStatus = "pending" | "active" | "closed" | "liquidated";
+export type PositionStatus = "pending" | "active" | "closed" | "released" | "liquidated";
 
 export interface Position {
   /** Stable local id - the current commitment (decimal string). */
@@ -37,6 +37,10 @@ export interface Position {
   /** Leaf index in the on-chain Merkle tree, assigned at deposit. Needed to compute the
    *  correct Merkle path after subsequent borrows/repays rotate the commitment. */
   leafIndex?: number;
+  /** Bitcoin txid of the release transaction, once broadcast. */
+  releaseTxid?: string;
+  /** Bitcoin address the collateral was released to. */
+  releaseAddress?: string;
 }
 
 /** A versioned export envelope for backup / restore. */

@@ -10,6 +10,10 @@
  * benefits instead of re-deriving it per component.
  */
 
+import { GITHUB_ISSUES_URL } from "@/lib/links";
+
+const REPORT = GITHUB_ISSUES_URL;
+
 export interface ErrorContext {
   /** Which flow the error came from, when the same contract error code needs different wording per flow. */
   flow?:
@@ -40,7 +44,7 @@ const RULES: Rule[] = [
   {
     pattern: /NEXT_PUBLIC_RELAYER_URL is not configured/,
     message: () =>
-      "The Writz relayer isn't reachable from this deployment. This is a configuration issue on our end, not something wrong with your transaction - nothing was sent. Please try again later or reach out on Discord.",
+      `This app can't reach the Writz relayer, so nothing was sent. Try again later. If it keeps happening, report it on GitHub: ${REPORT}.`,
   },
   {
     pattern: /Relayer unreachable/,
@@ -55,7 +59,7 @@ const RULES: Rule[] = [
   {
     pattern: /Merkle insertion failed/,
     message: () =>
-      "Your deposit was verified and accepted on Stellar, but the final step (recording it in the private position tree) failed on our backend. Your funds are not at risk - contact support with your Stellar transaction hash so we can complete this step for you.",
+      `Your deposit is recorded on Stellar, but the last step failed, so you can't borrow against it yet. Your BTC is still locked and safe. Report it on GitHub with your Stellar transaction: ${REPORT}.`,
   },
   {
     pattern: /Failed to fetch notes/,
@@ -74,16 +78,16 @@ const RULES: Rule[] = [
   {
     pattern: /Commitment mismatch/,
     message: () =>
-      "Something doesn't add up between the proof your browser generated and your locally stored position data. This should not happen - please don't retry blindly; contact support and share the exact amount you tried to deposit.",
+      `This browser computed different deposit data than expected, so nothing was sent. Don't retry. Report it on GitHub with the BTC amount you entered: ${REPORT}.`,
   },
 
-  // --- CommitmentTreeError (ZK-private flow) ---
+  // --- CommitmentTreeError ---
   {
     pattern: /InvalidZkProof/,
     message: (ctx) =>
       ctx.flow === "borrow" || ctx.flow === "repay"
         ? "The proof your browser generated for this action wasn't accepted on-chain. This is usually a transient client-side issue - try again. If it keeps happening, your position data may be out of sync; try 'Recover positions' first."
-        : "The zero-knowledge proof generated in your browser wasn't accepted on-chain. Try again - if it keeps failing, contact support rather than resubmitting repeatedly.",
+        : `Stellar didn't accept this deposit. Nothing changed. Try once more. If it fails again, report it on GitHub: ${REPORT}.`,
   },
   {
     pattern: /RootMismatch/,
@@ -115,7 +119,7 @@ const RULES: Rule[] = [
   {
     pattern: /WrongCircuitMode/,
     message: () =>
-      "This action doesn't match the type of proof that was generated (borrow vs. repay). This points to a client bug, not a mistake on your part - please report it.",
+      `The app prepared the wrong kind of transaction. Nothing changed. Refresh and try again. If it repeats, report it on GitHub: ${REPORT}.`,
   },
   {
     pattern: /ProtocolParamMismatch/,
@@ -154,22 +158,22 @@ const RULES: Rule[] = [
   {
     pattern: /HeaderChainBroken|InvalidHeaderSlice/,
     message: () =>
-      "The Bitcoin block headers used to verify your transaction didn't form a valid chain. This points to a relayer data issue, not a problem with your transaction - contact support with your txid.",
+      `The Bitcoin data from the Writz relayer failed a check. Your transaction is fine and your BTC is safe. Don't send it again. Report it on GitHub with your transaction ID: ${REPORT}.`,
   },
   {
     pattern: /MerkleProofInvalid/,
     message: () =>
-      "Your transaction couldn't be proven to be included in the Bitcoin block referenced. If you just sent this transaction, wait a bit longer for it to fully propagate and try again; otherwise contact support with your txid.",
+      `Your transaction couldn't be matched to its Bitcoin block yet. Wait for one more confirmation and try again. Don't send BTC again. If it keeps failing, report it on GitHub: ${REPORT}.`,
   },
   {
     pattern: /InsufficientProofOfWork|InvalidDifficultyBits|DifficultyBelowCheckpointFloor/,
     message: () =>
-      "The Bitcoin block data used to verify your deposit failed a security check. This is a relayer/data issue, not something wrong with your Bitcoin transaction - contact support with your txid rather than resending funds.",
+      `The Bitcoin data from the Writz relayer failed a check. Your transaction is fine and your BTC is safe. Don't send it again. Report it on GitHub with your transaction ID: ${REPORT}.`,
   },
   {
     pattern: /CheckpointNotSet|NotInitialized/,
     message: () =>
-      "The verification contract isn't ready to accept proofs right now. This is a temporary configuration issue on our end - please try again shortly or check our status channel.",
+      "Bitcoin verification on Stellar isn't ready right now. Nothing was sent. Try again later.",
   },
 
   // --- Wallet signature ---
@@ -221,12 +225,12 @@ const RULES: Rule[] = [
   {
     pattern: /StrategyWithdrawError|StrategyInvestError/,
     message: () =>
-      "The vault's underlying yield strategy failed to process this. Nothing moved - please try again, and report it if it keeps failing.",
+      `Blend couldn't process this. Nothing moved. Try again. If it keeps failing, report it on GitHub: ${REPORT}.`,
   },
   {
     pattern: /StrategyDoesNotSupportAsset|WrongAssetAddress/,
     message: () =>
-      "This vault doesn't accept the asset the app is configured with. That's a configuration issue on our end, not a problem with your wallet - please report it.",
+      `This app is set up with the wrong asset for the vault. Nothing moved. Report it on GitHub: ${REPORT}.`,
   },
 
   // --- Generic contract-level ---

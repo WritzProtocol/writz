@@ -1,9 +1,9 @@
 @import "tailwindcss";
 
 /*
-  Writz - "Private Vault" design system.
+  Writz design system.
   Dark warm-obsidian ground · scarce amber accent · serif display + grotesque
-  UI + mono data · redacted-by-default for private values. See DESIGN_SYSTEM.md.
+  UI + mono data. See DESIGN_SYSTEM.md.
 */
 
 @theme {
@@ -81,25 +81,6 @@
   }
 }
 
-@layer components {
-  /*
-    Redacted-by-default - the brand signature for private values.
-    Apply `.private` to any element showing a user's private amount and toggle
-    `.revealed` to disclose it. The protocol hides amounts on-chain; the UI does too.
-  */
-  .private {
-    cursor: pointer;
-    transition:
-      filter 0.25s ease-out,
-      color 0.25s ease-out;
-  }
-  .private:not(.revealed) {
-    filter: blur(7px);
-    color: var(--color-muted);
-    user-select: none;
-  }
-}
-
 /* Native smooth scroll for anchor-link jumps only - replaces the removed
  * Lenis JS scroll-hijacking library. Lenis drove scroll with fractional
  * (sub-pixel) scrollTop values every animation frame, which made text
@@ -123,9 +104,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .private {
-    filter: none !important;
-  }
   .animate-\[indeterminate_1\.4s_ease-in-out_infinite\] {
     animation: none !important;
     width: 100% !important;

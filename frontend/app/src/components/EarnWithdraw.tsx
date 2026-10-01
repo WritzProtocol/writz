@@ -8,6 +8,7 @@ import { EARN_ASSET } from "@/lib/flows/trustline";
 import { stellarTxUrl } from "@/lib/explorer";
 import { humanizeError } from "@/lib/errors";
 import { TxLink } from "./TxLink";
+import { useReportBusy } from "@/lib/activity";
 
 /**
  * Earn withdraw flow (#111). Takes USDC back out of the Writz DeFindex vault:
@@ -33,6 +34,8 @@ export function EarnWithdraw({
   const [status, setStatus] = useState<"idle" | "working" | "done" | "error">("idle");
   const [message, setMessage] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
+
+  useReportBusy(status === "working");
 
   // Nothing to show signed out, unlike the APY above: a withdraw form with no
   // position behind it is noise, and the deposit panel already carries the

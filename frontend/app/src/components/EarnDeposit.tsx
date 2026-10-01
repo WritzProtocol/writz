@@ -10,6 +10,7 @@ import { config } from "@/config";
 import { fmtUsdc, toStroops } from "@/lib/earn/amount";
 import { EnableTrustlineButton } from "./EnableTrustlineButton";
 import { TxLink } from "./TxLink";
+import { useReportBusy } from "@/lib/activity";
 
 /**
  * Earn deposit flow (#109). Deposits USDC from the connected account into the
@@ -73,6 +74,7 @@ export function EarnDeposit({
   }, [address]);
 
   const busy = status === "working";
+  useReportBusy(busy);
   const parsed = toStroops(amount);
 
   async function handleDeposit() {

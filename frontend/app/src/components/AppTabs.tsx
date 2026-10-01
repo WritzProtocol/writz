@@ -9,9 +9,9 @@ import { EarnPanel } from "./EarnPanel";
 type Tab = "borrow" | "lend" | "earn";
 
 const BLURBS: Record<Tab, string> = {
-  borrow: "Lock BTC as collateral and borrow USDC privately - no bridge, no custodian.",
-  lend: "Supply USDC to the pool and earn from borrower demand.",
-  earn: "Deposit USDC into the Writz vault and earn yield through DeFindex. Non-custodial - the vault shares are yours.",
+  borrow: "Lock BTC on Bitcoin and borrow up to two thirds of its value in USDC. No bridge, no wrapped token.",
+  lend: "Supply USDC to the pool borrowers draw from. The pool pays no interest yet on Stellar testnet. You withdraw what you supplied.",
+  earn: "Deposit Blend test USDC into the Writz vault on DeFindex. It earns from Blend lending. Shares sit in your own wallet.",
 };
 
 /**

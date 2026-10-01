@@ -7,6 +7,7 @@ export * from "./crypto";
 export * from "./store";
 export * from "./derive";
 export * from "./notes";
+export * from "./actions";
 
 /**
  * Derive a position's spending keys from the in-memory session seed. The secret
