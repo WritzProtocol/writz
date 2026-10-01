@@ -158,6 +158,8 @@ export function LoanView({ m }: { m: LoanModel }) {
   const checking = status.kind === "checking";
   const liq = liquidationPriceFor(collateral, debt);
   const released = status.kind === "released" || status.kind === "releasing";
+  // A closed loan has nothing left to reclaim; don't point a liquidated borrower at the timelock.
+  const closed = released || status.kind === "liquidated" || status.kind === "closed_on_chain";
   const landedElsewhere = m.action && m.action !== "release" && m.flow.phase === "settled" && (m.action !== tab || !tabs[tab].enabled);
 
   const onTabKey = (e: KeyboardEvent<HTMLButtonElement>, t: LoanTab) => {
@@ -328,7 +330,7 @@ export function LoanView({ m }: { m: LoanModel }) {
         </section>
       )}
 
-      {!released && <WayOut height={height} date={exit} reclaimable={derived.reclaimable} />}
+      {!closed && <WayOut height={height} date={exit} reclaimable={derived.reclaimable} />}
 
       <OnThisDevice items={m.activity} />
     </div>
