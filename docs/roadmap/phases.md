@@ -36,7 +36,7 @@ Research    ──►  Foundation  ──►  Launch      ──►  Scale
 | [Market Landscape](../research/market-landscape.md) | 28x growth in BTCfi. Updated 2026-08-04: Solv Protocol and Templar Protocol both have live Stellar infrastructure now, so "zero BTCfi competition on Stellar" no longer holds. The differentiator is trustless native BTC plus ZK-private positions specifically, not being first on Stellar. See the doc's 2026-08-04 addendum |
 | [Interest Rate Model](../research/interest-rate-model.md) | Kinked curve: Uoptimal=75%, slope2=200% |
 | [Liquidation Mechanism](../research/liquidation-mechanism.md) | ZK undercollateral proof; 150% min, 120% threshold, 10% bonus |
-| [Circom Circuit Design](../research/circom-circuit-design.md) | Three circuits; Groth16 trusted setup required pre-mainnet |
+| [Circom Circuit Design](../research/circom-circuit-design.md) | Three circuits at design time (zero-debt release added during implementation); Groth16 trusted setup required pre-mainnet |
 | [Tokenomics & Fee Model](../research/tokenomics-fee-model.md) | Real-yield model; WRTZ token after $5M TVL |
 | [Security Audit Strategy](../research/security-audit-strategy.md) | Audit Bank covers costs; Veridise for ZK circuits |
 
@@ -56,7 +56,7 @@ Research    ──►  Foundation  ──►  Launch      ──►  Scale
 | **zk-verifier contract** | 25/25 tests. Groth16 BN254 via Protocol 26 host functions. All 3 VKs set. Deployed: `CBNZU23QGCZATJB2QMNF2K6IST2SVP7FSGCKASQNBULTWDWGANDBYLFY` |
 | **commitment-tree contract** | 32/32 tests. Full ZK cycle verified on-chain. Deployed: `CDQCTFO3FK3M47QS47O2A4WLNPSQAQBSXBFPJ6RZEHFO5D7RY34FSBBP` |
 | **private-lend contract** | 89/89 tests. Non-ZK skeleton with kinked interest model. Deployed: `CAAWVMDRUPEJNELSQ6RU2VMVX5EJLQ2E77T7IXDWGMW4DGSNAGECGSWR` |
-| **ZK circuits** | 29/29 tests. All 3 circuits compiled (Circom 2.2.3). Dev keys generated. |
+| **ZK circuits** | 29/29 tests. All 4 circuits compiled (Circom 2.2.3). Dev keys generated. |
 | **Relayer service** | 122/122 tests. REST API: `GET /spv-proof/:txid`. Esplora-backed. |
 | **Bitcoin script toolkit** | 60/60 tests. P2WSH generation, PSBT signing, witness assembly. |
 | **Bitcoin Signet E2E** | Path A co-signed release broadcast and accepted. `11932100` |
@@ -112,7 +112,7 @@ Research    ──►  Foundation  ──►  Launch      ──►  Scale
 - **Do not schedule a mainnet date until `commitment-tree`'s oracle work has an owner and a start date.**
 
 **ZK circuits, production prep:**
-- Trusted setup ceremony: Powers of Tau Phase 2 for all 3 circuits (plus `zero_debt`, per `docs/scf/milestone-plan.md`)
+- Trusted setup ceremony: Powers of Tau Phase 2 for all four circuits (deposit, borrow/repay, liquidation, zero_debt)
 - **Blocking sub-task with no owner or date yet: identify 5+ independent ceremony participants.** Ceremony tooling exists (`circuits/scripts/ceremony/`), but the participants themselves are not identified - this is the actual bottleneck, not the tooling
 - Publish ceremony transcript publicly
 - Recompile liquidation circuit artifacts after `usdc_debt` signal addition **before** running the ceremony - running the ceremony against circuits that still need this change risks having to redo it

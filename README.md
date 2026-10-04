@@ -362,7 +362,7 @@ python3 scripts/diagrams/render-all.py
 - [ ] Trusted setup ceremony planned (5+ independent participants)
 - [x] Docs live at docs.writz.xyz
 
-**Phase 2 - Launch** *(Q4 2026)*
+**Phase 2 - Launch** *(Q2 to Q3 2027)*
 
 - Audit Bank: Veridise (ZK circuits) + OtterSec (Soroban contracts)
 - Mainnet launch gated: $50K TVL cap, whitelist-only first 30 days

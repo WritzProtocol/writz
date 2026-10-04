@@ -89,7 +89,7 @@ As of June 2026, Writz has completed Phase 1 - Foundation:
 - Real Bitcoin transactions broadcast and confirmed on Bitcoin Signet
 - SCF Build Award application drafted (not submitted; no short-term plan to submit)
 
-The protocol is not yet available on mainnet. Mainnet launch is targeted for Q4 2026 (Phase 2), starting with a gated, TVL-capped release of PrivateLend.
+The protocol is not yet available on mainnet. Mainnet launch is targeted for Q2 to Q3 2027 (Phase 2), starting with a gated, TVL-capped release of PrivateLend.
 
 ---
 

@@ -5,7 +5,7 @@
 > ### [WARNING] Not yet active - no cash rewards are payable today
 >
 > Writz runs on **testnet only** and holds no user funds. The paid bug bounty
-> starts at mainnet launch (targeted Q4 2026); the reward amounts below are the
+> starts at mainnet launch (targeted Q2 to Q3 2027); the reward amounts below are the
 > **planned** bands for that program, not offers we can honour right now.
 >
 > **Please still report findings.** During testnet we acknowledge, fix, and
@@ -122,6 +122,6 @@ Researchers who responsibly disclose valid vulnerabilities will be acknowledged 
 
 ## Active Period
 
-The bug bounty program is active from mainnet launch (Q4 2026). During the testnet phase, reports are accepted and recognized, but cash rewards are not yet active - the protocol does not hold user funds until mainnet.
+The bug bounty program is active from mainnet launch (Q2 to Q3 2027). During the testnet phase, reports are accepted and recognized, but cash rewards are not yet active - the protocol does not hold user funds until mainnet.
 
 If you find a critical issue during the testnet phase, report it anyway. We will honor the reward when mainnet launches.

@@ -72,9 +72,9 @@ This is the same technique used by Tornado Cash, Aztec Network, and other ZK pri
 
 ---
 
-## The Three ZK Circuits
+## The Four ZK Circuits
 
-Writz uses three Circom circuits, each compiled to a Groth16 proof system over the BN254 curve.
+Writz uses four Circom circuits, each compiled to a Groth16 proof system over the BN254 curve.
 
 ### 1. Deposit Circuit
 
@@ -89,7 +89,7 @@ Writz uses three Circom circuits, each compiled to a Groth16 proof system over t
 - Secret
 - Nonce
 
-**Constraint count:** ~597 non-linear + 714 linear constraints
+**Constraint count:** 596 non-linear + 714 linear constraints
 
 **Why the txid binding matters:** Without this binding, a malicious user could submit a ZK deposit proof that references a Bitcoin transaction that doesn't actually exist. The txid binding ensures that every ZK commitment corresponds to a real, SPV-verified Bitcoin deposit.
 
@@ -114,7 +114,7 @@ Writz uses three Circom circuits, each compiled to a Groth16 proof system over t
 - Delta (borrow or repay amount)
 - Merkle path (proof of membership in the tree)
 
-**Constraint count:** ~11,180 non-linear + 12,122 linear constraints (measured via `circom --r1cs`; grew slightly after the `is_borrow` soundness fix noted below added a boolean constraint plus two 120-bit debt-direction range checks)
+**Constraint count:** 11,296 non-linear + 12,124 linear constraints (measured via `circom --r1cs`; grew slightly after the `is_borrow` soundness fix noted below added a boolean constraint plus two 120-bit debt-direction range checks)
 
 **Key design decision - no division in ZK circuits:** Division is expensive in ZK (requires a range proof for the denominator). The collateral ratio check is implemented as a multiplication: `loan_amount × min_ratio_bp ≤ collateral_amount × price × 10000`. This avoids division entirely.
 
@@ -139,15 +139,32 @@ Writz uses three Circom circuits, each compiled to a Groth16 proof system over t
 - Current debt
 - Merkle path
 
-**Constraint count:** ~5,594 non-linear + ~6,196 linear constraints
+**Constraint count:** 5,710 non-linear + 6,197 linear constraints
 
 **Critical security property - `usdc_debt` binding:** The liquidation circuit's `usdc_debt` public output is computed inside the circuit from the private `debt_stroops` field. The liquidator cannot supply an arbitrary debt amount - it is derived from the private commitment and constrained by the circuit. This prevents a malicious keeper from claiming a larger debt than actually exists.
 
 ---
 
+### 4. Zero-Debt Release Circuit
+
+**What it proves:** "I know the preimage of a commitment in the Merkle tree whose debt field is zero." This is the on-chain guarantee required before the protocol co-signs the release of the Bitcoin collateral after a loan is fully repaid.
+
+**Public inputs:**
+- The Merkle root (the only public signal; it must equal the current on-chain root at verification time)
+
+**Private inputs:**
+- Amount (satoshis), secret, nonce
+- Merkle path
+
+**Constraint count:** 5,220 non-linear + 5,916 linear constraints
+
+**Why the debt cannot be forged:** the debt field is the literal `0` inside the circuit. There is no private debt signal, so a valid proof cannot be generated for any position with outstanding debt.
+
+---
+
 ## Groth16 and Protocol X-Ray
 
-All three circuits use **Groth16** - the most widely deployed ZK proof system, used by Zcash, Tornado Cash, and Stellar's own Private Payments reference implementation.
+All four circuits use **Groth16** - the most widely deployed ZK proof system, used by Zcash, Tornado Cash, and Stellar's own Private Payments reference implementation.
 
 A Groth16 proof is a small constant-size object (3 elliptic curve points, ~128 bytes on BN254) that can be verified in constant time - regardless of the size of the computation being proven.
 
@@ -184,13 +201,13 @@ Groth16 requires a one-time **trusted setup ceremony** - a multi-party computati
 
 The ceremony has two phases:
 1. **Powers of Tau (Phase 1):** A universal setup shared across all circuits. Writz will use the Hermez ceremony artifact (the same trusted setup used by Stellar's own Private Payments reference implementation).
-2. **Phase 2 (circuit-specific):** A separate ceremony for each of Writz's three circuits, incorporating the circuit-specific parameters.
+2. **Phase 2 (circuit-specific):** A separate ceremony for each of Writz's four circuits, incorporating the circuit-specific parameters.
 
 The ceremony requires multiple independent participants. The security guarantee is: as long as at least one participant honestly discards their randomness, the setup is sound. A ceremony with 5+ parties from different organizations and jurisdictions provides strong security.
 
 The ceremony transcript is published publicly. Anyone can verify it was executed correctly.
 
-**When:** The trusted setup ceremony is planned for Q3–Q4 2026, before mainnet launch. The current development keys (`pot15` from snarkjs) are used for testing only - they are NOT suitable for production.
+**When:** The trusted setup ceremony is planned for Q1 to Q2 2027, before mainnet launch. The current development keys (`pot15` from snarkjs) are used for testing only - they are NOT suitable for production.
 
 **Rotating the on-chain key once the real ceremony completes:** `zk-verifier.set_verification_key` (admin-only) replaces a circuit's key immediately - there is no grace period during which the previous key is also accepted. That's a deliberate choice: accepting proofs against a stale key is a strictly weaker security posture than requiring the current one. What the contract does provide is an audit trail - every call emits a `vk_rotated` event carrying a fingerprint of the old and new key, so there's an on-chain record of exactly when the dev key was replaced by the real ceremony's output, even though storage itself only ever holds the current key.
 

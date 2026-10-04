@@ -180,7 +180,7 @@ Once Writz is live on mainnet, two further SDF programs become available:
 **Liquidity Award**
 - Eligibility: >$250K TVL sustained for 7 consecutive days + completed audit + KYC
 - Purpose: SDF provides additional liquidity support to qualifying protocols
-- Target: apply at $250K TVL milestone (expected Q1 2027)
+- Target: apply at $250K TVL milestone (expected Q3 to Q4 2027, about 90 days after mainnet)
 
 These programs are not part of the initial SCF application - they are post-launch milestones that reward demonstrated traction.
 

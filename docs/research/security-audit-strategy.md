@@ -55,7 +55,7 @@ The following firms are officially pre-approved by the SDF for the Soroban Secur
 | **Code4rena** | Competitive platform, 100+ researchers per audit | Good for community-wide coverage |
 
 **Writz's target firms:**
-- **Veridise** - Circom ZK circuit audit (3 circuits: deposit, borrow/repay, liquidation)
+- **Veridise** - Circom ZK circuit audit (4 circuits: deposit, borrow/repay, liquidation, zero-debt release)
 - **OtterSec or Zellic** - Soroban smart contracts (SPV client + PrivateLend + USDC pool)
 
 ---
