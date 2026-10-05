@@ -9,6 +9,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 1,
     },
     {
+      url: new URL("/whitepaper", env.siteUrl).toString(),
+      changeFrequency: "monthly",
+      priority: 0.7,
+    },
+    {
       url: new URL("/brand", env.siteUrl).toString(),
       changeFrequency: "monthly",
       priority: 0.5,
