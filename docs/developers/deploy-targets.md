@@ -51,7 +51,7 @@ Steps 1 and 2 are dashboard and registrar actions - they cannot be done from thi
 
 ### 1. Frontend (Vercel)
 
-1. Create a Vercel project from this repository, separate from the one serving the apex domain. Root directory `frontend/app`; framework preset Next.js. Under **Settings → Git → Ignored Build Step**, set `git diff --quiet HEAD^ HEAD ./` so a push that only touches the landing does not rebuild this project.
+1. Create a Vercel project from this repository, separate from the one serving the apex domain. Root directory `frontend/app`; framework preset Next.js. The Ignored Build Step lives in `frontend/app/vercel.json` and takes precedence over the dashboard setting, so a push that only touches the landing does not rebuild this project. It is `git diff --quiet ${VERCEL_GIT_PREVIOUS_SHA:-HEAD^} HEAD -- . 2>/dev/null && exit 0 || exit 1`. The `|| exit 1` matters: Vercel only understands exit 0 (skip) and exit 1 (build), and `VERCEL_GIT_PREVIOUS_SHA` is the last commit this project deployed, which a shallow clone may not contain. Without it, `git diff` fails with `bad object` (exit 128) and the deployment errors instead of building.
 2. Under **Settings → Domains**, add `testnet.writz.xyz`.
 3. Under **Settings → Environment Variables**, set the target's variables for the Production environment. At minimum:
 
