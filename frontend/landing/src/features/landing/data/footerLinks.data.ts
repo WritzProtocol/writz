@@ -19,6 +19,7 @@ export const footerLinkGroups: FooterLinkGroup[] = [
       { label: "Contract Reference", href: `${DOCS_URL}/developers/contract-reference` },
       { label: "Quick Start", href: `${DOCS_URL}/developers/quick-start` },
       { label: "Security Model", href: `${DOCS_URL}/security/security-model` },
+      { label: "Whitepaper", href: "/whitepaper" },
     ],
   },
   {

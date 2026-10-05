@@ -1,0 +1,136 @@
+/*
+  Whitepaper page. Reuses the press tokens (`.press-root`, imported from
+  ../brand/press.css); only what the brand page does not already have lives here.
+*/
+
+.press-root .doc-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 28px;
+  margin: 28px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 15px;
+  color: var(--muted);
+}
+
+.press-root .doc-meta li {
+  margin: 0;
+}
+
+.press-root .doc-meta strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.press-root .doc-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 32px;
+}
+
+/* Ink on Gold is 10.5:1. Gold is a surface here, never type. */
+.press-root a.btn {
+  display: inline-flex;
+  align-items: center;
+  min-height: 48px;
+  padding: 0 24px;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  text-decoration: none;
+  border: 1px solid var(--ink);
+  color: var(--ink);
+  background: transparent;
+}
+
+.press-root a.btn.primary {
+  background: var(--gold);
+  border-color: var(--gold);
+}
+
+.press-root a.btn:hover {
+  text-decoration: none;
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
+}
+
+.press-root a.btn:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+}
+
+.press-root .contributions,
+.press-root .contents {
+  max-width: 680px;
+  margin: 0;
+  padding: 0 0 0 22px;
+}
+
+.press-root .contributions {
+  list-style: decimal;
+}
+
+.press-root .contributions li,
+.press-root .contents li {
+  font-size: 17px;
+  line-height: 1.6;
+  margin: 0 0 14px;
+}
+
+.press-root .contributions strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.press-root .contents {
+  list-style: none;
+  padding: 0;
+  border-top: 1px solid var(--rule);
+}
+
+.press-root .contents li {
+  display: flex;
+  gap: 20px;
+  margin: 0;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.press-root .contents .num {
+  flex: 0 0 28px;
+  color: var(--muted);
+  font-family: var(--ff-mono), ui-monospace, monospace;
+  font-size: 14px;
+  padding-top: 2px;
+}
+
+.press-root .contents .name {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.press-root .contents .note {
+  display: block;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.press-root pre.cite {
+  margin: 16px 0 0;
+  overflow-x: auto;
+  font-family: var(--ff-mono), ui-monospace, monospace;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--ink);
+  white-space: pre;
+}
+
+@media (max-width: 720px) {
+  .press-root .doc-actions { flex-direction: column; }
+  .press-root a.btn { justify-content: center; }
+}
