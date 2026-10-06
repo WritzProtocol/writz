@@ -50,15 +50,10 @@ pub struct ZkVerifierContract;
 impl ZkVerifierContract {
     // ── Initialization ────────────────────────────────────────────────────────
 
-    /// One-time setup: record the admin address.
+    /// Runs exactly once, atomically, as part of deployment (`__constructor`).
     /// The admin is the only account that can call `set_verification_key`.
-    pub fn initialize(env: Env, admin: Address) -> Result<(), ZkVerifierError> {
-        admin.require_auth();
-        if storage::has_admin(&env) {
-            return Err(ZkVerifierError::AlreadyInitialized);
-        }
+    pub fn __constructor(env: Env, admin: Address) {
         storage::set_admin(&env, &admin);
-        Ok(())
     }
 
     // ── Verification key management ───────────────────────────────────────────

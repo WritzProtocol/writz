@@ -282,10 +282,9 @@ fn setup() -> Setup {
     let oracle = env.register(MockReflector, ());
 
     // Deploy PrivateLend.
-    let pl = env.register(PrivateLendContract, ());
+    let pl = env.register(PrivateLendContract, (admin.clone(), spv.clone(), usdc.clone(), oracle.clone(), keeper.clone(), relayer.clone(), fake_protocol_pubkey(&env)));
     let client = PrivateLendContractClient::new(&env, &pl);
 
-    client.initialize(&admin, &spv, &usdc, &oracle, &keeper, &relayer, &fake_protocol_pubkey(&env));
 
     // Pre-build deposit transaction artifacts.
     let sat_amount = 500_000u64; // 0.005 BTC
@@ -316,15 +315,6 @@ fn initialize_sets_config() {
     let state = s.client.get_protocol_state();
     assert_eq!(state.total_supplied, 0);
     assert_eq!(state.total_borrowed, 0);
-}
-
-#[test]
-#[should_panic]
-fn initialize_twice_panics() {
-    let s = setup();
-    let spv2 = Address::generate(&s.env);
-    s.client
-        .initialize(&s.admin, &spv2, &s.usdc, &s.admin, &s.keeper, &s.relayer, &fake_protocol_pubkey(&s.env));
 }
 
 // ── deposit ───────────────────────────────────────────────────────────────────
@@ -486,18 +476,15 @@ fn deposit_enforces_timelock_window() {
 }
 
 #[test]
-fn initialize_rejects_protocol_pubkey_that_is_not_compressed() {
+#[should_panic(expected = "InvalidAction")]
+fn constructor_rejects_protocol_pubkey_that_is_not_compressed() {
     let env = Env::default();
-    env.mock_all_auths();
-    let pl = env.register(PrivateLendContract, ());
-    let client = PrivateLendContractClient::new(&env, &pl);
     let a = Address::generate(&env);
     let mut buf = [0x11u8; 33];
     buf[0] = 0x05;
-
-    assert_eq!(
-        client.try_initialize(&a, &a, &a, &a, &a, &a, &BytesN::<33>::from_array(&env, &buf)),
-        Err(Ok(PrivateLendError::InvalidProtocolPubkey)),
+    env.register(
+        PrivateLendContract,
+        (a.clone(), a.clone(), a.clone(), a.clone(), a.clone(), a.clone(), BytesN::<33>::from_array(&env, &buf)),
     );
 }
 
@@ -1345,16 +1332,4 @@ fn full_deposit_borrow_repay_cycle() {
     // Debt may be 0 (closed) or tiny interest was accrued (still active with small remaining debt).
     // Either way the debt should be < original borrow.
     assert!(pos.usdc_debt < borrow_amount);
-}
-
-/// GHSA-422m-f73x-fh58: initialize() must require the admin's own signature.
-#[test]
-#[should_panic(expected = "Auth")]
-fn initialize_without_admin_signature_panics() {
-    let env = soroban_sdk::Env::default();
-    let admin = soroban_sdk::Address::generate(&env);
-    let a = || soroban_sdk::Address::generate(&env);
-    let id = env.register(PrivateLendContract, ());
-    let client = PrivateLendContractClient::new(&env, &id);
-    client.initialize(&admin, &a(), &a(), &a(), &a(), &a(), &soroban_sdk::BytesN::from_array(&env, &[2u8; 33]));
 }

@@ -19,7 +19,7 @@ use events::{
 use oracle::{collateral_value_stroops, get_btc_price_stroops, health_ratio_bp};
 use rates::{borrow_rate_bp, interest_delta, supply_rate_bp};
 use soroban_sdk::{
-    contract, contractimpl, token, Address, Bytes, BytesN, Env, IntoVal, Symbol, Vec,
+    contract, contractimpl, panic_with_error, token, Address, Bytes, BytesN, Env, IntoVal, Symbol, Vec,
 };
 use spv_types::{btc_parser, SpvVerificationResult};
 use storage::{get_config, get_position, get_protocol, get_release_psbt, get_supply_balance,
@@ -44,7 +44,9 @@ pub struct PrivateLendContract;
 impl PrivateLendContract {
     // ── Initialization ────────────────────────────────────────────────────────
 
-    /// One-time contract initialization.  Can only be called once.
+    /// Runs exactly once, atomically, as part of deployment (`__constructor`):
+    /// no separate initialize transaction exists for anyone to front-run
+    /// (GHSA-422m-f73x-fh58).
     ///
     /// # Parameters
     /// - `admin`          - Address that can update the keeper.
@@ -59,7 +61,7 @@ impl PrivateLendContract {
     /// - `protocol_pubkey`- The protocol's 33-byte compressed Bitcoin
     ///                       co-signing key; every deposit must be locked
     ///                       under a script that contains it.
-    pub fn initialize(
+    pub fn __constructor(
         env: Env,
         admin: Address,
         spv_contract: Address,
@@ -68,13 +70,9 @@ impl PrivateLendContract {
         keeper: Address,
         relayer: Address,
         protocol_pubkey: BytesN<33>,
-    ) -> Result<(), PrivateLendError> {
-        admin.require_auth();
-        if get_config(&env).is_some() {
-            return Err(PrivateLendError::AlreadyInitialized);
-        }
+    ) {
         if !script::is_compressed_pubkey(&protocol_pubkey) {
-            return Err(PrivateLendError::InvalidProtocolPubkey);
+            panic_with_error!(&env, PrivateLendError::InvalidProtocolPubkey);
         }
         set_config(
             &env,
@@ -95,7 +93,6 @@ impl PrivateLendContract {
                 paused: false,
             },
         );
-        Ok(())
     }
 
     // ── Deposit ───────────────────────────────────────────────────────────────

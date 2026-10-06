@@ -44,13 +44,13 @@ fn from_i128(env: &Env, v: i128) -> BytesN<32> {
 
 fn setup(env: &Env) -> (CommitmentTreeContractClient<'_>, Address, Address, Address, Address, Address) {
     env.mock_all_auths();
-    let id = env.register(CommitmentTreeContract, ());
-    let client = CommitmentTreeContractClient::new(env, &id);
     let admin  = Address::generate(env);
     let spv    = Address::generate(env);
     let zk     = Address::generate(env);
     let usdc   = Address::generate(env);
     let oracle = Address::generate(env);
+    let id = env.register(CommitmentTreeContract, (admin.clone(), spv.clone(), zk.clone(), usdc.clone(), oracle.clone(), 6u32, vault_spk(&env)));
+    let client = CommitmentTreeContractClient::new(env, &id);
     (client, admin, spv, zk, usdc, oracle)
 }
 
@@ -89,17 +89,7 @@ fn build_deposit_tx(env: &Env, value_sat: u64, spk: &Bytes) -> Bytes {
 fn initialize_sets_empty_tree_root() {
     let env = Env::default();
     let (client, admin, spv, zk, usdc, oracle) = setup(&env);
-    client.initialize(&admin, &spv, &zk, &usdc, &oracle, &6, &vault_spk(&env));
     assert_eq!(client.get_merkle_root(), empty_root(&env));
-}
-
-#[test]
-#[should_panic]
-fn initialize_twice_panics() {
-    let env = Env::default();
-    let (client, admin, spv, zk, usdc, oracle) = setup(&env);
-    client.initialize(&admin, &spv, &zk, &usdc, &oracle, &6, &vault_spk(&env));
-    client.initialize(&admin, &spv, &zk, &usdc, &oracle, &6, &vault_spk(&env));
 }
 
 // ── View functions ────────────────────────────────────────────────────────────
@@ -108,7 +98,6 @@ fn initialize_twice_panics() {
 fn nullifier_not_spent_initially() {
     let env = Env::default();
     let (client, admin, spv, zk, usdc, oracle) = setup(&env);
-    client.initialize(&admin, &spv, &zk, &usdc, &oracle, &6, &vault_spk(&env));
     assert!(!client.is_nullifier_spent(&zero32(&env)));
 }
 
@@ -116,7 +105,6 @@ fn nullifier_not_spent_initially() {
 fn commitment_not_pending_initially() {
     let env = Env::default();
     let (client, admin, spv, zk, usdc, oracle) = setup(&env);
-    client.initialize(&admin, &spv, &zk, &usdc, &oracle, &6, &vault_spk(&env));
     assert!(!client.is_commitment_pending(&zero32(&env)));
 }
 
@@ -124,7 +112,6 @@ fn commitment_not_pending_initially() {
 fn get_commitment_returns_none_before_deposit() {
     let env = Env::default();
     let (client, admin, spv, zk, usdc, oracle) = setup(&env);
-    client.initialize(&admin, &spv, &zk, &usdc, &oracle, &6, &vault_spk(&env));
     assert_eq!(client.get_commitment(&zero32(&env)), None);
 }
 
@@ -132,7 +119,6 @@ fn get_commitment_returns_none_before_deposit() {
 fn pool_state_starts_at_zero() {
     let env = Env::default();
     let (client, admin, spv, zk, usdc, oracle) = setup(&env);
-    client.initialize(&admin, &spv, &zk, &usdc, &oracle, &6, &vault_spk(&env));
     assert_eq!(client.get_pool_state(), (0_i128, 0_i128));
 }
 
@@ -144,7 +130,6 @@ fn insert_commitment_by_non_admin_panics() {
     let env = Env::default();
     env.mock_all_auths();
     let (client, admin, spv, zk, usdc, oracle) = setup(&env);
-    client.initialize(&admin, &spv, &zk, &usdc, &oracle, &6, &vault_spk(&env));
     let non_admin = Address::generate(&env);
     client.insert_commitment(&non_admin, &zero32(&env), &zero32(&env));
 }
@@ -156,7 +141,6 @@ fn set_oracle_by_admin_succeeds() {
     let env = Env::default();
     env.mock_all_auths();
     let (client, admin, spv, zk, usdc, oracle) = setup(&env);
-    client.initialize(&admin, &spv, &zk, &usdc, &oracle, &6, &vault_spk(&env));
     let new_oracle = Address::generate(&env);
     client.set_oracle(&admin, &new_oracle);
     // No panic = success. No public config getter exists to assert the
@@ -169,7 +153,6 @@ fn set_oracle_by_non_admin_panics() {
     let env = Env::default();
     env.mock_all_auths();
     let (client, admin, spv, zk, usdc, oracle) = setup(&env);
-    client.initialize(&admin, &spv, &zk, &usdc, &oracle, &6, &vault_spk(&env));
     let non_admin = Address::generate(&env);
     client.set_oracle(&non_admin, &non_admin);
 }
@@ -179,7 +162,6 @@ fn set_spv_contract_by_admin_succeeds() {
     let env = Env::default();
     env.mock_all_auths();
     let (client, admin, spv, zk, usdc, oracle) = setup(&env);
-    client.initialize(&admin, &spv, &zk, &usdc, &oracle, &6, &vault_spk(&env));
     let new_spv = Address::generate(&env);
     client.set_spv_contract(&admin, &new_spv);
 }
@@ -190,7 +172,6 @@ fn set_spv_contract_by_non_admin_panics() {
     let env = Env::default();
     env.mock_all_auths();
     let (client, admin, spv, zk, usdc, oracle) = setup(&env);
-    client.initialize(&admin, &spv, &zk, &usdc, &oracle, &6, &vault_spk(&env));
     let non_admin = Address::generate(&env);
     client.set_spv_contract(&non_admin, &non_admin);
 }
@@ -200,7 +181,6 @@ fn set_zk_verifier_by_admin_succeeds() {
     let env = Env::default();
     env.mock_all_auths();
     let (client, admin, spv, zk, usdc, oracle) = setup(&env);
-    client.initialize(&admin, &spv, &zk, &usdc, &oracle, &6, &vault_spk(&env));
     let new_zk = Address::generate(&env);
     client.set_zk_verifier(&admin, &new_zk);
 }
@@ -211,7 +191,6 @@ fn set_zk_verifier_by_non_admin_panics() {
     let env = Env::default();
     env.mock_all_auths();
     let (client, admin, spv, zk, usdc, oracle) = setup(&env);
-    client.initialize(&admin, &spv, &zk, &usdc, &oracle, &6, &vault_spk(&env));
     let non_admin = Address::generate(&env);
     client.set_zk_verifier(&non_admin, &non_admin);
 }
@@ -228,17 +207,15 @@ fn setup_with_real_usdc(
     env: &Env,
 ) -> (CommitmentTreeContractClient<'_>, Address, Address, Address) {
     env.mock_all_auths();
-    let id = env.register(CommitmentTreeContract, ());
-    let client = CommitmentTreeContractClient::new(env, &id);
     let admin = Address::generate(env);
     let spv = Address::generate(env);
     let zk = Address::generate(env);
-    let oracle = Address::generate(env);
-
     let usdc_id = env.register_stellar_asset_contract_v2(admin.clone());
     let usdc = usdc_id.address();
+    let oracle = Address::generate(env);
+    let id = env.register(CommitmentTreeContract, (admin.clone(), spv.clone(), zk.clone(), usdc.clone(), oracle.clone(), 6u32, vault_spk(env)));
+    let client = CommitmentTreeContractClient::new(env, &id);
 
-    client.initialize(&admin, &spv, &zk, &usdc, &oracle, &6, &vault_spk(env));
     (client, admin, usdc, spv)
 }
 
@@ -314,7 +291,6 @@ fn insert_commitment_with_unknown_commitment_panics() {
     let env = Env::default();
     env.mock_all_auths();
     let (client, admin, spv, zk, usdc, oracle) = setup(&env);
-    client.initialize(&admin, &spv, &zk, &usdc, &oracle, &6, &vault_spk(&env));
     client.insert_commitment(&admin, &zero32(&env), &zero32(&env));
 }
 
@@ -498,9 +474,8 @@ fn setup_integration() -> IntegrationSetup {
     let usdc_id = env.register_stellar_asset_contract_v2(admin.clone());
     let usdc = usdc_id.address();
 
-    let zk_id = env.register(zk_verifier::ZkVerifierContract, ());
+    let zk_id = env.register(zk_verifier::ZkVerifierContract, (admin.clone(),));
     let zk_client = zk_verifier::ZkVerifierContractClient::new(&env, &zk_id);
-    zk_client.initialize(&admin);
 
     let deposit_ic: Vec<zk_verifier::G1Point> = Vec::from_array(&env, [
         zk_g1(&env, &iv::DEPOSIT_IC_0), zk_g1(&env, &iv::DEPOSIT_IC_1),
@@ -545,10 +520,9 @@ fn setup_integration() -> IntegrationSetup {
         ic: liq_ic,
     });
 
-    let ct_id = env.register(CommitmentTreeContract, ());
+    let ct_id = env.register(CommitmentTreeContract, (admin.clone(), spv.clone(), zk_id.clone(), usdc.clone(), oracle.clone(), 6u32, vault_spk(&env)));
     let client = CommitmentTreeContractClient::new(&env, &ct_id);
     // min_confirmations=6, matching the fixed 6-confirmation policy elsewhere.
-    client.initialize(&admin, &spv, &zk_id, &usdc, &oracle, &6, &vault_spk(&env));
 
     IntegrationSetup { env, admin, depositor, supplier, usdc, contract_id: ct_id, client }
 }
@@ -774,14 +748,3 @@ fn liquidate_undercollateralized_position() {
     assert!(s.client.is_nullifier_spent(&nullifier));
 }
 
-/// GHSA-422m-f73x-fh58: initialize() must require the admin's own signature.
-#[test]
-#[should_panic(expected = "Auth")]
-fn initialize_without_admin_signature_panics() {
-    let env = soroban_sdk::Env::default();
-    let admin = soroban_sdk::Address::generate(&env);
-    let a = || soroban_sdk::Address::generate(&env);
-    let id = env.register(CommitmentTreeContract, ());
-    let client = CommitmentTreeContractClient::new(&env, &id);
-    client.initialize(&admin, &a(), &a(), &a(), &a(), &6u32, &soroban_sdk::Bytes::from_array(&env, &[0u8; 34]));
-}
