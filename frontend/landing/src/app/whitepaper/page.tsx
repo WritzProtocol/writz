@@ -21,6 +21,11 @@ const VERSION = "1.0";
 const DATE_LABEL = "July 2026";
 const AUTHOR = "Sebastián Salazar Solano";
 
+// Zenodo concept DOI: always resolves to the latest version of the record.
+const DOI = "10.5281/zenodo.23148520";
+const DOI_URL = `https://doi.org/${DOI}`;
+const ZENODO_URL = "https://zenodo.org/records/23148521";
+
 export const metadata: Metadata = {
   title: `${TITLE} - Writz`,
   description: DESCRIPTION,
@@ -74,7 +79,7 @@ const CONTENTS = [
   { n: "A", name: "Testnet deployment records", note: "Bitcoin Signet and Soroban testnet evidence." },
 ];
 
-const CITATION_TEXT = `${AUTHOR}. "Writz Protocol: ${SUBTITLE}." Version ${VERSION}, ${DATE_LABEL}. ${env.siteUrl}/whitepaper`;
+const CITATION_TEXT = `${AUTHOR}. "Writz Protocol: ${SUBTITLE}." Version ${VERSION}, ${DATE_LABEL}. Zenodo. ${DOI_URL}`;
 
 const BIBTEX = `@misc{salazar2026writz,
   author = {Salazar Solano, Sebasti{\\'a}n},
@@ -82,7 +87,9 @@ const BIBTEX = `@misc{salazar2026writz,
   year   = {2026},
   month  = jul,
   note   = {Version ${VERSION}},
-  url    = {${env.siteUrl}/whitepaper}
+  publisher = {Zenodo},
+  doi    = {${DOI}},
+  url    = {${DOI_URL}}
 }`;
 
 function pdfSize(): string {
@@ -107,6 +114,8 @@ export default function WhitepaperPage() {
     version: VERSION,
     datePublished: "2026-07",
     url: `${env.siteUrl}/whitepaper`,
+    identifier: { "@type": "PropertyValue", propertyID: "DOI", value: DOI },
+    sameAs: [DOI_URL, ZENODO_URL],
     author: { "@type": "Person", name: AUTHOR },
     publisher: {
       "@type": "Organization",
@@ -151,11 +160,20 @@ export default function WhitepaperPage() {
             <li>
               <strong>PDF</strong> {PAGES} pages{size ? `, ${size}` : ""}
             </li>
+            <li>
+              <strong>DOI</strong>{" "}
+              <a href={DOI_URL} rel="noreferrer">
+                {DOI}
+              </a>
+            </li>
           </ul>
 
           <div className="doc-actions">
             <a className="btn primary" href={PDF_PATH} download>
               Download the PDF
+            </a>
+            <a className="btn" href={ZENODO_URL} rel="noreferrer">
+              View on Zenodo
             </a>
             <a className="btn" href={DOCS_URL}>
               Read the docs
