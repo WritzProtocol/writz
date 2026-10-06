@@ -26,7 +26,7 @@ No bridge. No custodian. No wrapped tokens. No public balance sheet.
 
 ---
 
-## This Is Not a Whitepaper
+## What Works Today
 
 As of August 2026, four contracts are live on Stellar testnet, 513 tests pass, and real Bitcoin transactions have been verified on-chain.
 
@@ -38,6 +38,8 @@ As of August 2026, four contracts are live on Stellar testnet, 513 tests pass, a
 | Poseidon Merkle commitment tree | ✓ Root updated on-chain |
 | Full deposit → borrow → repay ZK flow | ✓ 6 sequential testnet transactions |
 | 513 tests across all modules | ✓ All passing |
+
+The technical whitepaper (version 1.0, July 2026) is at [writz.xyz/whitepaper](https://writz.xyz/whitepaper) and archived on Zenodo with the DOI [10.5281/zenodo.23148520](https://doi.org/10.5281/zenodo.23148520).
 
 ### Live Testnet Contracts
 
@@ -424,6 +426,7 @@ To report a security issue: open a private [GitHub Security Advisory](https://gi
 Full documentation lives in [`docs/`](docs/) and is published at **[docs.writz.xyz](https://docs.writz.xyz)**:
 
 **Start here:**
+- [Whitepaper](https://writz.xyz/whitepaper) - The technical paper: stateless SPV, Groth16 position privacy and the lending market. DOI [10.5281/zenodo.23148520](https://doi.org/10.5281/zenodo.23148520).
 - [What is Writz?](docs/introduction/what-is-writz.md) - Plain English. No jargon. 5 minutes.
 - [The Problem](docs/introduction/the-problem.md) - Why public DeFi breaks BTC holders.
 - [How Writz Works](docs/introduction/how-writz-works.md) - Full flow for any reader.
