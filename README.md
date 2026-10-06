@@ -26,7 +26,7 @@ No bridge. No custodian. No wrapped tokens. No public balance sheet.
 
 ---
 
-## What Works Today
+## This Is Not a Whitepaper
 
 As of August 2026, four contracts are live on Stellar testnet, 513 tests pass, and real Bitcoin transactions have been verified on-chain.
 
@@ -39,7 +39,7 @@ As of August 2026, four contracts are live on Stellar testnet, 513 tests pass, a
 | Full deposit → borrow → repay ZK flow | ✓ 6 sequential testnet transactions |
 | 513 tests across all modules | ✓ All passing |
 
-The technical whitepaper (version 1.0, July 2026) is at [writz.xyz/whitepaper](https://writz.xyz/whitepaper) and archived on Zenodo with the DOI [10.5281/zenodo.23148520](https://doi.org/10.5281/zenodo.23148520).
+But a few months ago, it was a whitepaper. Version 1.0 (July 2026) is at [writz.xyz/whitepaper](https://writz.xyz/whitepaper) and archived on Zenodo with the DOI [10.5281/zenodo.23148520](https://doi.org/10.5281/zenodo.23148520).
 
 ### Live Testnet Contracts
 
