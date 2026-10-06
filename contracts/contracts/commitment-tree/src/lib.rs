@@ -92,6 +92,7 @@ impl CommitmentTreeContract {
         min_confirmations: u32,
         zk_vault_script_pubkey: Bytes,
     ) -> Result<(), CommitmentTreeError> {
+        admin.require_auth();
         if env.storage().instance().has(&DataKey::Config) {
             return Err(CommitmentTreeError::AlreadyInitialized);
         }

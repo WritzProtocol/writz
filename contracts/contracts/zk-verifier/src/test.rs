@@ -82,6 +82,18 @@ fn setup() -> (Env, Address, ZkVerifierContractClient<'static>) {
 
 // ── Initialization ────────────────────────────────────────────────────────────
 
+/// GHSA-422m-f73x-fh58: initialize() used to accept any caller naming any
+/// admin, so a front-runner could seize the verifier during deployment.
+#[test]
+#[should_panic(expected = "Auth")]
+fn initialize_without_admin_signature_panics() {
+    let env = Env::default();
+    let admin = Address::generate(&env);
+    let contract_id = env.register(ZkVerifierContract, ());
+    let client = ZkVerifierContractClient::new(&env, &contract_id);
+    client.initialize(&admin);
+}
+
 #[test]
 fn initialize_succeeds() {
     let (_env, _admin, _client) = setup();

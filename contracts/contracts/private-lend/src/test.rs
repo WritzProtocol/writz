@@ -1346,3 +1346,15 @@ fn full_deposit_borrow_repay_cycle() {
     // Either way the debt should be < original borrow.
     assert!(pos.usdc_debt < borrow_amount);
 }
+
+/// GHSA-422m-f73x-fh58: initialize() must require the admin's own signature.
+#[test]
+#[should_panic(expected = "Auth")]
+fn initialize_without_admin_signature_panics() {
+    let env = soroban_sdk::Env::default();
+    let admin = soroban_sdk::Address::generate(&env);
+    let a = || soroban_sdk::Address::generate(&env);
+    let id = env.register(PrivateLendContract, ());
+    let client = PrivateLendContractClient::new(&env, &id);
+    client.initialize(&admin, &a(), &a(), &a(), &a(), &a(), &soroban_sdk::BytesN::from_array(&env, &[2u8; 33]));
+}

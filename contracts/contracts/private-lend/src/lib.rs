@@ -69,6 +69,7 @@ impl PrivateLendContract {
         relayer: Address,
         protocol_pubkey: BytesN<33>,
     ) -> Result<(), PrivateLendError> {
+        admin.require_auth();
         if get_config(&env).is_some() {
             return Err(PrivateLendError::AlreadyInitialized);
         }

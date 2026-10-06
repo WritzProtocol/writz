@@ -1459,3 +1459,14 @@ fn nibble(c: u8) -> u8 {
         _ => panic!("bad hex char '{}'", c as char),
     }
 }
+
+/// GHSA-422m-f73x-fh58: initialize() must require the admin's own signature.
+#[test]
+#[should_panic(expected = "Auth")]
+fn initialize_without_admin_signature_panics() {
+    let env = soroban_sdk::Env::default();
+    let admin = soroban_sdk::Address::generate(&env);
+    let id = env.register(BitcoinSpvContract, ());
+    let client = BitcoinSpvContractClient::new(&env, &id);
+    client.initialize(&admin, &0x1d00ffffu32);
+}

@@ -43,6 +43,7 @@ fn from_i128(env: &Env, v: i128) -> BytesN<32> {
 }
 
 fn setup(env: &Env) -> (CommitmentTreeContractClient<'_>, Address, Address, Address, Address, Address) {
+    env.mock_all_auths();
     let id = env.register(CommitmentTreeContract, ());
     let client = CommitmentTreeContractClient::new(env, &id);
     let admin  = Address::generate(env);
@@ -226,6 +227,7 @@ fn set_zk_verifier_by_non_admin_panics() {
 fn setup_with_real_usdc(
     env: &Env,
 ) -> (CommitmentTreeContractClient<'_>, Address, Address, Address) {
+    env.mock_all_auths();
     let id = env.register(CommitmentTreeContract, ());
     let client = CommitmentTreeContractClient::new(env, &id);
     let admin = Address::generate(env);
@@ -770,4 +772,16 @@ fn liquidate_undercollateralized_position() {
 
     let nullifier = sig32(&s.env, &iv::LIQUIDATE_SIGNAL_0);
     assert!(s.client.is_nullifier_spent(&nullifier));
+}
+
+/// GHSA-422m-f73x-fh58: initialize() must require the admin's own signature.
+#[test]
+#[should_panic(expected = "Auth")]
+fn initialize_without_admin_signature_panics() {
+    let env = soroban_sdk::Env::default();
+    let admin = soroban_sdk::Address::generate(&env);
+    let a = || soroban_sdk::Address::generate(&env);
+    let id = env.register(CommitmentTreeContract, ());
+    let client = CommitmentTreeContractClient::new(&env, &id);
+    client.initialize(&admin, &a(), &a(), &a(), &a(), &6u32, &soroban_sdk::Bytes::from_array(&env, &[0u8; 34]));
 }

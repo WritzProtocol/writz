@@ -53,6 +53,7 @@ impl ZkVerifierContract {
     /// One-time setup: record the admin address.
     /// The admin is the only account that can call `set_verification_key`.
     pub fn initialize(env: Env, admin: Address) -> Result<(), ZkVerifierError> {
+        admin.require_auth();
         if storage::has_admin(&env) {
             return Err(ZkVerifierError::AlreadyInitialized);
         }

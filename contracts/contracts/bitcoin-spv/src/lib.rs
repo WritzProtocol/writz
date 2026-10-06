@@ -62,6 +62,7 @@ impl BitcoinSpvContract {
     /// (mainnet `0x1d00ffff`, signet `0x1e0377ae`). Header submission starts
     /// permissionless; call `set_submitter` to restrict it.
     pub fn initialize(env: Env, admin: Address, pow_limit_bits: u32) -> Result<(), SPVError> {
+        admin.require_auth();
         if get_config(&env).is_some() {
             return Err(SPVError::AlreadyInitialized);
         }
