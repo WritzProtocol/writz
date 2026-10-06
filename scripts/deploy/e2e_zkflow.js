@@ -19,6 +19,7 @@ import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { deployWithConstructor } from './constructor_deploy.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '../..');
@@ -300,64 +301,6 @@ async function invoke(contractId, method, args) {
 }
 
 // Deploy a Soroban contract from a local WASM file (with retry on flakiness).
-async function deployContract(wasmPath) {
-    const wasm = fs.readFileSync(wasmPath);
-    let lastErr;
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      try {
-        return await deployContractOnce(wasm);
-      } catch (e) {
-        lastErr = e;
-        console.log(`  deploy attempt ${attempt} failed (${e.message}); retrying…`);
-        await new Promise(r => setTimeout(r, 3000));
-      }
-    }
-    throw lastErr;
-}
-
-async function deployContractOnce(wasm) {
-    // Upload WASM
-    const account = await server.getAccount(keypair.publicKey());
-    const uploadOp = StellarSdk.Operation.uploadContractWasm({ wasm });
-    const uploadTx = new TransactionBuilder(account, { fee: '1000000', networkPassphrase: NETWORK })
-        .addOperation(uploadOp)
-        .setTimeout(30)
-        .build();
-    const uploadSim = await server.simulateTransaction(uploadTx);
-    if (SorobanRpc.Api.isSimulationError(uploadSim)) throw new Error(`WASM upload sim failed: ${JSON.stringify(uploadSim.error)}`);
-    // WASM hash is returned as the simulation result value
-    const wasmHash = uploadSim.result?.retval?.bytes?.();
-    if (!wasmHash) throw new Error('Could not extract WASM hash from simulation');
-
-    const uploadPrep = SorobanRpc.assembleTransaction(uploadTx, uploadSim).build();
-    uploadPrep.sign(keypair);
-    const uploadSend = await server.sendTransaction(uploadPrep);
-    await waitForTx(uploadSend.hash);
-
-    // Deploy contract
-    const account2 = await server.getAccount(keypair.publicKey());
-    const deployOp = StellarSdk.Operation.createCustomContract({
-        wasmHash,
-        address: Address.fromString(keypair.publicKey()),
-        salt: crypto.randomBytes(32),
-    });
-    const deployTx = new TransactionBuilder(account2, { fee: '1000000', networkPassphrase: NETWORK })
-        .addOperation(deployOp)
-        .setTimeout(30)
-        .build();
-    const deploySim = await server.simulateTransaction(deployTx);
-    if (SorobanRpc.Api.isSimulationError(deploySim)) throw new Error(`Deploy sim failed: ${JSON.stringify(deploySim.error)}`);
-    // Extract contract ID from simulation (the address is deterministic before tx lands)
-    const retVal = deploySim.result?.retval;
-    if (!retVal || retVal.switch().name !== 'scvAddress') throw new Error('Deploy sim did not return contract address');
-    const contractId = StellarSdk.StrKey.encodeContract(retVal.address().contractId());
-
-    const deployPrep = SorobanRpc.assembleTransaction(deployTx, deploySim).build();
-    deployPrep.sign(keypair);
-    const deploySend = await server.sendTransaction(deployPrep);
-    await waitForTx(deploySend.hash);
-    return contractId;
-}
 
 async function waitForTx(hash) {
     let result;
@@ -391,13 +334,15 @@ async function main() {
     console.log('══════════════════════════════════════════════════════════════');
 
     const spvWasmPath = path.join(CONTRACTS, 'target/wasm32v1-none/release/bitcoin_spv.wasm');
-    const spvTestId = await deployContract(spvWasmPath);
-    console.log(`✓ bitcoin-spv (test) deployed: ${spvTestId}`);
-
-    const spvInit = await invoke(spvTestId, 'initialize', [
-        addressToScVal(keypair.publicKey()), // admin
-    ]);
-    console.log(`✓ initialized - tx ${spvInit.hash}`);
+    const spvTestId = await deployWithConstructor({
+        server, networkPassphrase: NETWORK, keypair,
+        wasm: fs.readFileSync(spvWasmPath),
+        constructorArgs: [
+            addressToScVal(keypair.publicKey()), // admin
+            u32ToScVal(EASY_TEST_BITS),          // pow_limit_bits
+        ],
+    });
+    console.log(`✓ bitcoin-spv (test) deployed and configured: ${spvTestId}`);
 
     const spvCheckpoint = await invoke(spvTestId, 'set_checkpoint', [
         addressToScVal(keypair.publicKey()),          // caller
@@ -413,18 +358,24 @@ async function main() {
     console.log('══════════════════════════════════════════════════════════════');
 
     const wasmPath = path.join(CONTRACTS, 'target/wasm32v1-none/release/commitment_tree.wasm');
-    const ctId = await deployContract(wasmPath);
-    console.log(`✓ commitment-tree deployed: ${ctId}`);
-
-    const initResult = await invoke(ctId, 'initialize', [
-        addressToScVal(keypair.publicKey()), // admin
-        addressToScVal(spvTestId),            // spv_contract (throwaway, easy checkpoint - see STEP 0)
-        addressToScVal(ZK_VERIFIER),          // zk_verifier (shared - VKs aren't test-run-specific)
-        addressToScVal(XLM_SAC),              // usdc_token (XLM for test)
-        addressToScVal(keypair.publicKey()),   // oracle (stub ignores it)
-        u32ToScVal(MIN_CONFIRMATIONS),         // min_confirmations
-    ]);
-    console.log(`✓ initialized - tx ${initResult.hash}`);
+    const vaultScriptHex = process.env.ZK_VAULT_SCRIPT_PUBKEY;
+    if (!vaultScriptHex || !/^[0-9a-f]{68}$/i.test(vaultScriptHex)) {
+        throw new Error('ZK_VAULT_SCRIPT_PUBKEY must be the 34-byte (68 hex chars) shared ZK vault scriptPubKey');
+    }
+    const ctId = await deployWithConstructor({
+        server, networkPassphrase: NETWORK, keypair,
+        wasm: fs.readFileSync(wasmPath),
+        constructorArgs: [
+            addressToScVal(keypair.publicKey()), // admin
+            addressToScVal(spvTestId),            // spv_contract (throwaway, easy checkpoint - see STEP 0)
+            addressToScVal(ZK_VERIFIER),          // zk_verifier (shared - VKs aren't test-run-specific)
+            addressToScVal(XLM_SAC),              // usdc_token (XLM for test)
+            addressToScVal(keypair.publicKey()),   // oracle (stub ignores it)
+            u32ToScVal(MIN_CONFIRMATIONS),         // min_confirmations
+            StellarSdk.nativeToScVal(Buffer.from(vaultScriptHex, 'hex'), { type: 'bytes' }),
+        ],
+    });
+    console.log(`✓ commitment-tree deployed and configured: ${ctId}`);
 
     // Verify empty Merkle root
     const rootResult = await invoke(ctId, 'get_merkle_root', []);
