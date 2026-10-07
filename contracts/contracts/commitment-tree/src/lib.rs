@@ -20,7 +20,8 @@ use soroban_sdk::{
 };
 use spv_types::{btc_parser, script, SpvVerificationResult};
 use types::{
-    borrow_repay_signals as br, deposit_signals as ds, liquidation_signals as lq, Config,
+    borrow_repay_signals as br, deposit_signals as ds, insert_signals as ins,
+    liquidation_signals as lq, Config,
     DataKey, PoolState, Proof,
 };
 
@@ -53,6 +54,9 @@ pub const BN254_PRIME: [u8; 32] = [
     0x28, 0x33, 0xe8, 0x48, 0x79, 0xb9, 0x70, 0x91,
     0x43, 0xe1, 0xf5, 0x93, 0xf0, 0x00, 0x00, 0x01,
 ];
+
+/// Leaf capacity of the depth-20 commitment tree.
+const MAX_LEAVES: u32 = 1 << 20;
 
 // Each ledger targets a 5-second close time.
 const LEDGERS_PER_DAY: u32 = 17_280;
@@ -303,32 +307,76 @@ impl CommitmentTreeContract {
         Ok(commitment)
     }
 
-    // ── Merkle root management (Phase 1: trusted relayer) ─────────────────────
+    // ── Merkle root management ────────────────────────────────────────────────
 
     /// Insert a pending commitment into the Merkle tree and advance the root.
     ///
-    /// **Phase 1 (trusted admin):** the relayer runs the Poseidon tree off-chain
-    /// with circomlibjs, inserts the commitment at the next available leaf, and
-    /// submits the resulting root here.
+    /// The caller (the relayer, holding the admin key) supplies an `insert`
+    /// circuit proof that `new_root` is the stored root with the commitment
+    /// written into the empty leaf `NextLeafIndex` (#211, GHSA-prw2-j3jx-43qh).
+    /// The admin chooses when to insert, but no longer what the root becomes:
+    /// a compromised admin key or a relayer bug cannot install a root holding
+    /// invented leaves or dropping honest ones.
     ///
-    /// **Phase 2 (planned):** will require a ZK proof of correct insertion
-    /// (using `MerkleTreeUpdater`) making this operation fully trustless.
+    /// # Validations
+    /// * `signal[COMMITMENT]` is a pending deposit commitment.
+    /// * `signal[OLD_ROOT] == stored_root`.
+    /// * `signal[LEAF_INDEX] == NextLeafIndex` (so insertions are sequential
+    ///   and the circuit's empty-slot check can never overwrite a used leaf).
+    /// * Groth16 proof correctness.
     ///
-    /// The commitment must have been previously registered via `deposit`.
+    /// # Public signals (insert circuit)
+    /// | Index | Signal |
+    /// |-------|--------|
+    /// | 0 | `new_root` |
+    /// | 1 | `old_root` |
+    /// | 2 | `commitment` |
+    /// | 3 | `leaf_index` |
     pub fn insert_commitment(
         env: Env,
         caller: Address,
-        commitment: BytesN<32>,
-        new_root: BytesN<32>,
+        zk_proof: Proof,
+        public_signals: Vec<BytesN<32>>,
     ) -> Result<(), CommitmentTreeError> {
         caller.require_auth();
         let config = Self::load_config(&env)?;
         if caller != config.admin {
             return Err(CommitmentTreeError::Unauthorized);
         }
+        if public_signals.len() != ins::COUNT as u32 {
+            return Err(CommitmentTreeError::InvalidZkProof);
+        }
+
+        let commitment = public_signals.get(ins::COMMITMENT as u32).unwrap();
         if !env.storage().persistent().has(&DataKey::PendingCommitment(commitment.clone())) {
             return Err(CommitmentTreeError::CommitmentNotFound);
         }
+        if public_signals.get(ins::OLD_ROOT as u32).unwrap() != Self::stored_root(&env) {
+            return Err(CommitmentTreeError::RootMismatch);
+        }
+
+        let leaf_index = Self::next_leaf_index(&env);
+        if leaf_index >= MAX_LEAVES {
+            return Err(CommitmentTreeError::TreeFull);
+        }
+        // Compare the whole field element, not just its low bytes, so no
+        // other encoding can stand in for this index.
+        let mut expected_index = [0u8; 32];
+        expected_index[28..32].copy_from_slice(&leaf_index.to_be_bytes());
+        if public_signals.get(ins::LEAF_INDEX as u32).unwrap().to_array() != expected_index {
+            return Err(CommitmentTreeError::LeafIndexMismatch);
+        }
+
+        let verified: bool = env.invoke_contract(
+            &config.zk_verifier,
+            &Symbol::new(&env, "verify_insert"),
+            (zk_proof, public_signals.clone()).into_val(&env),
+        );
+        if !verified {
+            return Err(CommitmentTreeError::InvalidZkProof);
+        }
+
+        let new_root = public_signals.get(ins::NEW_ROOT as u32).unwrap();
         env.storage().persistent().remove(&DataKey::PendingCommitment(commitment.clone()));
         env.storage().persistent().set(&DataKey::MerkleRoot, &new_root);
         env.storage().persistent().extend_ttl(
@@ -336,8 +384,9 @@ impl CommitmentTreeContract {
             NULLIFIER_THRESHOLD,
             NULLIFIER_BUMP,
         );
+        env.storage().instance().set(&DataKey::NextLeafIndex, &(leaf_index + 1));
 
-        InsertLeafEvent { new_root, commitment }.publish(&env);
+        InsertLeafEvent { new_root, commitment, leaf_index }.publish(&env);
         Ok(())
     }
 
@@ -1017,6 +1066,12 @@ impl CommitmentTreeContract {
         env.storage().persistent().get(&DataKey::TxCommitment(txid))
     }
 
+    /// Returns the index of the next empty Merkle leaf - the `leaf_index` the
+    /// next insertion proof must target.
+    pub fn get_next_leaf_index(env: Env) -> u32 {
+        Self::next_leaf_index(&env)
+    }
+
     /// Returns true if a commitment is pending Merkle tree insertion.
     pub fn is_commitment_pending(env: Env, commitment: BytesN<32>) -> bool {
         env.storage().persistent().has(&DataKey::PendingCommitment(commitment))
@@ -1044,6 +1099,10 @@ impl CommitmentTreeContract {
         // as it is being used.
         env.storage().instance().extend_ttl(PERSISTENT_THRESHOLD, PERSISTENT_BUMP);
         Ok(config)
+    }
+
+    fn next_leaf_index(env: &Env) -> u32 {
+        env.storage().instance().get(&DataKey::NextLeafIndex).unwrap_or(0)
     }
 
     fn load_pool(env: &Env) -> PoolState {

@@ -115,7 +115,7 @@ async function main() {
         btc_txid_hi: TXID_HI.toString(),
         min_deposit_satoshis: MIN_DEPOSIT.toString(),
         // Honest case: matches COLLATERAL, same as commitment-tree's test.rs
-        // `build_deposit_tx(&s.env, 1_000_000, &vault_spk(&s.env))` fixture -
+        // `build_deposit_tx(&s.env, 1_000_000, &deposit_spk(&s.env))` fixture -
         // that raw_tx must actually pay this exact amount (GHSA-2hjj-x5wr-4p68).
         actual_satoshis: COLLATERAL.toString(),
     };
@@ -131,6 +131,25 @@ async function main() {
     const commitment0 = poseidonHash([COLLATERAL, 0n, SECRET, N0]);
     if (BigInt(depSignals[0]) !== commitment0) throw new Error('commitment0 mismatch');
     const tree0 = await buildSingleLeafTree(poseidon, commitment0, DEPTH);
+
+    // ── 1b. Insert: commitment0 into the empty tree's leaf 0 (#211) ──
+    // A single-leaf tree's path at index 0 is exactly the empty-subtree
+    // hashes, so tree0.pathElements is also the empty tree's path there.
+    const insertVkey = JSON.parse(fs.readFileSync(path.join(ROOT, 'keys/insert_vkey.json'), 'utf8'));
+    const insertInput = {
+        old_root: (await buildSingleLeafTree(poseidon, 0n, DEPTH)).root.toString(),
+        commitment: commitment0.toString(),
+        leaf_index: '0',
+        path_elements: tree0.pathElements.map(String),
+    };
+    console.log('Generating chain step 1b: insert…');
+    const { proof: insertProof, publicSignals: insertSignals } = await snarkjs.groth16.fullProve(
+        insertInput,
+        path.join(ROOT, 'build/insert_js/insert.wasm'),
+        path.join(ROOT, 'keys/insert_final.zkey'),
+    );
+    if (!await snarkjs.groth16.verify(insertVkey, insertSignals, insertProof)) throw new Error('insert proof invalid');
+    if (BigInt(insertSignals[0]) !== tree0.root) throw new Error('insert new_root must be the single-leaf tree root');
 
     // ── 2. Borrow: 0 -> BORROW_AMOUNT debt, same position (N0 -> N1) ──
     const brVkey = JSON.parse(fs.readFileSync(path.join(ROOT, 'keys/borrow_repay_vkey.json'), 'utf8'));
@@ -275,6 +294,10 @@ async function main() {
         '// ── Deposit ──────────────────────────────────────────────────────────────────',
         ...vkLines('DEPOSIT', depositVkey),
         ...proofLines('DEPOSIT', depProof, depSignals),
+        '',
+        '// ── Insert (deposit commitment into leaf 0 of the empty tree) ───────────────',
+        ...vkLines('INSERT', insertVkey),
+        ...proofLines('INSERT', insertProof, insertSignals),
         '',
         '// ── Borrow/repay (shared VK; two proofs, one coherent chain) ──────────────────',
         ...vkLines('BORROW_REPAY', brVkey),

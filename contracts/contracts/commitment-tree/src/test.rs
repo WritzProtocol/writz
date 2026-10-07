@@ -97,6 +97,23 @@ fn build_deposit_tx(env: &Env, value_sat: u64, spk: &Bytes) -> Bytes {
     Bytes::from_slice(env, &tx)
 }
 
+/// A syntactically valid proof for calls that must fail before verification.
+fn dummy_proof(env: &Env) -> Proof {
+    Proof {
+        pi_a: G1Point { bytes: BytesN::from_array(env, &[0u8; 64]) },
+        pi_b: G2Point { bytes: BytesN::from_array(env, &[0u8; 128]) },
+        pi_c: G1Point { bytes: BytesN::from_array(env, &[0u8; 64]) },
+    }
+}
+
+/// Insert-circuit public signals [new_root, old_root, commitment, leaf_index]
+/// with the empty-tree root as old_root.
+fn insert_signals_for(env: &Env, commitment: &BytesN<32>, leaf_index: u32) -> Vec<BytesN<32>> {
+    Vec::from_array(env, [
+        zero32(env), empty_root(env), commitment.clone(), from_u32(env, leaf_index),
+    ])
+}
+
 // ── Initialization ────────────────────────────────────────────────────────────
 
 #[test]
@@ -145,7 +162,7 @@ fn insert_commitment_by_non_admin_panics() {
     env.mock_all_auths();
     let (client, _admin, _spv, _zk, _usdc, _oracle) = setup(&env);
     let non_admin = Address::generate(&env);
-    client.insert_commitment(&non_admin, &zero32(&env), &zero32(&env));
+    client.insert_commitment(&non_admin, &dummy_proof(&env), &insert_signals_for(&env, &zero32(&env), 0));
 }
 
 // ── Config setters (admin only) ───────────────────────────────────────────────
@@ -305,7 +322,7 @@ fn insert_commitment_with_unknown_commitment_panics() {
     let env = Env::default();
     env.mock_all_auths();
     let (client, admin, _spv, _zk, _usdc, _oracle) = setup(&env);
-    client.insert_commitment(&admin, &zero32(&env), &zero32(&env));
+    client.insert_commitment(&admin, &dummy_proof(&env), &insert_signals_for(&env, &zero32(&env), 0));
 }
 
 // ── Signal extraction helpers ─────────────────────────────────────────────────
@@ -550,6 +567,19 @@ fn setup_integration() -> IntegrationSetup {
         ic: zd_ic,
     });
 
+    let ins_ic: Vec<zk_verifier::G1Point> = Vec::from_array(&env, [
+        zk_g1(&env, &iv::INSERT_IC_0), zk_g1(&env, &iv::INSERT_IC_1),
+        zk_g1(&env, &iv::INSERT_IC_2), zk_g1(&env, &iv::INSERT_IC_3),
+        zk_g1(&env, &iv::INSERT_IC_4),
+    ]);
+    zk_client.set_verification_key(&admin, &zk_verifier::CircuitId::Insert, &zk_verifier::VerificationKey {
+        alpha_g1: zk_g1(&env, &iv::INSERT_VK_ALPHA_G1),
+        beta_g2:  zk_g2(&env, &iv::INSERT_VK_BETA_G2),
+        gamma_g2: zk_g2(&env, &iv::INSERT_VK_GAMMA_G2),
+        delta_g2: zk_g2(&env, &iv::INSERT_VK_DELTA_G2),
+        ic: ins_ic,
+    });
+
     let ct_id = env.register(CommitmentTreeContract, (admin.clone(), spv.clone(), zk_id.clone(), usdc.clone(), oracle.clone(), 6u32, protocol_pubkey(&env)));
     let client = CommitmentTreeContractClient::new(&env, &ct_id);
     // min_confirmations=6, matching the fixed 6-confirmation policy elsewhere.
@@ -569,6 +599,22 @@ fn deposit_signals(env: &Env) -> Vec<BytesN<32>> {
         sig32(env, &iv::DEPOSIT_SIGNAL_0), sig32(env, &iv::DEPOSIT_SIGNAL_1),
         sig32(env, &iv::DEPOSIT_SIGNAL_2), sig32(env, &iv::DEPOSIT_SIGNAL_3),
         sig32(env, &iv::DEPOSIT_SIGNAL_4), sig32(env, &iv::DEPOSIT_SIGNAL_5),
+    ])
+}
+fn insert_proof(env: &Env) -> Proof {
+    Proof {
+        pi_a: ct_g1(env, &iv::INSERT_PI_A),
+        pi_b: ct_g2(env, &iv::INSERT_PI_B),
+        pi_c: ct_g1(env, &iv::INSERT_PI_C),
+    }
+}
+/// [new_root, old_root, commitment, leaf_index]: the deposit commitment into
+/// leaf 0 of the empty tree. new_root equals BORROW_SIGNAL_3, the borrow
+/// proof's old_root.
+fn insert_signals(env: &Env) -> Vec<BytesN<32>> {
+    Vec::from_array(env, [
+        sig32(env, &iv::INSERT_SIGNAL_0), sig32(env, &iv::INSERT_SIGNAL_1),
+        sig32(env, &iv::INSERT_SIGNAL_2), sig32(env, &iv::INSERT_SIGNAL_3),
     ])
 }
 fn borrow_proof(env: &Env) -> Proof {
@@ -675,8 +721,10 @@ fn full_deposit_borrow_repay_cycle() {
     // BORROW_SIGNAL_3 is the borrow proof's `old_root` - i.e. exactly the
     // root of the single-leaf tree containing this deposit's commitment.
     let root_after_deposit = sig32(&s.env, &iv::BORROW_SIGNAL_3);
-    s.client.insert_commitment(&s.admin, &commitment, &root_after_deposit);
+    assert_eq!(sig32(&s.env, &iv::INSERT_SIGNAL_2), commitment);
+    s.client.insert_commitment(&s.admin, &insert_proof(&s.env), &insert_signals(&s.env));
     assert_eq!(s.client.get_merkle_root(), root_after_deposit);
+    assert_eq!(s.client.get_next_leaf_index(), 1);
     assert!(!s.client.is_commitment_pending(&commitment));
 
     // ── Borrow ── the proof's recipient_lo/hi signals commit to
@@ -717,12 +765,11 @@ fn borrow_with_tampered_signal_panics() {
     s.client.supply_usdc(&s.supplier, &10_000_000_000_i128);
 
     let raw_tx = build_deposit_tx(&s.env, 1_000_000, &deposit_spk(&s.env));
-    let commitment = s.client.deposit(
+    s.client.deposit(
         &s.depositor, &block_hash, &empty_proof, &0u32, &raw_tx,
         &user_pubkey(&s.env), &TIMELOCK, &deposit_proof(&s.env), &deposit_signals(&s.env), &empty_bytes,
     );
-    let root_after_deposit = sig32(&s.env, &iv::BORROW_SIGNAL_3);
-    s.client.insert_commitment(&s.admin, &commitment, &root_after_deposit);
+    s.client.insert_commitment(&s.admin, &insert_proof(&s.env), &insert_signals(&s.env));
 
     let mut tampered_signals = borrow_signals(&s.env);
     let mut bad_delta = iv::BORROW_SIGNAL_4;
@@ -756,12 +803,11 @@ fn borrow_proof_cannot_be_redirected_to_another_recipient() {
     s.client.supply_usdc(&s.supplier, &10_000_000_000_i128);
 
     let raw_tx = build_deposit_tx(&s.env, 1_000_000, &deposit_spk(&s.env));
-    let commitment = s.client.deposit(
+    s.client.deposit(
         &s.depositor, &block_hash, &empty_proof, &0u32, &raw_tx,
         &user_pubkey(&s.env), &TIMELOCK, &deposit_proof(&s.env), &deposit_signals(&s.env), &empty_bytes,
     );
-    let root_after_deposit = sig32(&s.env, &iv::BORROW_SIGNAL_3);
-    s.client.insert_commitment(&s.admin, &commitment, &root_after_deposit);
+    s.client.insert_commitment(&s.admin, &insert_proof(&s.env), &insert_signals(&s.env));
 
     // Attacker: a different address, not the one the proof's recipient_lo/hi
     // signals commit to. `mock_all_auths()` lets them "authenticate" as
@@ -807,11 +853,11 @@ fn released_zero_debt_leaf_cannot_be_borrowed_again() {
     StellarAssetClient::new(&s.env, &s.usdc).mint(&s.supplier, &10_000_000_000_i128);
     s.client.supply_usdc(&s.supplier, &10_000_000_000_i128);
     let raw_tx = build_deposit_tx(&s.env, 1_000_000, &deposit_spk(&s.env));
-    let commitment = s.client.deposit(
+    s.client.deposit(
         &s.depositor, &block_hash, &empty_proof, &0u32, &raw_tx,
         &user_pubkey(&s.env), &TIMELOCK, &deposit_proof(&s.env), &deposit_signals(&s.env), &empty_bytes,
     );
-    s.client.insert_commitment(&s.admin, &commitment, &sig32(&s.env, &iv::BORROW_SIGNAL_3));
+    s.client.insert_commitment(&s.admin, &insert_proof(&s.env), &insert_signals(&s.env));
     s.client.borrow(&recipient, &borrow_proof(&s.env), &borrow_signals(&s.env), &empty_bytes);
     s.client.repay(&recipient, &repay_proof(&s.env), &repay_signals(&s.env), &empty_bytes);
 
@@ -941,4 +987,79 @@ fn constructor_rejects_an_uncompressed_protocol_key() {
         admin.clone(), admin.clone(), admin.clone(), admin.clone(), admin,
         6u32, BytesN::<33>::from_array(&env, &bad),
     ));
+}
+
+// ── Proven Merkle insertion (#211, GHSA-prw2-j3jx-43qh) ───────────────────────
+//
+// The admin used to set any root it liked. Each case below is a root the
+// admin could have installed before, and must now be refused.
+
+fn deposited(s: &IntegrationSetup) -> BytesN<32> {
+    let raw_tx = build_deposit_tx(&s.env, 1_000_000, &deposit_spk(&s.env));
+    try_deposit_with(s, &raw_tx, &user_pubkey(&s.env), TIMELOCK).unwrap()
+}
+
+fn try_insert(
+    s: &IntegrationSetup,
+    signals: &Vec<BytesN<32>>,
+) -> Result<(), crate::error::CommitmentTreeError> {
+    match s.client.try_insert_commitment(&s.admin, &insert_proof(&s.env), signals) {
+        Ok(Ok(())) => Ok(()),
+        Err(Ok(e)) => Err(e),
+        other => panic!("unexpected result: {other:?}"),
+    }
+}
+
+#[test]
+fn insertion_with_a_forged_new_root_is_rejected() {
+    let s = setup_integration();
+    deposited(&s);
+    let mut forged = insert_signals(&s.env);
+    let mut root = iv::INSERT_SIGNAL_0;
+    root[31] ^= 0x01;
+    forged.set(0, sig32(&s.env, &root));
+    assert_eq!(try_insert(&s, &forged), Err(crate::error::CommitmentTreeError::InvalidZkProof));
+    assert_eq!(s.client.get_merkle_root(), empty_root(&s.env));
+    assert_eq!(s.client.get_next_leaf_index(), 0);
+}
+
+#[test]
+fn insertion_into_a_slot_other_than_the_next_one_is_rejected() {
+    let s = setup_integration();
+    deposited(&s);
+    let mut skipped = insert_signals(&s.env);
+    skipped.set(3, from_u32(&s.env, 1));
+    assert_eq!(try_insert(&s, &skipped), Err(crate::error::CommitmentTreeError::LeafIndexMismatch));
+}
+
+#[test]
+fn an_insertion_proof_cannot_be_replayed() {
+    let s = setup_integration();
+    deposited(&s);
+    s.client.insert_commitment(&s.admin, &insert_proof(&s.env), &insert_signals(&s.env));
+    // The commitment is no longer pending, and the root has moved on.
+    assert_eq!(
+        try_insert(&s, &insert_signals(&s.env)),
+        Err(crate::error::CommitmentTreeError::CommitmentNotFound),
+    );
+}
+
+#[test]
+fn insertion_of_a_commitment_that_was_never_deposited_is_rejected() {
+    let s = setup_integration();
+    assert_eq!(
+        try_insert(&s, &insert_signals(&s.env)),
+        Err(crate::error::CommitmentTreeError::CommitmentNotFound),
+    );
+}
+
+#[test]
+fn insertion_against_a_stale_root_is_rejected() {
+    let s = setup_integration();
+    deposited(&s);
+    let root = sig32(&s.env, &iv::BORROW_SIGNAL_0);
+    s.env.as_contract(&s.contract_id, || {
+        s.env.storage().persistent().set(&DataKey::MerkleRoot, &root);
+    });
+    assert_eq!(try_insert(&s, &insert_signals(&s.env)), Err(crate::error::CommitmentTreeError::RootMismatch));
 }

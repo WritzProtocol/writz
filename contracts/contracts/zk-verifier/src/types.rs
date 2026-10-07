@@ -9,6 +9,9 @@ pub enum CircuitId {
     Liquidation,
     /// Zero-debt release proof: proves a leaf has no debt, so its BTC can be released.
     ZeroDebt,
+    /// Merkle insertion proof: proves a new root is the old one with a
+    /// commitment written into an empty leaf (#211, GHSA-prw2-j3jx-43qh).
+    Insert,
 }
 
 /// A BN254 G1 affine point - 64 bytes.

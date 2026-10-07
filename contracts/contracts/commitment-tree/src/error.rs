@@ -58,4 +58,8 @@ pub enum CommitmentTreeError {
     /// Bitcoin block that confirmed it - an instant or absurdly distant
     /// escape hatch.
     InvalidTimelock          = 21,
+    /// An insertion proof targets a leaf other than the next empty one.
+    LeafIndexMismatch        = 22,
+    /// All 2^20 leaves of the commitment tree are used.
+    TreeFull                 = 23,
 }

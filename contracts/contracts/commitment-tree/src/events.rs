@@ -27,6 +27,7 @@ pub struct InsertLeafEvent {
     #[topic]
     pub new_root:   BytesN<32>,
     pub commitment: BytesN<32>,
+    pub leaf_index: u32,
 }
 
 /// Emitted when a borrower draws USDC against a ZK position.

@@ -19,6 +19,9 @@ pub enum DataKey {
     TxCommitment(BytesN<32>),
     /// Per-lender USDC supply balance in stroops.
     SupplyBalance(Address),
+    /// Singleton: index of the next empty Merkle leaf. Every insertion proof
+    /// must target exactly this leaf (#211).
+    NextLeafIndex,
 }
 
 // ── Protocol config ───────────────────────────────────────────────────────────
@@ -90,6 +93,19 @@ pub struct Proof {
 //
 // These match the public input declaration order in each circom circuit.
 // The contract reads every signal - these constants are all used in lib.rs.
+
+/// Public signals of the insert circuit (`circuits/src/insert.circom`).
+pub mod insert_signals {
+    /// Root after the insertion.
+    pub const NEW_ROOT:   usize = 0;
+    /// Root before the insertion; must equal the stored root.
+    pub const OLD_ROOT:   usize = 1;
+    /// The leaf written into the empty slot; must be a pending deposit.
+    pub const COMMITMENT: usize = 2;
+    /// The slot written; must equal `DataKey::NextLeafIndex`.
+    pub const LEAF_INDEX: usize = 3;
+    pub const COUNT:      usize = 4;
+}
 
 pub mod deposit_signals {
     /// Poseidon(collateral_satoshis, 0, secret, nonce)

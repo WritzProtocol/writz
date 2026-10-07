@@ -181,6 +181,21 @@ impl ZkVerifierContract {
         Self::verify_for_circuit(&env, CircuitId::Liquidation, proof, public_signals)
     }
 
+    /// Verify a Groth16 proof for the Merkle insertion circuit.
+    ///
+    /// Public signals (in order):
+    ///   [0] new_root   - the root after the insertion
+    ///   [1] old_root   - must match the on-chain root
+    ///   [2] commitment - the leaf written into the empty slot
+    ///   [3] leaf_index - must match the contract's next free leaf
+    pub fn verify_insert(
+        env: Env,
+        proof: Proof,
+        public_signals: Vec<BytesN<32>>,
+    ) -> Result<bool, ZkVerifierError> {
+        Self::verify_for_circuit(&env, CircuitId::Insert, proof, public_signals)
+    }
+
     // ── Internal helpers ──────────────────────────────────────────────────────
 
     fn verify_for_circuit(
