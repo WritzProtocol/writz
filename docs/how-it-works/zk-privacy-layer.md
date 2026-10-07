@@ -28,9 +28,10 @@ The ZK proof convinces the Soroban contract that all of this is true - without t
 |---|---|
 | That a commitment exists in the tree | Public (commitment hash stored on-chain) |
 | The collateral amount | **Private - never on-chain** |
-| The loan amount | **Private - never on-chain** |
+| The loan amount | **Public** - the USDC transfer and the borrow/repay events show it (see below) |
 | The health factor | **Private - never on-chain** |
 | The user's public key linked to a position | **Private** |
+| The depositor's Stellar address and the Bitcoin deposit transaction | **Public** - the deposit event links them, and the deposit transaction is public |
 | That a liquidation occurred | Public (event emitted) |
 | Who was liquidated | **Private** (only a nullifier is revealed, not a user identity) |
 | How much debt was repaid in a liquidation | Public - the liquidator must know the amount to pay it. The published amount is provably correct (bound to the private commitment via a circuit constraint, not caller-supplied), but it is not hidden. |
@@ -38,6 +39,8 @@ The ZK proof convinces the Soroban contract that all of this is true - without t
 | Total USDC outstanding (aggregate) | Public |
 
 The protocol sees only commitments and nullifiers - opaque hashes that prove actions occurred without revealing the substance of those actions.
+
+**What the ZK layer does not hide:** the commitment-tree contract publishes the depositor's address with its Bitcoin transaction id, and the borrow and repay events and USDC transfers carry the Stellar address and exact amount. Anyone reading the ledger can link a Stellar address to a Bitcoin deposit and see loan sizes. Hiding these would take different transfer rails, not event changes, so this is a known limit of the current design.
 
 ---
 
