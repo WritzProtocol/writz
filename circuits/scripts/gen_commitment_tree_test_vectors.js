@@ -189,6 +189,46 @@ async function main() {
     const tree2 = await buildSingleLeafTree(poseidon, commitment2, DEPTH);
     if (BigInt(repaySignals[0]) !== tree2.root) throw new Error('tree2 root mismatch');
 
+    // ── 3b. Zero-debt release proof for the repaid leaf (commitment2, nonce N2) ──
+    const zdVkey = JSON.parse(fs.readFileSync(path.join(ROOT, 'keys/zero_debt_vkey.json'), 'utf8'));
+    const zdInput = {
+        collateral_satoshis: COLLATERAL.toString(),
+        secret: SECRET.toString(),
+        nonce: N2.toString(),
+        path_elements: tree2.pathElements.map(String),
+        path_indices: tree2.pathIndices.map(String),
+        merkle_root: tree2.root.toString(),
+    };
+    console.log('Generating zero-debt release proof for the repaid leaf…');
+    const { proof: zdProof, publicSignals: zdSignals } = await snarkjs.groth16.fullProve(
+        zdInput,
+        path.join(ROOT, 'build/zero_debt_js/zero_debt.wasm'),
+        path.join(ROOT, 'keys/zero_debt_final.zkey'),
+    );
+    if (!await snarkjs.groth16.verify(zdVkey, zdSignals, zdProof)) throw new Error('zero-debt proof invalid');
+
+    // ── 3c. Borrow against the repaid (zero-debt) leaf: the attack a released leaf must block ──
+    const N3 = 0x4444444444444445n;
+    const reborrowInput = {
+        collateral_satoshis: COLLATERAL.toString(),
+        old_debt_stroops: '0',
+        secret: SECRET.toString(),
+        nonce: N2.toString(),
+        new_nonce: N3.toString(),
+        path_elements: tree2.pathElements.map(String),
+        path_indices: tree2.pathIndices.map(String),
+        old_root: tree2.root.toString(),
+        delta_stroops: BORROW_AMOUNT.toString(),
+        is_borrow: '1',
+        btc_price_stroops_per_btc: PRICE.toString(),
+        min_ratio_bp: MIN_RATIO_BP.toString(),
+        recipient_lo: RECIPIENT_LO.toString(),
+        recipient_hi: RECIPIENT_HI.toString(),
+    };
+    const { proof: reborrowProof, publicSignals: reborrowSignals } = await snarkjs.groth16.fullProve(reborrowInput, brWasm, brZkey);
+    if (!await snarkjs.groth16.verify(brVkey, reborrowSignals, reborrowProof)) throw new Error('re-borrow proof invalid');
+    if (BigInt(reborrowSignals[1]) !== BigInt(zdSignals[1])) throw new Error('re-borrow nullifier must equal the zero-debt nullifier');
+
     // ── 4. Liquidation: independent undercollateralized scenario ──
     const LIQ_COLLATERAL = 500_000n;
     const LIQ_DEBT = 2_800_000_000n; // health = 300/280 = 107% < 120% threshold
@@ -244,6 +284,11 @@ async function main() {
         '// ── Liquidation (independent scenario) ─────────────────────────────────────────',
         ...vkLines('LIQUIDATION', liqVkey),
         ...proofLines('LIQUIDATE', liqProof, liqSignals),
+        '',
+        '// ── Zero-debt release (repaid leaf) ───────────────────────────────────────────',
+        ...vkLines('ZERO_DEBT', zdVkey),
+        ...proofLines('ZERO_DEBT', zdProof, zdSignals),
+        ...proofLines('RELEASED_BORROW', reborrowProof, reborrowSignals),
     ];
     fs.writeFileSync(OUT, lines.join('\n') + '\n');
     console.log(`Written: ${OUT}`);
