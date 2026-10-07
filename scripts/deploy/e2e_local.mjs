@@ -70,9 +70,21 @@ const ok = (msg) => { passed++; console.log(`  ✓ ${msg}`); };
 const step = (msg) => console.log(`\n${msg}`);
 
 // ── chain helpers ────────────────────────────────────────────────────────────
+// The friendbot inside the quickstart image starts after the RPC reports healthy, so
+// a fresh container answers 502 for a while. Retry instead of failing the run.
 async function fund(pub) {
-  const res = await fetch(`${FRIENDBOT}?addr=${pub}`);
-  if (!res.ok) throw new Error(`friendbot failed for ${pub}: ${res.status} ${await res.text()}`);
+  let last = '';
+  for (let attempt = 1; attempt <= 40; attempt++) {
+    try {
+      const res = await fetch(`${FRIENDBOT}?addr=${pub}`);
+      if (res.ok) return;
+      last = `${res.status} ${(await res.text()).slice(0, 120)}`;
+    } catch (e) {
+      last = e instanceof Error ? e.message : String(e);
+    }
+    await new Promise((r) => setTimeout(r, 3000));
+  }
+  throw new Error(`friendbot never became ready for ${pub}: ${last}`);
 }
 
 async function sendAndWait(tx) {
