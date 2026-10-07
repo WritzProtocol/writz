@@ -33,7 +33,7 @@ export const proofRouter = Router();
  *   "blockHeight": 800000,
  *   "confirmations": 6,
  *   "sorobanArgs": {
- *     "headers": ["..."],
+ *     "block_hash": "...",
  *     "merkle_proof": ["..."],
  *     "tx_index": 42,
  *     "raw_tx": "...",
@@ -79,7 +79,7 @@ proofRouter.get("/:txid", async (req: Request, res: Response): Promise<void> => 
       ...bundle,
       // Pre-formatted Soroban CLI / SDK args for immediate use.
       sorobanArgs: {
-        headers: bundle.headers,
+        block_hash: bundle.blockHash,
         merkle_proof: bundle.merkleProof,
         tx_index: bundle.txIndex,
         raw_tx: bundle.rawTxNoWitness,

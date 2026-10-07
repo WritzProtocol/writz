@@ -55,6 +55,11 @@ export interface Config {
   /** How often (ms) the vault watcher (#114) polls Soroban RPC for new
    * deposit/withdraw events. */
   vaultWatcherPollIntervalMs: number;
+  /** bitcoin-spv contract id; the header sync feeds it. */
+  bitcoinSpvId: string;
+  /** Height to start syncing from - the bitcoin-spv checkpoint height. */
+  spvSyncFromHeight: number | undefined;
+  spvSyncIntervalMs: number;
 }
 
 const ESPLORA_URLS: Record<BitcoinNetwork, string> = {
@@ -114,6 +119,9 @@ function loadConfig(): Config {
     defindexApiUrl: getEnv("DEFINDEX_API_URL", "https://api.defindex.io"),
     defindexVaultId,
     vaultWatcherPollIntervalMs: parseInt(getEnv("VAULT_WATCHER_POLL_INTERVAL_MS", "30000"), 10),
+    bitcoinSpvId: getEnv("BITCOIN_SPV_ID", ""),
+    spvSyncFromHeight: process.env["SPV_SYNC_FROM_HEIGHT"] ? parseInt(process.env["SPV_SYNC_FROM_HEIGHT"], 10) : undefined,
+    spvSyncIntervalMs: parseInt(getEnv("SPV_SYNC_INTERVAL_MS", "60000"), 10),
   };
 }
 

@@ -28,6 +28,7 @@ const VALID_TXID = 'a'.repeat(64);
 const FAKE_BUNDLE = {
   txid: VALID_TXID,
   rawTxNoWitness: '01'.repeat(80),
+  blockHash: 'dd'.repeat(32),
   txIndex: 5,
   merkleProof: ['bb'.repeat(32)],
   headers: ['cc'.repeat(80)],
@@ -70,7 +71,7 @@ describe('GET /spv-proof/:txid - happy path', () => {
     const res = await request(app).get(`/spv-proof/${VALID_TXID}`);
 
     expect(res.body.sorobanArgs).toMatchObject({
-      headers:           FAKE_BUNDLE.headers,
+      block_hash:        FAKE_BUNDLE.blockHash,
       merkle_proof:      FAKE_BUNDLE.merkleProof,
       tx_index:          FAKE_BUNDLE.txIndex,
       raw_tx:            FAKE_BUNDLE.rawTxNoWitness,
