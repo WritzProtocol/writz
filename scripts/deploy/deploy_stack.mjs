@@ -12,7 +12,7 @@
  *                                     min_confirmations, protocol_pubkey)
  *   4. private-lend     __constructor(admin, spv, usdc, oracle, keeper,
  *                                     relayer, protocol_pubkey)
- *   5. verification keys for Deposit, BorrowRepay, Liquidation, ZeroDebt
+ *   5. verification keys for Deposit, BorrowRepay, Liquidation, ZeroDebt, Insert
  *   6. set_consumer on bitcoin-spv for both lenders
  *   7. private-lend set_max_total_borrowed, when MAX_TOTAL_BORROWED is set
  *
@@ -114,7 +114,10 @@ for (const name of WASMS) {
   if (!fs.existsSync(file)) { errors.push(`${file} not built`); continue; }
   wasm[name] = fs.readFileSync(file);
 }
-const CIRCUITS = [['Deposit', 'deposit'], ['BorrowRepay', 'borrow_repay'], ['Liquidation', 'liquidation'], ['ZeroDebt', 'zero_debt']];
+const CIRCUITS = [
+  ['Deposit', 'deposit'], ['BorrowRepay', 'borrow_repay'], ['Liquidation', 'liquidation'],
+  ['ZeroDebt', 'zero_debt'], ['Insert', 'insert'],
+];
 const vkeys = {};
 for (const [circuit, file] of CIRCUITS) {
   const p = path.join(KEYS_DIR, `${file}_vkey.json`);

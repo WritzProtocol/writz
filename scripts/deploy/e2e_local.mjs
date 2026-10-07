@@ -8,6 +8,7 @@
  * the attacks the security remediation closed and expects each to fail:
  *   - a deposit claiming an output locked to another key, or with a timelock
  *     outside the allowed window (#177)
+ *   - an admin installing a Merkle root other than the proven insertion (#211)
  *   - the same Bitcoin txid deposited into a lender that is not a registered
  *     consumer, and into the second lender after the first (GHSA-2975)
  *   - a borrow proof redirected to another account (GHSA-xxqv, GHSA-mhp9)
@@ -309,7 +310,7 @@ async function main() {
   void root0;
 
   step('Verification keys (the committed ones the frontend and contracts share)');
-  for (const [file, circuit] of [['deposit', 'Deposit'], ['borrow_repay', 'BorrowRepay'], ['liquidation', 'Liquidation'], ['zero_debt', 'ZeroDebt']]) {
+  for (const [file, circuit] of [['deposit', 'Deposit'], ['borrow_repay', 'BorrowRepay'], ['liquidation', 'Liquidation'], ['zero_debt', 'ZeroDebt'], ['insert', 'Insert']]) {
     const vk = JSON.parse(fs.readFileSync(path.join(CIRCUITS, 'keys', `${file}_vkey.json`), 'utf8'));
     await invoke(admin, zkId, 'set_verification_key', [addr(admin.publicKey()), circuitIdVal(circuit), vkeyVal(vk)]);
     ok(`${circuit} key registered`);
@@ -371,10 +372,23 @@ async function main() {
   await expectError(borrower, plId, 'deposit', plDepositArgs, 26, 'the same txid deposited into the second lender');
 
   const tree0 = await singleLeafTree(poseidon, commitment0);
-  await invoke(admin, ctId, 'insert_commitment', [
-    addr(admin.publicKey()), bytes(Buffer.from(hex32(commitment0), 'hex')), bytes(Buffer.from(hex32(tree0.root), 'hex')),
-  ]);
-  ok('commitment inserted; the on-chain root is the tree with this leaf');
+  // Leaf 0 of the empty tree: its path is the empty-subtree hashes, which is
+  // exactly the single-leaf tree's path.
+  const emptyRoot = (await singleLeafTree(poseidon, 0n)).root;
+  const ins = await prove('insert', {
+    old_root: emptyRoot.toString(), commitment: commitment0.toString(), leaf_index: '0',
+    path_elements: tree0.pathElements,
+  });
+  if (BigInt(ins.publicSignals[0]) !== tree0.root) throw new Error('insert proof root is not the single-leaf tree root');
+  const forged = [...ins.publicSignals];
+  forged[0] = (BigInt(forged[0]) ^ 1n).toString();
+  await expectError(admin, ctId, 'insert_commitment', [addr(admin.publicKey()), proofVal(ins.proof), signalsVal(forged)], 4,
+    'the admin installing a root other than the proven insertion');
+  await invoke(admin, ctId, 'insert_commitment', [addr(admin.publicKey()), proofVal(ins.proof), signalsVal(ins.publicSignals)]);
+  if ((await simulate(admin, ctId, 'get_merkle_root', [])).toString('hex') !== hex32(tree0.root)) {
+    throw new Error('on-chain root is not the proven single-leaf tree root');
+  }
+  ok('commitment inserted with a proof; the on-chain root is the tree with this leaf');
 
   step('Borrow: bound to its recipient');
   const mine = recipientHalves(borrower.publicKey());
