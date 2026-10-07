@@ -100,4 +100,8 @@ pub enum SPVError {
     /// Switching to the heavier fork would rewrite more blocks than one
     /// call may touch.
     ReorgTooDeep = 25,
+    /// A lending contract tried to consume a deposit txid that was already consumed.
+    TxidAlreadyConsumed = 26,
+    /// The caller is not a registered lending consumer.
+    NotAConsumer = 27,
 }

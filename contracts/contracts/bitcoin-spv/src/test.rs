@@ -1390,3 +1390,42 @@ fn nibble(c: u8) -> u8 {
         _ => panic!("bad hex char '{}'", c as char),
     }
 }
+
+// GHSA-2975-ggwh-pxw5: one deposit txid can be consumed once, and only by a
+// registered lending contract.
+#[test]
+fn consume_deposit_once_and_only_for_registered_consumers() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin) = new_client(&env);
+    let lend = Address::generate(&env);
+    let txid = BytesN::<32>::from_array(&env, &[7u8; 32]);
+
+    assert_eq!(
+        client.try_consume_deposit(&lend, &txid),
+        Err(Ok(SPVError::NotAConsumer)),
+    );
+
+    client.set_consumer(&admin, &lend, &true);
+    client.consume_deposit(&lend, &txid);
+    assert!(client.is_deposit_consumed(&txid));
+
+    assert_eq!(
+        client.try_consume_deposit(&lend, &txid),
+        Err(Ok(SPVError::TxidAlreadyConsumed)),
+    );
+}
+
+#[test]
+fn set_consumer_by_non_admin_fails() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, _admin) = new_client(&env);
+    let stranger = Address::generate(&env);
+    let lend = Address::generate(&env);
+    assert_eq!(
+        client.try_set_consumer(&stranger, &lend, &true),
+        Err(Ok(SPVError::Unauthorized)),
+    );
+}
+

@@ -449,6 +449,10 @@ impl MockSpv {
             confirmations: 6,
         }
     }
+
+    /// The shared txid registry is exercised in bitcoin-spv's own tests; this
+    /// mock only needs to accept the call so deposit reaches its own checks.
+    pub fn consume_deposit(_env: Env, _consumer: Address, _txid: BytesN<32>) {}
 }
 
 struct IntegrationSetup {
