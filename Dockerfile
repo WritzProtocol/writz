@@ -31,6 +31,9 @@ RUN bun install --frozen-lockfile
 
 COPY relayer/tsconfig.json ./
 COPY relayer/src ./src
+# Insert-circuit prover artifacts (#211): /insert-commitment proves each
+# Merkle insertion instead of submitting a root.
+COPY relayer/circuits ./circuits
 
 EXPOSE 3000
 

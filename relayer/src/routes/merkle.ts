@@ -6,6 +6,7 @@ import { config } from "../config.js";
 import { computePath, computeRoot } from "../merkle.js";
 import { readLeaves, writeLeaves, saveNote, readNotes } from "../leaf-store.js";
 import { verifyInsertAuth, lookupDepositorOnChain, InsertAuthError } from "../insert-auth.js";
+import { proveInsertion } from "../insert-prover.js";
 
 const COMMITMENT_RE = /^[0-9a-f]{64}$/i;
 const HEX_RE = /^[0-9a-f]+$/i;
@@ -32,6 +33,28 @@ const writeLimiter = rateLimit({
 // `get_merkle_root` never checks an auth source, so any syntactically valid
 // account works.
 const READ_ONLY_SOURCE = "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF";
+
+/** Fetches the index of the next empty leaf the contract will accept. */
+async function fetchOnChainNextLeafIndex(): Promise<number> {
+  const readClient = new Client({
+    contractId: config.commitmentTreeId,
+    networkPassphrase: config.networkPassphrase,
+    rpcUrl: config.stellarRpcUrl,
+    allowHttp: config.stellarRpcUrl.startsWith("http://"),
+    publicKey: READ_ONLY_SOURCE,
+  });
+  const { result } = await readClient.get_next_leaf_index();
+  return Number(result);
+}
+
+// Insertions run one at a time: each proof targets "the next leaf", so two
+// concurrent requests would prove the same slot and one would fail on-chain.
+let insertQueue: Promise<unknown> = Promise.resolve();
+function serialized<T>(task: () => Promise<T>): Promise<T> {
+  const run = insertQueue.then(task, task);
+  insertQueue = run.catch(() => undefined);
+  return run;
+}
 
 /** Fetches the real on-chain Merkle root. Throws if `COMMITMENT_TREE_ID` is
  * unset or the RPC call fails - callers decide how to respond to either. */
@@ -129,61 +152,67 @@ merkleRouter.post("/insert-commitment", writeLimiter, async (req: Request, res: 
       throw e;
     }
 
-    const keypair = Keypair.fromSecret(config.adminSecret);
-    const admin = keypair.publicKey();
-    const commitment = BigInt("0x" + commitmentHex);
-    const toBytes = (n: bigint) => Buffer.from(n.toString(16).padStart(64, "0"), "hex");
+    const adminSecret = config.adminSecret;
+    await serialized(async () => {
+      const keypair = Keypair.fromSecret(adminSecret);
+      const admin = keypair.publicKey();
+      const commitment = BigInt("0x" + commitmentHex);
 
-    // Verify local leaf store matches on-chain root before inserting.
-    const existingLeaves = readLeaves();
-    const computedRoot = computeRoot(existingLeaves);
-    const onChainRoot = await fetchOnChainRoot();
+      // Verify local leaf store matches on-chain root before inserting.
+      const existingLeaves = readLeaves();
+      const computedRoot = computeRoot(existingLeaves);
+      const [onChainRoot, onChainNextLeaf] = await Promise.all([fetchOnChainRoot(), fetchOnChainNextLeafIndex()]);
 
-    if (computedRoot !== onChainRoot) {
-      res.status(409).json({
-        error:
-          "Leaf store is out of sync with the on-chain Merkle root. " +
-          "Manual resync required before new insertions can proceed.",
-        onChainRoot: onChainRoot.toString(16).padStart(64, "0"),
-        computedRoot: computedRoot.toString(16).padStart(64, "0"),
-        leafCount: existingLeaves.length,
+      if (computedRoot !== onChainRoot || onChainNextLeaf !== existingLeaves.length) {
+        res.status(409).json({
+          error:
+            "Leaf store is out of sync with the on-chain Merkle root. " +
+            "Manual resync required before new insertions can proceed.",
+          onChainRoot: onChainRoot.toString(16).padStart(64, "0"),
+          computedRoot: computedRoot.toString(16).padStart(64, "0"),
+          leafCount: existingLeaves.length,
+          onChainNextLeaf,
+        });
+        return;
+      }
+
+      // The contract only accepts a proof that the new root is the current one
+      // with this commitment in the next empty leaf (#211) - it no longer
+      // takes a root from us.
+      const { proof, publicSignals, newRoot, leafIndex } = await proveInsertion(existingLeaves, commitment);
+      const newLeaves = [...existingLeaves, commitment];
+
+      const writeClient = new Client({
+        contractId: config.commitmentTreeId,
+        networkPassphrase: config.networkPassphrase,
+        rpcUrl: config.stellarRpcUrl,
+        allowHttp: config.stellarRpcUrl.startsWith("http://"),
+        publicKey: admin,
       });
-      return;
-    }
 
-    const newLeaves = [...existingLeaves, commitment];
-    const newRoot = computeRoot(newLeaves);
+      const signTransaction = async (xdr: string) => {
+        const tx = new Transaction(xdr, config.networkPassphrase);
+        tx.sign(keypair);
+        return { signedTxXdr: tx.toXDR(), signerAddress: admin };
+      };
 
-    const writeClient = new Client({
-      contractId: config.commitmentTreeId,
-      networkPassphrase: config.networkPassphrase,
-      rpcUrl: config.stellarRpcUrl,
-      allowHttp: config.stellarRpcUrl.startsWith("http://"),
-      publicKey: admin,
-    });
+      const tx = await simulateWithRetry(() =>
+        writeClient.insert_commitment({
+          caller: admin,
+          zk_proof: proof,
+          public_signals: publicSignals,
+        }),
+      );
+      const sent = await tx.signAndSend({ signTransaction });
 
-    const signTransaction = async (xdr: string) => {
-      const tx = new Transaction(xdr, config.networkPassphrase);
-      tx.sign(keypair);
-      return { signedTxXdr: tx.toXDR(), signerAddress: admin };
-    };
+      writeLeaves(newLeaves);
+      if (encNote) saveNote(leafIndex, encNote);
 
-    const tx = await simulateWithRetry(() =>
-      writeClient.insert_commitment({
-        caller: admin,
-        commitment: toBytes(commitment),
-        new_root: toBytes(newRoot),
-      }),
-    );
-    const sent = await tx.signAndSend({ signTransaction });
-
-    writeLeaves(newLeaves);
-    if (encNote) saveNote(existingLeaves.length, encNote);
-
-    res.json({
-      txHash: sent.sendTransactionResponse?.hash,
-      leafIndex: existingLeaves.length,
-      newRoot: newRoot.toString(16).padStart(64, "0"),
+      res.json({
+        txHash: sent.sendTransactionResponse?.hash,
+        leafIndex,
+        newRoot: newRoot.toString(16).padStart(64, "0"),
+      });
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
