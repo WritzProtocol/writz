@@ -14,7 +14,7 @@ Writz is designed to provide three security properties to users:
 
 **1. Custody:** Your BTC cannot be taken by Writz, by an attacker, or by anyone - unless your Bitcoin wallet private key is compromised. The P2WSH script enforces this at the Bitcoin Script level.
 
-**2. Privacy:** Your position details (collateral amount, loan size, health factor) are never stored on-chain in plaintext. They exist only in your local browser storage and are protected by the ZK commitment scheme. An observer watching the blockchain cannot link your wallet to a position or infer position details.
+**2. Privacy (partial):** Your collateral amount and health factor are never stored on-chain in plaintext. They exist only in your local browser storage and are protected by the ZK commitment scheme. The ledger does reveal your Stellar address, the Bitcoin deposit it is linked to, and your loan and repayment amounts, because the contract events and USDC transfers are public. See `docs/how-it-works/zk-privacy-layer.md`.
 
 **3. Recoverability:** Even if Writz shuts down permanently, you can recover your BTC after the time-lock expires using only your Bitcoin wallet. No dependence on Writz's co-signing service after the lock expires.
 
