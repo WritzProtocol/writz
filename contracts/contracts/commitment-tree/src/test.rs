@@ -49,7 +49,7 @@ fn setup(env: &Env) -> (CommitmentTreeContractClient<'_>, Address, Address, Addr
     let zk     = Address::generate(env);
     let usdc   = Address::generate(env);
     let oracle = Address::generate(env);
-    let id = env.register(CommitmentTreeContract, (admin.clone(), spv.clone(), zk.clone(), usdc.clone(), oracle.clone(), 6u32, vault_spk(&env)));
+    let id = env.register(CommitmentTreeContract, (admin.clone(), spv.clone(), zk.clone(), usdc.clone(), oracle.clone(), 6u32, vault_spk(env)));
     let client = CommitmentTreeContractClient::new(env, &id);
     (client, admin, spv, zk, usdc, oracle)
 }
@@ -88,7 +88,7 @@ fn build_deposit_tx(env: &Env, value_sat: u64, spk: &Bytes) -> Bytes {
 #[test]
 fn initialize_sets_empty_tree_root() {
     let env = Env::default();
-    let (client, admin, spv, zk, usdc, oracle) = setup(&env);
+    let (client, _admin, _spv, _zk, _usdc, _oracle) = setup(&env);
     assert_eq!(client.get_merkle_root(), empty_root(&env));
 }
 
@@ -97,28 +97,28 @@ fn initialize_sets_empty_tree_root() {
 #[test]
 fn nullifier_not_spent_initially() {
     let env = Env::default();
-    let (client, admin, spv, zk, usdc, oracle) = setup(&env);
+    let (client, _admin, _spv, _zk, _usdc, _oracle) = setup(&env);
     assert!(!client.is_nullifier_spent(&zero32(&env)));
 }
 
 #[test]
 fn commitment_not_pending_initially() {
     let env = Env::default();
-    let (client, admin, spv, zk, usdc, oracle) = setup(&env);
+    let (client, _admin, _spv, _zk, _usdc, _oracle) = setup(&env);
     assert!(!client.is_commitment_pending(&zero32(&env)));
 }
 
 #[test]
 fn get_commitment_returns_none_before_deposit() {
     let env = Env::default();
-    let (client, admin, spv, zk, usdc, oracle) = setup(&env);
+    let (client, _admin, _spv, _zk, _usdc, _oracle) = setup(&env);
     assert_eq!(client.get_commitment(&zero32(&env)), None);
 }
 
 #[test]
 fn pool_state_starts_at_zero() {
     let env = Env::default();
-    let (client, admin, spv, zk, usdc, oracle) = setup(&env);
+    let (client, _admin, _spv, _zk, _usdc, _oracle) = setup(&env);
     assert_eq!(client.get_pool_state(), (0_i128, 0_i128));
 }
 
@@ -129,7 +129,7 @@ fn pool_state_starts_at_zero() {
 fn insert_commitment_by_non_admin_panics() {
     let env = Env::default();
     env.mock_all_auths();
-    let (client, admin, spv, zk, usdc, oracle) = setup(&env);
+    let (client, _admin, _spv, _zk, _usdc, _oracle) = setup(&env);
     let non_admin = Address::generate(&env);
     client.insert_commitment(&non_admin, &zero32(&env), &zero32(&env));
 }
@@ -140,7 +140,7 @@ fn insert_commitment_by_non_admin_panics() {
 fn set_oracle_by_admin_succeeds() {
     let env = Env::default();
     env.mock_all_auths();
-    let (client, admin, spv, zk, usdc, oracle) = setup(&env);
+    let (client, admin, _spv, _zk, _usdc, _oracle) = setup(&env);
     let new_oracle = Address::generate(&env);
     client.set_oracle(&admin, &new_oracle);
     // No panic = success. No public config getter exists to assert the
@@ -152,7 +152,7 @@ fn set_oracle_by_admin_succeeds() {
 fn set_oracle_by_non_admin_panics() {
     let env = Env::default();
     env.mock_all_auths();
-    let (client, admin, spv, zk, usdc, oracle) = setup(&env);
+    let (client, _admin, _spv, _zk, _usdc, _oracle) = setup(&env);
     let non_admin = Address::generate(&env);
     client.set_oracle(&non_admin, &non_admin);
 }
@@ -161,7 +161,7 @@ fn set_oracle_by_non_admin_panics() {
 fn set_spv_contract_by_admin_succeeds() {
     let env = Env::default();
     env.mock_all_auths();
-    let (client, admin, spv, zk, usdc, oracle) = setup(&env);
+    let (client, admin, _spv, _zk, _usdc, _oracle) = setup(&env);
     let new_spv = Address::generate(&env);
     client.set_spv_contract(&admin, &new_spv);
 }
@@ -171,7 +171,7 @@ fn set_spv_contract_by_admin_succeeds() {
 fn set_spv_contract_by_non_admin_panics() {
     let env = Env::default();
     env.mock_all_auths();
-    let (client, admin, spv, zk, usdc, oracle) = setup(&env);
+    let (client, _admin, _spv, _zk, _usdc, _oracle) = setup(&env);
     let non_admin = Address::generate(&env);
     client.set_spv_contract(&non_admin, &non_admin);
 }
@@ -180,7 +180,7 @@ fn set_spv_contract_by_non_admin_panics() {
 fn set_zk_verifier_by_admin_succeeds() {
     let env = Env::default();
     env.mock_all_auths();
-    let (client, admin, spv, zk, usdc, oracle) = setup(&env);
+    let (client, admin, _spv, _zk, _usdc, _oracle) = setup(&env);
     let new_zk = Address::generate(&env);
     client.set_zk_verifier(&admin, &new_zk);
 }
@@ -190,7 +190,7 @@ fn set_zk_verifier_by_admin_succeeds() {
 fn set_zk_verifier_by_non_admin_panics() {
     let env = Env::default();
     env.mock_all_auths();
-    let (client, admin, spv, zk, usdc, oracle) = setup(&env);
+    let (client, _admin, _spv, _zk, _usdc, _oracle) = setup(&env);
     let non_admin = Address::generate(&env);
     client.set_zk_verifier(&non_admin, &non_admin);
 }
@@ -290,7 +290,7 @@ fn withdraw_supply_works_while_paused() {
 fn insert_commitment_with_unknown_commitment_panics() {
     let env = Env::default();
     env.mock_all_auths();
-    let (client, admin, spv, zk, usdc, oracle) = setup(&env);
+    let (client, admin, _spv, _zk, _usdc, _oracle) = setup(&env);
     client.insert_commitment(&admin, &zero32(&env), &zero32(&env));
 }
 

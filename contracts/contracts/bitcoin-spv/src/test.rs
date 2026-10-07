@@ -180,7 +180,7 @@ fn new_light_at<'a>(
     env.ledger().set_timestamp(LEDGER_NOW);
 
     let admin = Address::generate(env);
-    let id = env.register(BitcoinSpvContract, (admin.clone(), EASY_TEST_BITS.clone()));
+    let id = env.register(BitcoinSpvContract, (admin.clone(), EASY_TEST_BITS));
     let client = BitcoinSpvContractClient::new(env, &id);
     client.set_checkpoint(
         &admin,
@@ -1191,7 +1191,7 @@ fn set_checkpoint_twice_fails() {
 fn set_checkpoint_by_non_admin_fails() {
     let env = Env::default();
     env.mock_all_auths();
-    let (client, admin) = new_client(&env);
+    let (client, _admin) = new_client(&env);
     let rando = Address::generate(&env);
 
     assert_eq!(
@@ -1267,7 +1267,7 @@ fn set_admin_by_admin_succeeds() {
 fn set_admin_by_non_admin_fails() {
     let env = Env::default();
     env.mock_all_auths();
-    let (client, admin) = new_client(&env);
+    let (client, _admin) = new_client(&env);
     let rando = Address::generate(&env);
 
     assert_eq!(
@@ -1343,7 +1343,7 @@ fn refresh_ttl_keeps_the_light_client_readable() {
 fn verify_transaction_before_checkpoint_set_fails() {
     let env = Env::default();
     env.mock_all_auths();
-    let (client, admin) = new_client(&env);
+    let (client, _admin) = new_client(&env);
 
     assert_eq!(
         client.try_verify_transaction(
