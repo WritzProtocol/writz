@@ -117,6 +117,10 @@ pub struct Config {
     /// `set_paused`. See `docs/architecture/contract-migration-runbook.md`,
     /// Track 2, for why this exists.
     pub paused: bool,
+    /// Ceiling on total USDC the pool may have borrowed out, in stroops. A
+    /// cap bounds how much bad debt a price crash can leave behind when
+    /// liquidation cannot release BTC (GHSA-5rxp-7f9g-r66x, #193).
+    pub max_total_borrowed: i128,
 }
 
 // The cross-contract SPV verification call's return type, `SpvVerificationResult`,

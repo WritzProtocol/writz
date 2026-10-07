@@ -57,4 +57,6 @@ pub enum PrivateLendError {
     /// The configured protocol public key is not a compressed secp256k1
     /// public key encoding.
     InvalidProtocolPubkey = 23,
+    /// The borrow would take the pool past its total exposure cap (see `Config::max_total_borrowed`).
+    ExposureCapExceeded = 24,
 }

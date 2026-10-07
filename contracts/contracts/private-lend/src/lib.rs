@@ -91,6 +91,7 @@ impl PrivateLendContract {
                 min_confirmations: 6,
                 keeper_stale_after_secs: 86_400,      // 24h stale-keeper liveness window
                 paused: false,
+                max_total_borrowed: 500_000_000_000, // 50,000 USDC - the launch cap in docs/research/tokenomics-fee-model.md
             },
         );
     }
@@ -345,6 +346,9 @@ impl PrivateLendContract {
         if usdc_amount > available {
             return Err(PrivateLendError::InsufficientLiquidity);
         }
+        if proto.total_borrowed.saturating_add(usdc_amount) > config.max_total_borrowed {
+            return Err(PrivateLendError::ExposureCapExceeded);
+        }
 
         // Compute post-borrow collateral ratio.
         let new_debt = pos.usdc_debt.saturating_add(usdc_amount);
@@ -512,6 +516,21 @@ impl PrivateLendContract {
     // ── Admin ─────────────────────────────────────────────────────────────────
 
     /// Update the keeper address.  Admin only.
+    pub fn set_max_total_borrowed(
+        env: Env,
+        caller: Address,
+        max: i128,
+    ) -> Result<(), PrivateLendError> {
+        caller.require_auth();
+        let mut config = get_config(&env).ok_or(PrivateLendError::NotInitialized)?;
+        if caller != config.admin {
+            return Err(PrivateLendError::Unauthorized);
+        }
+        config.max_total_borrowed = max;
+        set_config(&env, &config);
+        Ok(())
+    }
+
     pub fn set_keeper(
         env: Env,
         caller: Address,
