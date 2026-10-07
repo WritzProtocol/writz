@@ -18,10 +18,11 @@ const PERSISTENT_THRESHOLD: u32 = 30 * LEDGERS_PER_DAY;
 
 /// All circuits this contract holds a verification key for. Used by
 /// `refresh_ttl` to bump every key without the caller needing to name them.
-const ALL_CIRCUITS: [CircuitId; 3] = [
+const ALL_CIRCUITS: [CircuitId; 4] = [
     CircuitId::Deposit,
     CircuitId::BorrowRepay,
     CircuitId::Liquidation,
+    CircuitId::ZeroDebt,
 ];
 
 // ── Admin (instance storage) ────────────────────────────────────────────────

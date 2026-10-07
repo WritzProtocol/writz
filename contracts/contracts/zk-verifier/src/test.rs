@@ -195,6 +195,7 @@ fn get_verification_key_returns_none_before_set() {
     assert!(client.get_verification_key(&CircuitId::Deposit).is_none());
     assert!(client.get_verification_key(&CircuitId::BorrowRepay).is_none());
     assert!(client.get_verification_key(&CircuitId::Liquidation).is_none());
+    assert!(client.get_verification_key(&CircuitId::ZeroDebt).is_none());
 }
 
 #[test]
@@ -326,6 +327,14 @@ fn verify_without_verification_key_panics() {
     let (env, _, client) = setup();
     // VK not set - should panic with VerificationKeyNotSet.
     client.verify_deposit(&build_proof(&env), &build_signals(&env));
+}
+
+#[test]
+#[should_panic]
+fn verify_zero_debt_without_verification_key_panics() {
+    let (env, _, client) = setup();
+    // The zero-debt circuit has its own key slot; an unset one must not verify.
+    client.verify_zero_debt(&build_proof(&env), &build_signals(&env));
 }
 
 // ── Edge cases ────────────────────────────────────────────────────────────────

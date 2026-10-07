@@ -7,6 +7,8 @@ pub enum CircuitId {
     Deposit,
     BorrowRepay,
     Liquidation,
+    /// Zero-debt release proof: proves a leaf has no debt, so its BTC can be released.
+    ZeroDebt,
 }
 
 /// A BN254 G1 affine point - 64 bytes.
