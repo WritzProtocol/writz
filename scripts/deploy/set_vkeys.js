@@ -1,9 +1,11 @@
 #!/usr/bin/env node
 /**
- * Sets all three Groth16 verification keys on the deployed zk-verifier contract.
+ * Sets the Groth16 verification keys on a deployed zk-verifier contract.
+ * `deploy_stack.mjs` already does this for a fresh deployment; use this to
+ * rotate keys after a ceremony.
  *
  * Usage:
- *   node set_vkeys.js
+ *   ZK_VERIFIER_ID=C... WRITZ_DEV_SECRET=S... node set_vkeys.js
  *
  * Reads vkey JSON files from circuits/keys/ and calls set_verification_key
  * for the Deposit, BorrowRepay, Liquidation and ZeroDebt circuits.
@@ -21,7 +23,11 @@ const ROOT = path.resolve(__dirname, '../..');
 
 const RPC_URL     = 'https://soroban-testnet.stellar.org';
 const NETWORK     = Networks.TESTNET;
-const ZK_VERIFIER = 'CBNZU23QGCZATJB2QMNF2K6IST2SVP7FSGCKASQNBULTWDWGANDBYLFY';
+const ZK_VERIFIER = process.env.ZK_VERIFIER_ID;
+if (!ZK_VERIFIER) {
+    console.error('Set ZK_VERIFIER_ID to the zk-verifier contract to update');
+    process.exit(1);
+}
 
 // writz-dev secret key - testnet only, no real funds
 const SECRET = process.env.WRITZ_DEV_SECRET;

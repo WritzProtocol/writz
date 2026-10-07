@@ -33,7 +33,7 @@ const ctor = [
   Address.fromString(admin).toScVal(),           // usdc (placeholder)
   Address.fromString(admin).toScVal(),           // oracle (placeholder)
   nativeToScVal(6, { type: 'u32' }),             // min_confirmations
-  nativeToScVal(Buffer.alloc(34), { type: 'bytes' }), // zk_vault_script_pubkey
+  nativeToScVal(Buffer.concat([Buffer.from([0x02]), Buffer.alloc(32, 0x11)]), { type: 'bytes' }), // protocol_pubkey (placeholder)
 ];
 
 console.log('Deploying throwaway commitment-tree with constructor args…');

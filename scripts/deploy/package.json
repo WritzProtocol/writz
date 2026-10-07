@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "deploy-stack": "bun run deploy_stack.mjs",
     "set-vkeys": "bun run set_vkeys.js",
     "deploy-defindex-vault": "bun run deploy_defindex_vault.mjs",
     "rebalance-defindex-vault": "bun run rebalance_defindex_vault.mjs",
