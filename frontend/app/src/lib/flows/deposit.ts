@@ -79,7 +79,7 @@ export interface SpvBundle {
   rawTxNoWitness: string;
   confirmations: number;
   sorobanArgs: {
-    headers: string[];
+    block_hash: string;
     merkle_proof: string[];
     tx_index: number;
     raw_tx: string;
@@ -198,7 +198,7 @@ export async function deposit(params: {
   const tx = await simulateWithRetry(() =>
     client.deposit({
       depositor,
-      headers: sorobanArgs.headers.map((h) => Buffer.from(h, "hex")),
+      block_hash: Buffer.from(sorobanArgs.block_hash, "hex"),
       merkle_proof_btc: sorobanArgs.merkle_proof.map((h) => Buffer.from(h, "hex")),
       tx_index: sorobanArgs.tx_index,
       raw_tx: Buffer.from(sorobanArgs.raw_tx, "hex"),
