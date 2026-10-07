@@ -40,15 +40,14 @@ pub struct RepayEvent {
 
 /// Emitted when a keeper liquidates an undercollateralized position.
 ///
-/// The Writz backend monitors this event to co-sign the Bitcoin release
-/// to the keeper at a discount of `liquidation_bonus_bp / 100` percent.
+/// Records that the debt was repaid. It makes no promise about Bitcoin: the
+/// collateral stays under the user's script and the protocol does not move it
+/// (GHSA-5rxp-7f9g-r66x). Keeper compensation is not yet paid.
 #[contractevent(topics = ["liquidate"])]
 pub struct LiquidateEvent {
     #[topic]
-    pub txid:                BytesN<32>,
-    pub keeper:              Address,
-    pub p2wsh_script_pubkey: Bytes,
-    pub liquidation_bonus_bp: u32,
+    pub txid:   BytesN<32>,
+    pub keeper: Address,
 }
 
 /// Emitted when a lender supplies USDC to the pool.
