@@ -7,6 +7,7 @@ import { metricsRouter } from "./routes/metrics.js";
 import { vaultMetricsSnapshot } from "./defindex/metrics.js";
 import { startRepayWatcher } from "./repay-watcher/poller.js";
 import { startVaultWatcher } from "./vault-watcher/poller.js";
+import { startHeaderSync } from "./bitcoin/spv-submit.js";
 
 const app = express();
 
@@ -116,3 +117,6 @@ startRepayWatcher();
 // DeFindex vault event watcher (#114) - no-ops with a warning until #102
 // deploys the vault and DEFINDEX_VAULT_ID is configured.
 startVaultWatcher();
+
+// bitcoin-spv header sync - no-ops until BITCOIN_SPV_ID and SPV_SYNC_FROM_HEIGHT are set.
+startHeaderSync();
