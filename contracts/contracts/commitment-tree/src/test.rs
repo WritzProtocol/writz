@@ -1063,3 +1063,33 @@ fn insertion_against_a_stale_root_is_rejected() {
     });
     assert_eq!(try_insert(&s, &insert_signals(&s.env)), Err(crate::error::CommitmentTreeError::RootMismatch));
 }
+
+// ── Exposure cap (GHSA-5rxp, mirrored from private-lend) ──────────────────────
+
+#[test]
+fn borrowing_past_the_exposure_cap_is_rejected() {
+    let s = setup_integration();
+    StellarAssetClient::new(&s.env, &s.usdc).mint(&s.supplier, &10_000_000_000_i128);
+    s.client.supply_usdc(&s.supplier, &10_000_000_000_i128);
+    deposited(&s);
+    s.client.insert_commitment(&s.admin, &insert_proof(&s.env), &insert_signals(&s.env));
+
+    // The fixture borrow is 200 USDC; cap the pool just below it.
+    s.client.set_max_total_borrowed(&s.admin, &1_999_999_999_i128);
+    assert_eq!(
+        s.client.try_borrow(&borrow_recipient(&s.env), &borrow_proof(&s.env), &borrow_signals(&s.env), &Bytes::new(&s.env)),
+        Err(Ok(crate::error::CommitmentTreeError::ExposureCapExceeded)),
+    );
+    s.client.set_max_total_borrowed(&s.admin, &2_000_000_000_i128);
+    s.client.borrow(&borrow_recipient(&s.env), &borrow_proof(&s.env), &borrow_signals(&s.env), &Bytes::new(&s.env));
+}
+
+#[test]
+#[should_panic]
+fn set_max_total_borrowed_by_non_admin_panics() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, _admin, _spv, _zk, _usdc, _oracle) = setup(&env);
+    let rando = Address::generate(&env);
+    client.set_max_total_borrowed(&rando, &0);
+}

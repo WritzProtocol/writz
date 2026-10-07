@@ -114,6 +114,7 @@ impl CommitmentTreeContract {
                 min_deposit_satoshis:     10_000,
                 min_collateral_ratio_bp:  15_000,
                 liquidation_threshold_bp: 12_000,
+                max_total_borrowed: 500_000_000_000, // 50,000 USDC, the same launch cap as private-lend
                 paused: false,
             },
         );
@@ -506,11 +507,14 @@ impl CommitmentTreeContract {
         let usdc_amount = sig_i128(&public_signals.get(br::DELTA_STROOPS as u32).unwrap())
             .ok_or(CommitmentTreeError::SignalOverflow)?;
 
-        // Check pool liquidity.
+        // Check pool liquidity and the exposure cap.
         let mut pool = Self::load_pool(&env);
         let available = pool.total_supplied.saturating_sub(pool.total_borrowed);
         if usdc_amount > available {
             return Err(CommitmentTreeError::InsufficientLiquidity);
+        }
+        if pool.total_borrowed.saturating_add(usdc_amount) > config.max_total_borrowed {
+            return Err(CommitmentTreeError::ExposureCapExceeded);
         }
 
         // Groth16 proof verification - must come after all signal-level checks
@@ -948,6 +952,24 @@ impl CommitmentTreeContract {
             return Err(CommitmentTreeError::Unauthorized);
         }
         config.zk_verifier = new_zk_verifier;
+        env.storage().instance().set(&DataKey::Config, &config);
+        Ok(())
+    }
+
+    /// Sets the ceiling on total outstanding borrows, in USDC stroops. Admin
+    /// only. Lowering it below the current total blocks new borrows without
+    /// touching existing positions.
+    pub fn set_max_total_borrowed(
+        env: Env,
+        caller: Address,
+        max: i128,
+    ) -> Result<(), CommitmentTreeError> {
+        caller.require_auth();
+        let mut config = Self::load_config(&env)?;
+        if caller != config.admin {
+            return Err(CommitmentTreeError::Unauthorized);
+        }
+        config.max_total_borrowed = max;
         env.storage().instance().set(&DataKey::Config, &config);
         Ok(())
     }

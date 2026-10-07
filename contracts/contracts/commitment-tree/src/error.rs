@@ -62,4 +62,6 @@ pub enum CommitmentTreeError {
     LeafIndexMismatch        = 22,
     /// All 2^20 leaves of the commitment tree are used.
     TreeFull                 = 23,
+    /// The borrow would take the pool past `Config::max_total_borrowed`.
+    ExposureCapExceeded      = 24,
 }

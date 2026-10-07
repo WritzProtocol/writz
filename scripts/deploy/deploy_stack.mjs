@@ -14,7 +14,7 @@
  *                                     relayer, protocol_pubkey)
  *   5. verification keys for Deposit, BorrowRepay, Liquidation, ZeroDebt, Insert
  *   6. set_consumer on bitcoin-spv for both lenders
- *   7. private-lend set_max_total_borrowed, when MAX_TOTAL_BORROWED is set
+ *   7. set_max_total_borrowed on both lenders, when MAX_TOTAL_BORROWED is set
  *
  * Without --execute it only validates the inputs and prints the plan; nothing
  * is sent. Do not run it with --execute without the project owner's explicit
@@ -147,7 +147,7 @@ console.log(`  protocol pubkey   ${protocolPubkey}`);
 console.log(`  pow limit bits    0x${powLimitBits.toString(16)}`);
 console.log(`  checkpoint        height ${checkpoint.height}, ${checkpoint.hash}, bits 0x${checkpoint.bits.toString(16)}`);
 console.log(`  min confirmations ${minConfirmations}`);
-console.log(`  exposure cap      ${maxTotalBorrowed === undefined ? 'contract default (50,000 USDC)' : `${maxTotalBorrowed} stroops`}`);
+console.log(`  exposure cap      ${maxTotalBorrowed === undefined ? 'contract default (50,000 USDC per lender)' : `${maxTotalBorrowed} stroops per lender`}`);
 console.log('  wasm sha256');
 for (const name of WASMS) console.log(`    ${name.padEnd(16)} ${sha256(wasm[name])}`);
 console.log('  verification keys');
@@ -268,11 +268,15 @@ for (const [name, id] of [['commitment-tree', out.commitmentTree], ['private-len
 }
 
 if (maxTotalBorrowed !== undefined) {
-  console.log('7. private-lend exposure cap');
-  out.txs.setMaxTotalBorrowed = await invoke(out.privateLend, 'set_max_total_borrowed', [
-    addr(admin.publicKey()), nativeToScVal(maxTotalBorrowed, { type: 'i128' }),
-  ]);
-  console.log(`   ${maxTotalBorrowed} stroops`);
+  // A borrower can reclaim BTC through the timelock exit while still owing
+  // USDC, so each lender's total exposure is capped (GHSA-5rxp).
+  console.log('7. exposure cap');
+  for (const [name, id] of [['commitment-tree', out.commitmentTree], ['private-lend', out.privateLend]]) {
+    out.txs[`maxTotalBorrowed_${name}`] = await invoke(id, 'set_max_total_borrowed', [
+      addr(admin.publicKey()), nativeToScVal(maxTotalBorrowed, { type: 'i128' }),
+    ]);
+    console.log(`   ${name}: ${maxTotalBorrowed} stroops`);
+  }
 }
 
 out.wasmSha256 = Object.fromEntries(WASMS.map((n) => [n, sha256(wasm[n])]));

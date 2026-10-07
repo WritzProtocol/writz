@@ -45,6 +45,12 @@ pub struct Config {
     pub min_deposit_satoshis:     u64,
     pub min_collateral_ratio_bp:  u32,
     pub liquidation_threshold_bp: u32,
+    /// Ceiling on `PoolState::total_borrowed`, in USDC stroops. A ZK
+    /// borrower can reclaim their BTC through the timelock exit while still
+    /// owing USDC, and the protocol cannot seize it, so total exposure is
+    /// capped the same way as `private-lend` (GHSA-5rxp). Admin-set via
+    /// `set_max_total_borrowed`.
+    pub max_total_borrowed:       i128,
     /// When true, `deposit`/`borrow`/`supply_usdc` (new risk-taking actions)
     /// are refused. `repay`/`withdraw_supply`/`liquidate` stay open so users
     /// can always exit - a pause is an emergency brake on new exposure, not
