@@ -47,7 +47,7 @@ export function startHeaderSync(): { stop: () => void } {
 async function submitHeadersOnChain(headersHex: string[]): Promise<void> {
   // eslint-disable-next-line @typescript-eslint/no-require-imports -- see top-of-file comment.
   const sdk = require("@stellar/stellar-sdk") as typeof import("@stellar/stellar-sdk");
-  const { Keypair, Contract, TransactionBuilder, Address, nativeToScVal, rpc } = sdk;
+  const { Keypair, Contract, TransactionBuilder, nativeToScVal, rpc } = sdk;
 
   const keypair = Keypair.fromSecret(config.relayerSecret!);
   const server = new rpc.Server(config.stellarRpcUrl, { allowHttp: config.stellarRpcUrl.startsWith("http://") });
