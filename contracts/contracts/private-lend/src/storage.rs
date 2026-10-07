@@ -77,6 +77,7 @@ pub fn get_protocol(env: &Env) -> ProtocolState {
         // rather than having liquidation open to anyone immediately after
         // `initialize()`, before the keeper has had any chance to act.
         None => ProtocolState {
+            reserve_usdc: 0,
             total_supplied: 0,
             total_borrowed: 0,
             last_keeper_heartbeat: env.ledger().timestamp(),

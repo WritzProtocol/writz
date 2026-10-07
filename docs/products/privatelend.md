@@ -23,7 +23,7 @@ Interest accrues continuously at a variable rate determined by how much of the p
 | Minimum collateral ratio | 150% (BTC value must be 1.5× the USDC borrowed) |
 | Maximum LTV | 66.7% (you can borrow up to 2/3 of your BTC's value) |
 | Liquidation threshold | 120% (position is eligible for liquidation below this ratio) |
-| Liquidation penalty | Not yet paid - see the note under Liquidation |
+| Liquidation bonus | 10% of the debt, paid to the liquidator in USDC from the protocol reserve |
 | Minimum confirmations | 6 Bitcoin blocks (~60 minutes) |
 | Protocol fee | 15% of interest spread |
 
@@ -140,7 +140,7 @@ If your health factor drops below 1.2 (collateral ratio below 120%), your positi
 
 **How private liquidation works:** A keeper monitors positions using a private operator key - this means the keeper can see position details that no outside observer can, which is what lets it detect risk without a public health-factor feed. When a position is undercollateralized, the keeper generates a ZK proof that says "this position's health ratio is below 120%." Your collateral amount and identity stay hidden from everyone else; the USDC debt amount is published (the liquidator needs it to pay it, and it's cryptographically bound to your commitment so it can't be faked). Anyone can verify this proof and complete the liquidation.
 
-The liquidator pays the outstanding USDC debt, and the contract records the liquidation. Your BTC stays under your own script: the protocol never moves it, so liquidation does not hand BTC to the liquidator. A liquidation bonus is not paid yet; how liquidators are compensated is still being designed.
+The liquidator pays the outstanding USDC debt, and the contract records the liquidation. Your BTC stays under your own script: the protocol never moves it, so liquidation does not hand BTC to the liquidator. The liquidator also receives a 10% USDC bonus from the protocol reserve, which is funded by 15% of interest. If the reserve is smaller than the bonus, the liquidator gets what the reserve holds.
 
 **Protecting yourself from liquidation:**
 - Keep your health factor above 1.5 (a 50% buffer above the minimum) - the app color-codes it (green above 150%, amber 120–150%, red below 120%) on your position dashboard

@@ -497,6 +497,16 @@ impl PrivateLendContract {
         token.transfer(&keeper, &env.current_contract_address(), &debt);
 
         proto.total_borrowed = proto.total_borrowed.saturating_sub(debt);
+
+        // Keeper bonus in USDC from the protocol reserve, capped at what the
+        // reserve holds. Never paid in BTC: the protocol does not move BTC.
+        let bonus_due = debt.saturating_mul(config.liquidation_bonus_bp as i128) / rates::BP_SCALE;
+        let bonus_paid = bonus_due.min(proto.reserve_usdc);
+        if bonus_paid > 0 {
+            proto.reserve_usdc -= bonus_paid;
+            token.transfer(&env.current_contract_address(), &keeper, &bonus_paid);
+        }
+
         if is_designated_keeper {
             proto.last_keeper_heartbeat = env.ledger().timestamp();
         }
@@ -507,7 +517,7 @@ impl PrivateLendContract {
         set_position(&env, &txid, &pos);
         set_protocol(&env, &proto);
 
-        LiquidateEvent { txid, keeper }
+        LiquidateEvent { txid, keeper, bonus_paid }
         .publish(&env);
 
         Ok(())
@@ -805,5 +815,8 @@ fn accrue_position_interest(env: &Env, pos: &mut Position, proto: &mut ProtocolS
     let delta = interest_delta(pos.usdc_debt, rate, elapsed);
     pos.usdc_debt = pos.usdc_debt.saturating_add(delta);
     proto.total_borrowed = proto.total_borrowed.saturating_add(delta);
+    proto.reserve_usdc = proto
+        .reserve_usdc
+        .saturating_add(delta.saturating_mul(rates::PROTOCOL_FEE_BP) / rates::BP_SCALE);
     pos.last_update_ledger = current;
 }
