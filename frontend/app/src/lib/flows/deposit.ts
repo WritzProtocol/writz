@@ -34,7 +34,7 @@ const INSERT_COMMITMENT_DATA_NAME = "writz-insert-commitment";
  * number is a dummy "0": this transaction is only ever inspected for its
  * signature, source account, and operation, never broadcast.
  */
-async function buildInsertAuthTx(
+export async function buildInsertAuthTx(
   depositor: string,
   commitmentHex: string,
   signTransaction: SignTransaction,
@@ -66,7 +66,7 @@ async function sha256d(bytes: ArrayBuffer): Promise<Buffer> {
  * Split the internal-order txid (SHA256d of raw tx) into the two 128-bit
  * halves the deposit circuit expects as `btc_txid_lo` / `btc_txid_hi`.
  */
-async function txidParts(rawTxHex: string): Promise<{ lo: string; hi: string }> {
+export async function txidParts(rawTxHex: string): Promise<{ lo: string; hi: string }> {
   const raw = Buffer.from(rawTxHex, "hex");
   const buf = await sha256d(raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength));
   const hi = BigInt("0x" + buf.subarray(0, 16).toString("hex")).toString();

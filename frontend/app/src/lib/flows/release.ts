@@ -16,10 +16,14 @@ export async function markReleased(params: {
   publicSignals: Buffer[];
   sender: string;
   signTransaction: SignTransaction;
+  /** Defaults to the configured commitment-tree; tests pass one explicitly. */
+  contractId?: string;
 }): Promise<{ txHash?: string }> {
   const { proof, publicSignals, sender, signTransaction } = params;
+  const contractId =
+    params.contractId ?? requireContract(config.contracts.commitmentTree, "commitment-tree");
   const client = new Client({
-    contractId: requireContract(config.contracts.commitmentTree, "commitment-tree"),
+    contractId,
     networkPassphrase: config.networkPassphrase,
     rpcUrl: config.rpcUrl,
     allowHttp: config.rpcUrl.startsWith("http://"),
