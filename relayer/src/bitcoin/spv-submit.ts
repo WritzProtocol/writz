@@ -9,7 +9,7 @@
  */
 import { config } from "../config.js";
 import { EsploraClient } from "./esplora.js";
-import { syncHeaders } from "./header-sync.js";
+import { syncHeaders, syncStartHeight } from "./header-sync.js";
 
 const MAX_HEADERS_PER_SUBMIT = 16;
 
@@ -26,7 +26,9 @@ export function startHeaderSync(): { stop: () => void } {
     running = true;
     try {
       const tip = await esplora.getTipHeight();
-      const from = config.spvSyncFromHeight!;
+      // Resume near the contract's own tip; restarting from the configured
+      // height every pass would resubmit the whole chain since the checkpoint.
+      const from = syncStartHeight(config.spvSyncFromHeight!, await readContractTipHeight());
       const result = await syncHeaders(from, tip, MAX_HEADERS_PER_SUBMIT, {
         getHeaderHex: async (h) => (await esplora.getBlockHeader(await esplora.getBlockHashAtHeight(h))).trim(),
         submitHeaders: (headers) => submitHeadersOnChain(headers),
@@ -42,6 +44,27 @@ export function startHeaderSync(): { stop: () => void } {
   const timer = setInterval(tick, config.spvSyncIntervalMs);
   void tick();
   return { stop: () => clearInterval(timer) };
+}
+
+/** bitcoin-spv's best-tip height, or undefined when it has none or the read fails. */
+async function readContractTipHeight(): Promise<number | undefined> {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- see top-of-file comment.
+  const sdk = require("@stellar/stellar-sdk") as typeof import("@stellar/stellar-sdk");
+  const { Keypair, Contract, TransactionBuilder, scValToNative, rpc } = sdk;
+  try {
+    const server = new rpc.Server(config.stellarRpcUrl, { allowHttp: config.stellarRpcUrl.startsWith("http://") });
+    const account = await server.getAccount(Keypair.fromSecret(config.relayerSecret!).publicKey());
+    const tx = new TransactionBuilder(account, { fee: "100", networkPassphrase: config.networkPassphrase })
+      .addOperation(new Contract(config.bitcoinSpvId).call("get_best_tip"))
+      .setTimeout(30)
+      .build();
+    const sim = await server.simulateTransaction(tx);
+    if (rpc.Api.isSimulationError(sim) || !sim.result) return undefined;
+    const tip = scValToNative(sim.result.retval) as { height?: number } | undefined;
+    return tip?.height;
+  } catch {
+    return undefined;
+  }
 }
 
 async function submitHeadersOnChain(headersHex: string[]): Promise<void> {

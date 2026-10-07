@@ -1,5 +1,5 @@
 import { describe, expect, test } from '@jest/globals';
-import { planHeaderBatches, syncHeaders } from '../src/bitcoin/header-sync';
+import { planHeaderBatches, REORG_RESUBMIT_DEPTH, syncHeaders, syncStartHeight } from '../src/bitcoin/header-sync';
 
 describe('planHeaderBatches', () => {
   test('splits a range into contiguous batches of at most maxPerSubmit', () => {
@@ -61,5 +61,19 @@ describe('syncHeaders', () => {
       },
     });
     expect(result.submittedThrough).toBeNull();
+  });
+});
+
+describe('syncStartHeight', () => {
+  test('resumes just below the contract tip instead of the configured height', () => {
+    expect(syncStartHeight(280_000, 281_500)).toBe(281_500 - REORG_RESUBMIT_DEPTH);
+  });
+
+  test('never starts before the configured height', () => {
+    expect(syncStartHeight(280_000, 280_002)).toBe(280_000);
+  });
+
+  test('starts at the configured height when the contract tip is unknown', () => {
+    expect(syncStartHeight(280_000, undefined)).toBe(280_000);
   });
 });
