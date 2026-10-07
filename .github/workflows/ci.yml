@@ -20,6 +20,7 @@ jobs:
       bitcoin_script: ${{ steps.filter.outputs.bitcoin_script }}
       contracts: ${{ steps.filter.outputs.contracts }}
       circuits: ${{ steps.filter.outputs.circuits }}
+      e2e: ${{ steps.filter.outputs.e2e }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -44,6 +45,11 @@ jobs:
               - '.github/workflows/ci.yml'
             circuits:
               - 'circuits/**'
+              - '.github/workflows/ci.yml'
+            e2e:
+              - 'contracts/**'
+              - 'circuits/**'
+              - 'scripts/deploy/**'
               - '.github/workflows/ci.yml'
 
   # Cheap, dependency-free (only Node builtins), so it always runs rather
@@ -289,6 +295,99 @@ jobs:
         if: steps.cache-circuits.outputs.cache-hit != 'true'
       - run: npm test
 
+  # Runs the real contracts and the real Groth16 proofs on a local Stellar
+  # network - no testnet, no secrets. Unit tests mock auth; this does not, and
+  # it exercises the constructor deploy path and cross-contract calls for real.
+  e2e-local:
+    name: e2e (local Stellar network)
+    needs: changes
+    if: needs.changes.outputs.e2e == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32v1-none
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: contracts
+      - name: Build the contracts the run deploys
+        working-directory: contracts
+        run: cargo build --release --target wasm32v1-none --locked -p zk-verifier -p bitcoin-spv -p commitment-tree
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: circuits/package-lock.json
+      - name: Install circuit dependencies
+        working-directory: circuits
+        run: npm ci
+      - name: Cache circom binary
+        id: cache-circom
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/bin/circom
+          key: circom-v2.2.3
+      - name: Add circom install dir to PATH
+        run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Install circom
+        if: steps.cache-circom.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          curl -fL -o /tmp/circom https://github.com/iden3/circom/releases/download/v2.2.3/circom-linux-amd64
+          chmod +x /tmp/circom
+          mv /tmp/circom "$HOME/.local/bin/circom"
+      - name: Ensure cached circom is executable
+        if: steps.cache-circom.outputs.cache-hit == 'true'
+        run: chmod +x "$HOME/.local/bin/circom"
+      # Same key as the circuits job, so the compiled circuits and dev
+      # trusted setup are shared between the two.
+      - name: Cache compiled circuits + dev trusted setup
+        id: cache-circuits
+        uses: actions/cache@v4
+        with:
+          path: |
+            circuits/build
+            circuits/ptau
+            circuits/keys
+          key: circuits-setup-v1-${{ hashFiles('circuits/src/**', 'circuits/scripts/compile_all.sh', 'circuits/scripts/setup_dev.sh') }}
+      - name: Compile circuits
+        working-directory: circuits
+        if: steps.cache-circuits.outputs.cache-hit != 'true'
+        run: npm run compile
+      - name: Dev trusted setup
+        working-directory: circuits
+        if: steps.cache-circuits.outputs.cache-hit != 'true'
+        run: npm run setup:dev
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+      - name: Install deploy-script dependencies
+        working-directory: scripts/deploy
+        run: bun install --frozen-lockfile
+      # Pinned by digest: the run was verified against this image
+      # (stellar-core v29, protocol 29).
+      - name: Start a local Stellar network
+        run: |
+          docker run -d --name stellar-local -p 8000:8000 \
+            stellar/quickstart@sha256:4c8bad1ef7341205b898f83d9489321da80c7bd74183100fc8e2a39a5938c7d5 \
+            --local --enable rpc
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:8000/soroban/rpc -X POST -H 'content-type: application/json' \
+              -d '{"jsonrpc":"2.0","id":1,"method":"getHealth"}' | grep -q healthy; then
+              echo "network healthy"; exit 0
+            fi
+            sleep 5
+          done
+          echo "local network never became healthy" >&2
+          docker logs stellar-local | tail -50
+          exit 1
+      - name: Run the end-to-end flow
+        run: node scripts/deploy/e2e_local.mjs
+      - name: Network logs on failure
+        if: failure()
+        run: docker logs stellar-local | tail -100
+
   # Gates committed ceremony/verification-key artifacts. This is
   # a mechanical sanity check (hash + IC-length + transcript consistency),
   # not a substitute for the human verification steps in
@@ -390,6 +489,7 @@ jobs:
       - contracts
       - circuits
       - circuits-ceremony-verify
+      - e2e-local
     runs-on: ubuntu-latest
     steps:
       - name: Fail if any non-skipped job failed
