@@ -131,6 +131,7 @@ walks deposit → borrow → repay → release and replays the closed attacks:
 | The same txid deposited into the second lender | `TxidAlreadyConsumed` (#26) |
 | A borrow proof resubmitted by another account | `RecipientMismatch` (#19) |
 | Borrowing against a released zero-debt leaf | `NullifierAlreadySpent` (#6) |
+| The admin inserting a root other than the proven one | `InvalidZkProof` (#4) |
 
 To rehearse the real deployment against the same local network, run
 `scripts/deploy/deploy_stack.mjs` with `STELLAR_NETWORK=local` (inputs in

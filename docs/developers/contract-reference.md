@@ -209,6 +209,14 @@ Verify a Groth16 proof for the liquidation circuit.
 pub fn verify_liquidation(proof: Proof, public_signals: Vec<BytesN<32>>) -> Result<bool, ZkVerifierError>
 ```
 
+### `verify_insert`
+
+Verify a Groth16 proof for the Merkle insertion circuit.
+
+```rust
+pub fn verify_insert(proof: Proof, public_signals: Vec<BytesN<32>>) -> Result<bool, ZkVerifierError>
+```
+
 ### Events
 
 Topic fields are in **bold**.
@@ -242,7 +250,7 @@ pub fn deposit(depositor: Address, block_hash: BytesN<32>, merkle_proof_btc: Vec
 Insert a pending commitment into the Merkle tree and advance the root.
 
 ```rust
-pub fn insert_commitment(caller: Address, commitment: BytesN<32>, new_root: BytesN<32>) -> Result<(), CommitmentTreeError>
+pub fn insert_commitment(caller: Address, zk_proof: Proof, public_signals: Vec<BytesN<32>>) -> Result<(), CommitmentTreeError>
 ```
 
 ### `borrow`
@@ -397,6 +405,14 @@ Returns the commitment for a Bitcoin txid, or None if not deposited.
 pub fn get_commitment(txid: BytesN<32>) -> Option<BytesN<32>>
 ```
 
+### `get_next_leaf_index`
+
+Returns the index of the next empty Merkle leaf - the `leaf_index` the next insertion proof must target.
+
+```rust
+pub fn get_next_leaf_index() -> u32
+```
+
 ### `is_commitment_pending`
 
 Returns true if a commitment is pending Merkle tree insertion.
@@ -428,7 +444,7 @@ Topic fields are in **bold**.
 | Event | Topic | Fields |
 |---|---|---|
 | `DepositEvent` | `deposit` | **commitment**, depositor, txid, nullifier, user_pubkey, timelock_height, enc_note |
-| `InsertLeafEvent` | `insert_leaf` | **new_root**, commitment |
+| `InsertLeafEvent` | `insert_leaf` | **new_root**, commitment, leaf_index |
 | `BorrowEvent` | `borrow` | **new_root**, borrower, usdc_amount, old_nullifier, enc_note |
 | `RepayEvent` | `repay` | **new_root**, repayer, usdc_amount, old_nullifier, new_commitment, enc_note |
 | `LiquidateEvent` | `liquidate` | **nullifier**, keeper, usdc_debt |
@@ -669,5 +685,3 @@ Topic fields are in **bold**.
 | `WithdrawEvent` | `withdraw` | **supplier**, usdc_amount, total_supplied |
 | `PausedSetEvent` | `paused_set` | **admin**, paused |
 | `OracleSetEvent` | `oracle_set` | **admin**, new_oracle |
-
----
