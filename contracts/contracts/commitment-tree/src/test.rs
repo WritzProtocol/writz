@@ -49,18 +49,32 @@ fn setup(env: &Env) -> (CommitmentTreeContractClient<'_>, Address, Address, Addr
     let zk     = Address::generate(env);
     let usdc   = Address::generate(env);
     let oracle = Address::generate(env);
-    let id = env.register(CommitmentTreeContract, (admin.clone(), spv.clone(), zk.clone(), usdc.clone(), oracle.clone(), 6u32, vault_spk(env)));
+    let id = env.register(CommitmentTreeContract, (admin.clone(), spv.clone(), zk.clone(), usdc.clone(), oracle.clone(), 6u32, protocol_pubkey(env)));
     let client = CommitmentTreeContractClient::new(env, &id);
     (client, admin, spv, zk, usdc, oracle)
 }
 
-/// A fake 34-byte P2WSH scriptPubKey (`OP_0 <32-byte push>`), same pattern
-/// as `private-lend`'s own test fixture - used as the shared
-/// `zk_vault_script_pubkey` every test's `initialize()` registers.
-fn vault_spk(env: &Env) -> Bytes {
-    let mut spk = std::vec![0x00u8, 0x20];
-    spk.extend_from_slice(&[0xabu8; 32]);
-    Bytes::from_slice(env, &spk)
+/// The protocol co-signing key every test contract is constructed with.
+fn protocol_pubkey(env: &Env) -> BytesN<33> {
+    let mut k = [0x11u8; 33];
+    k[0] = 0x02;
+    BytesN::from_array(env, &k)
+}
+
+/// The depositor's Bitcoin key used by every test deposit.
+fn user_pubkey(env: &Env) -> BytesN<33> {
+    let mut k = [0x22u8; 33];
+    k[0] = 0x03;
+    BytesN::from_array(env, &k)
+}
+
+/// A timelock inside the allowed window above `MockSpv`'s confirming block
+/// (2,900,000 + 1,008 ..= 2,900,000 + 105,000).
+const TIMELOCK: u32 = 2_950_000;
+
+/// The Writz P2WSH scriptPubKey a valid test deposit pays.
+fn deposit_spk(env: &Env) -> Bytes {
+    spv_types::script::p2wsh_script_pubkey(env, &protocol_pubkey(env), &user_pubkey(env), TIMELOCK)
 }
 
 /// Builds a minimal legacy Bitcoin transaction with a single output paying
@@ -213,7 +227,7 @@ fn setup_with_real_usdc(
     let usdc_id = env.register_stellar_asset_contract_v2(admin.clone());
     let usdc = usdc_id.address();
     let oracle = Address::generate(env);
-    let id = env.register(CommitmentTreeContract, (admin.clone(), spv.clone(), zk.clone(), usdc.clone(), oracle.clone(), 6u32, vault_spk(env)));
+    let id = env.register(CommitmentTreeContract, (admin.clone(), spv.clone(), zk.clone(), usdc.clone(), oracle.clone(), 6u32, protocol_pubkey(env)));
     let client = CommitmentTreeContractClient::new(env, &id);
 
     (client, admin, usdc, spv)
@@ -536,7 +550,7 @@ fn setup_integration() -> IntegrationSetup {
         ic: zd_ic,
     });
 
-    let ct_id = env.register(CommitmentTreeContract, (admin.clone(), spv.clone(), zk_id.clone(), usdc.clone(), oracle.clone(), 6u32, vault_spk(&env)));
+    let ct_id = env.register(CommitmentTreeContract, (admin.clone(), spv.clone(), zk_id.clone(), usdc.clone(), oracle.clone(), 6u32, protocol_pubkey(&env)));
     let client = CommitmentTreeContractClient::new(&env, &ct_id);
     // min_confirmations=6, matching the fixed 6-confirmation policy elsewhere.
 
@@ -641,13 +655,15 @@ fn full_deposit_borrow_repay_cycle() {
     // 1_000_000 sats matches gen_commitment_tree_test_vectors.js's COLLATERAL -
     // the proof's collateral_satoshis/actual_satoshis both commit to that
     // exact figure, so the real amount this raw_tx pays must equal it too.
-    let raw_tx = build_deposit_tx(&s.env, 1_000_000, &vault_spk(&s.env));
+    let raw_tx = build_deposit_tx(&s.env, 1_000_000, &deposit_spk(&s.env));
     let commitment = s.client.deposit(
         &s.depositor,
         &block_hash,
         &empty_proof,
         &0u32,
         &raw_tx,
+        &user_pubkey(&s.env),
+        &TIMELOCK,
         &deposit_proof(&s.env),
         &deposit_signals(&s.env),
         &empty_bytes,
@@ -700,10 +716,10 @@ fn borrow_with_tampered_signal_panics() {
     StellarAssetClient::new(&s.env, &s.usdc).mint(&s.supplier, &10_000_000_000_i128);
     s.client.supply_usdc(&s.supplier, &10_000_000_000_i128);
 
-    let raw_tx = build_deposit_tx(&s.env, 1_000_000, &vault_spk(&s.env));
+    let raw_tx = build_deposit_tx(&s.env, 1_000_000, &deposit_spk(&s.env));
     let commitment = s.client.deposit(
         &s.depositor, &block_hash, &empty_proof, &0u32, &raw_tx,
-        &deposit_proof(&s.env), &deposit_signals(&s.env), &empty_bytes,
+        &user_pubkey(&s.env), &TIMELOCK, &deposit_proof(&s.env), &deposit_signals(&s.env), &empty_bytes,
     );
     let root_after_deposit = sig32(&s.env, &iv::BORROW_SIGNAL_3);
     s.client.insert_commitment(&s.admin, &commitment, &root_after_deposit);
@@ -739,10 +755,10 @@ fn borrow_proof_cannot_be_redirected_to_another_recipient() {
     StellarAssetClient::new(&s.env, &s.usdc).mint(&s.supplier, &10_000_000_000_i128);
     s.client.supply_usdc(&s.supplier, &10_000_000_000_i128);
 
-    let raw_tx = build_deposit_tx(&s.env, 1_000_000, &vault_spk(&s.env));
+    let raw_tx = build_deposit_tx(&s.env, 1_000_000, &deposit_spk(&s.env));
     let commitment = s.client.deposit(
         &s.depositor, &block_hash, &empty_proof, &0u32, &raw_tx,
-        &deposit_proof(&s.env), &deposit_signals(&s.env), &empty_bytes,
+        &user_pubkey(&s.env), &TIMELOCK, &deposit_proof(&s.env), &deposit_signals(&s.env), &empty_bytes,
     );
     let root_after_deposit = sig32(&s.env, &iv::BORROW_SIGNAL_3);
     s.client.insert_commitment(&s.admin, &commitment, &root_after_deposit);
@@ -790,10 +806,10 @@ fn released_zero_debt_leaf_cannot_be_borrowed_again() {
 
     StellarAssetClient::new(&s.env, &s.usdc).mint(&s.supplier, &10_000_000_000_i128);
     s.client.supply_usdc(&s.supplier, &10_000_000_000_i128);
-    let raw_tx = build_deposit_tx(&s.env, 1_000_000, &vault_spk(&s.env));
+    let raw_tx = build_deposit_tx(&s.env, 1_000_000, &deposit_spk(&s.env));
     let commitment = s.client.deposit(
         &s.depositor, &block_hash, &empty_proof, &0u32, &raw_tx,
-        &deposit_proof(&s.env), &deposit_signals(&s.env), &empty_bytes,
+        &user_pubkey(&s.env), &TIMELOCK, &deposit_proof(&s.env), &deposit_signals(&s.env), &empty_bytes,
     );
     s.client.insert_commitment(&s.admin, &commitment, &sig32(&s.env, &iv::BORROW_SIGNAL_3));
     s.client.borrow(&recipient, &borrow_proof(&s.env), &borrow_signals(&s.env), &empty_bytes);
@@ -821,4 +837,108 @@ fn released_zero_debt_leaf_cannot_be_borrowed_again() {
         s.client.try_borrow(&recipient, &reborrow_proof, &reborrow_signals, &empty_bytes),
         Err(Ok(crate::error::CommitmentTreeError::NullifierAlreadySpent)),
     );
+}
+
+// ── Per-user deposit script (#177) ────────────────────────────────────────────
+//
+// A ZK deposit must pay the Writz P2WSH built from the protocol key, the
+// depositor's key and a bounded timelock - the script the UI derives and
+// /api/cosign co-signs. Each case below changes one input to that script.
+
+fn try_deposit_with(
+    s: &IntegrationSetup,
+    raw_tx: &Bytes,
+    user: &BytesN<33>,
+    timelock: u32,
+) -> Result<BytesN<32>, crate::error::CommitmentTreeError> {
+    let block_hash = BytesN::<32>::from_array(&s.env, &[0xadu8; 32]);
+    let empty_proof: Vec<BytesN<32>> = Vec::new(&s.env);
+    match s.client.try_deposit(
+        &s.depositor, &block_hash, &empty_proof, &0u32, raw_tx,
+        user, &timelock, &deposit_proof(&s.env), &deposit_signals(&s.env),
+        &Bytes::new(&s.env),
+    ) {
+        Ok(Ok(c)) => Ok(c),
+        Err(Ok(e)) => Err(e),
+        other => panic!("unexpected result: {other:?}"),
+    }
+}
+
+#[test]
+fn deposit_to_the_depositors_writz_script_succeeds() {
+    let s = setup_integration();
+    let raw_tx = build_deposit_tx(&s.env, 1_000_000, &deposit_spk(&s.env));
+    let commitment = try_deposit_with(&s, &raw_tx, &user_pubkey(&s.env), TIMELOCK).unwrap();
+    assert!(s.client.is_commitment_pending(&commitment));
+}
+
+#[test]
+fn deposit_paying_a_script_the_protocol_cannot_cosign_is_rejected() {
+    // The output is a Writz-shaped script, but under a different protocol
+    // key: the depositor could spend it alone, so it is not collateral.
+    let s = setup_integration();
+    let mut other = [0x33u8; 33];
+    other[0] = 0x02;
+    let foreign_spk = spv_types::script::p2wsh_script_pubkey(
+        &s.env, &BytesN::from_array(&s.env, &other), &user_pubkey(&s.env), TIMELOCK,
+    );
+    let raw_tx = build_deposit_tx(&s.env, 1_000_000, &foreign_spk);
+    assert_eq!(
+        try_deposit_with(&s, &raw_tx, &user_pubkey(&s.env), TIMELOCK),
+        Err(crate::error::CommitmentTreeError::VaultOutputNotFound),
+    );
+}
+
+#[test]
+fn deposit_claiming_someone_elses_output_is_rejected() {
+    // The transaction pays a real Writz script, but the caller names a
+    // different user key - the rebuilt script does not match the output.
+    let s = setup_integration();
+    let raw_tx = build_deposit_tx(&s.env, 1_000_000, &deposit_spk(&s.env));
+    let mut other_user = [0x44u8; 33];
+    other_user[0] = 0x02;
+    assert_eq!(
+        try_deposit_with(&s, &raw_tx, &BytesN::from_array(&s.env, &other_user), TIMELOCK),
+        Err(crate::error::CommitmentTreeError::VaultOutputNotFound),
+    );
+}
+
+#[test]
+fn deposit_with_a_timelock_outside_the_window_is_rejected() {
+    let s = setup_integration();
+    for timelock in [2_900_000 + 1_007, 2_900_000 + 105_001] {
+        let spk = spv_types::script::p2wsh_script_pubkey(
+            &s.env, &protocol_pubkey(&s.env), &user_pubkey(&s.env), timelock,
+        );
+        let raw_tx = build_deposit_tx(&s.env, 1_000_000, &spk);
+        assert_eq!(
+            try_deposit_with(&s, &raw_tx, &user_pubkey(&s.env), timelock),
+            Err(crate::error::CommitmentTreeError::InvalidTimelock),
+        );
+    }
+}
+
+#[test]
+fn deposit_with_an_uncompressed_user_key_is_rejected() {
+    let s = setup_integration();
+    let raw_tx = build_deposit_tx(&s.env, 1_000_000, &deposit_spk(&s.env));
+    let mut bad = [0x22u8; 33];
+    bad[0] = 0x04;
+    assert_eq!(
+        try_deposit_with(&s, &raw_tx, &BytesN::from_array(&s.env, &bad), TIMELOCK),
+        Err(crate::error::CommitmentTreeError::InvalidPubkey),
+    );
+}
+
+#[test]
+#[should_panic]
+fn constructor_rejects_an_uncompressed_protocol_key() {
+    let env = Env::default();
+    let admin = Address::generate(&env);
+    let mut bad = [0x11u8; 33];
+    bad[0] = 0x04;
+    env.register(CommitmentTreeContract, (
+        admin.clone(), admin.clone(), admin.clone(), admin.clone(), admin,
+        6u32, BytesN::<33>::from_array(&env, &bad),
+    ));
 }

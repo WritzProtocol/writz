@@ -1,4 +1,4 @@
-use soroban_sdk::{contracttype, Address, Bytes, BytesN};
+use soroban_sdk::{contracttype, Address, BytesN};
 
 // ── Storage keys ──────────────────────────────────────────────────────────────
 
@@ -32,15 +32,13 @@ pub struct Config {
     pub usdc_token:               Address,
     pub oracle:                   Address,
     pub min_confirmations:        u32,
-    /// The scriptPubKey every ZK deposit must pay - a single script shared
-    /// across every depositor. Immutable per contract, same as
-    /// `private-lend`'s `protocol_pubkey` (see its own doc comment): this
-    /// path's whole point is that positions are anonymous, so (unlike
-    /// `private-lend`, which derives one P2WSH address per user from that
-    /// user's own pubkey) there is no per-depositor script to check against
-    /// without deanonymizing them - GHSA-2hjj-x5wr-4p68, GHSA-xp6j-g2rw-h5g6,
-    /// GHSA-mg4x-cr23-4x3v. Rotating it means a new deployment.
-    pub zk_vault_script_pubkey:   Bytes,
+    /// The protocol's 33-byte compressed Bitcoin co-signing key. Every ZK
+    /// deposit must pay the Writz P2WSH built from this key, the depositor's
+    /// own key and a bounded timelock - the same script `private-lend`
+    /// checks, so the depositor keeps a unilateral timelock exit and the
+    /// protocol can only ever co-sign. Immutable per contract; rotating it
+    /// means a new deployment (#177).
+    pub protocol_pubkey:          BytesN<33>,
     pub min_deposit_satoshis:     u64,
     pub min_collateral_ratio_bp:  u32,
     pub liquidation_threshold_bp: u32,
@@ -104,7 +102,7 @@ pub mod deposit_signals {
     pub const BTC_TXID_HI:     usize = 3;
     /// Protocol minimum deposit in satoshis (must equal Config.min_deposit_satoshis).
     pub const MIN_DEPOSIT_SATS: usize = 4;
-    /// The real BTC amount paid to `Config.zk_vault_script_pubkey`, parsed
+    /// The real BTC amount paid to the depositor's Writz P2WSH, parsed
     /// on-chain from `raw_tx` - `collateral_satoshis === actual_satoshis` is
     /// enforced inside the circuit (GHSA-2hjj-x5wr-4p68, GHSA-xp6j-g2rw-h5g6,
     /// GHSA-mg4x-cr23-4x3v), so the contract only has to check this against

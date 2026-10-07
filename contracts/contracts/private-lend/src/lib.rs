@@ -4,7 +4,6 @@ mod error;
 mod events;
 mod oracle;
 mod rates;
-mod script;
 mod storage;
 mod types;
 
@@ -21,21 +20,10 @@ use rates::{borrow_rate_bp, interest_delta, supply_rate_bp};
 use soroban_sdk::{
     contract, contractimpl, panic_with_error, token, Address, Bytes, BytesN, Env, IntoVal, Symbol, Vec,
 };
-use spv_types::{btc_parser, SpvVerificationResult};
+use spv_types::{btc_parser, script, SpvVerificationResult};
 use storage::{get_config, get_position, get_protocol, get_release_psbt, get_supply_balance,
                set_config, set_position, set_protocol, set_release_psbt, set_supply_balance};
 use types::{Config, Position, PositionStatus, ProtocolState};
-
-/// A deposit's CLTV escape hatch must unlock at least this many Bitcoin blocks
-/// (~7 days) after the block that confirmed the deposit, so it is never an
-/// instant exit for a freshly-deposited position. Matches the safety buffer
-/// in `bitcoin-script`'s `computeTimelock`.
-const MIN_TIMELOCK_MARGIN_BLOCKS: u32 = 1_008;
-
-/// ...and at most this many blocks (~2 years) after it, mirroring
-/// `MAX_TIMELOCK_OFFSET` in `bitcoin-script`, so a bad value cannot lock the
-/// user out of the escape hatch for an unreasonable time.
-const MAX_TIMELOCK_MARGIN_BLOCKS: u32 = 105_000;
 
 #[contract]
 pub struct PrivateLendContract;
@@ -191,9 +179,7 @@ impl PrivateLendContract {
 
         // The CLTV escape hatch must not be an instant exit, nor absurdly
         // far away: bound it relative to the block that confirmed the deposit.
-        let earliest = spv_result.block_height.saturating_add(MIN_TIMELOCK_MARGIN_BLOCKS);
-        let latest = spv_result.block_height.saturating_add(MAX_TIMELOCK_MARGIN_BLOCKS);
-        if timelock_height < earliest || timelock_height > latest {
+        if !script::timelock_in_bounds(timelock_height, spv_result.block_height) {
             return Err(PrivateLendError::InvalidTimelock);
         }
 

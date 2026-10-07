@@ -15,9 +15,10 @@ use events::{
 };
 use oracle::get_btc_price_stroops;
 use soroban_sdk::{
-    contract, contractimpl, token, Address, Bytes, BytesN, Env, IntoVal, Symbol, Vec,
+    contract, contractimpl, panic_with_error, token, Address, Bytes, BytesN, Env, IntoVal,
+    Symbol, Vec,
 };
-use spv_types::{btc_parser, SpvVerificationResult};
+use spv_types::{btc_parser, script, SpvVerificationResult};
 use types::{
     borrow_repay_signals as br, deposit_signals as ds, liquidation_signals as lq, Config,
     DataKey, PoolState, Proof,
@@ -91,8 +92,11 @@ impl CommitmentTreeContract {
         usdc_token: Address,
         oracle: Address,
         min_confirmations: u32,
-        zk_vault_script_pubkey: Bytes,
+        protocol_pubkey: BytesN<33>,
     ) {
+        if !script::is_compressed_pubkey(&protocol_pubkey) {
+            panic_with_error!(&env, CommitmentTreeError::InvalidPubkey);
+        }
         env.storage().instance().set(
             &DataKey::Config,
             &Config {
@@ -102,7 +106,7 @@ impl CommitmentTreeContract {
                 usdc_token,
                 oracle,
                 min_confirmations,
-                zk_vault_script_pubkey,
+                protocol_pubkey,
                 min_deposit_satoshis:     10_000,
                 min_collateral_ratio_bp:  15_000,
                 liquidation_threshold_bp: 12_000,
@@ -133,11 +137,13 @@ impl CommitmentTreeContract {
     /// 4. **Protocol param** - `signal[MIN_DEPOSIT_SATS]` equals the
     ///    configured minimum.  This prevents generating a proof with a lower
     ///    minimum to sneak in an undersized deposit.
-    /// 4b. **Collateral binding** - `raw_tx` actually pays
-    ///    `Config.zk_vault_script_pubkey`, and `signal[ACTUAL_SATOSHIS]`
-    ///    equals that real amount (the circuit separately binds it to the
-    ///    private `collateral_satoshis`). Without this, the referenced
-    ///    transaction need not pay the protocol anything at all.
+    /// 4b. **Collateral binding** - `raw_tx` actually pays the Writz P2WSH
+    ///    rebuilt from `Config.protocol_pubkey`, `user_pubkey` and
+    ///    `timelock_height` (the timelock bounded to 1,008..=105,000 blocks
+    ///    above the confirming block), and `signal[ACTUAL_SATOSHIS]` equals
+    ///    that real amount (the circuit separately binds it to the private
+    ///    `collateral_satoshis`). Without this, the referenced transaction
+    ///    need not lock anything under the protocol's co-signing key.
     /// 5. **Nullifier freshness** - the nullifier was not previously spent.
     /// 6. **ZK proof** - Groth16 verification via the `zk-verifier` contract.
     ///
@@ -164,6 +170,8 @@ impl CommitmentTreeContract {
         merkle_proof_btc: Vec<BytesN<32>>,
         tx_index: u32,
         raw_tx: Bytes,
+        user_pubkey: BytesN<33>,
+        timelock_height: u32,
         zk_proof: Proof,
         public_signals: Vec<BytesN<32>>,
         enc_note: Bytes,
@@ -172,6 +180,9 @@ impl CommitmentTreeContract {
         let config = Self::load_config(&env)?;
         if config.paused {
             return Err(CommitmentTreeError::Paused);
+        }
+        if !script::is_compressed_pubkey(&user_pubkey) {
+            return Err(CommitmentTreeError::InvalidPubkey);
         }
 
         if public_signals.len() != ds::COUNT as u32 {
@@ -185,6 +196,12 @@ impl CommitmentTreeContract {
             (block_hash, merkle_proof_btc, tx_index, raw_tx.clone(), config.min_confirmations)
                 .into_val(&env),
         );
+
+        // The CLTV escape hatch must be neither instant nor absurdly far
+        // away, measured from the block that confirmed the deposit.
+        if !script::timelock_in_bounds(timelock_height, spv.block_height) {
+            return Err(CommitmentTreeError::InvalidTimelock);
+        }
 
         // 2. Reject duplicate deposits, here and across both lending pools
         //    (GHSA-2975-ggwh-pxw5): consume the txid in the shared registry.
@@ -220,15 +237,25 @@ impl CommitmentTreeContract {
             return Err(CommitmentTreeError::ProtocolParamMismatch);
         }
 
-        // 4b. Collateral binding: parse the real amount this transaction paid
-        //     to the shared ZK vault script, and require the proof's public
-        //     actual_satoshis signal to equal it. The circuit separately
-        //     constrains collateral_satoshis === actual_satoshis, so this
-        //     one check transitively binds the private collateral witness to
-        //     Bitcoin reality - closes GHSA-2hjj-x5wr-4p68, GHSA-xp6j-g2rw-h5g6,
-        //     GHSA-mg4x-cr23-4x3v. Mirrors private-lend's own
-        //     btc_parser::find_p2wsh_output check, now shared via spv-types.
-        let actual_satoshis = btc_parser::find_p2wsh_output(&raw_tx, &config.zk_vault_script_pubkey)
+        // 4b. Collateral binding: rebuild the Writz script this depositor's
+        //     BTC must be locked under, parse the real amount the transaction
+        //     paid to it, and require the proof's public actual_satoshis
+        //     signal to equal it. The circuit separately constrains
+        //     collateral_satoshis === actual_satoshis, so this one check
+        //     transitively binds the private collateral witness to Bitcoin
+        //     reality - closes GHSA-2hjj-x5wr-4p68, GHSA-xp6j-g2rw-h5g6,
+        //     GHSA-mg4x-cr23-4x3v. Same script and parser as private-lend.
+        //
+        //     A per-user script costs the ZK path no privacy: the txid and
+        //     depositor are already public in DepositEvent, and borrow/repay
+        //     never reference the script (#177).
+        let expected_spk = script::p2wsh_script_pubkey(
+            &env,
+            &config.protocol_pubkey,
+            &user_pubkey,
+            timelock_height,
+        );
+        let actual_satoshis = btc_parser::find_p2wsh_output(&raw_tx, &expected_spk)
             .ok_or(CommitmentTreeError::VaultOutputNotFound)?;
         let actual_satoshis_signal =
             sig_u64(&public_signals.get(ds::ACTUAL_SATOSHIS as u32).unwrap());
@@ -262,8 +289,16 @@ impl CommitmentTreeContract {
         env.storage().persistent().set(&pending_key, &spv.txid);
         env.storage().persistent().extend_ttl(&pending_key, PERSISTENT_THRESHOLD, PERSISTENT_BUMP);
 
-        DepositEvent { commitment: commitment.clone(), depositor, txid: spv.txid, nullifier, enc_note }
-            .publish(&env);
+        DepositEvent {
+            commitment: commitment.clone(),
+            depositor,
+            txid: spv.txid,
+            nullifier,
+            user_pubkey,
+            timelock_height,
+            enc_note,
+        }
+        .publish(&env);
 
         Ok(commitment)
     }

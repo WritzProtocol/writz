@@ -232,7 +232,7 @@ fn fake_protocol_pubkey(env: &Env) -> BytesN<33> {
 
 /// The scriptPubKey a correct Writz deposit output carries for `timelock`.
 fn writz_spk(env: &Env, timelock: u32) -> Bytes {
-    crate::script::p2wsh_script_pubkey(
+    spv_types::script::p2wsh_script_pubkey(
         env,
         &fake_protocol_pubkey(env),
         &fake_user_pubkey(env),
@@ -534,13 +534,13 @@ fn script_derivation_matches_the_typescript_builder() {
 
     for (timelock, script_hex, spk_hex) in vectors {
         assert_eq!(
-            crate::script::redeem_script(&env, &protocol, &user, timelock),
+            spv_types::script::redeem_script(&env, &protocol, &user, timelock),
             hex(&env, script_hex),
             "redeem script for timelock {}",
             timelock
         );
         assert_eq!(
-            crate::script::p2wsh_script_pubkey(&env, &protocol, &user, timelock),
+            spv_types::script::p2wsh_script_pubkey(&env, &protocol, &user, timelock),
             hex(&env, spk_hex),
             "scriptPubKey for timelock {}",
             timelock

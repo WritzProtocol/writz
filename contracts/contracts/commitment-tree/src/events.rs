@@ -9,6 +9,11 @@ pub struct DepositEvent {
     pub depositor:  Address,
     pub txid:       BytesN<32>,
     pub nullifier:  BytesN<32>,
+    /// The depositor's Bitcoin key and CLTV height the collateral is locked
+    /// under. With the protocol key they rebuild the deposit's redeem
+    /// script, so the timelock exit stays recoverable from chain data alone.
+    pub user_pubkey:     BytesN<33>,
+    pub timelock_height: u32,
     /// Opaque ciphertext of the position note ({collateral, debt, nonce, ...})
     /// encrypted to the owner's viewing key, for cross-device recovery. The
     /// contract never decrypts it - it only echoes the client-supplied blob.
