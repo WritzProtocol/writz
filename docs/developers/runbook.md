@@ -16,15 +16,16 @@ The flow splits into two halves with very different reproducibility:
 
 | Half | Covered how | Automated? |
 |---|---|---|
-| Soroban + ZK: deploy → supply → deposit → insert commitment → borrow → repay | `scripts/deploy/e2e_zkflow.js`, real Groth16 proofs | Yes - scripted end to end |
+| Soroban + ZK: deploy → supply → deposit → insert commitment → borrow → repay → release | `scripts/deploy/e2e_local.mjs` on a local Stellar network, real Groth16 proofs | Yes - scripted end to end, and run in CI |
 | Bitcoin: fund a P2WSH address → confirmations → real SPV proof → co-signed release | Manual, through the frontend | No - needs Signet coins and two browser wallets |
 
-Be aware of what the scripted half does **not** prove: `e2e_zkflow.js` builds a
-**fabricated** Bitcoin transaction (`RAW_TX_HEX = '010000000000000000'`) and a
-synthetic single-transaction block header. The `bitcoin-spv` contract genuinely
-verifies that header chain and Merkle inclusion, but no real Bitcoin
-transaction, and therefore no real deposit, is involved. It also passes an empty
-`enc_note`, so the sealed recovery-note round trip (#18) is untested there.
+Be aware of what the scripted half does **not** prove: `e2e_local.mjs` builds a
+**fabricated** Bitcoin transaction paying the depositor's Writz script and mines
+easy-difficulty headers on top of a local checkpoint. The `bitcoin-spv`
+contract genuinely verifies that header chain and Merkle inclusion, but no real
+Bitcoin transaction, and therefore no real deposit, is involved. It also passes
+an empty `enc_note`, so the sealed recovery-note round trip (#18) is untested
+there.
 
 Treat the scripted run as proof that the **Soroban and ZK layers** work.
 The Bitcoin custody path needs the manual walkthrough at the end.
@@ -100,70 +101,40 @@ Two consequences that will otherwise cost you an afternoon:
    show those four files as modified. Do not commit them unless you also intend
    to push the new keys on-chain.
 
-The deployed `zk-verifier` (`CDV45GLX…`) holds the verification keys from the
-**original** setup, whose `.zkey` files are not in git. So:
-
-- **To test against the shared testnet contracts:** you need the original
-  `.zkey` files. Ask a maintainer - regenerating will not reproduce them.
-- **To work fully from a clean checkout:** regenerate the setup, deploy your own
-  `zk-verifier`, push your keys to it, and point the flow at it:
-
-  ```bash
-  cd circuits && bash scripts/setup_dev.sh    # fresh keys (vkeys change!)
-  cd ../scripts/deploy && node set_vkeys.js   # push to your own verifier
-  ZK_VERIFIER_ID=<your-verifier> WRITZ_DEV_SECRET=<key> node e2e_zkflow.js
-  ```
-
-Proofs from a regenerated setup submitted to the shared verifier fail with
-`InvalidZkProof` - that is a key mismatch, not a bug in your proof.
+The shared testnet `zk-verifier` holds the verification keys from the
+**original** setup, whose `.zkey` files are not in git. Proofs from a
+regenerated setup submitted to it fail with `InvalidZkProof` - that is a key
+mismatch, not a bug in your proof. The scripted flow below avoids this by
+deploying its own `zk-verifier` and registering whatever keys are in
+`circuits/keys/`.
 
 ---
 
 ## 4. Run the scripted ZK flow
 
-Get a funded testnet account:
-
 ```bash
-# Any Stellar testnet key works; Friendbot funds it with 10,000 XLM
-curl "https://friendbot.stellar.org?addr=<YOUR_PUBLIC_KEY>"
+docker run -d --rm --name writz-local-stellar -p 8000:8000 \
+  stellar/quickstart:latest --local --enable rpc
+(cd scripts/deploy && bun install)
+node scripts/deploy/e2e_local.mjs
 ```
 
-```bash
-cd scripts/deploy
-npm install
-WRITZ_DEV_SECRET=<your-testnet-secret> node e2e_zkflow.js
-```
+It refuses to run against anything but the local standalone network. Each run
+deploys fresh instances of all four contracts through their constructors, then
+walks deposit → borrow → repay → release and replays the closed attacks:
 
-The script deploys a **fresh** commitment-tree per run - it never touches the
-production instance - then walks deposit → borrow → repay with real Groth16
-proofs, printing a `stellar.expert` link per transaction.
+| Attack | Expected error |
+|---|---|
+| Deposit claiming an output locked to another Bitcoin key | `VaultOutputNotFound` (#17) |
+| Deposit whose timelock opens under 1,008 blocks after confirmation | `InvalidTimelock` (#21) |
+| Deposit into a lender `bitcoin-spv` has not registered | `NotAConsumer` (#27) |
+| The same txid deposited into the second lender | `TxidAlreadyConsumed` (#26) |
+| A borrow proof resubmitted by another account | `RecipientMismatch` (#19) |
+| Borrowing against a released zero-debt leaf | `NullifierAlreadySpent` (#6) |
 
-Overridable via environment:
-
-| Variable | Default | Use |
-|---|---|---|
-| `WRITZ_DEV_SECRET` | *(required)* | Funded testnet secret key |
-| `ZK_VERIFIER_ID` | `CDV45GLX…` | Point at your own verifier after regenerating keys |
-| `BITCOIN_SPV_ID` | `CAE5L7BO…` | Point at your own SPV contract |
-| `STELLAR_RPC_URL` | `https://soroban-testnet.stellar.org` | Alternative RPC |
-| `SEED_ONLY` | unset | Stop after `insert_commitment` and print the `NEXT_PUBLIC_*` values for `frontend/app/.env.local` - how you seed a funded pool plus one position for a frontend demo |
-
-### Last verified run
-
-2026-07-30, instance `CBM5OUBYBICB3QB4T5PAGYUWWLZOIVWQCUHKV3HCSNZGB72GYM5Q5ID4`,
-six transactions, whole run about a minute:
-
-```
-initialize          aed32de63bcb4888defb564f703e01eb50907732ee10f2b966a9b286b675a034
-supply_usdc         512b91d750d39bdcc196b2ec38266b6e9ffc5f0ebda4573bd1a4ac1c76936ffa
-deposit      (ZK)   c3320d79f955ad35ad32ebae2d849024d6d69d597a0b355d8ec2ebb5e22f7e29
-insert_commitment   9fbed23db3b91e2520cf54ab54f715284d700fb011c16d2b64d5e9fade2635bb
-borrow       (ZK)   b7b83f750128df68b1cd2f91a375b6e5393d7daac764bba1fa87cf3484a6541a
-repay        (ZK)   261d8b14ab83414b712a0ba8a817ccbc0a6b36de2ef03896ea986beecdb82f14
-```
-
-Full log in [`contracts/deployments/testnet.md`](https://github.com/WritzProtocol/writz/blob/main/contracts/deployments/testnet.md).
-If your run diverges from these steps, § 7 lists the failures we hit getting here.
+To rehearse the real deployment against the same local network, run
+`scripts/deploy/deploy_stack.mjs` with `STELLAR_NETWORK=local` (inputs in
+`scripts/deploy/.env.example`).
 
 ---
 
@@ -173,12 +144,12 @@ The scripted flow is **not** a faithful mainnet rehearsal. What differs:
 
 | Assumption | Value on testnet | Why |
 |---|---|---|
-| USDC | **XLM native SAC** (`CDLZFC3S…`) | Avoids needing Circle USDC faucet access. The production instance uses the real testnet USDC SAC (`CBIELTK6…`). |
+| USDC | **Native asset SAC** | Avoids needing Circle USDC faucet access. The production instance uses the real testnet USDC SAC (`CBIELTK6…`). |
 | BTC price | Stubbed at **$60,000** (`600_000_000_000` stroops) | No live oracle wired on testnet; the oracle address is accepted but ignored. |
 | Bitcoin transaction | **Fabricated** raw tx + synthetic header | Removes the ~10-minute Signet confirmation wait from the loop. |
-| `min_confirmations` | `1` | Same reason. Production default is 6. |
-| `min_deposit_satoshis` | `10_000` (0.0001 BTC) | Lowered so Signet faucet amounts are usable. **Hardcoded in `initialize`** - the deposit circuit binds it into a public signal, so the script's constant must match or deposit fails with `ProtocolParamMismatch`. |
-| Lending pool | Pre-funded with 500 XLM by the script | No external suppliers on testnet. |
+| `min_confirmations` | `6`, against six locally mined headers | The headers are mined at a trivial difficulty, so confirmations cost nothing. |
+| `min_deposit_satoshis` | `10_000` (0.0001 BTC) | Lowered so Signet faucet amounts are usable. **Hardcoded in the constructor** - the deposit circuit binds it into a public signal, so the script's constant must match or deposit fails with `ProtocolParamMismatch`. |
+| Lending pool | Pre-funded by the script | No external suppliers on a local network. |
 | Trusted setup | `pot15` dev ceremony, single contributor | A real multi-party ceremony is a mainnet gate. Never use these keys in production. |
 | `enc_note` | Empty | The script exercises the interface, not the encryption round trip. |
 

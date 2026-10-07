@@ -51,13 +51,13 @@ Research    ──►  Foundation  ──►  Launch      ──►  Scale
 
 | Item | Details |
 |---|---|
-| **bitcoin-spv contract** | 70/70 tests. SHA256d, Merkle proofs, PoW validation. Deployed: `CB2BD6QCSZVNZN5NLI7C5NF356WXVJDSXT6LVAQFWHHS4SZ4NCKKNIVA` |
-| **zk-verifier contract** | 27/27 tests. Groth16 BN254 via Protocol 26 host functions. All 3 VKs set. Deployed: `CBNZU23QGCZATJB2QMNF2K6IST2SVP7FSGCKASQNBULTWDWGANDBYLFY` |
-| **commitment-tree contract** | 34/34 tests. Full ZK cycle verified on-chain. Deployed: `CDQCTFO3FK3M47QS47O2A4WLNPSQAQBSXBFPJ6RZEHFO5D7RY34FSBBP` |
-| **private-lend contract** | 88/88 tests. Non-ZK skeleton with kinked interest model. Deployed: `CAAWVMDRUPEJNELSQ6RU2VMVX5EJLQ2E77T7IXDWGMW4DGSNAGECGSWR` |
+| **bitcoin-spv contract** | 68/68 tests. SHA256d, Merkle proofs, PoW validation. Deployed: `CB2BD6QCSZVNZN5NLI7C5NF356WXVJDSXT6LVAQFWHHS4SZ4NCKKNIVA` |
+| **zk-verifier contract** | 26/26 tests. Groth16 BN254 via Protocol 26 host functions. All 3 VKs set. Deployed: `CBNZU23QGCZATJB2QMNF2K6IST2SVP7FSGCKASQNBULTWDWGANDBYLFY` |
+| **commitment-tree contract** | 39/39 tests. Full ZK cycle verified on-chain. Deployed: `CDQCTFO3FK3M47QS47O2A4WLNPSQAQBSXBFPJ6RZEHFO5D7RY34FSBBP` |
+| **private-lend contract** | 92/92 tests. Non-ZK skeleton with kinked interest model. Deployed: `CAAWVMDRUPEJNELSQ6RU2VMVX5EJLQ2E77T7IXDWGMW4DGSNAGECGSWR` |
 | **spv-types crate** | 9/9 tests. Shared Bitcoin transaction output parser (`btc_parser`). |
-| **ZK circuits** | 33/33 tests. All 3 circuits compiled (Circom 2.2.3). Dev keys generated. |
-| **Relayer service** | 205/205 tests. REST API: `GET /spv-proof/:txid`. Esplora-backed. |
+| **ZK circuits** | 34/34 tests. All 3 circuits compiled (Circom 2.2.3). Dev keys generated. |
+| **Relayer service** | 215/215 tests. REST API: `GET /spv-proof/:txid`. Esplora-backed. |
 | **Bitcoin script toolkit** | 60/60 tests. P2WSH generation, PSBT signing, witness assembly. |
 | **Bitcoin Signet E2E** | Path A co-signed release broadcast and accepted. `11932100` |
 | **ZK testnet E2E** | Full deposit→borrow→repay cycle on Stellar testnet. 6 transactions. `8daddf52` |
