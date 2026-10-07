@@ -100,10 +100,6 @@ export const config = {
   bitcoin: {
     network: process.env.NEXT_PUBLIC_BITCOIN_NETWORK ?? "testnet",
     protocolPubkey: process.env.NEXT_PUBLIC_PROTOCOL_BTC_PUBKEY ?? "",
-    timelockHeight: parseInt(
-      process.env.NEXT_PUBLIC_BITCOIN_TIMELOCK_HEIGHT ?? "3000000",
-      10,
-    ),
     apiUrl:
       process.env.NEXT_PUBLIC_BITCOIN_API_URL ??
       "https://blockstream.info/testnet/api",

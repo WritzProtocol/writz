@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useWallet } from "@/lib/wallet/WalletProvider";
 import { useBitcoinWallet } from "@/lib/bitcoin/useBitcoinWallet";
 import { deriveP2WSH } from "@/lib/bitcoin/address";
 import { deposit } from "@/lib/flows/deposit";
 import { resolveVout } from "@/lib/bitcoin/address";
+import { chooseDepositTimelock, fetchTipHeight } from "@/lib/bitcoin/timelock";
 import { positionsSnapshot } from "@/lib/position";
 import { stellarTxUrl } from "@/lib/explorer";
 import { TxLink } from "./TxLink";
@@ -116,13 +117,32 @@ export function DepositFlow() {
   const router = useRouter();
 
   const [txid, setTxid] = useState("");
-  const [sentVout, setSentVout] = useState<number | null>(null);
   const [btcAmount, setBtcAmount] = useState("");
   const [step, setStep] = useState<Step>("idle");
   const [statusMsg, setStatusMsg] = useState("");
   const [txHash, setTxHash] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [addressCopied, setAddressCopied] = useState(false);
+  // CLTV height for this deposit's escape hatch, chosen from the live tip so
+  // it falls inside the window the contract accepts. The address depends on
+  // it, so it is fixed once chosen for this session.
+  const [timelockHeight, setTimelockHeight] = useState<number | null>(null);
+  const [timelockError, setTimelockError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!btcWallet.btcPubkey || timelockHeight !== null) return;
+    let cancelled = false;
+    fetchTipHeight(config.bitcoin.apiUrl)
+      .then((tip) => {
+        if (!cancelled) setTimelockHeight(chooseDepositTimelock(tip));
+      })
+      .catch((e: unknown) => {
+        if (!cancelled) setTimelockError(e instanceof Error ? e.message : String(e));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [btcWallet.btcPubkey, timelockHeight]);
 
   const busy = step !== "idle" && step !== "done" && step !== "error";
   const isMainnet = config.bitcoin.network === "mainnet";
@@ -141,27 +161,24 @@ export function DepositFlow() {
   // Derive P2WSH address from the user's BTC pubkey when available.
   const p2wsh = useMemo(() => {
     const protocolPubkey = config.bitcoin.protocolPubkey;
-    if (!protocolPubkey || !btcWallet.btcPubkey) return null;
+    if (!protocolPubkey || !btcWallet.btcPubkey || timelockHeight === null) return null;
     try {
-      return deriveP2WSH(protocolPubkey, btcWallet.btcPubkey, config.bitcoin.timelockHeight);
+      return deriveP2WSH(protocolPubkey, btcWallet.btcPubkey, timelockHeight);
     } catch {
       return null;
     }
-  }, [btcWallet.btcPubkey]);
+  }, [btcWallet.btcPubkey, timelockHeight]);
 
   const depositAddress = p2wsh?.address ?? null;
 
+  // The collateral amount is read from the transaction itself during
+  // deposit(), so submitting only needs a txid and the wallet's pubkey.
   function validate(): string | null {
     if (!txid.trim() || !/^[0-9a-f]{64}$/i.test(txid.trim())) {
       return "Enter a valid 64-character Bitcoin txid.";
     }
-    try {
-      const sats = parseBtcToSats(btcAmount);
-      if (sats < MIN_DEPOSIT_SATS) {
-        return `Minimum deposit is ${MIN_DEPOSIT_BTC} BTC.`;
-      }
-    } catch {
-      return `Invalid BTC amount.`;
+    if (!btcWallet.btcPubkey) {
+      return "Connect the Bitcoin wallet that funded this deposit.";
     }
     return null;
   }
@@ -188,8 +205,9 @@ export function DepositFlow() {
       setTxid(sentTxid);
       setStep("sending");
       setStatusMsg("Locating output in transaction…");
-      const vout = await resolveVout(sentTxid, depositAddress, config.bitcoin.apiUrl);
-      setSentVout(vout);
+      // Waits until the API has indexed the transaction; deposit() finds the
+      // output itself from the confirmed raw transaction.
+      await resolveVout(sentTxid, depositAddress, config.bitcoin.apiUrl);
       setStep("idle");
     } catch (e) {
       setStep("error");
@@ -214,8 +232,6 @@ export function DepositFlow() {
     setErrorMsg(null);
     setStep("polling");
 
-    const collateralSats = parseBtcToSats(btcAmount);
-
     const onStatus = (msg: string) => {
       if (msg.toLowerCase().includes("zk proof")) setStep("proving");
       else if (msg.includes("1/2")) setStep("depositing");
@@ -226,15 +242,13 @@ export function DepositFlow() {
     try {
       const result = await deposit({
         txid: txid.trim().toLowerCase(),
-        collateralSats,
         depositor: address,
         seed,
         index: positionsSnapshot(address).length,
         signTransaction,
         onStatus,
-        btcPubkey: btcWallet.btcPubkey ?? undefined,
-        timelockHeight: config.bitcoin.timelockHeight,
-        vout: sentVout ?? 0,
+        btcPubkey: btcWallet.btcPubkey!,
+        timelockHeight: timelockHeight ?? undefined,
       });
       setTxHash(result.txHash ?? null);
       setStep("done");
@@ -249,7 +263,6 @@ export function DepositFlow() {
     setStep("idle");
     setErrorMsg(null);
     setTxid("");
-    setSentVout(null);
     setBtcAmount("");
     setTxHash(null);
     setStatusMsg("");
@@ -309,7 +322,7 @@ export function DepositFlow() {
                   </div>
                   <p className="mt-1 text-xs text-muted">
                     Derived from your Bitcoin pubkey · timelock block{" "}
-                    <span className="font-mono">{config.bitcoin.timelockHeight.toLocaleString()}</span>
+                    <span className="font-mono">{timelockHeight?.toLocaleString()}</span>
                   </p>
                   {!isMainnet && (
                     <div className="mt-3 rounded-lg border border-line-2 bg-surface-2 p-3">
@@ -341,6 +354,10 @@ export function DepositFlow() {
                     </div>
                   )}
                 </>
+              ) : timelockError ? (
+                <p className="mt-2 text-xs text-crit">{timelockError}</p>
+              ) : config.bitcoin.protocolPubkey && timelockHeight === null ? (
+                <p className="mt-2 text-xs text-muted">Reading the Bitcoin tip height…</p>
               ) : (
                 <p className="mt-2 text-xs text-muted italic">
                   Set{" "}

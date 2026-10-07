@@ -17,6 +17,7 @@ import {
   type Position,
 } from "@/lib/position";
 import type { SignTransaction } from "@/lib/wallet/WalletProvider";
+import { fetchTipHeight, findDepositOutput } from "@/lib/bitcoin/timelock";
 
 // Must match the contract's `min_deposit_satoshis` config (set at initialization).
 const MIN_DEPOSIT_SATS = "10000"; // 0.0001 BTC
@@ -123,41 +124,55 @@ export interface DepositResult {
 
 export async function deposit(params: {
   txid: string;
-  collateralSats: bigint;
   depositor: string;
   seed: Uint8Array;
   index: number;
   signTransaction: SignTransaction;
   onStatus: (step: string) => void;
-  btcPubkey?: string;
+  /** The depositor's compressed Bitcoin public key (hex). */
+  btcPubkey: string;
+  /** The timelock the deposit address was derived with, if still known. */
   timelockHeight?: number;
-  vout?: number;
 }): Promise<DepositResult> {
-  const {
-    txid,
-    collateralSats,
-    depositor,
-    seed,
-    index,
-    signTransaction,
-    onStatus,
-    btcPubkey,
-    timelockHeight,
-    vout,
-  } = params;
+  const { txid, depositor, seed, index, signTransaction, onStatus, btcPubkey } = params;
 
   // 1. Fetch SPV bundle from the relayer (polls until confirmed).
   const bundle = await pollSpvBundle(txid, onStatus);
 
-  // 2. Split txid into the two 128-bit halves the deposit circuit expects.
+  // 2. Locate the output paying this depositor's Writz P2WSH. The contract
+  //    rebuilds the same script from the protocol key, `btcPubkey` and the
+  //    timelock, and counts exactly that output's value as collateral - so
+  //    the proof must commit to it too, not to an amount the user typed.
+  const protocolPubkey = config.bitcoin.protocolPubkey;
+  if (!protocolPubkey) throw new Error("NEXT_PUBLIC_PROTOCOL_BTC_PUBKEY is not configured.");
+  const output = findDepositOutput({
+    rawTxHex: bundle.rawTxNoWitness,
+    protocolPubkeyHex: protocolPubkey,
+    userPubkeyHex: btcPubkey,
+    tipHeight: await fetchTipHeight(config.bitcoin.apiUrl),
+    hintTimelock: params.timelockHeight,
+  });
+  if (!output) {
+    throw new Error(
+      "This transaction has no output paying your Writz deposit address. " +
+        "Send BTC to the address shown for your connected Bitcoin wallet.",
+    );
+  }
+  const { timelockHeight, vout } = output;
+  const collateralSats = output.valueSats;
+  if (collateralSats < BigInt(MIN_DEPOSIT_SATS)) {
+    throw new Error(`This deposit pays ${collateralSats} sats; the minimum is ${MIN_DEPOSIT_SATS}.`);
+  }
+
+  // 3. Split txid into the two 128-bit halves the deposit circuit expects.
   const { lo, hi } = await txidParts(bundle.rawTxNoWitness);
 
-  // 3. Derive keys from the session seed (version 0 for a fresh deposit).
+  // 4. Derive keys from the session seed (version 0 for a fresh deposit).
   const f = seedToField(seed);
   const secret = deriveSecret(f, index);
   const nonce = deriveNonce(f, index, 0);
 
-  // 4. ZK deposit proof - generated entirely in the browser.
+  // 5. ZK deposit proof - generated entirely in the browser.
   onStatus("Generating ZK proof in browser… (may take ~10s)");
   const { proof, publicSignals } = await proveDeposit({
     collateral_satoshis: collateralSats.toString(),
@@ -166,6 +181,7 @@ export async function deposit(params: {
     btc_txid_lo: lo,
     btc_txid_hi: hi,
     min_deposit_satoshis: MIN_DEPOSIT_SATS,
+    actual_satoshis: collateralSats.toString(),
   });
 
   // Public signals (deposit circuit): commitment[0], nullifier[1], ...
@@ -184,7 +200,7 @@ export async function deposit(params: {
     deriveViewingKey(seed).publicKey,
   );
 
-  // 5. Submit deposit() - user signs with their Stellar wallet.
+  // 6. Submit deposit() - user signs with their Stellar wallet.
   onStatus("Submitting deposit to Soroban… (step 1/2)");
   const client = new Client({
     contractId: requireContract(config.contracts.commitmentTree, "commitment-tree"),
@@ -202,6 +218,8 @@ export async function deposit(params: {
       merkle_proof_btc: sorobanArgs.merkle_proof.map((h) => Buffer.from(h, "hex")),
       tx_index: sorobanArgs.tx_index,
       raw_tx: Buffer.from(sorobanArgs.raw_tx, "hex"),
+      user_pubkey: Buffer.from(btcPubkey, "hex"),
+      timelock_height: timelockHeight,
       zk_proof: proof,
       public_signals: publicSignals,
       enc_note: Buffer.from(encNote),
@@ -209,7 +227,7 @@ export async function deposit(params: {
   );
   const sent = await tx.signAndSend({ signTransaction });
 
-  // 6. Admin inserts the commitment into the Merkle tree (Phase 1: trusted relay).
+  // 7. Admin inserts the commitment into the Merkle tree (Phase 1: trusted relay).
   onStatus("Finalizing position in Merkle tree… (step 2/2)");
   const relayerUrl = config.services.relayerUrl;
   if (!relayerUrl) throw new Error("NEXT_PUBLIC_RELAYER_URL is not configured");
@@ -231,7 +249,7 @@ export async function deposit(params: {
   const insertBody = (await insertRes.json().catch(() => ({}))) as { leafIndex?: number };
   const leafIndex = insertBody.leafIndex;
 
-  // 7. Persist the position (no secret/nonce - derived from the seed + index/version).
+  // 8. Persist the position (no secret/nonce - derived from the seed + index/version).
   const position: Position = {
     id: commitment.toString(),
     owner: depositor,
