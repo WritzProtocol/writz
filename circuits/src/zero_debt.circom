@@ -33,9 +33,10 @@ include "./merkle.circom";
  * the Merkle leaf itself, visible in DepositEvent/InsertLeafEvent); only
  * collateral, secret and nonce stay hidden.
  *
- * Public signal ordering (one circuit output, one declared public input):
+ * Public signal ordering (two circuit outputs, one declared public input):
  *   0: commitment   - Poseidon(collateral_satoshis, 0, secret, nonce)
- *   1: merkle_root  - must equal the current on-chain Merkle root at verify time
+ *   1: nullifier    - Poseidon(secret, nonce), recorded as spent on release
+ *   2: merkle_root  - must equal the current on-chain Merkle root at verify time
  *
  * Private signals (never revealed):
  *   collateral_satoshis, secret, nonce, path_elements[20], path_indices[20]
@@ -60,8 +61,12 @@ template ZeroDebtCircuit(DEPTH) {
     // ── Public input ──────────────────────────────────────────────────────────
     signal input merkle_root;
 
-    // ── Public output ─────────────────────────────────────────────────────────
+    // ── Public outputs ────────────────────────────────────────────────────────
     signal output commitment;
+    // Nullifier of this leaf, identical to the one borrow_repay spends for it
+    // (GHSA-w4rp-v54x-2cv3, GHSA-hcjf-8vjc-2hfv). Recording it as spent when the
+    // BTC is released stops the released leaf from being borrowed against again.
+    signal output nullifier;
 
     // ── Step 1: Compute the zero-debt commitment ──────────────────────────────
     // commitment = Poseidon(collateral_satoshis, 0, secret, nonce)
@@ -73,6 +78,11 @@ template ZeroDebtCircuit(DEPTH) {
     commit.inputs[2] <== secret;
     commit.inputs[3] <== nonce;
     commitment <== commit.out;
+
+    component null_hasher = Poseidon(2);
+    null_hasher.inputs[0] <== secret;
+    null_hasher.inputs[1] <== nonce;
+    nullifier <== null_hasher.out;
 
     // ── Step 2: Verify Merkle inclusion ──────────────────────────────────────
     // Proves the commitment above exists in the tree rooted at merkle_root.

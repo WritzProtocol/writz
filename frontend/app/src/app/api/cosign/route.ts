@@ -146,7 +146,7 @@ export async function POST(req: NextRequest) {
     typeof zkProof !== "object" ||
     !zkProof.proof ||
     !Array.isArray(zkProof.publicSignals) ||
-    zkProof.publicSignals.length < 2
+    zkProof.publicSignals.length < 3
   ) {
     return NextResponse.json(
       { error: "zkProof with proof and publicSignals is required" },

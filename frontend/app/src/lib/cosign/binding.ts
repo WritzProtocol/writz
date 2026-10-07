@@ -11,7 +11,7 @@
  */
 
 export interface ReleaseBindingInput {
-  /** zero_debt circuit's publicSignals, in order [commitment, merkle_root]. */
+  /** zero_debt circuit's publicSignals, in order [commitment, nullifier, merkle_root]. */
   publicSignals: string[];
   /** The commitment hex string the caller claims to be releasing. */
   commitmentHex: string;
@@ -43,7 +43,7 @@ export function verifyReleaseBinding(input: ReleaseBindingInput): ReleaseBinding
   }
 
   const onChainRootDecimal = BigInt("0x" + onChainRootHex).toString();
-  if (publicSignals[1] !== onChainRootDecimal) {
+  if (publicSignals[2] !== onChainRootDecimal) {
     return {
       ok: false,
       error:

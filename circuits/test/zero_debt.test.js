@@ -32,7 +32,7 @@ describe('zero_debt circuit', () => {
         expect(valid).toBe(true);
     });
 
-    test('public signals are [commitment, merkle_root], and commitment echoes the real leaf (GHSA-6jmp-wf3x-3vxh, GHSA-9j8g-prh5-jhhj)', async () => {
+    test('public signals are [commitment, nullifier, merkle_root], and commitment echoes the real leaf (GHSA-6jmp-wf3x-3vxh, GHSA-9j8g-prh5-jhhj)', async () => {
         // /api/cosign binds a zero-debt proof to the specific position it's
         // releasing by checking publicSignals[0] against the caller-claimed
         // commitment - without this output, a valid proof carried no
@@ -41,9 +41,9 @@ describe('zero_debt circuit', () => {
         const { commitment, ...tree } = await buildZeroDebtTree();
         const input = zeroDebtInput({ tree });
         const { publicSignals } = await prove('zero_debt', input);
-        expect(publicSignals.length).toBe(2);
+        expect(publicSignals.length).toBe(3);
         expect(BigInt(publicSignals[0])).toBe(commitment);
-        expect(BigInt(publicSignals[1])).toBe(tree.root);
+        expect(BigInt(publicSignals[2])).toBe(tree.root);
     });
 
     test('a commitment with non-zero debt cannot generate a valid proof', async () => {
@@ -82,7 +82,7 @@ describe('zero_debt circuit', () => {
         const input = zeroDebtInput({ tree });
         const { proof, publicSignals } = await prove('zero_debt', input);
         expect(BigInt(publicSignals[0])).toBe(commitment);
-        const tampered = [publicSignals[0], String(BigInt(publicSignals[1]) + 1n)];
+        const tampered = [publicSignals[0], publicSignals[1], String(BigInt(publicSignals[2]) + 1n)];
         const valid = await verify('zero_debt', proof, tampered);
         expect(valid).toBe(false);
     });
@@ -91,8 +91,16 @@ describe('zero_debt circuit', () => {
         const tree = await buildZeroDebtTree();
         const input = zeroDebtInput({ tree });
         const { proof, publicSignals } = await prove('zero_debt', input);
-        const tampered = [String(BigInt(publicSignals[0]) + 1n), publicSignals[1]];
+        const tampered = [String(BigInt(publicSignals[0]) + 1n), publicSignals[1], publicSignals[2]];
         const valid = await verify('zero_debt', proof, tampered);
         expect(valid).toBe(false);
+    });
+
+    test('the nullifier output is Poseidon(secret, nonce), the value borrow_repay spends for this leaf (GHSA-w4rp-v54x-2cv3)', async () => {
+        const tree = await buildZeroDebtTree();
+        const input = zeroDebtInput({ tree });
+        const { publicSignals } = await prove('zero_debt', input);
+        const expected = await poseidonHash([SECRET, NONCE]);
+        expect(BigInt(publicSignals[1])).toBe(expected);
     });
 });
