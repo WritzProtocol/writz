@@ -40,14 +40,16 @@ pub struct RepayEvent {
 
 /// Emitted when a keeper liquidates an undercollateralized position.
 ///
-/// Records that the debt was repaid. It makes no promise about Bitcoin: the
+/// Records that the debt was repaid and the keeper bonus paid from the reserve. It makes no promise about Bitcoin: the
 /// collateral stays under the user's script and the protocol does not move it
-/// (GHSA-5rxp-7f9g-r66x). Keeper compensation is not yet paid.
+/// (GHSA-5rxp-7f9g-r66x).
 #[contractevent(topics = ["liquidate"])]
 pub struct LiquidateEvent {
     #[topic]
-    pub txid:   BytesN<32>,
-    pub keeper: Address,
+    pub txid:       BytesN<32>,
+    pub keeper:     Address,
+    /// USDC bonus paid to the keeper from the protocol reserve (stroops).
+    pub bonus_paid: i128,
 }
 
 /// Emitted when a lender supplies USDC to the pool.

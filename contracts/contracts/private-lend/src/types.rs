@@ -65,6 +65,11 @@ pub struct ProtocolState {
     /// undercollateralization check after `config.keeper_stale_after_secs`.
     /// Explicit `keeper_heartbeat` calls also update this.
     pub last_keeper_heartbeat: u64,
+    /// Protocol reserve in USDC (stroops): the share of accrued interest kept
+    /// back from lenders (`PROTOCOL_FEE_BP`). Pays the keeper's liquidation
+    /// bonus, so the bonus never comes from BTC and never from lender principal
+    /// beyond this reserve (GHSA-5rxp-7f9g-r66x, #193).
+    pub reserve_usdc: i128,
 }
 
 /// Protocol configuration, set at initialization. Most fields are fixed for

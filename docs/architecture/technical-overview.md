@@ -206,7 +206,7 @@ The lending logic that sits above the SPV and ZK layers.
 **Key parameters (to be finalized in Phase 0):**
 - Collateralization ratio: 150% minimum (BTC value must be 1.5x the USDC borrowed)
 - Liquidation threshold: 120% (position liquidated if BTC/USDC ratio drops below this)
-- Liquidation penalty: not yet paid (see the Liquidation section)
+- Liquidation bonus: 10% of debt, paid in USDC from the protocol reserve (funded by 15% of interest), capped at the reserve balance
 - Borrow rate: variable, determined by utilization ratio (similar to Blend/Aave)
 - Supply rate: borrow rate × (1 - protocol fee percentage)
 - Protocol fee: 15% of interest spread (finalized; see `PROTOCOL_FEE_BP` in `contracts/contracts/private-lend/src/rates.rs` and `docs/research/interest-rate-model.md`)
@@ -226,7 +226,7 @@ else:
 - A keeper bot continuously monitors positions (it has access to private position data via operator key)
 - When a position drops below 120% collateralization, the keeper submits a ZK proof that the position is liquidatable - without revealing the specific amounts
 - Anyone can liquidate by providing the proof
-- Liquidator pays USDC; the contract records the liquidation. No BTC is released and no bonus is paid yet (GHSA-5rxp-7f9g-r66x)
+- Liquidator pays USDC and receives a USDC bonus from the protocol reserve; no BTC is released (GHSA-5rxp-7f9g-r66x)
 
 ---
 
@@ -297,7 +297,7 @@ let result = spv.verify_payment(
 2. Keeper generates ZK proof: "this position's health ratio < 120%"
 3. ZK proof verified on-chain (no amounts revealed)
 4. Liquidator pays USDC to cover the loan
-5. Contract records the liquidation. The protocol never moves BTC, so no BTC reaches the liquidator, and no bonus is paid yet.
+5. Contract pays the liquidator a USDC bonus from the reserve (capped at its balance) and records the liquidation. The protocol never moves BTC.
 ```
 
 ---

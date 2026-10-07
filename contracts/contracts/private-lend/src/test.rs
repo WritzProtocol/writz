@@ -1060,6 +1060,12 @@ fn interest_accrues_over_time() {
 
     let pos: Position = s.client.get_position(&txid).unwrap();
     assert!(pos.usdc_debt > borrow, "interest should have accrued after 1 year");
+    // The protocol keeps PROTOCOL_FEE_BP (15%) of accrued interest as reserve.
+    // pos.usdc_debt is after the 1-stroop repay, so add it back for the accrued interest.
+    let interest = pos.usdc_debt + 1 - borrow;
+    let reserve = s.client.get_protocol_state().reserve_usdc;
+    assert!(reserve > 0, "accrual must fund the protocol reserve");
+    assert_eq!(reserve, interest * 1_500 / 10_000);
 }
 
 // ── liquidation ───────────────────────────────────────────────────────────────
@@ -1081,12 +1087,24 @@ fn liquidation_of_undercollateralized_position() {
     s.env.ledger().set_sequence_number(1_000 + 25_000_000);
 
     StellarAssetClient::new(&s.env, &s.usdc).mint(&s.keeper, &10_000_000_000_i128);
+    let token = TokenClient::new(&s.env, &s.usdc);
+    let reserve_before = s.client.get_protocol_state().reserve_usdc;
+    let keeper_before = token.balance(&s.keeper);
+    let debt = s.client.get_position(&txid).unwrap().usdc_debt;
     s.client.liquidate(&s.keeper, &txid);
 
     let pos: Position = s.client.get_position(&txid).unwrap();
     assert_eq!(pos.status, PositionStatus::Liquidated);
     assert_eq!(pos.usdc_debt, 0);
     assert_eq!(s.client.get_protocol_state().total_borrowed, 0);
+
+    // The keeper's bonus comes from the reserve, which accrual fills inside
+    // `liquidate`. Here the reserve is below the 10% bonus, so the cap applies
+    // and the reserve is left empty; the keeper's net outflow stays well
+    // under two times the debt.
+    assert!(reserve_before == 0, "reserve starts empty for this position");
+    assert_eq!(s.client.get_protocol_state().reserve_usdc, 0);
+    assert!(keeper_before - token.balance(&s.keeper) < 2 * debt);
 }
 
 #[test]
