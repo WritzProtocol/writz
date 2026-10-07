@@ -59,7 +59,7 @@ cd contracts
 cargo test
 ```
 
-Expected output: 224 tests pass across `bitcoin-spv` (69), `zk-verifier` (26), `commitment-tree` (33), `private-lend` (87), and `spv-types` (9).
+Expected output: 228 tests pass across `bitcoin-spv` (70), `zk-verifier` (27), `commitment-tree` (34), `private-lend` (88), and `spv-types` (9).
 
 ### Bitcoin script toolkit (TypeScript, Bun)
 
@@ -84,7 +84,7 @@ cd ../../bitcoin-script && bun run build
 cd ../relayer && bun install && bun run test
 ```
 
-Expected output: 196 tests pass.
+Expected output: 205 tests pass.
 
 ### ZK circuits (Circom + snarkjs, npm)
 
@@ -98,7 +98,7 @@ Expected output: 33 tests pass (proof generation, commitment correctness, ratio 
 
 If `verify()` assertions fail here while `prove()` succeeds, your local `circuits/keys/*_final.zkey` (gitignored, regenerated locally) is out of sync with the committed `circuits/keys/*_vkey.json`. Run `bash scripts/compile_all.sh && bash scripts/setup_dev.sh` to regenerate both together from a fresh dev trusted setup, then re-run `npm test`.
 
-### All together: 513 tests, all passing.
+### All together: 526 tests, all passing.
 
 ---
 

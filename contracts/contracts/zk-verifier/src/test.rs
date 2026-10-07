@@ -74,26 +74,17 @@ fn setup() -> (Env, Address, ZkVerifierContractClient<'static>) {
     let env = Env::default();
     env.mock_all_auths();
     let admin = Address::generate(&env);
-    let contract_id = env.register(ZkVerifierContract, ());
+    let contract_id = env.register(ZkVerifierContract, (admin.clone(),));
     let client = ZkVerifierContractClient::new(&env, &contract_id);
-    client.initialize(&admin);
     (env, admin, client)
 }
 
 // ── Initialization ────────────────────────────────────────────────────────────
 
 #[test]
-fn initialize_succeeds() {
+fn constructor_sets_admin() {
     let (_env, _admin, _client) = setup();
     // No panic = success.
-}
-
-#[test]
-#[should_panic]
-fn initialize_twice_panics() {
-    let (env, _, client) = setup();
-    let second_admin = Address::generate(&env);
-    client.initialize(&second_admin);
 }
 
 // ── Verification key management ───────────────────────────────────────────────
@@ -118,9 +109,8 @@ fn set_verification_key_emits_vk_rotated_event_with_zero_old_hash_on_first_set()
     let env = Env::default();
     env.mock_all_auths();
     let admin = Address::generate(&env);
-    let contract_id = env.register(ZkVerifierContract, ());
+    let contract_id = env.register(ZkVerifierContract, (admin.clone(),));
     let client = ZkVerifierContractClient::new(&env, &contract_id);
-    client.initialize(&admin);
 
     let vk = build_vk(&env);
     client.set_verification_key(&admin, &CircuitId::Deposit, &vk);
@@ -145,9 +135,8 @@ fn set_verification_key_emits_vk_rotated_event_with_prior_hash_on_rotation() {
     let env = Env::default();
     env.mock_all_auths();
     let admin = Address::generate(&env);
-    let contract_id = env.register(ZkVerifierContract, ());
+    let contract_id = env.register(ZkVerifierContract, (admin.clone(),));
     let client = ZkVerifierContractClient::new(&env, &contract_id);
-    client.initialize(&admin);
 
     let vk1 = build_vk(&env);
     client.set_verification_key(&admin, &CircuitId::Deposit, &vk1);

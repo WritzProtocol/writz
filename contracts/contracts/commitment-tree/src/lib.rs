@@ -76,13 +76,14 @@ pub struct CommitmentTreeContract;
 impl CommitmentTreeContract {
     // ── Initialization ────────────────────────────────────────────────────────
 
-    /// One-time contract initialization.
+    /// Runs exactly once, atomically, as part of deployment (`__constructor`) -
+    /// see GHSA-422m-f73x-fh58.
     ///
     /// Stores the admin, external contract addresses, and protocol parameters.
     /// Initializes the on-chain Merkle root to the depth-20 Poseidon empty-tree
     /// root so that the first borrow proof's `old_root` can be independently
     /// verified off-chain without any trusted setup.
-    pub fn initialize(
+    pub fn __constructor(
         env: Env,
         admin: Address,
         spv_contract: Address,
@@ -91,10 +92,7 @@ impl CommitmentTreeContract {
         oracle: Address,
         min_confirmations: u32,
         zk_vault_script_pubkey: Bytes,
-    ) -> Result<(), CommitmentTreeError> {
-        if env.storage().instance().has(&DataKey::Config) {
-            return Err(CommitmentTreeError::AlreadyInitialized);
-        }
+    ) {
         env.storage().instance().set(
             &DataKey::Config,
             &Config {
@@ -119,7 +117,6 @@ impl CommitmentTreeContract {
             NULLIFIER_THRESHOLD,
             NULLIFIER_BUMP,
         );
-        Ok(())
     }
 
     // ── Deposit ───────────────────────────────────────────────────────────────

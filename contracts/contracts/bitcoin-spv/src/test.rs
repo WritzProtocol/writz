@@ -179,10 +179,9 @@ fn new_light_at<'a>(
     env.mock_all_auths();
     env.ledger().set_timestamp(LEDGER_NOW);
 
-    let id = env.register(BitcoinSpvContract, ());
-    let client = BitcoinSpvContractClient::new(env, &id);
     let admin = Address::generate(env);
-    client.initialize(&admin, &EASY_TEST_BITS);
+    let id = env.register(BitcoinSpvContract, (admin.clone(), EASY_TEST_BITS));
+    let client = BitcoinSpvContractClient::new(env, &id);
     client.set_checkpoint(
         &admin,
         &cp_height,
@@ -198,12 +197,13 @@ fn new_light(env: &Env) -> Light<'_> {
     new_light_at(env, CP_HEIGHT, EASY_TEST_BITS, T0, T0)
 }
 
-/// A freshly registered client with no `initialize`/`set_checkpoint` calls -
-/// for tests exercising the pre-setup error paths.
-fn new_uninitialized_client(env: &Env) -> BitcoinSpvContractClient<'_> {
+/// A registered client with no checkpoint yet - for tests exercising the
+/// pre-checkpoint error paths.
+fn new_client(env: &Env) -> (BitcoinSpvContractClient<'_>, Address) {
     env.ledger().set_timestamp(LEDGER_NOW);
-    let id = env.register(BitcoinSpvContract, ());
-    BitcoinSpvContractClient::new(env, &id)
+    let admin = Address::generate(env);
+    let id = env.register(BitcoinSpvContract, (admin.clone(), EASY_TEST_BITS));
+    (BitcoinSpvContractClient::new(env, &id), admin)
 }
 
 /// Builds a self-consistent scenario on a fresh light client - a block with
@@ -1140,30 +1140,11 @@ fn txid_equals_sha256d_of_raw_tx() {
 // ══════════════════════════════════════════════════════════════════════════════
 
 #[test]
-fn initialize_then_double_initialize_fails() {
+#[should_panic(expected = "invalid pow_limit_bits")]
+fn constructor_rejects_invalid_pow_limit_bits() {
     let env = Env::default();
-    env.mock_all_auths();
-    let client = new_uninitialized_client(&env);
     let admin = Address::generate(&env);
-
-    client.initialize(&admin, &EASY_TEST_BITS);
-    assert_eq!(
-        client.try_initialize(&admin, &EASY_TEST_BITS),
-        Err(Ok(SPVError::AlreadyInitialized)),
-    );
-}
-
-#[test]
-fn initialize_rejects_invalid_pow_limit_bits() {
-    let env = Env::default();
-    env.mock_all_auths();
-    let client = new_uninitialized_client(&env);
-    let admin = Address::generate(&env);
-
-    assert_eq!(
-        client.try_initialize(&admin, &0xff12_3456u32),
-        Err(Ok(SPVError::InvalidDifficultyBits)),
-    );
+    env.register(BitcoinSpvContract, (admin, 0xff12_3456u32));
 }
 
 #[test]
@@ -1210,10 +1191,8 @@ fn set_checkpoint_twice_fails() {
 fn set_checkpoint_by_non_admin_fails() {
     let env = Env::default();
     env.mock_all_auths();
-    let client = new_uninitialized_client(&env);
-    let admin = Address::generate(&env);
+    let (client, _admin) = new_client(&env);
     let rando = Address::generate(&env);
-    client.initialize(&admin, &EASY_TEST_BITS);
 
     assert_eq!(
         client.try_set_checkpoint(
@@ -1229,32 +1208,10 @@ fn set_checkpoint_by_non_admin_fails() {
 }
 
 #[test]
-fn set_checkpoint_before_initialize_fails() {
-    let env = Env::default();
-    env.mock_all_auths();
-    let client = new_uninitialized_client(&env);
-    let admin = Address::generate(&env);
-
-    assert_eq!(
-        client.try_set_checkpoint(
-            &admin,
-            &0u32,
-            &BytesN::<32>::from_array(&env, &[0u8; 32]),
-            &EASY_TEST_BITS,
-            &T0,
-            &T0,
-        ),
-        Err(Ok(SPVError::NotInitialized)),
-    );
-}
-
-#[test]
 fn set_checkpoint_rejects_invalid_bits() {
     let env = Env::default();
     env.mock_all_auths();
-    let client = new_uninitialized_client(&env);
-    let admin = Address::generate(&env);
-    client.initialize(&admin, &EASY_TEST_BITS);
+    let (client, admin) = new_client(&env);
 
     assert_eq!(
         client.try_set_checkpoint(
@@ -1273,9 +1230,9 @@ fn set_checkpoint_rejects_invalid_bits() {
 fn set_checkpoint_rejects_bits_easier_than_pow_limit_and_bad_period_start() {
     let env = Env::default();
     env.mock_all_auths();
-    let client = new_uninitialized_client(&env);
     let admin = Address::generate(&env);
-    client.initialize(&admin, &0x2007_ffffu32);
+    let id = env.register(BitcoinSpvContract, (admin.clone(), 0x2007_ffffu32));
+    let client = BitcoinSpvContractClient::new(&env, &id);
     let hash = BytesN::<32>::from_array(&env, &[0u8; 32]);
 
     assert_eq!(
@@ -1292,10 +1249,8 @@ fn set_checkpoint_rejects_bits_easier_than_pow_limit_and_bad_period_start() {
 fn set_admin_by_admin_succeeds() {
     let env = Env::default();
     env.mock_all_auths();
-    let client = new_uninitialized_client(&env);
-    let admin = Address::generate(&env);
+    let (client, admin) = new_client(&env);
     let new_admin = Address::generate(&env);
-    client.initialize(&admin, &EASY_TEST_BITS);
 
     client.set_admin(&admin, &new_admin);
 
@@ -1312,10 +1267,8 @@ fn set_admin_by_admin_succeeds() {
 fn set_admin_by_non_admin_fails() {
     let env = Env::default();
     env.mock_all_auths();
-    let client = new_uninitialized_client(&env);
-    let admin = Address::generate(&env);
+    let (client, _admin) = new_client(&env);
     let rando = Address::generate(&env);
-    client.initialize(&admin, &EASY_TEST_BITS);
 
     assert_eq!(
         client.try_set_admin(&rando, &rando),
@@ -1371,7 +1324,7 @@ fn refresh_ttl_does_not_panic_before_any_state_is_set() {
     // entry with `.has()` before extending, so calling it against a
     // freshly-deployed, uninitialized contract must be a no-op, not a panic.
     let env = Env::default();
-    let client = new_uninitialized_client(&env);
+    let (client, _admin) = new_client(&env);
     client.refresh_ttl();
 }
 
@@ -1387,29 +1340,10 @@ fn refresh_ttl_keeps_the_light_client_readable() {
 }
 
 #[test]
-fn verify_transaction_before_initialize_fails() {
-    let env = Env::default();
-    let client = new_uninitialized_client(&env);
-
-    assert_eq!(
-        client.try_verify_transaction(
-            &BytesN::<32>::from_array(&env, &[0u8; 32]),
-            &Vec::new(&env),
-            &0,
-            &Bytes::from_slice(&env, b"tx"),
-            &1
-        ),
-        Err(Ok(SPVError::NotInitialized)),
-    );
-}
-
-#[test]
 fn verify_transaction_before_checkpoint_set_fails() {
     let env = Env::default();
     env.mock_all_auths();
-    let client = new_uninitialized_client(&env);
-    let admin = Address::generate(&env);
-    client.initialize(&admin, &EASY_TEST_BITS);
+    let (client, _admin) = new_client(&env);
 
     assert_eq!(
         client.try_verify_transaction(
@@ -1424,16 +1358,13 @@ fn verify_transaction_before_checkpoint_set_fails() {
 }
 
 #[test]
-fn submit_headers_before_initialize_or_checkpoint_fails() {
+fn submit_headers_before_checkpoint_fails() {
     let env = Env::default();
     env.mock_all_auths();
-    let client = new_uninitialized_client(&env);
+    let (client, _admin) = new_client(&env);
     let header = mine_valid_header(&env, &CP_HASH, &[1u8; 32], T0 + 1);
     let sdk = to_sdk_headers(&env, &[header]);
 
-    assert_eq!(client.try_submit_headers(&sdk), Err(Ok(SPVError::NotInitialized)));
-
-    client.initialize(&Address::generate(&env), &EASY_TEST_BITS);
     assert_eq!(client.try_submit_headers(&sdk), Err(Ok(SPVError::CheckpointNotSet)));
 }
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Redeploy the production commitment-tree to testnet with the new enc_note
- * interface (#18): deploy + initialize + supply pool. No demo position is
+ * interface (#18): deploy (constructor-initialized) + supply pool. No demo position is
  * inserted, so the on-chain tree starts empty and the relayer leaf store can be
  * reset to match. Prints the new contract id + wasm hash for the .env wiring.
  *
@@ -12,6 +12,7 @@ import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { deployWithConstructor } from './constructor_deploy.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '../..');
@@ -137,68 +138,31 @@ async function invoke(contractId, method, args) {
   }
 }
 
-async function deployContractOnce(wasm) {
-  const account = await server.getAccount(keypair.publicKey());
-  const uploadTx = new TransactionBuilder(account, { fee: '1000000', networkPassphrase: NETWORK })
-    .addOperation(StellarSdk.Operation.uploadContractWasm({ wasm }))
-    .setTimeout(30)
-    .build();
-  const uploadSim = await server.simulateTransaction(uploadTx);
-  if (SorobanRpc.Api.isSimulationError(uploadSim)) throw new Error(`Upload sim failed: ${JSON.stringify(uploadSim.error)}`);
-  const wasmHash = uploadSim.result?.retval?.bytes?.();
-  if (!wasmHash) throw new Error('No WASM hash from sim');
-  const uploadPrep = SorobanRpc.assembleTransaction(uploadTx, uploadSim).build();
-  uploadPrep.sign(keypair);
-  const uploadSend = await server.sendTransaction(uploadPrep);
-  await waitForTx(uploadSend.hash);
-
-  const account2 = await server.getAccount(keypair.publicKey());
-  const deployTx = new TransactionBuilder(account2, { fee: '1000000', networkPassphrase: NETWORK })
-    .addOperation(StellarSdk.Operation.createCustomContract({
-      wasmHash,
-      address: Address.fromString(keypair.publicKey()),
-      salt: crypto.randomBytes(32),
-    }))
-    .setTimeout(30)
-    .build();
-  const deploySim = await server.simulateTransaction(deployTx);
-  if (SorobanRpc.Api.isSimulationError(deploySim)) throw new Error(`Deploy sim failed: ${JSON.stringify(deploySim.error)}`);
-  const retVal = deploySim.result?.retval;
-  if (!retVal || retVal.switch().name !== 'scvAddress') throw new Error('Deploy sim did not return address');
-  const contractId = StellarSdk.StrKey.encodeContract(retVal.address().contractId());
-  const deployPrep = SorobanRpc.assembleTransaction(deployTx, deploySim).build();
-  deployPrep.sign(keypair);
-  const deploySend = await server.sendTransaction(deployPrep);
-  await waitForTx(deploySend.hash);
-  return { contractId, wasmHash: Buffer.from(wasmHash).toString('hex') };
-}
-
-async function deployContract(wasmPath) {
-  const wasm = fs.readFileSync(wasmPath);
-  let lastErr;
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    try { return await deployContractOnce(wasm); }
-    catch (e) { lastErr = e; console.log(`  deploy attempt ${attempt} failed (${e.message}); retrying…`); await new Promise((r) => setTimeout(r, 3000)); }
-  }
-  throw lastErr;
-}
-
 async function main() {
   const wasmPath = path.join(CONTRACTS, 'target/wasm32v1-none/release/commitment_tree.wasm');
   console.log(`\nDeploying ${wasmPath} (${fs.statSync(wasmPath).size} bytes)…`);
-  const { contractId, wasmHash } = await deployContract(wasmPath);
-  console.log(`✓ commitment-tree deployed: ${contractId}`);
-  console.log(`  wasm hash: ${wasmHash}`);
-
-  const init = await invoke(contractId, 'initialize', [
-    addressToScVal(keypair.publicKey()), // admin
-    addressToScVal(SPV_CONTRACT),
-    addressToScVal(ZK_VERIFIER),
-    addressToScVal(USDC_SAC),
-    addressToScVal(keypair.publicKey()), // oracle (stub)
-    u32ToScVal(MIN_CONFIRMATIONS),
-  ]);
-  console.log(`✓ initialized with USDC token ${USDC_SAC} - tx ${init.hash}`);
+  const vaultScriptHex = process.env.ZK_VAULT_SCRIPT_PUBKEY;
+  if (!vaultScriptHex || !/^[0-9a-f]{68}$/i.test(vaultScriptHex)) {
+    throw new Error('ZK_VAULT_SCRIPT_PUBKEY must be the 34-byte (68 hex chars) shared ZK vault scriptPubKey');
+  }
+  // Constructor runs atomically with the deploy - no separate initialize tx
+  // for anyone to front-run (GHSA-422m-f73x-fh58).
+  const contractId = await deployWithConstructor({
+    server,
+    networkPassphrase: NETWORK,
+    keypair,
+    wasm: fs.readFileSync(wasmPath),
+    constructorArgs: [
+      addressToScVal(keypair.publicKey()), // admin
+      addressToScVal(SPV_CONTRACT),
+      addressToScVal(ZK_VERIFIER),
+      addressToScVal(USDC_SAC),
+      addressToScVal(keypair.publicKey()), // oracle (stub)
+      u32ToScVal(MIN_CONFIRMATIONS),
+      StellarSdk.nativeToScVal(Buffer.from(vaultScriptHex, 'hex'), { type: 'bytes' }),
+    ],
+  });
+  console.log(`✓ commitment-tree deployed and configured: ${contractId}`);
 
   const root = await invoke(contractId, 'get_merkle_root', []);
   console.log(`✓ empty merkle root: ${root.result.returnValue?.bytes()?.toString('hex')}`);
@@ -215,7 +179,6 @@ async function main() {
   console.log('REDEPLOY COMPLETE');
   console.log('══════════════════════════════════════');
   console.log(`CONTRACT_ID=${contractId}`);
-  console.log(`WASM_HASH=${wasmHash}`);
   console.log(`INIT_TX=${init.hash}`);
 }
 

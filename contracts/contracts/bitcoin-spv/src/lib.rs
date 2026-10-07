@@ -56,16 +56,15 @@ pub struct BitcoinSpvContract;
 impl BitcoinSpvContract {
     // ── Initialization / admin ───────────────────────────────────────────────
 
-    /// One-time contract initialization. Can only be called once.
+    /// Runs exactly once, atomically, as part of deployment (`__constructor`):
+    /// no separate initialize transaction exists for anyone to front-run
+    /// (GHSA-422m-f73x-fh58).
     ///
     /// `pow_limit_bits` is the tracked network's compact proof-of-work limit
     /// (mainnet `0x1d00ffff`, signet `0x1e0377ae`). Header submission starts
     /// permissionless; call `set_submitter` to restrict it.
-    pub fn initialize(env: Env, admin: Address, pow_limit_bits: u32) -> Result<(), SPVError> {
-        if get_config(&env).is_some() {
-            return Err(SPVError::AlreadyInitialized);
-        }
-        bits_to_target(&env, pow_limit_bits)?;
+    pub fn __constructor(env: Env, admin: Address, pow_limit_bits: u32) {
+        bits_to_target(&env, pow_limit_bits).expect("invalid pow_limit_bits");
         set_config(
             &env,
             &Config {
@@ -74,7 +73,6 @@ impl BitcoinSpvContract {
                 submitter: None,
             },
         );
-        Ok(())
     }
 
     /// Sets the trust-root checkpoint. Admin-gated and callable exactly once:
