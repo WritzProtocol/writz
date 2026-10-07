@@ -17,10 +17,10 @@ Writz uses the **Stellar Foundation's Audit Bank** program, which subsidizes the
 | Criterion | Status |
 |---|---|
 | SCF Build Award received | Pending |
-| Contracts deployed on testnet with passing tests | ✓ Done - 228/228 tests |
+| Contracts deployed on testnet with passing tests | ✓ Done - 241/241 tests |
 | STRIDE threat model completed | v0.1 draft complete - [`docs/security/stride-threat-model.md`](/security/stride-threat-model). Full revision planned before the audit |
 | Self-service security scan completed | Pending - Phase 2 task |
-| Integration tests covering all flows | ✓ Done - e2e_zkflow.js |
+| Integration tests covering all flows | ✓ Done - `scripts/deploy/e2e_local.mjs`, run in CI on a local network |
 | Dataflow diagram produced | Pending - Phase 2 task |
 
 ---
@@ -86,7 +86,7 @@ Before the formal Audit Bank engagement, Writz applies the following:
 - Custom constraint analysis for ZK circuits (circom-specific tooling)
 
 **Test coverage:**
-- 526 tests covering happy paths and error cases
+- 561 tests covering happy paths and error cases
 - End-to-end integration tests covering the full deposit→borrow→repay→liquidate cycle
 - ZK circuit tests verifying proof acceptance for valid inputs and rejection for invalid inputs
 - Bitcoin transaction tests verifying witness construction against real Bitcoin script interpretation

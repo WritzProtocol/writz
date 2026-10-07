@@ -313,7 +313,7 @@ jobs:
           workspaces: contracts
       - name: Build the contracts the run deploys
         working-directory: contracts
-        run: cargo build --release --target wasm32v1-none --locked -p zk-verifier -p bitcoin-spv -p commitment-tree
+        run: cargo build --release --target wasm32v1-none --locked -p zk-verifier -p bitcoin-spv -p commitment-tree -p private-lend
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -455,7 +455,7 @@ jobs:
         run: |
           node -e '
             const fs = require("fs");
-            const EXPECTED = { deposit: 6, borrow_repay: 9, liquidation: 6, zero_debt: 2 };
+            const EXPECTED = { deposit: 7, borrow_repay: 11, liquidation: 6, zero_debt: 4, insert: 5 };
             const manifest = JSON.parse(fs.readFileSync("keys/CEREMONY_MANIFEST.json", "utf8"));
             let failed = false;
             for (const [circuit, entry] of Object.entries(manifest)) {

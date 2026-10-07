@@ -15,11 +15,13 @@ use events::{
 };
 use oracle::get_btc_price_stroops;
 use soroban_sdk::{
-    contract, contractimpl, token, Address, Bytes, BytesN, Env, IntoVal, Symbol, Vec,
+    contract, contractimpl, panic_with_error, token, Address, Bytes, BytesN, Env, IntoVal,
+    Symbol, Vec,
 };
-use spv_types::{btc_parser, SpvVerificationResult};
+use spv_types::{btc_parser, script, SpvVerificationResult};
 use types::{
-    borrow_repay_signals as br, deposit_signals as ds, liquidation_signals as lq, Config,
+    borrow_repay_signals as br, deposit_signals as ds, insert_signals as ins,
+    liquidation_signals as lq, Config,
     DataKey, PoolState, Proof,
 };
 
@@ -52,6 +54,9 @@ pub const BN254_PRIME: [u8; 32] = [
     0x28, 0x33, 0xe8, 0x48, 0x79, 0xb9, 0x70, 0x91,
     0x43, 0xe1, 0xf5, 0x93, 0xf0, 0x00, 0x00, 0x01,
 ];
+
+/// Leaf capacity of the depth-20 commitment tree.
+const MAX_LEAVES: u32 = 1 << 20;
 
 // Each ledger targets a 5-second close time.
 const LEDGERS_PER_DAY: u32 = 17_280;
@@ -91,8 +96,11 @@ impl CommitmentTreeContract {
         usdc_token: Address,
         oracle: Address,
         min_confirmations: u32,
-        zk_vault_script_pubkey: Bytes,
+        protocol_pubkey: BytesN<33>,
     ) {
+        if !script::is_compressed_pubkey(&protocol_pubkey) {
+            panic_with_error!(&env, CommitmentTreeError::InvalidPubkey);
+        }
         env.storage().instance().set(
             &DataKey::Config,
             &Config {
@@ -102,10 +110,11 @@ impl CommitmentTreeContract {
                 usdc_token,
                 oracle,
                 min_confirmations,
-                zk_vault_script_pubkey,
+                protocol_pubkey,
                 min_deposit_satoshis:     10_000,
                 min_collateral_ratio_bp:  15_000,
                 liquidation_threshold_bp: 12_000,
+                max_total_borrowed: 500_000_000_000, // 50,000 USDC, the same launch cap as private-lend
                 paused: false,
             },
         );
@@ -133,11 +142,13 @@ impl CommitmentTreeContract {
     /// 4. **Protocol param** - `signal[MIN_DEPOSIT_SATS]` equals the
     ///    configured minimum.  This prevents generating a proof with a lower
     ///    minimum to sneak in an undersized deposit.
-    /// 4b. **Collateral binding** - `raw_tx` actually pays
-    ///    `Config.zk_vault_script_pubkey`, and `signal[ACTUAL_SATOSHIS]`
-    ///    equals that real amount (the circuit separately binds it to the
-    ///    private `collateral_satoshis`). Without this, the referenced
-    ///    transaction need not pay the protocol anything at all.
+    /// 4b. **Collateral binding** - `raw_tx` actually pays the Writz P2WSH
+    ///    rebuilt from `Config.protocol_pubkey`, `user_pubkey` and
+    ///    `timelock_height` (the timelock bounded to 1,008..=105,000 blocks
+    ///    above the confirming block), and `signal[ACTUAL_SATOSHIS]` equals
+    ///    that real amount (the circuit separately binds it to the private
+    ///    `collateral_satoshis`). Without this, the referenced transaction
+    ///    need not lock anything under the protocol's co-signing key.
     /// 5. **Nullifier freshness** - the nullifier was not previously spent.
     /// 6. **ZK proof** - Groth16 verification via the `zk-verifier` contract.
     ///
@@ -164,6 +175,8 @@ impl CommitmentTreeContract {
         merkle_proof_btc: Vec<BytesN<32>>,
         tx_index: u32,
         raw_tx: Bytes,
+        user_pubkey: BytesN<33>,
+        timelock_height: u32,
         zk_proof: Proof,
         public_signals: Vec<BytesN<32>>,
         enc_note: Bytes,
@@ -172,6 +185,9 @@ impl CommitmentTreeContract {
         let config = Self::load_config(&env)?;
         if config.paused {
             return Err(CommitmentTreeError::Paused);
+        }
+        if !script::is_compressed_pubkey(&user_pubkey) {
+            return Err(CommitmentTreeError::InvalidPubkey);
         }
 
         if public_signals.len() != ds::COUNT as u32 {
@@ -185,6 +201,12 @@ impl CommitmentTreeContract {
             (block_hash, merkle_proof_btc, tx_index, raw_tx.clone(), config.min_confirmations)
                 .into_val(&env),
         );
+
+        // The CLTV escape hatch must be neither instant nor absurdly far
+        // away, measured from the block that confirmed the deposit.
+        if !script::timelock_in_bounds(timelock_height, spv.block_height) {
+            return Err(CommitmentTreeError::InvalidTimelock);
+        }
 
         // 2. Reject duplicate deposits, here and across both lending pools
         //    (GHSA-2975-ggwh-pxw5): consume the txid in the shared registry.
@@ -220,15 +242,25 @@ impl CommitmentTreeContract {
             return Err(CommitmentTreeError::ProtocolParamMismatch);
         }
 
-        // 4b. Collateral binding: parse the real amount this transaction paid
-        //     to the shared ZK vault script, and require the proof's public
-        //     actual_satoshis signal to equal it. The circuit separately
-        //     constrains collateral_satoshis === actual_satoshis, so this
-        //     one check transitively binds the private collateral witness to
-        //     Bitcoin reality - closes GHSA-2hjj-x5wr-4p68, GHSA-xp6j-g2rw-h5g6,
-        //     GHSA-mg4x-cr23-4x3v. Mirrors private-lend's own
-        //     btc_parser::find_p2wsh_output check, now shared via spv-types.
-        let actual_satoshis = btc_parser::find_p2wsh_output(&raw_tx, &config.zk_vault_script_pubkey)
+        // 4b. Collateral binding: rebuild the Writz script this depositor's
+        //     BTC must be locked under, parse the real amount the transaction
+        //     paid to it, and require the proof's public actual_satoshis
+        //     signal to equal it. The circuit separately constrains
+        //     collateral_satoshis === actual_satoshis, so this one check
+        //     transitively binds the private collateral witness to Bitcoin
+        //     reality - closes GHSA-2hjj-x5wr-4p68, GHSA-xp6j-g2rw-h5g6,
+        //     GHSA-mg4x-cr23-4x3v. Same script and parser as private-lend.
+        //
+        //     A per-user script costs the ZK path no privacy: the txid and
+        //     depositor are already public in DepositEvent, and borrow/repay
+        //     never reference the script (#177).
+        let expected_spk = script::p2wsh_script_pubkey(
+            &env,
+            &config.protocol_pubkey,
+            &user_pubkey,
+            timelock_height,
+        );
+        let actual_satoshis = btc_parser::find_p2wsh_output(&raw_tx, &expected_spk)
             .ok_or(CommitmentTreeError::VaultOutputNotFound)?;
         let actual_satoshis_signal =
             sig_u64(&public_signals.get(ds::ACTUAL_SATOSHIS as u32).unwrap());
@@ -262,38 +294,90 @@ impl CommitmentTreeContract {
         env.storage().persistent().set(&pending_key, &spv.txid);
         env.storage().persistent().extend_ttl(&pending_key, PERSISTENT_THRESHOLD, PERSISTENT_BUMP);
 
-        DepositEvent { commitment: commitment.clone(), depositor, txid: spv.txid, nullifier, enc_note }
-            .publish(&env);
+        DepositEvent {
+            commitment: commitment.clone(),
+            depositor,
+            txid: spv.txid,
+            nullifier,
+            user_pubkey,
+            timelock_height,
+            enc_note,
+        }
+        .publish(&env);
 
         Ok(commitment)
     }
 
-    // ── Merkle root management (Phase 1: trusted relayer) ─────────────────────
+    // ── Merkle root management ────────────────────────────────────────────────
 
     /// Insert a pending commitment into the Merkle tree and advance the root.
     ///
-    /// **Phase 1 (trusted admin):** the relayer runs the Poseidon tree off-chain
-    /// with circomlibjs, inserts the commitment at the next available leaf, and
-    /// submits the resulting root here.
+    /// The caller (the relayer, holding the admin key) supplies an `insert`
+    /// circuit proof that `new_root` is the stored root with the commitment
+    /// written into the empty leaf `NextLeafIndex` (#211, GHSA-prw2-j3jx-43qh).
+    /// The admin chooses when to insert, but no longer what the root becomes:
+    /// a compromised admin key or a relayer bug cannot install a root holding
+    /// invented leaves or dropping honest ones.
     ///
-    /// **Phase 2 (planned):** will require a ZK proof of correct insertion
-    /// (using `MerkleTreeUpdater`) making this operation fully trustless.
+    /// # Validations
+    /// * `signal[COMMITMENT]` is a pending deposit commitment.
+    /// * `signal[OLD_ROOT] == stored_root`.
+    /// * `signal[LEAF_INDEX] == NextLeafIndex` (so insertions are sequential
+    ///   and the circuit's empty-slot check can never overwrite a used leaf).
+    /// * Groth16 proof correctness.
     ///
-    /// The commitment must have been previously registered via `deposit`.
+    /// # Public signals (insert circuit)
+    /// | Index | Signal |
+    /// |-------|--------|
+    /// | 0 | `new_root` |
+    /// | 1 | `old_root` |
+    /// | 2 | `commitment` |
+    /// | 3 | `leaf_index` |
     pub fn insert_commitment(
         env: Env,
         caller: Address,
-        commitment: BytesN<32>,
-        new_root: BytesN<32>,
+        zk_proof: Proof,
+        public_signals: Vec<BytesN<32>>,
     ) -> Result<(), CommitmentTreeError> {
         caller.require_auth();
         let config = Self::load_config(&env)?;
         if caller != config.admin {
             return Err(CommitmentTreeError::Unauthorized);
         }
+        if public_signals.len() != ins::COUNT as u32 {
+            return Err(CommitmentTreeError::InvalidZkProof);
+        }
+
+        let commitment = public_signals.get(ins::COMMITMENT as u32).unwrap();
         if !env.storage().persistent().has(&DataKey::PendingCommitment(commitment.clone())) {
             return Err(CommitmentTreeError::CommitmentNotFound);
         }
+        if public_signals.get(ins::OLD_ROOT as u32).unwrap() != Self::stored_root(&env) {
+            return Err(CommitmentTreeError::RootMismatch);
+        }
+
+        let leaf_index = Self::next_leaf_index(&env);
+        if leaf_index >= MAX_LEAVES {
+            return Err(CommitmentTreeError::TreeFull);
+        }
+        // Compare the whole field element, not just its low bytes, so no
+        // other encoding can stand in for this index.
+        let mut expected_index = [0u8; 32];
+        expected_index[28..32].copy_from_slice(&leaf_index.to_be_bytes());
+        if public_signals.get(ins::LEAF_INDEX as u32).unwrap().to_array() != expected_index {
+            return Err(CommitmentTreeError::LeafIndexMismatch);
+        }
+
+        let verified: bool = env.invoke_contract(
+            &config.zk_verifier,
+            &Symbol::new(&env, "verify_insert"),
+            (zk_proof, public_signals.clone()).into_val(&env),
+        );
+        if !verified {
+            return Err(CommitmentTreeError::InvalidZkProof);
+        }
+
+        let new_root = public_signals.get(ins::NEW_ROOT as u32).unwrap();
         env.storage().persistent().remove(&DataKey::PendingCommitment(commitment.clone()));
         env.storage().persistent().set(&DataKey::MerkleRoot, &new_root);
         env.storage().persistent().extend_ttl(
@@ -301,8 +385,9 @@ impl CommitmentTreeContract {
             NULLIFIER_THRESHOLD,
             NULLIFIER_BUMP,
         );
+        env.storage().instance().set(&DataKey::NextLeafIndex, &(leaf_index + 1));
 
-        InsertLeafEvent { new_root, commitment }.publish(&env);
+        InsertLeafEvent { new_root, commitment, leaf_index }.publish(&env);
         Ok(())
     }
 
@@ -422,11 +507,14 @@ impl CommitmentTreeContract {
         let usdc_amount = sig_i128(&public_signals.get(br::DELTA_STROOPS as u32).unwrap())
             .ok_or(CommitmentTreeError::SignalOverflow)?;
 
-        // Check pool liquidity.
+        // Check pool liquidity and the exposure cap.
         let mut pool = Self::load_pool(&env);
         let available = pool.total_supplied.saturating_sub(pool.total_borrowed);
         if usdc_amount > available {
             return Err(CommitmentTreeError::InsufficientLiquidity);
+        }
+        if pool.total_borrowed.saturating_add(usdc_amount) > config.max_total_borrowed {
+            return Err(CommitmentTreeError::ExposureCapExceeded);
         }
 
         // Groth16 proof verification - must come after all signal-level checks
@@ -868,6 +956,24 @@ impl CommitmentTreeContract {
         Ok(())
     }
 
+    /// Sets the ceiling on total outstanding borrows, in USDC stroops. Admin
+    /// only. Lowering it below the current total blocks new borrows without
+    /// touching existing positions.
+    pub fn set_max_total_borrowed(
+        env: Env,
+        caller: Address,
+        max: i128,
+    ) -> Result<(), CommitmentTreeError> {
+        caller.require_auth();
+        let mut config = Self::load_config(&env)?;
+        if caller != config.admin {
+            return Err(CommitmentTreeError::Unauthorized);
+        }
+        config.max_total_borrowed = max;
+        env.storage().instance().set(&DataKey::Config, &config);
+        Ok(())
+    }
+
     /// Pauses or unpauses new deposits/borrows/USDC supply. Admin only.
     ///
     /// A pause never affects existing positions: `repay`, `withdraw_supply`,
@@ -982,6 +1088,12 @@ impl CommitmentTreeContract {
         env.storage().persistent().get(&DataKey::TxCommitment(txid))
     }
 
+    /// Returns the index of the next empty Merkle leaf - the `leaf_index` the
+    /// next insertion proof must target.
+    pub fn get_next_leaf_index(env: Env) -> u32 {
+        Self::next_leaf_index(&env)
+    }
+
     /// Returns true if a commitment is pending Merkle tree insertion.
     pub fn is_commitment_pending(env: Env, commitment: BytesN<32>) -> bool {
         env.storage().persistent().has(&DataKey::PendingCommitment(commitment))
@@ -1009,6 +1121,10 @@ impl CommitmentTreeContract {
         // as it is being used.
         env.storage().instance().extend_ttl(PERSISTENT_THRESHOLD, PERSISTENT_BUMP);
         Ok(config)
+    }
+
+    fn next_leaf_index(env: &Env) -> u32 {
+        env.storage().instance().get(&DataKey::NextLeafIndex).unwrap_or(0)
     }
 
     fn load_pool(env: &Env) -> PoolState {

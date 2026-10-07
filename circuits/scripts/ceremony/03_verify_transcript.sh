@@ -7,7 +7,7 @@
 # access, only the public r1cs, ptau, transcript, and final zkey.
 #
 # Usage: bash scripts/ceremony/03_verify_transcript.sh <circuit> [final.zkey]
-#   circuit:    deposit | borrow_repay | liquidation | zero_debt
+#   circuit:    deposit | borrow_repay | liquidation | zero_debt | insert
 #   final.zkey: defaults to ceremony/<circuit>/<highest-numbered>.zkey
 set -euo pipefail
 

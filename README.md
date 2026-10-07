@@ -28,7 +28,7 @@ No bridge. No custodian. No wrapped tokens. No public balance sheet.
 
 ## This Is Not a Whitepaper
 
-As of August 2026, four contracts are live on Stellar testnet, 526 tests pass, and real Bitcoin transactions have been verified on-chain.
+As of August 2026, four contracts are live on Stellar testnet, 561 tests pass, and real Bitcoin transactions have been verified on-chain.
 
 | What | Status |
 |---|---|
@@ -37,7 +37,7 @@ As of August 2026, four contracts are live on Stellar testnet, 526 tests pass, a
 | P2WSH locking + co-signed BTC release | ✓ Broadcast on Bitcoin Signet |
 | Poseidon Merkle commitment tree | ✓ Root updated on-chain |
 | Full deposit → borrow → repay ZK flow | ✓ 6 sequential testnet transactions |
-| 526 tests across all modules | ✓ All passing |
+| 561 tests across all modules | ✓ All passing |
 
 But a few months ago, it was a whitepaper. Version 1.0 (July 2026) is at [writz.xyz/whitepaper](https://writz.xyz/whitepaper) and archived on Zenodo with the DOI [10.5281/zenodo.23148520](https://doi.org/10.5281/zenodo.23148520).
 
@@ -225,7 +225,7 @@ writz/
 │   └── commitment-tree/     # Generated TypeScript bindings for commitment-tree
 │
 ├── scripts/
-│   ├── deploy/              # Deployment scripts · e2e_zkflow.js · set_vkeys.js
+│   ├── deploy/              # Deployment scripts · deploy_stack.mjs · e2e_local.mjs
 │   └── diagrams/            # Graphviz architecture diagrams (Python)
 │
 └── docs/                    # Full documentation (Mintlify)
@@ -280,13 +280,13 @@ Each module has its own toolchain - there is no unifying root build, and the
 package manager is **not** the same everywhere. Run them from the repo root:
 
 ```bash
-# 1. Soroban contracts - 228 tests
+# 1. Soroban contracts - 241 tests
 cd contracts && cargo test
 
 # 2. Bitcoin script toolkit - 60 tests (Bun's own test runner)
 cd ../bitcoin-script && bun install && bun test
 
-# 3. Relayer service - 205 tests
+# 3. Relayer service - 219 tests
 #    Deps install with Bun, but the suite itself is Jest (ts-jest), so it must
 #    be run through the package script - plain `bun test` picks Bun's runner
 #    instead and fails. The relayer also imports the local @writz/* packages
@@ -295,23 +295,26 @@ cd ../packages/commitment-tree && bun install
 cd ../../bitcoin-script && bun run build
 cd ../relayer && bun install && bun run test
 
-# 4. ZK circuits - 33 tests (npm + Jest; needs circom on PATH)
+# 4. ZK circuits - 41 tests (npm + Jest; needs circom on PATH)
 cd ../circuits && npm install && npm test
 ```
 
-All 526 tests pass. If anything fails, [open an issue](https://github.com/WritzProtocol/writz/issues).
+All 561 tests pass. If anything fails, [open an issue](https://github.com/WritzProtocol/writz/issues).
 
-### Full ZK End-to-End on Soroban Testnet
+### Full ZK End-to-End on a Local Stellar Network
 
-Deploys a fresh commitment-tree and runs the complete deposit → borrow → repay cycle with real Groth16 proofs:
+Deploys all four contracts on a local network and runs deposit → borrow → repay → release with real Groth16 proofs, plus the closed attacks:
 
 ```bash
-WRITZ_DEV_SECRET=<your-testnet-key> node scripts/deploy/e2e_zkflow.js
+docker run -d --rm --name writz-local-stellar -p 8000:8000 \
+  stellar/quickstart:latest --local --enable rpc
+(cd contracts && cargo build --release --target wasm32v1-none --locked)
+(cd circuits && npm ci && npm run compile && npm run setup:dev)
+(cd scripts/deploy && bun install)
+node scripts/deploy/e2e_local.mjs
 ```
 
-Get a free testnet key and fund it with [Stellar Friendbot](https://friendbot.stellar.org).
-
-This needs compiled circuit artifacts and a built contract wasm, neither of which is in git. **Read the [Testnet Runbook](docs/developers/runbook.md) first** - it covers the build chain, the trusted-setup caveat that otherwise makes proofs fail on-chain, the testnet assumptions (XLM stands in for USDC, the Bitcoin transaction is fabricated), and the manual Signet walkthrough for the Bitcoin half.
+No testnet key needed. The [Testnet Runbook](docs/developers/runbook.md) covers the manual Signet walkthrough for the Bitcoin half.
 
 ### Frontend Dev Server
 
@@ -460,7 +463,7 @@ Full documentation lives in [`docs/`](docs/) and is published at **[docs.writz.x
 ## Contributing
 
 1. Fork the repo and create a branch from `main`.
-2. Run the full test suite before opening a PR - all 526 tests must pass.
+2. Run the full test suite before opening a PR - all 561 tests must pass.
 3. For new features, add tests. For bug fixes, add a regression test.
 4. Open a PR with a clear description of what changed and why.
 

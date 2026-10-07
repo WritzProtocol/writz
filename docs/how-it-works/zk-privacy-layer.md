@@ -77,7 +77,7 @@ This is the same technique used by Tornado Cash, Aztec Network, and other ZK pri
 
 ---
 
-## The Three ZK Circuits
+## The ZK Circuits
 
 Writz uses three Circom circuits, each compiled to a Groth16 proof system over the BN254 curve.
 
@@ -150,9 +150,21 @@ Writz uses three Circom circuits, each compiled to a Groth16 proof system over t
 
 ---
 
+### 4. Zero-Debt Release Circuit
+
+Proves a leaf in the tree encodes zero debt, without revealing its collateral or keys. It publishes the leaf's `commitment` and `nullifier`: `commitment-tree::mark_released` spends the nullifier so the leaf can never borrow again, and `/api/cosign` only co-signs the BTC release once that is recorded.
+
+---
+
+### 5. Insertion Circuit
+
+Proves that a new Merkle root is the current root with one commitment written into the next empty leaf. The relayer generates it from public data when a deposit is inserted, and `commitment-tree::insert_commitment` accepts the proof instead of a root, so neither the admin key nor a relayer bug can install a tree with invented or missing leaves (#211).
+
+---
+
 ## Groth16 and Protocol X-Ray
 
-All three circuits use **Groth16** - the most widely deployed ZK proof system, used by Zcash, Tornado Cash, and Stellar's own Private Payments reference implementation.
+All five circuits use **Groth16** - the most widely deployed ZK proof system, used by Zcash, Tornado Cash, and Stellar's own Private Payments reference implementation.
 
 A Groth16 proof is a small constant-size object (3 elliptic curve points, ~128 bytes on BN254) that can be verified in constant time - regardless of the size of the computation being proven.
 
@@ -189,7 +201,7 @@ Groth16 requires a one-time **trusted setup ceremony** - a multi-party computati
 
 The ceremony has two phases:
 1. **Powers of Tau (Phase 1):** A universal setup shared across all circuits. Writz will use the Hermez ceremony artifact (the same trusted setup used by Stellar's own Private Payments reference implementation).
-2. **Phase 2 (circuit-specific):** A separate ceremony for each of Writz's three circuits, incorporating the circuit-specific parameters.
+2. **Phase 2 (circuit-specific):** A separate ceremony for each of Writz's five circuits, incorporating the circuit-specific parameters.
 
 The ceremony requires multiple independent participants. The security guarantee is: as long as at least one participant honestly discards their randomness, the setup is sound. A ceremony with 5+ parties from different organizations and jurisdictions provides strong security.
 

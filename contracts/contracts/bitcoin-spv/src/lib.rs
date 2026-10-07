@@ -144,12 +144,6 @@ impl BitcoinSpvContract {
         Ok(())
     }
 
-    /// Restricts `submit_headers` to `submitter`, or reopens it to everyone
-    /// with `None`. Admin-gated.
-    ///
-    /// Restrict it on signet: signet blocks are authenticated by a block
-    /// signature this contract does not verify, so its proof-of-work alone
-    /// does not prove a header is real.
     /// Registers (or removes) a lending contract allowed to consume deposit
     /// txids. Admin-only. Both lending contracts share one txid registry so
     /// the same Bitcoin output cannot back loans from both pools
@@ -189,6 +183,12 @@ impl BitcoinSpvContract {
         storage::is_consumed(&env, &txid)
     }
 
+    /// Restricts `submit_headers` to `submitter`, or reopens it to everyone
+    /// with `None`. Admin-gated.
+    ///
+    /// Restrict it on signet: signet blocks are authenticated by a block
+    /// signature this contract does not verify, so its proof-of-work alone
+    /// does not prove a header is real.
     pub fn set_submitter(
         env: Env,
         caller: Address,

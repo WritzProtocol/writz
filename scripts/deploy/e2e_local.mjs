@@ -6,6 +6,11 @@
  * verification keys, and runs deposit -> borrow -> repay -> release with real
  * Groth16 proofs generated from the circuits the frontend serves. It also runs
  * the attacks the security remediation closed and expects each to fail:
+ *   - a deposit claiming an output locked to another key, or with a timelock
+ *     outside the allowed window (#177)
+ *   - an admin installing a Merkle root other than the proven insertion (#211)
+ *   - the same Bitcoin txid deposited into a lender that is not a registered
+ *     consumer, and into the second lender after the first (GHSA-2975)
  *   - a borrow proof redirected to another account (GHSA-xxqv, GHSA-mhp9)
  *   - borrowing against a repaid leaf after its release (GHSA-w4rp, GHSA-hcjf)
  *
@@ -62,7 +67,12 @@ const EASY_BITS = 0x207f_ffff;
 const SECRET = 0x5566778811223344n;
 const NONCES = [0x1111n, 0x2222n, 0x3333n, 0x4444n];
 const CHECKPOINT_HEIGHT = 100_000;
-const VAULT_SPK = Buffer.concat([Buffer.from([0x00, 0x20]), Buffer.alloc(32, 0xab)]);
+const DEPOSIT_HEIGHT = CHECKPOINT_HEIGHT + 1;   // the first mined header holds the deposit
+const TIMELOCK = DEPOSIT_HEIGHT + 52_560;      // ~1 year, inside 1,008..=105,000 above it
+// Compressed secp256k1 encodings; the contracts check the prefix, not the point.
+const PROTOCOL_PUBKEY = Buffer.concat([Buffer.from([0x02]), Buffer.alloc(32, 0x11)]);
+const USER_PUBKEY = Buffer.concat([Buffer.from([0x03]), Buffer.alloc(32, 0x22)]);
+const OTHER_PUBKEY = Buffer.concat([Buffer.from([0x02]), Buffer.alloc(32, 0x44)]);
 
 // ── output ───────────────────────────────────────────────────────────────────
 let passed = 0;
@@ -160,6 +170,25 @@ const i128 = (n) => nativeToScVal(n, { type: 'i128' });
 
 // ── Bitcoin helpers ──────────────────────────────────────────────────────────
 const sha256d = (d) => crypto.createHash('sha256').update(crypto.createHash('sha256').update(d).digest()).digest();
+
+/** Minimal Bitcoin script number push, as `spv-types::script` encodes it. */
+function scriptNumber(n) {
+  const le = [];
+  for (let v = n; v > 0; v = Math.floor(v / 256)) le.push(v % 256);
+  if (le[le.length - 1] & 0x80) le.push(0);
+  return Buffer.from([le.length, ...le]);
+}
+
+/** The Writz P2WSH scriptPubKey both lending contracts rebuild on deposit. */
+function writzScriptPubKey(protocolPubkey, userPubkey, timelock) {
+  const push33 = (k) => Buffer.concat([Buffer.from([0x21]), k]);
+  const redeem = Buffer.concat([
+    Buffer.from([0x63]), push33(protocolPubkey), Buffer.from([0xad]), push33(userPubkey), Buffer.from([0xac]),
+    Buffer.from([0x67]), scriptNumber(timelock), Buffer.from([0xb1, 0x75]), push33(userPubkey), Buffer.from([0xac]),
+    Buffer.from([0x68]),
+  ]);
+  return Buffer.concat([Buffer.from([0x00, 0x20]), crypto.createHash('sha256').update(redeem).digest()]);
+}
 
 function buildDepositTx(valueSat, spk) {
   const parts = [
@@ -263,23 +292,32 @@ async function main() {
     ...deployer, wasm: WASM('commitment_tree'),
     constructorArgs: [
       addr(admin.publicKey()), addr(spvId), addr(zkId), addr(nativeSac), addr(admin.publicKey()),
-      u32(6), bytes(VAULT_SPK),
+      u32(6), bytes(PROTOCOL_PUBKEY),
     ],
   });
   ok(`commitment-tree  ${ctId}`);
+  // The oracle is only read by borrow/liquidate, which this run does not call on private-lend.
+  const plId = await deployWithConstructor({
+    ...deployer, wasm: WASM('private_lend'),
+    constructorArgs: [
+      addr(admin.publicKey()), addr(spvId), addr(nativeSac), addr(admin.publicKey()),
+      addr(admin.publicKey()), addr(admin.publicKey()), bytes(PROTOCOL_PUBKEY),
+    ],
+  });
+  ok(`private-lend  ${plId}`);
   const root0 = await simulate(admin, ctId, 'get_merkle_root', []);
   ok('constructor ran in the deploy transaction: the tree starts at the empty root');
   void root0;
 
   step('Verification keys (the committed ones the frontend and contracts share)');
-  for (const [file, circuit] of [['deposit', 'Deposit'], ['borrow_repay', 'BorrowRepay'], ['liquidation', 'Liquidation'], ['zero_debt', 'ZeroDebt']]) {
+  for (const [file, circuit] of [['deposit', 'Deposit'], ['borrow_repay', 'BorrowRepay'], ['liquidation', 'Liquidation'], ['zero_debt', 'ZeroDebt'], ['insert', 'Insert']]) {
     const vk = JSON.parse(fs.readFileSync(path.join(CIRCUITS, 'keys', `${file}_vkey.json`), 'utf8'));
     await invoke(admin, zkId, 'set_verification_key', [addr(admin.publicKey()), circuitIdVal(circuit), vkeyVal(vk)]);
     ok(`${circuit} key registered`);
   }
 
   step('Bitcoin side: a checkpoint, then six mined headers, the first holding the deposit');
-  const rawTx = buildDepositTx(COLLATERAL, VAULT_SPK);
+  const rawTx = buildDepositTx(COLLATERAL, writzScriptPubKey(PROTOCOL_PUBKEY, USER_PUBKEY, TIMELOCK));
   const txid = sha256d(rawTx);
   const now = Math.floor(Date.now() / 1000);
   const checkpointHash = crypto.randomBytes(32);
@@ -312,19 +350,45 @@ async function main() {
     min_deposit_satoshis: MIN_DEPOSIT.toString(), actual_satoshis: COLLATERAL.toString(),
   });
   const commitment0 = H(COLLATERAL, 0n, SECRET, NONCES[0]);
-  await invoke(borrower, ctId, 'deposit', [
+  const depositArgs = (userPubkey, timelock) => [
     addr(borrower.publicKey()), bytes(blockHash), xdr.ScVal.scvVec([]), u32(0), bytes(rawTx),
-    proofVal(dep.proof), signalsVal(dep.publicSignals), bytes(Buffer.alloc(0)),
-  ]);
-  ok('deposit accepted');
+    bytes(userPubkey), u32(timelock), proofVal(dep.proof), signalsVal(dep.publicSignals), bytes(Buffer.alloc(0)),
+  ];
+  await expectError(borrower, ctId, 'deposit', depositArgs(OTHER_PUBKEY, TIMELOCK), 17,
+    'a deposit claiming an output locked to another Bitcoin key');
+  await expectError(borrower, ctId, 'deposit', depositArgs(USER_PUBKEY, DEPOSIT_HEIGHT + 1_007), 21,
+    'a deposit whose timelock opens under 1,008 blocks after confirmation');
+  await invoke(borrower, ctId, 'deposit', depositArgs(USER_PUBKEY, TIMELOCK));
+  ok('deposit to the depositor\'s own Writz script accepted');
   if (!(await simulate(admin, spvId, 'is_deposit_consumed', [bytes(txid)]))) throw new Error('txid was not consumed in the shared registry');
   ok('the deposit txid is now consumed in bitcoin-spv (the lending contract called the registry with real auth)');
 
+  const plDepositArgs = [
+    addr(borrower.publicKey()), bytes(blockHash), xdr.ScVal.scvVec([]), u32(0), bytes(rawTx),
+    bytes(writzScriptPubKey(PROTOCOL_PUBKEY, USER_PUBKEY, TIMELOCK)), u32(TIMELOCK), bytes(USER_PUBKEY),
+  ];
+  await expectError(borrower, plId, 'deposit', plDepositArgs, 27, 'a deposit into a lender bitcoin-spv has not registered');
+  await invoke(admin, spvId, 'set_consumer', [addr(admin.publicKey()), addr(plId), nativeToScVal(true)]);
+  await expectError(borrower, plId, 'deposit', plDepositArgs, 26, 'the same txid deposited into the second lender');
+
   const tree0 = await singleLeafTree(poseidon, commitment0);
-  await invoke(admin, ctId, 'insert_commitment', [
-    addr(admin.publicKey()), bytes(Buffer.from(hex32(commitment0), 'hex')), bytes(Buffer.from(hex32(tree0.root), 'hex')),
-  ]);
-  ok('commitment inserted; the on-chain root is the tree with this leaf');
+  // Leaf 0 of the empty tree: its path is the empty-subtree hashes, which is
+  // exactly the single-leaf tree's path.
+  const emptyRoot = (await singleLeafTree(poseidon, 0n)).root;
+  const ins = await prove('insert', {
+    old_root: emptyRoot.toString(), commitment: commitment0.toString(), leaf_index: '0',
+    path_elements: tree0.pathElements,
+  });
+  if (BigInt(ins.publicSignals[0]) !== tree0.root) throw new Error('insert proof root is not the single-leaf tree root');
+  const forged = [...ins.publicSignals];
+  forged[0] = (BigInt(forged[0]) ^ 1n).toString();
+  await expectError(admin, ctId, 'insert_commitment', [addr(admin.publicKey()), proofVal(ins.proof), signalsVal(forged)], 4,
+    'the admin installing a root other than the proven insertion');
+  await invoke(admin, ctId, 'insert_commitment', [addr(admin.publicKey()), proofVal(ins.proof), signalsVal(ins.publicSignals)]);
+  if ((await simulate(admin, ctId, 'get_merkle_root', [])).toString('hex') !== hex32(tree0.root)) {
+    throw new Error('on-chain root is not the proven single-leaf tree root');
+  }
+  ok('commitment inserted with a proof; the on-chain root is the tree with this leaf');
 
   step('Borrow: bound to its recipient');
   const mine = recipientHalves(borrower.publicKey());

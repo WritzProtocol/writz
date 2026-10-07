@@ -9,7 +9,7 @@
  * Run this only after `03_verify_transcript.sh` has passed for the circuit.
  *
  * Usage: node scripts/ceremony/04_export.js <circuit> <final.zkey>
- *   circuit:    deposit | borrow_repay | liquidation | zero_debt
+ *   circuit:    deposit | borrow_repay | liquidation | zero_debt | insert
  *   final.zkey: path to the verified final zkey (see 03_verify_transcript.sh)
  *
  * Writes:
@@ -42,11 +42,13 @@ const MANIFEST_PATH = path.join(KEYS_DIR, 'CEREMONY_MANIFEST.json');
 // test_vectors.rs. Kept here (not imported from a shared source) since this
 // is the one place a mismatch must hard-fail loudly, rather than silently
 // inherit whatever the dev keys happened to have.
+// IC length is the circuit's public-signal count plus one.
 const EXPECTED_IC_LENGTH = {
-  deposit: 6,
-  borrow_repay: 9,
+  deposit: 7,
+  borrow_repay: 11,
   liquidation: 6,
-  zero_debt: 2,
+  zero_debt: 4,
+  insert: 5,
 };
 
 function sha256File(filePath) {
@@ -128,10 +130,14 @@ function main() {
   console.log(`   1. Publish ${path.basename(finalZkey)} as a GitHub Release asset`);
   console.log(`      (tag: ceremony-${circuit}-v1), then fill in`);
   console.log(`      final_zkey_release_url in ${path.relative(CIRCUITS_DIR, MANIFEST_PATH)}.`);
-  console.log(`   2. Copy the .zkey to frontend/app/public/circuits/${circuit}_final.zkey`);
-  console.log(`      (and frontend/app/src/circuits/${circuit}_vkey.json if this is zero_debt).`);
+  if (circuit === 'insert') {
+    console.log('   2. Copy the .zkey to relayer/circuits/insert_final.zkey (the relayer proves insertions).');
+  } else {
+    console.log(`   2. Copy the .zkey to frontend/app/public/circuits/${circuit}_final.zkey`);
+    console.log(`      (and frontend/app/src/circuits/${circuit}_vkey.json if this is zero_debt).`);
+  }
   console.log('   3. Commit the updated keys/*_vkey.json, ceremony/ transcript, and manifest.');
-  console.log('   4. Run the on-chain rotation (set_verification_key ×3/4, see the');
+  console.log('   4. Run the on-chain rotation (set_verification_key for each circuit, see the');
   console.log('      ceremony README\'s rotation runbook).');
 }
 

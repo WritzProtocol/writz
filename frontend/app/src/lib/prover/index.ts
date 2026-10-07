@@ -93,6 +93,9 @@ export interface DepositInput {
   btc_txid_lo: string;
   btc_txid_hi: string;
   min_deposit_satoshis: string;
+  /** The amount the transaction really paid the deposit script; the circuit
+   * requires it to equal `collateral_satoshis`. */
+  actual_satoshis: string;
 }
 
 export interface BorrowRepayInput {

@@ -11,11 +11,32 @@
 //! OP_ENDIF
 //! ```
 //!
-//! `deposit` derives the expected scriptPubKey from the configured protocol
-//! key, the depositor's key and the timelock, so an output can only count as
-//! collateral if it really is locked under the protocol's co-signing key.
+//! Both lending contracts' `deposit` derive the expected scriptPubKey from
+//! the configured protocol key, the depositor's key and the timelock, so an
+//! output can only count as collateral if it really is locked under the
+//! protocol's co-signing key. Moved here from `private-lend` so
+//! `commitment-tree` checks the exact same script rather than a copy.
 
 use soroban_sdk::{Bytes, BytesN, Env};
+
+/// A deposit's CLTV escape hatch must unlock at least this many Bitcoin blocks
+/// (~7 days) after the block that confirmed the deposit, so it is never an
+/// instant exit for a freshly-deposited position. Matches the safety buffer
+/// in `bitcoin-script`'s `computeTimelock`.
+pub const MIN_TIMELOCK_MARGIN_BLOCKS: u32 = 1_008;
+
+/// ...and at most this many blocks (~2 years) after it, mirroring
+/// `MAX_TIMELOCK_OFFSET` in `bitcoin-script`, so a bad value cannot lock the
+/// user out of the escape hatch for an unreasonable time.
+pub const MAX_TIMELOCK_MARGIN_BLOCKS: u32 = 105_000;
+
+/// True when `timelock_height` lies within the allowed window above the
+/// Bitcoin block that confirmed the deposit.
+pub fn timelock_in_bounds(timelock_height: u32, confirmed_height: u32) -> bool {
+    let earliest = confirmed_height.saturating_add(MIN_TIMELOCK_MARGIN_BLOCKS);
+    let latest = confirmed_height.saturating_add(MAX_TIMELOCK_MARGIN_BLOCKS);
+    timelock_height >= earliest && timelock_height <= latest
+}
 
 const OP_IF: u8 = 0x63;
 const OP_ELSE: u8 = 0x67;

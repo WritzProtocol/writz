@@ -7,13 +7,16 @@ the "toxic waste" and can forge arbitrary valid proofs. Before mainnet, every
 circuit's proving/verification keys must come from a real multi-party
 ceremony.
 
-## Scope: all 4 circuits
+## Scope: all 5 circuits
 
-`deposit`, `borrow_repay`, `liquidation`, and `zero_debt`. `zero_debt`'s
+`deposit`, `borrow_repay`, `liquidation`, `zero_debt` and `insert`. `insert`'s
+verification key decides which Merkle roots `commitment-tree` accepts (#211); a
+forged insertion proof would let leaves with invented collateral into the tree.
+`zero_debt`'s
 verification key gates the cooperative Path A release endpoint
 (`/api/cosign`); a forged zero-debt proof lets an attacker drain a UTXO with
 no BTC ever having been repaid - the same severity class as the other three.
-All four circuits go through this same ceremony process.
+All five circuits go through this same ceremony process.
 
 ## Requirements (from `docs/research/circom-circuit-design.md`)
 
@@ -45,7 +48,7 @@ bash scripts/ceremony/00_fetch_ptau.sh 15
 bash scripts/compile_all.sh
 
 # 3. Coordinator: start each circuit's ceremony (produces 0000.zkey + transcript.json).
-for circuit in deposit borrow_repay liquidation zero_debt; do
+for circuit in deposit borrow_repay liquidation zero_debt insert; do
   bash scripts/ceremony/01_new_zkey.sh "$circuit"
 done
 
@@ -58,12 +61,12 @@ bash scripts/ceremony/02_contribute.sh deposit "<your name>" \
 #    - Publish the output SHA-256 publicly before handing off to the next participant.
 
 # 5. After the last participant, coordinator verifies each circuit:
-for circuit in deposit borrow_repay liquidation zero_debt; do
+for circuit in deposit borrow_repay liquidation zero_debt insert; do
   bash scripts/ceremony/03_verify_transcript.sh "$circuit"
 done
 
 # 6. Coordinator exports each circuit's final verification key + contract shape:
-for circuit in deposit borrow_repay liquidation zero_debt; do
+for circuit in deposit borrow_repay liquidation zero_debt insert; do
   node scripts/ceremony/04_export.js "$circuit" ceremony/"$circuit"/<final>.zkey
 done
 ```
@@ -106,7 +109,8 @@ part of a rotation.
    Soroban supports multiple `InvokeHostFunction` operations per transaction,
    so this is atomic at ledger-close granularity.
 2. In the same deploy window, swap `frontend/app/public/circuits/<circuit>_final.zkey`
-   for each rotated circuit, and - if `zero_debt` was rotated -
+   for each rotated circuit, `relayer/circuits/insert_final.zkey` if `insert`
+   was rotated, and - if `zero_debt` was rotated -
    `frontend/app/src/circuits/zero_debt_vkey.json` (this one is bundled into the
    Next.js build, not fetched at runtime; requires a frontend redeploy, not
    just a static asset swap).

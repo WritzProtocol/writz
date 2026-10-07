@@ -19,7 +19,8 @@
     "commitment-tree": "file:../packages/commitment-tree",
     "express": "^4.19.2",
     "express-rate-limit": "^8.7.0",
-    "poseidon-lite": "^0.3.0"
+    "poseidon-lite": "^0.3.0",
+    "snarkjs": "0.7.6"
   },
   "devDependencies": {
     "@eslint/js": "^9",

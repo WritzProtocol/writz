@@ -32,6 +32,7 @@ compile_circuit deposit
 compile_circuit borrow_repay
 compile_circuit liquidation
 compile_circuit zero_debt
+compile_circuit insert
 
 echo ""
 echo "✅ All circuits compiled."

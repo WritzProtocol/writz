@@ -30,6 +30,10 @@ use soroban_sdk::{contracttype, Address, BytesN, Env};
 /// above describes, applied to a parser instead of a struct.
 pub mod btc_parser;
 
+/// The Writz P2WSH locking script and its timelock bounds, shared by both
+/// lending contracts' deposit checks.
+pub mod script;
+
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SpvVerificationResult {

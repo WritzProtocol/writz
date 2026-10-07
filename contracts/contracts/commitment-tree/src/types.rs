@@ -1,4 +1,4 @@
-use soroban_sdk::{contracttype, Address, Bytes, BytesN};
+use soroban_sdk::{contracttype, Address, BytesN};
 
 // ── Storage keys ──────────────────────────────────────────────────────────────
 
@@ -19,6 +19,9 @@ pub enum DataKey {
     TxCommitment(BytesN<32>),
     /// Per-lender USDC supply balance in stroops.
     SupplyBalance(Address),
+    /// Singleton: index of the next empty Merkle leaf. Every insertion proof
+    /// must target exactly this leaf (#211).
+    NextLeafIndex,
 }
 
 // ── Protocol config ───────────────────────────────────────────────────────────
@@ -32,18 +35,22 @@ pub struct Config {
     pub usdc_token:               Address,
     pub oracle:                   Address,
     pub min_confirmations:        u32,
-    /// The scriptPubKey every ZK deposit must pay - a single script shared
-    /// across every depositor. Immutable per contract, same as
-    /// `private-lend`'s `protocol_pubkey` (see its own doc comment): this
-    /// path's whole point is that positions are anonymous, so (unlike
-    /// `private-lend`, which derives one P2WSH address per user from that
-    /// user's own pubkey) there is no per-depositor script to check against
-    /// without deanonymizing them - GHSA-2hjj-x5wr-4p68, GHSA-xp6j-g2rw-h5g6,
-    /// GHSA-mg4x-cr23-4x3v. Rotating it means a new deployment.
-    pub zk_vault_script_pubkey:   Bytes,
+    /// The protocol's 33-byte compressed Bitcoin co-signing key. Every ZK
+    /// deposit must pay the Writz P2WSH built from this key, the depositor's
+    /// own key and a bounded timelock - the same script `private-lend`
+    /// checks, so the depositor keeps a unilateral timelock exit and the
+    /// protocol can only ever co-sign. Immutable per contract; rotating it
+    /// means a new deployment (#177).
+    pub protocol_pubkey:          BytesN<33>,
     pub min_deposit_satoshis:     u64,
     pub min_collateral_ratio_bp:  u32,
     pub liquidation_threshold_bp: u32,
+    /// Ceiling on `PoolState::total_borrowed`, in USDC stroops. A ZK
+    /// borrower can reclaim their BTC through the timelock exit while still
+    /// owing USDC, and the protocol cannot seize it, so total exposure is
+    /// capped the same way as `private-lend` (GHSA-5rxp). Admin-set via
+    /// `set_max_total_borrowed`.
+    pub max_total_borrowed:       i128,
     /// When true, `deposit`/`borrow`/`supply_usdc` (new risk-taking actions)
     /// are refused. `repay`/`withdraw_supply`/`liquidate` stay open so users
     /// can always exit - a pause is an emergency brake on new exposure, not
@@ -93,6 +100,19 @@ pub struct Proof {
 // These match the public input declaration order in each circom circuit.
 // The contract reads every signal - these constants are all used in lib.rs.
 
+/// Public signals of the insert circuit (`circuits/src/insert.circom`).
+pub mod insert_signals {
+    /// Root after the insertion.
+    pub const NEW_ROOT:   usize = 0;
+    /// Root before the insertion; must equal the stored root.
+    pub const OLD_ROOT:   usize = 1;
+    /// The leaf written into the empty slot; must be a pending deposit.
+    pub const COMMITMENT: usize = 2;
+    /// The slot written; must equal `DataKey::NextLeafIndex`.
+    pub const LEAF_INDEX: usize = 3;
+    pub const COUNT:      usize = 4;
+}
+
 pub mod deposit_signals {
     /// Poseidon(collateral_satoshis, 0, secret, nonce)
     pub const COMMITMENT:       usize = 0;
@@ -104,7 +124,7 @@ pub mod deposit_signals {
     pub const BTC_TXID_HI:     usize = 3;
     /// Protocol minimum deposit in satoshis (must equal Config.min_deposit_satoshis).
     pub const MIN_DEPOSIT_SATS: usize = 4;
-    /// The real BTC amount paid to `Config.zk_vault_script_pubkey`, parsed
+    /// The real BTC amount paid to the depositor's Writz P2WSH, parsed
     /// on-chain from `raw_tx` - `collateral_satoshis === actual_satoshis` is
     /// enforced inside the circuit (GHSA-2hjj-x5wr-4p68, GHSA-xp6j-g2rw-h5g6,
     /// GHSA-mg4x-cr23-4x3v), so the contract only has to check this against
