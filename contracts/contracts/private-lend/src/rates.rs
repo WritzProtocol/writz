@@ -198,3 +198,88 @@ mod tests {
         );
     }
 }
+
+#[cfg(test)]
+mod property_tests {
+    use super::*;
+
+    /// Deterministic 64-bit LCG so the cases are reproducible without a dev-dependency.
+    struct Lcg(u64);
+    impl Lcg {
+        fn next(&mut self) -> u64 {
+            self.0 = self.0.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+            self.0
+        }
+        /// A value in [0, max], biased toward small and boundary values.
+        fn below(&mut self, max: i128) -> i128 {
+            let raw = (self.next() as i128) << 32 | (self.next() as i128 & 0xffff_ffff);
+            let v = raw.rem_euclid(max.max(1) + 1);
+            match self.next() % 8 {
+                0 => 0,
+                1 => max,
+                _ => v,
+            }
+        }
+    }
+
+    const CASES: usize = 20_000;
+
+    #[test]
+    fn borrow_rate_is_bounded_and_monotone_in_utilization() {
+        let mut rng = Lcg(1);
+        let max_rate = SLOPE1_BP + SLOPE2_BP;
+        for _ in 0..CASES {
+            let supplied = rng.below(1i128 << 60).max(1);
+            let borrowed_a = rng.below(supplied);
+            let borrowed_b = rng.below(supplied);
+            let (lo, hi) = if borrowed_a <= borrowed_b { (borrowed_a, borrowed_b) } else { (borrowed_b, borrowed_a) };
+
+            let r_lo = borrow_rate_bp(lo, supplied);
+            let r_hi = borrow_rate_bp(hi, supplied);
+            assert!((0..=max_rate).contains(&r_lo), "rate {} out of bounds", r_lo);
+            assert!(r_lo <= r_hi, "rate fell as utilization rose: {} > {}", r_lo, r_hi);
+        }
+    }
+
+    #[test]
+    fn lenders_never_earn_more_than_borrowers_pay() {
+        let mut rng = Lcg(2);
+        for _ in 0..CASES {
+            let supplied = rng.below(1i128 << 60).max(1);
+            let borrowed = rng.below(supplied);
+            let borrow = borrow_rate_bp(borrowed, supplied);
+            let supply = supply_rate_bp(borrow, borrowed, supplied);
+            assert!(supply >= 0, "negative supply rate");
+            assert!(supply <= borrow, "supply {} exceeds borrow {}", supply, borrow);
+        }
+    }
+
+    #[test]
+    fn interest_is_never_negative_and_grows_with_time() {
+        let mut rng = Lcg(3);
+        for _ in 0..CASES {
+            let debt = rng.below(1i128 << 50);
+            let rate = rng.below(SLOPE1_BP + SLOPE2_BP);
+            let t1 = rng.below(LEDGERS_PER_YEAR * 10);
+            let t2 = t1 + rng.below(LEDGERS_PER_YEAR * 10);
+            let d1 = interest_delta(debt, rate, t1);
+            let d2 = interest_delta(debt, rate, t2);
+            assert!(d1 >= 0, "negative interest");
+            assert!(d1 <= d2, "interest shrank as time passed");
+            assert!(accrue_interest(debt, rate, t1) >= debt);
+        }
+    }
+
+    #[test]
+    fn protocol_share_is_exactly_its_fee_of_interest() {
+        let mut rng = Lcg(4);
+        for _ in 0..CASES {
+            let debt = rng.below(1i128 << 50);
+            let rate = rng.below(SLOPE1_BP + SLOPE2_BP);
+            let t = rng.below(LEDGERS_PER_YEAR);
+            let interest = interest_delta(debt, rate, t);
+            let share = interest.saturating_mul(PROTOCOL_FEE_BP) / BP_SCALE;
+            assert!(share <= interest, "protocol share exceeds interest");
+        }
+    }
+}
