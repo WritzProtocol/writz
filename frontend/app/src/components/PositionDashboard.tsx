@@ -12,6 +12,7 @@ import { createDemoPosition } from "@/lib/flows/demo";
 import { EnableTrustlineButton } from "./EnableTrustlineButton";
 import { POOL_ASSET } from "@/lib/flows/trustline";
 import { proveZeroDebt, type ZeroDebtInput } from "@/lib/prover";
+import { markReleased } from "@/lib/flows/release";
 import { stellarTxUrl, btcTxUrl } from "@/lib/explorer";
 import { TxLink } from "./TxLink";
 import { config } from "@/config";
@@ -402,7 +403,15 @@ function PositionCard({ position }: { position: Position }) {
         path_indices: pathIndices,
         merkle_root: merkleRoot,
       };
-      const { raw: zkRaw } = await proveZeroDebt(zeroDebtInput);
+      const { raw: zkRaw, proof: zkContractProof, publicSignals: zkContractSignals } = await proveZeroDebt(zeroDebtInput);
+
+      setReleaseMessage("Recording the release on-chain…");
+      await markReleased({
+        proof: zkContractProof,
+        publicSignals: zkContractSignals,
+        sender: address,
+        signTransaction,
+      });
 
       setReleaseMessage("Requesting protocol co-signature…");
       const cosignRes = await fetch("/api/cosign", {
