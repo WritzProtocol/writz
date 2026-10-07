@@ -1336,3 +1336,27 @@ fn full_deposit_borrow_repay_cycle() {
     // Either way the debt should be < original borrow.
     assert!(pos.usdc_debt < borrow_amount);
 }
+
+// GHSA-5rxp-7f9g-r66x (#193): total borrowing is capped, so a price crash that
+// leaves unliquidatable debt is bounded by the cap.
+#[test]
+fn borrow_past_exposure_cap_fails() {
+    let s = setup();
+    let txid = setup_with_supply_and_deposit(&s, 10_000_000_000_i128);
+    s.client.set_max_total_borrowed(&s.admin, &400_000_000_i128);
+    assert_eq!(
+        s.client.try_borrow(&s.depositor, &txid, &500_000_000_i128),
+        Err(Ok(PrivateLendError::ExposureCapExceeded)),
+    );
+    s.client.borrow(&s.depositor, &txid, &400_000_000_i128);
+}
+
+#[test]
+fn set_max_total_borrowed_by_non_admin_fails() {
+    let s = setup();
+    let stranger = Address::generate(&s.env);
+    assert_eq!(
+        s.client.try_set_max_total_borrowed(&stranger, &1_i128),
+        Err(Ok(PrivateLendError::Unauthorized)),
+    );
+}
