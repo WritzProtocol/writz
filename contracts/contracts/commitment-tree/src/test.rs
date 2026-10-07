@@ -524,6 +524,18 @@ fn setup_integration() -> IntegrationSetup {
         ic: liq_ic,
     });
 
+    let zd_ic: Vec<zk_verifier::G1Point> = Vec::from_array(&env, [
+        zk_g1(&env, &iv::ZERO_DEBT_IC_0), zk_g1(&env, &iv::ZERO_DEBT_IC_1),
+        zk_g1(&env, &iv::ZERO_DEBT_IC_2), zk_g1(&env, &iv::ZERO_DEBT_IC_3),
+    ]);
+    zk_client.set_verification_key(&admin, &zk_verifier::CircuitId::ZeroDebt, &zk_verifier::VerificationKey {
+        alpha_g1: zk_g1(&env, &iv::ZERO_DEBT_VK_ALPHA_G1),
+        beta_g2:  zk_g2(&env, &iv::ZERO_DEBT_VK_BETA_G2),
+        gamma_g2: zk_g2(&env, &iv::ZERO_DEBT_VK_GAMMA_G2),
+        delta_g2: zk_g2(&env, &iv::ZERO_DEBT_VK_DELTA_G2),
+        ic: zd_ic,
+    });
+
     let ct_id = env.register(CommitmentTreeContract, (admin.clone(), spv.clone(), zk_id.clone(), usdc.clone(), oracle.clone(), 6u32, vault_spk(&env)));
     let client = CommitmentTreeContractClient::new(&env, &ct_id);
     // min_confirmations=6, matching the fixed 6-confirmation policy elsewhere.
@@ -584,6 +596,19 @@ fn repay_signals(env: &Env) -> Vec<BytesN<32>> {
         sig32(env, &iv::REPAY_SIGNAL_4), sig32(env, &iv::REPAY_SIGNAL_5),
         sig32(env, &iv::REPAY_SIGNAL_6), sig32(env, &iv::REPAY_SIGNAL_7),
         sig32(env, &iv::REPAY_SIGNAL_8), sig32(env, &iv::REPAY_SIGNAL_9),
+    ])
+}
+fn zero_debt_proof(env: &Env) -> Proof {
+    Proof {
+        pi_a: ct_g1(env, &iv::ZERO_DEBT_PI_A),
+        pi_b: ct_g2(env, &iv::ZERO_DEBT_PI_B),
+        pi_c: ct_g1(env, &iv::ZERO_DEBT_PI_C),
+    }
+}
+fn zero_debt_signals(env: &Env) -> Vec<BytesN<32>> {
+    Vec::from_array(env, [
+        sig32(env, &iv::ZERO_DEBT_SIGNAL_0), sig32(env, &iv::ZERO_DEBT_SIGNAL_1),
+        sig32(env, &iv::ZERO_DEBT_SIGNAL_2),
     ])
 }
 fn liquidate_proof(env: &Env) -> Proof {
@@ -752,3 +777,48 @@ fn liquidate_undercollateralized_position() {
     assert!(s.client.is_nullifier_spent(&nullifier));
 }
 
+/// GHSA-w4rp-v54x-2cv3 / GHSA-hcjf-8vjc-2hfv: a repaid position's zero-debt
+/// leaf must not be borrowable once its BTC is released. The re-borrow proof
+/// is valid against the current root, so only the released nullifier stops it.
+#[test]
+fn released_zero_debt_leaf_cannot_be_borrowed_again() {
+    let s = setup_integration();
+    let block_hash = BytesN::<32>::from_array(&s.env, &[0xadu8; 32]);
+    let empty_proof: Vec<BytesN<32>> = Vec::new(&s.env);
+    let empty_bytes = Bytes::new(&s.env);
+    let recipient = borrow_recipient(&s.env);
+
+    StellarAssetClient::new(&s.env, &s.usdc).mint(&s.supplier, &10_000_000_000_i128);
+    s.client.supply_usdc(&s.supplier, &10_000_000_000_i128);
+    let raw_tx = build_deposit_tx(&s.env, 1_000_000, &vault_spk(&s.env));
+    let commitment = s.client.deposit(
+        &s.depositor, &block_hash, &empty_proof, &0u32, &raw_tx,
+        &deposit_proof(&s.env), &deposit_signals(&s.env), &empty_bytes,
+    );
+    s.client.insert_commitment(&s.admin, &commitment, &sig32(&s.env, &iv::BORROW_SIGNAL_3));
+    s.client.borrow(&recipient, &borrow_proof(&s.env), &borrow_signals(&s.env), &empty_bytes);
+    s.client.repay(&recipient, &repay_proof(&s.env), &repay_signals(&s.env), &empty_bytes);
+
+    let reborrow_proof = Proof {
+        pi_a: ct_g1(&s.env, &iv::RELEASED_BORROW_PI_A),
+        pi_b: ct_g2(&s.env, &iv::RELEASED_BORROW_PI_B),
+        pi_c: ct_g1(&s.env, &iv::RELEASED_BORROW_PI_C),
+    };
+    let reborrow_signals = Vec::from_array(&s.env, [
+        sig32(&s.env, &iv::RELEASED_BORROW_SIGNAL_0), sig32(&s.env, &iv::RELEASED_BORROW_SIGNAL_1),
+        sig32(&s.env, &iv::RELEASED_BORROW_SIGNAL_2), sig32(&s.env, &iv::RELEASED_BORROW_SIGNAL_3),
+        sig32(&s.env, &iv::RELEASED_BORROW_SIGNAL_4), sig32(&s.env, &iv::RELEASED_BORROW_SIGNAL_5),
+        sig32(&s.env, &iv::RELEASED_BORROW_SIGNAL_6), sig32(&s.env, &iv::RELEASED_BORROW_SIGNAL_7),
+        sig32(&s.env, &iv::RELEASED_BORROW_SIGNAL_8), sig32(&s.env, &iv::RELEASED_BORROW_SIGNAL_9),
+    ]);
+
+    // Release first: it spends the zero-debt nullifier. The same borrow then fails.
+    let zd_nullifier = sig32(&s.env, &iv::ZERO_DEBT_SIGNAL_1);
+    assert!(!s.client.is_nullifier_spent(&zd_nullifier));
+    s.client.mark_released(&zero_debt_proof(&s.env), &zero_debt_signals(&s.env));
+    assert!(s.client.is_nullifier_spent(&zd_nullifier));
+    assert_eq!(
+        s.client.try_borrow(&recipient, &reborrow_proof, &reborrow_signals, &empty_bytes),
+        Err(Ok(crate::error::CommitmentTreeError::NullifierAlreadySpent)),
+    );
+}

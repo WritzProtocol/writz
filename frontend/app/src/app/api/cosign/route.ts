@@ -146,7 +146,7 @@ export async function POST(req: NextRequest) {
     typeof zkProof !== "object" ||
     !zkProof.proof ||
     !Array.isArray(zkProof.publicSignals) ||
-    zkProof.publicSignals.length < 2
+    zkProof.publicSignals.length < 3
   ) {
     return NextResponse.json(
       { error: "zkProof with proof and publicSignals is required" },
@@ -185,8 +185,12 @@ export async function POST(req: NextRequest) {
     const commitmentBuf = Buffer.from(commitmentHex, "hex");
 
     // Fetch on-chain state and verify the ZK proof in parallel.
-    let isPending: boolean, proofValid: boolean;
-    [{ result: isPending }, onChainRootHex, depositTxid, proofValid] =
+    const nullifierBuf = Buffer.from(
+      BigInt(zkProof.publicSignals[1]).toString(16).padStart(64, "0"),
+      "hex",
+    );
+    let isPending: boolean, proofValid: boolean, isReleased: boolean;
+    [{ result: isPending }, onChainRootHex, depositTxid, proofValid, { result: isReleased }] =
       await Promise.all([
         client.is_commitment_pending({ commitment: commitmentBuf }),
         getMerkleRoot(),
@@ -198,7 +202,17 @@ export async function POST(req: NextRequest) {
           zkProof.publicSignals,
           zkProof.proof,
         ),
+        client.is_nullifier_spent({ nullifier: nullifierBuf }),
       ]);
+
+    // The release must be recorded on-chain before BTC moves: borrow() then
+    // rejects this leaf (GHSA-w4rp-v54x-2cv3, GHSA-hcjf-8vjc-2hfv).
+    if (!isReleased) {
+      return NextResponse.json(
+        { error: "Release is not recorded on-chain yet - call mark_released first" },
+        { status: 403 },
+      );
+    }
 
     if (isPending) {
       return NextResponse.json(

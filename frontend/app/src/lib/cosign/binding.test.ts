@@ -6,12 +6,13 @@ const OTHER_COMMITMENT_HEX = "cd".repeat(32);
 const ROOT_HEX = "ef".repeat(32);
 const COMMITMENT_DECIMAL = BigInt("0x" + COMMITMENT_HEX).toString();
 const ROOT_DECIMAL = BigInt("0x" + ROOT_HEX).toString();
+const NULLIFIER_DECIMAL = "12345";
 const REAL_TXID = Buffer.alloc(32, 0x11);
 const OTHER_TXID = Buffer.alloc(32, 0x22);
 
 function validInput(): ReleaseBindingInput {
   return {
-    publicSignals: [COMMITMENT_DECIMAL, ROOT_DECIMAL],
+    publicSignals: [COMMITMENT_DECIMAL, NULLIFIER_DECIMAL, ROOT_DECIMAL],
     commitmentHex: COMMITMENT_HEX,
     onChainRootHex: ROOT_HEX,
     depositTxid: REAL_TXID,
@@ -29,7 +30,7 @@ describe("verifyReleaseBinding", () => {
     // debt-free position (OTHER_COMMITMENT_HEX), but claims it releases a
     // different, still-indebted position (COMMITMENT_HEX).
     const input = validInput();
-    input.publicSignals = [BigInt("0x" + OTHER_COMMITMENT_HEX).toString(), ROOT_DECIMAL];
+    input.publicSignals = [BigInt("0x" + OTHER_COMMITMENT_HEX).toString(), NULLIFIER_DECIMAL, ROOT_DECIMAL];
     const result = verifyReleaseBinding(input);
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error).toMatch(/different position/);
@@ -56,7 +57,7 @@ describe("verifyReleaseBinding", () => {
 
   it("rejects a stale proof whose merkle_root no longer matches the chain", () => {
     const input = validInput();
-    input.publicSignals = [COMMITMENT_DECIMAL, BigInt("0x" + ROOT_HEX).toString() + "1"];
+    input.publicSignals = [COMMITMENT_DECIMAL, NULLIFIER_DECIMAL, BigInt("0x" + ROOT_HEX).toString() + "1"];
     const result = verifyReleaseBinding(input);
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error).toMatch(/merkle_root/);

@@ -464,6 +464,54 @@ impl CommitmentTreeContract {
         Ok(())
     }
 
+    // ── Release ───────────────────────────────────────────────────────────────
+
+    /// Records that a fully repaid position's BTC has been released, by
+    /// spending the zero-debt leaf's nullifier (GHSA-w4rp-v54x-2cv3,
+    /// GHSA-hcjf-8vjc-2hfv). After this, `borrow` on that leaf fails its
+    /// nullifier check.
+    ///
+    /// Permissionless: the zero-debt proof needs the position's secret and
+    /// nonce, so only its owner can produce one.
+    ///
+    /// Public signals (zero_debt circuit): [commitment, nullifier, merkle_root].
+    pub fn mark_released(
+        env: Env,
+        zk_proof: Proof,
+        public_signals: Vec<BytesN<32>>,
+    ) -> Result<(), CommitmentTreeError> {
+        let config = Self::load_config(&env)?;
+        if config.paused {
+            return Err(CommitmentTreeError::Paused);
+        }
+        if public_signals.len() != 3 {
+            return Err(CommitmentTreeError::InvalidZkProof);
+        }
+
+        let nullifier = public_signals.get(1).unwrap();
+        let root_sig = public_signals.get(2).unwrap();
+        if root_sig != Self::stored_root(&env) {
+            return Err(CommitmentTreeError::RootMismatch);
+        }
+        if env.storage().persistent().has(&DataKey::SpentNullifier(nullifier.clone())) {
+            return Err(CommitmentTreeError::NullifierAlreadySpent);
+        }
+
+        let verified: bool = env.invoke_contract(
+            &config.zk_verifier,
+            &Symbol::new(&env, "verify_zero_debt"),
+            (zk_proof, public_signals).into_val(&env),
+        );
+        if !verified {
+            return Err(CommitmentTreeError::InvalidZkProof);
+        }
+
+        let key = DataKey::SpentNullifier(nullifier.clone());
+        env.storage().persistent().set(&key, &true);
+        env.storage().persistent().extend_ttl(&key, NULLIFIER_THRESHOLD, NULLIFIER_BUMP);
+        Ok(())
+    }
+
     // ── Repay ─────────────────────────────────────────────────────────────────
 
     /// Repay USDC debt on a ZK position.

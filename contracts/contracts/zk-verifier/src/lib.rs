@@ -152,6 +152,20 @@ impl ZkVerifierContract {
         Self::verify_for_circuit(&env, CircuitId::BorrowRepay, proof, public_signals)
     }
 
+    /// Verify a Groth16 proof for the zero-debt release circuit.
+    ///
+    /// Public signals (in order):
+    ///   [0] commitment  - the zero-debt leaf being released
+    ///   [1] nullifier   - Poseidon(secret, nonce); recorded as spent on release
+    ///   [2] merkle_root - must match the on-chain root
+    pub fn verify_zero_debt(
+        env: Env,
+        proof: Proof,
+        public_signals: Vec<BytesN<32>>,
+    ) -> Result<bool, ZkVerifierError> {
+        Self::verify_for_circuit(&env, CircuitId::ZeroDebt, proof, public_signals)
+    }
+
     /// Verify a Groth16 proof for the liquidation circuit.
     ///
     /// Public signals (in order):

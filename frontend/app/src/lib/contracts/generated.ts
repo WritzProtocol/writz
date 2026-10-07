@@ -354,6 +354,20 @@ export interface Client {
   supply_usdc: ({supplier, amount}: {supplier: string, amount: i128}, options?: MethodOptions) => Promise<AssembledTransaction<Result<void>>>
 
   /**
+   * Construct and simulate a mark_released transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   * Records that a fully repaid position's BTC has been released, by
+   * spending the zero-debt leaf's nullifier (GHSA-w4rp-v54x-2cv3,
+   * GHSA-hcjf-8vjc-2hfv). After this, `borrow` on that leaf fails its
+   * nullifier check.
+   * 
+   * Permissionless: the zero-debt proof needs the position's secret and
+   * nonce, so only its owner can produce one.
+   * 
+   * Public signals (zero_debt circuit): [commitment, nullifier, merkle_root].
+   */
+  mark_released: ({zk_proof, public_signals}: {zk_proof: Proof, public_signals: Array<Buffer>}, options?: MethodOptions) => Promise<AssembledTransaction<Result<void>>>
+
+  /**
    * Construct and simulate a get_commitment transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
    * Returns the commitment for a Bitcoin txid, or None if not deposited.
    */
@@ -522,6 +536,7 @@ export class Client extends ContractClient {
         "AAAAAAAAAUpQYXVzZXMgb3IgdW5wYXVzZXMgbmV3IGRlcG9zaXRzL2JvcnJvd3MvVVNEQyBzdXBwbHkuIEFkbWluIG9ubHkuCgpBIHBhdXNlIG5ldmVyIGFmZmVjdHMgZXhpc3RpbmcgcG9zaXRpb25zOiBgcmVwYXlgLCBgd2l0aGRyYXdfc3VwcGx5YCwKYW5kIGBsaXF1aWRhdGVgIGFsbCBpZ25vcmUgYENvbmZpZzo6cGF1c2VkYCBieSBkZXNpZ24sIHNvIHVzZXJzIGNhbgphbHdheXMgZXhpdC4gVGhpcyBpcyBhbiBlbWVyZ2VuY3kgYnJha2Ugb24gbmV3IGV4cG9zdXJlLCBub3QgYSBmcmVlemUKLSBzZWUgYGRvY3MvYXJjaGl0ZWN0dXJlL2NvbnRyYWN0LW1pZ3JhdGlvbi1ydW5ib29rLm1kYC4AAAAAAApzZXRfcGF1c2VkAAAAAAACAAAAAAAAAAZjYWxsZXIAAAAAABMAAAAAAAAABnBhdXNlZAAAAAAAAQAAAAEAAAPpAAAAAgAAB9AAAAATQ29tbWl0bWVudFRyZWVFcnJvcgA=",
         "AAAAAAAAAPtMZW5kZXIgc3VwcGxpZXMgVVNEQyB0byB0aGUgcG9vbCB0byBlYXJuIHlpZWxkIGZyb20gYm9ycm93ZXIgaW50ZXJlc3QuCgpFYWNoIHN1cHBsaWVyJ3MgYmFsYW5jZSBpcyB0cmFja2VkIGluZGl2aWR1YWxseSB1bmRlcgpgRGF0YUtleTo6U3VwcGx5QmFsYW5jZShzdXBwbGllcilgIHNvIHRoYXQgYHdpdGhkcmF3X3N1cHBseWAgY2FuIGVuZm9yY2UKdGhhdCBubyBzdXBwbGllciB3aXRoZHJhd3MgbW9yZSB0aGFuIHRoZXkgZGVwb3NpdGVkLgAAAAALc3VwcGx5X3VzZGMAAAAAAgAAAAAAAAAIc3VwcGxpZXIAAAATAAAAAAAAAAZhbW91bnQAAAAAAAsAAAABAAAD6QAAAAIAAAfQAAAAE0NvbW1pdG1lbnRUcmVlRXJyb3IA",
         "AAAAAAAAAWdSdW5zIGV4YWN0bHkgb25jZSwgYXRvbWljYWxseSwgYXMgcGFydCBvZiBkZXBsb3ltZW50IChgX19jb25zdHJ1Y3RvcmApIC0Kc2VlIEdIU0EtNDIybS1mNzN4LWZoNTguCgpTdG9yZXMgdGhlIGFkbWluLCBleHRlcm5hbCBjb250cmFjdCBhZGRyZXNzZXMsIGFuZCBwcm90b2NvbCBwYXJhbWV0ZXJzLgpJbml0aWFsaXplcyB0aGUgb24tY2hhaW4gTWVya2xlIHJvb3QgdG8gdGhlIGRlcHRoLTIwIFBvc2VpZG9uIGVtcHR5LXRyZWUKcm9vdCBzbyB0aGF0IHRoZSBmaXJzdCBib3Jyb3cgcHJvb2YncyBgb2xkX3Jvb3RgIGNhbiBiZSBpbmRlcGVuZGVudGx5CnZlcmlmaWVkIG9mZi1jaGFpbiB3aXRob3V0IGFueSB0cnVzdGVkIHNldHVwLgAAAAANX19jb25zdHJ1Y3RvcgAAAAAAAAcAAAAAAAAABWFkbWluAAAAAAAAEwAAAAAAAAAMc3B2X2NvbnRyYWN0AAAAEwAAAAAAAAALemtfdmVyaWZpZXIAAAAAEwAAAAAAAAAKdXNkY190b2tlbgAAAAAAEwAAAAAAAAAGb3JhY2xlAAAAAAATAAAAAAAAABFtaW5fY29uZmlybWF0aW9ucwAAAAAAAAQAAAAAAAAAFnprX3ZhdWx0X3NjcmlwdF9wdWJrZXkAAAAAAA4AAAAA",
+        "AAAAAAAAAYtSZWNvcmRzIHRoYXQgYSBmdWxseSByZXBhaWQgcG9zaXRpb24ncyBCVEMgaGFzIGJlZW4gcmVsZWFzZWQsIGJ5CnNwZW5kaW5nIHRoZSB6ZXJvLWRlYnQgbGVhZidzIG51bGxpZmllciAoR0hTQS13NHJwLXY1NHgtMmN2MywKR0hTQS1oY2pmLTh2amMtMmhmdikuIEFmdGVyIHRoaXMsIGBib3Jyb3dgIG9uIHRoYXQgbGVhZiBmYWlscyBpdHMKbnVsbGlmaWVyIGNoZWNrLgoKUGVybWlzc2lvbmxlc3M6IHRoZSB6ZXJvLWRlYnQgcHJvb2YgbmVlZHMgdGhlIHBvc2l0aW9uJ3Mgc2VjcmV0IGFuZApub25jZSwgc28gb25seSBpdHMgb3duZXIgY2FuIHByb2R1Y2Ugb25lLgoKUHVibGljIHNpZ25hbHMgKHplcm9fZGVidCBjaXJjdWl0KTogW2NvbW1pdG1lbnQsIG51bGxpZmllciwgbWVya2xlX3Jvb3RdLgAAAAANbWFya19yZWxlYXNlZAAAAAAAAAIAAAAAAAAACHprX3Byb29mAAAH0AAAAAVQcm9vZgAAAAAAAAAAAAAOcHVibGljX3NpZ25hbHMAAAAAA+oAAAPuAAAAIAAAAAEAAAPpAAAAAgAAB9AAAAATQ29tbWl0bWVudFRyZWVFcnJvcgA=",
         "AAAAAAAAAERSZXR1cm5zIHRoZSBjb21taXRtZW50IGZvciBhIEJpdGNvaW4gdHhpZCwgb3IgTm9uZSBpZiBub3QgZGVwb3NpdGVkLgAAAA5nZXRfY29tbWl0bWVudAAAAAAAAQAAAAAAAAAEdHhpZAAAA+4AAAAgAAAAAQAAA+gAAAPuAAAAIA==",
         "AAAAAAAAADtSZXR1cm5zIGAodG90YWxfc3VwcGxpZWQsIHRvdGFsX2JvcnJvd2VkKWAgaW4gVVNEQyBzdHJvb3BzLgAAAAAOZ2V0X3Bvb2xfc3RhdGUAAAAAAAAAAAABAAAD7QAAAAIAAAALAAAACw==",
         "AAAAAAAAAElSZXR1cm5zIHRoZSBjdXJyZW50IFBvc2VpZG9uIE1lcmtsZSByb290IG9mIHRoZSBwb3NpdGlvbiBjb21taXRtZW50IHRyZWUuAAAAAAAAD2dldF9tZXJrbGVfcm9vdAAAAAAAAAAAAQAAA+4AAAAg",
@@ -565,6 +580,7 @@ export class Client extends ContractClient {
         set_oracle: this.txFromJSON<Result<void>>,
         set_paused: this.txFromJSON<Result<void>>,
         supply_usdc: this.txFromJSON<Result<void>>,
+        mark_released: this.txFromJSON<Result<void>>,
         get_commitment: this.txFromJSON<Option<Buffer>>,
         get_pool_state: this.txFromJSON<readonly [i128, i128]>,
         get_merkle_root: this.txFromJSON<Buffer>,
