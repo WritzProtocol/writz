@@ -40,6 +40,9 @@ impl MockSpv {
             confirmations: 6,
         }
     }
+
+    /// The shared registry is tested in bitcoin-spv; this mock only accepts the call.
+    pub fn consume_deposit(_env: Env, _consumer: Address, _txid: BytesN<32>) {}
 }
 
 // ── Mock Reflector oracle ──────────────────────────────────────────────────

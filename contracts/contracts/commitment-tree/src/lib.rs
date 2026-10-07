@@ -186,10 +186,16 @@ impl CommitmentTreeContract {
                 .into_val(&env),
         );
 
-        // 2. Reject duplicate deposits.
+        // 2. Reject duplicate deposits, here and across both lending pools
+        //    (GHSA-2975-ggwh-pxw5): consume the txid in the shared registry.
         if env.storage().persistent().has(&DataKey::TxCommitment(spv.txid.clone())) {
             return Err(CommitmentTreeError::DuplicateDeposit);
         }
+        env.invoke_contract::<()>(
+            &config.spv_contract,
+            &Symbol::new(&env, "consume_deposit"),
+            (env.current_contract_address(), spv.txid.clone()).into_val(&env),
+        );
 
         // 3. Txid binding: the ZK proof must commit to this exact Bitcoin txid.
         //

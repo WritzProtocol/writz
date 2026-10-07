@@ -19,6 +19,10 @@ pub enum DataKey {
     Header(BytesN<32>),
     /// Block hash of the most-work chain at a given height.
     Canonical(u32),
+    /// Lending contracts allowed to consume deposit txids.
+    Consumer(soroban_sdk::Address),
+    /// Deposit txids already consumed by a lending contract (GHSA-2975-ggwh-pxw5).
+    Consumed(BytesN<32>),
 }
 
 // Each ledger targets a 5-second close time.
@@ -160,3 +164,28 @@ pub fn refresh_ttl(env: &Env) {
         }
     }
 }
+
+// ── Shared deposit registry ───────────────────────────────────────────────────
+
+pub fn is_consumer(env: &Env, consumer: &soroban_sdk::Address) -> bool {
+    let key = DataKey::Consumer(consumer.clone());
+    env.storage().persistent().get(&key).unwrap_or(false)
+}
+
+pub fn set_consumer(env: &Env, consumer: &soroban_sdk::Address, allowed: bool) {
+    let key = DataKey::Consumer(consumer.clone());
+    env.storage().persistent().set(&key, &allowed);
+    env.storage().persistent().extend_ttl(&key, PERSISTENT_THRESHOLD, PERSISTENT_BUMP);
+}
+
+pub fn is_consumed(env: &Env, txid: &BytesN<32>) -> bool {
+    let key = DataKey::Consumed(txid.clone());
+    env.storage().persistent().has(&key)
+}
+
+pub fn set_consumed(env: &Env, txid: &BytesN<32>) {
+    let key = DataKey::Consumed(txid.clone());
+    env.storage().persistent().set(&key, &true);
+    env.storage().persistent().extend_ttl(&key, PERSISTENT_THRESHOLD, PERSISTENT_BUMP);
+}
+

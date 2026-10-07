@@ -150,6 +150,45 @@ impl BitcoinSpvContract {
     /// Restrict it on signet: signet blocks are authenticated by a block
     /// signature this contract does not verify, so its proof-of-work alone
     /// does not prove a header is real.
+    /// Registers (or removes) a lending contract allowed to consume deposit
+    /// txids. Admin-only. Both lending contracts share one txid registry so
+    /// the same Bitcoin output cannot back loans from both pools
+    /// (GHSA-2975-ggwh-pxw5).
+    pub fn set_consumer(
+        env: Env,
+        caller: Address,
+        consumer: Address,
+        allowed: bool,
+    ) -> Result<(), SPVError> {
+        caller.require_auth();
+        let config = get_config(&env).ok_or(SPVError::NotInitialized)?;
+        if caller != config.admin {
+            return Err(SPVError::Unauthorized);
+        }
+        storage::set_consumer(&env, &consumer, allowed);
+        Ok(())
+    }
+
+    /// Marks a deposit txid as consumed by a lending contract. Fails if the
+    /// caller is not a registered consumer or the txid was already consumed.
+    /// Called by each lending contract's `deposit` after its own checks.
+    pub fn consume_deposit(env: Env, consumer: Address, txid: BytesN<32>) -> Result<(), SPVError> {
+        consumer.require_auth();
+        if !storage::is_consumer(&env, &consumer) {
+            return Err(SPVError::NotAConsumer);
+        }
+        if storage::is_consumed(&env, &txid) {
+            return Err(SPVError::TxidAlreadyConsumed);
+        }
+        storage::set_consumed(&env, &txid);
+        Ok(())
+    }
+
+    /// Returns whether a deposit txid has already been consumed.
+    pub fn is_deposit_consumed(env: Env, txid: BytesN<32>) -> bool {
+        storage::is_consumed(&env, &txid)
+    }
+
     pub fn set_submitter(
         env: Env,
         caller: Address,

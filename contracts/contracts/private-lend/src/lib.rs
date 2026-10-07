@@ -196,10 +196,16 @@ impl PrivateLendContract {
             return Err(PrivateLendError::InvalidTimelock);
         }
 
-        // 2. Reject duplicate deposits.
+        // 2. Reject duplicate deposits, here and across both lending pools
+        //    (GHSA-2975-ggwh-pxw5): consume the txid in the shared registry.
         if get_position(&env, &txid).is_some() {
             return Err(PrivateLendError::PositionAlreadyExists);
         }
+        env.invoke_contract::<()>(
+            &config.spv_contract,
+            &Symbol::new(&env, "consume_deposit"),
+            (env.current_contract_address(), txid.clone()).into_val(&env),
+        );
 
         // 3. Parse the raw transaction on-chain to find the P2WSH output.
         let btc_satoshis =
