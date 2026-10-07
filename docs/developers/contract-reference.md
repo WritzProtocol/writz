@@ -325,6 +325,14 @@ Updates the zk-verifier contract address used for ZK proof verification. Admin o
 pub fn set_zk_verifier(caller: Address, new_zk_verifier: Address) -> Result<(), CommitmentTreeError>
 ```
 
+### `set_max_total_borrowed`
+
+Sets the ceiling on total outstanding borrows, in USDC stroops. Admin only. Lowering it below the current total blocks new borrows without touching existing positions.
+
+```rust
+pub fn set_max_total_borrowed(caller: Address, max: i128) -> Result<(), CommitmentTreeError>
+```
+
 ### `set_paused`
 
 Pauses or unpauses new deposits/borrows/USDC supply. Admin only.
