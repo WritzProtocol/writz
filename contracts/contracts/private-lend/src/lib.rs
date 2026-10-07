@@ -440,9 +440,9 @@ impl PrivateLendContract {
     /// On success:
     /// - The caller's USDC covers the outstanding debt.
     /// - The position is marked `Liquidated`.
-    /// - A `liquidate` event is emitted containing the caller's address and
-    ///   the P2WSH scriptPubKey.  The Writz backend co-signs the Bitcoin
-    ///   release to the caller at a 10% discount (liquidation bonus in BTC).
+    /// - A `liquidate` event is emitted with the position txid and the
+    ///   caller's address. It does not release any Bitcoin: the collateral
+    ///   stays under the user's script (GHSA-5rxp-7f9g-r66x).
     /// - If the caller is the designated keeper, `last_keeper_heartbeat` is
     ///   refreshed (a keeper that successfully liquidates is provably alive).
     ///
@@ -497,12 +497,7 @@ impl PrivateLendContract {
         set_position(&env, &txid, &pos);
         set_protocol(&env, &proto);
 
-        LiquidateEvent {
-            txid,
-            keeper,
-            p2wsh_script_pubkey:  pos.p2wsh_script_pubkey,
-            liquidation_bonus_bp: config.liquidation_bonus_bp,
-        }
+        LiquidateEvent { txid, keeper }
         .publish(&env);
 
         Ok(())
