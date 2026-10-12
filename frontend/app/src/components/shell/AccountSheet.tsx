@@ -6,7 +6,7 @@ import { BTC_NETWORK_LABEL, config } from "@/config";
 import { networkName } from "@/lib/wallet/precheck";
 import { formatBtc, shortAddress } from "@/lib/borrow/journey";
 import { btcAddressUrl, stellarAccountUrl } from "@/lib/explorer";
-import { BTC_FAUCETS, DOCS_URL, GITHUB_ISSUES_URL, GITHUB_SECURITY_URL, RECLAIM_DOCS_URL } from "@/lib/links";
+import { BTC_FAUCETS, DOCS_URL, GITHUB_ISSUES_URL, GITHUB_SECURITY_URL } from "@/lib/links";
 import { ErrorBox, ExternalLink, Notice } from "@/components/redesign/ui";
 import { useShellAccount, type ShellAccount } from "./account";
 
@@ -251,9 +251,7 @@ export function AccountSheetBody() {
         <ExternalLink href={DOCS_URL} className="">
           Docs
         </ExternalLink>
-        <ExternalLink href={RECLAIM_DOCS_URL} className="">
-          How to reclaim
-        </ExternalLink>
+        <Link href="/help/reclaim">How to reclaim</Link>
       </nav>
 
       <section className="sh-section sh-links" aria-labelledby="sh-help">

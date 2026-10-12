@@ -7,7 +7,7 @@ import { btcTxUrl, stellarTxUrl } from "@/lib/explorer";
 import { hashOf, isInFlight, type FlowState } from "@/lib/flow/engine";
 import { formatBtc, formatUsd, formatUsdc, shortAddress } from "@/lib/borrow/journey";
 import { releaseBlocker } from "@/lib/flows/release";
-import { LIQUIDATION_DOCS_URL, RECLAIM_DOCS_URL } from "@/lib/links";
+import { LIQUIDATION_DOCS_URL } from "@/lib/links";
 import {
   RELEASE_STEPS,
   afterState,
@@ -150,7 +150,7 @@ function BlockRef({ height }: { height: number | null }) {
   return height === null ? <>its timelock block</> : <>block <span className="mono">{height.toLocaleString("en-US")}</span></>;
 }
 
-export function WayOut({ height, date, reclaimable }: { height: number | null; date: string | null; reclaimable: boolean }) {
+export function WayOut({ n, height, date, reclaimable }: { n: number; height: number | null; date: string | null; reclaimable: boolean }) {
   return (
     <section className="ln-out" aria-labelledby="way-out">
       <h2 id="way-out" className="wz-label">
@@ -168,7 +168,9 @@ export function WayOut({ height, date, reclaimable }: { height: number | null; d
             {date ? `, about ${date}` : ""}.{" "}
           </>
         )}
-        <ExternalLink href={RECLAIM_DOCS_URL}>How to reclaim</ExternalLink>
+        <Link href={`/help/reclaim?loan=${n}`} className="wz-link">
+          How to reclaim
+        </Link>
       </p>
     </section>
   );
@@ -821,7 +823,9 @@ export function MissingDetails({ m, height }: { m: LoanModel; height: number | n
         <li>Or import your loan backup on this device.</li>
         <li>
           Or, after <BlockRef height={height} />, reclaim the BTC alone.{" "}
-          <ExternalLink href={RECLAIM_DOCS_URL}>How to reclaim</ExternalLink>
+          <Link href={`/help/reclaim?loan=${m.n}`} className="wz-link">
+            How to reclaim
+          </Link>
         </li>
       </ul>
       {m.importState.error ? <ErrorBox error={m.importState.error} label="Backup not imported" /> : null}

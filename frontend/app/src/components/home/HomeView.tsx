@@ -4,7 +4,7 @@ import Link from "next/link";
 import { config } from "@/config";
 import { shortAddress } from "@/lib/borrow/journey";
 import { homeHeadline, pickUrgent, sortLoans } from "@/lib/home/model";
-import { DOCS_URL, RECLAIM_DOCS_URL } from "@/lib/links";
+import { DOCS_URL } from "@/lib/links";
 import { networkName } from "@/lib/wallet/precheck";
 import { useRefreshStatus } from "@/lib/status/provider";
 import { ExternalLink, Notice } from "@/components/redesign/ui";
@@ -175,9 +175,7 @@ export function HomeView({ data }: { data: HomeData }) {
 
       <nav className="hm-foot" aria-label="Footer">
         <Link href="/protocol">Protocol stats</Link>
-        <ExternalLink href={RECLAIM_DOCS_URL} className="">
-          How to reclaim
-        </ExternalLink>
+        <Link href="/help/reclaim">How to reclaim</Link>
         <ExternalLink href={DOCS_URL} className="">
           Docs
         </ExternalLink>
