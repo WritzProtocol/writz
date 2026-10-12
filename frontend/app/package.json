@@ -20,7 +20,7 @@
     "@stellar/stellar-sdk": "^16.0.1",
     "bitcoinjs-lib": "^6.1.7",
     "ecpair": "^2.1.0",
-    "framer-motion": "^12.43.0",
+    "motion": "^12.43.0",
     "lucide-react": "^1.28.0",
     "next": "16.2.9",
     "poseidon-lite": "^0.3.0",
