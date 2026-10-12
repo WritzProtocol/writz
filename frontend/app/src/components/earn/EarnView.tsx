@@ -99,7 +99,7 @@ export function EarnView({ m }: { m: EarnModel }) {
       <div className="fu-notes">
         <p>Blend test USDC is a different asset from the USDC you borrow.</p>
         <p>The vault carries Blend&apos;s lending risk.</p>
-        <Link href="/metrics" className="wz-link">
+        <Link href="/protocol" className="wz-link">
           See vault stats
         </Link>
       </div>

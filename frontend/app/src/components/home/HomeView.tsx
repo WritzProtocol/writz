@@ -174,7 +174,7 @@ export function HomeView({ data }: { data: HomeData }) {
       {!hasLoans ? <HowALoanWorks /> : null}
 
       <nav className="hm-foot" aria-label="Footer">
-        <Link href="/metrics">Protocol stats</Link>
+        <Link href="/protocol">Protocol stats</Link>
         <ExternalLink href={RECLAIM_DOCS_URL} className="">
           How to reclaim
         </ExternalLink>
