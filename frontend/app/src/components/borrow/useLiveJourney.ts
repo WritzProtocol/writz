@@ -5,7 +5,7 @@ import { Horizon, NotFoundError } from "@stellar/stellar-sdk";
 import { config } from "@/config";
 import { useWallet } from "@/lib/wallet/WalletProvider";
 import { useBitcoinWallet } from "@/lib/bitcoin/useBitcoinWallet";
-import { deriveP2WSH } from "@/lib/bitcoin/address";
+import { useDepositLock } from "@/lib/bitcoin/useDepositLock";
 import { ensureKit } from "@/lib/wallet/kit";
 import { networkName } from "@/lib/wallet/precheck";
 import { useFlow, useTxLockState } from "@/lib/flow/useFlow";
@@ -236,14 +236,10 @@ export function useLiveJourney(): JourneyModel {
   }, [btcAddress, balanceNonce]);
   const balance = forKey(balanceRead, btcAddress ? `${btcAddress}:${balanceNonce}` : null);
 
-  const p2wsh = useMemo(() => {
-    if (!config.bitcoin.protocolPubkey || !b.btcPubkey) return null;
-    try {
-      return deriveP2WSH(config.bitcoin.protocolPubkey, b.btcPubkey, config.bitcoin.timelockHeight).address;
-    } catch {
-      return null;
-    }
-  }, [b.btcPubkey]);
+  const depositLock = useDepositLock(b.btcPubkey);
+  const lock = depositLock.kind === "ready" ? depositLock.lock : null;
+  const p2wsh = lock?.p2wsh ?? null;
+  const timelockHeight = pending?.timelockHeight ?? lock?.timelockHeight ?? null;
 
   const sats = pending ? BigInt(pending.sats) : confirmedSats(ui);
   const bitcoinReady =
@@ -265,19 +261,19 @@ export function useLiveJourney(): JourneyModel {
       live = false;
     };
   }, []);
-  const blocksLeft = chainCtx?.tip != null ? config.bitcoin.timelockHeight - chainCtx.tip : null;
+  const blocksLeft = chainCtx?.tip != null && timelockHeight !== null ? timelockHeight - chainCtx.tip : null;
 
   // ── Actions ──
   const unavailable = !config.bitcoin.protocolPubkey || !config.services.relayerUrl || !config.contracts.commitmentTree;
 
   const send = useCallback(async () => {
-    if (!address || !b.btcPubkey || !p2wsh || !sats || pending) return;
+    if (!address || !b.btcPubkey || !lock || !sats || pending) return;
     setAction("send");
     emit({ type: "start" });
     try {
       const pd = await startDepositBySending({
         owner: address,
-        p2wsh,
+        lock,
         btcPubkey: b.btcPubkey,
         usedIndices: positionsSnapshot(address).map((p) => p.index),
         emit,
@@ -290,7 +286,7 @@ export function useLiveJourney(): JourneyModel {
       emit({ type: "failed", error: e });
       ui.bumpSlide();
     }
-  }, [address, b.btcPubkey, b.sendBtc, p2wsh, sats, pending, emit, ui]);
+  }, [address, b.btcPubkey, b.sendBtc, lock, sats, pending, emit, ui]);
 
   const register = useCallback(async () => {
     if (!address || !w.seed || !pending) return;
@@ -332,26 +328,25 @@ export function useLiveJourney(): JourneyModel {
   const checkTxid = useCallback(async () => {
     const txid = ui.txid.trim().toLowerCase();
     if (!TXID.test(txid)) return ui.setTxidCheck({ kind: "invalid" });
-    if (!p2wsh) return;
+    if (!b.btcPubkey) return;
     ui.setTxidCheck({ kind: "checking" });
     try {
-      const out = await depositDeps.findOutput(txid, p2wsh);
+      const out = await depositDeps.locateDeposit(txid, b.btcPubkey);
       if (out === "no_output") ui.setTxidCheck({ kind: "no_output" });
       else if (out === "unseen") ui.setTxidCheck({ kind: "error", error: new Error("Bitcoin hasn't seen this transaction yet.") });
       else ui.setTxidCheck({ kind: "found", sats: out.sats });
     } catch (error) {
       ui.setTxidCheck({ kind: "error", error });
     }
-  }, [ui, p2wsh]);
+  }, [ui, b.btcPubkey]);
 
   const confirmTxid = useCallback(async () => {
-    if (!address || !b.btcPubkey || !p2wsh || pending) return;
+    if (!address || !b.btcPubkey || pending) return;
     setAction("txid");
     ui.setTxidCheck({ kind: "saving" });
     try {
       const pd = await startDepositFromTxid({
         owner: address,
-        p2wsh,
         btcPubkey: b.btcPubkey,
         usedIndices: positionsSnapshot(address).map((p) => p.index),
         emit,
@@ -362,7 +357,7 @@ export function useLiveJourney(): JourneyModel {
     } catch (error) {
       ui.setTxidCheck(/does not pay/.test(String(error)) ? { kind: "no_output" } : { kind: "error", error });
     }
-  }, [address, b.btcPubkey, p2wsh, pending, emit, ui]);
+  }, [address, b.btcPubkey, pending, emit, ui]);
 
   const sending = !pending && action === "send" && isInFlight(flow);
   const stage = pending ? depositStage(pending, status.status.kind, flow) : null;
@@ -445,7 +440,9 @@ export function useLiveJourney(): JourneyModel {
     },
     review: {
       lockAddress: pending?.p2wsh ?? p2wsh,
-      timelockHeight: config.bitcoin.timelockHeight,
+      timelockHeight,
+      lockFailed: !pending && depositLock.kind === "failed",
+      retryLock: () => depositLock.kind === "failed" && depositLock.retry(),
       exitDate: blocksLeft !== null && chainCtx ? exitDate(blocksLeft, chainCtx.at) : null,
       feeSats: chainCtx?.feeRate ? estimateFeeSats(chainCtx.feeRate) : null,
       tooClose: blocksLeft !== null && blocksLeft < TIMELOCK_MIN_BLOCKS_LEFT,

@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
-import { config } from "@/config";
 import { formatBtc, formatUsd, formatUsdc } from "@/lib/borrow/journey";
 import { isInFlight } from "@/lib/flow/engine";
 import {
@@ -152,7 +151,7 @@ export function LoanView({ m }: { m: LoanModel }) {
     return s.enabled ? undefined : `loan-reason-${reasons.indexOf(s.reason)}`;
   };
   const toSafe = price !== null && (status.kind === "at_risk" || status.kind === "liquidatable") ? repayToSafeStroops(collateral, debt, price) : null;
-  const height = derived.timelock?.height ?? position.timelockHeight ?? config.bitcoin.timelockHeight;
+  const height = derived.timelock?.height ?? position.timelockHeight ?? null;
   const blocksLeft = derived.timelock?.blocksLeft ?? null;
   const exit = blocksLeft !== null ? blockDate(blocksLeft, m.now) : null;
   const checking = status.kind === "checking";

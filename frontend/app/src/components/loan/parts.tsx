@@ -144,7 +144,11 @@ export function HealthText({ ratioBp, health }: { ratioBp: bigint | null; health
 
 // ── Way out ──────────────────────────────────────────────────────────────
 
-export function WayOut({ height, date, reclaimable }: { height: number; date: string | null; reclaimable: boolean }) {
+function BlockRef({ height }: { height: number | null }) {
+  return height === null ? <>its timelock block</> : <>block <span className="mono">{height.toLocaleString("en-US")}</span></>;
+}
+
+export function WayOut({ height, date, reclaimable }: { height: number | null; date: string | null; reclaimable: boolean }) {
   return (
     <section className="ln-out" aria-labelledby="way-out">
       <h2 id="way-out" className="wz-label">
@@ -153,13 +157,12 @@ export function WayOut({ height, date, reclaimable }: { height: number; date: st
       <p style={{ marginTop: 6 }}>
         {reclaimable ? (
           <>
-            Bitcoin passed block <span className="mono">{height.toLocaleString("en-US")}</span>, so you can reclaim this BTC with your
+            Bitcoin passed <BlockRef height={height} />, so you can reclaim this BTC with your
             Bitcoin key alone, without Writz.{" "}
           </>
         ) : (
           <>
-            If Writz stops, you can reclaim this BTC with your Bitcoin key alone after block{" "}
-            <span className="mono">{height.toLocaleString("en-US")}</span>
+            If Writz stops, you can reclaim this BTC with your Bitcoin key alone after <BlockRef height={height} />
             {date ? `, about ${date}` : ""}.{" "}
           </>
         )}
@@ -631,7 +634,7 @@ export function ReleasePanel({ m, position, neverBorrowed }: { m: LoanModel; pos
       {mine && m.flow.phase === "failed" && <ErrorBox error={m.flow.error} context={{ flow: "release" }} label="Not released" />}
       {mine && m.flow.phase === "signature_cancelled" && (
         <Notice tone="neutral">
-          <p>You declined in Xverse. Nothing was sent.</p>
+          <p>You declined in your wallet. Your BTC was not sent.</p>
         </Notice>
       )}
       {blocker === "no_wallet" ? (
@@ -684,7 +687,7 @@ export function ReleasePanel({ m, position, neverBorrowed }: { m: LoanModel; pos
             </div>
           </dl>
           <p className="wz-hint">
-            You sign in Xverse and Writz co-signs. The Bitcoin network fee
+            You sign twice: in {m.stellar.walletName} to record the release on {STELLAR}, then in Xverse. Writz co-signs. The Bitcoin network fee
             {fee !== null ? <>, about {fee.toLocaleString("en-US")} sats,</> : null} comes out of the released amount. The BTC goes only to
             the wallet that made this deposit.
           </p>
@@ -693,7 +696,11 @@ export function ReleasePanel({ m, position, neverBorrowed }: { m: LoanModel; pos
               key={m.flow.phase}
               label={`Slide to release ${btc} BTC`}
               armedLabel={`Press Enter again to release ${btc} BTC`}
-              doneLabel="Confirm in Xverse..."
+              doneLabel={
+                m.flow.phase === "awaiting_signature" && m.flow.wallet === "stellar"
+                  ? `Confirm in ${m.stellar.walletName}...`
+                  : "Confirm in Xverse..."
+              }
               describedBy={reviewId}
               disabled={fee === null || m.otherTx || m.catchingUp}
               onConfirm={m.release}
@@ -801,7 +808,7 @@ function FindLoans() {
   );
 }
 
-export function MissingDetails({ m, height }: { m: LoanModel; height: number }) {
+export function MissingDetails({ m, height }: { m: LoanModel; height: number | null }) {
   return (
     <Notice tone="warning" label="Bitcoin details missing">
       <p>This device doesn&apos;t have the Bitcoin details for this loan, so it can&apos;t build the release.</p>
@@ -809,7 +816,7 @@ export function MissingDetails({ m, height }: { m: LoanModel; height: number }) 
         <li>Open Writz on the device you deposited from.</li>
         <li>Or import your loan backup on this device.</li>
         <li>
-          Or, after block <span className="mono">{height.toLocaleString("en-US")}</span>, reclaim the BTC alone.{" "}
+          Or, after <BlockRef height={height} />, reclaim the BTC alone.{" "}
           <ExternalLink href={RECLAIM_DOCS_URL}>How to reclaim</ExternalLink>
         </li>
       </ul>

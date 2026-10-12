@@ -185,6 +185,15 @@ describe("derivePositionStatus, one test per status", () => {
     expect(kindOf(i)).toEqual({ kind: "liquidated", txHash: "e".repeat(64) });
   });
 
+  test("repaid_locked: release recorded on Stellar from this device, BTC not sent yet", () => {
+    const i = inputs(
+      { position: position({ debtStroops: "0", version: 2, releaseMarkedHash: "f".repeat(64) }) },
+      { ...openChain, nullifierSpent: true },
+      { liquidation: { found: false, complete: true } },
+    );
+    expect(kindOf(i)).toEqual({ kind: "repaid_locked", neverBorrowed: false, missingBtcDetails: false });
+  });
+
   test("changed_elsewhere: nullifier spent, no local tx, no liquidation in a complete lookup", () => {
     const i = inputs(
       { position: position({ debtStroops: debtForRatio(200) }) },

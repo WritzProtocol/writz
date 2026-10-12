@@ -425,7 +425,7 @@ export function ReviewStep({ m }: { m: JourneyModel }) {
   const sats = m.sats ?? 0n;
   const btc = formatBtc(sats);
   const fee = r.feeSats ? `of about ${r.feeSats.toLocaleString("en-US")} sats` : "set in Xverse";
-  const height = r.timelockHeight.toLocaleString("en-US");
+  const height = r.timelockHeight?.toLocaleString("en-US") ?? "Checking...";
   const [copied, setCopied] = useState(false);
 
   if (r.tooClose) {
@@ -450,7 +450,18 @@ export function ReviewStep({ m }: { m: JourneyModel }) {
         <div className="wz-row wz-row-wrap">
           <dt>To your lock address</dt>
           <dd className="wz-stack" style={{ gap: 8 }}>
-            <span className="mono wz-break">{r.lockAddress ?? "Connect Xverse first"}</span>
+            {r.lockFailed ? (
+              <span className="wz-actions">
+                <span>Can&apos;t read the Bitcoin block height to build your lock address.</span>
+                <button type="button" className="wz-btn wz-btn-line wz-btn-sm" onClick={r.retryLock}>
+                  Try again
+                </button>
+              </span>
+            ) : (
+              <span className="mono wz-break">
+                {r.lockAddress ?? (m.bitcoin.address ? "Checking..." : "Connect Xverse first")}
+              </span>
+            )}
             {r.lockAddress && (
               <span className="wz-actions">
                 <button

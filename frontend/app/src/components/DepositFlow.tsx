@@ -1,10 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { useWallet } from "@/lib/wallet/WalletProvider";
 import { useBitcoinWallet } from "@/lib/bitcoin/useBitcoinWallet";
-import { deriveP2WSH } from "@/lib/bitcoin/address";
+import { useDepositLock } from "@/lib/bitcoin/useDepositLock";
 import {
   finishDeposit,
   registerDeposit,
@@ -219,18 +219,10 @@ export function DepositFlow() {
     }
   }
 
-  // Derive P2WSH address from the user's BTC pubkey when available.
-  const p2wsh = useMemo(() => {
-    const protocolPubkey = config.bitcoin.protocolPubkey;
-    if (!protocolPubkey || !btcWallet.btcPubkey) return null;
-    try {
-      return deriveP2WSH(protocolPubkey, btcWallet.btcPubkey, config.bitcoin.timelockHeight);
-    } catch {
-      return null;
-    }
-  }, [btcWallet.btcPubkey]);
-
-  const depositAddress = pending?.p2wsh ?? p2wsh?.address ?? null;
+  const depositLock = useDepositLock(btcWallet.btcPubkey);
+  const lock = depositLock.kind === "ready" ? depositLock.lock : null;
+  const depositAddress = pending?.p2wsh ?? lock?.p2wsh ?? null;
+  const timelockHeight = pending?.timelockHeight ?? lock?.timelockHeight ?? null;
 
   const runRegister = useCallback(async () => {
     if (!address || !seed) return;
@@ -309,7 +301,7 @@ export function DepositFlow() {
   }
 
   async function handleSendBtc() {
-    if (!depositAddress || !address || !btcWallet.btcPubkey || pending) return;
+    if (!lock || !address || !btcWallet.btcPubkey || pending) return;
     let amountSats: bigint;
     try {
       amountSats = parseBtcToSats(btcAmount);
@@ -326,7 +318,7 @@ export function DepositFlow() {
     try {
       await startDepositBySending({
         owner: address,
-        p2wsh: depositAddress,
+        lock,
         btcPubkey: btcWallet.btcPubkey,
         usedIndices: usedIndices(),
         emit,
@@ -358,13 +350,12 @@ export function DepositFlow() {
       setInputError(validationError);
       return;
     }
-    if (!depositAddress || !btcWallet.btcPubkey) return;
+    if (!btcWallet.btcPubkey) return;
     autoContinue.current = true;
     emit({ type: "start" });
     try {
       await startDepositFromTxid({
         owner: address,
-        p2wsh: depositAddress,
         btcPubkey: btcWallet.btcPubkey,
         usedIndices: usedIndices(),
         emit,
@@ -458,7 +449,7 @@ export function DepositFlow() {
                   </div>
                   <p className="mt-1 text-xs text-muted">
                     Derived from your Bitcoin pubkey · timelock block{" "}
-                    <span className="font-mono">{config.bitcoin.timelockHeight.toLocaleString()}</span>
+                    <span className="font-mono">{timelockHeight?.toLocaleString() ?? "..."}</span>
                   </p>
                   {!isMainnet && (
                     <div className="mt-3 rounded-lg border border-line-2 bg-surface-2 p-3">

@@ -194,7 +194,7 @@ export function useLiveLoan(n: number, requestedPanel: LoanTab | null): LoanMode
   const recipient = b.btcAddress;
   const feeSats = fee.kind === "ok" ? fee.value : null;
   const release = useCallback(() => {
-    if (!seed || !recipient) return;
+    if (!seed || !recipient || !address) return;
     setLastAmount(null);
     void run("release", async (p, e) => {
       const { btcTxid } = await releaseBtc({
@@ -202,12 +202,14 @@ export function useLiveLoan(n: number, requestedPanel: LoanTab | null): LoanMode
         seed,
         recipient,
         signPsbt: b.signPsbt,
+        stellarAddress: address,
+        signTransaction: w.signTransaction,
         emit: e,
         feeSat: feeSats ?? undefined,
       });
       return { hash: btcTxid, chain: "bitcoin", label: "Release sent to Bitcoin", at: Date.now() };
     });
-  }, [seed, recipient, run, b.signPsbt, feeSats]);
+  }, [seed, recipient, address, run, b.signPsbt, w.signTransaction, feeSats]);
 
   const [trustError, setTrustError] = useState<unknown>(null);
   const addUsdc = useCallback(async () => {

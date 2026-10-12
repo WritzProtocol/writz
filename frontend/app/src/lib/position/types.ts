@@ -43,6 +43,8 @@ export interface Position {
   /** Leaf index in the on-chain Merkle tree, assigned at deposit. Needed to compute the
    *  correct Merkle path after subsequent borrows/repays rotate the commitment. */
   leafIndex?: number;
+  /** Stellar tx that recorded the release on-chain (`mark_released`), before the BTC moves. */
+  releaseMarkedHash?: string;
   /** Bitcoin txid of the release transaction, once broadcast. */
   releaseTxid?: string;
   /** Bitcoin address the collateral was released to. */

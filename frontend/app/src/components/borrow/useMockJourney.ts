@@ -138,6 +138,8 @@ export function useMockJourney(world: MockWorld): JourneyModel {
     review: {
       lockAddress: pending?.p2wsh ?? (bw ? LOCK_ADDRESS : null),
       timelockHeight: timelock,
+      lockFailed: false,
+      retryLock: noop,
       exitDate: blocksLeft !== null ? exitDate(blocksLeft, now) : null,
       feeSats: estimateFeeSats(2),
       tooClose: Boolean(d.timelockTooClose) || (blocksLeft !== null && blocksLeft < TIMELOCK_MIN_BLOCKS_LEFT),

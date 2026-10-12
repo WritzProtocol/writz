@@ -10,6 +10,7 @@ import {
 } from "@/lib/bitcoin/address";
 import type { Emit } from "@/lib/flow/engine";
 import { positionKeys, savePosition, type Position } from "@/lib/position";
+import { isNullifierSpent } from "@/lib/contracts/commitmentTree";
 import { proveZeroDebt, type ContractProof, type ZeroDebtInput } from "@/lib/prover";
 import type { SignTransaction } from "@/lib/wallet/WalletProvider";
 import { simulateWithRetry } from "./submit";
@@ -42,11 +43,15 @@ export async function releaseBtc(params: {
   seed: Uint8Array;
   recipient: string;
   signPsbt: (psbtBase64: string) => Promise<string>;
+  /** The Stellar account that records the release on-chain before BTC moves. */
+  stellarAddress: string;
+  signTransaction: SignTransaction;
   emit: Emit;
   /** The fee shown at review; estimated again when absent. */
   feeSat?: number;
 }): Promise<{ btcTxid: string }> {
-  const { position, seed, recipient, signPsbt, emit } = params;
+  const { seed, recipient, signPsbt, emit } = params;
+  let { position } = params;
   const { btcPubkey, timelockHeight, txid: depositTxid } = position;
   if (!btcPubkey || !timelockHeight || !depositTxid) {
     throw new Error("Position is missing Bitcoin metadata needed for release.");
@@ -99,7 +104,22 @@ export async function releaseBtc(params: {
     path_indices: pathIndices,
     merkle_root: merkleRoot,
   };
-  const { raw: zkRaw } = await proveZeroDebt(zeroDebtInput);
+  const { raw: zkRaw, proof: zkProof, publicSignals: zkSignals } = await proveZeroDebt(zeroDebtInput);
+
+  // A retry after a failed co-sign or a rejected Xverse prompt finds the
+  // nullifier already spent; marking it again would fail with #6.
+  const nullifierHex = zkSignals[1].toString("hex");
+  if (!(await isNullifierSpent(nullifierHex))) {
+    emit({ type: "awaiting_signature", wallet: "stellar" });
+    const { txHash } = await markReleased({
+      proof: zkProof,
+      publicSignals: zkSignals,
+      sender: params.stellarAddress,
+      signTransaction: params.signTransaction,
+    });
+    position = { ...position, releaseMarkedHash: txHash ?? "unknown" };
+    savePosition(position);
+  }
 
   emit({ type: "preparing", step: "cosign" });
   const cosignRes = await fetch("/api/cosign", {

@@ -56,7 +56,11 @@ export interface BitcoinModel {
 
 export interface ReviewModel {
   lockAddress: string | null;
-  timelockHeight: number;
+  /** Null until the Bitcoin tip is read; a new deposit's timelock is chosen from it. */
+  timelockHeight: number | null;
+  /** The tip read failed, so no lock address can be built yet. */
+  lockFailed: boolean;
+  retryLock(): void;
   exitDate: string | null;
   feeSats: number | null;
   tooClose: boolean;

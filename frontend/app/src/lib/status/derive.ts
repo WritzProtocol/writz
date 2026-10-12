@@ -110,6 +110,11 @@ function spentNullifierStatus(inputs: StatusInputs, p: Position): PositionStatus
   const released = releaseFromOutspend(inputs);
   if (released) return released;
 
+  // Release recorded on Stellar from this device, BTC not sent yet: the release can still finish.
+  if (p.releaseMarkedHash && !p.releaseTxid && BigInt(p.debtStroops) === 0n) {
+    return { kind: "repaid_locked", neverBorrowed: p.version === 0, missingBtcDetails: !hasBtcDetails(p) };
+  }
+
   const complete = lookup.complete && !relayer?.catchingUp;
   return complete ? { kind: "changed_elsewhere" } : { kind: "closed_on_chain" };
 }

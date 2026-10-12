@@ -24,6 +24,8 @@ import { locks } from "@/lib/flow/lock";
 import { pendingDeposits, planResume, type PendingDeposit } from "@/lib/flow/pendingDeposit";
 import { activity, type TxStatus } from "@/lib/flow/pendingTx";
 import { getTxStatus, signAndSubmit, TxTimedOutError } from "@/lib/flow/stellarTx";
+import { fetchTipHeight, findDepositOutput } from "@/lib/bitcoin/timelock";
+import { deriveP2WSH } from "@/lib/bitcoin/address";
 
 // Must match the contract's `min_deposit_satoshis` config (set at initialization).
 const MIN_DEPOSIT_SATS = "10000"; // 0.0001 BTC
@@ -44,7 +46,7 @@ const MAX_BACKOFF_MS = 60_000;
  * number is a dummy "0": this transaction is only ever inspected for its
  * signature, source account, and operation, never broadcast.
  */
-async function buildInsertAuthTx(
+export async function buildInsertAuthTx(
   depositor: string,
   commitmentHex: string,
   signTransaction: SignTransaction,
@@ -76,7 +78,7 @@ async function sha256d(bytes: ArrayBuffer): Promise<Buffer> {
  * Split the internal-order txid (SHA256d of raw tx) into the two 128-bit
  * halves the deposit circuit expects as `btc_txid_lo` / `btc_txid_hi`.
  */
-async function txidParts(rawTxHex: string): Promise<{ lo: string; hi: string }> {
+export async function txidParts(rawTxHex: string): Promise<{ lo: string; hi: string }> {
   const raw = Buffer.from(rawTxHex, "hex");
   const buf = await sha256d(raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength));
   const hi = BigInt("0x" + buf.subarray(0, 16).toString("hex")).toString();
@@ -91,7 +93,7 @@ export interface SpvBundle {
   rawTxNoWitness: string;
   confirmations: number;
   sorobanArgs: {
-    headers: string[];
+    block_hash: string;
     merkle_proof: string[];
     tx_index: number;
     raw_tx: string;
@@ -104,6 +106,8 @@ export type SpvPoll =
   | { ready: false; confirmations: number; required: number | null };
 
 export type OutputLookup = { vout: number; sats: bigint } | "unseen" | "no_output";
+
+export type DepositLookup = (DepositLock & { vout: number; sats: bigint }) | "unseen" | "no_output";
 
 export interface RegisterInput {
   pd: PendingDeposit;
@@ -120,6 +124,8 @@ export interface RegisterInput {
 export interface DepositDeps {
   pollSpv(txid: string): Promise<SpvPoll>;
   findOutput(txid: string, address: string): Promise<OutputLookup>;
+  /** Finds this Bitcoin key's Writz output in `txid` and the timelock it was built with. */
+  locateDeposit(txid: string, btcPubkey: string): Promise<DepositLookup>;
   getCommitment(btcTxid: string): Promise<string | null>;
   isCommitmentPending(commitmentHex: string): Promise<boolean>;
   getTxStatus(hash: string): Promise<TxStatus>;
@@ -133,6 +139,12 @@ export interface DepositDeps {
   }): Promise<{ leafIndex?: number }>;
   lookupLeafIndex(commitmentHex: string): Promise<number | undefined>;
   sleep(ms: number, signal?: AbortSignal): Promise<void>;
+}
+
+function requireProtocolPubkey(): string {
+  const key = config.bitcoin.protocolPubkey;
+  if (!key) throw new Error("NEXT_PUBLIC_PROTOCOL_BTC_PUBKEY is not configured.");
+  return key;
 }
 
 function relayerUrl(): string {
@@ -161,7 +173,20 @@ function abortableSleep(ms: number, signal?: AbortSignal): Promise<void> {
 
 async function realRegister(input: RegisterInput): Promise<{ hash: string }> {
   const { pd, bundle, seed, signTransaction, emit } = input;
-  const collateralSats = BigInt(pd.sats);
+  // The contract rebuilds this depositor's script and counts exactly that
+  // output's value as collateral, so the proof must commit to the same output.
+  const output = findDepositOutput({
+    rawTxHex: bundle.rawTxNoWitness,
+    protocolPubkeyHex: requireProtocolPubkey(),
+    userPubkeyHex: pd.btcPubkey,
+    tipHeight: await fetchTipHeight(config.bitcoin.apiUrl),
+    hintTimelock: pd.timelockHeight,
+  });
+  if (!output) throw new Error("This transaction does not pay your deposit address.");
+  const collateralSats = output.valueSats;
+  if (collateralSats < BigInt(MIN_DEPOSIT_SATS)) {
+    throw new Error(`This deposit pays ${collateralSats} sats; the minimum is ${MIN_DEPOSIT_SATS}.`);
+  }
   const { lo, hi } = await txidParts(bundle.rawTxNoWitness);
 
   const f = seedToField(seed);
@@ -176,6 +201,7 @@ async function realRegister(input: RegisterInput): Promise<{ hash: string }> {
     btc_txid_lo: lo,
     btc_txid_hi: hi,
     min_deposit_satoshis: MIN_DEPOSIT_SATS,
+    actual_satoshis: collateralSats.toString(),
   });
 
   // Public signals (deposit circuit): commitment[0], nullifier[1], ...
@@ -198,10 +224,12 @@ async function realRegister(input: RegisterInput): Promise<{ hash: string }> {
   const tx = await simulateWithRetry(() =>
     client.deposit({
       depositor: pd.stellarAddress,
-      headers: sorobanArgs.headers.map((h) => Buffer.from(h, "hex")),
+      block_hash: Buffer.from(sorobanArgs.block_hash, "hex"),
       merkle_proof_btc: sorobanArgs.merkle_proof.map((h) => Buffer.from(h, "hex")),
       tx_index: sorobanArgs.tx_index,
       raw_tx: Buffer.from(sorobanArgs.raw_tx, "hex"),
+      user_pubkey: Buffer.from(pd.btcPubkey, "hex"),
+      timelock_height: output.timelockHeight,
       zk_proof: proof,
       public_signals: publicSignals,
       enc_note: Buffer.from(encNote),
@@ -237,6 +265,22 @@ export const depositDeps: DepositDeps = {
     const tx = (await res.json()) as { vout: { scriptpubkey_address?: string; value: number }[] };
     const vout = tx.vout.findIndex((o) => o.scriptpubkey_address === address);
     return vout === -1 ? "no_output" : { vout, sats: BigInt(tx.vout[vout].value) };
+  },
+  async locateDeposit(txid, btcPubkey) {
+    const api = config.bitcoin.apiUrl;
+    const res = await fetch(`${api}/tx/${txid}/hex`).catch(() => null);
+    if (!res?.ok) return "unseen";
+    const rawTxHex = (await res.text()).trim();
+    const protocolPubkeyHex = requireProtocolPubkey();
+    const out = findDepositOutput({
+      rawTxHex,
+      protocolPubkeyHex,
+      userPubkeyHex: btcPubkey,
+      tipHeight: await fetchTipHeight(api),
+    });
+    if (!out) return "no_output";
+    const { address } = deriveP2WSH(protocolPubkeyHex, btcPubkey, out.timelockHeight);
+    return { vout: out.vout, sats: out.valueSats, timelockHeight: out.timelockHeight, p2wsh: address };
   },
   getCommitment: getCommitmentForTxid,
   isCommitmentPending,
@@ -295,14 +339,20 @@ function registeringPosition(pd: PendingDeposit, commitment: string, nullifier: 
 
 interface StartContext {
   owner: string;
-  p2wsh: string;
   btcPubkey: string;
   usedIndices: number[];
   emit: Emit;
 }
 
+/** The lock address a deposit pays and the timelock it was derived with. */
+export interface DepositLock {
+  p2wsh: string;
+  timelockHeight: number;
+}
+
 function newPending(
   ctx: StartContext,
+  lock: DepositLock,
   btcTxid: string,
   sats: bigint,
   positionIndex: number,
@@ -313,9 +363,9 @@ function newPending(
     btcTxid,
     sats: sats.toString(),
     vout,
-    p2wsh: ctx.p2wsh,
+    p2wsh: lock.p2wsh,
     btcPubkey: ctx.btcPubkey,
-    timelockHeight: config.bitcoin.timelockHeight,
+    timelockHeight: lock.timelockHeight,
     stellarAddress: ctx.owner,
     positionIndex,
     step: vout === undefined ? "sent" : "confirming",
@@ -326,32 +376,35 @@ function newPending(
 
 /** Sends BTC from the wallet and persists the PendingDeposit the moment the wallet returns a txid. */
 export async function startDepositBySending(
-  ctx: StartContext & { sats: bigint; send: (to: string, sats: number) => Promise<string> },
+  ctx: StartContext & { lock: DepositLock; sats: bigint; send: (to: string, sats: number) => Promise<string> },
 ): Promise<PendingDeposit> {
   const index = await locks().reservePositionIndex(ctx.owner, ctx.usedIndices);
   ctx.emit({ type: "awaiting_signature", wallet: "bitcoin" });
   let txid: string;
   try {
-    txid = await ctx.send(ctx.p2wsh, Number(ctx.sats));
+    txid = await ctx.send(ctx.lock.p2wsh, Number(ctx.sats));
   } catch (e) {
     await locks().releasePositionIndex(ctx.owner, index);
     throw e;
   }
-  return pendingDeposits.save(newPending(ctx, txid.toLowerCase(), ctx.sats, index));
+  return pendingDeposits.save(newPending(ctx, ctx.lock, txid.toLowerCase(), ctx.sats, index));
 }
 
-/** Starts from a txid the user pasted. Amount and output index come from Bitcoin, never from the form. */
+/**
+ * Starts from a txid the user pasted. Amount, output index and timelock come
+ * from Bitcoin, never from the form or this device.
+ */
 export async function startDepositFromTxid(
   ctx: StartContext & { txid: string; deps?: DepositDeps },
 ): Promise<PendingDeposit> {
   const deps = ctx.deps ?? depositDeps;
   const txid = ctx.txid.trim().toLowerCase();
   ctx.emit({ type: "preparing", step: "locating_output" });
-  const out = await deps.findOutput(txid, ctx.p2wsh);
+  const out = await deps.locateDeposit(txid, ctx.btcPubkey);
   if (out === "unseen") throw new Error("Bitcoin hasn't seen this transaction yet.");
   if (out === "no_output") throw new Error("This transaction does not pay your deposit address.");
   const index = await locks().reservePositionIndex(ctx.owner, ctx.usedIndices);
-  return pendingDeposits.save(newPending(ctx, txid, out.sats, index, out.vout));
+  return pendingDeposits.save(newPending(ctx, out, txid, out.sats, index, out.vout));
 }
 
 // ── Resuming and driving a deposit ────────────────────────────────────────
