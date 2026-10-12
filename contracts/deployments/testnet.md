@@ -65,7 +65,15 @@ The coordinated redeploy of #177: every security-advisory fix merged in #171-#21
 - `zk-verifier`: all five keys set, IC lengths 7 / 11 / 6 / 4 / 5.
 - Refused as expected: `insert_commitment` for a commitment never deposited (`CommitmentNotFound`, #8), `consume_deposit` by an unregistered account (`NotAConsumer`, #27), a second `set_checkpoint` (`CheckpointAlreadySet`, #16); `initialize` no longer exists on `commitment-tree`.
 
-Still to do on this deployment: the relayer and frontend environments, a funded pool, the end-to-end run with a real signet deposit through the UI, and the multisig on `writz-deployer` (#177).
+### Funded and exercised with real signet data (2026-10-11)
+
+- **Pools:** 400 testnet USDC supplied to `commitment-tree` [`97e873c7a0…`](https://stellar.expert/explorer/testnet/tx/97e873c7a08e4210c13db991b4044a7cd73294a21f2eb5d0f3ae0d22791ab7c9) and 100 to `private-lend` [`11bb049602…`](https://stellar.expert/explorer/testnet/tx/11bb0496025f2a4518f362a8bc5a3aba97e68495916c588a119b156c85d50c56), swapped from testnet XLM on the testnet DEX.
+- **Header sync:** the relayer at `main` (run locally with this deployment's IDs) synced real signet headers 325,555 → 325,995 into `bitcoin-spv`; every header was proof-of-work and parentage checked on-chain. Blockstream's public API throttled the sync (429 on every pass), so the relayer now defaults to mempool.space's Esplora and backs off on 429.
+- **SPV on a real transaction:** `verify_transaction` accepted signet tx `e80765d8…ee24` (block 325,980, index 1) with a relayer-built Merkle proof, and refused it at 50 confirmations (`InsufficientConfirmations`, #2).
+- **Deposit checks on that real transaction (simulated):** `commitment-tree` passes SPV, the timelock bound, the shared txid registry and the txid binding, then refuses because the transaction pays no Writz script (`VaultOutputNotFound`, #17); a timelock 100 blocks out is refused (`InvalidTimelock`, #21); `private-lend` refuses a non-Writz script (`ScriptPubKeyMismatch`, #21).
+- **Relayer endpoints:** `/notes` and `/merkle-path` reflect the empty tree; `/insert-commitment` refuses a missing or invalid `authTxXdr`; `/spv-proof` refuses a transaction with fewer than the requested 6 confirmations.
+
+Still to do on this deployment: point the hosted relayer and frontend at these IDs, run a real signet deposit through the UI (deposit → borrow → repay → `mark_released` → cosign), and put `writz-deployer` behind the multisig (#177).
 
 ---
 

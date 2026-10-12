@@ -57,7 +57,7 @@ Research    ──►  Foundation  ──►  Launch      ──►  Scale
 | **private-lend contract** | 92/92 tests. Non-ZK skeleton with kinked interest model. Deployed: `CA3T7T2S7HV27BXO7OLIHSMGAMQ37BMOOUHQLTBGUQVL4B6Y2CDJPHHX` |
 | **spv-types crate** | 9/9 tests. Shared Bitcoin transaction output parser (`btc_parser`). |
 | **ZK circuits** | 41/41 tests. All 5 circuits compiled (Circom 2.2.3). Dev keys generated. |
-| **Relayer service** | 219/219 tests. REST API: `GET /spv-proof/:txid`. Esplora-backed. |
+| **Relayer service** | 222/222 tests. REST API: `GET /spv-proof/:txid`. Esplora-backed. |
 | **Bitcoin script toolkit** | 60/60 tests. P2WSH generation, PSBT signing, witness assembly. |
 | **Bitcoin Signet E2E** | Path A co-signed release broadcast and accepted. `11932100` |
 | **ZK testnet E2E** | Full deposit→borrow→repay cycle on Stellar testnet. 6 transactions. `8daddf52` |
