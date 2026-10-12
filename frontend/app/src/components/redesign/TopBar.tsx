@@ -59,7 +59,7 @@ export function TopBar() {
                 {t.label}
               </Link>
             ))}
-            <Link href="/metrics" className="wz-nav-wide" aria-current={pathname === "/metrics" ? "page" : undefined}>
+            <Link href="/protocol" className="wz-nav-wide" aria-current={pathname === "/protocol" ? "page" : undefined}>
               Protocol
             </Link>
             <a href={DOCS_URL} target="_blank" rel="noopener noreferrer" className="wz-nav-wide">

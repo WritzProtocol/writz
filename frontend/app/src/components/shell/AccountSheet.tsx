@@ -247,7 +247,7 @@ export function AccountSheetBody() {
       ) : null}
 
       <nav className="sh-section sh-links sh-compact" aria-label="Other pages">
-        <Link href="/metrics">Protocol</Link>
+        <Link href="/protocol">Protocol</Link>
         <ExternalLink href={DOCS_URL} className="">
           Docs
         </ExternalLink>

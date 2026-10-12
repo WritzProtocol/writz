@@ -5,6 +5,9 @@ const nextConfig: NextConfig = {
   // Mark it as external so the Node.js runtime loads it directly at request
   // time (required for the /api/cosign serverless function).
   serverExternalPackages: ["snarkjs"],
+  async redirects() {
+    return [{ source: "/metrics", destination: "/protocol", permanent: true }];
+  },
 };
 
 export default nextConfig;

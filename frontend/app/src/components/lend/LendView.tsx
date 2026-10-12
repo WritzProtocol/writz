@@ -86,7 +86,7 @@ export function LendView({ m }: { m: LendModel }) {
 
       <div className="fu-notes">
         <p>Suppliers carry Bitcoin credit risk. When borrowers are using the pool, you may have to wait to withdraw.</p>
-        <Link href="/metrics" className="wz-link">
+        <Link href="/protocol" className="wz-link">
           See pool stats
         </Link>
       </div>
