@@ -3,6 +3,7 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { scenarioFromSearch, UI_MOCK } from "@/lib/mock/gate";
 import type { MockWorld } from "@/lib/mock/types";
+import type { Read } from "@/lib/loan/model";
 
 const noop = () => () => {};
 
@@ -56,4 +57,22 @@ export function usePrefersReducedMotion(): boolean {
     () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
     () => false,
   );
+}
+
+/** A read that starts over whenever `key` changes, so a stale answer never shows for another wallet. Null key: nothing to read. */
+export function useRead<T>(key: string | null, load: () => Promise<T>): Read<T> {
+  const [state, setState] = useState<{ key: string; value: Read<T> } | null>(null);
+  useEffect(() => {
+    if (!key) return;
+    let live = true;
+    load()
+      .then((value) => live && setState({ key, value: { kind: "ok", value } }))
+      .catch(() => live && setState({ key, value: { kind: "failed" } }));
+    return () => {
+      live = false;
+    };
+    // `load` is keyed by `key`.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+  return key && state?.key === key ? state.value : { kind: "checking" };
 }

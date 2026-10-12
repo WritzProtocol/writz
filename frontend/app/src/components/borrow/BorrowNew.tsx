@@ -1,6 +1,5 @@
 "use client";
 
-import { StatusProvider } from "@/lib/status/provider";
 import type { MockWorld } from "@/lib/mock/types";
 import { useMounted, useMockWorld } from "@/components/redesign/hooks";
 import { FocusJourney } from "./FocusJourney";
@@ -38,5 +37,5 @@ export function BorrowNew() {
   const mounted = useMounted();
   const world = useMockWorld();
   if (!mounted) return <Skeleton />;
-  return <StatusProvider>{world ? <MockJourney world={world} /> : <LiveJourney />}</StatusProvider>;
+  return world ? <MockJourney world={world} /> : <LiveJourney />;
 }

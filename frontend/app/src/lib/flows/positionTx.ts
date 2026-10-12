@@ -35,20 +35,30 @@ function replacePosition(removeId: string, save: Position) {
   savePosition(save);
 }
 
-/** Retries every `/update-leaf` this device still owes the relayer. */
-export function syncLeafUpdates(owner: string): Promise<void> {
-  return retryLeafUpdates(owner, { store: activity, post: postLeafUpdate });
+/** Callers that overlap share one run, so two of them never post or write the same list. */
+function singleFlight(run: (owner: string) => Promise<void>): (owner: string) => Promise<void> {
+  const running = new Map<string, Promise<void>>();
+  return (owner) => {
+    const current = running.get(owner);
+    if (current) return current;
+    const next = run(owner).finally(() => running.delete(owner));
+    running.set(owner, next);
+    return next;
+  };
 }
 
+/** Retries every `/update-leaf` this device still owes the relayer. */
+export const syncLeafUpdates = singleFlight((owner) => retryLeafUpdates(owner, { store: activity, post: postLeafUpdate }));
+
 /** Applies confirmed transactions left over from a closed tab and drops the ones that never landed. */
-export function reconcileActivity(owner: string): Promise<void> {
-  return reconcilePendingTxs(owner, {
+export const reconcileActivity = singleFlight((owner) =>
+  reconcilePendingTxs(owner, {
     store: activity,
     getStatus: getTxStatus,
     hasPosition: (id) => getPosition(owner, id) !== undefined,
     replacePosition,
-  });
-}
+  }),
+);
 
 /** Submits a contract call with its hash recorded before submit and cleared once settled. */
 export async function submitTrackedTx<T>(params: {

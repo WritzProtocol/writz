@@ -74,3 +74,38 @@ export function usePositionStatus(local: LocalInputs | null, pollMs = DEFAULT_PO
 
   return status;
 }
+
+export function usePositionStatuses(locals: readonly LocalInputs[], pollMs = DEFAULT_POLL_MS): readonly DerivedStatus[] {
+  const store = useContext(StatusContext);
+  if (!store) throw new Error("usePositionStatuses must be used inside a StatusProvider");
+
+  const keys = locals.map(statusKey);
+  const sig = keys.join("\n");
+  const latest = useRef(locals);
+  useEffect(() => {
+    latest.current = locals;
+  });
+
+  const last = useRef<readonly DerivedStatus[]>([]);
+  const read = () => {
+    const next = keys.map((k) => (k ? store.get(k) : CHECKING));
+    const prev = last.current;
+    if (prev.length === next.length && prev.every((s, i) => s === next[i])) return prev;
+    last.current = next;
+    return next;
+  };
+  const statuses = useSyncExternalStore(store.subscribe, read, read);
+
+  useEffect(() => {
+    const tick = () =>
+      latest.current.forEach((local) => {
+        const key = statusKey(local);
+        if (key) void store.refresh(key, local);
+      });
+    tick();
+    const id = setInterval(tick, pollMs);
+    return () => clearInterval(id);
+  }, [store, sig, pollMs]);
+
+  return statuses;
+}

@@ -1,6 +1,5 @@
 "use client";
 
-import { StatusProvider } from "@/lib/status/provider";
 import type { LoanTab } from "@/lib/loan/model";
 import type { MockWorld } from "@/lib/mock/types";
 import { useMounted, useMockWorld } from "@/components/redesign/hooks";
@@ -32,5 +31,5 @@ export function LoanPage({ n, panel }: { n: number; panel: LoanTab | null }) {
   const mounted = useMounted();
   const world = useMockWorld();
   if (!mounted) return <Skeleton />;
-  return <StatusProvider>{world ? <MockLoan world={world} n={n} /> : <LiveLoan n={n} panel={panel} />}</StatusProvider>;
+  return world ? <MockLoan world={world} n={n} /> : <LiveLoan n={n} panel={panel} />;
 }

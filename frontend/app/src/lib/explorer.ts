@@ -14,3 +14,13 @@ export function btcTxUrl(txid: string): string {
   const prefix = net === "mainnet" ? "" : `${net}/`;
   return `https://mempool.space/${prefix}tx/${txid}`;
 }
+
+export function stellarAccountUrl(address: string): string {
+  return `https://stellar.expert/explorer/testnet/account/${address}`;
+}
+
+export function btcAddressUrl(address: string): string {
+  const net = config.bitcoin.network;
+  const prefix = net === "mainnet" ? "" : `${net}/`;
+  return `https://mempool.space/${prefix}address/${address}`;
+}

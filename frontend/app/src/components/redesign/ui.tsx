@@ -180,6 +180,7 @@ export function ConfirmationSlots({ n, m }: { n: number; m: number }) {
       className="wz-slots"
       style={{ ["--slots" as string]: m }}
       role="progressbar"
+      aria-label="Bitcoin confirmations"
       aria-valuemin={0}
       aria-valuemax={m}
       aria-valuenow={filled}

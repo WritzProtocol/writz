@@ -17,15 +17,12 @@ import {
   timeLeft,
 } from "@/lib/borrow/journey";
 import { loanHref } from "@/lib/loan/model";
+import { BTC_FAUCETS } from "@/lib/links";
 import { useElapsed } from "@/components/redesign/hooks";
 import { ConfirmationSlots, ErrorBox, ExternalLink, Notice, SlideToConfirm, Spinner } from "@/components/redesign/ui";
 import type { JourneyModel } from "./model";
 
 const ON_TESTNET = config.target !== "mainnet";
-const FAUCETS = [
-  { label: "bitcoinsignetfaucet.com", href: "https://bitcoinsignetfaucet.com/" },
-  { label: "signet.dcorral.com", href: "https://signet.dcorral.com/" },
-];
 
 function Status({ children, spinning = true }: { children: React.ReactNode; spinning?: boolean }) {
   return (
@@ -386,7 +383,7 @@ export function BitcoinStep({ m }: { m: JourneyModel }) {
               </p>
               {ON_TESTNET && (
                 <p className="wz-actions" style={{ marginTop: 8 }}>
-                  {FAUCETS.map((f) => (
+                  {BTC_FAUCETS.map((f) => (
                     <ExternalLink key={f.href} href={f.href}>
                       {f.label}
                     </ExternalLink>

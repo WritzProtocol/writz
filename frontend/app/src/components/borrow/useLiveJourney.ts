@@ -12,6 +12,8 @@ import { useFlow, useTxLockState } from "@/lib/flow/useFlow";
 import { isInFlight } from "@/lib/flow/engine";
 import { depositLockName, locks } from "@/lib/flow/lock";
 import { pendingDeposits } from "@/lib/flow/pendingDeposit";
+import { recentActivity } from "@/lib/tray";
+import { clearDraftAmount, readDraftAmount } from "@/lib/borrow/draft";
 import {
   depositDeps,
   finishDeposit,
@@ -31,6 +33,7 @@ import {
   estimateFeeSats,
   exitDate,
   fundingOf,
+  parseBtcAmount,
   TIMELOCK_MIN_BLOCKS_LEFT,
   type Funding,
 } from "@/lib/borrow/journey";
@@ -73,7 +76,9 @@ const esplora = () => esploraReads(config.bitcoin.apiUrl, (url) => fetch(url));
 export function useLiveJourney(): JourneyModel {
   const w = useWallet();
   const b = useBitcoinWallet();
-  const ui = useJourneyUi();
+  const [draft] = useState(readDraftAmount);
+  useEffect(clearDraftAmount, []);
+  const ui = useJourneyUi({ amount: draft && parseBtcAmount(draft).ok ? draft : undefined });
   const [flow, emit] = useFlow();
   const address = w.address;
 
@@ -358,6 +363,12 @@ export function useLiveJourney(): JourneyModel {
       ui.setTxidCheck(/does not pay/.test(String(error)) ? { kind: "no_output" } : { kind: "error", error });
     }
   }, [address, b.btcPubkey, pending, emit, ui]);
+
+  const settledHash = flow.phase === "settled" ? flow.hash : undefined;
+  useEffect(() => {
+    if (!address || !settledHash) return;
+    recentActivity.add(address, { hash: settledHash, chain: "stellar", label: "Deposit registered on Stellar", at: Date.now() });
+  }, [address, settledHash]);
 
   const sending = !pending && action === "send" && isInFlight(flow);
   const stage = pending ? depositStage(pending, status.status.kind, flow) : null;
