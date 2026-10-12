@@ -1,0 +1,17 @@
+/* Earn and Lend */
+.fu-col { display: flex; flex-direction: column; gap: 20px; max-width: 720px; margin: 0 auto; }
+.fu-summary { display: flex; flex-direction: column; gap: 18px; padding: 24px; border-radius: 14px; background: var(--panel); box-shadow: var(--shadow-border); }
+.fu-apy { font-size: 17px; color: var(--body); }
+.fu-apy b { font-size: 28px; font-weight: 500; color: var(--heading); margin-right: 4px; }
+.fu-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); gap: 16px; margin: 0; }
+.fu-stat { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.fu-stat dt { font-size: 13px; color: var(--muted); }
+.fu-stat dd { margin: 0; font-size: 22px; color: var(--heading); overflow-wrap: anywhere; }
+.fu-sk { display: inline-block; width: 120px; height: 26px; vertical-align: middle; }
+.fu-seg { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.fu-notes { display: flex; flex-direction: column; gap: 4px; padding-top: 16px; border-top: 1px solid var(--rule); font-size: 14px; color: var(--muted); }
+.fu-notes a { align-self: flex-start; margin-top: 6px; }
+@media (max-width: 760px) {
+  .fu-summary { padding: 20px; }
+  .fu-stats { grid-template-columns: minmax(0, 1fr); }
+}

@@ -1,20 +1,14 @@
 import type { Metadata } from "next";
+import { EarnPage } from "@/components/earn/EarnPage";
 import "../home.css";
-import { EarnPanel } from "@/components/EarnPanel";
+import "../loans/loans.css";
+import "../funds.css";
 
 export const metadata: Metadata = {
   title: "Earn on USDC | Writz",
   alternates: { canonical: "/earn" },
 };
 
-export default function EarnPage() {
-  return (
-    <div className="hm-legacy">
-      <h1 className="hm-h1">Earn</h1>
-      <p className="hm-sub">
-        Deposit Blend test USDC into the Writz vault on DeFindex. It earns from Blend lending. Shares sit in your own wallet.
-      </p>
-      <EarnPanel />
-    </div>
-  );
+export default function Earn() {
+  return <EarnPage />;
 }

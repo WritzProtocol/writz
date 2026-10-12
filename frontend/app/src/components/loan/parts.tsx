@@ -21,6 +21,7 @@ import {
 } from "@/lib/loan/model";
 import type { Position } from "@/lib/position/types";
 import type { PositionStatus } from "@/lib/status/types";
+import type { ErrorFlow } from "@/lib/errors";
 import { networkName } from "@/lib/wallet/precheck";
 import { useElapsed } from "@/components/redesign/hooks";
 import { ErrorBox, ExternalLink, Notice, SlideToConfirm, Spinner, type Tone } from "@/components/redesign/ui";
@@ -231,7 +232,7 @@ export function TxResult({
   flow: FlowState;
   success: ReactNode;
   walletName: string;
-  context: "borrow" | "repay";
+  context: ErrorFlow;
   onDismiss: () => void;
   onCheckAgain: () => void;
 }) {
@@ -288,7 +289,7 @@ export function TxResult({
 
 // ── Amount field ─────────────────────────────────────────────────────────
 
-function AmountField({
+export function AmountField({
   id,
   label,
   value,
@@ -298,6 +299,7 @@ function AmountField({
   error,
   hint,
   disabled,
+  unit = "USDC",
 }: {
   id: string;
   label: string;
@@ -308,6 +310,7 @@ function AmountField({
   error: string | null;
   hint: ReactNode;
   disabled?: boolean;
+  unit?: string;
 }) {
   return (
     <div className="wz-stack" style={{ gap: 8 }}>
@@ -326,7 +329,7 @@ function AmountField({
           aria-describedby={`${id}-hint`}
           onChange={(e) => onChange(e.target.value)}
         />
-        <span>USDC</span>
+        <span>{unit}</span>
         <button type="button" className="ln-max" onClick={onMax} disabled={disabled}>
           {maxLabel}
         </button>
