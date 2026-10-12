@@ -329,7 +329,7 @@ export function LoanView({ m }: { m: LoanModel }) {
         </section>
       )}
 
-      {!closed && <WayOut height={height} date={exit} reclaimable={derived.reclaimable} />}
+      {!closed && <WayOut n={n} height={height} date={exit} reclaimable={derived.reclaimable} />}
 
       <OnThisDevice items={m.activity} />
     </div>

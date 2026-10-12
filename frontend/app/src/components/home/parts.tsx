@@ -7,7 +7,7 @@ import { chooseDepositTimelock } from "@/lib/bitcoin/timelock";
 import { formatBtc, formatUsd, formatUsdc, maxBorrowStroops, parseBtcAmount, timeLeft } from "@/lib/borrow/journey";
 import { btcTxUrl, stellarTxUrl } from "@/lib/explorer";
 import type { HomeLoan, Urgent } from "@/lib/home/model";
-import { BTC_FAUCETS, RECLAIM_DOCS_URL } from "@/lib/links";
+import { BTC_FAUCETS } from "@/lib/links";
 import { setDraftAmount } from "@/lib/borrow/draft";
 import { blockDate, healthOf, liquidationPriceFor, loanHref, repayToSafeStroops, type Read } from "@/lib/loan/model";
 import { networkName } from "@/lib/wallet/precheck";
@@ -302,9 +302,9 @@ export function UrgentCard({
           tone="info"
           label="Reclaim available"
           actions={
-            <ExternalLink href={RECLAIM_DOCS_URL} className="wz-btn wz-btn-line">
+            <Link href={`/help/reclaim?loan=${u.loan.position.index + 1}`} className="wz-btn wz-btn-line">
               How to reclaim
-            </ExternalLink>
+            </Link>
           }
         >
           <p>{loanName(u.loan)} can be reclaimed without Writz.</p>
@@ -461,7 +461,9 @@ export function HowALoanWorks() {
       </ol>
       <p className="hm-wayout">
         <b>Your way out:</b> if Writz stops, you reclaim your BTC alone after the timelock.{" "}
-        <ExternalLink href={RECLAIM_DOCS_URL}>How to reclaim</ExternalLink>
+        <Link href="/help/reclaim" className="wz-link">
+          How to reclaim
+        </Link>
       </p>
     </section>
   );
