@@ -941,7 +941,7 @@ export function DoneStep({ m, heading }: { m: JourneyModel; heading: RefObject<H
         ) : null}
       </p>
       <p className="wz-sr" role="status">
-        {`${btc ? `${btc} BTC locked. ` : ""}Your loan is ready.${max ? ` You can borrow up to ${max} USDC.` : ""}`}
+        {`${btc ? `${btc} BTC locked. ` : ""}${m.done.index !== null ? `Loan ${m.done.index + 1} is ready.` : "Your loan is ready."}${max ? ` You can borrow up to ${max} USDC.` : ""}`}
       </p>
       <div className="wz-actions">
         <Link href={m.done.index !== null ? loanHref(m.done.index, "borrow") : "/"} className="wz-btn wz-btn-gold">

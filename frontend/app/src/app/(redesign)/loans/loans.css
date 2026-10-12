@@ -83,3 +83,4 @@
   .ln-tx-end { margin-left: 0; }
 }
 @media (prefers-reduced-motion: reduce) { .wz .ln-meter-fill, .wz .ln-seg button { transition: none; } }
+.ln-head { flex-wrap: wrap; } .ln-badge { max-width: 100%; white-space: normal; }

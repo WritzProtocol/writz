@@ -609,18 +609,20 @@ export function ReleasePanel({ m, position, neverBorrowed }: { m: LoanModel; pos
 
   if (step !== null)
     return (
-      <ol className="wz-steps" aria-label="Release progress">
-        {RELEASE_STEPS.map((s, i) => (
-          <li key={s} data-state={i < step ? "done" : i === step ? "now" : "next"} aria-current={i === step ? "step" : undefined}>
-            {i === step ? <Spinner /> : <i aria-hidden="true" />}
-            <span>{s}</span>
-            {i < step && <span className="wz-sr">Done</span>}
-          </li>
-        ))}
-        <li className="wz-sr" role="status">
+      <>
+        <ol className="wz-steps" aria-label="Release progress">
+          {RELEASE_STEPS.map((s, i) => (
+            <li key={s} data-state={i < step ? "done" : i === step ? "now" : "next"} aria-current={i === step ? "step" : undefined}>
+              {i === step ? <Spinner /> : <i aria-hidden="true" />}
+              <span>{s}</span>
+              {i < step && <span className="wz-sr">Done</span>}
+            </li>
+          ))}
+        </ol>
+        <p className="wz-sr" role="status">
           {RELEASE_STEPS[step]}
-        </li>
-      </ol>
+        </p>
+      </>
     );
 
   if (mine && m.flow.phase === "settled")

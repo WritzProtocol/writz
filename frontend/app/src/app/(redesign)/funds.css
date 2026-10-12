@@ -15,3 +15,4 @@
   .fu-summary { padding: 20px; }
   .fu-stats { grid-template-columns: minmax(0, 1fr); }
 }
+.fu-stat dd.fu-caption { font-size: 14px; color: var(--muted); }

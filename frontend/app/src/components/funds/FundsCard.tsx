@@ -193,7 +193,7 @@ export function Stat({ label, value, caption }: { label: string; value: Read<big
             <span className="wz-sr">Checking...</span>
           </>}
       </dd>
-      {caption ? <p className="wz-hint">{caption}</p> : null}
+      {caption ? <dd className="wz-hint fu-caption">{caption}</dd> : null}
     </div>
   );
 }
