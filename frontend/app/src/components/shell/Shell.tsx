@@ -1,10 +1,32 @@
 "use client";
 
+import { useEffect, useRef } from "react";
+import { usePathname } from "next/navigation";
 import { StatusProvider } from "@/lib/status/provider";
 import { AccountProvider, useShellAccount } from "./account";
 
+/** After a client-side route change, focus the new page's heading so screen readers start there. */
+function useFocusHeadingOnRoute() {
+  const pathname = usePathname();
+  const first = useRef(true);
+  useEffect(() => {
+    if (first.current) {
+      first.current = false;
+      return;
+    }
+    const frame = requestAnimationFrame(() => {
+      const target = document.querySelector<HTMLElement>("#content h1") ?? document.getElementById("content");
+      if (!target) return;
+      if (!target.hasAttribute("tabindex")) target.setAttribute("tabindex", "-1");
+      target.focus();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [pathname]);
+}
+
 function Main({ top, children }: { top: React.ReactNode; children: React.ReactNode }) {
   const a = useShellAccount();
+  useFocusHeadingOnRoute();
   return (
     <>
       {top}
