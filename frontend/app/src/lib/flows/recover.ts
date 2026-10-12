@@ -72,6 +72,8 @@ export async function recoverPositions(params: {
     if (n.commitment !== null && commitment !== BigInt("0x" + n.commitment)) continue;
 
     const prior = existing.find((p) => p.index === note.index);
+    // The relayer can lag behind this device; an older note would restore a spent nullifier.
+    if (prior && prior.version > note.version) continue;
     if (prior) removePosition(owner, prior.id);
 
     const position: Position = {
@@ -96,6 +98,8 @@ export async function recoverPositions(params: {
       timelockHeight: prior?.timelockHeight,
       vout: prior?.vout,
       leafIndex: n.leafIndex,
+      stellarTxHash: prior?.stellarTxHash,
+      releaseMarkedHash: prior?.releaseMarkedHash,
       releaseTxid: prior?.releaseTxid,
       releaseAddress: prior?.releaseAddress,
     };

@@ -219,38 +219,6 @@ export async function estimateReleaseFee(
   return fallbackSatPerVbyte * TX_VBYTES;
 }
 
-/**
- * Finds the output index (vout) in a Bitcoin transaction that pays to the given
- * address, by polling the Esplora API until the transaction is indexed.
- */
-export async function resolveVout(
-  txid: string,
-  address: string,
-  apiUrl: string,
-  maxAttempts = 12,
-  intervalMs = 5_000,
-): Promise<number> {
-  for (let i = 0; i < maxAttempts; i++) {
-    try {
-      const res = await fetch(`${apiUrl}/tx/${txid}`);
-      if (res.ok) {
-        const tx = (await res.json()) as { vout: Array<{ scriptpubkey_address?: string }> };
-        const idx = tx.vout.findIndex((o) => o.scriptpubkey_address === address);
-        if (idx !== -1) return idx;
-      }
-    } catch {
-      // network error - retry
-    }
-    if (i < maxAttempts - 1) {
-      await new Promise((r) => setTimeout(r, intervalMs));
-    }
-  }
-  throw new Error(
-    `Could not locate output paying ${address} in tx ${txid} after ${maxAttempts} attempts. ` +
-    `Check that the transaction was broadcast and the Esplora API (${apiUrl}) is reachable.`,
-  );
-}
-
 /** True when `address` is a valid address on the configured Bitcoin network. */
 export function isAddressForNetwork(address: string): boolean {
   try {

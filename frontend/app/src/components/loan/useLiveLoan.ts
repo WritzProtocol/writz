@@ -10,6 +10,7 @@ import { useFlow, useTxLockState } from "@/lib/flow/useFlow";
 import { locks } from "@/lib/flow/lock";
 import { activity } from "@/lib/flow/pendingTx";
 import { pendingDeposits } from "@/lib/flow/pendingDeposit";
+import { recentActivity } from "@/lib/tray";
 import { borrow as borrowFlow } from "@/lib/flows/borrow";
 import { repay as repayFlow } from "@/lib/flows/repay";
 import { releaseBtc, releaseFeeEstimate } from "@/lib/flows/release";
@@ -156,7 +157,10 @@ export function useLiveLoan(n: number, requestedPanel: LoanTab | null): LoanMode
       emit({ type: "start" });
       try {
         const done = await locks().withTxLock(address, () => fn(position, emit));
-        if (done) setRecent((r) => [done, ...r]);
+        if (done) {
+          setRecent((r) => [done, ...r]);
+          recentActivity.add(address, done);
+        }
       } catch (e) {
         emit({ type: "failed", error: e });
       } finally {

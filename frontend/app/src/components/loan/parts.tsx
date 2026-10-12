@@ -108,7 +108,8 @@ export function HealthMeter({ ratioBp, health }: { ratioBp: bigint | null; healt
     <div className="ln-meter">
       <div
         className="ln-meter-bar"
-        role="meter"
+        role={p === null ? undefined : "meter"}
+        aria-hidden={p === null ? true : undefined}
         aria-label="Collateral ratio"
         aria-valuemin={MIN}
         aria-valuemax={MAX}
