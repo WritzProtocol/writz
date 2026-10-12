@@ -20,6 +20,8 @@ export interface SideModel {
   blocked: string | null;
   done(amount: bigint): string;
   errorFlow: ErrorFlow;
+  /** Starting field value; the harness uses it to show a field error. */
+  initial?: string;
 }
 
 export interface FundsModel {
@@ -42,9 +44,10 @@ const SIDES: readonly FundsSide[] = ["in", "out"];
 const WAITING = "Waiting for your transaction.";
 
 function SidePanel({ m, side }: { m: FundsModel; side: FundsSide }) {
-  const s = m.sides[side];
-  const [value, setValue] = useState("");
-  const [touched, setTouched] = useState(false);
+  const checking = m.trustline.kind === "checking" ? "Checking your wallet..." : null;
+  const s = { ...m.sides[side], blocked: checking ?? m.sides[side].blocked };
+  const [value, setValue] = useState(s.initial ?? "");
+  const [touched, setTouched] = useState(Boolean(s.initial));
   const mine = m.action === side;
   const running = mine && isInFlight(m.flow);
   const check = checkAmount(value, s.max, s.over);
@@ -173,7 +176,6 @@ export function FundsCard({ m, label }: { m: FundsModel; label: string }) {
         })}
       </div>
       {busy ? <p className="wz-hint">{WAITING}</p> : null}
-      {m.trustline.kind === "checking" ? <p className="wz-hint">Checking your wallet...</p> : null}
       <div className="ln-panel wz-enter" id="funds-panel" role="tabpanel" aria-labelledby={`funds-tab-${tab}`} key={tab}>
         <SidePanel m={m} side={tab} />
       </div>
