@@ -22,9 +22,13 @@
 @layer base {
   html {
     color-scheme: dark;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior-y: none;
+    scroll-padding-bottom: calc(80px + env(safe-area-inset-bottom));
   }
   body {
     min-height: 100vh;
+    min-height: 100svh;
     background: var(--bg);
     color: var(--body);
     font-family: var(--font-sans);

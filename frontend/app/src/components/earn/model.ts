@@ -38,6 +38,7 @@ export function earnSides(wallet: Read<bigint>, balance: Read<bigint>, paused: b
       over: (max) => `You have ${formatUsdc(max)} ${UNIT} in your wallet. Enter that or less.`,
       blocked: paused ? PAUSED : w === 0n ? `You have no Blend test USDC.` : null,
       done: (amount) => `Deposited ${formatUsdc(amount)} ${UNIT}.`,
+      action: (amount) => `Deposit ${formatUsdc(amount)} USDC`,
       errorFlow: "earn-deposit",
     },
     out: {
@@ -48,6 +49,7 @@ export function earnSides(wallet: Read<bigint>, balance: Read<bigint>, paused: b
       over: (max) => `You have ${formatUsdc(max)} ${UNIT} in the vault. Enter that or less.`,
       blocked: b === 0n ? "Nothing in the vault yet." : null,
       done: (amount) => `Withdrawn ${formatUsdc(amount)} ${UNIT}. It's in your wallet.`,
+      action: (amount) => `Withdraw ${formatUsdc(amount)} USDC`,
       errorFlow: "earn-withdraw",
     },
   };

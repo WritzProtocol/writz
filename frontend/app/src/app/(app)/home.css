@@ -64,7 +64,7 @@ html:has(.hm-loans[data-count="1"]), body:has(.hm-loans[data-count="1"]) { overf
 
 .hm-closed summary { min-height: 44px; display: flex; align-items: center; color: var(--heading); font-weight: 500; cursor: pointer; }
 .hm-closed[open] summary { margin-bottom: 8px; }
-.hm-foot { display: flex; flex-wrap: wrap; gap: 4px 28px; margin-top: 40px; }
+.hm-foot { display: flex; flex-wrap: wrap; gap: 8px 28px; margin-top: 40px; }
 .hm-foot .wz-btn-text { color: var(--body); text-decoration-color: color-mix(in oklab, var(--body) 45%, transparent); }
 @media (hover: hover) and (pointer: fine) { .hm-foot .wz-btn-text:hover { color: var(--heading); text-decoration-color: currentColor; } }
 

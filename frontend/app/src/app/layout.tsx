@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import { Work_Sans, Geist_Mono } from "next/font/google";
 import { config } from "@/config";
@@ -30,6 +30,12 @@ const TITLE = "Writz - Lock Bitcoin. Borrow dollars.";
 // product has to carry.
 const DESCRIPTION =
   "Lock real BTC. Borrow USDC on Stellar. No bridge, no custodian, no wrapped token. Live on Stellar testnet.";
+
+export const viewport: Viewport = {
+  viewportFit: "cover",
+  themeColor: "#0C0E12",
+  colorScheme: "dark",
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL(env.siteUrl),

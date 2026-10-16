@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type PointerEvent, type ReactNode } from "react";
 import { usePrefersReducedMotion } from "@/components/ui/hooks";
 
 const EXIT_MS = 220;
+const DISMISS_PX = 80;
+const RETURN_MS = 320;
+const BOTTOM_SHEET = "(max-width: 760px)";
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])';
 
 /**
@@ -32,6 +35,7 @@ export function Sheet({
   const [closing, setClosing] = useState(false);
   const reduced = usePrefersReducedMotion();
   const restore = useRef(true);
+  const drag = useRef<{ id: number; y: number; dy: number } | null>(null);
 
   const close = () => {
     if (closing) return;
@@ -88,12 +92,53 @@ export function Sheet({
     };
   }, [returnFocus]);
 
+  const setOffset = (dy: number) => {
+    const el = panel.current;
+    if (el) el.style.transform = dy > 0 ? `translateY(${dy}px)` : "";
+  };
+  const dragStart = (e: PointerEvent<HTMLElement>) => {
+    const el = panel.current;
+    if (closing || drag.current || !el || !e.isPrimary || !window.matchMedia(BOTTOM_SHEET).matches) return;
+    if ((e.target as HTMLElement).closest("button, a, input")) return;
+    drag.current = { id: e.pointerId, y: e.clientY, dy: 0 };
+    el.dataset.dragged = "true";
+    delete el.dataset.returning;
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+  const dragMove = (e: PointerEvent<HTMLElement>) => {
+    const d = drag.current;
+    if (!d || e.pointerId !== d.id) return;
+    d.dy = Math.max(0, e.clientY - d.y);
+    setOffset(d.dy);
+  };
+  const dragEnd = (e: PointerEvent<HTMLElement>, cancelled: boolean) => {
+    const d = drag.current;
+    const el = panel.current;
+    if (!d || e.pointerId !== d.id) return;
+    drag.current = null;
+    if (!cancelled && d.dy > DISMISS_PX) {
+      close();
+      return;
+    }
+    if (el && d.dy > 0 && !reduced) {
+      el.dataset.returning = "true";
+      setTimeout(() => delete el.dataset.returning, RETURN_MS);
+    }
+    setOffset(0);
+  };
+  const dragProps = {
+    onPointerDown: dragStart,
+    onPointerMove: dragMove,
+    onPointerUp: (e: PointerEvent<HTMLElement>) => dragEnd(e, false),
+    onPointerCancel: (e: PointerEvent<HTMLElement>) => dragEnd(e, true),
+  };
+
   return (
     <div className="sh-root" data-closing={closing}>
       <div className="sh-backdrop" onClick={close} aria-hidden="true" />
       <div ref={panel} className="sh-panel" role="dialog" aria-modal="true" aria-labelledby={headingId}>
-        <span className="sh-handle" aria-hidden="true" />
-        <div className="sh-head">
+        <div className="sh-head" {...dragProps}>
+          <span className="sh-handle" aria-hidden="true" />
           <div>
             <h2 id={headingId} ref={heading} tabIndex={-1} className="sh-title">
               {title}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent, type ReactNode } from "react";
 import { ErrorNotice } from "@/components/ErrorNotice";
 import type { ErrorContext } from "@/lib/errors";
 import { endDrag, moveDrag, startDrag, type SlideDrag, type SlideEnd } from "./slideGesture";
@@ -126,6 +126,7 @@ export function SlideToConfirm({
   const pointer = useRef<number | null>(null);
   const [x, setX] = useState(0);
   const [drag, setDrag] = useState(false);
+  const [span, setSpan] = useState(0);
   const [done, setDone] = useState(false);
   const [armed, setArmed] = useState(false);
 
@@ -148,6 +149,7 @@ export function SlideToConfirm({
     if (disabled || done || !track.current || dragRef.current) return;
     dragRef.current = startDrag(e.clientX, x, maxX());
     pointer.current = e.pointerId;
+    setSpan(dragRef.current.max);
     setDrag(true);
     e.currentTarget.setPointerCapture(e.pointerId);
   };
@@ -181,7 +183,15 @@ export function SlideToConfirm({
   const shown = done ? doneLabel : armed ? armedLabel : label;
 
   return (
-    <div className="wz-slide" ref={track} data-disabled={disabled} data-done={done} data-armed={armed}>
+    <div
+      className="wz-slide"
+      ref={track}
+      data-disabled={disabled}
+      data-done={done}
+      data-armed={armed}
+      data-dragging={drag}
+      style={{ "--slide-p": span > 0 ? x / span : 0 } as CSSProperties}
+    >
       <span className="wz-slide-fill" style={{ width: x + HANDLE - 4, transition: drag ? "none" : undefined }} />
       <span className="wz-slide-label" aria-hidden="true">
         {shown}
