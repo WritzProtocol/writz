@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from "react";
 import { ErrorNotice } from "@/components/ErrorNotice";
 import type { ErrorContext } from "@/lib/errors";
+import { endDrag, moveDrag, startDrag, type SlideDrag, type SlideEnd } from "./slideGesture";
 
 export function Spinner() {
   return <span className="wz-spin" aria-hidden="true" />;
@@ -121,8 +122,10 @@ export function SlideToConfirm({
   onConfirm: () => void;
 }) {
   const track = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<SlideDrag | null>(null);
+  const pointer = useRef<number | null>(null);
   const [x, setX] = useState(0);
-  const [drag, setDrag] = useState<{ start: number; max: number } | null>(null);
+  const [drag, setDrag] = useState(false);
   const [done, setDone] = useState(false);
   const [armed, setArmed] = useState(false);
 
@@ -142,19 +145,26 @@ export function SlideToConfirm({
   };
 
   const down = (e: PointerEvent<HTMLButtonElement>) => {
-    if (disabled || done || !track.current) return;
-    setDrag({ start: e.clientX - x, max: maxX() });
+    if (disabled || done || !track.current || dragRef.current) return;
+    dragRef.current = startDrag(e.clientX, x, maxX());
+    pointer.current = e.pointerId;
+    setDrag(true);
     e.currentTarget.setPointerCapture(e.pointerId);
   };
   const move = (e: PointerEvent<HTMLButtonElement>) => {
-    if (!drag) return;
-    setX(Math.min(drag.max, Math.max(0, e.clientX - drag.start)));
+    if (!dragRef.current || e.pointerId !== pointer.current) return;
+    dragRef.current = moveDrag(dragRef.current, e.clientX);
+    setX(dragRef.current.x);
   };
-  const up = () => {
-    if (!drag) return;
-    if (x >= drag.max * 0.9) finish();
+  const end = (e: PointerEvent<HTMLButtonElement>, how: SlideEnd) => {
+    const d = dragRef.current;
+    if (!d || e.pointerId !== pointer.current) return;
+    dragRef.current = null;
+    pointer.current = null;
+    setDrag(false);
+    const r = endDrag(d, how);
+    if (r.confirm) finish();
     else setX(0);
-    setDrag(null);
   };
   const key = (e: KeyboardEvent<HTMLButtonElement>) => {
     if (disabled || done) return;
@@ -185,8 +195,9 @@ export function SlideToConfirm({
         disabled={disabled || done}
         onPointerDown={down}
         onPointerMove={move}
-        onPointerUp={up}
-        onPointerCancel={up}
+        onPointerUp={(e) => end(e, "up")}
+        onPointerCancel={(e) => end(e, "cancel")}
+        onLostPointerCapture={(e) => end(e, "cancel")}
         onKeyDown={key}
         onClick={(e) => e.preventDefault()}
         onBlur={() => setArmed(false)}
