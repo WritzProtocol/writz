@@ -427,7 +427,7 @@ export function Preview({
         <h2 id="need-title" className="wz-label">
           What you&apos;ll need
         </h2>
-        <ul className="fo-need">
+        <ul className="wz-need">
           <li>
             <b>A Stellar wallet</b> such as Freighter. It receives the USDC you borrow.
           </li>

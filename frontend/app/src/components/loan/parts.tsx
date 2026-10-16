@@ -943,7 +943,7 @@ export function MissingDetails({ m, height }: { m: LoanModel; height: number | n
   return (
     <Notice tone="warning" label="Bitcoin details missing">
       <p>This device doesn&apos;t have the Bitcoin details for this loan, so it can&apos;t build the release.</p>
-      <ul className="fo-need" style={{ marginTop: 4 }}>
+      <ul className="wz-need" style={{ marginTop: 4 }}>
         <li>Open Writz on the device you deposited from.</li>
         <li>Or import your loan backup on this device.</li>
         <li>

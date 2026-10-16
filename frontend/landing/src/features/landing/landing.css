@@ -4,14 +4,10 @@
   --ink: var(--on-accent);
   --gold: var(--accent);
   --midnight: var(--bg);
-  --link: var(--accent);
-  --mark: var(--accent);
   --rule: var(--line);
   --rule-strong: var(--line-strong);
   --on-dark: var(--body);
   --ease-out: var(--ease-enter);
-  --tint-10: color-mix(in oklab, var(--heading) 7%, transparent);
-  --tint-20: color-mix(in oklab, var(--heading) 13%, transparent);
   --gut: 32px;
   --max: 1184px;
 
