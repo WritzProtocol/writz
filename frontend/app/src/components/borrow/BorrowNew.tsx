@@ -17,18 +17,19 @@ function MockJourney({ world }: { world: MockWorld }) {
 /** Static placeholder at the real size of the first screen while the client hydrates. */
 function Skeleton() {
   return (
-    <div className="fo-col" aria-hidden="true">
-      <div className="fo-progress">
+    <div className="bj" aria-hidden="true">
+      <div className="bj-progress">
         {Array.from({ length: 6 }, (_, i) => (
-          <span key={i} />
+          <i key={i} />
         ))}
       </div>
-      <div className="fo-meta" />
-      <section className="fo-card">
-        <div className="wz-skeleton" style={{ height: 36, width: "70%" }} />
-        <div className="wz-skeleton" style={{ height: 64, marginTop: 24 }} />
-        <div className="wz-skeleton" style={{ height: 140, marginTop: 16 }} />
-      </section>
+      <div className="bj-stepline" />
+      <div className="wz-skeleton" style={{ height: 64, width: "70%", marginTop: 56 }} />
+      <div className="bj-grid">
+        <div className="bj-col">
+          <div className="wz-skeleton" style={{ height: 320 }} />
+        </div>
+      </div>
     </div>
   );
 }
