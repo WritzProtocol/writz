@@ -1,0 +1,20 @@
+/* Dev scenarios index, harness only */
+
+.dv { display: flex; flex-direction: column; gap: 48px; }
+.dv-head { display: flex; flex-direction: column; gap: 16px; max-width: 760px; }
+.dv-head h1 { font-size: clamp(40px, 4.6vw, 64px); font-weight: 600; letter-spacing: -0.035em; line-height: 1.02; }
+.dv-head p { font-size: 17px; color: var(--body); }
+.dv-head .mono { color: var(--heading); }
+.dv-areas { display: flex; flex-wrap: wrap; gap: 4px; margin-left: -6px; }
+.dv-areas .wz-chip { text-decoration: none; }
+.dv-group { display: flex; flex-direction: column; gap: 12px; scroll-margin-top: 96px; }
+.dv-group h2 { display: flex; align-items: baseline; gap: 12px; font-size: 21px; font-weight: 600; letter-spacing: -0.014em; }
+.dv-count { font-family: var(--ff-mono), ui-monospace, monospace; font-size: 14px; font-weight: 400; color: var(--muted); }
+.dv-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr)); gap: 4px; margin: 0; padding: 0; list-style: none; }
+.dv-list a { display: flex; flex-direction: column; gap: 2px; min-height: 64px; padding: 12px 16px; background: color-mix(in oklab, var(--heading) 6%, var(--bg)); color: var(--heading); text-decoration: none; transition: background-color var(--dur-micro) var(--ease-enter); }
+.dv-list a:focus-visible { outline-offset: -2px; }
+.dv-id { font-size: 14px; color: var(--mark); overflow-wrap: anywhere; }
+.dv-name { font-size: 15px; }
+.dv-route { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+@media (hover: hover) and (pointer: fine) { .dv-list a:hover { background: var(--tint-10); } }
+@media (prefers-reduced-motion: reduce) { .dv-list a { transition: none; } }

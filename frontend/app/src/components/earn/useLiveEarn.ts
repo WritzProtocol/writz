@@ -11,6 +11,8 @@ import { locks } from "@/lib/flow/lock";
 import type { FundsSide } from "@/lib/funds/model";
 import type { Read } from "@/lib/loan/model";
 import { recentActivity } from "@/lib/tray";
+import { currentRoute, notifySettled } from "@/lib/toast";
+import { formatUsdc } from "@/lib/borrow/journey";
 import { useShellAccount } from "@/components/shell/account";
 import { earnSides, UNIT, type EarnModel } from "./model";
 
@@ -52,17 +54,27 @@ export function useLiveEarn(): EarnModel {
       setLastAmount(amountStroops);
       emit({ type: "start" });
       const run = side === "in" ? depositToVault : withdrawFromVault;
+      const origin = currentRoute();
+      const link = { href: origin, label: "Open Earn" };
+      const amount = formatUsdc(amountStroops);
       void locks()
         .withTxLock(address, () => run({ amountStroops, caller: address, signTransaction: w.signTransaction, emit }))
-        .then(({ txHash }) =>
+        .then(({ txHash }) => {
           recentActivity.add(address, {
             hash: txHash,
             chain: "stellar",
             label: side === "in" ? `Deposited to Earn` : `Withdrawn from Earn`,
             at: Date.now(),
-          }),
-        )
-        .catch((error: unknown) => emit({ type: "failed", error }))
+          });
+          notifySettled(origin, link, {
+            ok: true,
+            text: side === "in" ? `Deposited ${amount} USDC (Blend) to Earn.` : `Withdrawn ${amount} USDC (Blend) from Earn. It's in your wallet.`,
+          });
+        })
+        .catch((error: unknown) => {
+          emit({ type: "failed", error });
+          notifySettled(origin, link, { ok: false, error, what: `Your ${side === "in" ? "deposit" : "withdrawal"} of ${amount} USDC (Blend)` });
+        })
         .finally(refresh);
     },
     [address, w.signTransaction, emit, refresh],

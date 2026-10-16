@@ -178,6 +178,7 @@ function Skeleton() {
                   <T>Writz cannot recover your Bitcoin key. Keep its recovery phrase.</T>
                 </p>
                 <p className="wz-check">
+                  <i className="wz-sk-check" />
                   <T>I understand my BTC stays locked until I repay and release it, or until block 300,000.</T>
                 </p>
                 <div className="wz-slide wz-sk-field" />

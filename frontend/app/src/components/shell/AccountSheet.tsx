@@ -7,37 +7,11 @@ import { networkName } from "@/lib/wallet/precheck";
 import { formatBtc, shortAddress } from "@/lib/borrow/journey";
 import { btcAddressUrl, stellarAccountUrl } from "@/lib/explorer";
 import { BTC_FAUCETS, DOCS_URL, GITHUB_ISSUES_URL, GITHUB_SECURITY_URL } from "@/lib/links";
-import { ErrorBox, ExternalLink, Notice } from "@/components/ui";
+import { CopyButton, ErrorBox, ExternalLink, Notice } from "@/components/ui";
 import { useShellAccount, type ShellAccount } from "./account";
 
 type Chain = "stellar" | "bitcoin";
 const STELLAR = networkName(config.networkPassphrase);
-
-function CopyButton({ value }: { value: string }) {
-  const [copied, setCopied] = useState(false);
-  return (
-    <>
-      <button
-        type="button"
-        className="wz-btn wz-btn-line wz-btn-sm"
-        onClick={() =>
-          void navigator.clipboard
-            ?.writeText(value)
-            .then(() => {
-              setCopied(true);
-              setTimeout(() => setCopied(false), 2000);
-            })
-            .catch(() => {})
-        }
-      >
-        {copied ? "Copied" : "Copy address"}
-      </button>
-      <span className="wz-sr" aria-live="polite">
-        {copied ? "Address copied" : ""}
-      </span>
-    </>
-  );
-}
 
 function Address({ value }: { value: string }) {
   return (

@@ -46,6 +46,7 @@ export function lendSides(
       over: (max) => `You have ${formatUsdc(max)} USDC in your wallet. Enter that or less.`,
       blocked: w === 0n ? "You have no test USDC. Borrow some, or get it from the faucet." : null,
       done: (amount) => `Supplied ${formatUsdc(amount)} USDC.`,
+      action: (amount) => `Supply ${formatUsdc(amount)} USDC`,
       errorFlow: "lend",
       initial: initial?.side === "in" ? initial.value : undefined,
     },
@@ -70,6 +71,7 @@ export function lendSides(
             ? "All pool USDC is lent out right now. Try again later."
             : null,
       done: (amount) => `Withdrawn ${formatUsdc(amount)} USDC. It's in your wallet.`,
+      action: (amount) => `Withdraw ${formatUsdc(amount)} USDC`,
       errorFlow: "withdraw",
       initial: initial?.side === "out" ? initial.value : undefined,
     },

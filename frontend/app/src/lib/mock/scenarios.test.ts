@@ -47,8 +47,8 @@ const STATUS_ROWS = [
 
 /** Every screen state the app renders. */
 const APPENDIX_A = [
-  ...range("G", 7),
-  ...range("H", 21),
+  ...range("G", 8),
+  ...range("H", 23),
   ...range("B", 37),
   ...range("L", 25),
   ...range("E", 11),
@@ -73,7 +73,7 @@ describe("mock scenarios", () => {
     const ids = SCENARIOS.map((s) => s.id);
     expect(new Set(ids).size).toBe(ids.length);
     expect([...ids].sort()).toEqual([...APPENDIX_A].sort());
-    expect(APPENDIX_A.filter((id) => !id.includes(".")).length).toBe(129);
+    expect(APPENDIX_A.filter((id) => !id.includes(".")).length).toBe(132);
   });
 
   for (const scenario of SCENARIOS) {

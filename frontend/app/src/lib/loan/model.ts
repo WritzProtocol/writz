@@ -82,10 +82,10 @@ export function parseUsdcAmount(input: string): UsdcParse {
   return { ok: true, stroops };
 }
 
-/** Stroops to the plain decimal a field accepts back, e.g. "402.67". */
+/** Stroops to the grouped decimal a field accepts back, e.g. "1,402.67". */
 export function toFieldValue(stroops: bigint): string {
   const cents = stroops / (STROOP / 100n);
-  return `${cents / 100n}.${(cents % 100n).toString().padStart(2, "0")}`;
+  return `${(cents / 100n).toLocaleString("en-US")}.${(cents % 100n).toString().padStart(2, "0")}`;
 }
 
 // ── Status ───────────────────────────────────────────────────────────────

@@ -124,8 +124,10 @@ describe("USDC amount parsing", () => {
     expect(parseUsdcAmount("1.12345678").ok).toBe(false);
   });
 
-  test("field value round-trips to cents", () => {
+  test("field value round-trips to cents, grouped by thousands", () => {
     expect(toFieldValue(usdc(402.67) + 5n)).toBe("402.67");
+    expect(toFieldValue(usdc(1500))).toBe("1,500.00");
+    expect(parseUsdcAmount(toFieldValue(usdc(1_234_567.89)))).toEqual({ ok: true, stroops: usdc(1_234_567.89) });
   });
 });
 

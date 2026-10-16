@@ -298,7 +298,13 @@ export function LoanView({ m }: { m: LoanModel }) {
 
         {hasActions && (
           <Enter as="section" name="actions" step={4} className="ln-actions" aria-label="Actions">
-            <div className="wz-seg" role="tablist" aria-label="Choose an action">
+            <div
+              className="wz-seg"
+              role="tablist"
+              aria-label="Choose an action"
+              style={{ ["--seg-n" as string]: LOAN_TABS.length, ["--seg-i" as string]: tab ? LOAN_TABS.indexOf(tab) : 0 }}
+            >
+              {tab ? <span className="wz-seg-ind" aria-hidden="true" /> : null}
               {LOAN_TABS.map((t) => (
                 <button
                   key={t}
@@ -332,7 +338,7 @@ export function LoanView({ m }: { m: LoanModel }) {
               </ul>
             )}
             {landedElsewhere && (
-              <Notice tone="positive" label="Done">
+              <Notice tone="positive" label="Done" className="wz-enter">
                 <p>
                   {m.action === "repay" && debt === 0n
                     ? "Loan repaid. Your BTC is still locked. Release it below."

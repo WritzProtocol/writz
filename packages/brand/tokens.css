@@ -1,5 +1,15 @@
 /* Writz Graphite & Gold tokens, shared by frontend/app and frontend/landing. */
 
+/* Geist Mono's metrics on a local monospace face (0.6em advance), so figures keep their size while the web font loads. */
+@font-face {
+  font-family: "Geist Mono Fallback";
+  src: local("Courier New"), local("CourierNewPSMT"), local("Liberation Mono"), local("Cousine");
+  ascent-override: 100.5%;
+  descent-override: 29.5%;
+  line-gap-override: 0%;
+  size-adjust: 100%;
+}
+
 :root {
   --bg: #0c0e12;
   --surface: #15181e;

@@ -17,15 +17,17 @@ export function Notice({
   children,
   actions,
   alert,
+  className,
 }: {
   tone: Tone;
   label?: string;
   children: ReactNode;
   actions?: ReactNode;
   alert?: boolean;
+  className?: string;
 }) {
   return (
-    <div className="wz-note" data-tone={tone} role={alert ? "alert" : "status"}>
+    <div className={className ? `wz-note ${className}` : "wz-note"} data-tone={tone} role={alert ? "alert" : "status"}>
       {label ? <span className="wz-note-label">{label}</span> : null}
       <div>{children}</div>
       {actions ? <div className="wz-actions">{actions}</div> : null}
@@ -58,6 +60,33 @@ export function ErrorBox({
   );
 }
 
+const COPY_FAILED = "Couldn't copy. Select the address instead.";
+
+/** Copies an address; "Copied" for 2 seconds, or the reason when the clipboard refuses. */
+export function CopyButton({ value, className = "wz-btn wz-btn-line wz-btn-sm" }: { value: string; className?: string }) {
+  const [state, setState] = useState<"idle" | "copied" | "failed">("idle");
+  useEffect(() => {
+    if (state !== "copied") return;
+    const t = setTimeout(() => setState("idle"), 2000);
+    return () => clearTimeout(t);
+  }, [state]);
+  const copy = () => {
+    const write = navigator.clipboard?.writeText(value);
+    if (!write) return setState("failed");
+    write.then(() => setState("copied")).catch(() => setState("failed"));
+  };
+  return (
+    <>
+      <button type="button" className={className} onClick={copy}>
+        {state === "copied" ? "Copied" : "Copy address"}
+      </button>
+      <span className={state === "failed" ? "wz-hint wz-copy-fail" : "wz-sr"} aria-live="polite">
+        {state === "copied" ? "Address copied" : state === "failed" ? COPY_FAILED : ""}
+      </span>
+    </>
+  );
+}
+
 export function ExternalLink({ href, children, className = "wz-link" }: { href: string; children: ReactNode; className?: string }) {
   return (
     <a href={href} target="_blank" rel="noopener noreferrer" className={className}>
@@ -68,6 +97,7 @@ export function ExternalLink({ href, children, className = "wz-link" }: { href: 
 }
 
 const HANDLE = 76;
+const END_GAP = 4;
 const ARM_MS = 5_000;
 
 /**
@@ -102,7 +132,7 @@ export function SlideToConfirm({
     return () => clearTimeout(t);
   }, [armed]);
 
-  const maxX = () => (track.current ? track.current.clientWidth - HANDLE : 0);
+  const maxX = () => (track.current ? track.current.clientWidth - HANDLE - END_GAP : 0);
 
   const finish = () => {
     setX(maxX());
@@ -142,7 +172,7 @@ export function SlideToConfirm({
 
   return (
     <div className="wz-slide" ref={track} data-disabled={disabled} data-done={done} data-armed={armed}>
-      <span className="wz-slide-fill" style={{ width: x + HANDLE - 4 }} />
+      <span className="wz-slide-fill" style={{ width: x + HANDLE - 4, transition: drag ? "none" : undefined }} />
       <span className="wz-slide-label" aria-hidden="true">
         {shown}
       </span>

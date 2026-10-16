@@ -39,6 +39,8 @@ export interface MockGlobals {
   relayerCatchingUp?: boolean;
   mainnetGuard?: boolean;
   otherTabTx?: boolean;
+  /** Toasts for transactions that settle while the user is on another route. */
+  settledElsewhere?: boolean;
 }
 
 /** One position as every layer sees it, and the status derive must produce from it. */

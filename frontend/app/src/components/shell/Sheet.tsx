@@ -9,18 +9,21 @@ const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), selec
 /**
  * A modal sheet: right side on desktop, bottom on mobile. Focus moves to the
  * heading, stays inside while open, and returns to the trigger on close.
+ * A new `dismissOn` value closes it the same animated way, leaving focus to the page.
  */
 export function Sheet({
   title,
   subtitle,
   onClose,
   returnFocus,
+  dismissOn,
   children,
 }: {
   title: string;
   subtitle?: ReactNode;
   onClose: () => void;
   returnFocus: React.RefObject<HTMLElement | null>;
+  dismissOn?: string;
   children: ReactNode;
 }) {
   const panel = useRef<HTMLDivElement>(null);
@@ -28,6 +31,7 @@ export function Sheet({
   const headingId = useId();
   const [closing, setClosing] = useState(false);
   const reduced = usePrefersReducedMotion();
+  const restore = useRef(true);
 
   const close = () => {
     if (closing) return;
@@ -38,6 +42,13 @@ export function Sheet({
   useEffect(() => {
     closeRef.current = close;
   });
+
+  const opened = useRef(dismissOn);
+  useEffect(() => {
+    if (dismissOn === opened.current) return;
+    restore.current = false;
+    closeRef.current();
+  }, [dismissOn]);
 
   useEffect(() => {
     const trigger = returnFocus.current;
@@ -73,7 +84,7 @@ export function Sheet({
     return () => {
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = overflow;
-      trigger?.focus();
+      if (restore.current) trigger?.focus();
     };
   }, [returnFocus]);
 

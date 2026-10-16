@@ -37,8 +37,8 @@ import type {
  * Mock harness scenarios, one per screen state ID. Select one
  * with `?scenario=<id>` while NEXT_PUBLIC_UI_MOCK=1 (see `gate.ts`).
  *
- *   G1-G7     global states            /  (any client route)
- *   H1-H21    home                     /
+ *   G1-G8     global states            /  (any client route)
+ *   H1-H23    home                     /
  *   B1-B37    deposit journey          /borrow/new
  *   L1-L25    loan detail              /loans/1
  *   E1-E11    earn                     /earn
@@ -141,6 +141,9 @@ const GLOBAL: Scenario[] = [
   define("G7", "Another tab has a transaction in flight", (now) =>
     home({ globals: { otherTabTx: true }, positions: [loans.healthy(1, now)] }),
   ),
+  define("G8", "Transactions settle while on another route", (now) =>
+    home({ globals: { settledElsewhere: true }, positions: [loans.healthy(1, now)] }),
+  ),
 ];
 
 const HOME: Scenario[] = [
@@ -175,6 +178,10 @@ const HOME: Scenario[] = [
     home({ globals: { rpcUnreachable: true }, positions: [{ ...loans.healthy(1, now), expect: "checking" }] }),
   ),
   define("H21", "Changed on another device", (now) => home({ positions: [loans.changedElsewhere(1, now)] })),
+  define("H22", "Two open loans, one below borrow limit", (now) =>
+    home({ positions: [loans.healthy(1, now), loans.belowLimit(2, now)] }),
+  ),
+  define("H23", "Open loan with no debt", (now) => home({ positions: [loans.neverBorrowed(1, now)] })),
 ];
 
 const DEPOSIT: Scenario[] = [

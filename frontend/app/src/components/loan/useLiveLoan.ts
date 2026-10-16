@@ -11,6 +11,7 @@ import { locks } from "@/lib/flow/lock";
 import { activity } from "@/lib/flow/pendingTx";
 import { pendingDeposits } from "@/lib/flow/pendingDeposit";
 import { recentActivity } from "@/lib/tray";
+import { currentRoute, notifySettled } from "@/lib/toast";
 import { borrow as borrowFlow } from "@/lib/flows/borrow";
 import { repay as repayFlow } from "@/lib/flows/repay";
 import { releaseBtc, releaseFeeEstimate } from "@/lib/flows/release";
@@ -25,6 +26,14 @@ import type { LocalInputs } from "@/lib/status/types";
 import { useSteadyStatus, type LoanAccess, type LoanModel } from "./model";
 
 const NO_TXS: never[] = [];
+
+function settledText(tab: LoanTab, done: RecentTx, n: number): string {
+  if (tab === "borrow") return `${done.label} on Loan ${n}. It's in your Stellar wallet.`;
+  if (tab === "repay") return `${done.label} on Loan ${n}.`;
+  return `Release of Loan ${n} sent to Bitcoin. It arrives after 1 Bitcoin confirmation.`;
+}
+
+const WHAT: Record<LoanTab, string> = { borrow: "Your borrow", repay: "Your repayment", release: "Your release" };
 const LEAF_RETRY_MS = 15_000;
 
 function kitWalletName(): string | undefined {
@@ -155,19 +164,23 @@ export function useLiveLoan(n: number, requestedPanel: LoanTab | null): LoanMode
       if (!address || !position) return;
       setAction(tab);
       emit({ type: "start" });
+      const origin = currentRoute();
+      const link = { href: origin, label: `Open Loan ${n}` };
       try {
         const done = await locks().withTxLock(address, () => fn(position, emit));
         if (done) {
           setRecent((r) => [done, ...r]);
           recentActivity.add(address, done);
+          notifySettled(origin, link, { ok: true, text: settledText(tab, done, n) });
         }
       } catch (e) {
         emit({ type: "failed", error: e });
+        notifySettled(origin, link, { ok: false, error: e, what: `${WHAT[tab]} on Loan ${n}` });
       } finally {
         refresh();
       }
     },
-    [address, position, emit, refresh],
+    [address, position, emit, refresh, n],
   );
 
   const seed = w.seed;

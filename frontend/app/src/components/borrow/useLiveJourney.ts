@@ -13,6 +13,8 @@ import { isInFlight } from "@/lib/flow/engine";
 import { depositLockName, locks } from "@/lib/flow/lock";
 import { pendingDeposits } from "@/lib/flow/pendingDeposit";
 import { recentActivity } from "@/lib/tray";
+import { currentRoute, notifySettled } from "@/lib/toast";
+import { loanHref } from "@/lib/loan/model";
 import { clearDraftAmount, readDraftAmount } from "@/lib/borrow/draft";
 import {
   depositDeps,
@@ -72,6 +74,10 @@ function bitcoinError(message: string | null): BitcoinError | null {
 }
 
 const esplora = () => esploraReads(config.bitcoin.apiUrl, (url) => fetch(url));
+
+function notifyRegistered(origin: string, index: number) {
+  notifySettled(origin, { href: loanHref(index, "borrow"), label: "Borrow now" }, { ok: true, text: `Deposit registered on Stellar. Loan ${index + 1} is ready.` });
+}
 
 export function useLiveJourney(): JourneyModel {
   const w = useWallet();
@@ -299,12 +305,16 @@ export function useLiveJourney(): JourneyModel {
     setDoneSats(BigInt(pending.sats));
     setDoneIndex(pending.positionIndex);
     emit({ type: "start" });
+    const origin = currentRoute();
+    const index = pending.positionIndex;
     try {
       await locks().withTxLock(address, () =>
         registerDeposit({ owner: address, seed: w.seed!, signTransaction: w.signTransaction, emit }),
       );
+      notifyRegistered(origin, index);
     } catch (e) {
       emit({ type: "failed", error: e });
+      notifySettled(origin, { href: origin, label: "Open deposit" }, { ok: false, error: e, what: "Registering your deposit" });
     }
   }, [address, w.seed, w.signTransaction, pending, emit]);
 
@@ -321,12 +331,15 @@ export function useLiveJourney(): JourneyModel {
     setDoneSats(BigInt(position.collateralSats));
     setDoneIndex(position.index);
     emit({ type: "start" });
+    const origin = currentRoute();
     try {
       await locks().withTxLock(address, () =>
         finishDeposit({ position, seed: w.seed!, signTransaction: w.signTransaction, emit }),
       );
+      notifyRegistered(origin, position.index);
     } catch (e) {
       emit({ type: "failed", error: e });
+      notifySettled(origin, { href: origin, label: "Open deposit" }, { ok: false, error: e, what: "Finishing your deposit" });
     }
   }, [address, w.seed, w.signTransaction, registering, pendingTxid, emit]);
 
