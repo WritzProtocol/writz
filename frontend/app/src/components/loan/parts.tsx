@@ -81,7 +81,7 @@ export function badgeOf(status: PositionStatus): { label: string; tone: Tone } {
 export function StatusBadge({ status }: { status: PositionStatus }) {
   const { label, tone } = badgeOf(status);
   return (
-    <span className="ln-badge" data-tone={tone}>
+    <span className="wz-badge" data-tone={tone}>
       <i aria-hidden="true" />
       <span className="wz-sr">Status: </span>
       {label}
@@ -332,7 +332,7 @@ export function AmountField({
           onChange={(e) => onChange(e.target.value)}
         />
         <span>{unit}</span>
-        <button type="button" className="ln-max" onClick={onMax} disabled={disabled}>
+        <button type="button" className="wz-chip ln-max" onClick={onMax} disabled={disabled}>
           {maxLabel}
         </button>
       </div>
@@ -451,9 +451,9 @@ export function BorrowPanel({
         hint={hint}
         disabled={running}
       />
-      <div className="ln-presets">
+      <div className="wz-chips ln-presets">
         {[25n, 50n].map((p) => (
-          <button key={String(p)} type="button" disabled={running} onClick={() => setValue(toFieldValue((max * p) / 100n))}>
+          <button key={String(p)} type="button" className="wz-chip" disabled={running} onClick={() => setValue(toFieldValue((max * p) / 100n))}>
             {String(p)}%
           </button>
         ))}
