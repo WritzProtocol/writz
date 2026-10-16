@@ -108,11 +108,14 @@ current ledger tip rather than backfilling (see the comment in its
 `vault_events` - not because of an outage, but by design.
 
 Nothing is at risk of being lost the way a missed `repay_full` strands a
-user's BTC; the damage is reporting. `/metrics` derives accrued yield as
-`onChainTvl - indexedTvl` (`frontend/app/src/app/metrics/page.tsx`), so a
-missing deposit is published as if it were yield. On testnet this showed a
-20 USDC creation deposit as +20 USDC of "Accrued Yield" against 10 USDC of
-indexed deposits.
+user's BTC; the damage is reporting. The app's `/protocol` page
+(`frontend/app/src/app/(app)/protocol/page.tsx`) shows the vault's total
+from the chain, its depositor count from `GET /metrics/tvl` and the 30-day
+retention cohorts from `GET /metrics/retention`. A deposit missing from
+`vault_events` is left out of the depositor count and the cohorts. Before
+that page replaced the old `/metrics` dashboard, it also showed up as yield:
+on testnet a 20 USDC creation deposit read as +20 USDC of "Accrued Yield"
+against 10 USDC of indexed deposits.
 
 **The Step 3-5 recovery above does not apply.** Rewinding the cursor only
 works while RPC still retains the range; these ledgers are months past its

@@ -172,7 +172,7 @@ curl -X POST http://localhost:3000/defindex/withdraw \
 
 ### `GET /metrics/tvl`
 
-Returns the Writz DeFindex vault's total value locked and its unique depositor count. Backs the public `/metrics` dashboard.
+Returns the Writz DeFindex vault's total value locked and its unique depositor count. Backs the vault figures on the app's public `/protocol` page.
 
 **Responses**
 

@@ -29,16 +29,22 @@ export function Navbar() {
         <Link href="/" aria-label="Writz" onClick={toTop}>
           <span className="lockup" />
         </Link>
-        <nav className="nav-links">
-          {navItems.map((item) => (
-            <a key={item.label} href={item.href} className={item.keepOnMobile ? "keep" : undefined}>
-              {item.label}
-            </a>
-          ))}
+        <div className="nav-end">
+          <nav className="nav-links">
+            {navItems.map((item) => (
+              <a key={item.label} href={item.href} className={item.keepOnMobile ? "keep" : undefined}>
+                {item.label}
+              </a>
+            ))}
+          </nav>
+          <span className="tag nav-tag">
+            <span className="dot" />
+            Live on Stellar testnet
+          </span>
           <a className="btn btn-gold" href={APP_ROUTE}>
             Open app
           </a>
-        </nav>
+        </div>
       </div>
     </header>
   );
