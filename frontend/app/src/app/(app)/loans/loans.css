@@ -53,8 +53,9 @@
 .ln-bm-tk { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--surface); }
 .ln-bm-bands { display: flex; gap: 2px; height: 4px; margin-top: 6px; }
 .ln-bm-z { height: 100%; }
-.ln-bm-z[data-zone="danger"] { width: 13.333%; background: var(--danger); }
-.ln-bm-z[data-zone="warning"] { width: 20%; background: var(--warning); }
+.ln-bm-z[data-zone="danger"] { background: var(--danger); }
+.ln-bm-z[data-zone="warning"] { background: var(--warning); }
+.ln-bm-z[data-zone="info"] { background: color-mix(in oklab, var(--info) 50%, transparent); }
 .ln-bm-z[data-zone="positive"] { flex: 1; background: color-mix(in oklab, var(--positive) 55%, transparent); }
 .ln-bm[data-state="checking"] .ln-bm-z { background: var(--deep); }
 .ln-bm-marker, .ln-bm-pre { position: absolute; top: 0; width: 16px; height: 28px; margin-left: -8px; }
@@ -68,6 +69,7 @@
 .ln-bm-legend i { width: 14px; height: 4px; }
 .ln-bm-legend i[data-zone="danger"] { background: var(--danger); }
 .ln-bm-legend i[data-zone="warning"] { background: var(--warning); }
+.ln-bm-legend i[data-zone="info"] { background: color-mix(in oklab, var(--info) 50%, transparent); }
 .ln-bm-legend i[data-zone="positive"] { background: color-mix(in oklab, var(--positive) 55%, transparent); }
 @media (prefers-reduced-motion: no-preference) {
   .ln-bm-fill { animation: ln-grow var(--dur-section) var(--ease-enter) 150ms both; }

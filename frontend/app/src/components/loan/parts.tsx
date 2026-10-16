@@ -7,6 +7,7 @@ import { btcTxUrl, stellarTxUrl } from "@/lib/explorer";
 import { hashOf, isInFlight, type FlowState } from "@/lib/flow/engine";
 import { formatBtc, formatUsd, formatUsdc, shortAddress } from "@/lib/borrow/journey";
 import { releaseBlocker } from "@/lib/flows/release";
+import { AT_RISK_BP, BORROW_LIMIT_BP, LIQUIDATION_BP } from "@/lib/status/derive";
 import { LIQUIDATION_DOCS_URL } from "@/lib/links";
 import {
   RELEASE_STEPS,
@@ -95,8 +96,18 @@ const MIN = 100;
 const MAX = 250;
 const at = (p: number) => Math.max(0, Math.min(100, ((p - MIN) / (MAX - MIN)) * 100));
 const pos = (p: number) => `${at(p)}%`;
-const LIQ_AT = pos(120);
-const LIMIT_AT = pos(150);
+const LIQ = Number(LIQUIDATION_BP) / 100;
+const RISK = Number(AT_RISK_BP) / 100;
+const LIMIT = Number(BORROW_LIMIT_BP) / 100;
+const LIQ_AT = pos(LIQ);
+const RISK_AT = pos(RISK);
+const LIMIT_AT = pos(LIMIT);
+const ZONES = [
+  { zone: "danger", label: "Liquidation", width: `${at(LIQ)}%` },
+  { zone: "warning", label: "Close to liquidation", width: `${at(RISK) - at(LIQ)}%` },
+  { zone: "info", label: "Below borrow limit", width: `${at(LIMIT) - at(RISK)}%` },
+  { zone: "positive", label: "Healthy", width: undefined },
+] as const;
 
 /** A ratio that stands for "nothing owed" on the meter, past its right end. */
 export const NO_DEBT_BP = BigInt(MAX * 100);
@@ -104,12 +115,13 @@ export const NO_DEBT_BP = BigInt(MAX * 100);
 function meterText(p: number | null, health: Health | null): string {
   if (health === null) return "Collateral ratio checking.";
   if (health === "none") return "No debt, nothing can be liquidated.";
-  return `Collateral ratio ${Math.floor(p!)}%, ${HEALTH_LABEL[health].toLowerCase()}. Liquidation at 120%. Close to liquidation from 120% to 150%.`;
+  return `Collateral ratio ${Math.floor(p!)}%, ${HEALTH_LABEL[health].toLowerCase()}. Liquidation at ${LIQ}%. Close to liquidation from ${LIQ}% to ${RISK}%. Borrowing stops below ${LIMIT}%.`;
 }
 
 /**
- * Bullet meter on a 100% to 250% scale: fill to the ratio, fine ticks at 120%
- * (liquidation) and 150% (borrow limit) with zone bands under the track, the
+ * Bullet meter on a 100% to 250% scale: fill to the ratio, fine ticks at the
+ * liquidation, at-risk and borrow-limit lines with the four status zones
+ * under the track, the
  * gold marker at the ratio and, while an amount is typed, an outlined marker
  * at the ratio it would leave.
  */
@@ -141,12 +153,13 @@ export function HealthMeter({
         <div className="ln-bm-track">
           {known ? <span className="ln-bm-fill" /> : null}
           <span className="ln-bm-tk" style={{ left: LIQ_AT }} />
+          <span className="ln-bm-tk" style={{ left: RISK_AT }} />
           <span className="ln-bm-tk" style={{ left: LIMIT_AT }} />
         </div>
         <div className="ln-bm-bands" aria-hidden="true">
-          <span className="ln-bm-z" data-zone="danger" />
-          <span className="ln-bm-z" data-zone="warning" />
-          <span className="ln-bm-z" data-zone="positive" />
+          {ZONES.map((z) => (
+            <span key={z.zone} className="ln-bm-z" data-zone={z.zone} style={z.width ? { width: z.width } : undefined} />
+          ))}
         </div>
         {known ? <span className="ln-bm-marker" aria-hidden="true" /> : null}
         {known && preview !== null ? (
@@ -157,23 +170,17 @@ export function HealthMeter({
           </span>
         ) : null}
         <div className="ln-bm-ticks" aria-hidden="true">
-          <span style={{ left: LIQ_AT }}>120%</span>
-          <span style={{ left: LIMIT_AT }}>150%</span>
+          <span style={{ left: LIQ_AT }}>{LIQ}%</span>
+          <span style={{ left: LIMIT_AT }}>{LIMIT}%</span>
         </div>
       </div>
       <ul className="ln-bm-legend" aria-hidden="true">
-        <li>
-          <i data-zone="danger" />
-          Liquidation
-        </li>
-        <li>
-          <i data-zone="warning" />
-          Close to liquidation
-        </li>
-        <li>
-          <i data-zone="positive" />
-          Healthy
-        </li>
+        {ZONES.map((z) => (
+          <li key={z.zone}>
+            <i data-zone={z.zone} />
+            {z.label}
+          </li>
+        ))}
       </ul>
     </div>
   );
