@@ -53,13 +53,13 @@
 @media (max-width: 767px) {
   .fu-page { padding-top: 8px; }
   .fu-grid { margin-top: 32px; gap: 24px; }
-  .fu-hero { margin: 0 calc(-1 * var(--gut)); padding: 64px 16px 28px; }
-  .fu-tiles { grid-template-columns: minmax(0, 1fr); margin: 4px calc(-1 * var(--gut)) 0; }
+  .fu-hero { padding: 64px 16px 28px; }
+  .fu-tiles { grid-template-columns: minmax(0, 1fr); }
   .fu-tiles > div { flex-direction: row; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 12px; padding: 16px; }
   .fu-tiles .fu-tile-v { justify-content: flex-end; margin-left: auto; text-align: right; }
   .fu-tile-v .mono, .fu-tile-v .fu-unit { font-size: 18px; }
   .fu-tiles .fu-caption { flex-basis: 100%; }
-  .fu-panel { margin: 0 calc(-1 * var(--gut)); padding: 24px 16px; }
+  .fu-panel { padding: 24px 16px; }
   .fu-panel .wz-field input { font-size: 22px; }
   .fu-sk-hero { height: 220px; }
 }

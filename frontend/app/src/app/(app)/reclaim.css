@@ -38,8 +38,8 @@
   .rc-page { padding-top: 8px; }
   .rc-grid { margin-top: 32px; gap: 32px; }
   .rc-lead { font-size: 17px; }
-  .rc-when { margin: 0 calc(-1 * var(--gut)); padding: 56px 16px 24px; }
+  .rc-when { padding: 56px 16px 24px; }
   .rc-steps-wrap { margin-top: 48px; }
-  .rc-steps { grid-template-columns: minmax(0, 1fr); margin-left: calc(-1 * var(--gut)); margin-right: calc(-1 * var(--gut)); }
+  .rc-steps { grid-template-columns: minmax(0, 1fr); }
   .rc-steps li { padding: 20px 16px; }
 }

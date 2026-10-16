@@ -124,18 +124,17 @@
 
 @media (max-width: 767px) {
   .bj-q, .bj-sum + .bj-q { margin-top: 36px; }
-  .bj-sum { margin: 24px calc(-1 * var(--gut)) 0; }
+  .bj-sum { margin-top: 24px; }
   .bj-sum-bar { gap: 8px; padding: 12px 8px 12px 16px; }
   .bj-sum-vals { gap: 4px 20px; }
   .bj-sum-vals .mono { font-size: 15px; }
   .bj-sum-body { padding: 0 8px 12px; }
   .bj-grid { margin-top: 28px; }
-  .bj-rows { margin: 0 calc(-1 * var(--gut)); }
   .bj-rows > div { grid-template-columns: minmax(0, 1fr); padding: 16px; }
-  .bj-panel { margin: 0 calc(-1 * var(--gut)); padding: 24px 16px; }
-  .bj-need { margin: 0 calc(-1 * var(--gut)); padding: 24px 16px; }
+  .bj-panel { padding: 24px 16px; }
+  .bj-need { padding: 24px 16px; }
   .bj .wz-wallet { padding: 16px; }
-  .bj-end { margin: 0 calc(-1 * var(--gut)); padding: 56px 16px 32px; }
+  .bj-end { padding: 56px 16px 32px; }
 }
 @media (max-width: 380px) {
   .bj-sum-bar { flex-wrap: wrap; }

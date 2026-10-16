@@ -102,7 +102,9 @@ The angle is always drawn with a `::before` layer under the content, skewed by
   a 2px `--danger` outline when invalid. The checkbox fills gold when checked.
 - **Panels with the cut corner** (`.wz-cut`, `.wz-cut-sm`): a `clip-path` that
   takes the top left corner off at the mark's angle. Panels are square
-  otherwise, with no radius and no shadow.
+  otherwise, with no radius and no shadow. Below 768px every panel and the
+  tiles under it sit inside the 16px page gutter, with the cut at 24px; only
+  the single Home loan card bleeds to the right edge, and only from 768px.
 - **Notices** (`Notice`, `.wz-note`): the status colour at a 10% tint with a
   thin outline in the same colour, and a word label after the slash.
 - **Ledger rows** (`.wz-row` in a `dl`): term on the left in `--muted`, value on

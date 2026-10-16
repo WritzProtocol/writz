@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { ExternalLink } from "lucide-react";
 import { UI_MOCK } from "@/lib/mock/gate";
 import { scenarioCatalog } from "@/lib/mock/catalog";
 import "./dev.css";
@@ -21,8 +22,8 @@ export default function DevScenarios() {
       <header className="dv-head">
         <h1>Mock scenarios</h1>
         <p>
-          Every state the mock harness can render, {total} in all, read live from <span className="mono">scenarios.ts</span>. Open one to see
-          the page in that state.
+          Every state the mock harness can render, {total} in all, read live from <span className="mono">scenarios.ts</span>. Each one opens
+          the page in that state in a new tab.
         </p>
         <nav aria-label="Areas" className="dv-areas">
           {groups.map((g) => (
@@ -40,10 +41,12 @@ export default function DevScenarios() {
           <ul className="dv-list">
             {g.entries.map((e) => (
               <li key={e.id}>
-                <a href={e.href}>
+                <a href={e.href} target="_blank" rel="noopener noreferrer">
                   <span className="mono dv-id">{e.id}</span>
                   <span className="dv-name">{e.title}</span>
                   <span className="mono dv-route">{e.route}</span>
+                  <span className="wz-sr"> (opens in a new tab)</span>
+                  <ExternalLink size={16} strokeWidth={1.75} className="dv-ext" aria-hidden="true" />
                 </a>
               </li>
             ))}
