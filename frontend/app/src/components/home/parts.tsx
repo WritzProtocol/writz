@@ -47,6 +47,14 @@ function cardAction(l: HomeLoan, findLoans: () => void): { label: string; href?:
   }
 }
 
+function secondaryAction(l: HomeLoan): { label: string; href: string } | null {
+  const s = l.derived.status;
+  const n = l.position.index;
+  if (s.kind === "active" && s.band === "healthy") return { label: "Repay", href: loanHref(n, "repay") };
+  if (s.kind === "repaid_locked" && s.neverBorrowed && !s.missingBtcDetails) return { label: "Release BTC", href: loanHref(n, "release") };
+  return null;
+}
+
 export function LoanSummaryCard({
   loan,
   price,
@@ -67,6 +75,7 @@ export function LoanSummaryCard({
   const health = healthOf(s);
   const liq = liquidationPriceFor(collateral, debt);
   const action = cardAction(loan, findLoans);
+  const secondary = secondaryAction(loan);
   const showsRisk = health !== null || s.kind === "checking";
   const closed = s.kind === "released" || s.kind === "liquidated" || s.kind === "closed_on_chain";
   const actionClass = `wz-btn ${primary ? "wz-btn-gold" : "wz-btn-line"}${compact ? " wz-btn-sm" : ""}`;
@@ -122,6 +131,11 @@ export function LoanSummaryCard({
                 {action.label}
               </button>
             )
+          ) : null}
+          {secondary ? (
+            <Link href={secondary.href} className={`wz-btn wz-btn-line${compact ? " wz-btn-sm" : ""}`}>
+              {secondary.label}
+            </Link>
           ) : null}
           <Link href={loanHref(p.index)} className="wz-btn wz-btn-text hm-stretch">
             Open {loanName(loan)}
