@@ -18,6 +18,8 @@ export interface SideModel {
   /** Why this side can't be used right now. */
   blocked: string | null;
   done(amount: bigint): string;
+  /** The submit label once the amount is valid, e.g. "Supply 1,240.00 USDC". */
+  action?(amount: bigint): string;
   errorFlow: ErrorFlow;
   /** Starting field value; the harness uses it to show a field error. */
   initial?: string;
@@ -101,7 +103,7 @@ function SidePanel({ m, side }: { m: FundsModel; side: FundsSide }) {
             setTouched(false);
           }}
         >
-          {s.label}
+          {check.ok && !s.blocked && s.action ? s.action(check.stroops) : s.label}
         </button>
       </div>
       {s.blocked || m.otherTx ? (
@@ -152,7 +154,13 @@ export function FundsCard({ m, label }: { m: FundsModel; label: string }) {
 
   return (
     <section className="wz-stack" aria-label={label}>
-      <div className="wz-seg fu-seg" role="tablist" aria-label={label}>
+      <div
+        className="wz-seg fu-seg"
+        role="tablist"
+        aria-label={label}
+        style={{ ["--seg-n" as string]: SIDES.length, ["--seg-i" as string]: SIDES.indexOf(tab) }}
+      >
+        <span className="wz-seg-ind" aria-hidden="true" />
         {SIDES.map((t) => {
           const reason = disabledOf(t);
           return (

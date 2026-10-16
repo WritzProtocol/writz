@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState, type RefObject } from "react";
+import { useEffect, useRef, type RefObject } from "react";
 import { BTC_NETWORK_LABEL, config } from "@/config";
 import { btcTxUrl, stellarTxUrl } from "@/lib/explorer";
 import { hashOf } from "@/lib/flow/engine";
@@ -19,7 +19,7 @@ import {
 import { loanHref } from "@/lib/loan/model";
 import { BTC_FAUCETS } from "@/lib/links";
 import { useElapsed } from "@/components/ui/hooks";
-import { ConfirmationSlots, ErrorBox, ExternalLink, Notice, SlideToConfirm, Spinner } from "@/components/ui";
+import { ConfirmationSlots, CopyButton, ErrorBox, ExternalLink, Notice, SlideToConfirm, Spinner } from "@/components/ui";
 import type { JourneyModel } from "./model";
 
 const ON_TESTNET = config.target !== "mainnet";
@@ -423,7 +423,6 @@ export function ReviewStep({ m }: { m: JourneyModel }) {
   const btc = formatBtc(sats);
   const fee = r.feeSats ? `of about ${r.feeSats.toLocaleString("en-US")} sats` : "set in Xverse";
   const height = r.timelockHeight?.toLocaleString("en-US") ?? "Checking...";
-  const [copied, setCopied] = useState(false);
 
   if (r.tooClose) {
     return (
@@ -458,26 +457,7 @@ export function ReviewStep({ m }: { m: JourneyModel }) {
             )}
             <div className="bj-tools">
               {r.lockAddress && (
-                <>
-                  <button
-                    type="button"
-                    className="wz-btn wz-btn-sm"
-                    onClick={() => {
-                      void navigator.clipboard
-                        ?.writeText(r.lockAddress!)
-                        .then(() => {
-                          setCopied(true);
-                          setTimeout(() => setCopied(false), 2000);
-                        })
-                        .catch(() => {});
-                    }}
-                  >
-                    {copied ? "Copied" : "Copy address"}
-                  </button>
-                  <span className="wz-sr" aria-live="polite">
-                    {copied ? "Copied" : ""}
-                  </span>
-                </>
+                <CopyButton value={r.lockAddress} className="wz-btn wz-btn-sm" />
               )}
               <details className="bj-more">
                 <summary>What is this?</summary>

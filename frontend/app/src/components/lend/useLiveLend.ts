@@ -11,6 +11,8 @@ import { locks } from "@/lib/flow/lock";
 import type { FundsSide } from "@/lib/funds/model";
 import type { Read } from "@/lib/loan/model";
 import { recentActivity } from "@/lib/tray";
+import { currentRoute, notifySettled } from "@/lib/toast";
+import { formatUsdc } from "@/lib/borrow/journey";
 import { useShellAccount } from "@/components/shell/account";
 import { lendSides, type LendModel, type PoolTotals } from "./model";
 
@@ -53,6 +55,9 @@ export function useLiveLend(): LendModel {
       setLastAmount(amountStroops);
       emit({ type: "start" });
       const run = side === "in" ? supply : withdraw;
+      const origin = currentRoute();
+      const link = { href: origin, label: "Open Lend" };
+      const amount = formatUsdc(amountStroops);
       void locks()
         .withTxLock(address, () => run({ amountStroops, supplier: address, signTransaction: w.signTransaction, emit }))
         .then(({ txHash }) => {
@@ -63,9 +68,16 @@ export function useLiveLend(): LendModel {
               label: side === "in" ? "Supplied to the pool" : "Withdrawn from the pool",
               at: Date.now(),
             });
+            notifySettled(origin, link, {
+              ok: true,
+              text: side === "in" ? `Supplied ${amount} USDC to the pool.` : `Withdrawn ${amount} USDC from the pool. It's in your wallet.`,
+            });
           }
         })
-        .catch((error: unknown) => emit({ type: "failed", error }))
+        .catch((error: unknown) => {
+          emit({ type: "failed", error });
+          notifySettled(origin, link, { ok: false, error, what: `Your ${side === "in" ? "supply" : "withdrawal"} of ${amount} USDC` });
+        })
         .finally(refresh);
     },
     [address, w.signTransaction, emit, refresh],

@@ -33,11 +33,8 @@ export function AppNav() {
   const a = useShellAccount();
   const { count } = useTray();
   const [open, setOpen] = useState<Open>(null);
-  const [path, setPath] = useState(pathname);
-  if (path !== pathname) {
-    setPath(pathname);
-    setOpen(null);
-  }
+  const [left, setLeft] = useState(0);
+  const dismissOn = `${pathname}:${left}`;
   const chip = useRef<HTMLButtonElement>(null);
   const tray = useRef<HTMLButtonElement>(null);
 
@@ -150,7 +147,7 @@ export function AppNav() {
       </nav>
 
       {open === "account" ? (
-        <Sheet title="Wallets" subtitle={`${STELLAR} and ${BTC_NETWORK_LABEL}`} onClose={() => setOpen(null)} returnFocus={chip}>
+        <Sheet title="Wallets" subtitle={`${STELLAR} and ${BTC_NETWORK_LABEL}`} onClose={() => setOpen(null)} returnFocus={chip} dismissOn={dismissOn}>
           <AccountSheetBody />
         </Sheet>
       ) : null}
@@ -160,8 +157,9 @@ export function AppNav() {
           subtitle="Transactions from this browser. Your loans load from your Stellar wallet on any device."
           onClose={() => setOpen(null)}
           returnFocus={tray}
+          dismissOn={dismissOn}
         >
-          <ActivityTrayBody onNavigate={() => setOpen(null)} />
+          <ActivityTrayBody onNavigate={() => setLeft((n) => n + 1)} />
         </Sheet>
       ) : null}
     </>

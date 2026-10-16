@@ -26,6 +26,20 @@ const QUESTION: Record<Exclude<JourneyStep, "done" | "register">, string> = {
   wait: "Bitcoin is confirming your deposit",
 };
 
+/** Blocks that fill or empty together start one after another, in the direction of travel. */
+const FILL_STAGGER_MS = 260;
+
+function useFillDelays(filled: number): (i: number) => number {
+  const [run, setRun] = useState({ from: filled, to: filled });
+  if (run.to !== filled) setRun({ from: run.to, to: filled });
+  const { from, to } = run;
+  return (i) => {
+    if (to > from && i >= from && i < to) return (i - from) * FILL_STAGGER_MS;
+    if (to < from && i >= to && i < from) return (from - 1 - i) * FILL_STAGGER_MS;
+    return 0;
+  };
+}
+
 const EDIT_LABEL: Record<EditableStep, string> = {
   amount: "Edit amount",
   stellar: "Edit Stellar wallet",
@@ -41,6 +55,7 @@ export function FocusJourney({ m: model }: { m: JourneyModel }) {
   const [moved, setMoved] = useState(false);
   if (!moved && step !== firstStep) setMoved(true);
   const question = useEntrance("question", "in", { step: 3, ready: !moved });
+  const fillDelay = useFillDelays(step === "done" ? STEPS.length : stepIndex(step) + 1);
 
   useEffect(() => {
     if (first.current) {
@@ -86,7 +101,9 @@ export function FocusJourney({ m: model }: { m: JourneyModel }) {
     <div className="bj">
       <Enter name="progress" className="bj-progress" aria-hidden="true" style={{ ["--bj-steps" as string]: STEPS.length }}>
         {STEPS.map((s, i) => (
-          <i key={s.id} data-state={i < current ? "done" : i === current ? "now" : "next"} />
+          <i key={s.id} data-state={i < current ? "done" : i === current ? "now" : "next"}>
+            <b style={{ transitionDelay: `${fillDelay(i)}ms` }} />
+          </i>
         ))}
       </Enter>
       <Enter name="stepline" className="bj-stepline">

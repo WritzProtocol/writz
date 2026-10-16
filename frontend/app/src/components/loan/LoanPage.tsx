@@ -129,7 +129,7 @@ function Skeleton({ n }: { n: number }) {
               </div>
               <p className="ln-out-text">
                 <T>If Writz stops, you can reclaim this BTC with your Bitcoin key alone after block 300,000, about 21 Jul 2027. </T>
-                <span className="wz-btn wz-btn-text ln-out-link">
+                <span className="wz-btn wz-btn-text wz-inline">
                   <T>How to reclaim</T>
                 </span>
               </p>

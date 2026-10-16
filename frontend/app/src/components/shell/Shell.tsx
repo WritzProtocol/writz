@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { StatusProvider } from "@/lib/status/provider";
 import { AccountProvider, useShellAccount } from "./account";
+import { Toasts } from "./Toasts";
 
 /** After a client-side route change, focus the new page's heading so screen readers start there. */
 function useFocusHeadingOnRoute() {
@@ -40,6 +41,7 @@ function Main({ top, children }: { top: React.ReactNode; children: React.ReactNo
           children
         )}
       </main>
+      <Toasts />
     </>
   );
 }

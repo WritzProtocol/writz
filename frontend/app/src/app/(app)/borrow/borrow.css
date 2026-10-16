@@ -3,8 +3,9 @@
 .bj { --bj-well: color-mix(in oklab, var(--heading) 6%, var(--bg)); }
 
 .bj-progress { display: grid; grid-template-columns: repeat(var(--bj-steps, 6), 1fr); gap: 4px; height: 10px; padding: 0 2px; }
-.bj-progress i { background: var(--tint-20); transform: skewX(-16deg); transition: background-color var(--dur-element) var(--ease-enter); }
-.bj-progress i[data-state="done"], .bj-progress i[data-state="now"] { background: var(--mark); }
+.bj-progress i { position: relative; background: var(--tint-20); transform: skewX(-16deg); overflow: hidden; }
+.bj-progress b { position: absolute; inset: 0; background: var(--mark); transform: scaleX(0); transform-origin: left; transition: transform var(--dur-section) var(--ease-enter); }
+.bj-progress i[data-state="done"] b, .bj-progress i[data-state="now"] b { transform: scaleX(1); }
 .bj-stepline { display: flex; justify-content: space-between; align-items: center; gap: 16px; min-height: 44px; margin-top: 10px; }
 .bj-stepline p { font-size: 15px; color: var(--body); }
 .bj-stepline b { margin-right: 8px; font-weight: 600; color: var(--heading); }
@@ -146,5 +147,5 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .bj .bj-progress i, .bj .bj-caret, .bj .bj-more summary::before { transition: none; }
+  .bj .bj-progress b, .bj .bj-caret, .bj .bj-more summary::before { transition: none; }
 }

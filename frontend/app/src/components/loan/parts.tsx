@@ -250,7 +250,7 @@ export function WayOut({
             {date ? `, about ${date}` : ""}.{" "}
           </>
         )}
-        <Link href={`/help/reclaim?loan=${n}`} className="wz-btn wz-btn-text ln-out-link">
+        <Link href={`/help/reclaim?loan=${n}`} className="wz-btn wz-btn-text wz-inline">
           How to reclaim
         </Link>
       </p>
@@ -340,7 +340,7 @@ export function TxResult({
   switch (flow.phase) {
     case "settled":
       return (
-        <Notice tone="positive" label="Done">
+        <Notice tone="positive" label="Done" className="wz-enter">
           <p>
             {success} {hash && <TxLinkInline hash={hash} />}
           </p>
@@ -441,9 +441,20 @@ export function AmountField({
   );
 }
 
-function After({ collateralSats, debt, price }: { collateralSats: bigint; debt: bigint | null; price: bigint | null }) {
+function After({
+  collateralSats,
+  debt,
+  price,
+  overLimit = false,
+}: {
+  collateralSats: bigint;
+  debt: bigint | null;
+  price: bigint | null;
+  overLimit?: boolean;
+}) {
   let body: ReactNode = "Enter an amount to see your new ratio.";
-  if (debt !== null && debt <= 0n) body = "After this: loan repaid. Next, release your BTC.";
+  if (overLimit) body = "That is more than the safe limit for this loan.";
+  else if (debt !== null && debt <= 0n) body = "After this: loan repaid. Next, release your BTC.";
   else if (debt !== null && price) {
     const a = afterState(collateralSats, debt, price);
     if (!a.repaid)
@@ -519,6 +530,7 @@ export function BorrowPanel({
   const parsed = value.trim() ? parseUsdcAmount(value) : null;
   const amount = parsed?.ok ? parsed.stroops : null;
   const x = formatUsdc(max);
+  const overLimit = parsed?.ok === true && amount !== null && amount > max && !available?.limitedByPool;
   const error =
     parsed && !parsed.ok
       ? parsed.error
@@ -581,7 +593,7 @@ export function BorrowPanel({
           </button>
         ))}
       </div>
-      <After collateralSats={collateral} debt={newDebt} price={price} />
+      <After collateralSats={collateral} debt={newDebt} price={price} overLimit={overLimit} />
       {mine && (
         <TxResult
           flow={m.flow}
@@ -754,7 +766,7 @@ export function ReleasePanel({ m, position, neverBorrowed }: { m: LoanModel; pos
 
   if (mine && m.flow.phase === "settled")
     return (
-      <Notice tone="positive" label="Sent">
+      <Notice tone="positive" label="Sent" className="wz-enter">
         <p>Your release was sent to Bitcoin. It arrives after 1 Bitcoin confirmation.</p>
       </Notice>
     );
@@ -956,7 +968,7 @@ export function MissingDetails({ m, height }: { m: LoanModel; height: number | n
         <li>Or import your loan backup on this device.</li>
         <li>
           Or, after <BlockRef height={height} />, reclaim the BTC alone.{" "}
-          <Link href={`/help/reclaim?loan=${m.n}`} className="wz-btn wz-btn-text">
+          <Link href={`/help/reclaim?loan=${m.n}`} className="wz-btn wz-btn-text wz-inline">
             How to reclaim
           </Link>
         </li>
