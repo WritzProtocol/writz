@@ -1247,6 +1247,12 @@ html:has(.landing) body {
     margin-top: 20px;
   }
 
+  .home .hero-vis {
+    margin: 0;
+    padding: 64px 16px 32px;
+    clip-path: polygon(24px 0, 100% 0, 100% 100%, 0 100%, 0 83.7px);
+  }
+
   .home .calc-fig .v {
     font-size: 44px;
   }
