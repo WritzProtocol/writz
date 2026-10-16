@@ -5,7 +5,7 @@ import type { ErrorFlow } from "@/lib/errors";
 import { isInFlight, type FlowState } from "@/lib/flow/engine";
 import { checkAmount, type FundsSide } from "@/lib/funds/model";
 import { toFieldValue, type Read } from "@/lib/loan/model";
-import { ErrorBox, Notice, Spinner } from "@/components/redesign/ui";
+import { ErrorBox, Notice, Spinner } from "@/components/ui";
 import { AmountField, TxResult, TxRunning } from "@/components/loan/parts";
 
 export interface SideModel {

@@ -1,10 +1,10 @@
-import { AppNav } from "@/components/redesign/AppNav";
+import { AppNav } from "@/components/shell/AppNav";
 import { Shell } from "@/components/shell/Shell";
-import "./redesign.css";
+import "./ui.css";
 
-export default function RedesignLayout({ children }: { children: React.ReactNode }) {
+export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="wz">
+    <div className="app">
       <a className="wz-skip" href="#content">
         Skip to content
       </a>

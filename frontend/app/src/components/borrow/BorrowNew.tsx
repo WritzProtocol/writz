@@ -1,7 +1,7 @@
 "use client";
 
 import type { MockWorld } from "@/lib/mock/types";
-import { useMounted, useMockWorld } from "@/components/redesign/hooks";
+import { useMounted, useMockWorld } from "@/components/ui/hooks";
 import { FocusJourney } from "./FocusJourney";
 import { useLiveJourney } from "./useLiveJourney";
 import { useMockJourney } from "./useMockJourney";

@@ -8,7 +8,7 @@ import { loanHref, shortDate } from "@/lib/loan/model";
 import { pickUrgent } from "@/lib/home/model";
 import { trayItems, unsettledCount, type TrayItem } from "@/lib/tray";
 import { useRefreshStatus } from "@/lib/status/provider";
-import { ExternalLink } from "@/components/redesign/ui";
+import { ExternalLink } from "@/components/ui";
 import { useShellAccount, type ShellAccount } from "./account";
 
 export function useTray(): { items: TrayItem[]; count: number } {

@@ -10,8 +10,8 @@ import { blockDate } from "@/lib/loan/model";
 import { reclaimWindow } from "@/lib/reclaim/model";
 import type { Position } from "@/lib/position/types";
 import type { MockWorld } from "@/lib/mock/types";
-import { ExternalLink, Notice } from "@/components/redesign/ui";
-import { useMockWorld, useMounted, useRead } from "@/components/redesign/hooks";
+import { ExternalLink, Notice } from "@/components/ui";
+import { useMockWorld, useMounted, useRead } from "@/components/ui/hooks";
 import { useShellAccount } from "@/components/shell/account";
 
 interface LoanLock {

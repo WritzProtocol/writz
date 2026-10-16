@@ -7,7 +7,7 @@ import { networkName } from "@/lib/wallet/precheck";
 import { formatBtc, shortAddress } from "@/lib/borrow/journey";
 import { btcAddressUrl, stellarAccountUrl } from "@/lib/explorer";
 import { BTC_FAUCETS, DOCS_URL, GITHUB_ISSUES_URL, GITHUB_SECURITY_URL } from "@/lib/links";
-import { ErrorBox, ExternalLink, Notice } from "@/components/redesign/ui";
+import { ErrorBox, ExternalLink, Notice } from "@/components/ui";
 import { useShellAccount, type ShellAccount } from "./account";
 
 type Chain = "stellar" | "bitcoin";

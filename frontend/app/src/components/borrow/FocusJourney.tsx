@@ -13,7 +13,7 @@ import {
   type EditableStep,
   type JourneyStep,
 } from "@/lib/borrow/journey";
-import { ExternalLink } from "@/components/redesign/ui";
+import { ExternalLink } from "@/components/ui";
 import type { JourneyModel } from "./model";
 import { AmountStep, BitcoinStep, DoneStep, RegisterStep, ReviewStep, StellarStep, WaitStep, registerQuestion } from "./steps";
 

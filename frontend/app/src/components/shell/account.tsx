@@ -23,7 +23,7 @@ import type { MockWorld, Reading } from "@/lib/mock/types";
 import { usePositionStatuses } from "@/lib/status/provider";
 import type { LocalInputs } from "@/lib/status/types";
 import type { HomeDeposit, HomeLoan } from "@/lib/home/model";
-import { useRead, useMockWorld } from "@/components/redesign/hooks";
+import { useRead, useMockWorld } from "@/components/ui/hooks";
 
 export type LoansState = "disconnected" | "unsigned" | "signing" | "finding" | "found" | "failed";
 

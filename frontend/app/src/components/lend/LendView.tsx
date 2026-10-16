@@ -4,7 +4,7 @@ import { config } from "@/config";
 import { withdrawable } from "@/lib/funds/model";
 import type { Read } from "@/lib/loan/model";
 import { networkName } from "@/lib/wallet/precheck";
-import { Notice } from "@/components/redesign/ui";
+import { Notice } from "@/components/ui";
 import { FundsCard, NotConnected } from "@/components/funds/FundsCard";
 import { Hero, RiskNotes, Tile, Tiles } from "@/components/funds/parts";
 import type { LendModel } from "./model";

@@ -16,7 +16,7 @@
 .hm-loans { display: grid; gap: 16px; }
 .hm-loans:not([data-count="1"]) { grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); }
 .hm-col > .hm-loans { margin-top: 16px; }
-.hm-loan { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 64px; min-width: 0; padding: 56px 56px 56px 72px; background: var(--panel); }
+.hm-loan { position: relative; display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 64px; min-width: 0; padding: 56px 56px 56px 72px; background: var(--panel); }
 .hm-loan[data-compact="true"] { grid-template-columns: minmax(0, 1fr); gap: 28px; padding: 48px 32px 32px 48px; }
 .hm-loans[data-count="1"] > .hm-loan { margin-right: calc(-1 * (100vw - var(--hm-rail, 0px) - min(100vw - var(--hm-rail, 0px), 1184px + 2 * var(--gut))) / 2 - var(--gut)); }
 html:has(.hm-loans[data-count="1"]), body:has(.hm-loans[data-count="1"]) { overflow-x: clip; }
@@ -39,10 +39,9 @@ html:has(.hm-loans[data-count="1"]), body:has(.hm-loans[data-count="1"]) { overf
 .hm-loan[data-compact="true"] .hm-kv dd { font-size: 19px; }
 .hm-loan-acts { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 20px; margin: auto 0 0 -7px; }
 .hm-loan-acts .wz-btn-text { margin-left: 7px; }
-.hm-stretch { color: var(--heading); text-decoration: none; }
-.hm-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 0; }
-.hm-facts dt { font-size: 13px; color: var(--muted); }
-.hm-facts dd { margin: 2px 0 0; color: var(--heading); font-size: 15px; }
+.hm-loan-acts > :not(.hm-stretch) { z-index: 1; }
+.hm-loan-acts .wz-btn.hm-stretch { position: static; scale: none; }
+.hm-stretch::after { content: ""; position: absolute; inset: 0; }
 .hm-big { font-size: 28px; color: var(--heading); }
 .hm-big span { font-size: 16px; color: var(--muted); }
 
@@ -70,10 +69,8 @@ html:has(.hm-loans[data-count="1"]), body:has(.hm-loans[data-count="1"]) { overf
 @media (hover: hover) and (pointer: fine) { .hm-foot .wz-btn-text:hover { color: var(--heading); text-decoration-color: currentColor; } }
 
 .hm-guard { display: flex; flex-direction: column; gap: 12px; padding: 48px 0; }
-.hm-legacy { display: flex; flex-direction: column; gap: 16px; }
-.hm-legacy > .hm-sub { margin-bottom: 8px; }
 
-@media (min-width: 1024px) { .wz { --hm-rail: var(--rail); } }
+@media (min-width: 1024px) { .app { --hm-rail: var(--rail); } }
 @media (max-width: 1279px) {
   .hm-loan { grid-template-columns: minmax(0, 1fr); gap: 40px; }
 }

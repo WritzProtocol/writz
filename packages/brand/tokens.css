@@ -17,6 +17,10 @@
   --positive: #4fbf8f;
   --warning: #f0a33a;
   --info: #8fb0d8;
+  --link: var(--accent);
+  --mark: var(--accent);
+  --tint-10: color-mix(in oklab, var(--heading) 7%, transparent);
+  --tint-20: color-mix(in oklab, var(--heading) 13%, transparent);
 
   --shadow-border: 0 0 0 1px var(--line), 0 1px 2px -1px rgb(0 0 0 / 0.4), 0 2px 4px 0 rgb(0 0 0 / 0.3);
 

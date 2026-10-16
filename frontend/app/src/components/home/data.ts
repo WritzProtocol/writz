@@ -8,7 +8,7 @@ import { earnApi } from "@/lib/earn/api";
 import type { Read } from "@/lib/loan/model";
 import type { MockWorld, Reading } from "@/lib/mock/types";
 import { defaultStatusSource } from "@/lib/status/provider";
-import { useRead } from "@/components/redesign/hooks";
+import { useRead } from "@/components/ui/hooks";
 
 export interface EarnSummary {
   balanceStroops: bigint;

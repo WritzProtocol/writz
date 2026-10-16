@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { RECLAIM_DOCS_URL } from "@/lib/links";
-import { ExternalLink } from "@/components/redesign/ui";
+import { ExternalLink } from "@/components/ui";
 import { ReclaimLoans } from "@/components/reclaim/ReclaimLoans";
 import "../../funds.css";
 import "../../reclaim.css";

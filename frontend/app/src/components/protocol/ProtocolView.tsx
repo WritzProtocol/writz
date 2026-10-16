@@ -6,8 +6,8 @@ import { formatUsdc, shortAddress } from "@/lib/borrow/journey";
 import { analyzeCohort } from "@/lib/metrics/cohort";
 import type { RetentionCohort } from "@/lib/metrics/api";
 import { networkName } from "@/lib/wallet/precheck";
-import { ExternalLink } from "@/components/redesign/ui";
-import { useMockWorld } from "@/components/redesign/hooks";
+import { ExternalLink } from "@/components/ui";
+import { useMockWorld } from "@/components/ui/hooks";
 import { Hero } from "@/components/funds/parts";
 import { mockProtocolData, type ProtocolData } from "./model";
 
