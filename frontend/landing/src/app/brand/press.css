@@ -81,7 +81,7 @@
 
 .press-root .num {
   font-family: var(--ff-mono), ui-monospace, monospace;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 400;
   letter-spacing: 0;
   color: var(--accent);
@@ -254,7 +254,7 @@
 .press-root .ladder .tag {
   margin-top: 12px;
   font-family: var(--ff-mono), ui-monospace, monospace;
-  font-size: 11px;
+  font-size: 13px;
   white-space: nowrap;
   color: var(--muted);
 }
@@ -329,7 +329,7 @@
 .press-root .pairs .ratio {
   margin-top: 14px;
   font-family: var(--ff-mono), ui-monospace, monospace;
-  font-size: 12px;
+  font-size: 13px;
   opacity: 0.75;
 }
 
@@ -391,7 +391,7 @@
   flex: none;
   width: 172px;
   font-family: var(--ff-mono), ui-monospace, monospace;
-  font-size: 11px;
+  font-size: 13px;
   white-space: nowrap;
   color: var(--muted);
 }
@@ -418,7 +418,7 @@
 
 .press-root .gfx .cap {
   margin-bottom: 16px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -427,7 +427,7 @@
 
 .press-root .gfx .note {
   font-family: var(--ff-mono), ui-monospace, monospace;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--muted);
 }
 
@@ -709,5 +709,40 @@
 @media (max-width: 480px) {
   .press-root .dont {
     grid-template-columns: 1fr;
+  }
+}
+
+.press-root .copy {
+  touch-action: manipulation;
+}
+
+@media (pointer: coarse) {
+  .press-root :is(.masthead .lead, .colophon, section p) a {
+    padding-block: 13px;
+  }
+  .press-root .masthead .lead a {
+    padding-inline: 17px;
+    margin-inline: -17px;
+  }
+  .press-root .masthead .index a {
+    min-height: 44px;
+  }
+  .press-root .asset .files {
+    gap: 4px;
+  }
+  .press-root .asset .files a {
+    display: inline-flex;
+    align-items: center;
+    min-width: 44px;
+    min-height: 44px;
+    margin-block: -13px;
+  }
+  .press-root .copy {
+    position: relative;
+  }
+  .press-root .copy::after {
+    content: "";
+    position: absolute;
+    inset: -9px 0;
   }
 }

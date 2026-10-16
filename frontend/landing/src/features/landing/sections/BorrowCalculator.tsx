@@ -16,6 +16,9 @@ const SHARES = [
 const usdc = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const usd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 
+const MIN_BTC = 0.05;
+const MAX_BTC = 2;
+
 export function BorrowCalculator() {
   const [btc, setBtc] = useState(0.5);
   const [ratio, setRatio] = useState(MIN_COLLATERAL);
@@ -46,10 +49,11 @@ export function BorrowCalculator() {
       <input
         id="calc-btc"
         type="range"
-        min={0.05}
-        max={2}
+        min={MIN_BTC}
+        max={MAX_BTC}
         step={0.05}
         value={btc}
+        style={{ "--p": (btc - MIN_BTC) / (MAX_BTC - MIN_BTC) } as CSSProperties}
         aria-valuetext={btcLabel}
         onChange={(e) => setBtc(Number(e.target.value))}
       />
