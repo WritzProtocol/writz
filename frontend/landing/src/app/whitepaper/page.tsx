@@ -6,7 +6,6 @@ import { env } from "@/config/env";
 import { workSans } from "@/features/landing/fonts";
 import { DOCS_URL, GITHUB_URL } from "@/features/landing/constants";
 import { CopyButton } from "../brand/CopyButton";
-import "../brand/press.css";
 import "./whitepaper.css";
 
 const TITLE = "Writz Protocol whitepaper";
@@ -132,7 +131,7 @@ export default function WhitepaperPage() {
   };
 
   return (
-    <div className={`${workSans.variable} press-root`}>
+    <div className={`${workSans.variable} paper-doc`}>
       <script
         type="application/ld+json"
         // Static, build-time data only; nothing user-supplied reaches this.
@@ -244,12 +243,12 @@ export default function WhitepaperPage() {
       </main>
 
       <footer className="colophon">
-        <div className="wrap">
-          <Link href="/">writz.xyz</Link> · <a href={DOCS_URL}>Docs</a> ·{" "}
+        <div className="wrap links">
+          <Link href="/">writz.xyz</Link>
+          <a href={DOCS_URL}>Docs</a>
           <a href={GITHUB_URL} rel="noreferrer">
             GitHub
-          </a>{" "}
-          ·{" "}
+          </a>
           <a href="https://x.com/WritzProtocol" rel="me noreferrer">
             @WritzProtocol
           </a>
