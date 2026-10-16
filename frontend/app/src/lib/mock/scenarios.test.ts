@@ -45,7 +45,7 @@ const STATUS_ROWS = [
   "syncing",
 ];
 
-/** Every screen state the redesign renders. */
+/** Every screen state the app renders. */
 const APPENDIX_A = [
   ...range("G", 7),
   ...range("H", 21),

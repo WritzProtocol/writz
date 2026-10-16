@@ -18,8 +18,8 @@ import {
 } from "@/lib/borrow/journey";
 import { loanHref } from "@/lib/loan/model";
 import { BTC_FAUCETS } from "@/lib/links";
-import { useElapsed } from "@/components/redesign/hooks";
-import { ConfirmationSlots, ErrorBox, ExternalLink, Notice, SlideToConfirm, Spinner } from "@/components/redesign/ui";
+import { useElapsed } from "@/components/ui/hooks";
+import { ConfirmationSlots, ErrorBox, ExternalLink, Notice, SlideToConfirm, Spinner } from "@/components/ui";
 import type { JourneyModel } from "./model";
 
 const ON_TESTNET = config.target !== "mainnet";

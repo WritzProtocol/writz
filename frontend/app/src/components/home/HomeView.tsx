@@ -7,7 +7,7 @@ import { homeHeadline, pickUrgent, sortLoans } from "@/lib/home/model";
 import { DOCS_URL } from "@/lib/links";
 import { networkName } from "@/lib/wallet/precheck";
 import { useRefreshStatus } from "@/lib/status/provider";
-import { ExternalLink, Notice } from "@/components/redesign/ui";
+import { ExternalLink, Notice } from "@/components/ui";
 import { useShellAccount } from "@/components/shell/account";
 import type { HomeData } from "./data";
 import { EarnCard, HowALoanWorks, LendCard, LoanSkeleton, LoanSummaryCard, Preview, UrgentCard } from "./parts";

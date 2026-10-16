@@ -2,7 +2,7 @@
 
 import type { LoanTab } from "@/lib/loan/model";
 import type { MockWorld } from "@/lib/mock/types";
-import { useMounted, useMockWorld } from "@/components/redesign/hooks";
+import { useMounted, useMockWorld } from "@/components/ui/hooks";
 import { LoanView } from "./LoanView";
 import { useLiveLoan } from "./useLiveLoan";
 import { useMockLoan } from "./useMockLoan";

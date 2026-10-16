@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { MockWorld } from "@/lib/mock/types";
-import { useMounted, useMockWorld } from "@/components/redesign/hooks";
+import { useMounted, useMockWorld } from "@/components/ui/hooks";
 import { useShellAccount } from "@/components/shell/account";
 import { mockHomeData, useLiveHomeData } from "./data";
 import { HomeView } from "./HomeView";

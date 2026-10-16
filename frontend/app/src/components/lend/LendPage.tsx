@@ -1,7 +1,7 @@
 "use client";
 
 import type { MockWorld } from "@/lib/mock/types";
-import { useMounted, useMockWorld } from "@/components/redesign/hooks";
+import { useMounted, useMockWorld } from "@/components/ui/hooks";
 import { LendView } from "./LendView";
 import { useLiveLend } from "./useLiveLend";
 import { useMockLend } from "./useMockLend";

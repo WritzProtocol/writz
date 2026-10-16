@@ -22,7 +22,7 @@ import {
   showsRisk,
   type LoanTab,
 } from "@/lib/loan/model";
-import { Notice } from "@/components/redesign/ui";
+import { Notice } from "@/components/ui";
 import type { LoanModel } from "./model";
 import {
   BorrowPanel,

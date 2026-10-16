@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
-import { usePrefersReducedMotion } from "@/components/redesign/hooks";
+import { usePrefersReducedMotion } from "@/components/ui/hooks";
 
 const EXIT_MS = 220;
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])';

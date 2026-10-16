@@ -12,7 +12,7 @@ import { setDraftAmount } from "@/lib/borrow/draft";
 import { blockDate, healthOf, liquidationPriceFor, loanHref, repayToSafeStroops, type Read } from "@/lib/loan/model";
 import { networkName } from "@/lib/wallet/precheck";
 import type { PositionStatus } from "@/lib/status/types";
-import { ConfirmationSlots, ExternalLink, Notice } from "@/components/redesign/ui";
+import { ConfirmationSlots, ExternalLink, Notice } from "@/components/ui";
 import { HealthMeter, HealthText, StatusBadge } from "@/components/loan/parts";
 import type { EarnSummary } from "./data";
 
@@ -123,7 +123,7 @@ export function LoanSummaryCard({
               </button>
             )
           ) : null}
-          <Link href={loanHref(p.index)} className="wz-btn wz-btn-text">
+          <Link href={loanHref(p.index)} className="wz-btn wz-btn-text hm-stretch">
             Open {loanName(loan)}
           </Link>
         </div>

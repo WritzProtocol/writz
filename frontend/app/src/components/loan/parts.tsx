@@ -23,8 +23,8 @@ import type { Position } from "@/lib/position/types";
 import type { PositionStatus } from "@/lib/status/types";
 import type { ErrorFlow } from "@/lib/errors";
 import { networkName } from "@/lib/wallet/precheck";
-import { useElapsed } from "@/components/redesign/hooks";
-import { ErrorBox, ExternalLink, Notice, SlideToConfirm, Spinner, type Tone } from "@/components/redesign/ui";
+import { useElapsed } from "@/components/ui/hooks";
+import { ErrorBox, ExternalLink, Notice, SlideToConfirm, Spinner, type Tone } from "@/components/ui";
 import type { LoanModel } from "./model";
 
 const STELLAR = networkName(config.networkPassphrase);
