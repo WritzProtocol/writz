@@ -1,36 +1,28 @@
 .landing {
-  --paper: #000814;
-  --panel: #001d3d;
-  --ink: #001d3d;
-  --deep: #003566;
-  --gold: #ffc300;
-  --midnight: #000814;
-  --heading: #ffffff;
-  --body: #a9b6c9;
-  --muted: #8a98ae;
-  --link: #b4c0d1;
-  --rule: oklch(1 0 0 / 0.08);
-  --rule-strong: oklch(1 0 0 / 0.16);
-  --on-dark: #a9b6c9;
-  --ease-out: cubic-bezier(0.2, 0, 0, 1);
-  --shadow-border:
-    0 0 0 1px oklch(1 0 0 / 0.08),
-    0 1px 2px -1px oklch(0 0 0 / 0.4),
-    0 2px 4px 0 oklch(0 0 0 / 0.3);
+  --paper: var(--bg);
+  --panel: var(--surface);
+  --ink: var(--on-accent);
+  --gold: var(--accent);
+  --midnight: var(--bg);
+  --link: var(--body);
+  --rule: var(--line);
+  --rule-strong: var(--line-strong);
+  --on-dark: var(--body);
+  --ease-out: var(--ease-enter);
   --shadow-border-hover:
-    0 0 0 1px oklch(1 0 0 / 0.16),
+    0 0 0 1px var(--line-strong),
     0 1px 2px -1px oklch(0 0 0 / 0.4),
     0 4px 10px 0 oklch(0 0 0 / 0.35);
 
   color-scheme: dark;
   background: var(--paper);
   color: var(--body);
-  font-family: var(--ff-landing-sans), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-sans);
 }
 
 html:has(.landing),
 html:has(.landing) body {
-  background: #000814;
+  background: var(--bg);
 }
 
 .landing a {
@@ -56,7 +48,7 @@ html:has(.landing) body {
   justify-content: center;
   height: 48px;
   padding: 0 24px;
-  border-radius: 6px;
+  border-radius: var(--radius-control);
   font-size: 16px;
   font-weight: 500;
   letter-spacing: -0.006em;
@@ -177,7 +169,7 @@ html:has(.landing) body {
   margin: 0 auto;
   padding: 0 24px;
   border-radius: 0;
-  background-color: rgb(0 8 20 / 0);
+  background-color: transparent;
   box-shadow: 0 0 0 1px oklch(0 0 0 / 0), 0 8px 24px -8px oklch(0 0 0 / 0);
   -webkit-backdrop-filter: blur(0);
   backdrop-filter: blur(0);
@@ -193,7 +185,7 @@ html:has(.landing) body {
   margin: 12px auto 0;
   padding: 0 8px 0 20px;
   border-radius: 14px;
-  background-color: rgb(0 8 20 / 0.78);
+  background-color: color-mix(in srgb, var(--bg) 78%, transparent);
   box-shadow: 0 0 0 1px oklch(1 0 0 / 0.1), 0 8px 24px -8px oklch(0 0 0 / 0.6);
   -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
@@ -559,7 +551,7 @@ html:has(.landing) body {
 }
 
 .landing .journey .usdc text {
-  fill: #ffffff;
+  fill: var(--heading);
 }
 
 .landing .journey .proof rect {
@@ -835,7 +827,7 @@ html:has(.landing) body {
   display: flex;
   padding: 3px;
   border-radius: 8px;
-  background: rgb(0 29 61 / 0.1);
+  background: color-mix(in srgb, var(--on-accent) 10%, transparent);
 }
 
 .landing .calc-seg button {
@@ -862,7 +854,7 @@ html:has(.landing) body {
   height: 8px;
   margin-top: 4px;
   border-radius: 4px;
-  background: rgb(0 29 61 / 0.14);
+  background: color-mix(in srgb, var(--on-accent) 14%, transparent);
   overflow: hidden;
 }
 
@@ -991,7 +983,7 @@ html:has(.landing) body {
 .landing .closing h2 {
   margin-bottom: 12px;
   max-width: 580px;
-  color: #ffffff;
+  color: var(--heading);
 }
 
 .landing .closing p {
@@ -1010,7 +1002,7 @@ html:has(.landing) body {
 .landing .dark .btn-line {
   background: transparent;
   box-shadow: 0 0 0 1px oklch(1 0 0 / 0.16);
-  color: #ffffff;
+  color: var(--heading);
 }
 
 .landing .foot {
@@ -1033,7 +1025,7 @@ html:has(.landing) body {
 }
 
 .landing .foot.dark .lockup {
-  background: #ffffff;
+  background: var(--heading);
 }
 
 .landing .foot .bio {
@@ -1052,7 +1044,7 @@ html:has(.landing) body {
 }
 
 .landing .foot.dark h3 {
-  color: #ffffff;
+  color: var(--heading);
 }
 
 .landing .foot ul {
@@ -1088,7 +1080,7 @@ html:has(.landing) body {
 
 @media (hover: hover) and (pointer: fine) {
   .landing .btn-gold:hover {
-    background: #ffcf33;
+    background: var(--accent-hover);
   }
 
   .landing .btn-line:hover {
@@ -1108,7 +1100,7 @@ html:has(.landing) body {
   }
 
   .landing .foot.dark li a:hover {
-    color: #ffffff;
+    color: var(--heading);
   }
 }
 
@@ -1362,7 +1354,7 @@ html:has(.landing) body {
   padding: 10px 14px;
   border-radius: 6px;
   background: var(--ink);
-  color: #ffffff;
+  color: var(--heading);
   font-size: 15px;
   font-weight: 500;
   transform: translateY(-150%);
