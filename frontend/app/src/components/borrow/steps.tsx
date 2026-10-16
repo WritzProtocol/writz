@@ -90,6 +90,7 @@ export function AmountStep({ m }: { m: JourneyModel }) {
         <input
           id="amount"
           inputMode="decimal"
+          enterKeyHint="next"
           autoComplete="off"
           placeholder="0.05"
           value={amount.value}

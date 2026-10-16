@@ -57,8 +57,23 @@ function SidePanel({ m, side }: { m: FundsModel; side: FundsSide }) {
 
   if (running) return <TxRunning flow={m.flow} walletName={m.walletName} />;
 
+  const send = () => {
+    setTouched(true);
+    if (s.blocked || m.otherTx || !check.ok) return;
+    m.submit(side, check.stroops);
+    setValue("");
+    setTouched(false);
+  };
+
   return (
-    <div className="wz-stack">
+    <form
+      className="wz-stack"
+      noValidate
+      onSubmit={(e) => {
+        e.preventDefault();
+        send();
+      }}
+    >
       {mine ? (
         <TxResult
           flow={m.flow}
@@ -91,17 +106,10 @@ function SidePanel({ m, side }: { m: FundsModel; side: FundsSide }) {
       />
       <div className="wz-actions">
         <button
-          type="button"
+          type="submit"
           className="wz-btn wz-btn-gold"
           aria-disabled={Boolean(s.blocked) || m.otherTx || !check.ok}
           aria-describedby={s.blocked || m.otherTx ? `${id}-why` : undefined}
-          onClick={() => {
-            setTouched(true);
-            if (s.blocked || m.otherTx || !check.ok) return;
-            m.submit(side, check.stroops);
-            setValue("");
-            setTouched(false);
-          }}
         >
           {check.ok && !s.blocked && s.action ? s.action(check.stroops) : s.label}
         </button>
@@ -111,7 +119,7 @@ function SidePanel({ m, side }: { m: FundsModel; side: FundsSide }) {
           {s.blocked ?? "Waiting for your other transaction."}
         </p>
       ) : null}
-    </div>
+    </form>
   );
 }
 

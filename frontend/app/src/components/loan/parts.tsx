@@ -421,6 +421,7 @@ export function AmountField({
         <input
           id={id}
           inputMode="decimal"
+          enterKeyHint="done"
           autoComplete="off"
           placeholder="0.00"
           value={value}
@@ -446,14 +447,17 @@ function After({
   debt,
   price,
   overLimit = false,
+  overPool = false,
 }: {
   collateralSats: bigint;
   debt: bigint | null;
   price: bigint | null;
   overLimit?: boolean;
+  overPool?: boolean;
 }) {
   let body: ReactNode = "Enter an amount to see your new ratio.";
   if (overLimit) body = "That is more than the safe limit for this loan.";
+  else if (overPool) body = "That is more than the pool has available right now.";
   else if (debt !== null && debt <= 0n) body = "After this: loan repaid. Next, release your BTC.";
   else if (debt !== null && price) {
     const a = afterState(collateralSats, debt, price);
@@ -530,7 +534,9 @@ export function BorrowPanel({
   const parsed = value.trim() ? parseUsdcAmount(value) : null;
   const amount = parsed?.ok ? parsed.stroops : null;
   const x = formatUsdc(max);
-  const overLimit = parsed?.ok === true && amount !== null && amount > max && !available?.limitedByPool;
+  const overMax = parsed?.ok === true && amount !== null && amount > max;
+  const overLimit = overMax && !available?.limitedByPool;
+  const overPool = overMax && Boolean(available?.limitedByPool);
   const error =
     parsed && !parsed.ok
       ? parsed.error
@@ -593,7 +599,7 @@ export function BorrowPanel({
           </button>
         ))}
       </div>
-      <After collateralSats={collateral} debt={newDebt} price={price} overLimit={overLimit} />
+      <After collateralSats={collateral} debt={newDebt} price={price} overLimit={overLimit} overPool={overPool} />
       {mine && (
         <TxResult
           flow={m.flow}

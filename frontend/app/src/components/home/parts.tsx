@@ -440,6 +440,7 @@ export function Preview({
           <input
             id="preview-amount"
             inputMode="decimal"
+            enterKeyHint="done"
             autoComplete="off"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
