@@ -327,7 +327,7 @@ html:has(.landing) body {
   max-width: 880px;
   height: 60px;
   margin: 12px auto 0;
-  padding: 0 4px 0 20px;
+  padding: 0 20px;
   background-color: var(--surface);
   box-shadow: 0 0 0 1px var(--line-strong);
 }
