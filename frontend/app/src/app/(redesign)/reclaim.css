@@ -1,13 +1,45 @@
 /* Help: reclaim */
-.rc-col { display: flex; flex-direction: column; gap: 20px; max-width: 760px; margin: 0 auto; }
-.rc-block { display: flex; flex-direction: column; gap: 12px; padding: 24px; background: var(--panel); }
-.rc-block p { font-size: 16px; }
-.rc-block b { color: var(--heading); font-weight: 500; }
-.rc-loans { display: flex; flex-direction: column; gap: 12px; }
-.rc-loan { display: flex; flex-direction: column; gap: 8px; padding: 16px; background: var(--midnight); box-shadow: 0 0 0 1px var(--rule); }
-.rc-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-@media (max-width: 760px) {
-  .rc-block { padding: 20px; }
-  .rc-steps { grid-template-columns: minmax(0, 1fr); }
+.rc-page { display: flex; flex-direction: column; padding-top: 16px; }
+.rc-h1 { max-width: 18ch; font-size: clamp(40px, 4.6vw, 68px); font-weight: 600; letter-spacing: -0.035em; line-height: 1.04; text-wrap: balance; outline: none; }
+.rc-h2 { font-size: clamp(21px, 1.8vw, 25px); font-weight: 600; letter-spacing: -0.014em; line-height: 1.25; }
+.rc-h3 { font-size: 17px; font-weight: 600; letter-spacing: -0.01em; }
+.rc-grid { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); grid-template-areas: "lock when" "need when"; grid-template-rows: auto 1fr; gap: 48px; margin-top: 48px; align-items: start; }
+.rc-lock { grid-area: lock; }
+.rc-need { grid-area: need; }
+.rc-when { grid-area: when; display: flex; flex-direction: column; gap: 12px; padding: 48px 32px 32px 48px; background: var(--panel); }
+.rc-lock, .rc-need, .rc-steps-wrap { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.rc-lead { max-width: 56ch; font-size: 19px; line-height: 1.5; color: var(--heading); }
+.rc-need .fo-need { margin-top: 4px; max-width: 60ch; font-size: 16px; }
+
+.rc-loans { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
+.rc-loan { display: flex; flex-direction: column; gap: 10px; padding: 20px; background: color-mix(in oklab, var(--heading) 6%, var(--bg)); }
+.rc-loan p { font-size: 15px; }
+.rc-loan b { display: inline-flex; align-items: center; gap: 8px; color: var(--positive); font-weight: 500; }
+.rc-loan b::before { content: ""; width: 7px; height: 12px; background: currentColor; transform: skewX(-16deg); flex: none; }
+.rc-facts { display: grid; gap: 4px; margin: 4px 0 0; font-size: 14px; }
+.rc-facts > div { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 2px 12px; min-height: 32px; padding-top: 8px; border-top: 1px solid var(--rule); }
+.rc-facts dt { color: var(--muted); }
+.rc-facts dd { margin: 0; color: var(--heading); }
+.rc-facts a { display: inline-flex; align-items: center; min-height: 44px; }
+
+.rc-steps-wrap { margin-top: 64px; }
+.rc-steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; margin: 4px 0 8px; padding: 0; list-style: none; }
+.rc-steps li { display: flex; flex-direction: column; gap: 8px; min-width: 0; padding: 24px; background: color-mix(in oklab, var(--heading) 6%, var(--bg)); }
+.rc-steps p { font-size: 15px; }
+.rc-step-n { position: relative; isolation: isolate; align-self: flex-start; display: inline-grid; place-items: center; min-width: 44px; height: 28px; margin: 0 0 8px -4px; padding: 0 12px; color: var(--ink); font-size: 14px; font-weight: 500; }
+.rc-step-n::before { content: ""; position: absolute; inset: 0 4px; z-index: -1; background: var(--gold); transform: skewX(-16deg); }
+
+@media (max-width: 1279px) {
+  .rc-grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: "lock" "when" "need"; grid-template-rows: none; gap: 40px; margin-top: 40px; }
+  .rc-when { max-width: 720px; }
+  .rc-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
-.rc-block .fo-need { margin-top: 0; }
+@media (max-width: 767px) {
+  .rc-page { padding-top: 8px; }
+  .rc-grid { margin-top: 32px; gap: 32px; }
+  .rc-lead { font-size: 17px; }
+  .rc-when { margin: 0 calc(-1 * var(--gut)); padding: 56px 16px 24px; }
+  .rc-steps-wrap { margin-top: 48px; }
+  .rc-steps { grid-template-columns: minmax(0, 1fr); margin-left: calc(-1 * var(--gut)); margin-right: calc(-1 * var(--gut)); }
+  .rc-steps li { padding: 20px 16px; }
+}

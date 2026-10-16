@@ -3,7 +3,6 @@
 import { useState, type KeyboardEvent, type ReactNode } from "react";
 import type { ErrorFlow } from "@/lib/errors";
 import { isInFlight, type FlowState } from "@/lib/flow/engine";
-import { formatUsdc } from "@/lib/borrow/journey";
 import { checkAmount, type FundsSide } from "@/lib/funds/model";
 import { toFieldValue, type Read } from "@/lib/loan/model";
 import { ErrorBox, Notice, Spinner } from "@/components/redesign/ui";
@@ -133,7 +132,7 @@ export function FundsCard({ m, label }: { m: FundsModel; label: string }) {
 
   if (m.trustline.kind === "ok" && !m.trustline.value) {
     return (
-      <section className="ln-panel wz-stack" aria-label={label}>
+      <section className="fu-panel wz-stack" aria-label={label}>
         <p className="wz-strong">{m.trust.text}</p>
         <div className="wz-actions">
           <button type="button" className="wz-btn wz-btn-gold" disabled={m.trust.busy || m.otherTx} onClick={m.trust.add}>
@@ -176,25 +175,10 @@ export function FundsCard({ m, label }: { m: FundsModel; label: string }) {
         })}
       </div>
       {busy ? <p className="wz-hint">{WAITING}</p> : null}
-      <div className="ln-panel wz-enter" id="funds-panel" role="tabpanel" aria-labelledby={`funds-tab-${tab}`} key={tab}>
+      <div className="fu-panel wz-enter" id="funds-panel" role="tabpanel" aria-labelledby={`funds-tab-${tab}`} key={tab}>
         <SidePanel m={m} side={tab} />
       </div>
     </section>
-  );
-}
-
-export function Stat({ label, value, caption }: { label: string; value: Read<bigint>; caption?: ReactNode }) {
-  return (
-    <div className="fu-stat">
-      <dt>{label}</dt>
-      <dd className="mono">
-        {value.kind === "ok" ? formatUsdc(value.value) : value.kind === "failed" ? "Unavailable" : <>
-            <span className="wz-skeleton fu-sk" aria-hidden="true" />
-            <span className="wz-sr">Checking...</span>
-          </>}
-      </dd>
-      {caption ? <dd className="wz-hint fu-caption">{caption}</dd> : null}
-    </div>
   );
 }
 

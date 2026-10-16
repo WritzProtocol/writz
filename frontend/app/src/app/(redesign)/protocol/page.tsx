@@ -5,7 +5,6 @@ import { getRetentionCohorts, getTvlMetrics } from "@/lib/metrics/api";
 import type { Read } from "@/lib/loan/model";
 import { ProtocolView } from "@/components/protocol/ProtocolView";
 import type { ProtocolData } from "@/components/protocol/model";
-import "../home.css";
 import "../funds.css";
 import "../protocol.css";
 

@@ -88,12 +88,12 @@ function When({ lock, tip, now }: { lock: LoanLock; tip: number | null; now: num
 function LoanCard({ lock, tip, now, detailed }: { lock: LoanLock; tip: number | null; now: number; detailed: boolean }) {
   return (
     <section className="rc-loan" aria-labelledby={`rc-loan-${lock.n}`}>
-      <h3 id={`rc-loan-${lock.n}`} className="hm-h3">
+      <h3 id={`rc-loan-${lock.n}`} className="rc-h3">
         Loan {lock.n}
       </h3>
       <When lock={lock} tip={tip} now={now} />
       {detailed ? (
-        <dl className="sh-facts">
+        <dl className="rc-facts">
           {lock.lockAddress ? (
             <div>
               <dt>Lock address</dt>

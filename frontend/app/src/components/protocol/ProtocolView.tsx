@@ -8,6 +8,7 @@ import type { RetentionCohort } from "@/lib/metrics/api";
 import { networkName } from "@/lib/wallet/precheck";
 import { ExternalLink } from "@/components/redesign/ui";
 import { useMockWorld } from "@/components/redesign/hooks";
+import { Hero } from "@/components/funds/parts";
 import { mockProtocolData, type ProtocolData } from "./model";
 
 const STELLAR = networkName(config.networkPassphrase);
@@ -25,15 +26,15 @@ function Unavailable() {
   return <p className="wz-hint">Unavailable right now. Refresh in a minute.</p>;
 }
 
-function Block({ title, at, children }: { title: string; at: number; children: ReactNode }) {
+function Block({ title, at, className, children }: { title: string; at: number; className?: string; children: ReactNode }) {
   const id = `pr-${title.toLowerCase().replace(/\W+/g, "-")}`;
   return (
-    <section className="pr-block" aria-labelledby={id}>
-      <div className="wz-spread">
-        <h2 id={id} className="hm-h2">
+    <section className={className ? `pr-block ${className}` : "pr-block"} aria-labelledby={id}>
+      <div className="pr-block-head">
+        <h2 id={id} className="pr-h2">
           {title}
         </h2>
-        <span className="wz-hint">Updated {clock(at)}</span>
+        <span className="pr-at">Updated {clock(at)}</span>
       </div>
       {children}
     </section>
@@ -42,11 +43,11 @@ function Block({ title, at, children }: { title: string; at: number; children: R
 
 function Figure({ label, value, unit, text }: { label: string; value: string; unit?: string; text?: boolean }) {
   return (
-    <div className="fu-stat">
+    <div>
       <dt>{label}</dt>
-      <dd className={text ? undefined : "mono"}>
-        {value}
-        {unit ? <span className="wz-muted"> {unit}</span> : null}
+      <dd className="fu-tile-v">
+        <span className={text ? "pr-text" : "mono"}>{value}</span>
+        {unit ? <span className="fu-unit"> {unit}</span> : null}
       </dd>
     </div>
   );
@@ -123,56 +124,64 @@ export function ProtocolView({ data: server }: { data: ProtocolData }) {
   const allFailed = d.pool.kind === "failed" && d.vault.kind === "failed";
 
   return (
-    <div className="pr-col">
-      <header className="hm-head">
-        <h1 className="hm-h1">Protocol</h1>
-        <p className="hm-sub">Live reads from {STELLAR}.</p>
+    <div className="fu-page">
+      <header>
+        <h1 className="fu-h1">Protocol</h1>
+        <p className="fu-lede">Live reads from {STELLAR}.</p>
       </header>
 
       {allFailed ? (
-        <p className="wz-note" data-tone="warning">
-          <span className="wz-note-label">Unavailable</span>
-          <span>Can&apos;t read {STELLAR} right now. Refresh in a minute.</span>
-        </p>
+        <div className="fu-stale">
+          <p className="wz-note" data-tone="warning">
+            <span className="wz-note-label">Unavailable</span>
+            <span>Can&apos;t read {STELLAR} right now. Refresh in a minute.</span>
+          </p>
+        </div>
       ) : null}
 
-      <Block title="Borrow pool" at={d.at}>
-        {d.pool.kind === "ok" ? (
-          <dl className="fu-stats">
-            <Figure label="Available to borrow" value={formatUsdc(d.pool.value.available)} unit="USDC" />
-            <Figure label="Supplied by lenders" value={formatUsdc(d.pool.value.totalSupplied)} unit="USDC" />
-            <Figure label="Borrowed across all open loans" value={formatUsdc(d.pool.value.totalBorrowed)} unit="USDC" />
-          </dl>
-        ) : (
-          <Unavailable />
-        )}
-      </Block>
+      <div className="pr-grid">
+        <Block title="Borrow pool" at={d.at}>
+          {d.pool.kind === "ok" ? (
+            <>
+              <Hero label="Available to borrow" value={{ kind: "ok", value: d.pool.value.available }} unit="USDC" />
+              <dl className="fu-tiles">
+                <Figure label="Supplied by lenders" value={formatUsdc(d.pool.value.totalSupplied)} unit="USDC" />
+                <Figure label="Borrowed across all open loans" value={formatUsdc(d.pool.value.totalBorrowed)} unit="USDC" />
+              </dl>
+            </>
+          ) : (
+            <Unavailable />
+          )}
+        </Block>
 
-      <Block title="Earn vault" at={d.at}>
-        {d.vault.kind === "ok" ? (
-          <>
-            <dl className="fu-stats">
-              <Figure label="Total in vault" value={formatUsdc(d.vault.value.totalStroops)} unit="USDC (Blend)" />
-              <Figure label="Depositors" value={String(d.vault.value.depositors)} />
-              <Figure label="APY" value={d.vault.value.apy !== null ? `${(d.vault.value.apy * 100).toFixed(2)}%` : "Unavailable"} />
-              <Figure label="Strategy" value="Blend lending pool" text />
-            </dl>
-            {d.vault.value.depositors === 0 ? <p className="wz-hint">No deposits yet.</p> : null}
-          </>
-        ) : (
-          <Unavailable />
-        )}
-      </Block>
+        <Block title="Earn vault" at={d.at}>
+          {d.vault.kind === "ok" ? (
+            <>
+              <dl className="fu-tiles pr-vault">
+                <Figure label="Total in vault" value={formatUsdc(d.vault.value.totalStroops)} unit="USDC (Blend)" />
+                <Figure label="Depositors" value={String(d.vault.value.depositors)} />
+                <Figure label="APY" value={d.vault.value.apy !== null ? `${(d.vault.value.apy * 100).toFixed(2)}%` : "Unavailable"} />
+                <Figure label="Strategy" value="Blend lending pool" text />
+              </dl>
+              {d.vault.value.depositors === 0 ? <p className="wz-hint">No deposits yet.</p> : null}
+            </>
+          ) : (
+            <Unavailable />
+          )}
+        </Block>
+      </div>
 
-      <Block title="30-day retention" at={d.at}>
-        <p className="wz-hint">Of the depositors who reached 30 days, how many still hold a balance in the vault.</p>
+      <Block title="30-day retention" at={d.at} className="pr-wide">
+        <p className="pr-note">Of the depositors who reached 30 days, how many still hold a balance in the vault.</p>
         {d.cohorts.kind === "ok" ? <Retention cohorts={d.cohorts.value} now={d.at} /> : <Unavailable />}
       </Block>
 
-      <section className="pr-block" aria-labelledby="pr-contracts">
-        <h2 id="pr-contracts" className="hm-h2">
-          Contracts on {STELLAR}
-        </h2>
+      <section className="pr-block pr-wide" aria-labelledby="pr-contracts">
+        <div className="pr-block-head">
+          <h2 id="pr-contracts" className="pr-h2">
+            Contracts on {STELLAR}
+          </h2>
+        </div>
         <dl className="pr-contracts">
           {CONTRACTS.map((c) => (
             <div key={c.label}>

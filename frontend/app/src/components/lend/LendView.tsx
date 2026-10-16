@@ -1,12 +1,12 @@
 "use client";
 
-import Link from "next/link";
 import { config } from "@/config";
 import { withdrawable } from "@/lib/funds/model";
 import type { Read } from "@/lib/loan/model";
 import { networkName } from "@/lib/wallet/precheck";
 import { Notice } from "@/components/redesign/ui";
-import { FundsCard, NotConnected, Stat } from "@/components/funds/FundsCard";
+import { FundsCard, NotConnected } from "@/components/funds/FundsCard";
+import { Hero, RiskNotes, Tile, Tiles } from "@/components/funds/parts";
 import type { LendModel } from "./model";
 
 const STELLAR = networkName(config.networkPassphrase);
@@ -27,68 +27,77 @@ export function LendView({ m }: { m: LendModel }) {
         : { kind: "checking" };
 
   return (
-    <div className="fu-col">
-      <header className="hm-head">
-        <h1 className="hm-h1">Lend USDC</h1>
-        <p className="hm-sub">Supply USDC to the pool borrowers draw from. You can withdraw what you supplied.</p>
+    <div className="fu-page">
+      <header>
+        <h1 className="fu-h1">Lend USDC</h1>
+        <p className="fu-lede">Supply USDC to the pool borrowers draw from. You can withdraw what you supplied.</p>
       </header>
 
-      <section className="fu-summary" aria-label="The pool">
-        <dl className="fu-stats">
+      {m.stale ? (
+        <div className="fu-stale">
+          <Notice
+            tone="warning"
+            label="Balance not refreshed"
+            actions={
+              <button type="button" className="wz-btn wz-btn-line wz-btn-sm" onClick={m.retry}>
+                Try again
+              </button>
+            }
+          >
+            <p>Can&apos;t load your pool balance right now. Your funds are not affected. Last updated {clock(m.stale.at)}.</p>
+          </Notice>
+        </div>
+      ) : null}
+
+      <div className="fu-grid">
+        <section className="fu-figures" aria-label="Your position and the pool">
           {m.connected ? (
             <>
-              <Stat
-                label="You supplied, USDC"
+              <Hero
+                label="You supplied"
                 value={m.supplied}
+                unit="USDC"
                 caption={m.supplied.kind === "ok" && m.supplied.value === 0n ? "You haven't supplied any USDC." : undefined}
               />
-              <Stat label="Available in pool, USDC" value={available} />
-              <Stat label="You can withdraw now, USDC" value={canWithdraw} />
+              <Tiles>
+                <Tile label="Available in pool" value={available} />
+                <Tile label="You can withdraw now" value={canWithdraw} />
+              </Tiles>
             </>
           ) : (
             <>
-              <Stat label="Available in pool, USDC" value={available} />
-              <Stat label="Supplied by lenders, USDC" value={m.pool.kind === "ok" ? { kind: "ok", value: m.pool.value.totalSupplied } : m.pool} />
+              <Hero label="Available in pool" value={available} unit="USDC" />
+              <Tiles>
+                <Tile
+                  label="Supplied by lenders"
+                  value={m.pool.kind === "ok" ? { kind: "ok", value: m.pool.value.totalSupplied } : m.pool}
+                />
+              </Tiles>
             </>
           )}
-        </dl>
-      </section>
+          <RiskNotes
+            lines={["Suppliers carry Bitcoin credit risk. When borrowers are using the pool, you may have to wait to withdraw."]}
+            link={{ href: "/protocol", label: "See pool stats" }}
+          />
+        </section>
 
-      {m.stale ? (
-        <Notice
-          tone="warning"
-          label="Balance not refreshed"
-          actions={
-            <button type="button" className="wz-btn wz-btn-line wz-btn-sm" onClick={m.retry}>
-              Try again
-            </button>
-          }
-        >
-          <p>Can&apos;t load your pool balance right now. Your funds are not affected. Last updated {clock(m.stale.at)}.</p>
-        </Notice>
-      ) : null}
+        <div className="fu-act">
+          {!m.connected ? (
+            <NotConnected text="Connect your Stellar wallet to lend USDC." connect={m.connect} connecting={m.connecting} />
+          ) : m.wrongNetwork ? (
+            <Notice tone="warning" label="Wrong network">
+              <p>
+                Your wallet is on {m.wrongNetwork}. Writz runs on {STELLAR}. Switch network in {m.walletName}.
+              </p>
+            </Notice>
+          ) : m.unfunded ? (
+            <Notice tone="warning" label="Account not funded">
+              <p>This account has no test XLM yet, so it can&apos;t pay network fees. Fund it from the Wallets menu.</p>
+            </Notice>
+          ) : null}
 
-      {!m.connected ? (
-        <NotConnected text="Connect your Stellar wallet to lend USDC." connect={m.connect} connecting={m.connecting} />
-      ) : m.wrongNetwork ? (
-        <Notice tone="warning" label="Wrong network">
-          <p>
-            Your wallet is on {m.wrongNetwork}. Writz runs on {STELLAR}. Switch network in {m.walletName}.
-          </p>
-        </Notice>
-      ) : m.unfunded ? (
-        <Notice tone="warning" label="Account not funded">
-          <p>This account has no test XLM yet, so it can&apos;t pay network fees. Fund it from the Wallets menu.</p>
-        </Notice>
-      ) : null}
-
-      {m.funds && !blocked ? <FundsCard m={m.funds} label="Supply or withdraw" /> : null}
-
-      <div className="fu-notes">
-        <p>Suppliers carry Bitcoin credit risk. When borrowers are using the pool, you may have to wait to withdraw.</p>
-        <Link href="/protocol" className="wz-link">
-          See pool stats
-        </Link>
+          {m.funds && !blocked ? <FundsCard m={m.funds} label="Supply or withdraw" /> : null}
+        </div>
       </div>
     </div>
   );
