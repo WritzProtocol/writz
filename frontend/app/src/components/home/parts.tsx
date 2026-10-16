@@ -47,7 +47,19 @@ function cardAction(l: HomeLoan, findLoans: () => void): { label: string; href?:
   }
 }
 
-export function LoanSummaryCard({ loan, price, findLoans }: { loan: HomeLoan; price: Read<bigint>; findLoans: () => void }) {
+export function LoanSummaryCard({
+  loan,
+  price,
+  findLoans,
+  compact = false,
+  primary = true,
+}: {
+  loan: HomeLoan;
+  price: Read<bigint>;
+  findLoans: () => void;
+  compact?: boolean;
+  primary?: boolean;
+}) {
   const p = loan.position;
   const s = loan.derived.status;
   const collateral = BigInt(p.collateralSats);
@@ -57,71 +69,80 @@ export function LoanSummaryCard({ loan, price, findLoans }: { loan: HomeLoan; pr
   const action = cardAction(loan, findLoans);
   const showsRisk = health !== null || s.kind === "checking";
   const closed = s.kind === "released" || s.kind === "liquidated" || s.kind === "closed_on_chain";
+  const actionClass = `wz-btn ${primary ? "wz-btn-gold" : "wz-btn-line"}${compact ? " wz-btn-sm" : ""}`;
 
   return (
-    <article className="hm-card hm-loan" aria-labelledby={`loan-${p.index}`}>
-      <header className="hm-loan-head">
-        <h3 id={`loan-${p.index}`} className="hm-h3">
-          <Link href={loanHref(p.index)} className="hm-stretch">
-            {loanName(loan)}
-          </Link>
-        </h3>
-        <StatusBadge status={s} />
-      </header>
-      {s.kind === "liquidated" ? <p className="wz-hint">{loanName(loan)} was liquidated. A liquidator repaid the debt and the loan is closed.</p> : null}
-      <dl className="hm-facts">
-        <div>
-          <dt>Collateral</dt>
-          <dd className="mono">{formatBtc(collateral)} BTC</dd>
-        </div>
-        {!closed ? (
-          <div>
-            <dt>You owe</dt>
-            <dd className="mono">{formatUsdc(debt)} USDC</dd>
+    <article className="hm-loan wz-cut" data-compact={compact} aria-labelledby={`loan-${p.index}`}>
+      <div className="hm-loan-main">
+        <header className="hm-loan-head">
+          <h2 id={`loan-${p.index}`}>{loanName(loan)}</h2>
+          <StatusBadge status={s} />
+        </header>
+        {s.kind === "liquidated" ? <p className="hm-loan-note">{loanName(loan)} was liquidated. A liquidator repaid the debt and the loan is closed.</p> : null}
+        {showsRisk && (debt > 0n || s.kind === "checking") ? (
+          <div className="hm-risk">
+            <HealthText ratioBp={ratioOf(s)} health={health} />
+            <HealthMeter ratioBp={ratioOf(s)} health={health} />
+            {liq !== null && health !== null ? (
+              <p className="hm-liq">
+                Liquidated if BTC falls below <b className="mono">{formatUsd(liq)}</b>.{" "}
+                {price.kind === "ok" ? (
+                  <>
+                    BTC now <span className="mono">{formatUsd(price.value)}</span>, oracle price.
+                  </>
+                ) : price.kind === "failed" ? (
+                  "BTC price unavailable."
+                ) : null}
+              </p>
+            ) : null}
           </div>
         ) : null}
-      </dl>
-      {showsRisk && debt > 0n ? (
-        <div className="hm-risk">
-          <HealthText ratioBp={ratioOf(s)} health={health} />
-          <HealthMeter ratioBp={ratioOf(s)} health={health} />
-          {liq !== null ? (
-            <p className="wz-hint">
-              Liquidated if BTC falls below <b className="mono wz-strong">{formatUsd(liq)}</b>.{" "}
-              {price.kind === "ok" ? (
-                <>
-                  BTC now <span className="mono">{formatUsd(price.value)}</span>, oracle price.
-                </>
-              ) : price.kind === "failed" ? (
-                "BTC price unavailable."
-              ) : null}
-            </p>
+      </div>
+      <div className="hm-loan-side">
+        <dl className="hm-kv">
+          <div>
+            <dt>Collateral</dt>
+            <dd className="mono">{formatBtc(collateral)} BTC</dd>
+          </div>
+          {!closed ? (
+            <div>
+              <dt>You owe</dt>
+              <dd className="mono">{formatUsdc(debt)} USDC</dd>
+            </div>
           ) : null}
+        </dl>
+        <div className="hm-loan-acts">
+          {action ? (
+            action.href ? (
+              <Link href={action.href} className={actionClass}>
+                {action.label}
+              </Link>
+            ) : (
+              <button type="button" className={actionClass} onClick={action.onClick}>
+                {action.label}
+              </button>
+            )
+          ) : null}
+          <Link href={loanHref(p.index)} className="wz-btn wz-btn-text">
+            Open {loanName(loan)}
+          </Link>
         </div>
-      ) : null}
-      {action ? (
-        <div className="hm-card-actions">
-          {action.href ? (
-            <Link href={action.href} className="wz-btn wz-btn-line wz-btn-sm">
-              {action.label}
-            </Link>
-          ) : (
-            <button type="button" className="wz-btn wz-btn-line wz-btn-sm" onClick={action.onClick}>
-              {action.label}
-            </button>
-          )}
-        </div>
-      ) : null}
+      </div>
     </article>
   );
 }
 
 export function LoanSkeleton() {
   return (
-    <div className="hm-card hm-loan" aria-hidden="true">
-      <div className="wz-skeleton" style={{ height: 28, width: 120 }} />
-      <div className="wz-skeleton" style={{ height: 56 }} />
-      <div className="wz-skeleton" style={{ height: 40 }} />
+    <div className="hm-loan wz-cut" data-compact="false" aria-hidden="true">
+      <div className="hm-loan-main">
+        <div className="wz-skeleton" style={{ height: 28, width: 120 }} />
+        <div className="wz-skeleton" style={{ height: 96, width: "min(320px, 80%)" }} />
+        <div className="wz-skeleton" style={{ height: 40 }} />
+      </div>
+      <div className="hm-loan-side">
+        <div className="wz-skeleton" style={{ height: 120 }} />
+      </div>
     </div>
   );
 }
@@ -133,7 +154,7 @@ function DepositCard({ u, m, onCheckAgain }: { u: Extract<Urgent, { kind: "depos
   const txid = u.deposit?.pd.btcTxid ?? u.loan?.position.txid;
   const stellarHash = u.deposit?.pd.stellarTxHash ?? u.loan?.position.stellarTxHash;
   const mempool = txid ? (
-    <ExternalLink href={btcTxUrl(txid)} className="wz-link">
+    <ExternalLink href={btcTxUrl(txid)} className="wz-btn wz-btn-text">
       View on mempool
     </ExternalLink>
   ) : null;
@@ -149,7 +170,7 @@ function DepositCard({ u, m, onCheckAgain }: { u: Extract<Urgent, { kind: "depos
               Finish deposit
             </Link>
             {stellarHash ? (
-              <ExternalLink href={stellarTxUrl(stellarHash)} className="wz-link">
+              <ExternalLink href={stellarTxUrl(stellarHash)} className="wz-btn wz-btn-text">
                 Stellar transaction
               </ExternalLink>
             ) : null}
@@ -183,7 +204,7 @@ function DepositCard({ u, m, onCheckAgain }: { u: Extract<Urgent, { kind: "depos
 
   if (s.kind === "checking") {
     return (
-      <section className="hm-card hm-urgent" aria-labelledby="urgent-title">
+      <section className="hm-card hm-urgent wz-cut-sm" aria-labelledby="urgent-title">
         <span className="wz-label">Deposit in progress</span>
         <h2 id="urgent-title" className="hm-h2">
           Checking your deposit...
@@ -203,7 +224,7 @@ function DepositCard({ u, m, onCheckAgain }: { u: Extract<Urgent, { kind: "depos
   const ready = s.kind === "ready_to_register";
   const registering = s.kind === "proving" || s.kind === "registering";
   return (
-    <section className="hm-card hm-urgent" aria-labelledby="urgent-title">
+    <section className="hm-card hm-urgent wz-cut-sm" aria-labelledby="urgent-title">
       <span className="wz-label">Deposit in progress</span>
       <h2 id="urgent-title" className="hm-h2">
         {registering
@@ -339,7 +360,7 @@ export function Preview({
 
   return (
     <div className="hm-preview">
-      <section className="hm-card" aria-labelledby="preview-title">
+      <section className="hm-card wz-cut-sm" aria-labelledby="preview-title">
         <h2 id="preview-title" className="wz-label">
           Try an amount
         </h2>
@@ -449,7 +470,7 @@ export function HowALoanWorks() {
       <ol className="hm-steps">
         {STEPS.map((s, i) => (
           <li key={s.title}>
-            <span className="hm-step-n" aria-hidden="true">
+            <span className="hm-step-n hm-how-n" aria-hidden="true">
               {i + 1}
             </span>
             <div>
@@ -461,7 +482,7 @@ export function HowALoanWorks() {
       </ol>
       <p className="hm-wayout">
         <b>Your way out:</b> if Writz stops, you reclaim your BTC alone after the timelock.{" "}
-        <Link href="/help/reclaim" className="wz-link">
+        <Link href="/help/reclaim" className="wz-btn wz-btn-text">
           How to reclaim
         </Link>
       </p>
@@ -473,7 +494,7 @@ export function HowALoanWorks() {
 
 export function EarnCard({ earn }: { earn: EarnSummary }) {
   return (
-    <section className="hm-card" aria-labelledby="earn-title">
+    <section className="hm-card wz-cut-sm" aria-labelledby="earn-title">
       <h2 id="earn-title" className="wz-label">
         Earn
       </h2>
@@ -497,7 +518,7 @@ export function EarnCard({ earn }: { earn: EarnSummary }) {
 
 export function LendCard({ supplied }: { supplied: bigint }) {
   return (
-    <section className="hm-card" aria-labelledby="lend-title">
+    <section className="hm-card wz-cut-sm" aria-labelledby="lend-title">
       <h2 id="lend-title" className="wz-label">
         Lend
       </h2>

@@ -79,6 +79,7 @@ export function HomeView({ data }: { data: HomeData }) {
     lender: hasLoans ? null : earn ? "earn" : supplied ? "lend" : null,
     findingLoans: finding,
   });
+  const urgentLoanId = urgent?.loan?.position.id ?? null;
   const isNew = !hasLoans && !finding && !earn && !supplied;
   const m = config.bitcoin.minConfirmations;
   const checkDeposit = () => {
@@ -90,7 +91,7 @@ export function HomeView({ data }: { data: HomeData }) {
       <GlobalNotices data={data} />
 
       <header className="hm-head">
-        <h1 className="hm-h1">{headline}</h1>
+        <h1 className="hm-h1 hm-display">{headline}</h1>
         {isNew ? (
           <p className="hm-sub">
             Lock BTC on Bitcoin and borrow USDC on Stellar. Repay and your BTC comes back. No bridge, no custodian, no wrapped
@@ -122,31 +123,33 @@ export function HomeView({ data }: { data: HomeData }) {
           <h2 id="finding" className="hm-h2" aria-live="polite">
             Finding your loans...
           </h2>
-          <div className="hm-grid">
+          <div className="hm-loans">
             <LoanSkeleton />
           </div>
         </section>
       ) : null}
 
       {open.length > 0 ? (
-        <section aria-labelledby="loans-title" className="hm-section">
-          <h2 id="loans-title" className="hm-h2">
-            {open.length === 1 ? "Your loan" : "Your loans"}
-          </h2>
-          <div className="hm-grid" data-count={open.length}>
-            {open.map((l) => (
-              <LoanSummaryCard key={l.position.id} loan={l} price={data.price} findLoans={a.loans.retry} />
-            ))}
-          </div>
+        <section aria-label={open.length === 1 ? "Your loan" : "Your loans"} className="hm-loans" data-count={open.length}>
+          {open.map((l) => (
+            <LoanSummaryCard
+              key={l.position.id}
+              loan={l}
+              price={data.price}
+              findLoans={a.loans.retry}
+              compact={open.length > 1}
+              primary={urgentLoanId !== l.position.id}
+            />
+          ))}
         </section>
       ) : null}
 
       {closed.length > 0 ? (
         <details className="hm-closed">
           <summary>Closed loans ({closed.length})</summary>
-          <div className="hm-grid">
+          <div className="hm-loans" data-count={closed.length}>
             {closed.map((l) => (
-              <LoanSummaryCard key={l.position.id} loan={l} price={data.price} findLoans={a.loans.retry} />
+              <LoanSummaryCard key={l.position.id} loan={l} price={data.price} findLoans={a.loans.retry} compact primary={false} />
             ))}
           </div>
         </details>
@@ -173,10 +176,14 @@ export function HomeView({ data }: { data: HomeData }) {
 
       {!hasLoans ? <HowALoanWorks /> : null}
 
-      <nav className="hm-foot" aria-label="Footer">
-        <Link href="/protocol">Protocol stats</Link>
-        <Link href="/help/reclaim">How to reclaim</Link>
-        <ExternalLink href={DOCS_URL} className="">
+      <nav className="hm-foot" aria-label="More">
+        <Link href="/protocol" className="wz-btn wz-btn-text">
+          Protocol stats
+        </Link>
+        <Link href="/help/reclaim" className="wz-btn wz-btn-text">
+          How to reclaim
+        </Link>
+        <ExternalLink href={DOCS_URL} className="wz-btn wz-btn-text">
           Docs
         </ExternalLink>
       </nav>

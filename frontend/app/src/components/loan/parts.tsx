@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useId, useState, type ReactNode } from "react";
+import { useEffect, useId, useState, type ReactNode } from "react";
 import { BTC_NETWORK_LABEL, config } from "@/config";
 import { btcTxUrl, stellarTxUrl } from "@/lib/explorer";
 import { hashOf, isInFlight, type FlowState } from "@/lib/flow/engine";
@@ -45,7 +45,7 @@ const HEALTH_TONE: Record<Health, Tone> = {
   liquidatable: "danger",
 };
 
-export const pct = (bp: bigint) => `${Math.round(Number(bp) / 100)}%`;
+export const pct = (bp: bigint) => `${Math.floor(Number(bp) / 100)}%`;
 
 // ── Header ───────────────────────────────────────────────────────────────
 
@@ -93,53 +93,113 @@ export function StatusBadge({ status }: { status: PositionStatus }) {
 
 const MIN = 100;
 const MAX = 250;
-const pos = (p: number) => `${Math.max(0, Math.min(100, ((p - MIN) / (MAX - MIN)) * 100))}%`;
+const at = (p: number) => Math.max(0, Math.min(100, ((p - MIN) / (MAX - MIN)) * 100));
+const pos = (p: number) => `${at(p)}%`;
+const LIQ_AT = pos(120);
+const LIMIT_AT = pos(150);
 
-/** Ratio scale from 100% to 250%, marks at 120% (liquidation) and 150% (borrow limit). */
-export function HealthMeter({ ratioBp, health }: { ratioBp: bigint | null; health: Health | null }) {
-  const p = ratioBp === null ? null : Number(ratioBp) / 100;
-  const text =
-    health === null
-      ? "Collateral ratio checking"
-      : health === "none"
-        ? "No debt, nothing can be liquidated"
-        : `Collateral ratio ${Math.round(p!)}%, ${HEALTH_LABEL[health].toLowerCase()}. Liquidation at 120%.`;
-  const width = health === null ? "0%" : health === "none" ? "100%" : pos(p!);
+/** A ratio that stands for "nothing owed" on the meter, past its right end. */
+export const NO_DEBT_BP = BigInt(MAX * 100);
+
+function meterText(p: number | null, health: Health | null): string {
+  if (health === null) return "Collateral ratio checking.";
+  if (health === "none") return "No debt, nothing can be liquidated.";
+  return `Collateral ratio ${Math.floor(p!)}%, ${HEALTH_LABEL[health].toLowerCase()}. Liquidation at 120%. Close to liquidation from 120% to 150%.`;
+}
+
+/**
+ * Bullet meter on a 100% to 250% scale: fill to the ratio, fine ticks at 120%
+ * (liquidation) and 150% (borrow limit) with zone bands under the track, the
+ * gold marker at the ratio and, while an amount is typed, an outlined marker
+ * at the ratio it would leave.
+ */
+export function HealthMeter({
+  ratioBp,
+  health,
+  preview = null,
+}: {
+  ratioBp: bigint | null;
+  health: Health | null;
+  preview?: bigint | null;
+}) {
+  const p = health === null ? null : health === "none" || ratioBp === null ? MAX : Number(ratioBp) / 100;
+  const text = meterText(p, health);
+  const known = p !== null;
+  const style = { ["--at" as string]: known ? pos(p) : "0%" };
   return (
-    <div className="ln-meter">
+    <div className="ln-bm" data-tone={health ? HEALTH_TONE[health] : "neutral"} data-state={known ? "known" : "checking"}>
       <div
-        className="ln-meter-bar"
-        role={p === null ? undefined : "meter"}
-        aria-hidden={p === null ? true : undefined}
+        className="ln-bm-scale"
+        style={style}
+        role="meter"
         aria-label="Collateral ratio"
         aria-valuemin={MIN}
         aria-valuemax={MAX}
-        aria-valuenow={p === null ? undefined : Math.min(MAX, Math.round(p))}
+        aria-valuenow={known ? Math.min(MAX, Math.floor(p)) : undefined}
         aria-valuetext={text}
       >
-        <span className="ln-meter-fill" data-tone={health ? HEALTH_TONE[health] : "neutral"} style={{ width }} />
-        <span className="ln-mark" style={{ left: pos(120) }} />
-        <span className="ln-mark" style={{ left: pos(150) }} />
+        <div className="ln-bm-track">
+          {known ? <span className="ln-bm-fill" /> : null}
+          <span className="ln-bm-tk" style={{ left: LIQ_AT }} />
+          <span className="ln-bm-tk" style={{ left: LIMIT_AT }} />
+        </div>
+        <div className="ln-bm-bands" aria-hidden="true">
+          <span className="ln-bm-z" data-zone="danger" />
+          <span className="ln-bm-z" data-zone="warning" />
+          <span className="ln-bm-z" data-zone="positive" />
+        </div>
+        {known ? <span className="ln-bm-marker" aria-hidden="true" /> : null}
+        {known && preview !== null ? (
+          <span className="ln-bm-pre" aria-hidden="true" style={{ left: pos(Number(preview) / 100) }}>
+            <svg viewBox="0 0 16 28" aria-hidden="true">
+              <polygon points="8.78,1 15,1 7.22,27 1.33,27" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="miter" />
+            </svg>
+          </span>
+        ) : null}
+        <div className="ln-bm-ticks" aria-hidden="true">
+          <span style={{ left: LIQ_AT }}>120%</span>
+          <span style={{ left: LIMIT_AT }}>150%</span>
+        </div>
       </div>
-      <div className="ln-meter-scale" aria-hidden="true">
-        <span style={{ left: pos(120) }}>120%</span>
-        <span style={{ left: pos(150) }}>150%</span>
-      </div>
+      <ul className="ln-bm-legend" aria-hidden="true">
+        <li>
+          <i data-zone="danger" />
+          Liquidation
+        </li>
+        <li>
+          <i data-zone="warning" />
+          Close to liquidation
+        </li>
+        <li>
+          <i data-zone="positive" />
+          Healthy
+        </li>
+      </ul>
     </div>
   );
 }
 
+/** The ratio in large figures with its status in words beside it. */
 export function HealthText({ ratioBp, health }: { ratioBp: bigint | null; health: Health | null }) {
   if (health === null)
     return (
-      <p className="ln-health">
+      <p className="ln-ratio" data-tone="neutral">
         <b>Checking...</b>
       </p>
     );
+  if (health === "none" || ratioBp === null)
+    return (
+      <p className="ln-ratio" data-tone="neutral">
+        <b>No debt</b>
+      </p>
+    );
   return (
-    <p className="ln-health" data-tone={HEALTH_TONE[health]}>
-      <b className="mono">{ratioBp === null ? "No debt" : pct(ratioBp)}</b>
-      {ratioBp !== null && <span>{HEALTH_LABEL[health]}</span>}
+    <p className="ln-ratio" data-tone={HEALTH_TONE[health]}>
+      <b className="mono">{pct(ratioBp)}</b>
+      <span>
+        <i aria-hidden="true" />
+        {HEALTH_LABEL[health]}
+      </span>
     </p>
   );
 }
@@ -150,13 +210,27 @@ function BlockRef({ height }: { height: number | null }) {
   return height === null ? <>its timelock block</> : <>block <span className="mono">{height.toLocaleString("en-US")}</span></>;
 }
 
-export function WayOut({ n, height, date, reclaimable }: { n: number; height: number | null; date: string | null; reclaimable: boolean }) {
+export function WayOut({
+  n,
+  height,
+  date,
+  reclaimable,
+  progress,
+  opened,
+}: {
+  n: number;
+  height: number | null;
+  date: string | null;
+  reclaimable: boolean;
+  progress: number | null;
+  opened: string;
+}) {
   return (
-    <section className="ln-out" aria-labelledby="way-out">
-      <h2 id="way-out" className="wz-label">
+    <section className="ln-out wz-cut-sm" aria-labelledby="way-out">
+      <h2 id="way-out" className="ln-h2">
         Your way out
       </h2>
-      <p style={{ marginTop: 6 }}>
+      <p className="ln-out-text">
         {reclaimable ? (
           <>
             Bitcoin passed <BlockRef height={height} />, so you can reclaim this BTC with your
@@ -168,10 +242,26 @@ export function WayOut({ n, height, date, reclaimable }: { n: number; height: nu
             {date ? `, about ${date}` : ""}.{" "}
           </>
         )}
-        <Link href={`/help/reclaim?loan=${n}`} className="wz-link">
+        <Link href={`/help/reclaim?loan=${n}`} className="wz-btn wz-btn-text ln-out-link">
           How to reclaim
         </Link>
       </p>
+      {progress !== null ? (
+        <>
+          <div className="ln-out-track" aria-hidden="true" style={{ ["--at" as string]: `${Math.max(2, Math.min(100, progress * 100))}%` }}>
+            <b />
+            <span />
+          </div>
+          <div className="ln-out-ends" aria-hidden="true">
+            <span>Opened {opened}</span>
+            {height !== null ? (
+              <span>
+                Block <span className="mono">{height.toLocaleString("en-US")}</span>
+              </span>
+            ) : null}
+          </div>
+        </>
+      ) : null}
     </section>
   );
 }
@@ -343,17 +433,38 @@ export function AmountField({
   );
 }
 
-function After({ collateralSats, debt, price }: { collateralSats: bigint; debt: bigint; price: bigint | null }) {
-  if (debt <= 0n) return <p className="ln-after">After this: loan repaid. Next, release your BTC.</p>;
-  if (!price) return null;
-  const a = afterState(collateralSats, debt, price);
-  if (a.repaid) return null;
+function After({ collateralSats, debt, price }: { collateralSats: bigint; debt: bigint | null; price: bigint | null }) {
+  let body: ReactNode = "Enter an amount to see your new ratio.";
+  if (debt !== null && debt <= 0n) body = "After this: loan repaid. Next, release your BTC.";
+  else if (debt !== null && price) {
+    const a = afterState(collateralSats, debt, price);
+    if (!a.repaid)
+      body = (
+        <>
+          After this: ratio <b className="mono">{pct(a.ratioBp)}</b>, liquidated if BTC falls below{" "}
+          <b className="mono">{formatUsd(a.liquidationPrice)}</b>.
+        </>
+      );
+  } else if (debt !== null) body = null;
   return (
-    <p className="ln-after">
-      After this: ratio <b className="mono">{pct(a.ratioBp)}</b>, liquidated if BTC falls below{" "}
-      <b className="mono">{formatUsd(a.liquidationPrice)}</b>.
+    <p className="ln-after" aria-live="polite">
+      {body}
     </p>
   );
+}
+
+/** The ratio a typed amount would leave, for the meter's outlined marker; null when there is nothing valid to show. */
+function previewOf(collateralSats: bigint, debt: bigint | null, price: bigint | null): bigint | null {
+  if (debt === null || !price) return null;
+  const a = afterState(collateralSats, debt, price);
+  return a.repaid ? NO_DEBT_BP : a.ratioBp;
+}
+
+function usePreview(onPreview: ((bp: bigint | null) => void) | undefined, bp: bigint | null) {
+  useEffect(() => {
+    onPreview?.(bp);
+  }, [onPreview, bp]);
+  useEffect(() => () => onPreview?.(null), [onPreview]);
 }
 
 function SignFirst({ m }: { m: LoanModel }) {
@@ -382,11 +493,13 @@ export function BorrowPanel({
   position,
   available,
   price,
+  onPreview,
 }: {
   m: LoanModel;
   position: Position;
   available: Available | null;
   price: bigint | null;
+  onPreview?: (bp: bigint | null) => void;
 }) {
   const [value, setValue] = useState("");
   const id = useId();
@@ -408,6 +521,8 @@ export function BorrowPanel({
         : null;
   const noTrustline = m.trustline.kind === "ok" && !m.trustline.value;
   const trustChecking = m.trustline.kind === "checking";
+  const newDebt = amount !== null && !error && amount > 0n ? debt + amount : null;
+  usePreview(onPreview, previewOf(collateral, newDebt, price));
   const hint = available?.limitedByPool ? (
     <>The pool has {usdcAmount(max)} USDC available right now.</>
   ) : (
@@ -458,7 +573,7 @@ export function BorrowPanel({
           </button>
         ))}
       </div>
-      {amount !== null && !error && <After collateralSats={collateral} debt={debt + amount} price={price} />}
+      <After collateralSats={collateral} debt={newDebt} price={price} />
       {mine && (
         <TxResult
           flow={m.flow}
@@ -507,11 +622,13 @@ export function RepayPanel({
   position,
   price,
   initial,
+  onPreview,
 }: {
   m: LoanModel;
   position: Position;
   price: bigint | null;
   initial: bigint | null;
+  onPreview?: (bp: bigint | null) => void;
 }) {
   const collateral = BigInt(position.collateralSats);
   const debt = BigInt(position.debtStroops);
@@ -531,6 +648,8 @@ export function RepayPanel({
         : amount !== null && amount > debt
           ? `You owe ${formatUsdc(debt)} USDC. Enter that or less.`
           : null;
+  const newDebt = amount !== null && !error && amount > 0n ? debt - amount : null;
+  usePreview(onPreview, previewOf(collateral, newDebt, price));
   const walletText =
     m.walletUsdc.kind === "ok" ? (
       <>Wallet: {usdcAmount(m.walletUsdc.value)} USDC.</>
@@ -564,7 +683,7 @@ export function RepayPanel({
         }
         disabled={running}
       />
-      {amount !== null && !error && <After collateralSats={collateral} debt={debt - amount} price={price} />}
+      <After collateralSats={collateral} debt={newDebt} price={price} />
       {mine && (
         <TxResult
           flow={m.flow}
@@ -769,8 +888,12 @@ export function ClosedNotice({ status, position }: { status: PositionStatus; pos
             closed. You owe nothing on it.
           </p>
           <div className="wz-actions">
-            <ExternalLink href={stellarTxUrl(status.txHash)}>View the liquidation on {STELLAR}</ExternalLink>
-            <ExternalLink href={LIQUIDATION_DOCS_URL}>Read how liquidation works</ExternalLink>
+            <ExternalLink href={stellarTxUrl(status.txHash)} className="wz-btn wz-btn-text">
+              View the liquidation on {STELLAR}
+            </ExternalLink>
+            <ExternalLink href={LIQUIDATION_DOCS_URL} className="wz-btn wz-btn-text">
+              Read how liquidation works
+            </ExternalLink>
           </div>
         </Notice>
       );
@@ -825,7 +948,7 @@ export function MissingDetails({ m, height }: { m: LoanModel; height: number | n
         <li>Or import your loan backup on this device.</li>
         <li>
           Or, after <BlockRef height={height} />, reclaim the BTC alone.{" "}
-          <Link href={`/help/reclaim?loan=${m.n}`} className="wz-link">
+          <Link href={`/help/reclaim?loan=${m.n}`} className="wz-btn wz-btn-text">
             How to reclaim
           </Link>
         </li>
@@ -858,7 +981,7 @@ const when = (at: number) =>
 export function OnThisDevice({ items }: { items: ActivityItem[] }) {
   return (
     <section className="ln-device" aria-labelledby="on-device">
-      <h2 id="on-device" className="wz-label">
+      <h2 id="on-device" className="ln-h2">
         On this device
       </h2>
       {items.length > 0 ? (
@@ -878,9 +1001,9 @@ export function OnThisDevice({ items }: { items: ActivityItem[] }) {
           ))}
         </ul>
       ) : (
-        <p className="wz-hint">No transactions for this loan on this device yet.</p>
+        <p>No transactions for this loan on this device yet.</p>
       )}
-      <p className="wz-hint">Full history needs the Writz indexer and is coming later.</p>
+      <p className="wz-muted">Full history needs the Writz indexer and is coming later.</p>
     </section>
   );
 }
