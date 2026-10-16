@@ -55,7 +55,7 @@ export function badgeOf(status: PositionStatus): { label: string; tone: Tone } {
     case "checking":
       return { label: "Checking...", tone: "neutral" };
     case "active":
-      return { label: "Active", tone: "neutral" };
+      return { label: HEALTH_LABEL[status.band], tone: HEALTH_TONE[status.band] };
     case "at_risk":
       return { label: "Close to liquidation", tone: "warning" };
     case "liquidatable":
