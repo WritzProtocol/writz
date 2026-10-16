@@ -262,9 +262,9 @@ const DEPOSIT: Scenario[] = [
 
 const LOAN: Scenario[] = [
   define("L1", "Checking", (now) => loanWorld(loans.checking(1, now))),
-  define("L2", "Active, healthy, never borrowed", (now) => loanWorld(loans.neverBorrowed(1, now), {}, { panel: "borrow" })),
-  define("L3", "Active, healthy", (now) => loanWorld(loans.healthy(1, now))),
-  define("L4", "Active, below borrow limit", (now) => loanWorld(loans.belowLimit(1, now))),
+  define("L2", "Open, no debt", (now) => loanWorld(loans.neverBorrowed(1, now), {}, { panel: "borrow" })),
+  define("L3", "Healthy", (now) => loanWorld(loans.healthy(1, now))),
+  define("L4", "Below borrow limit", (now) => loanWorld(loans.belowLimit(1, now))),
   define("L5", "At risk", (now) => loanWorld(loans.atRisk(1, now), {}, { panel: "repay" })),
   define("L6", "Liquidatable", (now) => loanWorld(loans.liquidatable(1, now), {}, { panel: "repay" })),
   define("L7", "No trustline (borrow)", (now) =>
