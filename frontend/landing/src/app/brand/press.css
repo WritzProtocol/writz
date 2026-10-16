@@ -12,22 +12,22 @@
    text sits directly in the tile, so the descendant one alone never matches. */
 .press-root .on-gold::selection,
 .press-root .on-gold ::selection {
-  background: var(--ink);
-  color: var(--gold);
+  background: var(--on-accent);
+  color: var(--accent);
 }
 
 .press-root :is(.masthead, section, .colophon) a {
   color: var(--heading);
   text-decoration: underline;
-  text-decoration-color: var(--rule-strong);
+  text-decoration-color: var(--line-strong);
   text-underline-offset: 3px;
-  transition: text-decoration-color 120ms var(--ease-out);
+  transition: text-decoration-color 120ms var(--ease-enter);
 }
 
 .press-root code {
   font-family: var(--ff-mono), ui-monospace, monospace;
   font-size: 0.92em;
-  background: oklch(1 0 0 / 0.08);
+  background: var(--surface-2);
   border-radius: 4px;
   padding: 1px 5px;
   color: var(--heading);
@@ -37,7 +37,7 @@
 
 .press-root .masthead {
   padding: calc(72px + 72px) 0 56px;
-  border-bottom: 1px solid var(--rule);
+  border-bottom: 1px solid var(--line);
 }
 
 .press-root h1 {
@@ -71,12 +71,12 @@
   align-items: baseline;
   gap: 12px;
   padding: 12px 0;
-  border-top: 1px solid var(--rule);
+  border-top: 1px solid var(--line);
   font-size: 15px;
   font-weight: 500;
   color: var(--body);
   text-decoration: none;
-  transition: color 120ms var(--ease-out);
+  transition: color 120ms var(--ease-enter);
 }
 
 .press-root .num {
@@ -84,7 +84,7 @@
   font-size: 12px;
   font-weight: 400;
   letter-spacing: 0;
-  color: var(--gold);
+  color: var(--accent);
 }
 
 .press-root .eyebrow .num {
@@ -95,7 +95,7 @@
 
 .press-root section {
   padding: 88px 0;
-  border-bottom: 1px solid var(--rule);
+  border-bottom: 1px solid var(--line);
 }
 
 .press-root section:last-of-type {
@@ -138,7 +138,7 @@
 .press-root .gfx .cell,
 .press-root blockquote,
 .press-root .dont figure {
-  background: var(--panel);
+  background: var(--surface);
   border-radius: 12px;
   box-shadow: var(--shadow-border);
 }
@@ -167,7 +167,7 @@
 
 .press-root .assets {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(196px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 196px), 1fr));
   gap: 16px;
   margin-top: 36px;
 }
@@ -182,11 +182,7 @@
   justify-content: center;
   height: 160px;
   padding: 24px;
-  background: var(--midnight);
-}
-
-.press-root .asset.light .stage {
-  background: #f6f7f8;
+  background: var(--bg);
 }
 
 .press-root .asset .meta {
@@ -220,7 +216,7 @@
 
 .press-root .clearspace .box {
   position: relative;
-  border: 1px dashed var(--gold);
+  border: 1px dashed var(--accent);
   border-radius: 10px;
 }
 
@@ -229,8 +225,8 @@
   position: absolute;
   top: 0;
   left: 0;
-  border-right: 1px solid var(--gold);
-  border-bottom: 1px solid var(--gold);
+  border-right: 1px solid var(--accent);
+  border-bottom: 1px solid var(--accent);
   opacity: 0.55;
 }
 
@@ -265,18 +261,18 @@
 
 .press-root .ladder .step.floor .tag {
   font-weight: 500;
-  color: var(--gold);
+  color: var(--accent);
 }
 
 .press-root .ladder .step.dead .tag {
-  color: #ef8a7a;
+  color: var(--danger);
 }
 
 /* ── Colour ─────────────────────────────────────────────────────────── */
 
 .press-root .swatches {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr));
   gap: 18px;
   margin-top: 36px;
 }
@@ -284,7 +280,11 @@
 .press-root .swatch .chip {
   height: 112px;
   border-radius: 12px;
-  box-shadow: 0 0 0 1px var(--rule-strong);
+  box-shadow: 0 0 0 1px var(--line-strong);
+}
+
+.press-root .swatch .chip.small {
+  height: 56px;
 }
 
 .press-root .swatch .name {
@@ -308,7 +308,7 @@
 
 .press-root .pairs {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr));
   gap: 18px;
   margin-top: 28px;
 }
@@ -316,7 +316,7 @@
 .press-root .pairs .pair {
   padding: 22px 18px 16px;
   border-radius: 12px;
-  box-shadow: 0 0 0 1px var(--rule);
+  box-shadow: 0 0 0 1px var(--line);
 }
 
 .press-root .pairs .aa {
@@ -333,8 +333,41 @@
   opacity: 0.75;
 }
 
+.press-root .pairs .pair.split {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+}
+
+.press-root .pairs .pair.split .half {
+  padding: 22px 18px 16px;
+}
+
+.press-root .pairs .pair.split .half + .half {
+  padding-top: 14px;
+}
+
+.press-root .pairs .label {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.press-root .pairs .pair:not(.split) .label {
+  margin-top: 6px;
+  opacity: 0.85;
+}
+
+.press-root .pairs.status .half .label {
+  margin-bottom: 8px;
+}
+
+.press-root .pairs.status .half .ratio {
+  margin-top: 0;
+}
+
 .press-root .pairs .pair.fail {
-  box-shadow: 0 0 0 2px #ef8a7a;
+  box-shadow: 0 0 0 2px var(--danger);
 }
 
 /* ── Type ───────────────────────────────────────────────────────────── */
@@ -351,7 +384,7 @@
 }
 
 .press-root .specimen .row + .row {
-  border-top: 1px solid oklch(1 0 0 / 0.06);
+  border-top: 1px solid var(--line);
 }
 
 .press-root .specimen .spec {
@@ -470,13 +503,13 @@
   border: 0;
   border-radius: 6px;
   background: transparent;
-  box-shadow: 0 0 0 1px var(--rule-strong);
+  box-shadow: 0 0 0 1px var(--line-strong);
   font: inherit;
   font-size: 13px;
   font-weight: 500;
   color: var(--heading);
   cursor: pointer;
-  transition: box-shadow 120ms var(--ease-out);
+  transition: box-shadow 120ms var(--ease-enter);
 }
 
 /* ── Misuse ─────────────────────────────────────────────────────────── */
@@ -499,11 +532,48 @@
   justify-content: center;
   height: 128px;
   overflow: hidden;
-  background: var(--midnight);
+  background: var(--bg);
 }
 
 .press-root .dont .busy {
-  background: repeating-linear-gradient(-45deg, var(--ink) 0 9px, var(--deep) 9px 18px);
+  position: relative;
+  background: var(--deep);
+}
+
+/* Flat blocks standing in for a photograph, so the tile reads busy without a pattern. */
+.press-root .dont .busy .blocks span {
+  position: absolute;
+  background: var(--surface-2);
+}
+
+.press-root .dont .busy .blocks span:nth-child(1) {
+  inset: 0 62% 40% 0;
+  background: var(--muted);
+}
+
+.press-root .dont .busy .blocks span:nth-child(2) {
+  inset: 18% 20% 0 30%;
+  background: var(--body);
+}
+
+.press-root .dont .busy .blocks span:nth-child(3) {
+  inset: 0 0 55% 70%;
+  background: var(--surface-2);
+}
+
+.press-root .dont .busy .blocks span:nth-child(4) {
+  inset: 60% 55% 0 0;
+  background: var(--bg);
+}
+
+.press-root .dont .busy .blocks span:nth-child(5) {
+  inset: 45% 0 0 78%;
+  background: var(--muted);
+}
+
+
+.press-root .dont .busy .mark {
+  position: relative;
 }
 
 .press-root .dont figcaption {
@@ -518,7 +588,7 @@
 .press-root .dont figcaption::before {
   content: "\00d7";
   font-weight: 600;
-  color: #ef8a7a;
+  color: var(--danger);
 }
 
 /* ── Rules ──────────────────────────────────────────────────────────── */
@@ -539,7 +609,7 @@
 .press-root .rules li {
   position: relative;
   padding: 12px 0 12px 24px;
-  border-top: 1px solid var(--rule);
+  border-top: 1px solid var(--line);
   font-size: 16px;
   line-height: 1.5;
 }
@@ -553,12 +623,12 @@
 
 .press-root .rules .allowed li::before {
   content: "+";
-  color: var(--gold);
+  color: var(--accent);
 }
 
 .press-root .rules .forbidden li::before {
   content: "\00d7";
-  color: #ef8a7a;
+  color: var(--danger);
 }
 
 .press-root .colophon {
@@ -570,7 +640,7 @@
 
 @media (hover: hover) and (pointer: fine) {
   .press-root :is(.masthead, section, .colophon) a:hover {
-    text-decoration-color: var(--gold);
+    text-decoration-color: var(--accent);
   }
 
   .press-root .masthead .index a:hover {

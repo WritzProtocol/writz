@@ -14,14 +14,14 @@ body {
 body {
   min-height: 100vh;
   background: #f6f7f8;
-  color: #46566b;
+  color: #4b515b;
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
 
 ::selection {
-  background: #ffc300;
-  color: #001d3d;
+  background: var(--accent);
+  color: var(--on-accent);
 }
 
 @media (prefers-reduced-motion: no-preference) {
