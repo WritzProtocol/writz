@@ -1,3 +1,5 @@
+@import "../../../../packages/brand/tokens.css";
+
 *,
 *::before,
 *::after {
@@ -13,7 +15,7 @@ body {
   min-height: 100vh;
   background: #f6f7f8;
   color: #46566b;
-  font-family: var(--ff-landing-sans), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
 

@@ -3,6 +3,15 @@
   ../brand/press.css); only what the brand page does not already have lives here.
 */
 
+/* The standalone whitepaper is a paper page; keep the dark shared tokens from reaching it. */
+.press-root:not(.landing) {
+  --body: initial;
+  --deep: initial;
+  --heading: initial;
+  --muted: initial;
+  --shadow-border: initial;
+}
+
 .press-root .doc-meta {
   display: flex;
   flex-wrap: wrap;

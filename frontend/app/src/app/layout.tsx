@@ -1,27 +1,20 @@
 import type { Metadata } from "next";
 import Script from "next/script";
-import { Fraunces, Hanken_Grotesk, Geist_Mono } from "next/font/google";
+import { Work_Sans, Geist_Mono } from "next/font/google";
 import { config } from "@/config";
 import { Providers } from "@/app/Providers";
 import { WalletProvider } from "@/lib/wallet/WalletProvider";
 import { BitcoinWalletProvider } from "@/lib/bitcoin/useBitcoinWallet";
 import { env } from "@/config/env";
+import "../../../../packages/brand/tokens.css";
 import "./globals.css";
 
-// Display - luxury editorial serif (used with restraint for wordmark + headings).
-const display = Fraunces({
-  variable: "--ff-display",
+const sans = Work_Sans({
+  variable: "--ff-sans",
   subsets: ["latin"],
-  style: ["normal", "italic"],
+  weight: ["400", "500", "600"],
 });
 
-// UI / body - precise grotesque.
-const body = Hanken_Grotesk({
-  variable: "--ff-body",
-  subsets: ["latin"],
-});
-
-// Data - monospace with tabular figures for on-chain values, hashes, amounts.
 const mono = Geist_Mono({
   variable: "--ff-mono",
   subsets: ["latin"],
@@ -84,7 +77,7 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${display.variable} ${body.variable} ${mono.variable} h-full antialiased`}
+      className={`${sans.variable} ${mono.variable} h-full antialiased`}
     >
       <body className="min-h-full">
         {config.umamiWebsiteId && (

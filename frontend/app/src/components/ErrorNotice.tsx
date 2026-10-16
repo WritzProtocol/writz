@@ -10,7 +10,7 @@ const LINK = "underline decoration-current/40 underline-offset-2 hover:opacity-8
 export function ErrorNotice({
   error,
   context,
-  className = "text-xs text-crit",
+  className = "text-xs text-danger",
   hash,
   children,
 }: {

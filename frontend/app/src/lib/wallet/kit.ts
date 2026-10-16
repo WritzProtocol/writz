@@ -6,30 +6,25 @@ import { AlbedoModule } from "@creit.tech/stellar-wallets-kit/modules/albedo";
 import { RabetModule } from "@creit.tech/stellar-wallets-kit/modules/rabet";
 import { config } from "@/config";
 
-/**
- * Writz "Private Vault" theme for the wallet selector modal, so it matches the
- * app instead of the kit's default look. Keys mirror `SwkAppTheme`; values come
- * from the design system (see DESIGN_SYSTEM.md). `font-family` resolves the
- * next/font body variable set on <html>.
- */
+// The kit writes these onto <html> as --swk-* properties, so they resolve against the shared brand tokens.
 const WRITZ_WALLET_THEME = {
-  background: "#16130f",
-  "background-secondary": "#1e1a14",
-  "foreground-strong": "#fbf8f1",
-  foreground: "#e8e2d5",
-  "foreground-secondary": "#b7af9f",
-  primary: "#e3a646",
-  "primary-foreground": "#1a1206",
+  background: "var(--surface)",
+  "background-secondary": "var(--surface-2)",
+  "foreground-strong": "var(--heading)",
+  foreground: "var(--heading)",
+  "foreground-secondary": "var(--body)",
+  primary: "var(--accent)",
+  "primary-foreground": "var(--on-accent)",
   transparent: "rgba(0, 0, 0, 0)",
-  lighter: "#1e1a14",
-  light: "#16130f",
-  "light-gray": "#877f71",
-  gray: "#877f71",
-  danger: "#c75b4f",
-  border: "#2a251d",
+  lighter: "var(--surface-2)",
+  light: "var(--surface)",
+  "light-gray": "var(--muted)",
+  gray: "var(--muted)",
+  danger: "var(--danger)",
+  border: "var(--line-strong)",
   shadow: "0 16px 40px -12px rgba(0, 0, 0, 0.65)",
   "border-radius": "12px",
-  "font-family": "var(--ff-body), ui-sans-serif, system-ui, sans-serif",
+  "font-family": "var(--font-sans)",
 };
 
 /**
