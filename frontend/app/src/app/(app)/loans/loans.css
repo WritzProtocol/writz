@@ -131,10 +131,9 @@
 }
 @media (max-width: 767px) {
   .ln-col { gap: 32px; }
-  .ln-risk { margin: 0 calc(-1 * var(--gut)); padding: 56px 16px 28px; }
-  .ln-out { margin: 0 calc(-1 * var(--gut)); padding: 56px 16px 28px; }
-  .ln-act-panel { margin: 4px calc(-1 * var(--gut)) 0; padding: 24px 16px; }
-  .ln-empty { padding: 56px 16px 28px; margin: 0 calc(-1 * var(--gut)); }
+  .ln-risk { padding: 56px 16px 28px; }
+  .ln-out { padding: 56px 16px 28px; }
+  .ln-empty { padding: 56px 16px 28px; }
   .ln-panel { padding: 20px; }
   .ln-act-panel { padding: 24px 16px; }
   .ln-field input, .ln-act-panel .ln-field input { font-size: 20px; }

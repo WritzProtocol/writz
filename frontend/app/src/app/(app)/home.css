@@ -78,13 +78,15 @@ html:has(.hm-loans[data-count="1"]), body:has(.hm-loans[data-count="1"]) { overf
   .hm-preview, .hm-steps { grid-template-columns: minmax(0, 1fr); }
   .hm-need { padding-top: 0; }
 }
+@media (max-width: 767px) {
+  .hm-loans[data-count="1"] > .hm-loan { margin-right: 0; }
+}
 @media (max-width: 760px) {
   .hm-h1 { font-size: 30px; }
   .hm-sub { font-size: 16px; }
   .hm-card { padding: 40px 16px 24px 24px; }
   .hm-col { gap: 20px; }
-  .hm-loan, .hm-loan[data-compact="true"] { gap: 32px; margin: 0 calc(-1 * var(--gut)); padding: 64px 16px 32px; }
-  .hm-loans[data-count="1"] > .hm-loan { margin-right: calc(-1 * var(--gut)); }
+  .hm-loan, .hm-loan[data-compact="true"] { gap: 32px; padding: 64px 16px 32px; }
   .hm-kv > div { padding: 14px 16px; }
 }
 .hm-col > .wz-note { gap: 10px; padding: 20px 24px; font-size: 16px; }

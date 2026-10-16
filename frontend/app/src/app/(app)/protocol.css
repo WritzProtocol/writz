@@ -34,9 +34,9 @@
   .pr-wide { margin-top: 48px; }
   .pr-table thead { display: none; }
   .pr-table, .pr-table tbody, .pr-table tr { display: block; }
-  .pr-table tr { margin: 0 calc(-1 * var(--gut)) 4px; padding: 10px 16px; background: color-mix(in oklab, var(--heading) 6%, var(--bg)); }
+  .pr-table tr { margin-bottom: 4px; padding: 10px 16px; background: color-mix(in oklab, var(--heading) 6%, var(--bg)); }
   .pr-table tbody th, .pr-table tbody td { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 4px 12px; padding: 6px 0; background: none; }
   .pr-table th::before, .pr-table td::before { content: attr(data-label); color: var(--body); font-family: var(--font-sans); font-size: 14px; }
   .pr-bar { width: 80px; }
-  .pr-contracts > div { margin: 0 calc(-1 * var(--gut)); padding: 6px 16px; }
+  .pr-contracts > div { padding: 6px 16px; }
 }
