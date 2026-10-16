@@ -8,10 +8,16 @@
  * why: its CJS build breaks ts-jest's loader).
  */
 import { config } from "../config.js";
-import { EsploraClient } from "./esplora.js";
-import { syncHeaders, syncStartHeight } from "./header-sync.js";
+import { EsploraClient, EsploraError } from "./esplora.js";
+import { syncHeaders, syncStartHeight, withBackoff } from "./header-sync.js";
 
 const MAX_HEADERS_PER_SUBMIT = 16;
+
+// Each header costs two Esplora calls (hash at height, then the header). A
+// short gap between them, plus backoff on 429, keeps a long catch-up sync
+// under public Esplora rate limits instead of failing every pass.
+const HEADER_FETCH_GAP_MS = 250;
+const isRateLimited = (e: unknown) => e instanceof EsploraError && e.status === 429;
 
 export function startHeaderSync(): { stop: () => void } {
   if (!config.bitcoinSpvId || !config.spvSyncFromHeight || !config.relayerSecret) {
@@ -30,7 +36,11 @@ export function startHeaderSync(): { stop: () => void } {
       // height every pass would resubmit the whole chain since the checkpoint.
       const from = syncStartHeight(config.spvSyncFromHeight!, await readContractTipHeight());
       const result = await syncHeaders(from, tip, MAX_HEADERS_PER_SUBMIT, {
-        getHeaderHex: async (h) => (await esplora.getBlockHeader(await esplora.getBlockHashAtHeight(h))).trim(),
+        getHeaderHex: async (h) => {
+          await new Promise((r) => setTimeout(r, HEADER_FETCH_GAP_MS));
+          const hash = await withBackoff(() => esplora.getBlockHashAtHeight(h), isRateLimited);
+          return (await withBackoff(() => esplora.getBlockHeader(hash), isRateLimited)).trim();
+        },
         submitHeaders: (headers) => submitHeadersOnChain(headers),
       });
       if (result.submittedThrough !== null) console.log(`[spv-sync] submitted through height ${result.submittedThrough}`);

@@ -74,7 +74,7 @@ match deposit_output {
 }
 ```
 
-**Testnet contract address:** `CB2BD6QCSZVNZN5NLI7C5NF356WXVJDSXT6LVAQFWHHS4SZ4NCKKNIVA`
+**Testnet contract address:** `CAHHY4S4WCIFU4LBSKBI3IP6A4QYR2COV6EACDEBXGPJFDWBJWGOMCLP`
 
 ### Return Type
 

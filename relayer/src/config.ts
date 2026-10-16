@@ -62,9 +62,13 @@ export interface Config {
   spvSyncIntervalMs: number;
 }
 
+// mempool.space rather than Blockstream: Blockstream's public API now
+// enforces a monthly quota on unauthenticated callers, and a header sync from
+// an older checkpoint exhausted it within minutes (every pass then failed
+// with 429). Both serve the same Esplora API.
 const ESPLORA_URLS: Record<BitcoinNetwork, string> = {
-  mainnet: "https://blockstream.info/api",
-  signet: "https://blockstream.info/signet/api",
+  mainnet: "https://mempool.space/api",
+  signet: "https://mempool.space/signet/api",
 };
 
 const TESTNET_RPC = "https://soroban-testnet.stellar.org";

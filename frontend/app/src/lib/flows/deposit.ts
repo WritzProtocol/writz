@@ -99,7 +99,11 @@ export async function pollSpvBundle(
 
   for (let i = 1; i <= maxAttempts; i++) {
     try {
-      const res = await fetch(`${relayerUrl}/spv-proof/${txid}`);
+      // Ask for the depth the contract requires: the relayer's own default
+      // may be lower, and a proof the contract rejects wastes a signature.
+      const res = await fetch(
+        `${relayerUrl}/spv-proof/${txid}?confirmations=${config.bitcoin.minConfirmations}`,
+      );
       if (res.status === 404 || res.status === 409) {
         const body = (await res.json()) as { available?: number };
         onStatus(`Waiting for confirmation… (${body.available ?? 0} so far)`);

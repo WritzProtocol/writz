@@ -51,13 +51,13 @@ Research    ──►  Foundation  ──►  Launch      ──►  Scale
 
 | Item | Details |
 |---|---|
-| **bitcoin-spv contract** | 68/68 tests. SHA256d, Merkle proofs, PoW validation. Deployed: `CB2BD6QCSZVNZN5NLI7C5NF356WXVJDSXT6LVAQFWHHS4SZ4NCKKNIVA` |
-| **zk-verifier contract** | 26/26 tests. Groth16 BN254 via Protocol 26 host functions. All 3 VKs set. Deployed: `CBNZU23QGCZATJB2QMNF2K6IST2SVP7FSGCKASQNBULTWDWGANDBYLFY` |
-| **commitment-tree contract** | 46/46 tests. Full ZK cycle verified on-chain. Deployed: `CDQCTFO3FK3M47QS47O2A4WLNPSQAQBSXBFPJ6RZEHFO5D7RY34FSBBP` |
-| **private-lend contract** | 92/92 tests. Non-ZK skeleton with kinked interest model. Deployed: `CAAWVMDRUPEJNELSQ6RU2VMVX5EJLQ2E77T7IXDWGMW4DGSNAGECGSWR` |
+| **bitcoin-spv contract** | 68/68 tests. SHA256d, Merkle proofs, PoW validation. Deployed: `CAHHY4S4WCIFU4LBSKBI3IP6A4QYR2COV6EACDEBXGPJFDWBJWGOMCLP` |
+| **zk-verifier contract** | 26/26 tests. Groth16 BN254 via Protocol 26 host functions. All 3 VKs set. Deployed: `CB5XAP6MF2GVVFATFTVCKVEXUODWWRQP4B3QFDMRTM55REP7N2YMXEUD` |
+| **commitment-tree contract** | 46/46 tests. Full ZK cycle verified on-chain. Deployed: `CAQBLCAPGXXCZTJDAJLY7E4PTJYGR6CY4YWH4JSJKFXYIHW3GANP6RFM` |
+| **private-lend contract** | 92/92 tests. Non-ZK skeleton with kinked interest model. Deployed: `CA3T7T2S7HV27BXO7OLIHSMGAMQ37BMOOUHQLTBGUQVL4B6Y2CDJPHHX` |
 | **spv-types crate** | 9/9 tests. Shared Bitcoin transaction output parser (`btc_parser`). |
 | **ZK circuits** | 41/41 tests. All 5 circuits compiled (Circom 2.2.3). Dev keys generated. |
-| **Relayer service** | 219/219 tests. REST API: `GET /spv-proof/:txid`. Esplora-backed. |
+| **Relayer service** | 222/222 tests. REST API: `GET /spv-proof/:txid`. Esplora-backed. |
 | **Bitcoin script toolkit** | 60/60 tests. P2WSH generation, PSBT signing, witness assembly. |
 | **Bitcoin Signet E2E** | Path A co-signed release broadcast and accepted. `11932100` |
 | **ZK testnet E2E** | Full deposit→borrow→repay cycle on Stellar testnet. 6 transactions. `8daddf52` |

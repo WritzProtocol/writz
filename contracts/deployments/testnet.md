@@ -5,7 +5,79 @@
 
 ---
 
-## Current deployment (2026-08-19)
+## Current deployment (2026-10-11)
+
+The coordinated redeploy of #177: every security-advisory fix merged in #171-#213, deployed together through `scripts/deploy/deploy_stack.mjs`. Each contract was configured by its `__constructor` inside the deploy transaction, so there was no separate `initialize` call to front-run (GHSA-422m). Built from `main` at `c7eba49` (`cargo build --release --target wasm32v1-none --locked`). The verification keys are the **development** keys in `circuits/keys/`; the production ceremony is still pending.
+
+| Contract | Contract ID | wasm sha256 |
+|---|---|---|
+| `zk-verifier` | `CB5XAP6MF2GVVFATFTVCKVEXUODWWRQP4B3QFDMRTM55REP7N2YMXEUD` | `4c2c8529…01333` |
+| `bitcoin-spv` | `CAHHY4S4WCIFU4LBSKBI3IP6A4QYR2COV6EACDEBXGPJFDWBJWGOMCLP` | `bbc23a81…5ba01` |
+| `commitment-tree` | `CAQBLCAPGXXCZTJDAJLY7E4PTJYGR6CY4YWH4JSJKFXYIHW3GANP6RFM` | `a869a6d4…8a06e` |
+| `private-lend` | `CA3T7T2S7HV27BXO7OLIHSMGAMQ37BMOOUHQLTBGUQVL4B6Y2CDJPHHX` | `14910b78…1cbf1` |
+
+### bitcoin-spv
+
+| Field | Value |
+|---|---|
+| **Contract ID** | `CAHHY4S4WCIFU4LBSKBI3IP6A4QYR2COV6EACDEBXGPJFDWBJWGOMCLP` |
+| `admin` | `GB2BSYQS3FRJ5LZSSIDF3ZCSG5MKWJT5SZ3OZO4QRCAMCR357YAVPTWT` (`writz-deployer`) |
+| `pow_limit_bits` | `0x1e0377ae` (signet) |
+| Checkpoint | signet block 325,554, `0000000fd28d108b1223f665bb714297dc5e637bf4ff69475db2c6285cf4ba41`, bits `0x1d14cbb2`, period start time `1790905711` (block 324,576); hash and fields checked against mempool.space and Blockstream - [`1fa9a34862…`](https://stellar.expert/explorer/testnet/tx/1fa9a3486269b86d444c0ba97800d3792b98db1579e0a16c25aa0a09ce931199) |
+| Submitter | `writz-deployer` only (signet blocks are signature-authenticated, which this contract does not check) - [`991882fd64…`](https://stellar.expert/explorer/testnet/tx/991882fd6469ae1052b1b00eb3a2d996cd7b2ce82c843d904c6511ffe8cb205e) |
+| Consumers | `commitment-tree` [`082f8a54c1…`](https://stellar.expert/explorer/testnet/tx/082f8a54c123a6a4b39c2242e6e67a324fb3c96a10d92bdeaad0881e76021fa1), `private-lend` [`2f274e40fd…`](https://stellar.expert/explorer/testnet/tx/2f274e40fd8d64c18c16a0ca78d0ba098d86b7e129a7d0310e5c51ed20d05411) |
+
+### zk-verifier
+
+| Field | Value |
+|---|---|
+| **Contract ID** | `CB5XAP6MF2GVVFATFTVCKVEXUODWWRQP4B3QFDMRTM55REP7N2YMXEUD` |
+| `admin` | `writz-deployer` |
+| Verification keys | `Deposit` [`87105032b6…`](https://stellar.expert/explorer/testnet/tx/87105032b617bdc87721298864cdfe3d7bcc2a0eb0ac677313c32d28386306e0), `BorrowRepay` [`76bf639959…`](https://stellar.expert/explorer/testnet/tx/76bf63995932230dcdf8e3249b9d6052f110da4512bf70269ef5258606a2a5a2), `Liquidation` [`67f214a175…`](https://stellar.expert/explorer/testnet/tx/67f214a1756059e7dc956336e3dc8bcc649f7e36fb146e7aabc81b063bbe47a2), `ZeroDebt` [`78408d9deb…`](https://stellar.expert/explorer/testnet/tx/78408d9deb522dd15829f955af9cab158256a4529a74f1337ef27c834667bbaa), `Insert` [`5439ac3523…`](https://stellar.expert/explorer/testnet/tx/5439ac352383c36caab8238db1690d418d4fe1372c4baf0cf1237e62d76c1a58) |
+
+### commitment-tree
+
+| Field | Value |
+|---|---|
+| **Contract ID** | `CAQBLCAPGXXCZTJDAJLY7E4PTJYGR6CY4YWH4JSJKFXYIHW3GANP6RFM` |
+| `admin` | `writz-deployer` (the relayer's `ADMIN_SECRET`) |
+| `usdc_token` | `CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA` (testnet USDC SAC) |
+| `oracle` | `CCYOZJCOPG34LLQQ7N24YXBM7LL62R7ONMZ3G6WZAAYPB5OYKOMJRN63` (Reflector, external CEXs & DEXs; ignored by this contract's fixed-price stub) |
+| `min_confirmations` | `6` |
+| `protocol_pubkey` | `022b9711f185db1d54aa841d949d9ea1e5644dece224dba8f1acbb3275e04e8458` (the key `/api/cosign` signs with on `testnet.writz.xyz`) |
+| `max_total_borrowed` | 50,000 USDC (default) |
+
+### private-lend
+
+| Field | Value |
+|---|---|
+| **Contract ID** | `CA3T7T2S7HV27BXO7OLIHSMGAMQ37BMOOUHQLTBGUQVL4B6Y2CDJPHHX` |
+| `admin`, `keeper`, `relayer` | `writz-deployer` |
+| `usdc_token` | `CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA` |
+| `oracle` | `CCYOZJCOPG34LLQQ7N24YXBM7LL62R7ONMZ3G6WZAAYPB5OYKOMJRN63` (Reflector, external CEXs & DEXs) |
+| `protocol_pubkey` | `022b9711f185db1d54aa841d949d9ea1e5644dece224dba8f1acbb3275e04e8458` |
+| `max_total_borrowed` | 50,000 USDC (default) |
+
+### Verified after deploy (read-only simulation, 2026-10-11)
+
+- `commitment-tree`: root is the depth-20 empty-tree root, `get_next_leaf_index` = 0, pool empty.
+- `bitcoin-spv`: checkpoint stored at 325,554 (internal byte order).
+- `zk-verifier`: all five keys set, IC lengths 7 / 11 / 6 / 4 / 5.
+- Refused as expected: `insert_commitment` for a commitment never deposited (`CommitmentNotFound`, #8), `consume_deposit` by an unregistered account (`NotAConsumer`, #27), a second `set_checkpoint` (`CheckpointAlreadySet`, #16); `initialize` no longer exists on `commitment-tree`.
+
+### Funded and exercised with real signet data (2026-10-11)
+
+- **Pools:** 400 testnet USDC supplied to `commitment-tree` [`97e873c7a0…`](https://stellar.expert/explorer/testnet/tx/97e873c7a08e4210c13db991b4044a7cd73294a21f2eb5d0f3ae0d22791ab7c9) and 100 to `private-lend` [`11bb049602…`](https://stellar.expert/explorer/testnet/tx/11bb0496025f2a4518f362a8bc5a3aba97e68495916c588a119b156c85d50c56), swapped from testnet XLM on the testnet DEX.
+- **Header sync:** the relayer at `main` (run locally with this deployment's IDs) synced real signet headers 325,555 → 325,995 into `bitcoin-spv`; every header was proof-of-work and parentage checked on-chain. Blockstream's public API throttled the sync (429 on every pass), so the relayer now defaults to mempool.space's Esplora and backs off on 429.
+- **SPV on a real transaction:** `verify_transaction` accepted signet tx `e80765d8…ee24` (block 325,980, index 1) with a relayer-built Merkle proof, and refused it at 50 confirmations (`InsufficientConfirmations`, #2).
+- **Deposit checks on that real transaction (simulated):** `commitment-tree` passes SPV, the timelock bound, the shared txid registry and the txid binding, then refuses because the transaction pays no Writz script (`VaultOutputNotFound`, #17); a timelock 100 blocks out is refused (`InvalidTimelock`, #21); `private-lend` refuses a non-Writz script (`ScriptPubKeyMismatch`, #21).
+- **Relayer endpoints:** `/notes` and `/merkle-path` reflect the empty tree; `/insert-commitment` refuses a missing or invalid `authTxXdr`; `/spv-proof` refuses a transaction with fewer than the requested 6 confirmations.
+
+Still to do on this deployment: point the hosted relayer and frontend at these IDs, run a real signet deposit through the UI (deposit → borrow → repay → `mark_released` → cosign), and put `writz-deployer` behind the multisig (#177).
+
+---
+
+## Superseded deployment (2026-08-19)
 
 Redeployed all four contracts together after the Elliot code-quality pass:
 `is_borrow` soundness fix + collateral/price range checks in the ZK circuits
@@ -119,7 +191,7 @@ Verification keys set (regenerated from the range-checked circuits - IC lengths 
 
 **Pool seeded:** 500 USDC supplied by `writz-deployer` - [`baf32ae36b...`](https://stellar.expert/explorer/testnet/tx/baf32ae36be8bd4d57a60b7e417115bc8064f103a52d5047614c2ffe5e2450e4). `get_protocol_state` → `total_supplied: 5,000,000,000` stroops (500 USDC). ✓
 
-### End-to-End ZK Flow Test ✓ (2026-08-19, against the current deployment)
+### End-to-End ZK Flow Test ✓ (2026-08-19, against that deployment)
 
 **Test instance:** `CCCT2CQUOMICS3IULYYQKCZ6PBUMUKE7EA77NQPDHHHVLUPLNOVQR2UU`
 **Token:** XLM native SAC (`CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC`)
