@@ -13,8 +13,8 @@ body {
 
 body {
   min-height: 100vh;
-  background: #f6f7f8;
-  color: #4b515b;
+  background: var(--bg);
+  color: var(--body);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
