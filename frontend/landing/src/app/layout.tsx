@@ -25,7 +25,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/" },
   icons: {
     icon: [
-      { url: "/brand/writz-icon.svg?v=4", type: "image/svg+xml", sizes: "any" },
+      { url: "/brand/writz-icon.svg?v=5", type: "image/svg+xml", sizes: "any" },
       { url: "/favicon.ico?v=4", sizes: "32x32" },
     ],
     apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],

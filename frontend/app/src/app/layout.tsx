@@ -37,7 +37,7 @@ export const metadata: Metadata = {
     // Chrome takes the ICO over the SVG when the ICO declares more sizes; the
     // SVG switches colour with the browser theme, the ICO is Safari's fallback.
     icon: [
-      { url: "/brand/writz-icon.svg?v=4", type: "image/svg+xml", sizes: "any" },
+      { url: "/brand/writz-icon.svg?v=5", type: "image/svg+xml", sizes: "any" },
       { url: "/favicon.ico?v=4", sizes: "32x32" },
     ],
     apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
