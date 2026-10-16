@@ -14,6 +14,7 @@ body:has(.paper-doc) {
   --rule: #e2e4e8;
 
   min-height: 100vh;
+  min-height: 100svh;
   background: var(--paper);
   color: var(--body);
   font-family: var(--font-sans);
@@ -100,8 +101,10 @@ body:has(.paper-doc) {
   transition: text-decoration-color var(--dur-micro) var(--ease-enter);
 }
 
-.paper-doc a:hover {
-  text-decoration-color: var(--ink);
+@media (hover: hover) and (pointer: fine) {
+  .paper-doc a:hover {
+    text-decoration-color: var(--ink);
+  }
 }
 
 .paper-doc .caption {
@@ -158,8 +161,10 @@ body:has(.paper-doc) {
   transition: border-color var(--dur-micro) var(--ease-enter);
 }
 
-.paper-doc .copy:hover {
-  border-color: var(--ink);
+@media (hover: hover) and (pointer: fine) {
+  .paper-doc .copy:hover {
+    border-color: var(--ink);
+  }
 }
 
 .paper-doc footer.colophon {
@@ -222,11 +227,13 @@ body:has(.paper-doc) {
   border-color: var(--gold);
 }
 
-.paper-doc a.btn:hover {
-  text-decoration: none;
-  background: var(--ink);
-  border-color: var(--ink);
-  color: var(--paper);
+@media (hover: hover) and (pointer: fine) {
+  .paper-doc a.btn:hover {
+    text-decoration: none;
+    background: var(--ink);
+    border-color: var(--ink);
+    color: var(--paper);
+  }
 }
 
 .paper-doc a.btn:focus-visible {
@@ -337,5 +344,29 @@ body:has(.paper-doc) {
 
   .paper-doc a.btn {
     justify-content: center;
+  }
+}
+
+.paper-doc .copy {
+  touch-action: manipulation;
+}
+
+@media (pointer: coarse) {
+  .paper-doc .copy {
+    position: relative;
+  }
+  .paper-doc .copy::after {
+    content: "";
+    position: absolute;
+    inset: -9px 0;
+  }
+  .paper-doc footer.colophon .links a {
+    display: inline-flex;
+    align-items: center;
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .paper-doc :is(p, .doc-meta) a:not(.btn) {
+    padding-block: 13px;
   }
 }
