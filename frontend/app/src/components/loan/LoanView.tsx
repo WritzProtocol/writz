@@ -273,7 +273,7 @@ export function LoanView({ m }: { m: LoanModel }) {
 
       {(isOpen(status) || checking) && !isClosed(status) && (
         <section className="ln-actions" aria-label="Actions">
-          <div className="ln-seg" role="tablist" aria-label="Choose an action">
+          <div className="wz-seg" role="tablist" aria-label="Choose an action">
             {LOAN_TABS.map((t) => (
               <button
                 key={t}

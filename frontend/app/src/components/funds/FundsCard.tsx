@@ -153,7 +153,7 @@ export function FundsCard({ m, label }: { m: FundsModel; label: string }) {
 
   return (
     <section className="wz-stack" aria-label={label}>
-      <div className="ln-seg fu-seg" role="tablist" aria-label={label}>
+      <div className="wz-seg fu-seg" role="tablist" aria-label={label}>
         {SIDES.map((t) => {
           const reason = disabledOf(t);
           return (

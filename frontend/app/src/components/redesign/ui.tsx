@@ -67,7 +67,7 @@ export function ExternalLink({ href, children, className = "wz-link" }: { href: 
   );
 }
 
-const HANDLE = 52;
+const HANDLE = 76;
 const ARM_MS = 5_000;
 
 /**

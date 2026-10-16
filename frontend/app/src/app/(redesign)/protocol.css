@@ -1,6 +1,6 @@
 /* Protocol */
 .pr-col { display: flex; flex-direction: column; gap: 24px; }
-.pr-block { display: flex; flex-direction: column; gap: 16px; padding: 24px; border-radius: 14px; background: var(--panel); box-shadow: var(--shadow-border); min-width: 0; }
+.pr-block { display: flex; flex-direction: column; gap: 16px; padding: 24px; background: var(--panel); min-width: 0; }
 .pr-table { width: 100%; border-collapse: collapse; font-size: 15px; }
 .pr-table th, .pr-table td { padding: 12px 12px 12px 0; border-top: 1px solid var(--rule); text-align: left; font-weight: 400; color: var(--heading); vertical-align: middle; }
 .pr-table thead th { border-top: 0; padding-top: 0; font-size: 13px; color: var(--muted); }
