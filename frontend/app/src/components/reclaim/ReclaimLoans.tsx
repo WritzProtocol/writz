@@ -13,6 +13,7 @@ import type { MockWorld } from "@/lib/mock/types";
 import { ExternalLink, Notice } from "@/components/ui";
 import { useMockWorld, useMounted, useRead } from "@/components/ui/hooks";
 import { useShellAccount } from "@/components/shell/account";
+import { T } from "@/components/ui/skeleton";
 
 interface LoanLock {
   n: number;
@@ -125,6 +126,30 @@ function LoanCard({ lock, tip, now, detailed }: { lock: LoanLock; tip: number | 
   );
 }
 
+function LoansSkeleton() {
+  return (
+    <div aria-hidden="true">
+      <div className="rc-loans" data-sk="loans">
+        <div className="rc-loan">
+          <p className="rc-h3">
+            <T>Loan 1</T>
+          </p>
+          <p>
+            <T>After Bitcoin block 300,000, about 21 Jul 2027. That is 40,000 blocks from now.</T>
+          </p>
+        </div>
+      </div>
+      <div className="wz-note" data-tone="neutral" data-sk="noloans">
+        <div>
+          <p>
+            <T>Connect the Stellar wallet you used and find your loans to see each one&apos;s timelock block here.</T>
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function ReclaimLoans() {
   const mounted = useMounted();
   const world = useMockWorld();
@@ -135,7 +160,7 @@ export function ReclaimLoans() {
   const tipRead = useRead(world ? null : "tip", () => fetchTipHeight(config.bitcoin.apiUrl));
   const tip = world ? (world.chain.btcTipHeight ?? null) : tipRead.kind === "ok" ? tipRead.value : null;
 
-  if (!mounted) return null;
+  if (!mounted || !a.walletsKnown) return <LoansSkeleton />;
   const all = world ? mockLocks(world) : a.positions.filter((p) => p.status !== "pending").map(lockOf);
   const shown = requested !== null ? all.filter((l) => l.n === requested) : all;
 

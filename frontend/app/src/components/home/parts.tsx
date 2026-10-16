@@ -14,6 +14,8 @@ import { networkName } from "@/lib/wallet/precheck";
 import type { PositionStatus } from "@/lib/status/types";
 import { ConfirmationSlots, ExternalLink, Notice } from "@/components/ui";
 import { HealthMeter, HealthText, StatusBadge } from "@/components/loan/parts";
+import { useEntrance, type EntranceProps } from "@/components/ui/entrance";
+import { SkBtn, T } from "@/components/ui/skeleton";
 import type { EarnSummary } from "./data";
 
 const STELLAR = networkName(config.networkPassphrase);
@@ -61,12 +63,14 @@ export function LoanSummaryCard({
   findLoans,
   compact = false,
   primary = true,
+  enter = false,
 }: {
   loan: HomeLoan;
   price: Read<bigint>;
   findLoans: () => void;
   compact?: boolean;
   primary?: boolean;
+  enter?: boolean;
 }) {
   const p = loan.position;
   const s = loan.derived.status;
@@ -79,9 +83,10 @@ export function LoanSummaryCard({
   const showsRisk = health !== null || s.kind === "checking";
   const closed = s.kind === "released" || s.kind === "liquidated" || s.kind === "closed_on_chain";
   const actionClass = `wz-btn ${primary ? "wz-btn-gold" : "wz-btn-line"}${compact ? " wz-btn-sm" : ""}`;
+  const open = useEntrance(`loan-${p.id}`, "open", { ready: enter });
 
   return (
-    <article className="hm-loan wz-cut" data-compact={compact} aria-labelledby={`loan-${p.index}`}>
+    <article {...open("hm-loan wz-cut")} data-compact={compact} aria-labelledby={`loan-${p.index}`}>
       <div className="hm-loan-main">
         <header className="hm-loan-head">
           <h2 id={`loan-${p.index}`}>{loanName(loan)}</h2>
@@ -146,16 +151,58 @@ export function LoanSummaryCard({
   );
 }
 
+/** The loan panel at its loaded size while the loan is being read. */
 export function LoanSkeleton() {
   return (
     <div className="hm-loan wz-cut" data-compact="false" aria-hidden="true">
       <div className="hm-loan-main">
-        <div className="wz-skeleton" style={{ height: 28, width: 120 }} />
-        <div className="wz-skeleton" style={{ height: 96, width: "min(320px, 80%)" }} />
-        <div className="wz-skeleton" style={{ height: 40 }} />
+        <div className="hm-loan-head">
+          <h2>
+            <T>Loan 1</T>
+          </h2>
+          <SkBtn className="wz-badge">Healthy</SkBtn>
+        </div>
+        <div className="hm-risk">
+          <p className="ln-ratio">
+            <b className="mono">
+              <T>200%</T>
+            </b>
+            <span>
+              <T>Healthy</T>
+            </span>
+          </p>
+          <HealthMeter ratioBp={null} health={null} />
+          <p className="hm-liq">
+            <T>Liquidated if BTC falls below $36,000. BTC now $60,000, oracle price.</T>
+          </p>
+        </div>
       </div>
       <div className="hm-loan-side">
-        <div className="wz-skeleton" style={{ height: 120 }} />
+        <dl className="hm-kv">
+          <div>
+            <dt>
+              <T>Collateral</T>
+            </dt>
+            <dd className="mono">
+              <T>0.05000000 BTC</T>
+            </dd>
+          </div>
+          <div>
+            <dt>
+              <T>You owe</T>
+            </dt>
+            <dd className="mono">
+              <T>1,500.00 USDC</T>
+            </dd>
+          </div>
+        </dl>
+        <div className="hm-loan-acts">
+          <SkBtn>Borrow more</SkBtn>
+          <SkBtn>Repay</SkBtn>
+          <span className="wz-btn wz-btn-text">
+            <T>Open Loan 1</T>
+          </span>
+        </div>
       </div>
     </div>
   );
@@ -165,6 +212,7 @@ export function LoanSkeleton() {
 
 function DepositCard({ u, m, onCheckAgain }: { u: Extract<Urgent, { kind: "deposit" }>; m: number; onCheckAgain: () => void }) {
   const s = u.status;
+  const open = useEntrance("urgent", "open", { ready: s.kind !== "register_failed" && s.kind !== "btc_unseen" });
   const txid = u.deposit?.pd.btcTxid ?? u.loan?.position.txid;
   const stellarHash = u.deposit?.pd.stellarTxHash ?? u.loan?.position.stellarTxHash;
   const mempool = txid ? (
@@ -218,7 +266,7 @@ function DepositCard({ u, m, onCheckAgain }: { u: Extract<Urgent, { kind: "depos
 
   if (s.kind === "checking") {
     return (
-      <section className="hm-card hm-urgent wz-cut-sm" aria-labelledby="urgent-title">
+      <section {...open("hm-card hm-urgent wz-cut-sm")} aria-labelledby="urgent-title">
         <span className="wz-label">Deposit in progress</span>
         <h2 id="urgent-title" className="hm-h2">
           Checking your deposit...
@@ -238,7 +286,7 @@ function DepositCard({ u, m, onCheckAgain }: { u: Extract<Urgent, { kind: "depos
   const ready = s.kind === "ready_to_register";
   const registering = s.kind === "proving" || s.kind === "registering";
   return (
-    <section className="hm-card hm-urgent wz-cut-sm" aria-labelledby="urgent-title">
+    <section {...open("hm-card hm-urgent wz-cut-sm")} aria-labelledby="urgent-title">
       <span className="wz-label">Deposit in progress</span>
       <h2 id="urgent-title" className="hm-h2">
         {registering
@@ -371,10 +419,12 @@ export function Preview({
   const handOff = () => {
     if (sats !== null) setDraftAmount(amount.trim());
   };
+  const open = useEntrance("preview", "open");
+  const need = useEntrance("need", "in", { step: 3 });
 
   return (
     <div className="hm-preview">
-      <section className="hm-card wz-cut-sm" aria-labelledby="preview-title">
+      <section {...open("hm-card wz-cut-sm")} aria-labelledby="preview-title">
         <h2 id="preview-title" className="wz-label">
           Try an amount
         </h2>
@@ -437,7 +487,7 @@ export function Preview({
           )}
         </div>
       </section>
-      <section className="hm-need" aria-labelledby="need-title">
+      <section {...need("hm-need")} aria-labelledby="need-title">
         <h2 id="need-title" className="wz-label">
           What you&apos;ll need
         </h2>
@@ -475,9 +525,88 @@ const STEPS = [
   },
 ];
 
-export function HowALoanWorks() {
+/** The first-visit preview at its loaded size. */
+export function PreviewSkeleton() {
   return (
-    <section className="hm-how" aria-labelledby="how-title">
+    <div className="hm-preview">
+      <div className="hm-card wz-cut-sm">
+        <p className="wz-label">
+          <T>Try an amount</T>
+        </p>
+        <p className="wz-hint" data-sk="wallet">
+          <T>You have 0.12000000 BTC.</T>
+        </p>
+        <div className="wz-field wz-sk-field" />
+        <p className="hm-preview-line">
+          <T>Lock 0.05000000 BTC. Borrow up to 2,000.00 USDC.</T>
+        </p>
+        <p className="wz-hint">
+          <T>If Writz stops, you can reclaim your BTC alone after about 18 Jul 2027.</T>
+        </p>
+        <p className="wz-hint">
+          <T>Writz co-signs the release when you repay.</T>
+        </p>
+        <div className="wz-actions">
+          <SkBtn>Start</SkBtn>
+          <SkBtn>Get test BTC</SkBtn>
+        </div>
+      </div>
+      <div className="hm-need">
+        <p className="wz-label">
+          <T>What you&apos;ll need</T>
+        </p>
+        <ul className="wz-need wz-sk-list">
+          <li>
+            <T>A Stellar wallet such as Freighter. It receives the USDC you borrow.</T>
+          </li>
+          <li>
+            <T>Xverse for Bitcoin. It holds the BTC you lock.</T>
+          </li>
+          <li>
+            <T>Stellar testnet and Bitcoin signet. Test funds only.</T>
+          </li>
+        </ul>
+        <span className="wz-btn wz-btn-text">
+          <T>Earn on USDC instead</T>
+        </span>
+      </div>
+    </div>
+  );
+}
+
+export function HowSkeleton() {
+  return (
+    <div className="hm-how">
+      <p className="hm-h2">
+        <T>How a loan works</T>
+      </p>
+      <ol className="hm-steps">
+        {STEPS.map((s, i) => (
+          <li key={s.title}>
+            <span className="hm-step-n hm-how-n">
+              <T>{i + 1}</T>
+            </span>
+            <div>
+              <p className="hm-h3">
+                <T>{s.title}</T>
+              </p>
+              <p>
+                <T>{s.body}</T>
+              </p>
+            </div>
+          </li>
+        ))}
+      </ol>
+      <p className="hm-wayout">
+        <T>Your way out: if Writz stops, you reclaim your BTC alone after the timelock. How to reclaim</T>
+      </p>
+    </div>
+  );
+}
+
+export function HowALoanWorks({ enter }: { enter: (className?: string) => EntranceProps }) {
+  return (
+    <section {...enter("hm-how")} aria-labelledby="how-title">
       <h2 id="how-title" className="hm-h2">
         How a loan works
       </h2>
@@ -507,8 +636,9 @@ export function HowALoanWorks() {
 // ── Earn and Lend ────────────────────────────────────────────────────────
 
 export function EarnCard({ earn }: { earn: EarnSummary }) {
+  const open = useEntrance("earn", "open");
   return (
-    <section className="hm-card wz-cut-sm" aria-labelledby="earn-title">
+    <section {...open("hm-card wz-cut-sm")} aria-labelledby="earn-title">
       <h2 id="earn-title" className="wz-label">
         Earn
       </h2>
@@ -531,8 +661,9 @@ export function EarnCard({ earn }: { earn: EarnSummary }) {
 }
 
 export function LendCard({ supplied }: { supplied: bigint }) {
+  const open = useEntrance("lend", "open");
   return (
-    <section className="hm-card wz-cut-sm" aria-labelledby="lend-title">
+    <section {...open("hm-card wz-cut-sm")} aria-labelledby="lend-title">
       <h2 id="lend-title" className="wz-label">
         Lend
       </h2>

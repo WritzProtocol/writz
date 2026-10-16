@@ -8,6 +8,7 @@ import type { RetentionCohort } from "@/lib/metrics/api";
 import { networkName } from "@/lib/wallet/precheck";
 import { ExternalLink } from "@/components/ui";
 import { useMockWorld } from "@/components/ui/hooks";
+import { Enter } from "@/components/ui/entrance";
 import { Hero } from "@/components/funds/parts";
 import { mockProtocolData, type ProtocolData } from "./model";
 
@@ -26,10 +27,10 @@ function Unavailable() {
   return <p className="wz-hint">Unavailable right now. Refresh in a minute.</p>;
 }
 
-function Block({ title, at, className, children }: { title: string; at: number; className?: string; children: ReactNode }) {
+function Block({ title, at, step, className, children }: { title: string; at: number; step: 2 | 3; className?: string; children: ReactNode }) {
   const id = `pr-${title.toLowerCase().replace(/\W+/g, "-")}`;
   return (
-    <section className={className ? `pr-block ${className}` : "pr-block"} aria-labelledby={id}>
+    <Enter as="section" name={id} step={step} className={className ? `pr-block ${className}` : "pr-block"} aria-labelledby={id}>
       <div className="pr-block-head">
         <h2 id={id} className="pr-h2">
           {title}
@@ -37,7 +38,7 @@ function Block({ title, at, className, children }: { title: string; at: number; 
         <span className="pr-at">Updated {clock(at)}</span>
       </div>
       {children}
-    </section>
+    </Enter>
   );
 }
 
@@ -125,10 +126,10 @@ export function ProtocolView({ data: server }: { data: ProtocolData }) {
 
   return (
     <div className="fu-page">
-      <header>
+      <Enter as="header" name="head">
         <h1 className="fu-h1">Protocol</h1>
         <p className="fu-lede">Live reads from {STELLAR}.</p>
-      </header>
+      </Enter>
 
       {allFailed ? (
         <div className="fu-stale">
@@ -140,7 +141,7 @@ export function ProtocolView({ data: server }: { data: ProtocolData }) {
       ) : null}
 
       <div className="pr-grid">
-        <Block title="Borrow pool" at={d.at}>
+        <Block title="Borrow pool" at={d.at} step={2}>
           {d.pool.kind === "ok" ? (
             <>
               <Hero label="Available to borrow" value={{ kind: "ok", value: d.pool.value.available }} unit="USDC" />
@@ -154,7 +155,7 @@ export function ProtocolView({ data: server }: { data: ProtocolData }) {
           )}
         </Block>
 
-        <Block title="Earn vault" at={d.at}>
+        <Block title="Earn vault" at={d.at} step={2}>
           {d.vault.kind === "ok" ? (
             <>
               <dl className="fu-tiles pr-vault">
@@ -171,12 +172,12 @@ export function ProtocolView({ data: server }: { data: ProtocolData }) {
         </Block>
       </div>
 
-      <Block title="30-day retention" at={d.at} className="pr-wide">
+      <Block title="30-day retention" at={d.at} step={3} className="pr-wide">
         <p className="pr-note">Of the depositors who reached 30 days, how many still hold a balance in the vault.</p>
         {d.cohorts.kind === "ok" ? <Retention cohorts={d.cohorts.value} now={d.at} /> : <Unavailable />}
       </Block>
 
-      <section className="pr-block pr-wide" aria-labelledby="pr-contracts">
+      <Enter as="section" name="contracts" step={4} className="pr-block pr-wide" aria-labelledby="pr-contracts">
         <div className="pr-block-head">
           <h2 id="pr-contracts" className="pr-h2">
             Contracts on {STELLAR}
@@ -194,7 +195,7 @@ export function ProtocolView({ data: server }: { data: ProtocolData }) {
             </div>
           ))}
         </dl>
-      </section>
+      </Enter>
     </div>
   );
 }

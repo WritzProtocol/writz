@@ -194,8 +194,8 @@ body:has(.app) { background: var(--bg); }
 .wz-spread { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
 
 /* Cards and panels; the cut corner takes the mark's angle off the top left */
-.wz-cut { clip-path: polygon(40px 0, 100% 0, 100% 100%, 0 100%, 0 calc(40px / var(--shear))); }
-.wz-cut-sm { clip-path: polygon(32px 0, 100% 0, 100% 100%, 0 100%, 0 calc(32px / var(--shear))); }
+.wz-cut, .wz-cut-sm { --cut: 40px; clip-path: polygon(var(--cut) 0, 100% 0, 100% 100%, 0 100%, 0 calc(var(--cut) / var(--shear))); }
+.wz-cut-sm { --cut: 32px; }
 
 /* Notices: status colour at 10% tint, always with a word label after the slash */
 .wz-note { display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; font-size: 14px; line-height: 1.45; color: var(--heading); }
@@ -245,7 +245,23 @@ body:has(.app) { background: var(--bg); }
 .wz-steps li[data-state="done"] > i { background: var(--positive); box-shadow: none; }
 .wz-steps li[data-state="now"] { color: var(--heading); }
 
-.wz-skeleton { background: color-mix(in srgb, var(--deep) 35%, transparent); }
+.wz-skeleton { background: var(--sk); }
+.app { --sk: color-mix(in srgb, var(--deep) 35%, transparent); }
+.wz-sk-t { color: transparent; background: var(--sk); text-decoration: none; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+.wz-seg > .wz-sk-btn { min-height: 52px; padding: 0 12px; }
+.wz-seg > .wz-sk-btn::before { inset: 0 8px; }
+.wz-sk-big { flex-wrap: nowrap; align-items: flex-end; }
+.wz-sk-field { box-shadow: inset 0 0 0 1px var(--rule-strong); }
+.wz-sk-list li::before, .wz-sk-list > p::before { background: var(--sk); }
+.wz-sk-btn { color: transparent; pointer-events: none; }
+.wz-sk-btn::before { background: var(--sk); box-shadow: none; }
+.wz-sk-chip i, .wz-sk-chip .mono { visibility: hidden; }
+@keyframes wz-sk { to { opacity: 0.55; } }
+.wz-skeleton, .wz-sk-t, .wz-sk-btn::before { animation: wz-sk 1200ms linear infinite alternate; }
+html:not([data-wz-wallet="1"]) .app [data-sk="wallet"], html[data-wz-wallet="1"] .app [data-sk="nowallet"],
+html:not([data-wz-loans="1"]) .app [data-sk="loans"], html[data-wz-loans="1"] .app [data-sk="noloans"],
+html:not([data-wz-step="amount"]) .app [data-sk="amount"], html[data-wz-step="amount"] .app [data-sk="past-amount"],
+html:not([data-wz-step="review"]) .app [data-sk="review"], html:not([data-wz-step="other"]) .app [data-sk="other"] { display: none !important; }
 
 /* Slide to confirm */
 .wz-slide { position: relative; height: 64px; max-width: 480px; background: var(--midnight); box-shadow: inset 0 0 0 1px var(--rule-strong); overflow: hidden; user-select: none; -webkit-user-select: none; touch-action: none; }
@@ -279,6 +295,16 @@ body:has(.app) { background: var(--bg); }
 .wz-done { align-items: flex-start; }
 .wz-done-mark { width: 56px; height: 40px; background: var(--gold); -webkit-mask: url("/brand/writz-mark.svg") no-repeat center / contain; mask: url("/brand/writz-mark.svg") no-repeat center / contain; }
 .app h1[tabindex="-1"]:focus, .app main[tabindex="-1"]:focus { outline: none; }
+
+/* Route entrance: sections rise in steps of 80ms, a cut-corner panel sweeps in from the right and then its contents rise */
+@keyframes wz-up { from { opacity: 0; transform: translateY(16px); } }
+@keyframes wz-cut { from { clip-path: polygon(calc(100% + var(--cut, 40px)) 0, calc(100% + var(--cut, 40px)) 0, 100% 100%, 100% 100%, 100% calc(var(--cut, 40px) / var(--shear))); } }
+.wz-in { animation: wz-up var(--dur-section) var(--ease-enter) calc(var(--wz-at, 0ms) + var(--wz-skip, 0ms)) both; }
+.wz-in2 { --wz-at: 80ms; }
+.wz-in3 { --wz-at: 160ms; }
+.wz-in4 { --wz-at: 240ms; }
+.wz-open { animation: wz-cut var(--dur-signature) var(--ease-enter) calc(120ms + var(--wz-skip, 0ms)) both; }
+.wz-open > * { animation: wz-up var(--dur-section) var(--ease-enter) calc(640ms + var(--wz-skip, 0ms)) both; }
 
 @keyframes wz-in { from { opacity: 0; transform: translateY(8px); } }
 .wz-enter { animation: wz-in var(--dur-element) var(--ease-enter) both; }
@@ -342,7 +368,7 @@ body:has(.app) { background: var(--bg); }
 .tr-meta .wz-link { font-size: 13px; }
 
 @media (prefers-reduced-motion: reduce) {
-  .app .wz-enter, .app .wz-rise, .app .sh-backdrop, .app .sh-panel { animation: none; }
+  .app .wz-enter, .app .wz-rise, .app .wz-in, .app .wz-open, .app .wz-open > *, .app .wz-skeleton, .app .wz-sk-t, .app .wz-sk-btn::before, .app .sh-backdrop, .app .sh-panel { animation: none; }
   .app .wz-spin { animation: none; border-top-color: var(--rule-strong); }
   .app .wz-slide-handle, .app .wz-slot, .app .wz-btn, .app .wz-btn::before, .app .wz-navlink, .app .wz-navlink::after, .app .wz-chip::before, .app .wz-seg [role="tab"], .app .wz-seg [role="tab"]::before, .app .wz-field { transition: none; }
 }

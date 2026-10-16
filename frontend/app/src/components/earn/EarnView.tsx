@@ -3,6 +3,7 @@
 import { config } from "@/config";
 import { networkName } from "@/lib/wallet/precheck";
 import { ExternalLink, Notice } from "@/components/ui";
+import { Enter } from "@/components/ui/entrance";
 import { FundsCard, NotConnected } from "@/components/funds/FundsCard";
 import { Hero, RiskNotes, Tile, Tiles } from "@/components/funds/parts";
 import { PAUSED, UNIT, type EarnModel } from "./model";
@@ -40,12 +41,12 @@ export function EarnView({ m }: { m: EarnModel }) {
   const balance = m.stale ? { kind: "ok" as const, value: m.stale.value } : m.balance;
   return (
     <div className="fu-page">
-      <header>
+      <Enter as="header" name="head">
         <h1 className="fu-h1">Earn on USDC</h1>
         <p className="fu-lede">
           Deposit Blend test USDC into the Writz vault on DeFindex. It earns from Blend lending. Shares sit in your own wallet.
         </p>
-      </header>
+      </Enter>
 
       {m.stale ? (
         <div className="fu-stale">
@@ -86,7 +87,7 @@ export function EarnView({ m }: { m: EarnModel }) {
           />
         </section>
 
-        <div className="fu-act">
+        <Enter name="act" step={3} className="fu-act">
           {m.paused ? (
             <Notice tone="warning" label="Strategy paused">
               <p>{PAUSED}</p>
@@ -115,7 +116,7 @@ export function EarnView({ m }: { m: EarnModel }) {
               <ExternalLink href={config.earn.faucetUrl}>Get some from the Blend faucet</ExternalLink>.
             </p>
           ) : null}
-        </div>
+        </Enter>
       </div>
     </div>
   );

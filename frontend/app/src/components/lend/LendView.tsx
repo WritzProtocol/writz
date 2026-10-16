@@ -5,6 +5,7 @@ import { withdrawable } from "@/lib/funds/model";
 import type { Read } from "@/lib/loan/model";
 import { networkName } from "@/lib/wallet/precheck";
 import { Notice } from "@/components/ui";
+import { Enter } from "@/components/ui/entrance";
 import { FundsCard, NotConnected } from "@/components/funds/FundsCard";
 import { Hero, RiskNotes, Tile, Tiles } from "@/components/funds/parts";
 import type { LendModel } from "./model";
@@ -28,10 +29,10 @@ export function LendView({ m }: { m: LendModel }) {
 
   return (
     <div className="fu-page">
-      <header>
+      <Enter as="header" name="head">
         <h1 className="fu-h1">Lend USDC</h1>
         <p className="fu-lede">Supply USDC to the pool borrowers draw from. You can withdraw what you supplied.</p>
-      </header>
+      </Enter>
 
       {m.stale ? (
         <div className="fu-stale">
@@ -81,7 +82,7 @@ export function LendView({ m }: { m: LendModel }) {
           />
         </section>
 
-        <div className="fu-act">
+        <Enter name="act" step={3} className="fu-act">
           {!m.connected ? (
             <NotConnected text="Connect your Stellar wallet to lend USDC." connect={m.connect} connecting={m.connecting} />
           ) : m.wrongNetwork ? (
@@ -97,7 +98,7 @@ export function LendView({ m }: { m: LendModel }) {
           ) : null}
 
           {m.funds && !blocked ? <FundsCard m={m.funds} label="Supply or withdraw" /> : null}
-        </div>
+        </Enter>
       </div>
     </div>
   );

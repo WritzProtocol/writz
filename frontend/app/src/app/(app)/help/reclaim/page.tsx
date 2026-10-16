@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { RECLAIM_DOCS_URL } from "@/lib/links";
 import { ExternalLink } from "@/components/ui";
+import { Enter } from "@/components/ui/entrance";
 import { ReclaimLoans } from "@/components/reclaim/ReclaimLoans";
 import "../../funds.css";
 import "../../reclaim.css";
@@ -20,15 +21,15 @@ const STEPS = [
 export default function ReclaimHelp() {
   return (
     <article className="rc-page">
-      <header>
+      <Enter as="header" name="head">
         <h1 className="rc-h1">How to reclaim your BTC without Writz</h1>
         <p className="fu-lede">
           For when Writz is gone or won&apos;t co-sign. While Writz works, repay and release from your loan page instead.
         </p>
-      </header>
+      </Enter>
 
       <div className="rc-grid">
-        <section className="rc-lock" aria-labelledby="rc-lock">
+        <Enter as="section" name="lock" step={2} className="rc-lock" aria-labelledby="rc-lock">
           <h2 id="rc-lock" className="rc-h2">
             What the lock is
           </h2>
@@ -36,17 +37,17 @@ export default function ReclaimHelp() {
             Your BTC sits in a Bitcoin address that two keys control: yours and Writz&apos;s. Together they release it when you
             repay. After your loan&apos;s timelock block, your key alone can move it.
           </p>
-        </section>
+        </Enter>
 
-        <section className="rc-when wz-cut" aria-labelledby="rc-when">
+        <Enter as="section" name="when" kind="open" className="rc-when wz-cut" aria-labelledby="rc-when">
           <h2 id="rc-when" className="rc-h2">
             When
           </h2>
           <p>Each loan has its own timelock block, set when you deposited. Your loans on this device:</p>
           <ReclaimLoans />
-        </section>
+        </Enter>
 
-        <section className="rc-need" aria-labelledby="rc-need">
+        <Enter as="section" name="need" step={3} className="rc-need" aria-labelledby="rc-need">
           <h2 id="rc-need" className="rc-h2">
             What you need
           </h2>
@@ -62,10 +63,10 @@ export default function ReclaimHelp() {
               <b>A computer that can run the reference script</b> in the docs.
             </li>
           </ul>
-        </section>
+        </Enter>
       </div>
 
-      <section className="rc-steps-wrap" aria-labelledby="rc-steps">
+      <Enter as="section" name="steps" step={4} className="rc-steps-wrap" aria-labelledby="rc-steps">
         <h2 id="rc-steps" className="rc-h2">
           Steps
         </h2>
@@ -84,7 +85,7 @@ export default function ReclaimHelp() {
         <ExternalLink href={RECLAIM_DOCS_URL} className="wz-link fu-textlink">
           Reference script and checks in the docs
         </ExternalLink>
-      </section>
+      </Enter>
     </article>
   );
 }
