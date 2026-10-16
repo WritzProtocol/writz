@@ -47,7 +47,22 @@ export function ScrollReveal() {
       { rootMargin: "0px 0px -10% 0px" },
     );
     for (const el of items) if (!el.classList.contains("in")) io.observe(el);
-    return () => io.disconnect();
+
+    // An anchor jump lands on the target's resting place, not on its offset before the reveal.
+    const onClick = (e: MouseEvent) => {
+      const href = (e.target as Element | null)?.closest("a")?.getAttribute("href") ?? "";
+      const id = href.includes("#") ? href.slice(href.indexOf("#") + 1) : "";
+      const el = id ? document.getElementById(id) : null;
+      if (!el?.hasAttribute("data-reveal") || el.classList.contains("in")) return;
+      io.unobserve(el);
+      el.classList.add("in");
+      settle(el);
+    };
+    root.addEventListener("click", onClick, true);
+    return () => {
+      io.disconnect();
+      root.removeEventListener("click", onClick, true);
+    };
   }, []);
 
   return null;

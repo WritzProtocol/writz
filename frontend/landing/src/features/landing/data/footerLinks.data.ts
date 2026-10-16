@@ -10,7 +10,7 @@ export const footerLinkGroups: FooterLinkGroup[] = [
       { label: "Open app", href: APP_ROUTE },
       { label: "Borrow", href: `${DOCS_URL}/products/privatelend` },
       { label: "Earn", href: `${DOCS_URL}/products/earn` },
-      { label: "Metrics", href: `${APP_ROUTE}/metrics` },
+      { label: "Protocol", href: `${APP_ROUTE}/protocol` },
     ],
   },
   {

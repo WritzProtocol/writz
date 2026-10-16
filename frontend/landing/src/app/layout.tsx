@@ -5,9 +5,13 @@ import { env } from "@/config/env";
 import { workSans } from "@/features/landing/fonts";
 import "./globals.css";
 
+// The generated fallback is Arial, whose digits run wider than Geist Mono's, so
+// big figures wrapped until the font arrived; tokens.css defines a monospace one.
 const mono = Geist_Mono({
   variable: "--ff-mono",
   subsets: ["latin"],
+  adjustFontFallback: false,
+  fallback: ["Geist Mono Fallback", "ui-monospace", "monospace"],
 });
 
 const TITLE = "Writz - Lock Bitcoin. Borrow dollars. Tell no one.";

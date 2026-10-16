@@ -260,7 +260,7 @@ html:has(.landing) body {
 
 .landing section {
   padding: 96px 0;
-  scroll-margin-top: 80px;
+  scroll-margin-top: 96px;
 }
 
 .landing .skip {
@@ -298,10 +298,19 @@ html:has(.landing) body {
   height: 72px;
   margin-bottom: -72px;
   pointer-events: none;
+  container-type: inline-size;
 }
 
+/* The bar keeps its full-width box in both states, so nothing reflows while it
+   floats: the plate is clipped in and the two ends slide in by transform. */
 .landing .nav-bar {
-  pointer-events: auto;
+  --wide: min(100cqw, calc(var(--max) + 2 * var(--gut)));
+  --narrow: min(calc(100cqw - 32px), 880px);
+  --side: calc((var(--wide) - var(--narrow)) / 2);
+  --shift: calc(var(--side) + 20px - var(--gut));
+
+  position: relative;
+  isolation: isolate;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -311,21 +320,55 @@ html:has(.landing) body {
   height: 72px;
   margin: 0 auto;
   padding: 0 var(--gut);
+}
+
+.landing .nav-bar::before,
+.landing .nav-bar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  clip-path: inset(0);
   background-color: transparent;
-  box-shadow: 0 0 0 1px oklch(0 0 0 / 0);
-  transition-property: width, max-width, height, margin, padding, background-color, box-shadow;
+  transition-property: clip-path, background-color;
   transition-duration: var(--dur-section);
   transition-timing-function: var(--ease-enter);
 }
 
-.landing .nav[data-floating="true"] .nav-bar {
-  width: calc(100% - 32px);
-  max-width: 880px;
-  height: 60px;
-  margin: 12px auto 0;
-  padding: 0 20px;
+.landing .nav-bar > * {
+  pointer-events: auto;
+  transition: transform var(--dur-section) var(--ease-enter);
+}
+
+.landing .nav[data-floating="true"] .nav-bar::before {
+  clip-path: inset(12px var(--side) 0);
+  background-color: var(--line-strong);
+}
+
+.landing .nav[data-floating="true"] .nav-bar::after {
+  clip-path: inset(13px calc(var(--side) + 1px) 1px);
   background-color: var(--surface);
-  box-shadow: 0 0 0 1px var(--line-strong);
+}
+
+.landing .nav[data-floating="true"] .nav-bar > :first-child {
+  transform: translate(var(--shift), 6px);
+}
+
+.landing .nav[data-floating="true"] .nav-bar > :last-child {
+  transform: translate(calc(-1 * var(--shift)), 6px);
+}
+
+.landing .nav-end {
+  display: flex;
+  align-items: center;
+}
+
+.landing .nav .nav-tag {
+  margin: 0 4px 0 12px;
+}
+
+.landing .nav-tag .dot {
+  color: var(--positive);
 }
 
 .landing .lockup {
@@ -377,9 +420,34 @@ html:has(.landing) body {
   inset: 0 6px;
 }
 
-@media (max-width: 767px) {
+@media (max-width: 899px) {
   .landing .nav-links a:not(.btn):not(.keep) {
     display: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .landing .nav .nav-tag {
+    display: none;
+  }
+}
+
+@media (max-width: 359px) {
+  .landing .nav-bar {
+    gap: 8px;
+  }
+
+  .landing .lockup {
+    height: 20px;
+  }
+
+  .landing .nav-links a:not(.btn) {
+    padding: 0 8px;
+  }
+
+  .landing .nav .btn {
+    margin-left: 4px;
+    padding: 0 16px;
   }
 }
 
@@ -541,6 +609,16 @@ html:has(.landing) body {
 
 .home .hero-copy .tag .dot {
   color: var(--positive);
+}
+
+@media (min-width: 768px) {
+  .home .hero-copy .tag {
+    display: none;
+  }
+
+  .home .hero .hero-copy h1 {
+    margin-top: 0;
+  }
 }
 
 .home .hero h1 {
@@ -771,7 +849,7 @@ html:has(.landing) body {
 
 .home .how {
   margin-top: 160px;
-  scroll-margin-top: 24px;
+  scroll-margin-top: 96px;
 }
 
 .home .fields {
@@ -901,7 +979,7 @@ html:has(.landing) body {
   padding: 48px;
   background: var(--surface);
   clip-path: polygon(40px 0, 100% 0, 100% 100%, 0 100%, 0 139.5px);
-  scroll-margin-top: 88px;
+  scroll-margin-top: 96px;
 }
 
 .home .tile.earn {
@@ -1284,13 +1362,14 @@ html:has(.landing) body {
     animation: landing-rise var(--dur-section) var(--ease-enter) backwards;
   }
 
-  .home .hero-copy > :nth-child(2) { animation-delay: 60ms; }
-  .home .hero-copy > :nth-child(3) { animation-delay: 120ms; }
-  .home .hero-copy > :nth-child(4) { animation-delay: 180ms; }
-  .home .hero-copy > :nth-child(5) { animation-delay: 240ms; }
+  .home .hero-copy > :nth-child(1) { animation-delay: 40ms; }
+  .home .hero-copy > :nth-child(2) { animation-delay: 100ms; }
+  .home .hero-copy > :nth-child(3) { animation-delay: 180ms; }
+  .home .hero-copy > :nth-child(4) { animation-delay: 250ms; }
+  .home .hero-copy > :nth-child(5) { animation-delay: 320ms; }
   .home .facts li:nth-child(1) { animation-delay: 600ms; }
-  .home .facts li:nth-child(2) { animation-delay: 660ms; }
-  .home .facts li:nth-child(3) { animation-delay: 720ms; }
+  .home .facts li:nth-child(2) { animation-delay: 670ms; }
+  .home .facts li:nth-child(3) { animation-delay: 740ms; }
 
   .home .hero-field {
     animation: landing-field 900ms var(--ease-enter) 120ms backwards;

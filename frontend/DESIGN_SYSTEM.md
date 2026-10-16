@@ -187,6 +187,16 @@ visit to a route: re-renders, data updates, tab switches and remounts on the
 same visit do not replay it, and an element that first appears later plays it
 then. The sidebar and header never animate.
 
+Controls move on the element tier. Sheets enter over `--dur-section` and leave
+over `--dur-element` on the exit curve, with their own exit keyframes, and stop
+taking clicks the moment they start closing. A segmented control has one slanted
+indicator that slides between tabs. The deposit journey's six progress blocks
+fill from the left over `--dur-section`, one after another 260ms apart when
+several steps advance, and empty right to left going back. A transaction that
+settles while the user is on another route raises a toast: bottom right, above
+the tabs on mobile, rising 8px as it fades in, fading out; success leaves after
+6 seconds, the rest stay until dismissed.
+
 While a page waits for the client to know the wallet, its skeleton takes the
 loaded layout: the same classes and cut corners, placeholder bars sized by the
 real copy (`T` and `SkBtn` in `components/ui/skeleton.tsx`), and a slow opacity
@@ -201,6 +211,16 @@ the spinner, the meter fill and control transitions are switched off, and the
 landing skips its hero entrance and scroll reveals. In React,
 `usePrefersReducedMotion()` from `components/ui/hooks.ts` gives the same
 answer.
+
+## Every state, not only the happy path
+
+The app's UI mock harness renders each screen state from fixtures. Run the app
+with `NEXT_PUBLIC_UI_MOCK=1 bun run dev` and open `/dev/scenarios`: it lists
+every scenario by area (Global, Home, Borrow, Loan, Earn, Lend, Protocol,
+Reclaim, Transactions, Loan status) and opens each on its route. When you build
+or change a feature, review its scenarios there at 1440, 390 and 320, and add
+any new state to `frontend/app/src/lib/mock/scenarios.ts` before shipping it.
+See `app/README.md`.
 
 ## Rules code must keep
 

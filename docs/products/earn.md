@@ -85,15 +85,19 @@ The vault's managers act on the vault, not on your account. They can rebalance f
 
 ---
 
-## Public Metrics
+## Public stats
 
-Anyone can check how the vault is doing at [testnet.writz.xyz/metrics](https://testnet.writz.xyz/metrics), without a wallet:
+Anyone can check how the vault is doing on the app's Protocol page, [testnet.writz.xyz/protocol](https://testnet.writz.xyz/protocol), without a wallet:
 
-| Metric | What it measures |
+| Stat | What it shows |
 |---|---|
-| Total value locked | The USDC the vault manages right now, read from the chain, next to net deposits minus withdrawals from the indexed vault events. The first includes accrued yield, so it is expected to be slightly higher |
-| Unique depositors | Distinct accounts that have ever deposited |
+| Total in vault | The USDC (Blend) the vault manages right now, read from the chain. It includes accrued yield |
+| Depositors | Distinct accounts that have ever deposited |
+| APY | The vault's current APY, from Blend lending |
+| Strategy | Where the vault's USDC earns: the Blend lending pool |
 | 30-day retention | Depositors grouped by the day of their first deposit. A depositor counts as retained if they still hold a positive balance 30 days after their first deposit. Cohorts younger than 30 days are shown as too early to tell, not as churned |
+
+The same page shows the borrow pool (available to borrow, supplied by lenders, borrowed across open loans) and links each Writz contract on Stellar Expert.
 
 ---
 
