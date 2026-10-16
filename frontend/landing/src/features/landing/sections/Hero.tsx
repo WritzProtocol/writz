@@ -1,59 +1,56 @@
-"use client";
-
-import { useEffect, useState } from "react";
 import { APP_ROUTE } from "../constants";
-import { AssembleMark } from "./AssembleMark";
+import { BorrowCalculator } from "./BorrowCalculator";
+
+const FACTS = [
+  { k: "No custodian", v: "A Bitcoin Script holds it, not a company." },
+  { k: "No wrapped token", v: "Your native BTC stays on Bitcoin. Nothing is bridged." },
+  { k: "Your way out", v: "If Writz stops, you reclaim your BTC after the timelock." },
+];
 
 export function Hero() {
-  const [assembled, setAssembled] = useState(false);
-
-  useEffect(() => {
-    const t = window.setTimeout(() => setAssembled(true), 400);
-    return () => window.clearTimeout(t);
-  }, []);
-
   return (
-    <section className="hero">
-      <div className="wrap hero-copy">
-        <span className="status">Live on Stellar testnet</span>
-        <h1>
-          Lock Bitcoin. Borrow dollars.
-          <br />
-          Tell no one.
-        </h1>
-        <p className="lead">
-          Get dollars without selling your Bitcoin. It stays locked on Bitcoin by a script, not
-          with a company, and never becomes a wrapped token.
-        </p>
-        <div className="ctas">
-          <a className="btn btn-gold" href={APP_ROUTE}>
-            Open app
-          </a>
-          <a className="btn btn-line" href="#how">
-            See how it works
-          </a>
+    <>
+      <section className="hero" aria-labelledby="hero-h">
+        <div className="hero-field" aria-hidden="true" />
+        <div className="wrap hero-in">
+          <div className="hero-copy">
+            <span className="tag">
+              <span className="dot" />
+              Live on Stellar testnet
+            </span>
+            <h1 id="hero-h">
+              Lock Bitcoin. Borrow dollars. <span className="tell">Tell no one.</span>
+            </h1>
+            <p className="lead">
+              Get dollars without selling your Bitcoin. It stays locked on Bitcoin by a script, not with a company, and
+              never becomes a wrapped token.
+            </p>
+            <div className="ctas">
+              <a className="btn btn-gold" href={APP_ROUTE}>
+                Open app
+              </a>
+              <a className="btn" href="#how">
+                See how it works
+              </a>
+            </div>
+            <p className="note">Testnet only: test BTC and test USDC, no real funds.</p>
+          </div>
+          <div className="hero-vis">
+            <BorrowCalculator />
+          </div>
         </div>
-        <p className="testnet-note">Testnet only: test BTC and test USDC, no real funds.</p>
-      </div>
-
-      <AssembleMark assembled={assembled} />
-
+      </section>
       <div className="wrap">
-        <div className="strip">
-          <div>
-            <div className="k">No custodian</div>
-            <div className="v">A Bitcoin Script holds it, not a company.</div>
-          </div>
-          <div>
-            <div className="k">No wrapped token</div>
-            <div className="v">Your native BTC stays on Bitcoin. Nothing is bridged.</div>
-          </div>
-          <div>
-            <div className="k">Your way out</div>
-            <div className="v">If Writz stops, you reclaim your BTC after the timelock.</div>
-          </div>
-        </div>
+        <ul className="facts">
+          {FACTS.map((f) => (
+            <li key={f.k}>
+              <span className="tick" aria-hidden="true" />
+              <b>{f.k}</b>
+              <span>{f.v}</span>
+            </li>
+          ))}
+        </ul>
       </div>
-    </section>
+    </>
   );
 }

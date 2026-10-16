@@ -1,54 +1,54 @@
 import { APP_ROUTE } from "../constants";
-import { BorrowCalculator } from "./BorrowCalculator";
 
 export function Products() {
   return (
-    <section id="products" style={{ paddingTop: 0 }}>
+    <section className="prod" aria-labelledby="prod-h">
       <div className="wrap">
-        <div className="section-head" data-reveal>
-          <div>
-            <p className="eyebrow">Two ways in</p>
-            <h2>Put dollars to work, or put Bitcoin to work.</h2>
-          </div>
-        </div>
-        <div className="products">
-          <div className="product earn" id="earn" data-reveal>
-            <div className="k">Earn</div>
-            <h3>
-              Lend dollars.
-              <br />
-              Earn on them.
-            </h3>
-            <p>Deposit USDC and earn yield that accrues on its own. Withdraw part or all of it whenever you want.</p>
-            <div className="figure">
-              <span className="num">APY</span>
-              <span className="unit">from borrower interest</span>
-            </div>
-            <div className="sub">Variable, shown live in the app.</div>
-            <div className="foot">
-              <a className="btn btn-line" href={APP_ROUTE}>
-                Start earning
-              </a>
-              <span className="note">No lock-up</span>
-            </div>
-          </div>
-
-          <div className="product borrow" id="borrow" data-reveal>
-            <div className="k">Borrow</div>
-            <h3>
-              Keep your Bitcoin.
-              <br />
-              Spend anyway.
-            </h3>
+        <h2 id="prod-h" data-reveal>
+          Put dollars to work, or put Bitcoin to work.
+        </h2>
+        <div className="tiles">
+          <article className="tile borrow" id="borrow" data-reveal>
+            <h3>Keep your Bitcoin. Spend anyway.</h3>
             <p>Lock your Bitcoin, take dollars against it, and get it back when you repay.</p>
-            <BorrowCalculator />
-            <div className="foot">
-              <a className="btn btn-ink" href={APP_ROUTE}>
+            <div className="offer">
+              <p className="big">
+                <b>66%</b> of your BTC value, at most
+              </p>
+              <dl className="terms">
+                <div>
+                  <dt>Liquidation</dt>
+                  <dd>If your collateral falls below 120% of the loan</dd>
+                </div>
+                <div>
+                  <dt>Your way out</dt>
+                  <dd>If Writz stops, you reclaim your BTC after the timelock</dd>
+                </div>
+              </dl>
+            </div>
+            <p className="sub">Borrowing less leaves more room before liquidation.</p>
+            <div className="tfoot">
+              <a className="btn btn-gold" href={APP_ROUTE}>
                 Start borrowing
               </a>
-              <span className="note">No wrapped token</span>
+              <span>No wrapped token</span>
             </div>
-          </div>
+          </article>
+
+          <article className="tile earn" id="earn" data-reveal>
+            <h3>Lend dollars. Earn on them.</h3>
+            <p>Deposit USDC and earn yield that accrues on its own. Withdraw part or all of it whenever you want.</p>
+            <p className="big">
+              <b>APY</b> from borrower interest
+            </p>
+            <p className="sub">Variable, shown live in the app.</p>
+            <div className="tfoot">
+              <a className="btn" href={APP_ROUTE}>
+                Start earning
+              </a>
+              <span>No lock-up</span>
+            </div>
+          </article>
         </div>
       </div>
     </section>

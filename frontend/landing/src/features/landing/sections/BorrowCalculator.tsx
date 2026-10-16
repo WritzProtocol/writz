@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
 
 const EXAMPLE_PRICE = 100_000;
 // private-lend config: 150% minimum collateral, liquidation below 120%.
@@ -13,22 +13,36 @@ const SHARES = [
   { label: "33%", ratio: 3 },
 ];
 
+const usdc = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const usd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 
 export function BorrowCalculator() {
   const [btc, setBtc] = useState(0.5);
   const [ratio, setRatio] = useState(MIN_COLLATERAL);
+  const radios = useRef<(HTMLButtonElement | null)[]>([]);
 
-  const borrow = (btc * EXAMPLE_PRICE) / ratio;
+  const borrow = Math.floor(((btc * EXAMPLE_PRICE) / ratio) * 100) / 100;
   const liqPrice = (EXAMPLE_PRICE * LIQUIDATION) / ratio;
-  const room = 1 - liqPrice / EXAMPLE_PRICE;
+  const fall = Math.round((1 - liqPrice / EXAMPLE_PRICE) * 100);
+  const btcLabel = `${btc.toFixed(8)} BTC`;
+
+  const onKey = (e: KeyboardEvent, i: number) => {
+    const d = e.key === "ArrowRight" || e.key === "ArrowDown" ? 1 : e.key === "ArrowLeft" || e.key === "ArrowUp" ? -1 : 0;
+    if (!d) return;
+    e.preventDefault();
+    const n = (i + d + SHARES.length) % SHARES.length;
+    setRatio(SHARES[n].ratio);
+    radios.current[n]?.focus();
+  };
 
   return (
-    <div className="calc">
-      <label className="calc-row" htmlFor="calc-btc">
-        <span>Lock</span>
-        <span className="mono">{btc.toFixed(2)} BTC</span>
-      </label>
+    <form className="calc" aria-label="What you could borrow" onSubmit={(e) => e.preventDefault()}>
+      <div className="calc-r">
+        <label htmlFor="calc-btc">Lock</label>
+        <output className="v" htmlFor="calc-btc">
+          {btcLabel}
+        </output>
+      </div>
       <input
         id="calc-btc"
         type="range"
@@ -36,19 +50,25 @@ export function BorrowCalculator() {
         max={2}
         step={0.05}
         value={btc}
+        aria-valuetext={btcLabel}
         onChange={(e) => setBtc(Number(e.target.value))}
       />
 
-      <div className="calc-row">
-        <span>Borrow</span>
-        <div className="calc-seg" role="radiogroup" aria-label="Share of your BTC value">
-          {SHARES.map((s) => (
+      <div className="calc-r">
+        <span id="calc-share">Borrow</span>
+        <div className="seg" role="radiogroup" aria-labelledby="calc-share">
+          {SHARES.map((s, i) => (
             <button
               key={s.label}
+              ref={(el) => {
+                radios.current[i] = el;
+              }}
               type="button"
               role="radio"
               aria-checked={ratio === s.ratio}
+              tabIndex={ratio === s.ratio ? 0 : -1}
               onClick={() => setRatio(s.ratio)}
+              onKeyDown={(e) => onKey(e, i)}
             >
               {s.label}
             </button>
@@ -56,21 +76,20 @@ export function BorrowCalculator() {
         </div>
       </div>
 
-      <div className="figure">
-        <span className="num">{usd.format(borrow)}</span>
-        <span className="unit">in USDC</span>
-      </div>
+      <p className="calc-fig" aria-live="polite">
+        <span className="v">{usdc.format(borrow)}</span> <span>USDC</span>
+      </p>
 
-      <div className="calc-meter" aria-hidden="true">
-        <div className="calc-room" style={{ width: `${room * 100}%` }} />
+      <div className="ctrack" aria-hidden="true" style={{ "--at": `${fall}%` } as CSSProperties}>
+        <b />
       </div>
       <div className="calc-legend">
         <span>
-          Liquidation below <strong className="mono">{usd.format(liqPrice)}</strong>
+          Liquidation below <b className="v">{usd.format(liqPrice)}</b>
         </span>
-        <span>BTC can fall {Math.round(room * 100)}%</span>
+        <span>BTC can fall {fall}%</span>
       </div>
-      <div className="sub">Example at {usd.format(EXAMPLE_PRICE)} per BTC. The app uses the live price.</div>
-    </div>
+      <p className="sub">Example at {usd.format(EXAMPLE_PRICE)} per BTC. The app uses the live price.</p>
+    </form>
   );
 }
