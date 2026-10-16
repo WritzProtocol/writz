@@ -4,7 +4,8 @@ import { earnApi } from "@/lib/earn/api";
 import { getRetentionCohorts, getTvlMetrics } from "@/lib/metrics/api";
 import type { Read } from "@/lib/loan/model";
 import { ProtocolView } from "@/components/protocol/ProtocolView";
-import type { ProtocolData } from "@/components/protocol/model";
+import { mockProtocolData, type ProtocolData } from "@/components/protocol/model";
+import { UI_MOCK, scenarioFromSearch } from "@/lib/mock/gate";
 import "../funds.css";
 import "../protocol.css";
 
@@ -36,6 +37,13 @@ async function readProtocol(): Promise<ProtocolData> {
   return { pool, vault, cohorts, at: Date.now() };
 }
 
-export default async function Protocol() {
-  return <ProtocolView data={await readProtocol()} />;
+function harnessProtocol(id: string | string[] | undefined): ProtocolData | null {
+  const scenario = typeof id === "string" ? scenarioFromSearch(`?scenario=${encodeURIComponent(id)}`, UI_MOCK) : null;
+  const now = Date.now();
+  return scenario ? mockProtocolData(scenario.build(now), now) : null;
+}
+
+export default async function Protocol({ searchParams }: { searchParams: Promise<{ scenario?: string | string[] }> }) {
+  const harness = UI_MOCK ? harnessProtocol((await searchParams).scenario) : null;
+  return <ProtocolView data={harness ?? (await readProtocol())} />;
 }

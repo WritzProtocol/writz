@@ -3,7 +3,7 @@
 .ln-col { display: flex; flex-direction: column; gap: 40px; }
 .ln-head { display: flex; flex-direction: column; gap: 12px; }
 .ln-title { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 20px; }
-.ln-head h1 { font-size: clamp(40px, 4.6vw, 68px); font-weight: 600; letter-spacing: -0.035em; line-height: 1.02; }
+.ln-head h1, .ln-head .ln-h1 { font-size: clamp(40px, 4.6vw, 68px); font-weight: 600; letter-spacing: -0.035em; line-height: 1.02; }
 .ln-sub { font-size: clamp(18px, 1.5vw, 21px); color: var(--body); }
 .ln-sub .mono { color: var(--heading); }
 .ln-h2 { font-size: 21px; font-weight: 600; letter-spacing: -0.014em; line-height: 1.25; }
@@ -72,8 +72,8 @@
 .ln-bm-legend i[data-zone="info"] { background: color-mix(in oklab, var(--info) 50%, transparent); }
 .ln-bm-legend i[data-zone="positive"] { background: color-mix(in oklab, var(--positive) 55%, transparent); }
 @media (prefers-reduced-motion: no-preference) {
-  .ln-bm-fill { animation: ln-grow var(--dur-section) var(--ease-enter) 150ms both; }
-  .ln-bm-marker { animation: ln-drop var(--dur-element) var(--ease-enter) 520ms both; }
+  .wz-open .ln-bm-fill { animation: ln-grow var(--dur-section) var(--ease-enter) calc(640ms + var(--wz-skip, 0ms)) both; }
+  .wz-open .ln-bm-marker { animation: ln-drop var(--dur-element) var(--ease-enter) calc(1010ms + var(--wz-skip, 0ms)) both; }
 }
 @keyframes ln-grow { from { transform: scaleX(0); } }
 @keyframes ln-drop { from { opacity: 0; transform: translateY(-6px); } }

@@ -25,6 +25,7 @@ import type { PositionStatus } from "@/lib/status/types";
 import type { ErrorFlow } from "@/lib/errors";
 import { networkName } from "@/lib/wallet/precheck";
 import { useElapsed } from "@/components/ui/hooks";
+import { Enter } from "@/components/ui/entrance";
 import { ErrorBox, ExternalLink, Notice, SlideToConfirm, Spinner, type Tone } from "@/components/ui";
 import type { LoanModel } from "./model";
 
@@ -233,7 +234,7 @@ export function WayOut({
   opened: string;
 }) {
   return (
-    <section className="ln-out wz-cut-sm" aria-labelledby="way-out">
+    <Enter as="section" name="wayout" kind="open" className="ln-out wz-cut-sm" aria-labelledby="way-out">
       <h2 id="way-out" className="ln-h2">
         Your way out
       </h2>
@@ -269,7 +270,7 @@ export function WayOut({
           </div>
         </>
       ) : null}
-    </section>
+    </Enter>
   );
 }
 
@@ -987,7 +988,7 @@ const when = (at: number) =>
 
 export function OnThisDevice({ items }: { items: ActivityItem[] }) {
   return (
-    <section className="ln-device" aria-labelledby="on-device">
+    <Enter as="section" name="device" step={4} className="ln-device" aria-labelledby="on-device">
       <h2 id="on-device" className="ln-h2">
         On this device
       </h2>
@@ -1011,6 +1012,6 @@ export function OnThisDevice({ items }: { items: ActivityItem[] }) {
         <p>No transactions for this loan on this device yet.</p>
       )}
       <p className="wz-muted">Full history needs the Writz indexer and is coming later.</p>
-    </section>
+    </Enter>
   );
 }

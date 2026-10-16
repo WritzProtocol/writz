@@ -75,7 +75,7 @@
 
 /* What you'll need, and the lock aside */
 .bj-need { padding: 24px; background: var(--panel); }
-.bj-need h2, .bj-slab h2 { font-size: 21px; font-weight: 600; letter-spacing: -0.014em; }
+.bj-need h2, .bj-slab h2, .bj-aside .bj-h2 { font-size: 21px; font-weight: 600; letter-spacing: -0.014em; }
 .bj-ticks { display: grid; gap: 4px; margin: 20px 0 0; padding: 0; list-style: none; }
 .bj-ticks li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 14px; padding: 14px 16px; background: var(--bj-well); font-size: 15px; line-height: 1.5; }
 .bj-ticks li > i { grid-row: span 2; width: 8px; height: 15px; margin-top: 4px; background: var(--mark); transform: skewX(-16deg); }
@@ -88,6 +88,7 @@
 .bj-frag > p { margin-top: 4px; font-size: 28px; line-height: 1.15; color: var(--heading); }
 .bj-frag .bj-ticks li:first-child > i { background: var(--muted); }
 @media (max-width: 1199px) { .bj-slab { display: none; } }
+.bj-slab.wz-sk-slab { background: var(--panel); }
 
 /* Review: the key line, acknowledgement and slide */
 .bj-send { display: flex; flex-direction: column; gap: 0; }

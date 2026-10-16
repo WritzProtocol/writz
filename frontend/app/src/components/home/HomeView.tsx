@@ -9,6 +9,7 @@ import { networkName } from "@/lib/wallet/precheck";
 import { useRefreshStatus } from "@/lib/status/provider";
 import { ExternalLink, Notice } from "@/components/ui";
 import { useShellAccount } from "@/components/shell/account";
+import { useEntrance } from "@/components/ui/entrance";
 import type { HomeData } from "./data";
 import { EarnCard, HowALoanWorks, LendCard, LoanSkeleton, LoanSummaryCard, Preview, UrgentCard } from "./parts";
 
@@ -82,6 +83,13 @@ export function HomeView({ data }: { data: HomeData }) {
   const urgentLoanId = urgent?.loan?.position.id ?? null;
   const isNew = !hasLoans && !finding && !earn && !supplied;
   const m = config.bitcoin.minConfirmations;
+  const showsPreview = !hasLoans && !finding;
+  const head = useEntrance("head", "in");
+  const findingIn = useEntrance("finding", "in", { step: 2, ready: finding });
+  const closedIn = useEntrance("closed", "in", { step: 3, ready: closed.length > 0 });
+  const startIn = useEntrance("start", "in", { step: 3, ready: showsPreview && Boolean(earn || supplied) });
+  const howIn = useEntrance("how", "in", { step: 4, ready: !hasLoans });
+  const foot = useEntrance("foot", "in", { step: 4 });
   const checkDeposit = () => {
     if (a.pendingDeposit) refresh({ position: null, pendingDeposit: a.pendingDeposit });
   };
@@ -90,7 +98,7 @@ export function HomeView({ data }: { data: HomeData }) {
     <div className="hm-col">
       <GlobalNotices data={data} />
 
-      <header className="hm-head">
+      <header {...head("hm-head")}>
         <h1 className="hm-h1 hm-display">{headline}</h1>
         {isNew ? (
           <p className="hm-sub">
@@ -119,7 +127,7 @@ export function HomeView({ data }: { data: HomeData }) {
       ) : null}
 
       {finding ? (
-        <section aria-labelledby="finding" className="hm-section">
+        <section aria-labelledby="finding" {...findingIn("hm-section")}>
           <h2 id="finding" className="hm-h2" aria-live="polite">
             Finding your loans...
           </h2>
@@ -139,13 +147,14 @@ export function HomeView({ data }: { data: HomeData }) {
               findLoans={a.loans.retry}
               compact={open.length > 1}
               primary={urgentLoanId !== l.position.id}
+              enter
             />
           ))}
         </section>
       ) : null}
 
       {closed.length > 0 ? (
-        <details className="hm-closed">
+        <details {...closedIn("hm-closed")}>
           <summary>Closed loans ({closed.length})</summary>
           <div className="hm-loans" data-count={closed.length}>
             {closed.map((l) => (
@@ -162,9 +171,9 @@ export function HomeView({ data }: { data: HomeData }) {
         </div>
       ) : null}
 
-      {!hasLoans && !finding ? (
+      {showsPreview ? (
         earn || supplied ? (
-          <div className="wz-actions">
+          <div {...startIn("wz-actions")}>
             <Link href="/borrow/new" className="wz-btn wz-btn-line">
               Start a loan
             </Link>
@@ -174,9 +183,9 @@ export function HomeView({ data }: { data: HomeData }) {
         )
       ) : null}
 
-      {!hasLoans ? <HowALoanWorks /> : null}
+      {!hasLoans ? <HowALoanWorks enter={howIn} /> : null}
 
-      <nav className="hm-foot" aria-label="More">
+      <nav {...foot("hm-foot")} aria-label="More">
         <Link href="/protocol" className="wz-btn wz-btn-text">
           Protocol stats
         </Link>

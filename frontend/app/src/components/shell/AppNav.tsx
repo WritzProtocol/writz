@@ -106,25 +106,33 @@ export function AppNav() {
                 </span>
               ) : null}
             </button>
-            <button
-              ref={chip}
-              type="button"
-              className={`wz-btn wz-btn-sm wz-wallet-chip ${any ? "wz-btn-quiet" : "wz-btn-line"}`}
-              aria-haspopup="dialog"
-              aria-expanded={open === "account"}
-              aria-label={any ? chipName : undefined}
-              onClick={() => setOpen("account")}
-            >
-              {any ? (
-                <>
-                  <i className="wz-dot" data-on={Boolean(btc)} aria-hidden="true" />
-                  <i className="wz-dot" data-on={Boolean(stellar)} aria-hidden="true" />
-                  <span className="mono">{stellar ? shortAddress(stellar) : btc ? shortAddress(btc) : ""}</span>
-                </>
-              ) : (
-                "Connect wallets"
-              )}
-            </button>
+            {a.walletsKnown ? (
+              <button
+                ref={chip}
+                type="button"
+                className={`wz-btn wz-btn-sm wz-wallet-chip ${any ? "wz-btn-quiet" : "wz-btn-line"}`}
+                aria-haspopup="dialog"
+                aria-expanded={open === "account"}
+                aria-label={any ? chipName : undefined}
+                onClick={() => setOpen("account")}
+              >
+                {any ? (
+                  <>
+                    <i className="wz-dot" data-on={Boolean(btc)} aria-hidden="true" />
+                    <i className="wz-dot" data-on={Boolean(stellar)} aria-hidden="true" />
+                    <span className="mono">{stellar ? shortAddress(stellar) : btc ? shortAddress(btc) : ""}</span>
+                  </>
+                ) : (
+                  "Connect wallets"
+                )}
+              </button>
+            ) : (
+              <span className="wz-btn wz-btn-sm wz-btn-quiet wz-wallet-chip wz-sk-btn wz-sk-chip" aria-hidden="true">
+                <i className="wz-dot" />
+                <i className="wz-dot" />
+                <span className="mono">GABC…WXYZ</span>
+              </span>
+            )}
           </div>
         </div>
       </header>

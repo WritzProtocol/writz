@@ -6,6 +6,8 @@ import { useMounted, useMockWorld } from "@/components/ui/hooks";
 import { useShellAccount } from "@/components/shell/account";
 import { mockHomeData, useLiveHomeData } from "./data";
 import { HomeView } from "./HomeView";
+import { HowSkeleton, LoanSkeleton, PreviewSkeleton } from "./parts";
+import { T } from "@/components/ui/skeleton";
 
 function LiveHome() {
   const a = useShellAccount();
@@ -17,24 +19,58 @@ function MockHome({ world }: { world: MockWorld }) {
   return <HomeView data={mockHomeData(world, now)} />;
 }
 
-/** Static placeholder at the real size of the first screen while the client hydrates. */
+function Foot() {
+  return (
+    <nav className="hm-foot">
+      {["Protocol stats", "How to reclaim", "Docs"].map((t) => (
+        <span key={t} className="wz-btn wz-btn-text">
+          <T>{t}</T>
+        </span>
+      ))}
+    </nav>
+  );
+}
+
+/** The page at its loaded layout until the client knows the wallet: the loan panel when this browser has loans, the first-visit page otherwise. */
 function Skeleton() {
   return (
-    <div className="hm-col">
+    <>
       <h1 className="wz-sr">Loading Writz</h1>
-      <div className="wz-skeleton" aria-hidden="true" style={{ height: 44, width: "min(520px, 80%)" }} />
-      <div className="wz-skeleton" aria-hidden="true" style={{ height: 22, width: "min(640px, 95%)" }} />
-      <div className="hm-preview" aria-hidden="true">
-        <div className="wz-skeleton" style={{ height: 300, borderRadius: 14 }} />
-        <div className="wz-skeleton" style={{ height: 200, borderRadius: 14 }} />
+      <div className="hm-col" aria-hidden="true" data-sk="loans">
+        <div className="hm-head">
+          <p className="hm-h1 hm-display">
+            <T>Your loan is healthy.</T>
+          </p>
+        </div>
+        <div className="hm-loans" data-count="1">
+          <LoanSkeleton />
+        </div>
+        <Foot />
       </div>
-    </div>
+      <div className="hm-col" aria-hidden="true" data-sk="noloans">
+        <div className="hm-head">
+          <p className="hm-h1 hm-display">
+            <T>Lock Bitcoin. Borrow dollars.</T>
+          </p>
+          <p className="hm-sub">
+            <T>
+              Lock BTC on Bitcoin and borrow USDC on Stellar. Repay and your BTC comes back. No bridge, no custodian, no wrapped token.
+              Test funds only.
+            </T>
+          </p>
+        </div>
+        <PreviewSkeleton />
+        <HowSkeleton />
+        <Foot />
+      </div>
+    </>
   );
 }
 
 export function HomePage() {
   const mounted = useMounted();
   const world = useMockWorld();
-  if (!mounted || world?.globals.hydrating) return <Skeleton />;
+  const a = useShellAccount();
+  if (!mounted || !a.walletsKnown) return <Skeleton />;
   return world ? <MockHome world={world} /> : <LiveHome />;
 }

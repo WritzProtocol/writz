@@ -23,7 +23,7 @@ import type { MockWorld, Reading } from "@/lib/mock/types";
 import { usePositionStatuses } from "@/lib/status/provider";
 import type { LocalInputs } from "@/lib/status/types";
 import type { HomeDeposit, HomeLoan } from "@/lib/home/model";
-import { useRead, useMockWorld } from "@/components/ui/hooks";
+import { useMounted, useRead, useMockWorld } from "@/components/ui/hooks";
 
 export type LoansState = "disconnected" | "unsigned" | "signing" | "finding" | "found" | "failed";
 
@@ -59,6 +59,8 @@ export interface ShellAccount {
   recent: readonly RecentTx[];
   busy: boolean;
   mainnetGuard: boolean;
+  /** False until it is known whether a wallet is connected: before hydration and while a session restores. */
+  walletsKnown: boolean;
   otherTabTx: boolean;
   rpcUnreachable: boolean;
   relayerCatchingUp: boolean;
@@ -113,6 +115,7 @@ function useLiveAccount(): BaseAccount {
   const address = w.address;
   const flowBusy = useAnyFlowBusy();
   const txLock = useTxLockState(address);
+  const mounted = useMounted();
 
   // A different account while connected means it was switched in the extension.
   const [seen, setSeen] = useState<{ address: string | null; switchedFrom: string | null }>({ address, switchedFrom: null });
@@ -259,6 +262,7 @@ function useLiveAccount(): BaseAccount {
     recent,
     busy: flowBusy || Boolean(pendingDeposit) || pendingTxs.length > 0,
     mainnetGuard: config.networkPassphrase === MAINNET_PASSPHRASE,
+    walletsKnown: mounted && !w.restoring,
     otherTabTx: txLock === "elsewhere",
     rpcUnreachable: false,
     relayerCatchingUp: false,
@@ -308,6 +312,7 @@ function mockAccount(world: MockWorld): BaseAccount {
     recent: NO_RECENT,
     busy: Boolean(pendingDeposit) || world.activity.length > 0,
     mainnetGuard: Boolean(world.globals.mainnetGuard),
+    walletsKnown: !world.globals.hydrating,
     otherTabTx: Boolean(world.globals.otherTabTx),
     rpcUnreachable: Boolean(world.globals.rpcUnreachable),
     relayerCatchingUp: Boolean(world.globals.relayerCatchingUp),

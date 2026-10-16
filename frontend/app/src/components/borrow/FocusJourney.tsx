@@ -14,6 +14,7 @@ import {
   type JourneyStep,
 } from "@/lib/borrow/journey";
 import { ExternalLink } from "@/components/ui";
+import { Enter, useEntrance } from "@/components/ui/entrance";
 import type { JourneyModel } from "./model";
 import { AmountStep, BitcoinStep, DoneStep, RegisterStep, ReviewStep, StellarStep, WaitStep, registerQuestion } from "./steps";
 
@@ -36,6 +37,10 @@ export function FocusJourney({ m: model }: { m: JourneyModel }) {
   const { step } = model;
   const heading = useRef<HTMLHeadingElement>(null);
   const first = useRef(true);
+  const [firstStep] = useState(step);
+  const [moved, setMoved] = useState(false);
+  if (!moved && step !== firstStep) setMoved(true);
+  const question = useEntrance("question", "in", { step: 3, ready: !moved });
 
   useEffect(() => {
     if (first.current) {
@@ -64,9 +69,9 @@ export function FocusJourney({ m: model }: { m: JourneyModel }) {
   if (step === "done") {
     return (
       <div className="bj">
-        <section className="bj-end wz-cut wz-rise">
+        <Enter as="section" name="done" kind="open" className="bj-end wz-cut">
           <DoneStep m={model} heading={heading} />
-        </section>
+        </Enter>
       </div>
     );
   }
@@ -79,12 +84,12 @@ export function FocusJourney({ m: model }: { m: JourneyModel }) {
 
   return (
     <div className="bj">
-      <div className="bj-progress" aria-hidden="true" style={{ ["--bj-steps" as string]: STEPS.length }}>
+      <Enter name="progress" className="bj-progress" aria-hidden="true" style={{ ["--bj-steps" as string]: STEPS.length }}>
         {STEPS.map((s, i) => (
           <i key={s.id} data-state={i < current ? "done" : i === current ? "now" : "next"} />
         ))}
-      </div>
-      <div className="bj-stepline">
+      </Enter>
+      <Enter name="stepline" className="bj-stepline">
         <p>
           <b>
             Step {current + 1} of {STEPS.length}
@@ -96,17 +101,17 @@ export function FocusJourney({ m: model }: { m: JourneyModel }) {
             Back
           </button>
         )}
-      </div>
+      </Enter>
       <p className="wz-sr" role="status">
         Step {current + 1} of {STEPS.length}: {label}
       </p>
 
-      <div className="wz-enter" key={step}>
-        {step !== "amount" && <Summary m={model} />}
-        <h1 className="bj-q" ref={heading} tabIndex={-1}>
+      <div className={moved ? "wz-enter" : undefined} key={step}>
+        {step !== "amount" && <Summary m={model} intro={!moved} />}
+        <h1 {...question("bj-q")} ref={heading} tabIndex={-1}>
           {step === "register" ? registerQuestion(model) : QUESTION[step]}
         </h1>
-        <div className="bj-grid" data-aside={aside}>
+        <Enter name="grid" step={4} ready={!moved} className="bj-grid" data-aside={aside}>
           <div className="bj-col">
             {step === "amount" && <AmountStep m={model} />}
             {step === "stellar" && <StellarStep m={model} />}
@@ -137,19 +142,19 @@ export function FocusJourney({ m: model }: { m: JourneyModel }) {
               </ul>
             </aside>
           )}
-          {lock && <LockAside m={model} />}
-        </div>
+          {lock && <LockAside m={model} intro={!moved} />}
+        </Enter>
       </div>
     </div>
   );
 }
 
 /** The gold slab beside the review: what the lock does now and after the timelock. */
-function LockAside({ m }: { m: JourneyModel }) {
+function LockAside({ m, intro }: { m: JourneyModel; intro: boolean }) {
   const r = m.review;
   const height = r.timelockHeight?.toLocaleString("en-US");
   return (
-    <aside className="bj-aside bj-slab" aria-labelledby="bj-lock">
+    <Enter as="aside" name="lock" kind="open" ready={intro} className="bj-aside bj-slab" aria-labelledby="bj-lock">
       <h2 id="bj-lock">Your lock on Bitcoin</h2>
       <p>A Bitcoin Script holds it, not a company.</p>
       <div className="bj-frag">
@@ -170,11 +175,11 @@ function LockAside({ m }: { m: JourneyModel }) {
           </li>
         </ul>
       </div>
-    </aside>
+    </Enter>
   );
 }
 
-function Summary({ m }: { m: JourneyModel }) {
+function Summary({ m, intro }: { m: JourneyModel; intro: boolean }) {
   const [open, setOpen] = useState(false);
   const values = summaryValues(m.sats, m.priceStroops);
   if (!values.locking) return null;
@@ -195,7 +200,7 @@ function Summary({ m }: { m: JourneyModel }) {
   );
 
   return (
-    <div className="bj-sum">
+    <Enter name="summary" step={2} ready={intro} className="bj-sum">
       <div className="bj-sum-bar">
         <span className="bj-sum-vals">
           <span>
@@ -238,6 +243,6 @@ function Summary({ m }: { m: JourneyModel }) {
           {row("Your way out", m.review.exitDate ? `Reclaim alone after about ${m.review.exitDate}` : "Checking…")}
         </dl>
       )}
-    </div>
+    </Enter>
   );
 }

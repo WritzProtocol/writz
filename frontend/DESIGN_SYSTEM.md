@@ -171,17 +171,36 @@ render in Geist Mono with tabular numbers.
 
 ## Motion
 
-Three tiers in the tokens: `--dur-micro` (120ms, hover and press),
-`--dur-element` (220ms, a control or a value changing) and `--dur-section`
-(420ms, a panel or sheet arriving), with `--ease-enter` for things arriving and
-`--ease-exit` for things leaving. Buttons scale to 0.96 on press. No springs, no
-bounce, and nothing loops except progress indicators.
+Four tiers in the tokens: `--dur-micro` (120ms, hover and press),
+`--dur-element` (220ms, a control or a value changing), `--dur-section`
+(420ms, a panel or sheet arriving) and `--dur-signature` (900ms, one thing
+once), with `--ease-enter` for things arriving and `--ease-exit` for things
+leaving. Buttons scale to 0.96 on press. No springs, no bounce, and nothing
+loops except progress indicators and loading placeholders.
+
+Each app route has one orchestrated entrance. The cut-corner panels sweep in
+from the right over `--dur-signature` (120ms delay) and their contents rise at
+640ms; the other sections rise 16px over `--dur-section`, staggered in 80ms
+steps; inside a panel the health meter fills and its marker drops after it.
+`useEntrance()` and `<Enter>` in `components/ui/entrance.tsx` play it once per
+visit to a route: re-renders, data updates, tab switches and remounts on the
+same visit do not replay it, and an element that first appears later plays it
+then. The sidebar and header never animate.
+
+While a page waits for the client to know the wallet, its skeleton takes the
+loaded layout: the same classes and cut corners, placeholder bars sized by the
+real copy (`T` and `SkBtn` in `components/ui/skeleton.tsx`), and a slow opacity
+pulse. A script in the app layout marks before first paint whether this browser
+remembers a wallet, loans or a deposit, so each skeleton shows the layout the
+page will settle into. The header shows a neutral chip until the wallet state
+is known.
 
 Every animation has a static end state that is complete on its own. Under
-`prefers-reduced-motion: reduce` entrances, sheet slides, the spinner, the
-meter fill and control transitions are switched off, and the landing skips its
-hero entrance and scroll reveals. In React, `usePrefersReducedMotion()` from
-`components/ui/hooks.ts` gives the same answer.
+`prefers-reduced-motion: reduce` entrances, the skeleton pulse, sheet slides,
+the spinner, the meter fill and control transitions are switched off, and the
+landing skips its hero entrance and scroll reveals. In React,
+`usePrefersReducedMotion()` from `components/ui/hooks.ts` gives the same
+answer.
 
 ## Rules code must keep
 

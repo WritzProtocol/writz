@@ -23,6 +23,7 @@ import {
   type LoanTab,
 } from "@/lib/loan/model";
 import { Notice } from "@/components/ui";
+import { Enter } from "@/components/ui/entrance";
 import type { LoanModel } from "./model";
 import {
   BorrowPanel,
@@ -41,13 +42,13 @@ const TAB_LABEL: Record<LoanTab, string> = { borrow: "Borrow more", repay: "Repa
 
 function Heading({ n, badge, sub }: { n: number; badge?: ReactNode; sub?: ReactNode }) {
   return (
-    <header className="ln-head wz-rise">
+    <Enter as="header" name="head" className="ln-head">
       <div className="ln-title">
         <HeadingTitle n={n} />
         {badge}
       </div>
       {sub ? <p className="ln-sub">{sub}</p> : null}
-    </header>
+    </Enter>
   );
 }
 
@@ -55,11 +56,11 @@ function Empty({ n, title, body, action }: { n: number; title?: string; body: Re
   return (
     <div className="ln-col">
       <Heading n={n} />
-      <section className="ln-empty wz-cut-sm">
+      <Enter as="section" name="empty" kind="open" className="ln-empty wz-cut-sm">
         {title ? <h2 className="wz-h2">{title}</h2> : null}
         <div>{body}</div>
         {action}
-      </section>
+      </Enter>
     </div>
   );
 }
@@ -222,7 +223,7 @@ export function LoanView({ m }: { m: LoanModel }) {
 
       <div className="ln-grid" data-risk={risk} data-side={sideTop ? "top" : undefined} style={grid}>
         {risk ? (
-          <section className="ln-risk wz-cut" aria-label="Risk">
+          <Enter as="section" name="risk" kind="open" className="ln-risk wz-cut" aria-label="Risk">
             <HealthText ratioBp={ratioBp} health={checking ? null : health} />
             <HealthMeter ratioBp={ratioBp} health={checking ? null : health} preview={preview} />
             {checking ? (
@@ -245,15 +246,15 @@ export function LoanView({ m }: { m: LoanModel }) {
                 <span className="mono">{price !== null ? formatUsd(price) : "Checking..."}</span> (oracle price).
               </p>
             )}
-          </section>
+          </Enter>
         ) : (
-          <div className="ln-closed">
+          <Enter name="closed" step={2} className="ln-closed">
             <ClosedNotice status={status} position={position} />
-          </div>
+          </Enter>
         )}
 
         {risk ? (
-          <dl className="ln-nums">
+          <Enter as="dl" name="nums" step={3} className="ln-nums">
             <div>
               <dt>Collateral</dt>
               <dd>
@@ -275,9 +276,9 @@ export function LoanView({ m }: { m: LoanModel }) {
                 {checking || !available ? "Checking..." : `${formatUsdc(health === "healthy" || health === "none" ? available.stroops : 0n)} USDC`}
               </dd>
             </div>
-          </dl>
+          </Enter>
         ) : status.kind === "liquidated" ? (
-          <dl className="ln-nums">
+          <Enter as="dl" name="nums" step={3} className="ln-nums">
             <div>
               <dt>Collateral</dt>
               <dd className="mono">{formatBtc(collateral)} BTC</dd>
@@ -286,13 +287,17 @@ export function LoanView({ m }: { m: LoanModel }) {
               <dt>You owe</dt>
               <dd className="mono">0.00 USDC</dd>
             </div>
-          </dl>
+          </Enter>
         ) : null}
 
-        {notes.length > 0 ? <div className="ln-notes">{notes}</div> : null}
+        {notes.length > 0 ? (
+          <Enter name="notes" step={3} className="ln-notes">
+            {notes}
+          </Enter>
+        ) : null}
 
         {hasActions && (
-          <section className="ln-actions" aria-label="Actions">
+          <Enter as="section" name="actions" step={4} className="ln-actions" aria-label="Actions">
             <div className="wz-seg" role="tablist" aria-label="Choose an action">
               {LOAN_TABS.map((t) => (
                 <button
@@ -352,7 +357,7 @@ export function LoanView({ m }: { m: LoanModel }) {
                 )}
               </div>
             )}
-          </section>
+          </Enter>
         )}
 
         <div className="ln-side">

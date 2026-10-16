@@ -60,6 +60,8 @@ interface WalletState {
   unlock: () => Promise<void>;
   /** Active auth backend, or null when not connected. */
   walletBackend: WalletBackend | null;
+  /** A remembered session is still being restored, so whether a wallet is connected isn't known yet. */
+  restoring: boolean;
 }
 
 const BACKEND_KEY = "writz.walletBackend";
@@ -325,6 +327,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       unlocked: seed !== null,
       unlock,
       walletBackend: backend,
+      restoring: address === null && (backend === "kit" || (backend === "privy" && privy !== null)),
     }),
     [
       address,
@@ -338,6 +341,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       seed,
       unlock,
       backend,
+      privy,
     ],
   );
 
