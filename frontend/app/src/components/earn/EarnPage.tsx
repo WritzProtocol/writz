@@ -16,10 +16,14 @@ function MockEarn({ world }: { world: MockWorld }) {
 
 function Skeleton() {
   return (
-    <div className="fu-col">
-      <h1 className="hm-h1">Earn on USDC</h1>
-      <div className="wz-skeleton" aria-hidden="true" style={{ height: 120, borderRadius: 14 }} />
-      <div className="wz-skeleton" aria-hidden="true" style={{ height: 260, borderRadius: 14 }} />
+    <div className="fu-page">
+      <header>
+        <h1 className="fu-h1">Earn on USDC</h1>
+      </header>
+      <div className="fu-grid" aria-hidden="true">
+        <div className="wz-skeleton fu-sk-hero" />
+        <div className="wz-skeleton fu-sk-act" />
+      </div>
     </div>
   );
 }
