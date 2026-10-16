@@ -76,7 +76,7 @@ export function AmountStep({ m }: { m: JourneyModel }) {
 
   return (
     <form
-      className="wz-stack"
+      className="bj-panel"
       noValidate
       onSubmit={(e) => {
         e.preventDefault();
@@ -116,16 +116,16 @@ export function AmountStep({ m }: { m: JourneyModel }) {
         </p>
       )}
       {price ? (
-        <dl className="wz-well">
-          <div className="wz-row">
+        <dl className="bj-kv">
+          <div>
             <dt>You can borrow up to</dt>
             <dd className="mono">{sats ? `${formatUsdc(maxBorrowStroops(sats, price))} USDC` : "-"}</dd>
           </div>
-          <div className="wz-row">
+          <div>
             <dt>Liquidated if BTC falls below</dt>
             <dd className="mono">{formatUsd(liquidationPriceStroops(price))}</dd>
           </div>
-          <div className="wz-row">
+          <div>
             <dt>BTC price</dt>
             <dd>
               <span className="mono">{formatUsd(price)}</span> <small className="wz-muted">oracle price</small>
@@ -139,7 +139,7 @@ export function AmountStep({ m }: { m: JourneyModel }) {
         The liquidation price assumes you borrow the full amount.
         {m.review.exitDate ? ` If Writz stops, you can reclaim your BTC alone after about ${m.review.exitDate}.` : ""}
       </p>
-      <div>
+      <div className="bj-submit">
         <button type="submit" className="wz-btn wz-btn-gold">
           Continue
         </button>
@@ -157,7 +157,7 @@ export function StellarStep({ m }: { m: JourneyModel }) {
 
   return (
     <div className="wz-stack">
-      <p>Your Stellar wallet receives the USDC and signs loan actions. Writz never sees your keys.</p>
+      <p className="bj-lead">Your Stellar wallet receives the USDC and signs loan actions. Writz never sees your keys.</p>
 
       {!s.address ? (
         <>
@@ -330,7 +330,7 @@ export function BitcoinStep({ m }: { m: JourneyModel }) {
 
   return (
     <div className="wz-stack">
-      <p>Xverse holds the BTC you lock. Its key builds your lock address, so only you and Writz together can move it.</p>
+      <p className="bj-lead">Xverse holds the BTC you lock. Its key builds your lock address, so only you and Writz together can move it.</p>
       {m.stellar.loansCount > 0 && !b.address && (
         <Notice tone="info">
           You have {m.stellar.loansCount} {m.stellar.loansCount === 1 ? "loan" : "loans"}. This adds a new one.
@@ -435,18 +435,17 @@ export function ReviewStep({ m }: { m: JourneyModel }) {
 
   return (
     <div className="wz-stack">
-      <dl className="wz-well" id="review-summary">
-        <div className="wz-row">
+      <dl className="bj-rows" id="review-summary">
+        <div>
           <dt>You lock</dt>
           <dd>
-            <span className="mono">{btc} BTC</span>
-            <br />
-            <small className="wz-muted">plus a network fee {fee}</small>
+            <span className="mono bj-big">{btc} BTC</span>
+            <small>plus a network fee {fee}</small>
           </dd>
         </div>
-        <div className="wz-row wz-row-wrap">
+        <div>
           <dt>To your lock address</dt>
-          <dd className="wz-stack" style={{ gap: 8 }}>
+          <dd>
             {r.lockFailed ? (
               <span className="wz-actions">
                 <span>Can&apos;t read the Bitcoin block height to build your lock address.</span>
@@ -455,57 +454,65 @@ export function ReviewStep({ m }: { m: JourneyModel }) {
                 </button>
               </span>
             ) : (
-              <span className="mono wz-break">
-                {r.lockAddress ?? (m.bitcoin.address ? "Checking..." : "Connect Xverse first")}
-              </span>
+              <span className="mono bj-addr">{r.lockAddress ?? (m.bitcoin.address ? "Checking..." : "Connect Xverse first")}</span>
             )}
-            {r.lockAddress && (
-              <span className="wz-actions">
-                <button
-                  type="button"
-                  className="wz-btn wz-btn-line wz-btn-sm"
-                  onClick={() => {
-                    void navigator.clipboard
-                      ?.writeText(r.lockAddress!)
-                      .then(() => {
-                        setCopied(true);
-                        setTimeout(() => setCopied(false), 2000);
-                      })
-                      .catch(() => {});
-                  }}
-                >
-                  {copied ? "Copied" : "Copy address"}
-                </button>
-                <span className="wz-sr" aria-live="polite">
-                  {copied ? "Copied" : ""}
-                </span>
-              </span>
-            )}
-            <details className="wz-hint">
-              <summary style={{ cursor: "pointer" }}>What is this?</summary>
-              <p style={{ marginTop: 6 }}>
-                Only your key and Writz&apos;s together can move BTC from this address. After Bitcoin block {height}
-                {r.exitDate ? `, about ${r.exitDate},` : ""} your key alone can.
-              </p>
-            </details>
+            <div className="bj-tools">
+              {r.lockAddress && (
+                <>
+                  <button
+                    type="button"
+                    className="wz-btn wz-btn-sm"
+                    onClick={() => {
+                      void navigator.clipboard
+                        ?.writeText(r.lockAddress!)
+                        .then(() => {
+                          setCopied(true);
+                          setTimeout(() => setCopied(false), 2000);
+                        })
+                        .catch(() => {});
+                    }}
+                  >
+                    {copied ? "Copied" : "Copy address"}
+                  </button>
+                  <span className="wz-sr" aria-live="polite">
+                    {copied ? "Copied" : ""}
+                  </span>
+                </>
+              )}
+              <details className="bj-more">
+                <summary>What is this?</summary>
+                <p>
+                  Only your key and Writz&apos;s together can move BTC from this address. After Bitcoin block {height}
+                  {r.exitDate ? `, about ${r.exitDate},` : ""} your key alone can.
+                </p>
+              </details>
+            </div>
           </dd>
         </div>
-        <div className="wz-row">
+        <div>
           <dt>You can borrow</dt>
-          <dd className="mono">{m.priceStroops ? `up to ${formatUsdc(maxBorrowStroops(sats, m.priceStroops))} USDC` : "BTC price unavailable"}</dd>
+          <dd>
+            {m.priceStroops ? (
+              <>
+                up to <span className="mono">{formatUsdc(maxBorrowStroops(sats, m.priceStroops))} USDC</span>
+              </>
+            ) : (
+              "BTC price unavailable"
+            )}
+          </dd>
         </div>
-        <div className="wz-row">
+        <div>
           <dt>Release</dt>
           <dd>Writz co-signs the release when your loan is repaid.</dd>
         </div>
-        <div className="wz-row">
+        <div>
           <dt>Your way out</dt>
           <dd>
             If Writz is unavailable, you alone can reclaim after {r.exitDate ? `about ${r.exitDate} ` : ""}
-            <span className="mono wz-muted">(block {height})</span>
+            (block <span className="mono">{height}</span>).
           </dd>
         </div>
-        <div className="wz-row">
+        <div>
           <dt>Network</dt>
           <dd>
             {BTC_NETWORK_LABEL}.{ON_TESTNET ? " Test funds only." : ""}
@@ -522,12 +529,15 @@ export function ReviewStep({ m }: { m: JourneyModel }) {
       ) : flow.phase === "preparing" ? (
         <Status>Getting your deposit ready</Status>
       ) : (
-        <div className="wz-stack">
+        <div className="bj-send">
           {flow.phase === "signature_cancelled" && flow.wallet === "bitcoin" && (
             <Notice tone="neutral">You declined in Xverse. No BTC was sent.</Notice>
           )}
           {flow.phase === "failed" && <ErrorBox error={flow.error} context={{ flow: "deposit" }} />}
-          <p className="wz-hint">Writz cannot recover your Bitcoin key. Keep its recovery phrase.</p>
+          <p className="bj-key">
+            <i aria-hidden="true" />
+            <span>Writz cannot recover your Bitcoin key. Keep its recovery phrase.</span>
+          </p>
           <label className="wz-check">
             <input type="checkbox" checked={r.ack} onChange={(e) => r.setAck(e.target.checked)} />
             <span>I understand my BTC stays locked until I repay and release it, or until block {height}.</span>
@@ -542,7 +552,7 @@ export function ReviewStep({ m }: { m: JourneyModel }) {
             onConfirm={r.send}
           />
           {!r.ack && <p className="wz-hint">Tick the box above to send.</p>}
-          <button type="button" className="wz-btn wz-btn-text" style={{ alignSelf: "flex-start" }} onClick={() => m.newDevice.setOpen(true)}>
+          <button type="button" className="wz-btn wz-btn-text" onClick={() => m.newDevice.setOpen(true)}>
             I already sent BTC
           </button>
         </div>
@@ -559,7 +569,7 @@ function NewDevicePanel({ m }: { m: JourneyModel }) {
 
   return (
     <form
-      className="wz-stack"
+      className="bj-panel"
       noValidate
       onSubmit={(e) => {
         e.preventDefault();
@@ -660,7 +670,11 @@ export function WaitStep({ m }: { m: JourneyModel }) {
       {saving && <Status>BTC sent. Saving your progress</Status>}
 
       {count ? (
-        <>
+        <div className="bj-wait">
+          <p className="bj-count mono" aria-hidden="true">
+            {count.n}
+            <span>/{count.m}</span>
+          </p>
           <ConfirmationSlots n={count.n} m={count.m} />
           <div className="wz-spread">
             <p className="wz-strong" aria-live="polite">
@@ -672,7 +686,7 @@ export function WaitStep({ m }: { m: JourneyModel }) {
             </p>
             {!relayerBehind && <p className="wz-muted">{timeLeft(count.m - count.n)}</p>}
           </div>
-        </>
+        </div>
       ) : (
         <>
           <div className="wz-skeleton" style={{ height: 44 }} />
@@ -922,7 +936,7 @@ export function DoneStep({ m, heading }: { m: JourneyModel; heading: RefObject<H
   return (
     <div className="wz-stack wz-done">
       <span className="wz-done-mark" aria-hidden="true" />
-      <h1 className="wz-h2" ref={heading} tabIndex={-1}>
+      <h1 className="bj-q" ref={heading} tabIndex={-1}>
         {btc ? (
           <>
             <span className="mono">{btc}</span> BTC locked
