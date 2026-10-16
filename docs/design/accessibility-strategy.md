@@ -51,8 +51,8 @@ focus states, form inputs with associated labels (not just placeholder text -
 `DepositFlow.tsx`'s BTC amount and txid inputs currently rely on `<label>`
 correctly, keep that pattern everywhere), error messages programmatically
 associated with their field, and color never the *only* signal (the health
-factor already pairs color with a numeric label - `text-ok`/`text-amber`/`text-crit`
-plus the percentage text - keep extending that pattern, don't let a future
+factor already pairs color with a numeric label - the status in words plus
+the percentage text - keep extending that pattern, don't let a future
 change drop the text and leave only color).
 
 **P1 - the rest of the app dashboard:** consistent landmark regions, skip-to-content

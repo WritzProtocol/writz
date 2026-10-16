@@ -1,7 +1,7 @@
 # Writz app
 
 The Writz dApp: Borrow against native BTC, Lend to the pool, Earn through the
-DeFindex vault, and the public `/metrics` dashboard. Next.js (App Router, React,
+DeFindex vault, and the public Protocol page. Next.js (App Router, React,
 TypeScript). The same code is deployed once per network, selected by
 `NEXT_PUBLIC_WRITZ_ENV`:
 
@@ -81,13 +81,31 @@ list lives in `src/lib/mock/scenarios.ts`. With a scenario selected,
 `StatusProvider` (`src/lib/status`) answers from its fixtures instead of the
 network.
 
+## Styling
+
+The Graphite & Gold tokens come from `../../packages/brand/tokens.css`,
+imported in `src/app/layout.tsx`. `src/app/globals.css` maps them into Tailwind;
+the app shell and the shared primitives are styled in `src/app/(app)/ui.css`,
+and each route has its own stylesheet next to it. See `../DESIGN_SYSTEM.md`.
+
 ## Structure
 
 ```
 src/
-  app/                 # App Router pages + layout
+  app/                 # App Router root layout, globals and API routes
+  app/(app)/           # every page inside the app shell, with ui.css
+  components/shell/    # sidebar, bottom tabs, Activity tray, account sheet
+  components/ui/       # shared primitives and hooks
   config.ts            # environment-driven configuration
   lib/contracts/       # typed wrappers over the generated bindings
+  lib/mock/            # UI mock harness fixtures (dev only)
 packages/
   commitment-tree/     # generated TypeScript bindings (vendored)
 ```
+
+## Troubleshooting
+
+If the dev server shows "Could not find the module ... in the React Client
+Manifest" after pulling changes that touch `packages/brand` or
+`next.config.ts`, stop it, delete this app's `.next` folder and run
+`bun run dev` again.

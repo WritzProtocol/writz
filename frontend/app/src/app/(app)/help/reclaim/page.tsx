@@ -50,7 +50,7 @@ export default function ReclaimHelp() {
           <h2 id="rc-need" className="rc-h2">
             What you need
           </h2>
-          <ul className="fo-need">
+          <ul className="wz-need">
             <li>
               <b>Your Bitcoin wallet&apos;s key</b>, the one that made the deposit. Writz cannot recover it.
             </li>

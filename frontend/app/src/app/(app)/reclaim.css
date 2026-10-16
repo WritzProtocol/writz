@@ -9,7 +9,7 @@
 .rc-when { grid-area: when; display: flex; flex-direction: column; gap: 12px; padding: 48px 32px 32px 48px; background: var(--panel); }
 .rc-lock, .rc-need, .rc-steps-wrap { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 .rc-lead { max-width: 56ch; font-size: 19px; line-height: 1.5; color: var(--heading); }
-.rc-need .fo-need { margin-top: 4px; max-width: 60ch; font-size: 16px; }
+.rc-need .wz-need { margin-top: 4px; max-width: 60ch; font-size: 16px; }
 
 .rc-loans { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
 .rc-loan { display: flex; flex-direction: column; gap: 10px; padding: 20px; background: color-mix(in oklab, var(--heading) 6%, var(--bg)); }

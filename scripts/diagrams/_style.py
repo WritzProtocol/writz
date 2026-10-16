@@ -1,7 +1,7 @@
 """
 Shared design system for all Writz Protocol diagrams.
 Professional palette · transparent background · light/dark compatible.
-Accent: amber (#E3A646) - the protocol's signature color.
+Accent: amber (#E3A646), for the diagrams only.
 """
 
 # ── Background ────────────────────────────────────────────────────────────────
@@ -31,14 +31,14 @@ B_ZK       = "#0284C7"   # sky-600
 B_STELLAR  = "#2563EB"   # blue-600
 B_FRONTEND = "#059669"   # emerald-600
 B_RELAYER  = "#7C3AED"   # purple-600
-B_DECISION = "#D97706"   # amber-600  - same as protocol amber (approx)
+B_DECISION = "#D97706"   # amber-600
 B_SUCCESS  = "#16A34A"   # green-600
 B_DANGER   = "#DC2626"   # red-600
-B_AMBER    = "#E3A646"   # Writz amber - used for key accent edges/nodes
+B_AMBER    = "#E3A646"   # diagram accent - key edges/nodes
 
 # ── Edges ─────────────────────────────────────────────────────────────────────
 E_DEFAULT  = "#A8A29E"   # stone-400
-E_MAIN     = "#E3A646"   # Writz amber - primary flow
+E_MAIN     = "#E3A646"   # diagram accent - primary flow
 E_BITCOIN  = "#EA580C"   # orange-600
 E_ZK       = "#0284C7"   # sky-600
 E_STELLAR  = "#2563EB"   # blue-600
