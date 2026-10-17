@@ -9,6 +9,7 @@ import { startRepayWatcher } from "./repay-watcher/poller.js";
 import { startVaultWatcher } from "./vault-watcher/poller.js";
 import { startHeaderSync } from "./bitcoin/spv-submit.js";
 import { lendingEnabled } from "./deploy-target.js";
+import { startTreeWatcher, treeSyncStatus } from "./tree-watcher/poller.js";
 
 const app = express();
 // Earn routes and the vault watcher run everywhere; the lending surface (SPV
@@ -96,6 +97,7 @@ app.get("/health", (_req, res) => {
     service: "writz-relayer",
     target: config.target,
     lending: LENDING,
+    ...(LENDING ? { treeSync: treeSyncStatus } : {}),
     bitcoinNetwork: config.bitcoinNetwork,
     esploraBaseUrl: config.esploraBaseUrl,
     defindex: vaultMetricsSnapshot(),
@@ -132,3 +134,7 @@ startVaultWatcher();
 
 // bitcoin-spv header sync - no-ops until BITCOIN_SPV_ID and SPV_SYNC_FROM_HEIGHT are set.
 if (LENDING) startHeaderSync();
+
+// Follows commitment-tree events so the leaf store never depends on a client
+// calling /update-leaf (GHSA-vwvv-3255-783f).
+if (LENDING) startTreeWatcher();

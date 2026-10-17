@@ -7,6 +7,7 @@ import { computePath, computeRoot } from "../merkle.js";
 import { readLeaves, writeLeaves, saveNote, readNotes } from "../leaf-store.js";
 import { verifyInsertAuth, lookupDepositorOnChain, InsertAuthError } from "../insert-auth.js";
 import { proveInsertion } from "../insert-prover.js";
+import { withTreeLock } from "../tree-lock.js";
 
 const COMMITMENT_RE = /^[0-9a-f]{64}$/i;
 const HEX_RE = /^[0-9a-f]+$/i;
@@ -47,14 +48,6 @@ async function fetchOnChainNextLeafIndex(): Promise<number> {
   return Number(result);
 }
 
-// Insertions run one at a time: each proof targets "the next leaf", so two
-// concurrent requests would prove the same slot and one would fail on-chain.
-let insertQueue: Promise<unknown> = Promise.resolve();
-function serialized<T>(task: () => Promise<T>): Promise<T> {
-  const run = insertQueue.then(task, task);
-  insertQueue = run.catch(() => undefined);
-  return run;
-}
 
 /** Fetches the real on-chain Merkle root. Throws if `COMMITMENT_TREE_ID` is
  * unset or the RPC call fails - callers decide how to respond to either. */
@@ -153,7 +146,9 @@ merkleRouter.post("/insert-commitment", writeLimiter, async (req: Request, res: 
     }
 
     const adminSecret = config.adminSecret;
-    await serialized(async () => {
+    // One writer at a time: each proof targets "the next leaf", and the tree
+    // watcher writes the same store (see tree-lock.ts).
+    await withTreeLock(async () => {
       const keypair = Keypair.fromSecret(adminSecret);
       const admin = keypair.publicKey();
       const commitment = BigInt("0x" + commitmentHex);
@@ -346,43 +341,45 @@ merkleRouter.post("/update-leaf", writeLimiter, async (req: Request, res: Respon
     return;
   }
 
-  const leaves = readLeaves();
-  if (leafIndex >= leaves.length) {
-    res.status(400).json({
-      error: `leafIndex ${leafIndex} out of range - leaf store has ${leaves.length} leaves`,
-    });
-    return;
-  }
+  await withTreeLock(async () => {
+    const leaves = readLeaves();
+    if (leafIndex >= leaves.length) {
+      res.status(400).json({
+        error: `leafIndex ${leafIndex} out of range - leaf store has ${leaves.length} leaves`,
+      });
+      return;
+    }
 
-  const candidate = [...leaves];
-  candidate[leafIndex] = BigInt("0x" + newCommitment);
-  const candidateRoot = computeRoot(candidate);
+    const candidate = [...leaves];
+    candidate[leafIndex] = BigInt("0x" + newCommitment);
+    const candidateRoot = computeRoot(candidate);
 
-  let onChainRoot: bigint;
-  try {
-    onChainRoot = await fetchOnChainRoot();
-  } catch (e) {
-    const message = e instanceof Error ? e.message : String(e);
-    res.status(502).json({ error: message });
-    return;
-  }
+    let onChainRoot: bigint;
+    try {
+      onChainRoot = await fetchOnChainRoot();
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      res.status(502).json({ error: message });
+      return;
+    }
 
-  if (candidateRoot !== onChainRoot) {
-    res.status(409).json({
-      error:
-        "This update does not reproduce the current on-chain Merkle root - " +
-        "either it doesn't correspond to a real confirmed borrow/repay, or " +
-        "the local leaf store has drifted and needs an operator resync.",
-      onChainRoot: onChainRoot.toString(16).padStart(64, "0"),
-      candidateRoot: candidateRoot.toString(16).padStart(64, "0"),
-    });
-    return;
-  }
+    if (candidateRoot !== onChainRoot) {
+      res.status(409).json({
+        error:
+          "This update does not reproduce the current on-chain Merkle root - " +
+          "either it doesn't correspond to a real confirmed borrow/repay, or " +
+          "the local leaf store has drifted and needs an operator resync.",
+        onChainRoot: onChainRoot.toString(16).padStart(64, "0"),
+        candidateRoot: candidateRoot.toString(16).padStart(64, "0"),
+      });
+      return;
+    }
 
-  writeLeaves(candidate);
-  if (encNote) saveNote(leafIndex, encNote);
+    writeLeaves(candidate);
+    if (encNote) saveNote(leafIndex, encNote);
 
-  res.json({ newRoot: candidateRoot.toString() });
+    res.json({ newRoot: candidateRoot.toString() });
+  });
 });
 
 // ---------------------------------------------------------------------------
