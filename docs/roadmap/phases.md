@@ -140,7 +140,7 @@ Research    ──►  Foundation  ──►  Launch      ──►  Scale
 - **Legal entity formed and operating - hard gate.** No mainnet launch with real funds before this is in place.
 - TVL cap: $50,000 (raised to $250K after 30 days clean operation)
 - Whitelist-only for first 30 days. Selection criteria to be defined before launch. Default proposal - self-serve application form gated on (1) a connected wallet with prior testnet activity on Writz, or (2) referral from an existing testnet tester/community member, reviewed manually given expected low volume at this stage
-- Protocol fee: 0% for 90-day bootstrap period (requires a launch-time change to `PROTOCOL_FEE_BP` in `contracts/contracts/private-lend/src/rates.rs`, currently hardcoded to 15% - not yet implemented, treat as a pre-mainnet task)
+- Protocol fee at launch: to be decided before mainnet. `PROTOCOL_FEE_BP` in `contracts/contracts/private-lend/src/rates.rs` is 15% today; a reduced bootstrap fee is an option under evaluation, not a commitment
 - Protocol-owned USDC seed: $50,000 (see `docs/research/growth-strategy.md`)
 - DeFiLlama submission (day 1)
 - Points program launch (pre-WRTZ)
