@@ -33,6 +33,9 @@ pub struct Position {
     pub timelock_height: u32,
     /// Stellar ledger sequence number at the last interest accrual.
     pub last_update_ledger: u32,
+    /// `ProtocolState::borrow_index` when `usdc_debt` was last brought up to
+    /// date. Current debt is `usdc_debt * borrow_index / debt_index`.
+    pub debt_index: i128,
     /// The depositor's Stellar address (must repay to close the position).
     pub depositor: Address,
     pub status: PositionStatus,
@@ -70,6 +73,14 @@ pub struct ProtocolState {
     /// bonus, so the bonus never comes from BTC and never from lender principal
     /// beyond this reserve (GHSA-5rxp-7f9g-r66x, #193).
     pub reserve_usdc: i128,
+    /// Cumulative borrow index, scaled by `rates::INDEX_ONE`. It grows at the
+    /// borrow rate in force over each interval and is brought up to date
+    /// before anything changes utilization, so a past interval is always
+    /// priced at the rate that applied during it (GHSA-c9gg-c476-9vc8,
+    /// GHSA-frj5-5wmv-wvm3).
+    pub borrow_index: i128,
+    /// Ledger `borrow_index` was last brought up to date at.
+    pub index_ledger: u32,
 }
 
 /// Protocol configuration, set at initialization. Most fields are fixed for

@@ -19,6 +19,10 @@ pub enum DataKey {
     TxCommitment(BytesN<32>),
     /// Per-lender USDC supply balance in stroops.
     SupplyBalance(Address),
+    /// Marks a deposit nullifier as already used by a deposit, so a second
+    /// deposit cannot reuse it (GHSA-frj5-5wmv-wvm3). Distinct from
+    /// `SpentNullifier`, which the borrow/repay/release paths spend.
+    DepositNullifier(BytesN<32>),
     /// Singleton: index of the next empty Merkle leaf. Every insertion proof
     /// must target exactly this leaf (#211).
     NextLeafIndex,

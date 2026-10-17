@@ -64,4 +64,10 @@ pub enum CommitmentTreeError {
     TreeFull                 = 23,
     /// The borrow would take the pool past `Config::max_total_borrowed`.
     ExposureCapExceeded      = 24,
+    /// `key_sig` is not a Bitcoin signed message by `user_pubkey` over this
+    /// contract, the depositor and the deposit txid (GHSA-862g-739q-x6h8).
+    InvalidKeyProof          = 25,
+    /// Another deposit already used this nullifier; a second leaf with it
+    /// could never be spent (GHSA-frj5-5wmv-wvm3).
+    DuplicateNullifier       = 26,
 }

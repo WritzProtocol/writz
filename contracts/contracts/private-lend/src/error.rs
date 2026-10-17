@@ -59,4 +59,7 @@ pub enum PrivateLendError {
     InvalidProtocolPubkey = 23,
     /// The borrow would take the pool past its total exposure cap (see `Config::max_total_borrowed`).
     ExposureCapExceeded = 24,
+    /// `key_sig` is not a Bitcoin signed message by `user_pubkey` over this
+    /// contract, the depositor and the deposit txid (GHSA-862g-739q-x6h8).
+    InvalidKeyProof = 25,
 }

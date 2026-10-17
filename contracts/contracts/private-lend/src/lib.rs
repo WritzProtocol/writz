@@ -16,11 +16,11 @@ use events::{
     RepayFullEvent, SupplyEvent, WithdrawEvent,
 };
 use oracle::{collateral_value_stroops, get_btc_price_stroops, health_ratio_bp};
-use rates::{borrow_rate_bp, interest_delta, supply_rate_bp};
+use rates::{borrow_rate_bp, supply_rate_bp};
 use soroban_sdk::{
     contract, contractimpl, panic_with_error, token, Address, Bytes, BytesN, Env, IntoVal, Symbol, Vec,
 };
-use spv_types::{btc_parser, script, SpvVerificationResult};
+use spv_types::{btc_parser, key_proof, script, SpvVerificationResult};
 use storage::{get_config, get_position, get_protocol, get_release_psbt, get_supply_balance,
                set_config, set_position, set_protocol, set_release_psbt, set_supply_balance};
 use types::{Config, Position, PositionStatus, ProtocolState};
@@ -129,6 +129,7 @@ impl PrivateLendContract {
         p2wsh_script_pubkey: Bytes,
         timelock_height: u32,
         user_pubkey: BytesN<33>,
+        key_sig: BytesN<65>,
     ) -> Result<BytesN<32>, PrivateLendError> {
         depositor.require_auth();
 
@@ -183,6 +184,14 @@ impl PrivateLendContract {
             return Err(PrivateLendError::InvalidTimelock);
         }
 
+        // The caller must prove they control `user_pubkey`: otherwise anyone
+        // watching Bitcoin could register someone else's Writz deposit as
+        // their own position (GHSA-862g-739q-x6h8). See spv-types::key_proof.
+        let key_msg = key_proof::deposit_message(&env, &env.current_contract_address(), &depositor, &txid);
+        if !key_proof::signed_by(&env, &key_msg, &key_sig, &user_pubkey) {
+            return Err(PrivateLendError::InvalidKeyProof);
+        }
+
         // 2. Reject duplicate deposits, here and across both lending pools
         //    (GHSA-2975-ggwh-pxw5): consume the txid in the shared registry.
         if get_position(&env, &txid).is_some() {
@@ -212,6 +221,7 @@ impl PrivateLendContract {
             p2wsh_script_pubkey,
             timelock_height,
             last_update_ledger: env.ledger().sequence(),
+            debt_index: rates::INDEX_ONE,
             depositor,
             status: PositionStatus::Active,
             user_pubkey,
@@ -247,6 +257,8 @@ impl PrivateLendContract {
         token.transfer(&supplier, &env.current_contract_address(), &amount);
 
         let mut proto = get_protocol(&env);
+        // Price the interval that just ended before supply moves utilization.
+        accrue_global(&env, &mut proto);
         proto.total_supplied = proto.total_supplied.saturating_add(amount);
         set_protocol(&env, &proto);
 
@@ -273,15 +285,16 @@ impl PrivateLendContract {
             return Err(PrivateLendError::InsufficientSupply);
         }
 
-        let proto = get_protocol(&env);
-        let available = proto.total_supplied.saturating_sub(proto.total_borrowed);
+        let mut proto2 = get_protocol(&env);
+        // Price the interval that just ended before withdrawal moves utilization.
+        accrue_global(&env, &mut proto2);
+        let available = proto2.total_supplied.saturating_sub(proto2.total_borrowed);
         if amount > available {
             return Err(PrivateLendError::InsufficientLiquidity);
         }
 
         set_supply_balance(&env, &supplier, bal - amount);
 
-        let mut proto2 = get_protocol(&env);
         proto2.total_supplied = proto2.total_supplied.saturating_sub(amount);
         set_protocol(&env, &proto2);
 
@@ -788,21 +801,38 @@ impl PrivateLendContract {
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
-/// Accrues interest on `pos` and updates `proto.total_borrowed` accordingly.
-/// Called at the start of every state-changing operation on a position.
-fn accrue_position_interest(env: &Env, pos: &mut Position, proto: &mut ProtocolState) {
+/// Brings the global borrow index up to date, charging interest on all
+/// outstanding debt at the rate in force since the last update. Must run
+/// before anything changes `total_borrowed` or `total_supplied`, so the
+/// interval just ended is priced at the utilization that held during it -
+/// not at whatever a caller sets it to right now (GHSA-c9gg-c476-9vc8).
+fn accrue_global(env: &Env, proto: &mut ProtocolState) {
     let current = env.ledger().sequence();
-    let elapsed = current.saturating_sub(pos.last_update_ledger) as i128;
-    if elapsed == 0 || pos.usdc_debt == 0 {
-        pos.last_update_ledger = current;
-        return;
+    let elapsed = current.saturating_sub(proto.index_ledger) as i128;
+    if elapsed > 0 {
+        let rate = borrow_rate_bp(proto.total_borrowed, proto.total_supplied);
+        let old_index = proto.borrow_index;
+        let new_index = rates::grow_index(old_index, rate, elapsed);
+        if proto.total_borrowed > 0 && new_index > old_index {
+            let delta = proto.total_borrowed.saturating_mul(new_index - old_index) / old_index;
+            proto.total_borrowed = proto.total_borrowed.saturating_add(delta);
+            proto.reserve_usdc = proto
+                .reserve_usdc
+                .saturating_add(delta.saturating_mul(rates::PROTOCOL_FEE_BP) / rates::BP_SCALE);
+        }
+        proto.borrow_index = new_index;
     }
-    let rate = borrow_rate_bp(proto.total_borrowed, proto.total_supplied);
-    let delta = interest_delta(pos.usdc_debt, rate, elapsed);
-    pos.usdc_debt = pos.usdc_debt.saturating_add(delta);
-    proto.total_borrowed = proto.total_borrowed.saturating_add(delta);
-    proto.reserve_usdc = proto
-        .reserve_usdc
-        .saturating_add(delta.saturating_mul(rates::PROTOCOL_FEE_BP) / rates::BP_SCALE);
-    pos.last_update_ledger = current;
+    proto.index_ledger = current;
+}
+
+/// Brings `pos.usdc_debt` up to date with the global borrow index. The
+/// interest itself was already added to `total_borrowed` and the reserve by
+/// `accrue_global`, which this calls first.
+fn accrue_position_interest(env: &Env, pos: &mut Position, proto: &mut ProtocolState) {
+    accrue_global(env, proto);
+    if pos.usdc_debt > 0 && pos.debt_index > 0 {
+        pos.usdc_debt = pos.usdc_debt.saturating_mul(proto.borrow_index) / pos.debt_index;
+    }
+    pos.debt_index = proto.borrow_index;
+    pos.last_update_ledger = env.ledger().sequence();
 }

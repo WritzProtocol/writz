@@ -25,6 +25,21 @@ pub const PROTOCOL_FEE_BP: i128 = 1_500;
 /// 60s/5s × 60min × 24h × 365.25d = 6_311_520
 pub const LEDGERS_PER_YEAR: i128 = 6_311_520;
 
+/// Fixed-point one for the borrow index (18 decimals).
+pub const INDEX_ONE: i128 = 1_000_000_000_000_000_000;
+
+/// Grows `index` by `rate_bp` (annual) over `ledgers_elapsed`, simple interest
+/// within the interval; intervals compound because each starts from the
+/// previous index.
+/// It is `accrue_interest` applied to the index, so the property tests
+/// below cover both.
+pub fn grow_index(index: i128, rate_bp: i128, ledgers_elapsed: i128) -> i128 {
+    if ledgers_elapsed <= 0 || rate_bp <= 0 {
+        return index;
+    }
+    accrue_interest(index, rate_bp, ledgers_elapsed)
+}
+
 /// Returns the annual borrow rate in basis points given the current pool state.
 ///
 /// ```text
@@ -85,6 +100,7 @@ pub fn accrue_interest(debt: i128, rate_bp: i128, ledgers_elapsed: i128) -> i128
 
 /// Returns the interest that will accrue on `debt` over `ledgers_elapsed`
 /// ledgers at `rate_bp` (without modifying the debt).
+#[cfg(test)]
 pub fn interest_delta(debt: i128, rate_bp: i128, ledgers_elapsed: i128) -> i128 {
     accrue_interest(debt, rate_bp, ledgers_elapsed) - debt
 }
