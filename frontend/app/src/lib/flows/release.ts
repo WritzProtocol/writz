@@ -100,6 +100,7 @@ export async function releaseBtc(params: {
     collateral_satoshis: position.collateralSats,
     secret: secret.toString(),
     nonce: nonce.toString(),
+    timelock_height: String(timelockHeight),
     path_elements: pathElements,
     path_indices: pathIndices,
     merkle_root: merkleRoot,

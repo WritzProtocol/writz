@@ -30,6 +30,7 @@ export function createDepositPosition(args: {
   collateralSats: bigint;
   seed: Uint8Array;
   index: number;
+  timelockHeight: number;
   txid?: string | null;
   createdAt: number;
 }): Position {
@@ -37,7 +38,7 @@ export function createDepositPosition(args: {
   const secret = deriveSecret(f, args.index);
   const nonce = deriveNonce(f, args.index, 0);
   const debt = 0n;
-  const commitment = computeCommitment(args.collateralSats, debt, secret, nonce);
+  const commitment = computeCommitment(args.collateralSats, debt, secret, nonce, args.timelockHeight);
   const nullifier = computeNullifier(secret, nonce);
 
   return {
@@ -52,6 +53,7 @@ export function createDepositPosition(args: {
     nullifier: nullifier.toString(),
     status: "pending",
     createdAt: args.createdAt,
+    timelockHeight: args.timelockHeight,
   };
 }
 
@@ -61,6 +63,7 @@ export interface PositionWitness {
   debt_stroops: string;
   secret: string;
   nonce: string;
+  timelock_height: string;
 }
 
 /** Extract the private witness for proving (derives keys from the session seed). */
@@ -71,5 +74,15 @@ export function positionWitness(seed: Uint8Array, p: Position): PositionWitness 
     debt_stroops: p.debtStroops,
     secret: secret.toString(),
     nonce: nonce.toString(),
+    timelock_height: String(requireTimelock(p)),
   };
+}
+
+/**
+ * The position's CLTV height. Every commitment carries it (#212), so a
+ * position without one cannot be proven against.
+ */
+export function requireTimelock(p: Pick<Position, "timelockHeight">): number {
+  if (!p.timelockHeight) throw new Error("PositionMissingTimelock");
+  return p.timelockHeight;
 }
