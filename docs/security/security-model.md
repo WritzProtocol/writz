@@ -77,11 +77,32 @@ Why a per-user script rather than one shared vault script (#177): a shared scrip
 
 The trade-off is the one `private-lend` already makes (GHSA-5rxp): once the timelock passes, a borrower can reclaim the BTC while still owing USDC, and the protocol cannot seize it. `commitment-tree` therefore carries the same exposure cap, `max_total_borrowed` (50,000 USDC by default, admin-set). Two gaps remain specific to the ZK path and are tracked in #212: `borrow` cannot check how close the borrowing position is to its timelock, because the proof does not reveal which position it is; and a ZK position can only be liquidated by its owner, because the liquidation circuit needs the position's secret.
 
+### Deposit key ownership (both lenders)
+
+Rebuilding the Writz script proves an output is locked under the protocol's co-signing key, not that the Stellar caller owns it. The user key appears in the deposit transaction's own input witness and the timelock is guessable, so anyone watching Bitcoin could register someone else's deposit as their own position and borrow against it (GHSA-862g-739q-x6h8). Both `deposit` functions now take `key_sig`: a standard Bitcoin signed message (BIP-137, a wallet's ECDSA "sign message") by `user_pubkey` over
+
+```text
+Writz deposit
+contract:<this contract>
+depositor:<the depositor's address>
+txid:<the deposit txid, display order>
+```
+
+The contract rebuilds that text, recovers the signer with `secp256k1_recover`, and requires it to be `user_pubkey` (`spv-types::key_proof`). Naming the contract and the depositor means a signature cannot be replayed into the other lender, another deployment, or another account. The app asks the connected Bitcoin wallet for this signature right before the deposit transaction.
+
 ### Borrow recipient binding (`commitment-tree`)
 
 `commitment-tree::borrow` authenticates the caller-supplied `borrower` address via `require_auth`, but authentication alone doesn't tie *that specific address* to the ZK proof being redeemed. Before this fix, a party who obtained a pending borrow transaction's proof and public signals (e.g. observing it before it confirms) could resubmit the identical proof with a different address they control and be included first - the contract would pay them, spend the position's nullifier, and the original caller's transaction would then fail.
 
 `borrow_repay.circom`'s public `recipient_lo`/`recipient_hi` signals - the sha256 digest of the recipient's Stellar strkey address, split into two 128-bit halves - close this the same way `deposit.circom`'s `btc_txid_lo/hi` bind a proof to its Bitcoin transaction: by being part of the public statement Groth16 verifies, not by any in-circuit constraint. `commitment-tree::borrow` independently recomputes `sha256(borrower.to_string())` from the address it authenticated and rejects a mismatch, so a copied proof can only be redeemed by the address it was generated for. `repay` shares the same circuit but pulls funds *from* the caller rather than paying an arbitrary address, so it has no equivalent recipient-redirection risk and doesn't check these signals.
+
+### Interest accrual (`private-lend`)
+
+Interest used to be charged at the borrow rate in force when a position was next touched, applied to the whole period since its last update. A borrower could supply a large amount right before repaying, crash utilization and the rate, and reprice months of debt at almost nothing, then withdraw (GHSA-c9gg-c476-9vc8, GHSA-frj5-5wmv-wvm3). `private-lend` now keeps a global borrow index that grows at the rate in force over each interval and is brought up to date before anything changes utilization: supply, withdraw, borrow, repay and liquidate. A position's debt scales with the index since it was last settled, so a past interval is always priced at the rate that applied during it.
+
+### Deposit nullifier reuse (`commitment-tree`)
+
+`deposit` checked that a nullifier had not been spent but never recorded it, so a second deposit could reuse one and leave a leaf that could never be spent (GHSA-frj5-5wmv-wvm3, low: self-harm only). Deposit nullifiers are now recorded and a reuse fails with `DuplicateNullifier`.
 
 ### Merkle proof integrity (duplicate-leaf ambiguity)
 
@@ -94,6 +115,10 @@ The relayer holds the `commitment-tree` admin key and exposes two HTTP endpoints
 `POST /insert-commitment` now requires `authTxXdr`: a throwaway transaction (never submitted) whose source account is the depositor, signed by them, containing a single `manageData("writz-insert-commitment", commitment)` operation. The relayer verifies the signature against the claimed depositor, then independently looks up the real `DepositEvent` for that commitment on-chain and rejects unless its `depositor` field matches - so an attacker can sign with their own key all they want, but can't claim someone else's pending deposit, and can't fabricate a deposit that never happened. `POST /update-leaf` needs no identity check at all: it validates the proposed write against ground truth instead, by recomputing what the Merkle root would become and comparing it against the real on-chain root via `get_merkle_root()`. Only a write that reproduces a root the contract has actually reached is persisted - a real borrow/repay always produces exactly the update this check demands, and nothing else can.
 
 `commitment-tree::insert_commitment` used to store whatever root the admin passed, so the relayer's honest computation was the only thing keeping the tree correct; a compromised admin key or a relayer bug could install a root holding invented leaves or dropping honest ones. It now takes a Groth16 proof from the `insert` circuit (`circuits/src/insert.circom`, built on `MerkleTreeUpdater`) instead of a root (#211). The proof shows the new root is the stored root with the commitment written into a leaf that was empty, and the contract pins that leaf to its own `NextLeafIndex` counter, requires the commitment to be a pending deposit, and requires the proof's old root to be the stored one. The admin still decides when a commitment is inserted, but no longer what the root becomes. The relayer generates the proof from public data (`relayer/src/insert-prover.ts`). The old `createDemoPosition` dashboard shortcut, which inserted a commitment with no deposit behind it, is removed.
+
+### Leaf store liveness (relayer)
+
+The contract stores only the Merkle root, so the relayer's leaf store is the only copy of the tree, and it used to advance only when a client called `/update-leaf` after a borrow or repay. One missing call, a closed tab or a borrower who never sends it, left the store behind the chain and `/merkle-path` answered 409 for everyone (GHSA-vwvv-3255-783f). `BorrowEvent` now carries `new_commitment` like `RepayEvent`, and the relayer's tree watcher follows `insert_leaf`, `borrow` and `repay` events from a persisted cursor, applying each to the store after checking it reproduces the event's root. Which leaf a borrow or repay changed is found by matching the root, so it is still not published. `/update-leaf` is now only a faster path to the same state. An event the store cannot explain holds the cursor and shows up as `treeSync.ok: false` on `/health`.
 
 ### Cooperative release binding (`/api/cosign`)
 

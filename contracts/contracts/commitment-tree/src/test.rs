@@ -63,9 +63,35 @@ fn protocol_pubkey(env: &Env) -> BytesN<33> {
 
 /// The depositor's Bitcoin key used by every test deposit.
 fn user_pubkey(env: &Env) -> BytesN<33> {
-    let mut k = [0x22u8; 33];
-    k[0] = 0x03;
-    BytesN::from_array(env, &k)
+    pubkey_of(env, &user_signing_key())
+}
+
+fn user_signing_key() -> k256::ecdsa::SigningKey {
+    k256::ecdsa::SigningKey::from_slice(&[0x42u8; 32]).unwrap()
+}
+
+/// A second, real Bitcoin key: someone other than the depositor.
+fn other_signing_key() -> k256::ecdsa::SigningKey {
+    k256::ecdsa::SigningKey::from_slice(&[0x77u8; 32]).unwrap()
+}
+
+fn pubkey_of(env: &Env, key: &k256::ecdsa::SigningKey) -> BytesN<33> {
+    let point = key.verifying_key().to_encoded_point(true);
+    let mut out = [0u8; 33];
+    out.copy_from_slice(point.as_bytes());
+    BytesN::from_array(env, &out)
+}
+
+/// A BIP-137 signature by `key` over the deposit message, as a wallet makes it
+/// (GHSA-862g-739q-x6h8).
+fn sign_with(env: &Env, key: &k256::ecdsa::SigningKey, contract: &Address, depositor: &Address, txid: &BytesN<32>) -> BytesN<65> {
+    let msg = spv_types::key_proof::deposit_message(env, contract, depositor, txid);
+    let digest = spv_types::key_proof::signed_message_digest(env, &msg).to_array();
+    let (sig, recid) = key.sign_prehash_recoverable(&digest).unwrap();
+    let mut out = [0u8; 65];
+    out[0] = 31 + recid.to_byte();
+    out[1..].copy_from_slice(&sig.to_bytes());
+    BytesN::from_array(env, &out)
 }
 
 /// A timelock inside the allowed window above `MockSpv`'s confirming block
@@ -710,6 +736,7 @@ fn full_deposit_borrow_repay_cycle() {
         &raw_tx,
         &user_pubkey(&s.env),
         &TIMELOCK,
+        &key_sig(&s),
         &deposit_proof(&s.env),
         &deposit_signals(&s.env),
         &empty_bytes,
@@ -767,7 +794,7 @@ fn borrow_with_tampered_signal_panics() {
     let raw_tx = build_deposit_tx(&s.env, 1_000_000, &deposit_spk(&s.env));
     s.client.deposit(
         &s.depositor, &block_hash, &empty_proof, &0u32, &raw_tx,
-        &user_pubkey(&s.env), &TIMELOCK, &deposit_proof(&s.env), &deposit_signals(&s.env), &empty_bytes,
+        &user_pubkey(&s.env), &TIMELOCK, &key_sig(&s), &deposit_proof(&s.env), &deposit_signals(&s.env), &empty_bytes,
     );
     s.client.insert_commitment(&s.admin, &insert_proof(&s.env), &insert_signals(&s.env));
 
@@ -805,7 +832,7 @@ fn borrow_proof_cannot_be_redirected_to_another_recipient() {
     let raw_tx = build_deposit_tx(&s.env, 1_000_000, &deposit_spk(&s.env));
     s.client.deposit(
         &s.depositor, &block_hash, &empty_proof, &0u32, &raw_tx,
-        &user_pubkey(&s.env), &TIMELOCK, &deposit_proof(&s.env), &deposit_signals(&s.env), &empty_bytes,
+        &user_pubkey(&s.env), &TIMELOCK, &key_sig(&s), &deposit_proof(&s.env), &deposit_signals(&s.env), &empty_bytes,
     );
     s.client.insert_commitment(&s.admin, &insert_proof(&s.env), &insert_signals(&s.env));
 
@@ -855,7 +882,7 @@ fn released_zero_debt_leaf_cannot_be_borrowed_again() {
     let raw_tx = build_deposit_tx(&s.env, 1_000_000, &deposit_spk(&s.env));
     s.client.deposit(
         &s.depositor, &block_hash, &empty_proof, &0u32, &raw_tx,
-        &user_pubkey(&s.env), &TIMELOCK, &deposit_proof(&s.env), &deposit_signals(&s.env), &empty_bytes,
+        &user_pubkey(&s.env), &TIMELOCK, &key_sig(&s), &deposit_proof(&s.env), &deposit_signals(&s.env), &empty_bytes,
     );
     s.client.insert_commitment(&s.admin, &insert_proof(&s.env), &insert_signals(&s.env));
     s.client.borrow(&recipient, &borrow_proof(&s.env), &borrow_signals(&s.env), &empty_bytes);
@@ -901,7 +928,7 @@ fn try_deposit_with(
     let empty_proof: Vec<BytesN<32>> = Vec::new(&s.env);
     match s.client.try_deposit(
         &s.depositor, &block_hash, &empty_proof, &0u32, raw_tx,
-        user, &timelock, &deposit_proof(&s.env), &deposit_signals(&s.env),
+        user, &timelock, &key_sig_for(s, user), &deposit_proof(&s.env), &deposit_signals(&s.env),
         &Bytes::new(&s.env),
     ) {
         Ok(Ok(c)) => Ok(c),
@@ -937,14 +964,13 @@ fn deposit_paying_a_script_the_protocol_cannot_cosign_is_rejected() {
 
 #[test]
 fn deposit_claiming_someone_elses_output_is_rejected() {
-    // The transaction pays a real Writz script, but the caller names a
-    // different user key - the rebuilt script does not match the output.
+    // The transaction pays the depositor's Writz script, but the caller
+    // names (and signs for) their own key - the rebuilt script does not
+    // match the output, so a key they control cannot claim it.
     let s = setup_integration();
     let raw_tx = build_deposit_tx(&s.env, 1_000_000, &deposit_spk(&s.env));
-    let mut other_user = [0x44u8; 33];
-    other_user[0] = 0x02;
     assert_eq!(
-        try_deposit_with(&s, &raw_tx, &BytesN::from_array(&s.env, &other_user), TIMELOCK),
+        try_deposit_with(&s, &raw_tx, &pubkey_of(&s.env, &other_signing_key()), TIMELOCK),
         Err(crate::error::CommitmentTreeError::VaultOutputNotFound),
     );
 }
@@ -1092,4 +1118,87 @@ fn set_max_total_borrowed_by_non_admin_panics() {
     let (client, _admin, _spv, _zk, _usdc, _oracle) = setup(&env);
     let rando = Address::generate(&env);
     client.set_max_total_borrowed(&rando, &0);
+}
+
+/// The deposit txid `MockSpv` reports.
+fn mock_txid(env: &Env) -> BytesN<32> {
+    BytesN::from_array(env, &iv::DEPOSIT_TXID)
+}
+
+fn key_sig(s: &IntegrationSetup) -> BytesN<65> {
+    sign_with(&s.env, &user_signing_key(), &s.contract_id, &s.depositor, &mock_txid(&s.env))
+}
+
+/// Signed by whichever test key `user` belongs to, so each case proves
+/// control of the key it names.
+fn key_sig_for(s: &IntegrationSetup, user: &BytesN<33>) -> BytesN<65> {
+    let key = if *user == pubkey_of(&s.env, &other_signing_key()) { other_signing_key() } else { user_signing_key() };
+    sign_with(&s.env, &key, &s.contract_id, &s.depositor, &mock_txid(&s.env))
+}
+
+fn try_deposit_signed(s: &IntegrationSetup, sig: &BytesN<65>) -> Result<BytesN<32>, crate::error::CommitmentTreeError> {
+    let raw_tx = build_deposit_tx(&s.env, 1_000_000, &deposit_spk(&s.env));
+    match s.client.try_deposit(
+        &s.depositor, &BytesN::from_array(&s.env, &[0xadu8; 32]), &Vec::new(&s.env), &0u32, &raw_tx,
+        &user_pubkey(&s.env), &TIMELOCK, sig, &deposit_proof(&s.env), &deposit_signals(&s.env), &Bytes::new(&s.env),
+    ) {
+        Ok(Ok(c)) => Ok(c),
+        Err(Ok(e)) => Err(e),
+        other => panic!("unexpected result: {other:?}"),
+    }
+}
+
+// ── Bitcoin key-control proof (GHSA-862g-739q-x6h8) ───────────────────────────
+
+#[test]
+fn a_deposit_without_the_depositors_bitcoin_key_is_rejected() {
+    // Someone watching Bitcoin registers another user's Writz deposit: the
+    // script and txid are public, but they cannot sign for the user's key.
+    let s = setup_integration();
+    let sig = sign_with(&s.env, &other_signing_key(), &s.contract_id, &s.depositor, &mock_txid(&s.env));
+    assert_eq!(try_deposit_signed(&s, &sig), Err(crate::error::CommitmentTreeError::InvalidKeyProof));
+}
+
+#[test]
+fn a_key_proof_replayed_by_another_account_is_rejected() {
+    let s = setup_integration();
+    let victim = Address::generate(&s.env);
+    let sig = sign_with(&s.env, &user_signing_key(), &s.contract_id, &victim, &mock_txid(&s.env));
+    assert_eq!(try_deposit_signed(&s, &sig), Err(crate::error::CommitmentTreeError::InvalidKeyProof));
+}
+
+#[test]
+fn a_key_proof_made_for_the_other_lender_is_rejected() {
+    let s = setup_integration();
+    let other_contract = Address::generate(&s.env);
+    let sig = sign_with(&s.env, &user_signing_key(), &other_contract, &s.depositor, &mock_txid(&s.env));
+    assert_eq!(try_deposit_signed(&s, &sig), Err(crate::error::CommitmentTreeError::InvalidKeyProof));
+}
+
+#[test]
+fn a_deposit_reusing_an_earlier_deposits_nullifier_is_rejected() {
+    // GHSA-frj5-5wmv-wvm3: a second leaf sharing a nullifier could never be
+    // spent. Simulate an earlier deposit having recorded this proof's
+    // nullifier (MockSpv reuses one txid, so two real deposits would stop at
+    // the txid registry first).
+    let s = setup_integration();
+    let nullifier = sig32(&s.env, &iv::DEPOSIT_SIGNAL_1);
+    s.env.as_contract(&s.contract_id, || {
+        s.env.storage().persistent().set(&DataKey::DepositNullifier(nullifier.clone()), &true);
+    });
+    assert_eq!(
+        try_deposit_signed(&s, &key_sig(&s)),
+        Err(crate::error::CommitmentTreeError::DuplicateNullifier),
+    );
+}
+
+#[test]
+fn a_successful_deposit_records_its_nullifier() {
+    let s = setup_integration();
+    try_deposit_signed(&s, &key_sig(&s)).unwrap();
+    let nullifier = sig32(&s.env, &iv::DEPOSIT_SIGNAL_1);
+    let recorded = s.env.as_contract(&s.contract_id, || {
+        s.env.storage().persistent().has(&DataKey::DepositNullifier(nullifier.clone()))
+    });
+    assert!(recorded);
 }

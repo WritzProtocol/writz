@@ -34,6 +34,10 @@ pub mod btc_parser;
 /// lending contracts' deposit checks.
 pub mod script;
 
+/// Proof that a depositor controls the Bitcoin key their deposit names
+/// (GHSA-862g-739q-x6h8), shared by both lending contracts.
+pub mod key_proof;
+
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SpvVerificationResult {

@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
-import Wallet, { AddressPurpose, BitcoinNetworkType, RpcErrorCode } from "sats-connect";
+import Wallet, { AddressPurpose, BitcoinNetworkType, MessageSigningProtocols, RpcErrorCode } from "sats-connect";
 import { config, BTC_NETWORK_LABEL } from "@/config";
 import { xverseRequest } from "./xverse";
 
@@ -28,6 +28,8 @@ export interface BitcoinWalletState {
   disconnect: () => void;
   sendBtc: (toAddress: string, amountSats: number) => Promise<string>;
   signPsbt: (psbtBase64: string) => Promise<string>;
+  /** Signs `message` with the connected payment key (ECDSA, BIP-137); returns base64. */
+  signMessage: (message: string) => Promise<string>;
 }
 
 const BitcoinWalletContext = createContext<BitcoinWalletState | null>(null);
@@ -118,9 +120,26 @@ export function BitcoinWalletProvider({ children }: { children: React.ReactNode 
     [btcAddress],
   );
 
+  const signMessage = useCallback(
+    async (message: string): Promise<string> => {
+      if (!btcAddress) throw new Error("Connect your Bitcoin wallet first");
+      const res = await xverseRequest(() =>
+        Wallet.request("signMessage", {
+          address: btcAddress,
+          message,
+          // ECDSA (BIP-137) is what the lending contracts verify on-chain;
+          // BIP-322 signatures have a different shape.
+          protocol: MessageSigningProtocols.ECDSA,
+        }),
+      );
+      return res.signature;
+    },
+    [btcAddress],
+  );
+
   const value = useMemo<BitcoinWalletState>(
-    () => ({ btcAddress, btcPubkey, connecting, error, connect, disconnect, sendBtc, signPsbt }),
-    [btcAddress, btcPubkey, connecting, error, connect, disconnect, sendBtc, signPsbt],
+    () => ({ btcAddress, btcPubkey, connecting, error, connect, disconnect, sendBtc, signPsbt, signMessage }),
+    [btcAddress, btcPubkey, connecting, error, connect, disconnect, sendBtc, signPsbt, signMessage],
   );
 
   return <BitcoinWalletContext.Provider value={value}>{children}</BitcoinWalletContext.Provider>;

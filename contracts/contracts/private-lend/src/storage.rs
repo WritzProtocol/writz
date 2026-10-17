@@ -81,6 +81,8 @@ pub fn get_protocol(env: &Env) -> ProtocolState {
             total_supplied: 0,
             total_borrowed: 0,
             last_keeper_heartbeat: env.ledger().timestamp(),
+            borrow_index: crate::rates::INDEX_ONE,
+            index_ledger: env.ledger().sequence(),
         },
     }
 }

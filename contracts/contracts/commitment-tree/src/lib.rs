@@ -18,7 +18,7 @@ use soroban_sdk::{
     contract, contractimpl, panic_with_error, token, Address, Bytes, BytesN, Env, IntoVal,
     Symbol, Vec,
 };
-use spv_types::{btc_parser, script, SpvVerificationResult};
+use spv_types::{btc_parser, key_proof, script, SpvVerificationResult};
 use types::{
     borrow_repay_signals as br, deposit_signals as ds, insert_signals as ins,
     liquidation_signals as lq, Config,
@@ -177,6 +177,7 @@ impl CommitmentTreeContract {
         raw_tx: Bytes,
         user_pubkey: BytesN<33>,
         timelock_height: u32,
+        key_sig: BytesN<65>,
         zk_proof: Proof,
         public_signals: Vec<BytesN<32>>,
         enc_note: Bytes,
@@ -206,6 +207,14 @@ impl CommitmentTreeContract {
         // away, measured from the block that confirmed the deposit.
         if !script::timelock_in_bounds(timelock_height, spv.block_height) {
             return Err(CommitmentTreeError::InvalidTimelock);
+        }
+
+        // The caller must prove they control `user_pubkey`: otherwise anyone
+        // watching Bitcoin could register someone else's Writz deposit as
+        // their own position (GHSA-862g-739q-x6h8). See spv-types::key_proof.
+        let key_msg = key_proof::deposit_message(&env, &env.current_contract_address(), &depositor, &spv.txid);
+        if !key_proof::signed_by(&env, &key_msg, &key_sig, &user_pubkey) {
+            return Err(CommitmentTreeError::InvalidKeyProof);
         }
 
         // 2. Reject duplicate deposits, here and across both lending pools
@@ -271,9 +280,13 @@ impl CommitmentTreeContract {
         let commitment: BytesN<32> = public_signals.get(ds::COMMITMENT as u32).unwrap();
         let nullifier:  BytesN<32> = public_signals.get(ds::NULLIFIER  as u32).unwrap();
 
-        // 5. Nullifier must not be spent.
+        // 5. Nullifier must not be spent, nor used by an earlier deposit -
+        //    a second leaf sharing it could never be spent.
         if env.storage().persistent().has(&DataKey::SpentNullifier(nullifier.clone())) {
             return Err(CommitmentTreeError::NullifierAlreadySpent);
+        }
+        if env.storage().persistent().has(&DataKey::DepositNullifier(nullifier.clone())) {
+            return Err(CommitmentTreeError::DuplicateNullifier);
         }
 
         // 6. Groth16 proof verification.
@@ -293,6 +306,9 @@ impl CommitmentTreeContract {
         env.storage().persistent().extend_ttl(&txid_key, NULLIFIER_THRESHOLD, NULLIFIER_BUMP);
         env.storage().persistent().set(&pending_key, &spv.txid);
         env.storage().persistent().extend_ttl(&pending_key, PERSISTENT_THRESHOLD, PERSISTENT_BUMP);
+        let deposit_nullifier_key = DataKey::DepositNullifier(nullifier.clone());
+        env.storage().persistent().set(&deposit_nullifier_key, &true);
+        env.storage().persistent().extend_ttl(&deposit_nullifier_key, NULLIFIER_THRESHOLD, NULLIFIER_BUMP);
 
         DepositEvent {
             commitment: commitment.clone(),
@@ -452,6 +468,7 @@ impl CommitmentTreeContract {
         let old_root_sig  = public_signals.get(br::OLD_ROOT      as u32).unwrap();
         let old_nullifier = public_signals.get(br::OLD_NULLIFIER as u32).unwrap();
         let new_root      = public_signals.get(br::NEW_ROOT      as u32).unwrap();
+        let new_commitment = public_signals.get(br::NEW_COMMITMENT as u32).unwrap();
 
         // old_root must match stored root - prevents stale proofs.
         if old_root_sig != Self::stored_root(&env) {
@@ -548,7 +565,7 @@ impl CommitmentTreeContract {
             &usdc_amount,
         );
 
-        BorrowEvent { new_root, borrower, usdc_amount, old_nullifier, enc_note }.publish(&env);
+        BorrowEvent { new_root, borrower, usdc_amount, old_nullifier, new_commitment, enc_note }.publish(&env);
         Ok(())
     }
 

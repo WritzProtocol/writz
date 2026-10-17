@@ -297,6 +297,7 @@ dependencies = [
 name = "commitment-tree"
 version = "0.1.0"
 dependencies = [
+ "k256",
  "soroban-sdk",
  "spv-types",
  "zk-verifier",
@@ -1076,6 +1077,7 @@ dependencies = [
 name = "private-lend"
 version = "0.1.0"
 dependencies = [
+ "k256",
  "soroban-sdk",
  "spv-types",
 ]

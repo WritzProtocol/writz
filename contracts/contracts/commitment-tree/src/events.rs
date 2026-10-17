@@ -39,6 +39,11 @@ pub struct BorrowEvent {
     pub borrower:      Address,
     pub usdc_amount:   i128,
     pub old_nullifier: BytesN<32>,
+    /// The leaf that replaces the borrowing position's old one. With
+    /// `new_root` it lets anyone rebuild the tree from events alone; which
+    /// leaf changed is found by matching the root, not published
+    /// (GHSA-vwvv-3255-783f).
+    pub new_commitment: BytesN<32>,
     /// Encrypted position note for the new (higher-debt) commitment. See DepositEvent.
     pub enc_note:      Bytes,
 }

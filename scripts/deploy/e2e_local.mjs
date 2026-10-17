@@ -8,6 +8,8 @@
  * the attacks the security remediation closed and expects each to fail:
  *   - a deposit claiming an output locked to another key, or with a timelock
  *     outside the allowed window (#177)
+ *   - a deposit without a signature from the Bitcoin key it names, or with
+ *     that signature replayed from another account (GHSA-862g)
  *   - an admin installing a Merkle root other than the proven insertion (#211)
  *   - the same Bitcoin txid deposited into a lender that is not a registered
  *     consumer, and into the second lender after the first (GHSA-2975)
@@ -35,6 +37,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { deployWithConstructor } from './constructor_deploy.mjs';
+import { secp256k1 } from '@noble/curves/secp256k1';
 
 const {
   Keypair, Address, Contract, TransactionBuilder, Operation, Asset, xdr, nativeToScVal, scValToNative,
@@ -71,8 +74,11 @@ const DEPOSIT_HEIGHT = CHECKPOINT_HEIGHT + 1;   // the first mined header holds 
 const TIMELOCK = DEPOSIT_HEIGHT + 52_560;      // ~1 year, inside 1,008..=105,000 above it
 // Compressed secp256k1 encodings; the contracts check the prefix, not the point.
 const PROTOCOL_PUBKEY = Buffer.concat([Buffer.from([0x02]), Buffer.alloc(32, 0x11)]);
-const USER_PUBKEY = Buffer.concat([Buffer.from([0x03]), Buffer.alloc(32, 0x22)]);
-const OTHER_PUBKEY = Buffer.concat([Buffer.from([0x02]), Buffer.alloc(32, 0x44)]);
+// Real Bitcoin keys: deposits must be signed by the key they name (GHSA-862g).
+const USER_KEY = Buffer.alloc(32, 0x42);
+const OTHER_KEY = Buffer.alloc(32, 0x77);
+const USER_PUBKEY = Buffer.from(secp256k1.getPublicKey(USER_KEY, true));
+const OTHER_PUBKEY = Buffer.from(secp256k1.getPublicKey(OTHER_KEY, true));
 
 // ── output ───────────────────────────────────────────────────────────────────
 let passed = 0;
@@ -170,6 +176,19 @@ const i128 = (n) => nativeToScVal(n, { type: 'i128' });
 
 // ── Bitcoin helpers ──────────────────────────────────────────────────────────
 const sha256d = (d) => crypto.createHash('sha256').update(crypto.createHash('sha256').update(d).digest()).digest();
+
+/** A BIP-137 signature (what a wallet's ECDSA "sign message" returns) over the
+ * deposit authorization `spv-types::key_proof` rebuilds on-chain. */
+function signDeposit(key, contractId, depositor, txidInternal) {
+  const msg = Buffer.from(
+    `Writz deposit\ncontract:${contractId}\ndepositor:${depositor}\ntxid:${Buffer.from(txidInternal).reverse().toString('hex')}`,
+  );
+  const magic = Buffer.from('Bitcoin Signed Message:\n');
+  const framed = Buffer.concat([Buffer.from([magic.length]), magic, Buffer.from([msg.length]), msg]);
+  const digest = sha256d(framed);
+  const sig = secp256k1.sign(digest, key, { lowS: true });
+  return Buffer.concat([Buffer.from([31 + sig.recovery]), Buffer.from(sig.toCompactRawBytes())]);
+}
 
 /** Minimal Bitcoin script number push, as `spv-types::script` encodes it. */
 function scriptNumber(n) {
@@ -350,11 +369,16 @@ async function main() {
     min_deposit_satoshis: MIN_DEPOSIT.toString(), actual_satoshis: COLLATERAL.toString(),
   });
   const commitment0 = H(COLLATERAL, 0n, SECRET, NONCES[0]);
-  const depositArgs = (userPubkey, timelock) => [
+  const ctSig = (key, who = borrower.publicKey()) => signDeposit(key, ctId, who, txid);
+  const depositArgs = (userPubkey, timelock, keySig = ctSig(USER_KEY)) => [
     addr(borrower.publicKey()), bytes(blockHash), xdr.ScVal.scvVec([]), u32(0), bytes(rawTx),
-    bytes(userPubkey), u32(timelock), proofVal(dep.proof), signalsVal(dep.publicSignals), bytes(Buffer.alloc(0)),
+    bytes(userPubkey), u32(timelock), bytes(keySig), proofVal(dep.proof), signalsVal(dep.publicSignals), bytes(Buffer.alloc(0)),
   ];
-  await expectError(borrower, ctId, 'deposit', depositArgs(OTHER_PUBKEY, TIMELOCK), 17,
+  await expectError(borrower, ctId, 'deposit', depositArgs(USER_PUBKEY, TIMELOCK, ctSig(OTHER_KEY)), 25,
+    "a deposit of someone else's Writz output, without their Bitcoin key");
+  await expectError(borrower, ctId, 'deposit', depositArgs(USER_PUBKEY, TIMELOCK, ctSig(USER_KEY, attacker.publicKey())), 25,
+    'a key proof replayed from another account');
+  await expectError(borrower, ctId, 'deposit', depositArgs(OTHER_PUBKEY, TIMELOCK, ctSig(OTHER_KEY)), 17,
     'a deposit claiming an output locked to another Bitcoin key');
   await expectError(borrower, ctId, 'deposit', depositArgs(USER_PUBKEY, DEPOSIT_HEIGHT + 1_007), 21,
     'a deposit whose timelock opens under 1,008 blocks after confirmation');
@@ -366,6 +390,7 @@ async function main() {
   const plDepositArgs = [
     addr(borrower.publicKey()), bytes(blockHash), xdr.ScVal.scvVec([]), u32(0), bytes(rawTx),
     bytes(writzScriptPubKey(PROTOCOL_PUBKEY, USER_PUBKEY, TIMELOCK)), u32(TIMELOCK), bytes(USER_PUBKEY),
+    bytes(signDeposit(USER_KEY, plId, borrower.publicKey(), txid)),
   ];
   await expectError(borrower, plId, 'deposit', plDepositArgs, 27, 'a deposit into a lender bitcoin-spv has not registered');
   await invoke(admin, spvId, 'set_consumer', [addr(admin.publicKey()), addr(plId), nativeToScVal(true)]);

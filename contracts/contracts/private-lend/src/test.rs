@@ -212,9 +212,7 @@ fn fake_proof(env: &Env) -> Vec<BytesN<32>> {
 /// A fake 33-byte compressed Bitcoin public key (compressed-prefix byte +
 /// 32 arbitrary bytes) - this test suite never validates curve membership.
 fn fake_user_pubkey(env: &Env) -> BytesN<33> {
-    let mut buf = [0x22u8; 33];
-    buf[0] = 0x02;
-    BytesN::from_array(env, &buf)
+    real_user_pubkey(env)
 }
 
 /// Block height the mock SPV reports for the block holding the deposit.
@@ -332,6 +330,7 @@ fn do_deposit(s: &Setup) -> BytesN<32> {
         &s.spk,
         &TEST_TIMELOCK,
         &fake_user_pubkey(&s.env),
+        &sign_deposit(s),
     )
 }
 
@@ -379,6 +378,7 @@ fn try_deposit_with(
         spk,
         &timelock,
         user_pubkey,
+        &sign_deposit(s),
     ) {
         Ok(Ok(txid)) => Ok(txid),
         Err(Ok(err)) => Err(err),
@@ -564,6 +564,7 @@ fn deposit_too_small_panics() {
         &s.spk,
         &TEST_TIMELOCK,
         &fake_user_pubkey(&s.env),
+        &sign_deposit(&s),
     );
 }
 
@@ -901,6 +902,7 @@ fn borrow_fails_when_oracle_has_no_price() {
         &s.spk,
         &TEST_TIMELOCK,
         &fake_user_pubkey(&s.env),
+        &sign_deposit(&s),
     );
     s.client.supply_usdc(&s.supplier, &1_000_000_000_000_i128);
 
@@ -926,6 +928,7 @@ fn borrow_fails_when_oracle_price_is_stale() {
         &s.spk,
         &TEST_TIMELOCK,
         &fake_user_pubkey(&s.env),
+        &sign_deposit(&s),
     );
     s.client.supply_usdc(&s.supplier, &1_000_000_000_000_i128);
 
@@ -951,6 +954,7 @@ fn borrow_succeeds_with_a_seven_decimal_oracle() {
         &s.spk,
         &TEST_TIMELOCK,
         &fake_user_pubkey(&s.env),
+        &sign_deposit(&s),
     );
     s.client.supply_usdc(&s.supplier, &1_000_000_000_000_i128);
 
@@ -979,6 +983,7 @@ fn borrow_succeeds_with_a_two_decimal_oracle() {
         &s.spk,
         &TEST_TIMELOCK,
         &fake_user_pubkey(&s.env),
+        &sign_deposit(&s),
     );
     s.client.supply_usdc(&s.supplier, &1_000_000_000_000_i128);
 
@@ -1377,4 +1382,162 @@ fn set_max_total_borrowed_by_non_admin_fails() {
         s.client.try_set_max_total_borrowed(&stranger, &1_i128),
         Err(Ok(PrivateLendError::Unauthorized)),
     );
+}
+
+// ── Bitcoin key-control proof (GHSA-862g-739q-x6h8) ───────────────────────────
+
+/// The depositor's Bitcoin signing key. Fixed so the derived scripts are stable.
+fn user_signing_key() -> k256::ecdsa::SigningKey {
+    k256::ecdsa::SigningKey::from_slice(&[0x42u8; 32]).unwrap()
+}
+
+/// Compressed public key of `user_signing_key`.
+fn real_user_pubkey(env: &Env) -> BytesN<33> {
+    let point = user_signing_key().verifying_key().to_encoded_point(true);
+    let mut out = [0u8; 33];
+    out.copy_from_slice(point.as_bytes());
+    BytesN::from_array(env, &out)
+}
+
+/// A BIP-137 signature by `key` over the deposit message for `contract`,
+/// `depositor` and `txid`, as a wallet would produce it.
+fn sign_with(env: &Env, key: &k256::ecdsa::SigningKey, contract: &Address, depositor: &Address, txid: &BytesN<32>) -> BytesN<65> {
+    let msg = spv_types::key_proof::deposit_message(env, contract, depositor, txid);
+    let digest = spv_types::key_proof::signed_message_digest(env, &msg).to_array();
+    let (sig, recid) = key.sign_prehash_recoverable(&digest).unwrap();
+    let mut out = [0u8; 65];
+    out[0] = 31 + recid.to_byte(); // compressed-key P2PKH header
+    out[1..].copy_from_slice(&sig.to_bytes());
+    BytesN::from_array(env, &out)
+}
+
+/// The txid the mock SPV reports for every deposit.
+fn mock_txid(env: &Env) -> BytesN<32> {
+    BytesN::from_array(env, &[0xdeu8; 32])
+}
+
+fn sign_deposit(s: &Setup) -> BytesN<65> {
+    sign_with(&s.env, &user_signing_key(), &s.client.address, &s.depositor, &mock_txid(&s.env))
+}
+
+fn try_deposit_signed(s: &Setup, key_sig: &BytesN<65>) -> Result<BytesN<32>, PrivateLendError> {
+    match s.client.try_deposit(
+        &s.depositor, &fake_block_hash(&s.env), &fake_proof(&s.env), &0u32,
+        &s.raw_tx, &s.spk, &TEST_TIMELOCK, &fake_user_pubkey(&s.env), key_sig,
+    ) {
+        Ok(Ok(txid)) => Ok(txid),
+        Err(Ok(err)) => Err(err),
+        other => panic!("unexpected deposit result: {:?}", other),
+    }
+}
+
+#[test]
+fn deposit_signed_by_the_depositors_bitcoin_key_succeeds() {
+    let s = setup();
+    assert!(try_deposit_signed(&s, &sign_deposit(&s)).is_ok());
+}
+
+#[test]
+fn deposit_signed_by_another_key_is_rejected() {
+    // GHSA-862g: someone else's Writz output, claimed without its key.
+    let s = setup();
+    let attacker = k256::ecdsa::SigningKey::from_slice(&[0x77u8; 32]).unwrap();
+    let sig = sign_with(&s.env, &attacker, &s.client.address, &s.depositor, &mock_txid(&s.env));
+    assert_eq!(try_deposit_signed(&s, &sig), Err(PrivateLendError::InvalidKeyProof));
+}
+
+#[test]
+fn a_key_proof_for_another_depositor_is_rejected() {
+    // The victim's genuine signature, replayed by a different Stellar account.
+    let s = setup();
+    let victim = Address::generate(&s.env);
+    let sig = sign_with(&s.env, &user_signing_key(), &s.client.address, &victim, &mock_txid(&s.env));
+    assert_eq!(try_deposit_signed(&s, &sig), Err(PrivateLendError::InvalidKeyProof));
+}
+
+#[test]
+fn a_key_proof_for_another_contract_is_rejected() {
+    // A signature made for the other lender (or another deployment).
+    let s = setup();
+    let other_contract = Address::generate(&s.env);
+    let sig = sign_with(&s.env, &user_signing_key(), &other_contract, &s.depositor, &mock_txid(&s.env));
+    assert_eq!(try_deposit_signed(&s, &sig), Err(PrivateLendError::InvalidKeyProof));
+}
+
+#[test]
+fn a_key_proof_for_another_txid_is_rejected() {
+    let s = setup();
+    let sig = sign_with(&s.env, &user_signing_key(), &s.client.address, &s.depositor, &BytesN::from_array(&s.env, &[0x01u8; 32]));
+    assert_eq!(try_deposit_signed(&s, &sig), Err(PrivateLendError::InvalidKeyProof));
+}
+
+#[test]
+fn a_signature_with_an_uncompressed_key_header_is_rejected() {
+    let s = setup();
+    let mut sig = sign_deposit(&s).to_array();
+    sig[0] = 27; // uncompressed-key header
+    assert_eq!(try_deposit_signed(&s, &BytesN::from_array(&s.env, &sig)), Err(PrivateLendError::InvalidKeyProof));
+}
+
+// ── Interest is priced per interval (GHSA-c9gg-c476-9vc8, GHSA-frj5-5wmv-wvm3) ──
+
+/// One year at ~75% utilization, then a borrower floods the pool with supply
+/// right before a 1-stroop repay, trying to reprice the whole year at the
+/// crashed rate. Returns the interest charged.
+fn interest_after_year(flash_supply: i128) -> i128 {
+    let s = setup();
+    let txid = setup_with_supply_and_deposit(&s, 2_654_000_000_i128);
+    let borrow = 1_990_000_000_i128;
+    s.client.borrow(&s.depositor, &txid, &borrow);
+    s.env.ledger().set_sequence_number(1_000 + 6_311_520);
+
+    let usdc = StellarAssetClient::new(&s.env, &s.usdc);
+    if flash_supply > 0 {
+        usdc.mint(&s.depositor, &flash_supply);
+        s.client.supply_usdc(&s.depositor, &flash_supply);
+    }
+    usdc.mint(&s.depositor, &1_i128);
+    s.client.repay(&s.depositor, &txid, &1_i128);
+    if flash_supply > 0 {
+        s.client.withdraw_supply(&s.depositor, &flash_supply);
+    }
+    let pos: Position = s.client.get_position(&txid).unwrap();
+    pos.usdc_debt + 1 - borrow
+}
+
+#[test]
+fn a_flash_supply_before_repaying_does_not_erase_past_interest() {
+    let honest = interest_after_year(0);
+    // ~8% APR on $199: about 159.2 USDC of interest.
+    assert!(honest > 150_000_000, "honest interest {honest}");
+    let attacked = interest_after_year(1_000_000_000_000_i128); // 100,000 USDC dumped in
+    assert_eq!(attacked, honest, "the past year must be priced at the rate that applied during it");
+}
+
+#[test]
+fn a_rate_change_only_reprices_the_time_after_it() {
+    let s = setup();
+    let txid = setup_with_supply_and_deposit(&s, 2_654_000_000_i128);
+    let borrow = 1_990_000_000_i128;
+    s.client.borrow(&s.depositor, &txid, &borrow);
+    let rate_before = s.client.get_borrow_rate_bp();
+
+    // Half a year at ~75% utilization (~8% APR)...
+    s.env.ledger().set_sequence_number(1_000 + 6_311_520 / 2);
+    s.client.supply_usdc(&s.supplier, &2_654_000_000_i128); // ...then utilization halves.
+    let rate_after = s.client.get_borrow_rate_bp();
+    assert!(rate_after < 800, "rate after more supply: {rate_after}");
+
+    // ...then half a year at the lower rate.
+    s.env.ledger().set_sequence_number(1_000 + 6_311_520);
+    StellarAssetClient::new(&s.env, &s.usdc).mint(&s.depositor, &1_i128);
+    s.client.repay(&s.depositor, &txid, &1_i128);
+
+    let pos: Position = s.client.get_position(&txid).unwrap();
+    let interest = pos.usdc_debt + 1 - borrow;
+    let first_half = borrow * rate_before / 10_000 / 2;
+    // Second half grows the already-accrued debt at the lower rate.
+    let second_half = (borrow + first_half) * rate_after / 10_000 / 2;
+    let expected = first_half + second_half;
+    assert!((interest - expected).abs() <= 2, "interest {interest}, expected {expected}");
 }

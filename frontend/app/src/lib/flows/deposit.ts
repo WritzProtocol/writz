@@ -1,4 +1,5 @@
 import { Client } from "@/lib/contracts/generated";
+import { depositKeyMessage, parseMessageSignature } from "@/lib/bitcoin/keyProof";
 import { Buffer } from "buffer";
 import { Account, TransactionBuilder, Operation } from "@stellar/stellar-sdk";
 import { config, requireContract } from "@/config";
@@ -114,6 +115,8 @@ export interface RegisterInput {
   bundle: SpvBundle;
   seed: Uint8Array;
   signTransaction: SignTransaction;
+  /** Signs a message with the deposit's Bitcoin key; returns base64 (BIP-137). */
+  signKeyProof: (message: string) => Promise<string>;
   emit: Emit;
   onProved: (p: { commitment: bigint; nullifier: bigint }) => void;
   onSigned: (hash: string) => void;
@@ -212,8 +215,16 @@ async function realRegister(input: RegisterInput): Promise<{ hash: string }> {
   input.onProved({ commitment, nullifier: computeNullifier(secret, nonce) });
 
   const encNote = sealDepositNote(seed, pd.positionIndex, collateralSats);
+  const contractId = requireContract(config.contracts.commitmentTree, "commitment-tree");
+  // The contract only accepts a deposit signed by the Bitcoin key the output
+  // is locked to, over this contract, this account and this txid
+  // (GHSA-862g-739q-x6h8).
+  emit({ type: "awaiting_signature", wallet: "bitcoin" });
+  const keySig = parseMessageSignature(
+    await input.signKeyProof(depositKeyMessage(contractId, pd.stellarAddress, pd.btcTxid)),
+  );
   const client = new Client({
-    contractId: requireContract(config.contracts.commitmentTree, "commitment-tree"),
+    contractId,
     networkPassphrase: config.networkPassphrase,
     rpcUrl: config.rpcUrl,
     allowHttp: config.rpcUrl.startsWith("http://"),
@@ -230,6 +241,7 @@ async function realRegister(input: RegisterInput): Promise<{ hash: string }> {
       raw_tx: Buffer.from(sorobanArgs.raw_tx, "hex"),
       user_pubkey: Buffer.from(pd.btcPubkey, "hex"),
       timelock_height: output.timelockHeight,
+      key_sig: keySig,
       zk_proof: proof,
       public_signals: publicSignals,
       enc_note: Buffer.from(encNote),
@@ -607,11 +619,12 @@ export async function registerDeposit(params: {
   owner: string;
   seed: Uint8Array;
   signTransaction: SignTransaction;
+  signKeyProof: (message: string) => Promise<string>;
   emit: Emit;
   signal?: AbortSignal;
   deps?: DepositDeps;
 }): Promise<Position> {
-  const { owner, seed, signTransaction, emit, signal } = params;
+  const { owner, seed, signTransaction, signKeyProof, emit, signal } = params;
   const deps = params.deps ?? depositDeps;
 
   const tracked = await trackDeposit(owner, { emit, signal, deps });
@@ -634,6 +647,7 @@ export async function registerDeposit(params: {
       bundle,
       seed,
       signTransaction,
+      signKeyProof,
       emit,
       onProved: ({ commitment, nullifier }) => {
         pd = pendingDeposits.update(owner, {
