@@ -1307,7 +1307,8 @@ html:has(.landing) body {
   }
 
   .home .tile {
-    padding: 72px 20px 28px;
+    padding: 64px 16px 32px;
+    clip-path: polygon(24px 0, 100% 0, 100% 100%, 0 100%, 0 83.7px);
   }
 
   .home .offer {
