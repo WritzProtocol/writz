@@ -7,6 +7,7 @@ import { Enter } from "@/components/ui/entrance";
 import { FundsCard, NotConnected } from "@/components/funds/FundsCard";
 import { Hero, RiskNotes, Tile, Tiles } from "@/components/funds/parts";
 import { PAUSED, UNIT, type EarnModel } from "./model";
+import { EARN_COPY } from "./copy";
 
 const STELLAR = networkName(config.networkPassphrase);
 
@@ -43,9 +44,7 @@ export function EarnView({ m }: { m: EarnModel }) {
     <div className="fu-page">
       <Enter as="header" name="head">
         <h1 className="fu-h1">Earn on USDC</h1>
-        <p className="fu-lede">
-          Deposit Blend test USDC into the Writz vault on DeFindex. It earns from Blend lending. Shares sit in your own wallet.
-        </p>
+        <p className="fu-lede">{EARN_COPY.lede}</p>
       </Enter>
 
       {m.stale ? (
@@ -82,7 +81,7 @@ export function EarnView({ m }: { m: EarnModel }) {
             <Apy apy={m.apy} />
           </Tiles>
           <RiskNotes
-            lines={["Blend test USDC is a different asset from the USDC you borrow.", "The vault carries Blend's lending risk."]}
+            lines={EARN_COPY.risk}
             link={{ href: "/protocol", label: "See vault stats" }}
           />
         </section>
@@ -104,13 +103,13 @@ export function EarnView({ m }: { m: EarnModel }) {
             </Notice>
           ) : m.unfunded ? (
             <Notice tone="warning" label="Account not funded">
-              <p>This account has no test XLM yet, so it can&apos;t pay network fees. Fund it from the Wallets menu.</p>
+              <p>{EARN_COPY.unfunded}</p>
             </Notice>
           ) : null}
 
           {m.funds && !blocked ? <FundsCard m={m.funds} label="Deposit or withdraw" /> : null}
 
-          {m.connected && m.wallet.kind === "ok" && m.wallet.value === 0n && config.earn.faucetUrl ? (
+          {m.connected && m.wallet.kind === "ok" && m.wallet.value === 0n && config.target !== "mainnet" && config.earn.faucetUrl ? (
             <p className="wz-hint">
               This vault uses Blend test USDC, a different asset from the USDC you borrow.{" "}
               <ExternalLink href={config.earn.faucetUrl}>Get some from the Blend faucet</ExternalLink>.

@@ -98,6 +98,13 @@ function loadConfig(): Config {
     defindexVaultId,
     kmsKeyId: process.env["KMS_KEY_ID"],
     protocolSigningKeyWif: process.env["PROTOCOL_SIGNING_KEY"],
+    lending: {
+      ADMIN_SECRET: process.env["ADMIN_SECRET"],
+      RELAYER_SECRET: process.env["RELAYER_SECRET"],
+      COMMITMENT_TREE_ID: process.env["COMMITMENT_TREE_ID"],
+      PRIVATE_LEND_ID: process.env["PRIVATE_LEND_ID"],
+      BITCOIN_SPV_ID: process.env["BITCOIN_SPV_ID"],
+    },
   });
 
   return {

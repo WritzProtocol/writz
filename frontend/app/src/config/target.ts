@@ -60,8 +60,21 @@ export interface RawTargetEnv {
   target?: string | undefined;
   networkPassphrase?: string | undefined;
   rpcUrl?: string | undefined;
+  horizonUrl?: string | undefined;
   relayerUrl?: string | undefined;
-  contracts?: Record<string, string | undefined> | undefined;
+  /** Settings every real deploy of this target needs, by variable name. Required on mainnet. */
+  required?: Record<string, string | undefined> | undefined;
+  /** Settings only lending uses, by variable name. Must be unset on mainnet. */
+  lendingOnly?: Record<string, string | undefined> | undefined;
+}
+
+/**
+ * BTC-collateralized lending stays off on mainnet until the audit: the mainnet
+ * epic (#122) is Earn-only. It is a property of the target rather than a
+ * variable, so turning it on is a reviewed code change, not a dashboard edit.
+ */
+export function lendingEnabled(target: DeployTarget): boolean {
+  return target !== "mainnet";
 }
 
 /**
@@ -121,11 +134,29 @@ export function findTargetConflicts(env: RawTargetEnv): string[] {
   } else if (!relayerUrl.startsWith("https://")) {
     problems.push(`NEXT_PUBLIC_RELAYER_URL must be https on the mainnet target, got: "${relayerUrl}"`);
   }
+  if (relayerUrl && /testnet|futurenet/i.test(relayerUrl)) {
+    problems.push(`NEXT_PUBLIC_RELAYER_URL points at a test deployment ("${relayerUrl}") on the mainnet target.`);
+  }
 
-  for (const [name, value] of Object.entries(env.contracts ?? {})) {
+  const horizonUrl = env.horizonUrl?.trim();
+  if (!horizonUrl) {
+    problems.push(
+      "NEXT_PUBLIC_HORIZON_URL is not set. Without it the app reads balances from the testnet Horizon.",
+    );
+  } else if (/testnet|futurenet/i.test(horizonUrl)) {
+    problems.push(`NEXT_PUBLIC_HORIZON_URL points at a test network ("${horizonUrl}") on the mainnet target.`);
+  }
+
+  for (const [name, value] of Object.entries(env.required ?? {})) {
     if (!value?.trim()) {
+      problems.push(`${name} is not set. It must be set explicitly on the mainnet target.`);
+    }
+  }
+
+  for (const [name, value] of Object.entries(env.lendingOnly ?? {})) {
+    if (value?.trim()) {
       problems.push(
-        `${name} is not set. Every contract address must be set explicitly on the mainnet target.`,
+        `${name} is set. Lending is not enabled on the mainnet target (Earn only), so it must be unset.`,
       );
     }
   }

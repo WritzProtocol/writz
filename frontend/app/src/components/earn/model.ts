@@ -1,4 +1,5 @@
 import { formatUsdc } from "@/lib/borrow/journey";
+import { EARN_COPY } from "./copy";
 import type { Read } from "@/lib/loan/model";
 import type { FundsModel } from "@/components/funds/FundsCard";
 
@@ -20,7 +21,7 @@ export interface EarnModel {
   funds: FundsModel | null;
 }
 
-export const UNIT = "USDC (Blend)";
+export const UNIT = EARN_COPY.unit;
 export const PAUSED = "The vault's Blend strategy is paused, so it can't take deposits right now. Your balance is safe.";
 
 const value = (r: Read<bigint>) => (r.kind === "ok" ? r.value : null);
@@ -36,7 +37,7 @@ export function earnSides(wallet: Read<bigint>, balance: Read<bigint>, paused: b
       max: w,
       hint: w === null ? "Checking your wallet..." : `Wallet: ${formatUsdc(w)} ${UNIT}.`,
       over: (max) => `You have ${formatUsdc(max)} ${UNIT} in your wallet. Enter that or less.`,
-      blocked: paused ? PAUSED : w === 0n ? `You have no Blend test USDC.` : null,
+      blocked: paused ? PAUSED : w === 0n ? EARN_COPY.noFunds : null,
       done: (amount) => `Deposited ${formatUsdc(amount)} ${UNIT}.`,
       action: (amount) => `Deposit ${formatUsdc(amount)} USDC`,
       errorFlow: "earn-deposit",

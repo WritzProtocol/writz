@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getPoolState } from "@/lib/contracts/commitmentTree";
+import { LENDING_ENABLED } from "@/config";
 import { earnApi } from "@/lib/earn/api";
 import { getRetentionCohorts, getTvlMetrics } from "@/lib/metrics/api";
 import type { Read } from "@/lib/loan/model";
@@ -25,7 +26,8 @@ const settle = <T,>(p: Promise<T>): Promise<Read<T>> =>
 
 async function readProtocol(): Promise<ProtocolData> {
   const [pool, tvl, apy, cohorts] = await Promise.all([
-    settle(getPoolState()),
+    // Earn-only deploys have no lending pool to read.
+    LENDING_ENABLED ? settle(getPoolState()) : Promise.resolve<Read<never>>({ kind: "failed" }),
     settle(getTvlMetrics()),
     settle(earnApi().getApy()),
     settle(getRetentionCohorts()),

@@ -3,7 +3,7 @@ import * as bitcoin from "bitcoinjs-lib";
 import { resolveProtocolSigner } from "@/lib/bitcoin/kmsSigner";
 import { groth16, type Groth16ProofJSON } from "snarkjs";
 import { Client } from "@/lib/contracts/generated";
-import { config, requireContract } from "@/config";
+import { config, LENDING_ENABLED, requireContract } from "@/config";
 import { getMerkleRoot, lookupDepositTxid } from "@/lib/contracts/commitmentTree";
 import { verifyReleaseBinding } from "@/lib/cosign/binding";
 import { checkRateLimit, clientKeyFromHeaders } from "@/lib/rateLimit";
@@ -97,6 +97,13 @@ interface ZkProofBody {
 }
 
 export async function POST(req: NextRequest) {
+  // No lending on an Earn-only deploy (mainnet, #122), so nothing to co-sign.
+  // proxy.ts already 404s this path there; this keeps the route closed even if
+  // that matcher ever changes.
+  if (!LENDING_ENABLED) {
+    return NextResponse.json({ error: "not_found" }, { status: 404 });
+  }
+
   const clientKey = clientKeyFromHeaders(req.headers);
   const rateLimit = checkRateLimit(clientKey, RATE_LIMIT_MAX_REQUESTS, RATE_LIMIT_WINDOW_MS);
   if (!rateLimit.allowed) {

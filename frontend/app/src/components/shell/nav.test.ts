@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { currentNav } from "./nav";
+import { currentNav, navFor } from "./nav";
 
 describe("currentNav", () => {
   test("home and every loan mark Home", () => {
@@ -23,5 +23,15 @@ describe("currentNav", () => {
     expect(currentNav("/help/reclaim")).toBeNull();
     expect(currentNav("/lending")).toBeNull();
     expect(currentNav("/loansx")).toBeNull();
+  });
+});
+
+describe("navFor", () => {
+  test("shows the full nav where lending is enabled", () => {
+    expect(navFor(true).map((n) => n.id)).toEqual(["home", "borrow", "earn", "lend"]);
+  });
+
+  test("shows Earn alone on an Earn-only deploy", () => {
+    expect(navFor(false).map((n) => n.id)).toEqual(["earn"]);
   });
 });

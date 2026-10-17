@@ -8,7 +8,7 @@ Writz runs the same two applications - the Next.js app in `frontend/app` and the
 |---|---|---|---|---|
 | `local` | `http://localhost:3000` | Testnet | Signet | Developer machines. Validates nothing. |
 | `testnet` | `testnet.writz.xyz` | Testnet | Signet | Live. Earn plus the existing dashboard. |
-| `mainnet` | `app.writz.xyz` | Public | Mainnet | **Not deployed.** Reserved for Milestone 2. |
+| `mainnet` | `app.writz.xyz` | Public | Mainnet | Earn only (#122). Lending stays off until the audit. |
 
 The apex `writz.xyz` serves the marketing site and press page from a separate Next.js app, `frontend/landing`. It is not a deploy target in this sense: it has no chain configuration and never reads `NEXT_PUBLIC_WRITZ_ENV`. Its only link to a target is `NEXT_PUBLIC_APP_URL`, where its "Launch App" buttons point.
 
@@ -35,10 +35,12 @@ Leaving the variable unset means `local` and validates nothing. That is delibera
 | Bitcoin network must match the target (relayer) | signet | mainnet |
 | `DEFINDEX_VAULT_ID` must be set (relayer) | yes | yes |
 | Soroban RPC must not be a test endpoint | - | yes |
-| All `NEXT_PUBLIC_*` contract addresses set (frontend) | - | yes |
-| `NEXT_PUBLIC_RELAYER_URL` set and https (frontend) | - | yes |
+| Earn settings set: `NEXT_PUBLIC_EARN_ASSET_ISSUER`, `NEXT_PUBLIC_EARN_VAULT_ID` (frontend) | - | yes |
+| Lending settings unset: lending contract ids, `NEXT_PUBLIC_PROTOCOL_BTC_PUBKEY` (frontend) | - | yes |
+| `NEXT_PUBLIC_HORIZON_URL` set and not a test network (frontend) | - | yes |
+| `NEXT_PUBLIC_RELAYER_URL` set, https, and not a test deployment (frontend) | - | yes |
 | Earn mock forbidden (frontend) | - | yes |
-| `KMS_KEY_ID` required, `PROTOCOL_SIGNING_KEY` forbidden (relayer) | - | yes |
+| No signing key or lending setting: `KMS_KEY_ID`, `PROTOCOL_SIGNING_KEY`, `ADMIN_SECRET`, `RELAYER_SECRET`, `COMMITMENT_TREE_ID`, `PRIVATE_LEND_ID`, `BITCOIN_SPV_ID` all unset (relayer) | - | yes |
 | `CORS_ORIGIN` must name explicit origins, not `*` (relayer) | - | yes |
 
 Testnet is deliberately looser. It is allowed to run with the Earn mock and with pieces still missing while the epic is being built out; mainnet is allowed to inherit nothing by omission.
@@ -195,42 +197,66 @@ When mainnet goes live, `NEXT_PUBLIC_APP_URL` moves to `https://app.writz.xyz`.
 
 ---
 
-## Adding `app.writz.xyz` later
+## Provisioning `app.writz.xyz` (mainnet, Earn only)
 
-Repeat the three steps with `mainnet` values, in a **new** Vercel project (root directory `frontend/app`, the same code as testnet) and a **new** Railway service. Do not clone the testnet ones - cloning is the failure this whole mechanism is built around, and the mainnet rules in the table above exist to catch it. Expect the first mainnet build to fail with a list of variables to fix; that list is the feature.
+Mainnet serves Earn alone (#122). Lending is a property of the target, not a variable: on `mainnet`, `lendingEnabled()` is false in both apps, so
 
-Mainnet also requires things testnet does not have yet:
+- the app's `proxy.ts` answers 404 on `/borrow`, `/loans`, `/lend`, `/help/reclaim`, `/dev` and `/api/cosign`, and sends `/` to `/earn`;
+- the relayer mounts no SPV, Merkle or insertion routes and starts neither the header sync nor the repay watcher;
+- both refuse to start with any lending setting or signing key present, so the mainnet services hold no Bitcoin or admin key at all.
 
-- A DeFindex vault deployed on the public network, with roles split across dedicated keys rather than a single deployer (see the note at the end of [`defindex-vault-testnet.md`](https://github.com/WritzProtocol/writz/blob/main/contracts/deployments/defindex-vault-testnet.md)).
-- Co-signing through AWS KMS. The WIF `PROTOCOL_SIGNING_KEY` fallback is refused on mainnet in two places: at boot by the target check, and at signing time by `resolveProtocolSigner` (see [security model](/security/security-model)).
-- A log alert on the relayer's vault endpoints (see below) before real funds flow.
+Turning lending on is a reviewed code change after the audit, not a dashboard edit.
 
----
+Use a **new** Vercel project (root directory `frontend/app`, the same code as testnet) and a **new** Railway service with its own volume. Do not clone the testnet ones: cloning is the failure this mechanism exists to catch. A copied testnet configuration fails the build or the boot with the full list of what is wrong.
 
-## Vault endpoint rate limits and monitoring
+### Frontend (Vercel, new project)
 
-The relayer's `/defindex/*` routes are rate limited per client IP (first `X-Forwarded-For` hop), with the same in-memory, per-process limiter shape as the frontend's `/api/cosign`:
+```
+NEXT_PUBLIC_WRITZ_ENV=mainnet
+NEXT_PUBLIC_SITE_URL=https://app.writz.xyz
+NEXT_PUBLIC_NETWORK_PASSPHRASE=Public Global Stellar Network ; September 2015
+NEXT_PUBLIC_SOROBAN_RPC_URL=<a mainnet Soroban RPC provider; SDF runs no public one>
+NEXT_PUBLIC_HORIZON_URL=https://horizon.stellar.org
+NEXT_PUBLIC_RELAYER_URL=https://api.app.writz.xyz
+NEXT_PUBLIC_EARN_ASSET_CODE=USDC
+NEXT_PUBLIC_EARN_ASSET_ISSUER=GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN
+NEXT_PUBLIC_EARN_VAULT_ID=CDODNWQY54F4WS7AZ5Z3AAIWRLKBFUMXHNOFEM4H3UNCTMFK4RF2A6GU
+NEXT_PUBLIC_PRIVY_APP_ID=<if Privy login is offered; add https://app.writz.xyz to its allowed origins>
+```
 
-| Routes | Limit | Why |
+No lending contract ids, no `NEXT_PUBLIC_PROTOCOL_BTC_PUBKEY`, no `PROTOCOL_SIGNING_KEY` or `KMS_KEY_ID`, no `NEXT_PUBLIC_EARN_FAUCET_URL`. The vault and asset come from [`defindex-vault-mainnet.md`](https://github.com/WritzProtocol/writz/blob/main/contracts/deployments/defindex-vault-mainnet.md).
+
+### Relayer (Railway, new service)
+
+Mount a persistent volume at `/app/data` before the first deploy (see Persistence above).
+
+```
+WRITZ_ENV=mainnet
+BITCOIN_NETWORK=mainnet
+STELLAR_NETWORK_PASSPHRASE=Public Global Stellar Network ; September 2015
+STELLAR_RPC_URL=<a mainnet Soroban RPC provider>
+CORS_ORIGIN=https://app.writz.xyz
+DEFINDEX_VAULT_ID=CDODNWQY54F4WS7AZ5Z3AAIWRLKBFUMXHNOFEM4H3UNCTMFK4RF2A6GU
+DEFINDEX_API_KEY=<the mainnet-only key; never the testnet one>
+```
+
+### DNS (Cloudflare)
+
+| Type | Name | Value |
 |---|---|---|
-| `GET /defindex/apy`, `GET /defindex/position` | 60 / minute | Page loads and refreshes, with headroom for several tabs. |
-| `POST /defindex/deposit`, `POST /defindex/withdraw` | 10 / minute | One call per user action; the budget covers retries, not normal use. |
+| CNAME | `app` | `cname.vercel-dns.com` |
+| CNAME | `api.app` | the target Railway shows for the custom domain |
 
-Over-limit requests get `429` with `Retry-After` and never reach DeFindex. The counters reset when the service restarts and are not shared across instances, which is fine while the relayer runs as one Railway service.
+Then point the landing at it: `NEXT_PUBLIC_APP_URL=https://app.writz.xyz` on the `writz-landing` project.
 
-Every vault request logs one JSON line (`{"evt":"defindex_request","route":...,"status":...,"durationMs":...}`), and `/health` reports per-route totals under `defindex` - requests, client and server errors, rate-limited count, average and max latency, and whether the route is currently `failing`.
-
-When one route returns five server errors in a row, the relayer logs a single line starting with `[ALERT] defindex <route>`, and `[RECOVERED] defindex <route>` on the next success. Wherever each target's relayer logs end up (Railway's log view or an external log drain), set an alert on lines matching `[ALERT] defindex` that notifies the operator channel. That wiring is a dashboard action and is not delivered by the code.
-
----
-
-## Checking a target's configuration
+### Verify
 
 ```bash
-# App: a contradiction fails the build.
-cd frontend/app && NEXT_PUBLIC_WRITZ_ENV=testnet bun run build
-
-# The rules themselves.
-cd frontend/app && bun test src/config
-cd relayer  && bun run test -- deploy-target
+curl -s https://api.app.writz.xyz/health      # "target":"mainnet","lending":false
+curl -s -o /dev/null -w '%{http_code}\n' https://app.writz.xyz/borrow/new   # 404
+curl -sI https://app.writz.xyz/ | grep -i location                         # /earn
 ```
+
+### Metrics history
+
+The vault was deployed on 2026-10-01. A new relayer indexes vault events from its first poll, and Soroban RPC keeps events for days, not weeks, so the seed deposit and anything else older than the RPC window cannot be backfilled from RPC. Rewind the cursor (above) to the oldest ledger RPC still serves; anything earlier needs a deep-history source such as Hubble.

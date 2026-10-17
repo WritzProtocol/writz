@@ -3,6 +3,7 @@ import {
   assertDeployTarget,
   findTargetConflicts,
   resolveDeployTarget,
+  lendingEnabled,
   MAINNET_PASSPHRASE,
   TARGET_PROFILES,
   TESTNET_PASSPHRASE,
@@ -13,10 +14,15 @@ const validMainnet = {
   target: "mainnet",
   networkPassphrase: MAINNET_PASSPHRASE,
   rpcUrl: "https://mainnet.sorobanrpc.com",
-  relayerUrl: "https://relayer.writz.xyz",
-  contracts: {
-    NEXT_PUBLIC_COMMITMENT_TREE_ID: "CMAINNET1",
-    NEXT_PUBLIC_PRIVATE_LEND_ID: "CMAINNET2",
+  horizonUrl: "https://horizon.stellar.org",
+  relayerUrl: "https://api.app.writz.xyz",
+  required: {
+    NEXT_PUBLIC_EARN_ASSET_ISSUER: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+    NEXT_PUBLIC_EARN_VAULT_ID: "CVAULTMAINNET",
+  },
+  lendingOnly: {
+    NEXT_PUBLIC_COMMITMENT_TREE_ID: undefined,
+    NEXT_PUBLIC_PRIVATE_LEND_ID: "",
   },
 };
 
@@ -109,32 +115,57 @@ describe("findTargetConflicts - mainnet", () => {
     expect(
       findTargetConflicts({ ...validMainnet, relayerUrl: "http://relayer.writz.xyz" })[0],
     ).toMatch(/must be https/);
+    expect(
+      findTargetConflicts({ ...validMainnet, relayerUrl: "https://api.testnet.writz.xyz" })[0],
+    ).toMatch(/test deployment/);
   });
 
-  it("requires every contract address to be set explicitly", () => {
+  it("requires the Earn settings to be set explicitly", () => {
     const problems = findTargetConflicts({
       ...validMainnet,
-      contracts: {
-        NEXT_PUBLIC_COMMITMENT_TREE_ID: "CMAINNET1",
-        NEXT_PUBLIC_PRIVATE_LEND_ID: "",
-        NEXT_PUBLIC_ZK_VERIFIER_ID: undefined,
-      },
+      required: { NEXT_PUBLIC_EARN_ASSET_ISSUER: "", NEXT_PUBLIC_EARN_VAULT_ID: undefined },
     });
     expect(problems).toHaveLength(2);
-    expect(problems.join("\n")).toMatch(/NEXT_PUBLIC_PRIVATE_LEND_ID/);
-    expect(problems.join("\n")).toMatch(/NEXT_PUBLIC_ZK_VERIFIER_ID/);
+    expect(problems.join("\n")).toMatch(/NEXT_PUBLIC_EARN_ASSET_ISSUER is not set/);
+    expect(problems.join("\n")).toMatch(/NEXT_PUBLIC_EARN_VAULT_ID is not set/);
+  });
+
+  it("refuses lending settings, since lending is off on mainnet", () => {
+    const problems = findTargetConflicts({
+      ...validMainnet,
+      lendingOnly: { NEXT_PUBLIC_COMMITMENT_TREE_ID: "CTESTNET", NEXT_PUBLIC_PROTOCOL_BTC_PUBKEY: "02ab" },
+    });
+    expect(problems).toHaveLength(2);
+    expect(problems.join("\n")).toMatch(/NEXT_PUBLIC_COMMITMENT_TREE_ID is set/);
+    expect(problems.join("\n")).toMatch(/NEXT_PUBLIC_PROTOCOL_BTC_PUBKEY is set/);
+  });
+
+  it("requires a mainnet Horizon", () => {
+    expect(findTargetConflicts({ ...validMainnet, horizonUrl: undefined })[0]).toMatch(/NEXT_PUBLIC_HORIZON_URL is not set/);
+    expect(
+      findTargetConflicts({ ...validMainnet, horizonUrl: "https://horizon-testnet.stellar.org" })[0],
+    ).toMatch(/test network/);
+  });
+
+  it("enables lending everywhere except mainnet", () => {
+    expect(lendingEnabled("local")).toBe(true);
+    expect(lendingEnabled("testnet")).toBe(true);
+    expect(lendingEnabled("mainnet")).toBe(false);
   });
 
   it("reports every problem at once rather than one per failed build", () => {
+    // The realistic mistake: the testnet project's variables copied into the mainnet one.
     const problems = findTargetConflicts({
       target: "mainnet",
       networkPassphrase: TESTNET_PASSPHRASE,
       rpcUrl: "https://soroban-testnet.stellar.org",
+      horizonUrl: "https://horizon-testnet.stellar.org",
       relayerUrl: "",
-      contracts: { NEXT_PUBLIC_COMMITMENT_TREE_ID: "" },
+      required: { NEXT_PUBLIC_EARN_VAULT_ID: "" },
+      lendingOnly: { NEXT_PUBLIC_COMMITMENT_TREE_ID: "CTESTNET" },
     });
-    // Passphrase, test RPC, unset relayer URL, unset contract address.
-    expect(problems).toHaveLength(4);
+    // Passphrase, test RPC, test Horizon, unset relayer URL, unset vault, a lending id.
+    expect(problems).toHaveLength(6);
   });
 });
 

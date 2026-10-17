@@ -1,8 +1,12 @@
 import { config } from "@/config";
 
-/** Stellar testnet explorer URL for a transaction hash. */
+/** Stellar explorer URL for a transaction hash, on this deploy's network. */
 export function stellarTxUrl(hash: string): string {
-  return `https://stellar.expert/explorer/testnet/tx/${hash}`;
+  return `https://stellar.expert/explorer/${config.explorerNetwork}/tx/${hash}`;
+}
+
+export function stellarContractUrl(id: string): string {
+  return `https://stellar.expert/explorer/${config.explorerNetwork}/contract/${id}`;
 }
 
 /**
@@ -16,7 +20,7 @@ export function btcTxUrl(txid: string): string {
 }
 
 export function stellarAccountUrl(address: string): string {
-  return `https://stellar.expert/explorer/testnet/account/${address}`;
+  return `https://stellar.expert/explorer/${config.explorerNetwork}/account/${address}`;
 }
 
 export function btcAddressUrl(address: string): string {
