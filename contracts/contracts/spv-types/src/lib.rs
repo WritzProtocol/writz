@@ -21,7 +21,7 @@
 //! the expected return type for their `env.invoke_contract` calls into
 //! `bitcoin-spv`.
 
-use soroban_sdk::{contracttype, Address, BytesN, Env};
+use soroban_sdk::{contracttype, Address, BytesN, Env, U256};
 
 /// Bitcoin transaction output parsing. Moved here from `private-lend` (its
 /// original and, until now, only caller) so `commitment-tree` can share the
@@ -37,6 +37,31 @@ pub mod script;
 /// Proof that a depositor controls the Bitcoin key their deposit names
 /// (GHSA-862g-739q-x6h8), shared by both lending contracts.
 pub mod key_proof;
+
+/// A header accepted into `bitcoin-spv`, keyed by its block hash. Shared so
+/// `commitment-tree` can read the tip's timestamp (#212).
+#[contracttype]
+#[derive(Clone, Debug)]
+pub struct HeaderEntry {
+    pub prev: BytesN<32>,
+    pub merkle_root: BytesN<32>,
+    pub height: u32,
+    pub bits: u32,
+    pub time: u32,
+    /// Timestamp of the first block of this header's difficulty period.
+    pub period_start_time: u32,
+    /// Cumulative work since the checkpoint (the checkpoint itself is 0).
+    pub chainwork: U256,
+}
+
+/// The tip of the most-work chain `bitcoin-spv` knows about.
+#[contracttype]
+#[derive(Clone, Debug)]
+pub struct BestTip {
+    pub hash: BytesN<32>,
+    pub height: u32,
+    pub chainwork: U256,
+}
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]

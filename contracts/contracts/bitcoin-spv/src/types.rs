@@ -1,4 +1,4 @@
-use soroban_sdk::{contracttype, Address, BytesN, U256};
+use soroban_sdk::{contracttype, Address, BytesN};
 
 /// Contract configuration, set once at `initialize()`.
 #[contracttype]
@@ -40,29 +40,10 @@ pub struct Checkpoint {
     pub set_at_ledger: u32,
 }
 
-/// A header accepted into the light client, keyed by its block hash.
-#[contracttype]
-#[derive(Clone, Debug)]
-pub struct HeaderEntry {
-    pub prev: BytesN<32>,
-    pub merkle_root: BytesN<32>,
-    pub height: u32,
-    pub bits: u32,
-    pub time: u32,
-    /// Timestamp of the first block of this header's difficulty period.
-    pub period_start_time: u32,
-    /// Cumulative work since the checkpoint (the checkpoint itself is 0).
-    pub chainwork: U256,
-}
-
-/// The tip of the most-work chain the contract knows about.
-#[contracttype]
-#[derive(Clone, Debug)]
-pub struct BestTip {
-    pub hash: BytesN<32>,
-    pub height: u32,
-    pub chainwork: U256,
-}
+// `HeaderEntry` and `BestTip` live in `spv-types` so the lending contracts can
+// read the tip with the same type this contract stores (#212). Re-exported
+// here so `crate::types::{HeaderEntry, BestTip}` keeps working.
+pub use spv_types::{BestTip, HeaderEntry};
 
 // `verify_transaction`'s return type, `SpvVerificationResult`, lives in the
 // shared `spv-types` crate - see that crate's doc comment for why. Re-exported

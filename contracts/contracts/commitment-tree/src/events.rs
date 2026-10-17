@@ -1,4 +1,4 @@
-use soroban_sdk::{contractevent, Address, Bytes, BytesN};
+use soroban_sdk::{contractevent, Address, Bytes, BytesN, Vec};
 
 /// Emitted when a BTC deposit is successfully registered and the ZK
 /// commitment is queued for insertion into the Merkle tree.
@@ -46,6 +46,9 @@ pub struct BorrowEvent {
     pub new_commitment: BytesN<32>,
     /// Encrypted position note for the new (higher-debt) commitment. See DepositEvent.
     pub enc_note:      Bytes,
+    /// The position's liquidation witness encrypted to the keeper inside the
+    /// proof: [eph_x, eph_y, ct0, ct1, ct2] (#212). Only the keeper can open it.
+    pub keeper_note: Vec<BytesN<32>>,
 }
 
 /// Emitted when a borrower repays USDC debt on a ZK position.
@@ -61,6 +64,9 @@ pub struct RepayEvent {
     pub new_commitment: BytesN<32>,
     /// Encrypted position note for the new (lower-debt) commitment. See DepositEvent.
     pub enc_note:       Bytes,
+    /// The position's liquidation witness encrypted to the keeper inside the
+    /// proof: [eph_x, eph_y, ct0, ct1, ct2] (#212). Only the keeper can open it.
+    pub keeper_note: Vec<BytesN<32>>,
 }
 
 /// Emitted when a keeper liquidates an undercollateralized ZK position.

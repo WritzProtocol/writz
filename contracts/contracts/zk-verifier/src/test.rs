@@ -30,16 +30,42 @@ fn signal(env: &Env, bytes: &[u8; 32]) -> BytesN<32> {
     BytesN::from_array(env, bytes)
 }
 
+fn ic_vec(env: &Env, all: &[[u8; 64]]) -> Vec<G1Point> {
+    let mut v = Vec::new(env);
+    for p in all {
+        v.push_back(g1(env, p));
+    }
+    v
+}
+
+fn signals_vec(env: &Env, all: &[[u8; 32]]) -> Vec<BytesN<32>> {
+    let mut v = Vec::new(env);
+    for s in all {
+        v.push_back(signal(env, s));
+    }
+    v
+}
+
+/// `x + r` (the BN254 scalar field modulus) as 32 big-endian bytes: the same
+/// field element as `x`, under a different raw encoding.
+fn plus_r(x: &[u8; 32]) -> [u8; 32] {
+    const R: [u8; 32] = [
+        0x30, 0x64, 0x4e, 0x72, 0xe1, 0x31, 0xa0, 0x29, 0xb8, 0x50, 0x45, 0xb6, 0x81, 0x81, 0x58, 0x5d,
+        0x28, 0x33, 0xe8, 0x48, 0x79, 0xb9, 0x70, 0x91, 0x43, 0xe1, 0xf5, 0x93, 0xf0, 0x00, 0x00, 0x01,
+    ];
+    let mut out = [0u8; 32];
+    let mut carry = 0u16;
+    for i in (0..32).rev() {
+        let sum = x[i] as u16 + R[i] as u16 + carry;
+        out[i] = sum as u8;
+        carry = sum >> 8;
+    }
+    out
+}
+
 /// Builds the deposit circuit verification key from test vectors.
 fn build_vk(env: &Env) -> VerificationKey {
-    let ic: Vec<G1Point> = Vec::from_array(env, [
-        g1(env, &tv::IC_0),
-        g1(env, &tv::IC_1),
-        g1(env, &tv::IC_2),
-        g1(env, &tv::IC_3),
-        g1(env, &tv::IC_4),
-        g1(env, &tv::IC_5),
-    ]);
+    let ic: Vec<G1Point> = ic_vec(env, &tv::IC);
     VerificationKey {
         alpha_g1: g1(env, &tv::VK_ALPHA_G1),
         beta_g2:  g2(env, &tv::VK_BETA_G2),
@@ -60,13 +86,7 @@ fn build_proof(env: &Env) -> Proof {
 
 /// Builds the valid public signals from test vectors.
 fn build_signals(env: &Env) -> Vec<BytesN<32>> {
-    Vec::from_array(env, [
-        signal(env, &tv::SIGNAL_0),
-        signal(env, &tv::SIGNAL_1),
-        signal(env, &tv::SIGNAL_2),
-        signal(env, &tv::SIGNAL_3),
-        signal(env, &tv::SIGNAL_4),
-    ])
+    signals_vec(env, &tv::SIGNALS)
 }
 
 /// Deploy and initialize the verifier contract.
@@ -258,13 +278,8 @@ fn tampered_public_signal_fails_verification() {
     let mut bad_commitment = tv::SIGNAL_0;
     bad_commitment[31] ^= 0x01;
 
-    let bad_signals: Vec<BytesN<32>> = Vec::from_array(&env, [
-        signal(&env, &bad_commitment),
-        signal(&env, &tv::SIGNAL_1),
-        signal(&env, &tv::SIGNAL_2),
-        signal(&env, &tv::SIGNAL_3),
-        signal(&env, &tv::SIGNAL_4),
-    ]);
+    let mut bad_signals = build_signals(&env);
+    bad_signals.set(0, signal(&env, &bad_commitment));
 
     let result = client.verify_deposit(&build_proof(&env), &bad_signals);
     assert_eq!(result, false);
@@ -286,18 +301,9 @@ fn non_canonical_public_signal_is_rejected() {
     // tv::SIGNAL_1 (nullifier) + r, still a canonical 32-byte encoding but
     // a raw byte value distinct from tv::SIGNAL_1 despite being the same
     // BN254 field element.
-    let aliased_nullifier: [u8; 32] = [
-        0x36, 0xa4, 0x6e, 0x18, 0x59, 0x33, 0x97, 0xcb, 0xda, 0x3c, 0xde, 0xc4, 0xd6, 0x0f, 0x4d,
-        0x09, 0x71, 0x3e, 0x8f, 0x4e, 0xbd, 0x8f, 0x8e, 0xb7, 0xb8, 0x26, 0xb4, 0x2f, 0x0b, 0xe2,
-        0x15, 0xfa,
-    ];
-    let aliased_signals: Vec<BytesN<32>> = Vec::from_array(&env, [
-        signal(&env, &tv::SIGNAL_0),
-        signal(&env, &aliased_nullifier),
-        signal(&env, &tv::SIGNAL_2),
-        signal(&env, &tv::SIGNAL_3),
-        signal(&env, &tv::SIGNAL_4),
-    ]);
+    let aliased_nullifier = plus_r(&tv::SIGNAL_1);
+    let mut aliased_signals = build_signals(&env);
+    aliased_signals.set(1, signal(&env, &aliased_nullifier));
 
     // Rejected with NonCanonicalPublicSignal before the proof is even
     // checked - the pairing check would otherwise accept it, since the
@@ -312,7 +318,7 @@ fn wrong_number_of_public_signals_panics() {
     let (env, admin, client) = setup();
     client.set_verification_key(&admin, &CircuitId::Deposit, &build_vk(&env));
 
-    // 3 signals instead of 5 → PublicInputCountMismatch.
+    // 3 signals instead of 7 → PublicInputCountMismatch.
     let short_signals: Vec<BytesN<32>> = Vec::from_array(&env, [
         signal(&env, &tv::SIGNAL_0),
         signal(&env, &tv::SIGNAL_1),
@@ -374,17 +380,7 @@ fn admin_can_update_verification_key() {
 // circuits already had.
 
 fn build_br_vk(env: &Env) -> VerificationKey {
-    let ic: Vec<G1Point> = Vec::from_array(env, [
-        g1(env, &br_tv::IC_0),
-        g1(env, &br_tv::IC_1),
-        g1(env, &br_tv::IC_2),
-        g1(env, &br_tv::IC_3),
-        g1(env, &br_tv::IC_4),
-        g1(env, &br_tv::IC_5),
-        g1(env, &br_tv::IC_6),
-        g1(env, &br_tv::IC_7),
-        g1(env, &br_tv::IC_8),
-    ]);
+    let ic: Vec<G1Point> = ic_vec(env, &br_tv::IC);
     VerificationKey {
         alpha_g1: g1(env, &br_tv::VK_ALPHA_G1),
         beta_g2:  g2(env, &br_tv::VK_BETA_G2),
@@ -403,16 +399,7 @@ fn build_br_proof(env: &Env) -> Proof {
 }
 
 fn build_br_signals(env: &Env) -> Vec<BytesN<32>> {
-    Vec::from_array(env, [
-        signal(env, &br_tv::SIGNAL_0), // new_root
-        signal(env, &br_tv::SIGNAL_1), // old_nullifier
-        signal(env, &br_tv::SIGNAL_2), // new_commitment
-        signal(env, &br_tv::SIGNAL_3), // old_root
-        signal(env, &br_tv::SIGNAL_4), // delta_stroops
-        signal(env, &br_tv::SIGNAL_5), // is_borrow
-        signal(env, &br_tv::SIGNAL_6), // btc_price_stroops_per_btc
-        signal(env, &br_tv::SIGNAL_7), // min_ratio_bp
-    ])
+    signals_vec(env, &br_tv::SIGNALS)
 }
 
 #[test]
@@ -428,22 +415,14 @@ fn tampered_borrow_repay_signal_fails() {
     let (env, admin, client) = setup();
     client.set_verification_key(&admin, &CircuitId::BorrowRepay, &build_br_vk(&env));
 
-    // Tamper with is_borrow (SIGNAL_5) - should invalidate the proof, since
+    // Tamper with is_borrow (SIGNAL_10) - should invalidate the proof, since
     // the circuit's public statement is bound to the exact signal values it
     // was proven against.
-    let mut bad_is_borrow = br_tv::SIGNAL_5;
+    let mut bad_is_borrow = br_tv::SIGNAL_10;
     bad_is_borrow[31] ^= 0x01;
 
-    let bad_signals: Vec<BytesN<32>> = Vec::from_array(&env, [
-        signal(&env, &br_tv::SIGNAL_0),
-        signal(&env, &br_tv::SIGNAL_1),
-        signal(&env, &br_tv::SIGNAL_2),
-        signal(&env, &br_tv::SIGNAL_3),
-        signal(&env, &br_tv::SIGNAL_4),
-        signal(&env, &bad_is_borrow),
-        signal(&env, &br_tv::SIGNAL_6),
-        signal(&env, &br_tv::SIGNAL_7),
-    ]);
+    let mut bad_signals = build_br_signals(&env);
+    bad_signals.set(10, signal(&env, &bad_is_borrow));
     let result = client.verify_borrow_repay(&build_br_proof(&env), &bad_signals);
     assert_eq!(result, false);
 }
@@ -451,11 +430,11 @@ fn tampered_borrow_repay_signal_fails() {
 #[test]
 #[should_panic]
 fn borrow_repay_vk_rejects_deposit_shaped_signals() {
-    // Deposit has 5 public signals; borrow_repay's VK expects 8 (IC len 9).
+    // Deposit has 7 public signals; borrow_repay's VK expects 18 (IC len 19).
     // Submitting the wrong shape must be rejected outright, not silently
     // padded or truncated - this hits PublicInputCountMismatch rather than
     // a same-shape proof-swap case (no other circuit here shares
-    // borrow_repay's 8-signal shape to test that variant against).
+    // borrow_repay's 18-signal shape to test that variant against).
     let (env, admin, client) = setup();
     client.set_verification_key(&admin, &CircuitId::BorrowRepay, &build_br_vk(&env));
     client.verify_borrow_repay(&build_proof(&env), &build_signals(&env));
@@ -464,14 +443,7 @@ fn borrow_repay_vk_rejects_deposit_shaped_signals() {
 // ── Liquidation circuit ───────────────────────────────────────────────────────
 
 fn build_liq_vk(env: &Env) -> VerificationKey {
-    let ic: Vec<G1Point> = Vec::from_array(env, [
-        g1(env, &lq_tv::IC_0),
-        g1(env, &lq_tv::IC_1),
-        g1(env, &lq_tv::IC_2),
-        g1(env, &lq_tv::IC_3),
-        g1(env, &lq_tv::IC_4),
-        g1(env, &lq_tv::IC_5),
-    ]);
+    let ic: Vec<G1Point> = ic_vec(env, &lq_tv::IC);
     VerificationKey {
         alpha_g1: g1(env, &lq_tv::VK_ALPHA_G1),
         beta_g2:  g2(env, &lq_tv::VK_BETA_G2),
@@ -490,13 +462,7 @@ fn build_liq_proof(env: &Env) -> Proof {
 }
 
 fn build_liq_signals(env: &Env) -> Vec<BytesN<32>> {
-    Vec::from_array(env, [
-        signal(env, &lq_tv::SIGNAL_0), // nullifier
-        signal(env, &lq_tv::SIGNAL_1), // usdc_debt
-        signal(env, &lq_tv::SIGNAL_2), // merkle_root
-        signal(env, &lq_tv::SIGNAL_3), // btc_price_stroops_per_btc
-        signal(env, &lq_tv::SIGNAL_4), // liquidation_threshold_bp
-    ])
+    signals_vec(env, &lq_tv::SIGNALS)
 }
 
 #[test]
@@ -515,13 +481,8 @@ fn tampered_liquidation_nullifier_fails() {
     let mut bad_nullifier = lq_tv::SIGNAL_0;
     bad_nullifier[31] ^= 0x01;
 
-    let bad_signals: Vec<BytesN<32>> = Vec::from_array(&env, [
-        signal(&env, &bad_nullifier),
-        signal(&env, &lq_tv::SIGNAL_1),
-        signal(&env, &lq_tv::SIGNAL_2),
-        signal(&env, &lq_tv::SIGNAL_3),
-        signal(&env, &lq_tv::SIGNAL_4),
-    ]);
+    let mut bad_signals = build_liq_signals(&env);
+    bad_signals.set(0, signal(&env, &bad_nullifier));
     let result = client.verify_liquidation(&build_liq_proof(&env), &bad_signals);
     assert_eq!(result, false);
 }

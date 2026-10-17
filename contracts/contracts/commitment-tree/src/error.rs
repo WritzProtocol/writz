@@ -70,4 +70,18 @@ pub enum CommitmentTreeError {
     /// Another deposit already used this nullifier; a second leaf with it
     /// could never be spent (GHSA-frj5-5wmv-wvm3).
     DuplicateNullifier       = 26,
+    /// A borrow's `min_timelock_height` is below the Bitcoin tip plus
+    /// `Config::borrow_timelock_margin_blocks`, so the position could be
+    /// reclaimed alone too soon after borrowing (#212).
+    TimelockTooSoon          = 27,
+    /// `bitcoin-spv` has no tip, or its tip is older than
+    /// `Config::max_tip_age_secs`, so the timelock check cannot be trusted
+    /// (#212).
+    StaleBitcoinTip          = 28,
+    /// A borrow/repay proof encrypted its keeper note to a key other than
+    /// `Config::keeper_pub_x/y`, so the keeper could not liquidate the
+    /// position (#212).
+    KeeperKeyMismatch        = 29,
+    /// An admin setter was given a value outside its allowed range.
+    InvalidParameter         = 30,
 }

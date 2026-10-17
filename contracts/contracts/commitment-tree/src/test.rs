@@ -49,9 +49,17 @@ fn setup(env: &Env) -> (CommitmentTreeContractClient<'_>, Address, Address, Addr
     let zk     = Address::generate(env);
     let usdc   = Address::generate(env);
     let oracle = Address::generate(env);
-    let id = env.register(CommitmentTreeContract, (admin.clone(), spv.clone(), zk.clone(), usdc.clone(), oracle.clone(), 6u32, protocol_pubkey(env)));
+    let id = env.register(CommitmentTreeContract, (admin.clone(), spv.clone(), zk.clone(), usdc.clone(), oracle.clone(), 6u32, protocol_pubkey(env), keeper_x(env), keeper_y(env)));
     let client = CommitmentTreeContractClient::new(env, &id);
     (client, admin, spv, zk, usdc, oracle)
+}
+
+/// The keeper key the fixture proofs encrypt their notes to (#212).
+fn keeper_x(env: &Env) -> BytesN<32> {
+    BytesN::from_array(env, &iv::KEEPER_PUB_X)
+}
+fn keeper_y(env: &Env) -> BytesN<32> {
+    BytesN::from_array(env, &iv::KEEPER_PUB_Y)
 }
 
 /// The protocol co-signing key every test contract is constructed with.
@@ -96,7 +104,7 @@ fn sign_with(env: &Env, key: &k256::ecdsa::SigningKey, contract: &Address, depos
 
 /// A timelock inside the allowed window above `MockSpv`'s confirming block
 /// (2,900,000 + 1,008 ..= 2,900,000 + 105,000).
-const TIMELOCK: u32 = 2_950_000;
+const TIMELOCK: u32 = iv::TIMELOCK;
 
 /// The Writz P2WSH scriptPubKey a valid test deposit pays.
 fn deposit_spk(env: &Env) -> Bytes {
@@ -270,7 +278,7 @@ fn setup_with_real_usdc(
     let usdc_id = env.register_stellar_asset_contract_v2(admin.clone());
     let usdc = usdc_id.address();
     let oracle = Address::generate(env);
-    let id = env.register(CommitmentTreeContract, (admin.clone(), spv.clone(), zk.clone(), usdc.clone(), oracle.clone(), 6u32, protocol_pubkey(env)));
+    let id = env.register(CommitmentTreeContract, (admin.clone(), spv.clone(), zk.clone(), usdc.clone(), oracle.clone(), 6u32, protocol_pubkey(env), keeper_x(env), keeper_y(env)));
     let client = CommitmentTreeContractClient::new(env, &id);
 
     (client, admin, usdc, spv)
@@ -485,6 +493,20 @@ fn ct_g2(env: &Env, bytes: &[u8; 128]) -> G2Point {
 fn sig32(env: &Env, bytes: &[u8; 32]) -> BytesN<32> {
     BytesN::from_array(env, bytes)
 }
+fn ic_of(env: &Env, all: &[[u8; 64]]) -> Vec<zk_verifier::G1Point> {
+    let mut v = Vec::new(env);
+    for p in all {
+        v.push_back(zk_g1(env, p));
+    }
+    v
+}
+fn signals_of(env: &Env, all: &[[u8; 32]]) -> Vec<BytesN<32>> {
+    let mut v = Vec::new(env);
+    for s in all {
+        v.push_back(sig32(env, s));
+    }
+    v
+}
 
 #[contract]
 struct MockSpv;
@@ -510,11 +532,50 @@ impl MockSpv {
     /// The shared txid registry is exercised in bitcoin-spv's own tests; this
     /// mock only needs to accept the call so deposit reaches its own checks.
     pub fn consume_deposit(_env: Env, _consumer: Address, _txid: BytesN<32>) {}
+
+    /// Tip for the borrow timelock check (#212). Defaults to the height that
+    /// leaves exactly the default 4,320-block margin under the fixture
+    /// borrow's `min_timelock_height`, stamped "now".
+    pub fn set_tip(env: Env, height: u32, time: u32) {
+        env.storage().instance().set(&soroban_sdk::symbol_short!("tip"), &(height, time));
+    }
+
+    pub fn get_best_tip(env: Env) -> Option<spv_types::BestTip> {
+        let (height, _) = Self::tip(&env);
+        Some(spv_types::BestTip {
+            hash: BytesN::from_array(&env, &[0xbeu8; 32]),
+            height,
+            chainwork: soroban_sdk::U256::from_u32(&env, 0),
+        })
+    }
+
+    pub fn get_header(env: Env, _block_hash: BytesN<32>) -> Option<spv_types::HeaderEntry> {
+        let (height, time) = Self::tip(&env);
+        Some(spv_types::HeaderEntry {
+            prev: BytesN::from_array(&env, &[0u8; 32]),
+            merkle_root: BytesN::from_array(&env, &[0u8; 32]),
+            height,
+            bits: 0,
+            time,
+            period_start_time: 0,
+            chainwork: soroban_sdk::U256::from_u32(&env, 0),
+        })
+    }
+}
+
+impl MockSpv {
+    fn tip(env: &Env) -> (u32, u32) {
+        env.storage()
+            .instance()
+            .get(&soroban_sdk::symbol_short!("tip"))
+            .unwrap_or((iv::MIN_TIMELOCK - 4_320, env.ledger().timestamp() as u32))
+    }
 }
 
 struct IntegrationSetup {
     env: Env,
     admin: Address,
+    spv: Address,
     depositor: Address,
     supplier: Address,
     usdc: Address,
@@ -538,12 +599,7 @@ fn setup_integration() -> IntegrationSetup {
     let zk_id = env.register(zk_verifier::ZkVerifierContract, (admin.clone(),));
     let zk_client = zk_verifier::ZkVerifierContractClient::new(&env, &zk_id);
 
-    let deposit_ic: Vec<zk_verifier::G1Point> = Vec::from_array(&env, [
-        zk_g1(&env, &iv::DEPOSIT_IC_0), zk_g1(&env, &iv::DEPOSIT_IC_1),
-        zk_g1(&env, &iv::DEPOSIT_IC_2), zk_g1(&env, &iv::DEPOSIT_IC_3),
-        zk_g1(&env, &iv::DEPOSIT_IC_4), zk_g1(&env, &iv::DEPOSIT_IC_5),
-        zk_g1(&env, &iv::DEPOSIT_IC_6),
-    ]);
+    let deposit_ic: Vec<zk_verifier::G1Point> = ic_of(&env, &iv::DEPOSIT_IC);
     zk_client.set_verification_key(&admin, &zk_verifier::CircuitId::Deposit, &zk_verifier::VerificationKey {
         alpha_g1: zk_g1(&env, &iv::DEPOSIT_VK_ALPHA_G1),
         beta_g2:  zk_g2(&env, &iv::DEPOSIT_VK_BETA_G2),
@@ -552,14 +608,7 @@ fn setup_integration() -> IntegrationSetup {
         ic: deposit_ic,
     });
 
-    let br_ic: Vec<zk_verifier::G1Point> = Vec::from_array(&env, [
-        zk_g1(&env, &iv::BORROW_REPAY_IC_0), zk_g1(&env, &iv::BORROW_REPAY_IC_1),
-        zk_g1(&env, &iv::BORROW_REPAY_IC_2), zk_g1(&env, &iv::BORROW_REPAY_IC_3),
-        zk_g1(&env, &iv::BORROW_REPAY_IC_4), zk_g1(&env, &iv::BORROW_REPAY_IC_5),
-        zk_g1(&env, &iv::BORROW_REPAY_IC_6), zk_g1(&env, &iv::BORROW_REPAY_IC_7),
-        zk_g1(&env, &iv::BORROW_REPAY_IC_8), zk_g1(&env, &iv::BORROW_REPAY_IC_9),
-        zk_g1(&env, &iv::BORROW_REPAY_IC_10),
-    ]);
+    let br_ic: Vec<zk_verifier::G1Point> = ic_of(&env, &iv::BORROW_REPAY_IC);
     zk_client.set_verification_key(&admin, &zk_verifier::CircuitId::BorrowRepay, &zk_verifier::VerificationKey {
         alpha_g1: zk_g1(&env, &iv::BORROW_REPAY_VK_ALPHA_G1),
         beta_g2:  zk_g2(&env, &iv::BORROW_REPAY_VK_BETA_G2),
@@ -568,11 +617,7 @@ fn setup_integration() -> IntegrationSetup {
         ic: br_ic,
     });
 
-    let liq_ic: Vec<zk_verifier::G1Point> = Vec::from_array(&env, [
-        zk_g1(&env, &iv::LIQUIDATION_IC_0), zk_g1(&env, &iv::LIQUIDATION_IC_1),
-        zk_g1(&env, &iv::LIQUIDATION_IC_2), zk_g1(&env, &iv::LIQUIDATION_IC_3),
-        zk_g1(&env, &iv::LIQUIDATION_IC_4), zk_g1(&env, &iv::LIQUIDATION_IC_5),
-    ]);
+    let liq_ic: Vec<zk_verifier::G1Point> = ic_of(&env, &iv::LIQUIDATION_IC);
     zk_client.set_verification_key(&admin, &zk_verifier::CircuitId::Liquidation, &zk_verifier::VerificationKey {
         alpha_g1: zk_g1(&env, &iv::LIQUIDATION_VK_ALPHA_G1),
         beta_g2:  zk_g2(&env, &iv::LIQUIDATION_VK_BETA_G2),
@@ -581,10 +626,7 @@ fn setup_integration() -> IntegrationSetup {
         ic: liq_ic,
     });
 
-    let zd_ic: Vec<zk_verifier::G1Point> = Vec::from_array(&env, [
-        zk_g1(&env, &iv::ZERO_DEBT_IC_0), zk_g1(&env, &iv::ZERO_DEBT_IC_1),
-        zk_g1(&env, &iv::ZERO_DEBT_IC_2), zk_g1(&env, &iv::ZERO_DEBT_IC_3),
-    ]);
+    let zd_ic: Vec<zk_verifier::G1Point> = ic_of(&env, &iv::ZERO_DEBT_IC);
     zk_client.set_verification_key(&admin, &zk_verifier::CircuitId::ZeroDebt, &zk_verifier::VerificationKey {
         alpha_g1: zk_g1(&env, &iv::ZERO_DEBT_VK_ALPHA_G1),
         beta_g2:  zk_g2(&env, &iv::ZERO_DEBT_VK_BETA_G2),
@@ -593,11 +635,7 @@ fn setup_integration() -> IntegrationSetup {
         ic: zd_ic,
     });
 
-    let ins_ic: Vec<zk_verifier::G1Point> = Vec::from_array(&env, [
-        zk_g1(&env, &iv::INSERT_IC_0), zk_g1(&env, &iv::INSERT_IC_1),
-        zk_g1(&env, &iv::INSERT_IC_2), zk_g1(&env, &iv::INSERT_IC_3),
-        zk_g1(&env, &iv::INSERT_IC_4),
-    ]);
+    let ins_ic: Vec<zk_verifier::G1Point> = ic_of(&env, &iv::INSERT_IC);
     zk_client.set_verification_key(&admin, &zk_verifier::CircuitId::Insert, &zk_verifier::VerificationKey {
         alpha_g1: zk_g1(&env, &iv::INSERT_VK_ALPHA_G1),
         beta_g2:  zk_g2(&env, &iv::INSERT_VK_BETA_G2),
@@ -606,11 +644,11 @@ fn setup_integration() -> IntegrationSetup {
         ic: ins_ic,
     });
 
-    let ct_id = env.register(CommitmentTreeContract, (admin.clone(), spv.clone(), zk_id.clone(), usdc.clone(), oracle.clone(), 6u32, protocol_pubkey(&env)));
+    let ct_id = env.register(CommitmentTreeContract, (admin.clone(), spv.clone(), zk_id.clone(), usdc.clone(), oracle.clone(), 6u32, protocol_pubkey(&env), keeper_x(&env), keeper_y(&env)));
     let client = CommitmentTreeContractClient::new(&env, &ct_id);
     // min_confirmations=6, matching the fixed 6-confirmation policy elsewhere.
 
-    IntegrationSetup { env, admin, depositor, supplier, usdc, contract_id: ct_id, client }
+    IntegrationSetup { env, admin, spv, depositor, supplier, usdc, contract_id: ct_id, client }
 }
 
 fn deposit_proof(env: &Env) -> Proof {
@@ -621,11 +659,7 @@ fn deposit_proof(env: &Env) -> Proof {
     }
 }
 fn deposit_signals(env: &Env) -> Vec<BytesN<32>> {
-    Vec::from_array(env, [
-        sig32(env, &iv::DEPOSIT_SIGNAL_0), sig32(env, &iv::DEPOSIT_SIGNAL_1),
-        sig32(env, &iv::DEPOSIT_SIGNAL_2), sig32(env, &iv::DEPOSIT_SIGNAL_3),
-        sig32(env, &iv::DEPOSIT_SIGNAL_4), sig32(env, &iv::DEPOSIT_SIGNAL_5),
-    ])
+    signals_of(env, &iv::DEPOSIT_SIGNALS)
 }
 fn insert_proof(env: &Env) -> Proof {
     Proof {
@@ -635,13 +669,10 @@ fn insert_proof(env: &Env) -> Proof {
     }
 }
 /// [new_root, old_root, commitment, leaf_index]: the deposit commitment into
-/// leaf 0 of the empty tree. new_root equals BORROW_SIGNAL_3, the borrow
+/// leaf 0 of the empty tree. new_root equals BORROW_SIGNAL_8, the borrow
 /// proof's old_root.
 fn insert_signals(env: &Env) -> Vec<BytesN<32>> {
-    Vec::from_array(env, [
-        sig32(env, &iv::INSERT_SIGNAL_0), sig32(env, &iv::INSERT_SIGNAL_1),
-        sig32(env, &iv::INSERT_SIGNAL_2), sig32(env, &iv::INSERT_SIGNAL_3),
-    ])
+    signals_of(env, &iv::INSERT_SIGNALS)
 }
 fn borrow_proof(env: &Env) -> Proof {
     Proof {
@@ -651,13 +682,7 @@ fn borrow_proof(env: &Env) -> Proof {
     }
 }
 fn borrow_signals(env: &Env) -> Vec<BytesN<32>> {
-    Vec::from_array(env, [
-        sig32(env, &iv::BORROW_SIGNAL_0), sig32(env, &iv::BORROW_SIGNAL_1),
-        sig32(env, &iv::BORROW_SIGNAL_2), sig32(env, &iv::BORROW_SIGNAL_3),
-        sig32(env, &iv::BORROW_SIGNAL_4), sig32(env, &iv::BORROW_SIGNAL_5),
-        sig32(env, &iv::BORROW_SIGNAL_6), sig32(env, &iv::BORROW_SIGNAL_7),
-        sig32(env, &iv::BORROW_SIGNAL_8), sig32(env, &iv::BORROW_SIGNAL_9),
-    ])
+    signals_of(env, &iv::BORROW_SIGNALS)
 }
 
 /// Must stay byte-identical to `RECIPIENT_STRKEY` in
@@ -676,13 +701,7 @@ fn repay_proof(env: &Env) -> Proof {
     }
 }
 fn repay_signals(env: &Env) -> Vec<BytesN<32>> {
-    Vec::from_array(env, [
-        sig32(env, &iv::REPAY_SIGNAL_0), sig32(env, &iv::REPAY_SIGNAL_1),
-        sig32(env, &iv::REPAY_SIGNAL_2), sig32(env, &iv::REPAY_SIGNAL_3),
-        sig32(env, &iv::REPAY_SIGNAL_4), sig32(env, &iv::REPAY_SIGNAL_5),
-        sig32(env, &iv::REPAY_SIGNAL_6), sig32(env, &iv::REPAY_SIGNAL_7),
-        sig32(env, &iv::REPAY_SIGNAL_8), sig32(env, &iv::REPAY_SIGNAL_9),
-    ])
+    signals_of(env, &iv::REPAY_SIGNALS)
 }
 fn zero_debt_proof(env: &Env) -> Proof {
     Proof {
@@ -692,10 +711,7 @@ fn zero_debt_proof(env: &Env) -> Proof {
     }
 }
 fn zero_debt_signals(env: &Env) -> Vec<BytesN<32>> {
-    Vec::from_array(env, [
-        sig32(env, &iv::ZERO_DEBT_SIGNAL_0), sig32(env, &iv::ZERO_DEBT_SIGNAL_1),
-        sig32(env, &iv::ZERO_DEBT_SIGNAL_2),
-    ])
+    signals_of(env, &iv::ZERO_DEBT_SIGNALS)
 }
 fn liquidate_proof(env: &Env) -> Proof {
     Proof {
@@ -705,11 +721,7 @@ fn liquidate_proof(env: &Env) -> Proof {
     }
 }
 fn liquidate_signals(env: &Env) -> Vec<BytesN<32>> {
-    Vec::from_array(env, [
-        sig32(env, &iv::LIQUIDATE_SIGNAL_0), sig32(env, &iv::LIQUIDATE_SIGNAL_1),
-        sig32(env, &iv::LIQUIDATE_SIGNAL_2), sig32(env, &iv::LIQUIDATE_SIGNAL_3),
-        sig32(env, &iv::LIQUIDATE_SIGNAL_4),
-    ])
+    signals_of(env, &iv::LIQUIDATE_SIGNALS)
 }
 
 #[test]
@@ -745,9 +757,9 @@ fn full_deposit_borrow_repay_cycle() {
     assert!(s.client.is_commitment_pending(&commitment));
 
     // ── Admin inserts the pending commitment (Phase 1 trusted relayer) ──
-    // BORROW_SIGNAL_3 is the borrow proof's `old_root` - i.e. exactly the
+    // BORROW_SIGNAL_8 is the borrow proof's `old_root` - i.e. exactly the
     // root of the single-leaf tree containing this deposit's commitment.
-    let root_after_deposit = sig32(&s.env, &iv::BORROW_SIGNAL_3);
+    let root_after_deposit = sig32(&s.env, &iv::BORROW_SIGNAL_8);
     assert_eq!(sig32(&s.env, &iv::INSERT_SIGNAL_2), commitment);
     s.client.insert_commitment(&s.admin, &insert_proof(&s.env), &insert_signals(&s.env));
     assert_eq!(s.client.get_merkle_root(), root_after_deposit);
@@ -799,9 +811,9 @@ fn borrow_with_tampered_signal_panics() {
     s.client.insert_commitment(&s.admin, &insert_proof(&s.env), &insert_signals(&s.env));
 
     let mut tampered_signals = borrow_signals(&s.env);
-    let mut bad_delta = iv::BORROW_SIGNAL_4;
+    let mut bad_delta = iv::BORROW_SIGNAL_9;
     bad_delta[31] ^= 0x01;
-    tampered_signals.set(4, sig32(&s.env, &bad_delta));
+    tampered_signals.set(9, sig32(&s.env, &bad_delta));
 
     // Use the recipient the proof actually binds to, so this specifically
     // exercises the Groth16-rejects-tampering path rather than tripping the
@@ -893,13 +905,7 @@ fn released_zero_debt_leaf_cannot_be_borrowed_again() {
         pi_b: ct_g2(&s.env, &iv::RELEASED_BORROW_PI_B),
         pi_c: ct_g1(&s.env, &iv::RELEASED_BORROW_PI_C),
     };
-    let reborrow_signals = Vec::from_array(&s.env, [
-        sig32(&s.env, &iv::RELEASED_BORROW_SIGNAL_0), sig32(&s.env, &iv::RELEASED_BORROW_SIGNAL_1),
-        sig32(&s.env, &iv::RELEASED_BORROW_SIGNAL_2), sig32(&s.env, &iv::RELEASED_BORROW_SIGNAL_3),
-        sig32(&s.env, &iv::RELEASED_BORROW_SIGNAL_4), sig32(&s.env, &iv::RELEASED_BORROW_SIGNAL_5),
-        sig32(&s.env, &iv::RELEASED_BORROW_SIGNAL_6), sig32(&s.env, &iv::RELEASED_BORROW_SIGNAL_7),
-        sig32(&s.env, &iv::RELEASED_BORROW_SIGNAL_8), sig32(&s.env, &iv::RELEASED_BORROW_SIGNAL_9),
-    ]);
+    let reborrow_signals = signals_of(&s.env, &iv::RELEASED_BORROW_SIGNALS);
 
     // Release first: it spends the zero-debt nullifier. The same borrow then fails.
     let zd_nullifier = sig32(&s.env, &iv::ZERO_DEBT_SIGNAL_1);
@@ -1011,7 +1017,7 @@ fn constructor_rejects_an_uncompressed_protocol_key() {
     bad[0] = 0x04;
     env.register(CommitmentTreeContract, (
         admin.clone(), admin.clone(), admin.clone(), admin.clone(), admin,
-        6u32, BytesN::<33>::from_array(&env, &bad),
+        6u32, BytesN::<33>::from_array(&env, &bad), keeper_x(&env), keeper_y(&env),
     ));
 }
 
@@ -1201,4 +1207,163 @@ fn a_successful_deposit_records_its_nullifier() {
         s.env.storage().persistent().has(&DataKey::DepositNullifier(nullifier.clone()))
     });
     assert!(recorded);
+}
+
+// ── Timelock margin and keeper note (#212) ────────────────────────────────────
+
+/// Funded pool, the fixture deposit inserted: the borrow proof applies.
+fn ready_to_borrow(s: &IntegrationSetup) {
+    StellarAssetClient::new(&s.env, &s.usdc).mint(&s.supplier, &10_000_000_000_i128);
+    s.client.supply_usdc(&s.supplier, &10_000_000_000_i128);
+    deposited(s);
+    s.client.insert_commitment(&s.admin, &insert_proof(&s.env), &insert_signals(&s.env));
+}
+
+fn try_fixture_borrow(s: &IntegrationSetup) -> Result<(), crate::error::CommitmentTreeError> {
+    match s.client.try_borrow(&borrow_recipient(&s.env), &borrow_proof(&s.env), &borrow_signals(&s.env), &Bytes::new(&s.env)) {
+        Ok(Ok(())) => Ok(()),
+        Err(Ok(e)) => Err(e),
+        other => panic!("unexpected {other:?}"),
+    }
+}
+
+fn mock_spv(s: &IntegrationSetup) -> MockSpvClient<'_> {
+    MockSpvClient::new(&s.env, &s.spv)
+}
+
+#[test]
+fn a_borrow_must_leave_the_margin_before_the_timelock() {
+    let s = setup_integration();
+    ready_to_borrow(&s);
+    // One block later and the fixture's min_timelock_height no longer
+    // clears tip + 4,320.
+    let now = s.env.ledger().timestamp() as u32;
+    mock_spv(&s).set_tip(&(iv::MIN_TIMELOCK - 4_320 + 1), &now);
+    assert_eq!(try_fixture_borrow(&s), Err(crate::error::CommitmentTreeError::TimelockTooSoon));
+
+    // A shorter admin-set margin lets the same proof through.
+    s.client.set_borrow_timelock_margin(&s.admin, &4_319);
+    assert_eq!(try_fixture_borrow(&s), Ok(()));
+}
+
+#[test]
+fn a_borrow_refuses_a_stale_bitcoin_tip() {
+    let s = setup_integration();
+    ready_to_borrow(&s);
+    // A tip that stopped six hours and one second ago would let a borrow
+    // measure its margin from a height Bitcoin has long passed.
+    { use soroban_sdk::testutils::Ledger as _; s.env.ledger().with_mut(|l| l.timestamp = 1_800_000_000); }
+    mock_spv(&s).set_tip(&(iv::MIN_TIMELOCK - 4_320), &(1_800_000_000 - 6 * 3600 - 1));
+    assert_eq!(try_fixture_borrow(&s), Err(crate::error::CommitmentTreeError::StaleBitcoinTip));
+
+    mock_spv(&s).set_tip(&(iv::MIN_TIMELOCK - 4_320), &(1_800_000_000 - 6 * 3600));
+    assert_eq!(try_fixture_borrow(&s), Ok(()));
+}
+
+#[test]
+fn borrow_and_repay_require_the_configured_keeper_key() {
+    let s = setup_integration();
+    ready_to_borrow(&s);
+    let mut other = iv::KEEPER_PUB_X;
+    other[31] ^= 1;
+    s.client.set_keeper_pubkey(&s.admin, &BytesN::from_array(&s.env, &other), &keeper_y(&s.env));
+    assert_eq!(try_fixture_borrow(&s), Err(crate::error::CommitmentTreeError::KeeperKeyMismatch));
+
+    s.client.set_keeper_pubkey(&s.admin, &keeper_x(&s.env), &keeper_y(&s.env));
+    assert_eq!(try_fixture_borrow(&s), Ok(()));
+
+    s.client.set_keeper_pubkey(&s.admin, &BytesN::from_array(&s.env, &other), &keeper_y(&s.env));
+    assert_eq!(
+        s.client.try_repay(&borrow_recipient(&s.env), &repay_proof(&s.env), &repay_signals(&s.env), &Bytes::new(&s.env)),
+        Err(Ok(crate::error::CommitmentTreeError::KeeperKeyMismatch)),
+    );
+}
+
+#[test]
+fn a_repay_is_not_held_to_the_timelock_margin() {
+    // A position past its margin (or its timelock) must still be able to repay.
+    let s = setup_integration();
+    ready_to_borrow(&s);
+    s.client.borrow(&borrow_recipient(&s.env), &borrow_proof(&s.env), &borrow_signals(&s.env), &Bytes::new(&s.env));
+    let now = s.env.ledger().timestamp() as u32;
+    mock_spv(&s).set_tip(&(TIMELOCK + 10), &now);
+    s.client.repay(&borrow_recipient(&s.env), &repay_proof(&s.env), &repay_signals(&s.env), &Bytes::new(&s.env));
+    assert_eq!(s.client.get_merkle_root(), sig32(&s.env, &iv::REPAY_SIGNAL_0));
+}
+
+#[test]
+fn the_borrow_event_publishes_the_keeper_note() {
+    use crate::events::BorrowEvent;
+    use soroban_sdk::testutils::Events as _;
+    use soroban_sdk::Event as _;
+
+    let s = setup_integration();
+    ready_to_borrow(&s);
+    s.client.borrow(&borrow_recipient(&s.env), &borrow_proof(&s.env), &borrow_signals(&s.env), &Bytes::new(&s.env));
+    let expected = BorrowEvent {
+        new_root: sig32(&s.env, &iv::BORROW_SIGNAL_0),
+        borrower: borrow_recipient(&s.env),
+        usdc_amount: 2_000_000_000,
+        old_nullifier: sig32(&s.env, &iv::BORROW_SIGNAL_1),
+        new_commitment: sig32(&s.env, &iv::BORROW_SIGNAL_2),
+        enc_note: Bytes::new(&s.env),
+        keeper_note: signals_of(&s.env, &iv::BORROW_SIGNALS[3..8]),
+    };
+    assert_eq!(
+        s.env.events().all().filter_by_contract(&s.contract_id).events().last(),
+        Some(&expected.to_xdr(&s.env, &s.contract_id)),
+    );
+}
+
+#[test]
+fn deposit_binds_the_timelock_signal_to_the_checked_script() {
+    let s = setup_integration();
+    let mut signals = deposit_signals(&s.env);
+    signals.set(6, from_u32(&s.env, TIMELOCK + 1));
+    let raw_tx = build_deposit_tx(&s.env, 1_000_000, &deposit_spk(&s.env));
+    assert_eq!(
+        s.client.try_deposit(
+            &s.depositor, &BytesN::from_array(&s.env, &[0xadu8; 32]), &Vec::new(&s.env), &0u32, &raw_tx,
+            &user_pubkey(&s.env), &TIMELOCK, &key_sig(&s), &deposit_proof(&s.env), &signals, &Bytes::new(&s.env),
+        ),
+        Err(Ok(crate::error::CommitmentTreeError::InvalidTimelock)),
+    );
+}
+
+#[test]
+fn keeper_and_margin_setters_are_bounded_and_admin_only() {
+    let s = setup_integration();
+    let zero = BytesN::from_array(&s.env, &[0u8; 32]);
+    assert_eq!(
+        s.client.try_set_keeper_pubkey(&s.admin, &zero, &keeper_y(&s.env)),
+        Err(Ok(crate::error::CommitmentTreeError::InvalidParameter)),
+    );
+    assert_eq!(
+        s.client.try_set_keeper_pubkey(&s.depositor, &keeper_x(&s.env), &keeper_y(&s.env)),
+        Err(Ok(crate::error::CommitmentTreeError::Unauthorized)),
+    );
+    assert_eq!(
+        s.client.try_set_borrow_timelock_margin(&s.admin, &143),
+        Err(Ok(crate::error::CommitmentTreeError::InvalidParameter)),
+    );
+    assert_eq!(
+        s.client.try_set_borrow_timelock_margin(&s.admin, &105_001),
+        Err(Ok(crate::error::CommitmentTreeError::InvalidParameter)),
+    );
+    assert_eq!(
+        s.client.try_set_max_tip_age(&s.admin, &(3600 - 1)),
+        Err(Ok(crate::error::CommitmentTreeError::InvalidParameter)),
+    );
+    assert_eq!(
+        s.client.try_set_max_tip_age(&s.admin, &(48 * 3600 + 1)),
+        Err(Ok(crate::error::CommitmentTreeError::InvalidParameter)),
+    );
+    s.client.set_max_tip_age(&s.admin, &(12 * 3600));
+}
+
+#[test]
+fn borrow_parameters_are_readable() {
+    let s = setup_integration();
+    assert_eq!(s.client.get_keeper_pubkey(), (keeper_x(&s.env), keeper_y(&s.env)));
+    assert_eq!(s.client.get_borrow_timelock_margin(), 4_320);
 }

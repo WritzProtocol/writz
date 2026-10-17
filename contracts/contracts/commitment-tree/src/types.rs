@@ -55,6 +55,21 @@ pub struct Config {
     /// capped the same way as `private-lend` (GHSA-5rxp). Admin-set via
     /// `set_max_total_borrowed`.
     pub max_total_borrowed:       i128,
+    /// The keeper's BabyJubJub public key (#212). Every borrow and repay
+    /// proof encrypts the new position's liquidation witness to it, so the
+    /// keeper can liquidate a ZK position without its owner. Admin-set via
+    /// `set_keeper_pubkey`.
+    pub keeper_pub_x:             BytesN<32>,
+    pub keeper_pub_y:             BytesN<32>,
+    /// Blocks a borrowing position must have left before its timelock: a
+    /// borrow's `min_timelock_height` must be at least the Bitcoin tip plus
+    /// this (#212). Default 4,320 (~30 days), admin-set via
+    /// `set_borrow_timelock_margin`.
+    pub borrow_timelock_margin_blocks: u32,
+    /// How old (by its header timestamp) `bitcoin-spv`'s tip may be for a
+    /// borrow to rely on it (#212). A stalled header relay would otherwise
+    /// let a borrow measure its margin from a stale height. Default 6 hours.
+    pub max_tip_age_secs:         u64,
     /// When true, `deposit`/`borrow`/`supply_usdc` (new risk-taking actions)
     /// are refused. `repay`/`withdraw_supply`/`liquidate` stay open so users
     /// can always exit - a pause is an emergency brake on new exposure, not
@@ -118,9 +133,10 @@ pub mod insert_signals {
 }
 
 pub mod deposit_signals {
-    /// Poseidon(collateral_satoshis, 0, secret, nonce)
+    /// Poseidon(collateral_satoshis, 0, liq_key, nonce, timelock_height),
+    /// liq_key = Poseidon(secret) (#212).
     pub const COMMITMENT:       usize = 0;
-    /// Poseidon(secret, nonce) - prevents replay of the same position secret.
+    /// Poseidon(liq_key, nonce) - prevents replay of the same position secret.
     pub const NULLIFIER:        usize = 1;
     /// Low 128 bits of the Bitcoin txid as a BN254 field element.
     pub const BTC_TXID_LO:     usize = 2;
@@ -134,7 +150,10 @@ pub mod deposit_signals {
     /// GHSA-mg4x-cr23-4x3v), so the contract only has to check this against
     /// its own independently-parsed amount, not against the private witness.
     pub const ACTUAL_SATOSHIS:  usize = 5;
-    pub const COUNT:            usize = 6;
+    /// The position's CLTV height, bound into the commitment. Must equal the
+    /// `timelock_height` the contract checked against the Bitcoin output (#212).
+    pub const TIMELOCK_HEIGHT:  usize = 6;
+    pub const COUNT:            usize = 7;
 }
 
 pub mod borrow_repay_signals {
@@ -144,24 +163,35 @@ pub mod borrow_repay_signals {
     pub const OLD_NULLIFIER:  usize = 1;
     /// New commitment (updated debt + new nonce).
     pub const NEW_COMMITMENT: usize = 2;
+    /// Keeper note (#212), signals 3..=7: ephemeral BabyJubJub key (x, y),
+    /// then three ciphertexts of [liq_key, new_nonce, packed
+    /// collateral/debt/timelock]. Published whole in the event.
+    pub const KEEPER_EPH_X:   usize = 3;
+    pub const KEEPER_CT2:     usize = 7;
     /// Previous Merkle root (must equal the stored root).
-    pub const OLD_ROOT:       usize = 3;
+    pub const OLD_ROOT:       usize = 8;
     /// USDC delta: positive for borrow, negative (p − amount) for repay.
-    pub const DELTA_STROOPS:  usize = 4;
+    pub const DELTA_STROOPS:  usize = 9;
     /// 1 = borrow, 0 = repay.
-    pub const IS_BORROW:      usize = 5;
+    pub const IS_BORROW:      usize = 10;
     /// BTC/USD price in USDC stroops per BTC (must match oracle).
-    pub const BTC_PRICE:      usize = 6;
+    pub const BTC_PRICE:      usize = 11;
     /// Minimum collateral ratio in bp (must equal Config.min_collateral_ratio_bp).
-    pub const MIN_RATIO_BP:   usize = 7;
+    pub const MIN_RATIO_BP:   usize = 12;
     /// Low 128 bits of sha256(recipient's Stellar strkey address). Checked
     /// against the authenticated `borrower` in `borrow()` only - `repay()`
     /// pulls funds FROM the caller so has no arbitrary-recipient risk
     /// (GHSA-xxqv-6vhx-hhrx, GHSA-mhp9-jmvc-x9mw).
-    pub const RECIPIENT_LO:   usize = 8;
+    pub const RECIPIENT_LO:   usize = 13;
     /// High 128 bits of sha256(recipient's Stellar strkey address).
-    pub const RECIPIENT_HI:   usize = 9;
-    pub const COUNT:          usize = 10;
+    pub const RECIPIENT_HI:   usize = 14;
+    /// Lower bound the position's timelock clears (borrow only). Must be at
+    /// least the Bitcoin tip plus `Config::borrow_timelock_margin_blocks` (#212).
+    pub const MIN_TIMELOCK:   usize = 15;
+    /// The keeper key the note is encrypted to (must equal Config) (#212).
+    pub const KEEPER_PUB_X:   usize = 16;
+    pub const KEEPER_PUB_Y:   usize = 17;
+    pub const COUNT:          usize = 18;
 }
 
 pub mod liquidation_signals {
