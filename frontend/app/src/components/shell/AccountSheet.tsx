@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { BTC_NETWORK_LABEL, config } from "@/config";
+import { BTC_NETWORK_LABEL, config, LENDING_ENABLED } from "@/config";
 import { networkName } from "@/lib/wallet/precheck";
 import { formatBtc, shortAddress } from "@/lib/borrow/journey";
 import { btcAddressUrl, stellarAccountUrl } from "@/lib/explorer";
@@ -67,6 +67,14 @@ function StellarChecks({ a }: { a: ShellAccount }) {
     );
   }
   if (s.funding.kind === "ok" && s.funding.value.kind === "unfunded") {
+    // Friendbot only exists on testnet; a mainnet account is funded with real XLM.
+    if (config.target === "mainnet") {
+      return (
+        <Notice tone="warning" label="Account not funded">
+          <p>This account has no XLM yet, so it can&apos;t pay network fees. Send XLM to it from an exchange or another wallet first.</p>
+        </Notice>
+      );
+    }
     return (
       <Notice
         tone="warning"
@@ -225,7 +233,7 @@ export function AccountSheetBody() {
         <ExternalLink href={DOCS_URL} className="">
           Docs
         </ExternalLink>
-        <Link href="/help/reclaim">How to reclaim</Link>
+        {LENDING_ENABLED ? <Link href="/help/reclaim">How to reclaim</Link> : null}
       </nav>
 
       <section className="sh-section sh-links" aria-labelledby="sh-help">

@@ -7,6 +7,7 @@ import { FundsSkeleton } from "@/components/funds/Skeleton";
 import { EarnView } from "./EarnView";
 import { useLiveEarn } from "./useLiveEarn";
 import { useMockEarn } from "./useMockEarn";
+import { EARN_COPY } from "./copy";
 
 function LiveEarn() {
   return <EarnView m={useLiveEarn()} />;
@@ -20,20 +21,20 @@ function Skeleton() {
   return (
     <FundsSkeleton
       title="Earn on USDC"
-      lede="Deposit Blend test USDC into the Writz vault on DeFindex. It earns from Blend lending. Shares sit in your own wallet."
+      lede={EARN_COPY.lede}
       wallet={{
-        hero: { label: "Your balance", value: "1,003.41", unit: "USDC (Blend)" },
+        hero: { label: "Your balance", value: "1,003.41", unit: EARN_COPY.unit },
         tiles: [
-          ["Earned so far", "3.41 USDC (Blend)"],
+          ["Earned so far", `3.41 ${EARN_COPY.unit}`],
           ["APY", "7.31%", "Earned from Blend lending. Changes over time. Updated 05:21."],
         ],
       }}
       nowallet={{ tiles: [["APY", "7.31%", "Earned from Blend lending. Changes over time. Updated 05:21."]] }}
-      risk={["Blend test USDC is a different asset from the USDC you borrow.", "The vault carries Blend's lending risk."]}
+      risk={EARN_COPY.risk}
       link="See vault stats"
       tabs={["Deposit", "Withdraw"]}
-      field="Deposit USDC (Blend)"
-      hint="Wallet: 1,240.50 USDC (Blend)."
+      field={`Deposit ${EARN_COPY.unit}`}
+      hint={`Wallet: 1,240.50 ${EARN_COPY.unit}.`}
       connect="Connect a Stellar wallet to see your balance."
     />
   );

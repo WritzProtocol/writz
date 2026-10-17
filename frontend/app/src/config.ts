@@ -8,7 +8,7 @@
  * IDs default to empty and surface a clear error at read time when missing.
  */
 
-import { assertDeployTarget, TESTNET_PASSPHRASE } from "@/config/target";
+import { assertDeployTarget, lendingEnabled, TESTNET_PASSPHRASE } from "@/config/target";
 
 const TESTNET_RPC = "https://soroban-testnet.stellar.org";
 
@@ -33,19 +33,32 @@ const deployTarget = assertDeployTarget({
   target: process.env.NEXT_PUBLIC_WRITZ_ENV,
   networkPassphrase: process.env.NEXT_PUBLIC_NETWORK_PASSPHRASE,
   rpcUrl: process.env.NEXT_PUBLIC_SOROBAN_RPC_URL,
+  horizonUrl: process.env.NEXT_PUBLIC_HORIZON_URL,
   relayerUrl: process.env.NEXT_PUBLIC_RELAYER_URL,
-  contracts: {
+  required: {
+    NEXT_PUBLIC_EARN_ASSET_ISSUER: process.env.NEXT_PUBLIC_EARN_ASSET_ISSUER,
+    NEXT_PUBLIC_EARN_VAULT_ID: process.env.NEXT_PUBLIC_EARN_VAULT_ID,
+  },
+  lendingOnly: {
     NEXT_PUBLIC_COMMITMENT_TREE_ID: process.env.NEXT_PUBLIC_COMMITMENT_TREE_ID,
     NEXT_PUBLIC_BITCOIN_SPV_ID: process.env.NEXT_PUBLIC_BITCOIN_SPV_ID,
     NEXT_PUBLIC_ZK_VERIFIER_ID: process.env.NEXT_PUBLIC_ZK_VERIFIER_ID,
     NEXT_PUBLIC_PRIVATE_LEND_ID: process.env.NEXT_PUBLIC_PRIVATE_LEND_ID,
-    NEXT_PUBLIC_USDC_TOKEN_ID: process.env.NEXT_PUBLIC_USDC_TOKEN_ID,
+    NEXT_PUBLIC_PROTOCOL_BTC_PUBKEY: process.env.NEXT_PUBLIC_PROTOCOL_BTC_PUBKEY,
   },
 });
+
+/** False on mainnet: lending routes, links and the co-signing API are off there (#122). */
+export const LENDING_ENABLED = lendingEnabled(deployTarget);
+
+/** The vault testnet has served from since #132; mainnet must name its own. */
+const TESTNET_EARN_VAULT = "CBMHGL7GGGHODEDDJ5H2LKJEFHJWBRSQUKOXMC4FKOFDZK5HBKW6PI2S";
 
 export const config = {
   /** The validated deploy target ("local" | "testnet" | "mainnet"). */
   target: deployTarget,
+  /** stellar.expert's name for this network, for explorer links. */
+  explorerNetwork: deployTarget === "mainnet" ? "public" : "testnet",
   rpcUrl: process.env.NEXT_PUBLIC_SOROBAN_RPC_URL ?? TESTNET_RPC,
   horizonUrl: process.env.NEXT_PUBLIC_HORIZON_URL ?? "https://horizon-testnet.stellar.org",
   networkPassphrase: process.env.NEXT_PUBLIC_NETWORK_PASSPHRASE ?? TESTNET_PASSPHRASE,
@@ -74,6 +87,10 @@ export const config = {
    * `/defindex` routes.
    */
   earn: {
+    /** The DeFindex vault contract, shown on the Protocol page. Reads and
+     * transactions still go through the relayer, which owns the vault id. */
+    vaultId:
+      process.env.NEXT_PUBLIC_EARN_VAULT_ID ?? (deployTarget === "mainnet" ? "" : TESTNET_EARN_VAULT),
     /**
      * The classic Stellar asset the vault accepts, which is NOT the same asset
      * as `usdc` above.

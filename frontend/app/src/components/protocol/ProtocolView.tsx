@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { config } from "@/config";
+import { config, LENDING_ENABLED } from "@/config";
+import { stellarContractUrl } from "@/lib/explorer";
 import { formatUsdc, shortAddress } from "@/lib/borrow/journey";
 import { analyzeCohort } from "@/lib/metrics/cohort";
 import type { RetentionCohort } from "@/lib/metrics/api";
@@ -13,10 +14,7 @@ import { Hero } from "@/components/funds/parts";
 import { mockProtocolData, type ProtocolData } from "./model";
 
 const STELLAR = networkName(config.networkPassphrase);
-// Fixed testnet address; source of truth is contracts/deployments/defindex-vault-testnet.md.
-const VAULT_CONTRACT = "CBMHGL7GGGHODEDDJ5H2LKJEFHJWBRSQUKOXMC4FKOFDZK5HBKW6PI2S";
-
-const contractUrl = (id: string) => `https://stellar.expert/explorer/testnet/contract/${id}`;
+const contractUrl = stellarContractUrl;
 
 function clock(ms: number): string {
   const d = new Date(ms);
@@ -110,19 +108,25 @@ function Retention({ cohorts, now }: { cohorts: RetentionCohort[]; now: number }
 }
 
 const CONTRACTS = [
-  { label: "Commitment tree", id: config.contracts.commitmentTree },
-  { label: "Private lend", id: config.contracts.privateLend },
-  { label: "Bitcoin SPV", id: config.contracts.bitcoinSpv },
-  { label: "ZK verifier", id: config.contracts.zkVerifier },
-  { label: "USDC token", id: config.contracts.usdcToken },
-  { label: "Earn vault (DeFindex)", id: VAULT_CONTRACT },
+  ...(LENDING_ENABLED
+    ? [
+        { label: "Commitment tree", id: config.contracts.commitmentTree },
+        { label: "Private lend", id: config.contracts.privateLend },
+        { label: "Bitcoin SPV", id: config.contracts.bitcoinSpv },
+        { label: "ZK verifier", id: config.contracts.zkVerifier },
+        { label: "USDC token", id: config.contracts.usdcToken },
+      ]
+    : []),
+  { label: "Earn vault (DeFindex)", id: config.earn.vaultId },
 ].filter((c) => c.id);
 
 export function ProtocolView({ data: server }: { data: ProtocolData }) {
   const world = useMockWorld();
   const [now] = useState(() => Date.now());
   const d = world ? mockProtocolData(world, now) : server;
-  const allFailed = d.pool.kind === "failed" && d.vault.kind === "failed";
+  // No borrow pool on an Earn-only deploy: its block is left out, not shown as failed.
+  const pool = LENDING_ENABLED ? d.pool : null;
+  const allFailed = (pool === null || pool.kind === "failed") && d.vault.kind === "failed";
 
   return (
     <div className="fu-page">
@@ -141,19 +145,21 @@ export function ProtocolView({ data: server }: { data: ProtocolData }) {
       ) : null}
 
       <div className="pr-grid">
+        {pool ? (
         <Block title="Borrow pool" at={d.at} step={2}>
-          {d.pool.kind === "ok" ? (
+          {pool.kind === "ok" ? (
             <>
-              <Hero label="Available to borrow" value={{ kind: "ok", value: d.pool.value.available }} unit="USDC" />
+              <Hero label="Available to borrow" value={{ kind: "ok", value: pool.value.available }} unit="USDC" />
               <dl className="fu-tiles">
-                <Figure label="Supplied by lenders" value={formatUsdc(d.pool.value.totalSupplied)} unit="USDC" />
-                <Figure label="Borrowed across all open loans" value={formatUsdc(d.pool.value.totalBorrowed)} unit="USDC" />
+                <Figure label="Supplied by lenders" value={formatUsdc(pool.value.totalSupplied)} unit="USDC" />
+                <Figure label="Borrowed across all open loans" value={formatUsdc(pool.value.totalBorrowed)} unit="USDC" />
               </dl>
             </>
           ) : (
             <Unavailable />
           )}
         </Block>
+        ) : null}
 
         <Block title="Earn vault" at={d.at} step={2}>
           {d.vault.kind === "ok" ? (
