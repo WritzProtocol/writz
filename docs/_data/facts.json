@@ -1,16 +1,16 @@
 {
   "generatedBy": "scripts/update-test-counts.mjs",
-  "generatedAt": "2026-10-17T18:57:48.000Z",
-  "contractsTotal": 241,
-  "totalTests": 566,
+  "generatedAt": "2026-10-17T20:13:19.205Z",
+  "contractsTotal": 255,
+  "totalTests": 591,
   "modules": {
     "contracts/bitcoin-spv": 68,
     "contracts/zk-verifier": 26,
-    "contracts/commitment-tree": 46,
-    "contracts/private-lend": 92,
-    "contracts/spv-types": 9,
+    "contracts/commitment-tree": 51,
+    "contracts/private-lend": 100,
+    "contracts/spv-types": 10,
     "bitcoin-script": 60,
-    "relayer": 224,
+    "relayer": 235,
     "circuits": 41
   }
 }

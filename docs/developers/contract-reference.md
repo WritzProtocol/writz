@@ -242,7 +242,7 @@ pub fn __constructor(admin: Address, spv_contract: Address, zk_verifier: Address
 Register a BTC deposit with a ZK commitment.
 
 ```rust
-pub fn deposit(depositor: Address, block_hash: BytesN<32>, merkle_proof_btc: Vec<BytesN<32>>, tx_index: u32, raw_tx: Bytes, user_pubkey: BytesN<33>, timelock_height: u32, zk_proof: Proof, public_signals: Vec<BytesN<32>>, enc_note: Bytes) -> Result<BytesN<32>, CommitmentTreeError>
+pub fn deposit(depositor: Address, block_hash: BytesN<32>, merkle_proof_btc: Vec<BytesN<32>>, tx_index: u32, raw_tx: Bytes, user_pubkey: BytesN<33>, timelock_height: u32, key_sig: BytesN<65>, zk_proof: Proof, public_signals: Vec<BytesN<32>>, enc_note: Bytes) -> Result<BytesN<32>, CommitmentTreeError>
 ```
 
 ### `insert_commitment`
@@ -453,7 +453,7 @@ Topic fields are in **bold**.
 |---|---|---|
 | `DepositEvent` | `deposit` | **commitment**, depositor, txid, nullifier, user_pubkey, timelock_height, enc_note |
 | `InsertLeafEvent` | `insert_leaf` | **new_root**, commitment, leaf_index |
-| `BorrowEvent` | `borrow` | **new_root**, borrower, usdc_amount, old_nullifier, enc_note |
+| `BorrowEvent` | `borrow` | **new_root**, borrower, usdc_amount, old_nullifier, new_commitment, enc_note |
 | `RepayEvent` | `repay` | **new_root**, repayer, usdc_amount, old_nullifier, new_commitment, enc_note |
 | `LiquidateEvent` | `liquidate` | **nullifier**, keeper, usdc_debt |
 | `SupplyEvent` | `supply` | **supplier**, usdc_amount, total_supplied |
@@ -477,7 +477,7 @@ pub fn __constructor(admin: Address, spv_contract: Address, usdc_token: Address,
 Register a BTC deposit by submitting an SPV proof.
 
 ```rust
-pub fn deposit(depositor: Address, block_hash: BytesN<32>, merkle_proof: Vec<BytesN<32>>, tx_index: u32, raw_tx: Bytes, p2wsh_script_pubkey: Bytes, timelock_height: u32, user_pubkey: BytesN<33>) -> Result<BytesN<32>, PrivateLendError>
+pub fn deposit(depositor: Address, block_hash: BytesN<32>, merkle_proof: Vec<BytesN<32>>, tx_index: u32, raw_tx: Bytes, p2wsh_script_pubkey: Bytes, timelock_height: u32, user_pubkey: BytesN<33>, key_sig: BytesN<65>) -> Result<BytesN<32>, PrivateLendError>
 ```
 
 ### `supply_usdc`
