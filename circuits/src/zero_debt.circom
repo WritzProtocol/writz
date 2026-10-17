@@ -2,6 +2,7 @@ pragma circom 2.0.0;
 
 include "circomlib/circuits/poseidon.circom";
 include "./merkle.circom";
+include "./position.circom";
 
 /*
  * Writz Protocol - Zero-Debt Release Circuit
@@ -13,8 +14,9 @@ include "./merkle.circom";
  * being released.
  *
  * What the circuit proves:
- *   1. The prover knows (collateral, secret, nonce) such that
- *      commitment = Poseidon(collateral, 0, secret, nonce).
+ *   1. The prover knows (collateral, secret, nonce, timelock) such that
+ *      commitment = Poseidon(collateral, 0, Poseidon(secret), nonce, timelock).
+ *      Release needs the owner's `secret`, not just the keeper's liq_key.
  *   2. That commitment exists in the Merkle tree at the provided root.
  *
  * The literal `0` for debt is hardcoded in the circuit - there is no private
@@ -34,15 +36,15 @@ include "./merkle.circom";
  * collateral, secret and nonce stay hidden.
  *
  * Public signal ordering (two circuit outputs, one declared public input):
- *   0: commitment   - Poseidon(collateral_satoshis, 0, secret, nonce)
- *   1: nullifier    - Poseidon(secret, nonce), recorded as spent on release
+ *   0: commitment   - Poseidon(collateral_satoshis, 0, liq_key, nonce, timelock_height)
+ *   1: nullifier    - Poseidon(liq_key, nonce), recorded as spent on release
  *   2: merkle_root  - must equal the current on-chain Merkle root at verify time
  *
  * Private signals (never revealed):
- *   collateral_satoshis, secret, nonce, path_elements[20], path_indices[20]
+ *   collateral_satoshis, secret, nonce, timelock_height, path_elements[20], path_indices[20]
  *
- * Constraint count: ~5,520
- *   - Commitment hash (Poseidon 4-in): ~320
+ * Constraint count: 5,631 non-linear
+ *   - liq_key and commitment hashes (Poseidon 1-in, 5-in): ~450
  *   - Merkle proof (depth 20, MerkleTreeChecker): ~5,200
  *
  * Build:
@@ -55,6 +57,7 @@ template ZeroDebtCircuit(DEPTH) {
     signal input collateral_satoshis;
     signal input secret;
     signal input nonce;
+    signal input timelock_height;
     signal input path_elements[DEPTH];
     signal input path_indices[DEPTH];
 
@@ -69,25 +72,29 @@ template ZeroDebtCircuit(DEPTH) {
     signal output nullifier;
 
     // ── Step 1: Compute the zero-debt commitment ──────────────────────────────
-    // commitment = Poseidon(collateral_satoshis, 0, secret, nonce)
-    // The second input is the literal 0 - no private debt variable exists.
+    // commitment = Poseidon(collateral_satoshis, 0, liq_key, nonce, timelock_height)
+    // The debt input is the literal 0 - no private debt variable exists.
     // A witness with non-zero debt cannot satisfy this circuit.
-    component commit = Poseidon(4);
-    commit.inputs[0] <== collateral_satoshis;
-    commit.inputs[1] <== 0;
-    commit.inputs[2] <== secret;
-    commit.inputs[3] <== nonce;
+    component liq = LiquidationKey();
+    liq.secret <== secret;
+
+    component commit = PositionCommitment();
+    commit.collateral_satoshis <== collateral_satoshis;
+    commit.debt_stroops <== 0;
+    commit.liq_key <== liq.out;
+    commit.nonce <== nonce;
+    commit.timelock_height <== timelock_height;
     commitment <== commit.out;
 
-    component null_hasher = Poseidon(2);
-    null_hasher.inputs[0] <== secret;
-    null_hasher.inputs[1] <== nonce;
+    component null_hasher = PositionNullifier();
+    null_hasher.liq_key <== liq.out;
+    null_hasher.nonce <== nonce;
     nullifier <== null_hasher.out;
 
     // ── Step 2: Verify Merkle inclusion ──────────────────────────────────────
     // Proves the commitment above exists in the tree rooted at merkle_root.
     component checker = MerkleTreeChecker(DEPTH);
-    checker.leaf <== commit.out;
+    checker.leaf <== commitment;
     checker.root <== merkle_root;
     for (var i = 0; i < DEPTH; i++) {
         checker.pathElements[i] <== path_elements[i];

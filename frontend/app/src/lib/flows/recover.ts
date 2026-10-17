@@ -65,13 +65,17 @@ export async function recoverPositions(params: {
     const debt = BigInt(note.debtStroops);
     const secret = deriveSecret(f, note.index);
     const nonce = deriveNonce(f, note.index, note.version);
-    const commitment = computeCommitment(collateral, debt, secret, nonce);
+    const prior = existing.find((p) => p.index === note.index);
+    // Every commitment carries the position's timelock (#212); notes sealed
+    // since then include it, and this device may know it from the deposit.
+    const timelockHeight = note.timelockHeight ?? prior?.timelockHeight;
+    if (!timelockHeight) continue;
+    const commitment = computeCommitment(collateral, debt, secret, nonce, timelockHeight);
 
     // Skip notes that don't reconstruct the on-chain commitment for their leaf
     // (a stale or tampered note) - only trust verifiable state.
     if (n.commitment !== null && commitment !== BigInt("0x" + n.commitment)) continue;
 
-    const prior = existing.find((p) => p.index === note.index);
     // The relayer can lag behind this device; an older note would restore a spent nullifier.
     if (prior && prior.version > note.version) continue;
     if (prior) removePosition(owner, prior.id);
@@ -95,7 +99,7 @@ export async function recoverPositions(params: {
             : "closed",
       createdAt: prior?.createdAt ?? Date.now(),
       btcPubkey: prior?.btcPubkey,
-      timelockHeight: prior?.timelockHeight,
+      timelockHeight,
       vout: prior?.vout,
       leafIndex: n.leafIndex,
       stellarTxHash: prior?.stellarTxHash,

@@ -15,6 +15,10 @@
  *     consumer, and into the second lender after the first (GHSA-2975)
  *   - a borrow proof redirected to another account (GHSA-xxqv, GHSA-mhp9)
  *   - borrowing against a repaid leaf after its release (GHSA-w4rp, GHSA-hcjf)
+ *   - a borrow that leaves less than the timelock margin, and one whose keeper
+ *     note is encrypted to a key other than the contract's (#212)
+ * and checks the keeper can open a borrow's published note and rebuild the
+ * position without the owner's secret (#212).
  *
  * Unit tests run with mocked auth; this runs with real auth, including the
  * lending contract calling bitcoin-spv's consumed-txid registry on its own
@@ -31,7 +35,7 @@
  */
 import * as StellarSdk from '@stellar/stellar-sdk';
 import * as snarkjs from 'snarkjs';
-import { buildPoseidon } from 'circomlibjs';
+import { buildBabyjub, buildPoseidon } from 'circomlibjs';
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
@@ -79,6 +83,10 @@ const USER_KEY = Buffer.alloc(32, 0x42);
 const OTHER_KEY = Buffer.alloc(32, 0x77);
 const USER_PUBKEY = Buffer.from(secp256k1.getPublicKey(USER_KEY, true));
 const OTHER_PUBKEY = Buffer.from(secp256k1.getPublicKey(OTHER_KEY, true));
+// The ZK keeper's BabyJubJub key (#212) and commitment-tree's default margin.
+const KEEPER_SK = 0x0abcdef0123456789n;
+const BORROW_MARGIN = 4_320;
+const SPV_TIP = CHECKPOINT_HEIGHT + 6;          // after the six mined headers
 
 // ── output ───────────────────────────────────────────────────────────────────
 let passed = 0;
@@ -131,13 +139,18 @@ async function simulate(source, contractId, method, args) {
 }
 
 async function invoke(source, contractId, method, args) {
+  const res = await invokeTx(source, contractId, method, args);
+  return res.returnValue ? scValToNative(res.returnValue) : undefined;
+}
+
+/** Like `invoke`, but returns the confirmed transaction (with its events). */
+async function invokeTx(source, contractId, method, args) {
   const tx = await build(source, contractId, method, args);
   const sim = await server.simulateTransaction(tx);
   if (SorobanRpc.Api.isSimulationError(sim)) throw new Error(`${method} simulation failed: ${sim.error}`);
   const prepared = SorobanRpc.assembleTransaction(tx, sim).build();
   prepared.sign(source);
-  const res = await sendAndWait(prepared);
-  return res.returnValue ? scValToNative(res.returnValue) : undefined;
+  return sendAndWait(prepared);
 }
 
 /** Asserts a call is rejected with the given contract error number. */
@@ -270,6 +283,21 @@ function recipientHalves(strkey) {
 async function main() {
   const poseidon = await buildPoseidon();
   const H = (...xs) => BigInt(poseidon.F.toString(poseidon(xs)));
+  // Position scheme (#212): commitment = H(collateral, debt, H(secret), nonce, timelock).
+  const LIQ_KEY = H(SECRET);
+  const commit = (debt, nonce) => H(COLLATERAL, debt, LIQ_KEY, nonce, BigInt(TIMELOCK));
+  const babyjub = await buildBabyjub();
+  const keeperPoint = babyjub.mulPointEscalar(babyjub.Base8, KEEPER_SK);
+  const KEEPER_PUB = [babyjub.F.toObject(keeperPoint[0]), babyjub.F.toObject(keeperPoint[1])];
+  let ephSeed = 0x51n;
+  const keeperInputs = (over = {}) => ({
+    timelock_height: String(TIMELOCK),
+    eph_sk: String(ephSeed++),
+    min_timelock_height: String(SPV_TIP + BORROW_MARGIN),
+    keeper_pub_x: KEEPER_PUB[0].toString(),
+    keeper_pub_y: KEEPER_PUB[1].toString(),
+    ...over,
+  });
 
   step('Accounts');
   const admin = Keypair.random();
@@ -312,6 +340,7 @@ async function main() {
     constructorArgs: [
       addr(admin.publicKey()), addr(spvId), addr(zkId), addr(nativeSac), addr(admin.publicKey()),
       u32(6), bytes(PROTOCOL_PUBKEY),
+      bytes(Buffer.from(hex32(KEEPER_PUB[0]), 'hex')), bytes(Buffer.from(hex32(KEEPER_PUB[1]), 'hex')),
     ],
   });
   ok(`commitment-tree  ${ctId}`);
@@ -367,8 +396,9 @@ async function main() {
     collateral_satoshis: COLLATERAL.toString(), secret: SECRET.toString(), nonce: NONCES[0].toString(),
     btc_txid_lo: txidLo.toString(), btc_txid_hi: txidHi.toString(),
     min_deposit_satoshis: MIN_DEPOSIT.toString(), actual_satoshis: COLLATERAL.toString(),
+    timelock_height: String(TIMELOCK),
   });
-  const commitment0 = H(COLLATERAL, 0n, SECRET, NONCES[0]);
+  const commitment0 = commit(0n, NONCES[0]);
   const ctSig = (key, who = borrower.publicKey()) => signDeposit(key, ctId, who, txid);
   const depositArgs = (userPubkey, timelock, keySig = ctSig(USER_KEY)) => [
     addr(borrower.publicKey()), bytes(blockHash), xdr.ScVal.scvVec([]), u32(0), bytes(rawTx),
@@ -423,14 +453,54 @@ async function main() {
     old_root: tree0.root.toString(), delta_stroops: BORROW.toString(), is_borrow: '1',
     btc_price_stroops_per_btc: PRICE.toString(), min_ratio_bp: MIN_RATIO_BP.toString(),
     recipient_lo: mine.lo.toString(), recipient_hi: mine.hi.toString(),
+    ...keeperInputs(),
   });
   const borrowArgs = (who) => [addr(who.publicKey()), proofVal(borrowProof.proof), signalsVal(borrowProof.publicSignals), bytes(Buffer.alloc(0))];
   await expectError(attacker, ctId, 'borrow', borrowArgs(attacker), 19, 'a copied borrow proof submitted by another account');
-  await invoke(borrower, ctId, 'borrow', borrowArgs(borrower));
+
+  // #212: the same borrow, proven against a bound one block short of the
+  // margin, and against a keeper key the contract does not hold.
+  const borrowWith = async (over) => prove('borrow_repay', {
+    collateral_satoshis: COLLATERAL.toString(), old_debt_stroops: '0', secret: SECRET.toString(), nonce: NONCES[0].toString(),
+    new_nonce: NONCES[1].toString(), path_elements: tree0.pathElements, path_indices: tree0.pathIndices,
+    old_root: tree0.root.toString(), delta_stroops: BORROW.toString(), is_borrow: '1',
+    btc_price_stroops_per_btc: PRICE.toString(), min_ratio_bp: MIN_RATIO_BP.toString(),
+    recipient_lo: mine.lo.toString(), recipient_hi: mine.hi.toString(),
+    ...keeperInputs(over),
+  });
+  const soon = await borrowWith({ min_timelock_height: String(SPV_TIP + BORROW_MARGIN - 1) });
+  await expectError(borrower, ctId, 'borrow',
+    [addr(borrower.publicKey()), proofVal(soon.proof), signalsVal(soon.publicSignals), bytes(Buffer.alloc(0))], 27,
+    'a borrow that leaves less than the timelock margin before the owner can reclaim alone');
+  const rogue = babyjub.mulPointEscalar(babyjub.Base8, KEEPER_SK + 1n);
+  const rogueKeeper = await borrowWith({
+    keeper_pub_x: babyjub.F.toObject(rogue[0]).toString(), keeper_pub_y: babyjub.F.toObject(rogue[1]).toString(),
+  });
+  await expectError(borrower, ctId, 'borrow',
+    [addr(borrower.publicKey()), proofVal(rogueKeeper.proof), signalsVal(rogueKeeper.publicSignals), bytes(Buffer.alloc(0))], 29,
+    "a borrow whose keeper note the protocol's keeper could not open");
+
+  const borrowTx = await invokeTx(borrower, ctId, 'borrow', borrowArgs(borrower));
   ok('the recipient the proof commits to borrows successfully');
 
+  // The keeper reads the note from the borrow event and opens it with its key.
+  const borrowEvent = (borrowTx.events?.contractEventsXdr ?? []).flat()
+    .map((e) => e.body().v0())
+    .find((b) => scValToNative(b.topics()[0]) === 'borrow');
+  if (!borrowEvent) throw new Error('no borrow event');
+  const published = scValToNative(borrowEvent.data()).keeper_note.map((b) => BigInt('0x' + Buffer.from(b).toString('hex')));
+  const shared = babyjub.mulPointEscalar([babyjub.F.e(published[0]), babyjub.F.e(published[1])], KEEPER_SK);
+  const [sx, sy] = [babyjub.F.toObject(shared[0]), babyjub.F.toObject(shared[1])];
+  const opened = [0, 1, 2].map((i) => (((published[2 + i] - H(sx, sy, BigInt(i))) % FIELD_PRIME) + FIELD_PRIME) % FIELD_PRIME);
+  const packed = opened[2];
+  const [c, d, t] = [packed & ((1n << 52n) - 1n), (packed >> 52n) & ((1n << 120n) - 1n), packed >> 172n];
+  if (opened[0] !== LIQ_KEY || H(c, d, opened[0], opened[1], t) !== commit(BORROW, NONCES[1])) {
+    throw new Error('the keeper could not rebuild the borrowed position from its published note');
+  }
+  ok("the keeper opened the borrow's published note and rebuilt the position without the owner's secret");
+
   step('Repay');
-  const commitment1 = H(COLLATERAL, BORROW, SECRET, NONCES[1]);
+  const commitment1 = commit(BORROW, NONCES[1]);
   const tree1 = await singleLeafTree(poseidon, commitment1);
   const repayProof = await prove('borrow_repay', {
     collateral_satoshis: COLLATERAL.toString(), old_debt_stroops: BORROW.toString(), secret: SECRET.toString(),
@@ -439,6 +509,7 @@ async function main() {
     delta_stroops: ((FIELD_PRIME - BORROW) % FIELD_PRIME).toString(), is_borrow: '0',
     btc_price_stroops_per_btc: PRICE.toString(), min_ratio_bp: MIN_RATIO_BP.toString(),
     recipient_lo: mine.lo.toString(), recipient_hi: mine.hi.toString(),
+    ...keeperInputs(),
   });
   await invoke(borrower, ctId, 'repay', [
     addr(borrower.publicKey()), proofVal(repayProof.proof), signalsVal(repayProof.publicSignals), bytes(Buffer.alloc(0)),
@@ -446,7 +517,7 @@ async function main() {
   ok('debt repaid in full');
 
   step('Release: the repaid leaf must stop being borrowable');
-  const commitment2 = H(COLLATERAL, 0n, SECRET, NONCES[2]);
+  const commitment2 = commit(0n, NONCES[2]);
   const tree2 = await singleLeafTree(poseidon, commitment2);
   const reborrow = await prove('borrow_repay', {
     collateral_satoshis: COLLATERAL.toString(), old_debt_stroops: '0', secret: SECRET.toString(), nonce: NONCES[2].toString(),
@@ -454,6 +525,7 @@ async function main() {
     old_root: tree2.root.toString(), delta_stroops: BORROW.toString(), is_borrow: '1',
     btc_price_stroops_per_btc: PRICE.toString(), min_ratio_bp: MIN_RATIO_BP.toString(),
     recipient_lo: mine.lo.toString(), recipient_hi: mine.hi.toString(),
+    ...keeperInputs(),
   });
   const reborrowArgs = [addr(borrower.publicKey()), proofVal(reborrow.proof), signalsVal(reborrow.publicSignals), bytes(Buffer.alloc(0))];
   await simulate(borrower, ctId, 'borrow', reborrowArgs);
@@ -461,7 +533,7 @@ async function main() {
 
   const zd = await prove('zero_debt', {
     collateral_satoshis: COLLATERAL.toString(), secret: SECRET.toString(), nonce: NONCES[2].toString(),
-    path_elements: tree2.pathElements, path_indices: tree2.pathIndices, merkle_root: tree2.root.toString(),
+    timelock_height: String(TIMELOCK), path_elements: tree2.pathElements, path_indices: tree2.pathIndices, merkle_root: tree2.root.toString(),
   });
   await invoke(borrower, ctId, 'mark_released', [proofVal(zd.proof), signalsVal(zd.publicSignals)]);
   ok('mark_released accepted the zero-debt proof');
@@ -470,4 +542,4 @@ async function main() {
   console.log(`\nAll ${passed} checks passed on the local network.`);
 }
 
-main().then(() => process.exit(0)).catch((e) => { console.error(`\nFAILED: ${e instanceof Error ? e.message : e}`); process.exit(1); });
+main().then(() => process.exit(0)).catch((e) => { console.error(`\nFAILED: ${e instanceof Error ? e.message : JSON.stringify(e)}`); process.exit(1); });

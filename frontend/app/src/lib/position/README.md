@@ -16,8 +16,12 @@ see the caveat in `docs/products/privatelend.md` Step 5.
 Matches the circuits in `circuits/src/` exactly (verified equal to the
 `circomlibjs` Poseidon used there):
 
-- `commitment = Poseidon(collateral_satoshis, debt_stroops, secret, nonce)`
-- `nullifier  = Poseidon(secret, nonce)`
+- `liq_key    = Poseidon(secret)`
+- `commitment = Poseidon(collateral_satoshis, debt_stroops, liq_key, nonce, timelock_height)`
+- `nullifier  = Poseidon(liq_key, nonce)`
+
+`liq_key` is what borrow/repay proofs encrypt to the protocol keeper so it can
+liquidate the position (#212); it cannot borrow, repay or release.
 
 `randomFieldElement()` produces a CSPRNG value in the BN254 field.
 
@@ -35,7 +39,7 @@ Backup: `exportPositions` / `importPositions` (versioned envelope).
 
 ## Helpers (`index.ts`)
 
-- `createDepositPosition({ owner, collateralSats, txid?, createdAt })` - new
+- `createDepositPosition({ owner, collateralSats, timelockHeight, txid?, createdAt })` - new
   position with fresh secret/nonce and derived commitment/nullifier.
 - `positionWitness(position)` - the private fields fed to the ZK prover.
 

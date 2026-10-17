@@ -18,6 +18,8 @@ export interface PositionNote {
   version: number; // nonce rotation counter
   collateralSats: string;
   debtStroops: string;
+  /** CLTV height bound into the commitment (#212); needed to rebuild it on recovery. */
+  timelockHeight?: number;
 }
 // Note: leafIndex is intentionally NOT in the note - on recovery it's resolved by
 // recomputing the commitment and matching it against the relayer's leaf list

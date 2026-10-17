@@ -3,6 +3,7 @@ pragma circom 2.0.0;
 include "circomlib/circuits/poseidon.circom";
 include "circomlib/circuits/comparators.circom";
 include "circomlib/circuits/bitify.circom";
+include "./position.circom";
 
 /*
  * Writz Protocol - Deposit Circuit
@@ -14,13 +15,18 @@ include "circomlib/circuits/bitify.circom";
  * separate `bitcoin-spv` Soroban contract.  The circuit only handles the ZK
  * privacy layer: creating a hiding commitment to the position state.
  *
- * Position commitment scheme:
- *   commitment = Poseidon(collateral_satoshis, debt_stroops, secret, nonce)
+ * Position commitment scheme (see position.circom):
+ *   liq_key    = Poseidon(secret)
+ *   commitment = Poseidon(collateral_satoshis, debt_stroops, liq_key, nonce, timelock_height)
  *   At deposit time: debt_stroops = 0
  *
  * Nullifier (prevents re-use of the same deposit):
- *   nullifier = Poseidon(secret, nonce)
+ *   nullifier = Poseidon(liq_key, nonce)
  *   Published on-chain so this commitment can never be re-deposited.
+ *
+ * `timelock_height` (#212) is public: commitment-tree requires it to equal
+ * the CLTV height of the Bitcoin output it rebuilt and checked, so the
+ * position carries its real maturity into every later borrow.
  *
  * `actual_satoshis` (GHSA-2hjj-x5wr-4p68, GHSA-xp6j-g2rw-h5g6,
  * GHSA-mg4x-cr23-4x3v): the contract parses the real BTC amount paid to the
@@ -32,7 +38,7 @@ include "circomlib/circuits/bitify.circom";
  * with sats=0 and a claimed collateral_satoshis of 10,000 BTC verified just
  * as validly as an honest one.
  *
- * Constraint count: 596 non-linear (measured via `circom --r1cs`, not an
+ * Constraint count: 855 non-linear (measured via `circom --r1cs`, not an
  * estimate - regenerate this comment if the circuit changes again rather
  * than trusting stale arithmetic here).
  */
@@ -50,28 +56,39 @@ template DepositCircuit() {
     // Real amount the referenced transaction paid to the protocol's shared
     // ZK vault script, as parsed on-chain by commitment-tree::deposit.
     signal input actual_satoshis;
+    // CLTV height of the deposit's Bitcoin script, checked on-chain.
+    signal input timelock_height;
 
     // ── Public outputs ────────────────────────────────────────────────────────
     signal output commitment;  // Added to the on-chain Merkle tree
     signal output nullifier;   // Recorded to prevent replay of this deposit
 
     // ── Constraint 1: Compute the position commitment ─────────────────────────
-    // commitment = Poseidon(collateral_satoshis, 0, secret, nonce)
-    // The second element is 0 because debt starts at zero at deposit time.
-    component commit_hasher = Poseidon(4);
-    commit_hasher.inputs[0] <== collateral_satoshis;
-    commit_hasher.inputs[1] <== 0;   // initial debt
-    commit_hasher.inputs[2] <== secret;
-    commit_hasher.inputs[3] <== nonce;
+    // commitment = Poseidon(collateral_satoshis, 0, liq_key, nonce, timelock_height)
+    // The debt is 0 because debt starts at zero at deposit time.
+    component liq = LiquidationKey();
+    liq.secret <== secret;
+
+    // The contract reads timelock_height as a u32; a wider field element
+    // could carry the right low bytes and a different value.
+    component timelock_range = Num2Bits(32);
+    timelock_range.in <== timelock_height;
+
+    component commit_hasher = PositionCommitment();
+    commit_hasher.collateral_satoshis <== collateral_satoshis;
+    commit_hasher.debt_stroops <== 0;   // initial debt
+    commit_hasher.liq_key <== liq.out;
+    commit_hasher.nonce <== nonce;
+    commit_hasher.timelock_height <== timelock_height;
     commitment <== commit_hasher.out;
 
     // ── Constraint 2: Compute the nullifier ───────────────────────────────────
-    // nullifier = Poseidon(secret, nonce)
-    // Published on-chain; prevents this same (secret, nonce) pair from ever
+    // nullifier = Poseidon(liq_key, nonce)
+    // Published on-chain; prevents this same (liq_key, nonce) pair from ever
     // being used in another deposit.
-    component null_hasher = Poseidon(2);
-    null_hasher.inputs[0] <== secret;
-    null_hasher.inputs[1] <== nonce;
+    component null_hasher = PositionNullifier();
+    null_hasher.liq_key <== liq.out;
+    null_hasher.nonce <== nonce;
     nullifier <== null_hasher.out;
 
     // ── Constraint 3: Enforce minimum deposit ─────────────────────────────────
@@ -101,7 +118,7 @@ template DepositCircuit() {
     // binding at all - it is dead code, not a security property.
 }
 
-// Public signals: btc_txid_lo, btc_txid_hi, min_deposit_satoshis, actual_satoshis
+// Public signals: btc_txid_lo, btc_txid_hi, min_deposit_satoshis, actual_satoshis, timelock_height
 // All other signals are private.
 // Outputs (commitment, nullifier) are public by virtue of being output signals.
-component main {public [btc_txid_lo, btc_txid_hi, min_deposit_satoshis, actual_satoshis]} = DepositCircuit();
+component main {public [btc_txid_lo, btc_txid_hi, min_deposit_satoshis, actual_satoshis, timelock_height]} = DepositCircuit();

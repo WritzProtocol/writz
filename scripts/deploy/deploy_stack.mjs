@@ -9,7 +9,8 @@
  *                       set_checkpoint(...)            (callable once)
  *                       set_submitter(admin, relayer)  (mandatory on signet)
  *   3. commitment-tree  __constructor(admin, spv, zk_verifier, usdc, oracle,
- *                                     min_confirmations, protocol_pubkey)
+ *                                     min_confirmations, protocol_pubkey,
+ *                                     keeper_pub_x, keeper_pub_y)
  *   4. private-lend     __constructor(admin, spv, usdc, oracle, keeper,
  *                                     relayer, protocol_pubkey)
  *   5. verification keys for Deposit, BorrowRepay, Liquidation, ZeroDebt, Insert
@@ -30,7 +31,8 @@
  *   (cd contracts && cargo build --release --target wasm32v1-none --locked)
  *   STELLAR_NETWORK=testnet BITCOIN_NETWORK=signet ADMIN_SECRET=S... \
  *   RELAYER_ADDRESS=G... KEEPER_ADDRESS=G... USDC_TOKEN=C... ORACLE=C... \
- *   PROTOCOL_PUBKEY=02... CHECKPOINT_HEIGHT=... CHECKPOINT_HASH=... \
+ *   PROTOCOL_PUBKEY=02... KEEPER_BABYJUB_PUBKEY=<x||y hex, keeper_keygen.mjs> \
+ *   CHECKPOINT_HEIGHT=... CHECKPOINT_HASH=... \
  *   CHECKPOINT_BITS=0x... CHECKPOINT_TIME=... CHECKPOINT_PERIOD_START_TIME=... \
  *     node deploy_stack.mjs [--execute]
  */
@@ -39,6 +41,7 @@ import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { buildBabyjub } from 'circomlibjs';
 import { deployWithConstructor } from './constructor_deploy.mjs';
 
 const { Keypair, Networks, Address, Contract, StrKey, TransactionBuilder, xdr, nativeToScVal, rpc: SorobanRpc } = StellarSdk;
@@ -85,6 +88,14 @@ const usdc = env('USDC_TOKEN', isContract, 'C... USDC Stellar Asset Contract');
 const oracle = env('ORACLE', isContract, "C... Reflector oracle (docs/research/oracle-design.md)");
 const protocolPubkey = env('PROTOCOL_PUBKEY', (v) => /^0[23][0-9a-f]{64}$/i.test(v),
   'compressed 33-byte hex key matching the relayer KMS key or PROTOCOL_SIGNING_KEY');
+// The ZK keeper's BabyJubJub key (#212), from keeper_keygen.mjs: 32-byte x
+// then 32-byte y, big-endian. Every borrow/repay note is encrypted to it.
+const babyjub = await buildBabyjub();
+const keeperBabyjub = env('KEEPER_BABYJUB_PUBKEY', (v) => {
+  if (!/^[0-9a-f]{128}$/i.test(v) || /^0{64}/.test(v)) return false;
+  const point = [babyjub.F.e(BigInt('0x' + v.slice(0, 64))), babyjub.F.e(BigInt('0x' + v.slice(64)))];
+  return babyjub.inCurve(point) && babyjub.inSubgroup(point);
+}, 'x||y hex of a BabyJubJub subgroup point (scripts/deploy/keeper_keygen.mjs)');
 const checkpoint = {
   height: toUint(env('CHECKPOINT_HEIGHT', isUint)),
   hash: env('CHECKPOINT_HASH', (v) => /^[0-9a-f]{64}$/i.test(v), 'block hash, display (explorer) byte order'),
@@ -144,6 +155,7 @@ console.log(`  keeper            ${keeper}`);
 console.log(`  usdc              ${usdc}`);
 console.log(`  oracle            ${oracle}`);
 console.log(`  protocol pubkey   ${protocolPubkey}`);
+console.log(`  keeper babyjub    ${keeperBabyjub ? `${keeperBabyjub.slice(0, 16)}…` : keeperBabyjub}`);
 console.log(`  pow limit bits    0x${powLimitBits.toString(16)}`);
 console.log(`  checkpoint        height ${checkpoint.height}, ${checkpoint.hash}, bits 0x${checkpoint.bits.toString(16)}`);
 console.log(`  min confirmations ${minConfirmations}`);
@@ -237,6 +249,7 @@ out.commitmentTree = await deployWithConstructor({
   constructorArgs: [
     addr(admin.publicKey()), addr(out.bitcoinSpv), addr(out.zkVerifier), addr(usdc), addr(oracle),
     u32(minConfirmations), bytes(protocolKey),
+    bytes(Buffer.from(keeperBabyjub.slice(0, 64), 'hex')), bytes(Buffer.from(keeperBabyjub.slice(64), 'hex')),
   ],
 });
 console.log(`   ${out.commitmentTree}`);

@@ -46,6 +46,20 @@ describe('runTreePollCycle', () => {
     expect(treeSyncStatus.ok).toBe(true);
   });
 
+  test("hands a borrow's keeper note to the keeper with the leaf it updated (#212)", async () => {
+    const h = harness([11n, 22n]);
+    const after = [11n, 2222n];
+    const got: [number, bigint, bigint[]][] = [];
+    await runTreePollCycle({
+      server: server([
+        { event: { kind: 'update', newCommitment: 2222n, newRoot: computeRoot(after) }, keeperNote: [1n, 2n, 3n, 4n, 5n] },
+      ]) as never,
+      contractId: 'CTREE', decodeEvent: unwrap, store: h.store, cursor: h.cursor,
+      keeperNote: (i, c, n) => got.push([i, c, n]),
+    });
+    expect(got).toEqual([[1, 2222n, [1n, 2n, 3n, 4n, 5n]]]);
+  });
+
   test('replaying a batch changes nothing', async () => {
     const after = [11n, 22n];
     const h = harness(after);

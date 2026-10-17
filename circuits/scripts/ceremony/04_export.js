@@ -44,8 +44,8 @@ const MANIFEST_PATH = path.join(KEYS_DIR, 'CEREMONY_MANIFEST.json');
 // inherit whatever the dev keys happened to have.
 // IC length is the circuit's public-signal count plus one.
 const EXPECTED_IC_LENGTH = {
-  deposit: 7,
-  borrow_repay: 11,
+  deposit: 8,
+  borrow_repay: 19,
   liquidation: 6,
   zero_debt: 4,
   insert: 5,

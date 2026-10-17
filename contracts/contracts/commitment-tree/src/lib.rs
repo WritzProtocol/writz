@@ -18,7 +18,7 @@ use soroban_sdk::{
     contract, contractimpl, panic_with_error, token, Address, Bytes, BytesN, Env, IntoVal,
     Symbol, Vec,
 };
-use spv_types::{btc_parser, key_proof, script, SpvVerificationResult};
+use spv_types::{btc_parser, key_proof, script, BestTip, HeaderEntry, SpvVerificationResult};
 use types::{
     borrow_repay_signals as br, deposit_signals as ds, insert_signals as ins,
     liquidation_signals as lq, Config,
@@ -72,6 +72,15 @@ const PERSISTENT_THRESHOLD: u32 = 30 * LEDGERS_PER_DAY;
 const NULLIFIER_BUMP:      u32 = 180 * LEDGERS_PER_DAY;
 const NULLIFIER_THRESHOLD: u32 =  30 * LEDGERS_PER_DAY;
 
+// #212: a borrowing position must have at least this many blocks (~30 days)
+// left before its owner can reclaim the BTC alone, measured from a Bitcoin tip
+// no older than DEFAULT_MAX_TIP_AGE_SECS.
+const DEFAULT_BORROW_TIMELOCK_MARGIN: u32 = 4_320;
+const MIN_BORROW_TIMELOCK_MARGIN: u32 = 144;
+const DEFAULT_MAX_TIP_AGE_SECS: u64 = 6 * 60 * 60;
+const MIN_TIP_AGE_SECS: u64 = 60 * 60;
+const MAX_TIP_AGE_SECS: u64 = 48 * 60 * 60;
+
 // ── Contract ──────────────────────────────────────────────────────────────────
 
 #[contract]
@@ -97,9 +106,14 @@ impl CommitmentTreeContract {
         oracle: Address,
         min_confirmations: u32,
         protocol_pubkey: BytesN<33>,
+        keeper_pub_x: BytesN<32>,
+        keeper_pub_y: BytesN<32>,
     ) {
         if !script::is_compressed_pubkey(&protocol_pubkey) {
             panic_with_error!(&env, CommitmentTreeError::InvalidPubkey);
+        }
+        if !keeper_key_ok(&keeper_pub_x) {
+            panic_with_error!(&env, CommitmentTreeError::InvalidParameter);
         }
         env.storage().instance().set(
             &DataKey::Config,
@@ -115,6 +129,10 @@ impl CommitmentTreeContract {
                 min_collateral_ratio_bp:  15_000,
                 liquidation_threshold_bp: 12_000,
                 max_total_borrowed: 500_000_000_000, // 50,000 USDC, the same launch cap as private-lend
+                keeper_pub_x,
+                keeper_pub_y,
+                borrow_timelock_margin_blocks: DEFAULT_BORROW_TIMELOCK_MARGIN,
+                max_tip_age_secs: DEFAULT_MAX_TIP_AGE_SECS,
                 paused: false,
             },
         );
@@ -159,12 +177,13 @@ impl CommitmentTreeContract {
     /// # Public signals (deposit circuit)
     /// | Index | Signal | Description |
     /// |-------|--------|-------------|
-    /// | 0 | `commitment` | Poseidon(collateral, 0, secret, nonce) |
-    /// | 1 | `nullifier` | Poseidon(secret, nonce) |
+    /// | 0 | `commitment` | Poseidon(collateral, 0, liq_key, nonce, timelock) |
+    /// | 1 | `nullifier` | Poseidon(liq_key, nonce) |
     /// | 2 | `btc_txid_lo` | Low 128 bits of txid as Fr element |
     /// | 3 | `btc_txid_hi` | High 128 bits of txid as Fr element |
     /// | 4 | `min_deposit_sats` | Must equal `Config.min_deposit_satoshis` |
     /// | 5 | `actual_satoshis` | Must equal the real amount parsed from `raw_tx` |
+    /// | 6 | `timelock_height` | Must equal the `timelock_height` argument (#212) |
     ///
     /// # Returns
     /// The commitment (the leaf value to be inserted into the Merkle tree).
@@ -275,6 +294,13 @@ impl CommitmentTreeContract {
             sig_u64(&public_signals.get(ds::ACTUAL_SATOSHIS as u32).unwrap());
         if actual_satoshis_signal != actual_satoshis {
             return Err(CommitmentTreeError::CollateralAmountMismatch);
+        }
+
+        // 4c. Timelock binding (#212): the commitment carries the timelock
+        //     the script above was rebuilt with, so `borrow` can later require
+        //     real time left on it without learning which position borrows.
+        if public_signals.get(ds::TIMELOCK_HEIGHT as u32).unwrap() != u32_signal(&env, timelock_height) {
+            return Err(CommitmentTreeError::InvalidTimelock);
         }
 
         let commitment: BytesN<32> = public_signals.get(ds::COMMITMENT as u32).unwrap();
@@ -434,6 +460,12 @@ impl CommitmentTreeContract {
     ///   else's pending borrow transaction cannot be resubmitted with a
     ///   different authenticated `borrower` to steal the payout
     ///   (GHSA-xxqv-6vhx-hhrx, GHSA-mhp9-jmvc-x9mw).
+    /// * `min_timelock_height >= bitcoin-spv tip + borrow_timelock_margin_blocks`,
+    ///   with a tip no older than `max_tip_age_secs` - the circuit proves the
+    ///   position's timelock is at least that bound, so a borrow always
+    ///   leaves the margin before the owner can reclaim the BTC alone (#212).
+    /// * `keeper_pub == Config` - the proof encrypted the new position's
+    ///   liquidation witness to the keeper (#212).
     ///
     /// # Public signals (borrow_repay circuit)
     /// | Index | Signal |
@@ -441,13 +473,16 @@ impl CommitmentTreeContract {
     /// | 0 | `new_root` |
     /// | 1 | `old_nullifier` |
     /// | 2 | `new_commitment` |
-    /// | 3 | `old_root` |
-    /// | 4 | `delta_stroops` (positive i128 for borrow) |
-    /// | 5 | `is_borrow` (1) |
-    /// | 6 | `btc_price_stroops_per_btc` |
-    /// | 7 | `min_ratio_bp` |
-    /// | 8 | `recipient_lo` (low 128 bits of sha256(borrower strkey)) |
-    /// | 9 | `recipient_hi` (high 128 bits of sha256(borrower strkey)) |
+    /// | 3-7 | keeper note: `eph_x`, `eph_y`, `ct0..ct2` (#212) |
+    /// | 8 | `old_root` |
+    /// | 9 | `delta_stroops` (positive i128 for borrow) |
+    /// | 10 | `is_borrow` (1) |
+    /// | 11 | `btc_price_stroops_per_btc` |
+    /// | 12 | `min_ratio_bp` |
+    /// | 13 | `recipient_lo` (low 128 bits of sha256(borrower strkey)) |
+    /// | 14 | `recipient_hi` (high 128 bits of sha256(borrower strkey)) |
+    /// | 15 | `min_timelock_height` (#212) |
+    /// | 16-17 | `keeper_pub_x/y` (must equal Config) (#212) |
     pub fn borrow(
         env: Env,
         borrower: Address,
@@ -469,6 +504,7 @@ impl CommitmentTreeContract {
         let old_nullifier = public_signals.get(br::OLD_NULLIFIER as u32).unwrap();
         let new_root      = public_signals.get(br::NEW_ROOT      as u32).unwrap();
         let new_commitment = public_signals.get(br::NEW_COMMITMENT as u32).unwrap();
+        let keeper_note = keeper_note(&env, &public_signals);
 
         // old_root must match stored root - prevents stale proofs.
         if old_root_sig != Self::stored_root(&env) {
@@ -519,6 +555,19 @@ impl CommitmentTreeContract {
             return Err(CommitmentTreeError::RecipientMismatch);
         }
 
+        // The keeper must be able to open this position's liquidation note.
+        check_keeper_key(&config, &public_signals)?;
+
+        // Enough time must remain before the owner can reclaim the BTC alone
+        // (#212). The circuit proves timelock >= min_timelock_height; the
+        // bound itself must clear the current tip plus the margin.
+        let min_timelock = u32_from_signal(&public_signals.get(br::MIN_TIMELOCK as u32).unwrap())
+            .ok_or(CommitmentTreeError::SignalOverflow)?;
+        let tip_height = Self::fresh_tip_height(&env, &config)?;
+        if (min_timelock as u64) < tip_height as u64 + config.borrow_timelock_margin_blocks as u64 {
+            return Err(CommitmentTreeError::TimelockTooSoon);
+        }
+
         // Extract the borrow amount from the proof - not from the caller.
         // delta_stroops is a positive 120-bit number for borrow operations.
         let usdc_amount = sig_i128(&public_signals.get(br::DELTA_STROOPS as u32).unwrap())
@@ -565,7 +614,8 @@ impl CommitmentTreeContract {
             &usdc_amount,
         );
 
-        BorrowEvent { new_root, borrower, usdc_amount, old_nullifier, new_commitment, enc_note }.publish(&env);
+        BorrowEvent { new_root, borrower, usdc_amount, old_nullifier, new_commitment, enc_note, keeper_note }
+            .publish(&env);
         Ok(())
     }
 
@@ -639,6 +689,7 @@ impl CommitmentTreeContract {
     /// * `old_root == stored_root`
     /// * `is_borrow == 0`
     /// * `old_nullifier` not spent
+    /// * `keeper_pub == Config` (#212)
     /// * Groth16 proof correctness
     pub fn repay(
         env: Env,
@@ -658,6 +709,7 @@ impl CommitmentTreeContract {
         let old_nullifier  = public_signals.get(br::OLD_NULLIFIER as u32).unwrap();
         let new_commitment = public_signals.get(br::NEW_COMMITMENT as u32).unwrap();
         let new_root       = public_signals.get(br::NEW_ROOT      as u32).unwrap();
+        let keeper_note    = keeper_note(&env, &public_signals);
 
         if old_root_sig != Self::stored_root(&env) {
             return Err(CommitmentTreeError::RootMismatch);
@@ -665,6 +717,11 @@ impl CommitmentTreeContract {
         if env.storage().persistent().has(&DataKey::SpentNullifier(old_nullifier.clone())) {
             return Err(CommitmentTreeError::NullifierAlreadySpent);
         }
+
+        // A partly repaid position keeps debt, so the keeper must be able to
+        // open its new note too (#212). Repay has no timelock bound: a
+        // matured position can always repay.
+        check_keeper_key(&config, &public_signals)?;
 
         // is_borrow must be 0 - prevents a borrow proof being submitted here.
         let is_borrow = sig_u32(&public_signals.get(br::IS_BORROW as u32).unwrap());
@@ -711,7 +768,7 @@ impl CommitmentTreeContract {
         env.storage().persistent().set(&DataKey::Pool, &pool);
         env.storage().persistent().extend_ttl(&DataKey::Pool, PERSISTENT_THRESHOLD, PERSISTENT_BUMP);
 
-        RepayEvent { new_root, repayer, usdc_amount, old_nullifier, new_commitment, enc_note }
+        RepayEvent { new_root, repayer, usdc_amount, old_nullifier, new_commitment, enc_note, keeper_note }
             .publish(&env);
         Ok(())
     }
@@ -731,6 +788,11 @@ impl CommitmentTreeContract {
     /// `usdc_debt == debt_stroops` where `debt_stroops` is the private value
     /// hashed into the commitment, so a keeper cannot inflate or deflate the
     /// amount collected.
+    ///
+    /// Anyone holding the position's liquidation witness can call this - in
+    /// practice the keeper, which reads it from the note every borrow and
+    /// repay encrypts to `Config::keeper_pub` (#212). The witness is the
+    /// position's `liq_key`, not its secret, so it cannot borrow or release.
     ///
     /// Liquidation reveals the debt amount by design - the position is being
     /// publicly closed and the on-chain USDC transfer must match the proven debt.
@@ -991,6 +1053,70 @@ impl CommitmentTreeContract {
         Ok(())
     }
 
+    /// Rotates the keeper's BabyJubJub key (#212). Admin only. Positions
+    /// whose last note went to the old key stay liquidatable by whoever holds
+    /// it; their next borrow or repay re-encrypts to the new one.
+    pub fn set_keeper_pubkey(
+        env: Env,
+        caller: Address,
+        keeper_pub_x: BytesN<32>,
+        keeper_pub_y: BytesN<32>,
+    ) -> Result<(), CommitmentTreeError> {
+        caller.require_auth();
+        let mut config = Self::load_config(&env)?;
+        if caller != config.admin {
+            return Err(CommitmentTreeError::Unauthorized);
+        }
+        if !keeper_key_ok(&keeper_pub_x) {
+            return Err(CommitmentTreeError::InvalidParameter);
+        }
+        config.keeper_pub_x = keeper_pub_x;
+        config.keeper_pub_y = keeper_pub_y;
+        env.storage().instance().set(&DataKey::Config, &config);
+        Ok(())
+    }
+
+    /// Sets how many blocks a borrowing position must have left before its
+    /// timelock (#212). Admin only; 144 (~1 day) up to the deposit window's
+    /// own maximum.
+    pub fn set_borrow_timelock_margin(
+        env: Env,
+        caller: Address,
+        blocks: u32,
+    ) -> Result<(), CommitmentTreeError> {
+        caller.require_auth();
+        let mut config = Self::load_config(&env)?;
+        if caller != config.admin {
+            return Err(CommitmentTreeError::Unauthorized);
+        }
+        if !(MIN_BORROW_TIMELOCK_MARGIN..=script::MAX_TIMELOCK_MARGIN_BLOCKS).contains(&blocks) {
+            return Err(CommitmentTreeError::InvalidParameter);
+        }
+        config.borrow_timelock_margin_blocks = blocks;
+        env.storage().instance().set(&DataKey::Config, &config);
+        Ok(())
+    }
+
+    /// Sets how old `bitcoin-spv`'s tip may be for a borrow to rely on it
+    /// (#212). Admin only; 1 to 48 hours.
+    pub fn set_max_tip_age(
+        env: Env,
+        caller: Address,
+        secs: u64,
+    ) -> Result<(), CommitmentTreeError> {
+        caller.require_auth();
+        let mut config = Self::load_config(&env)?;
+        if caller != config.admin {
+            return Err(CommitmentTreeError::Unauthorized);
+        }
+        if !(MIN_TIP_AGE_SECS..=MAX_TIP_AGE_SECS).contains(&secs) {
+            return Err(CommitmentTreeError::InvalidParameter);
+        }
+        config.max_tip_age_secs = secs;
+        env.storage().instance().set(&DataKey::Config, &config);
+        Ok(())
+    }
+
     /// Pauses or unpauses new deposits/borrows/USDC supply. Admin only.
     ///
     /// A pause never affects existing positions: `repay`, `withdraw_supply`,
@@ -1090,6 +1216,18 @@ impl CommitmentTreeContract {
 
     // ── View functions ────────────────────────────────────────────────────────
 
+    /// The keeper's BabyJubJub public key (x, y) every borrow and repay proof
+    /// must encrypt its keeper note to (#212).
+    pub fn get_keeper_pubkey(env: Env) -> Result<(BytesN<32>, BytesN<32>), CommitmentTreeError> {
+        let config = Self::load_config(&env)?;
+        Ok((config.keeper_pub_x, config.keeper_pub_y))
+    }
+
+    /// Blocks a borrowing position must have left before its timelock (#212).
+    pub fn get_borrow_timelock_margin(env: Env) -> Result<u32, CommitmentTreeError> {
+        Ok(Self::load_config(&env)?.borrow_timelock_margin_blocks)
+    }
+
     /// Returns the current Poseidon Merkle root of the position commitment tree.
     pub fn get_merkle_root(env: Env) -> BytesN<32> {
         Self::stored_root(&env)
@@ -1151,6 +1289,27 @@ impl CommitmentTreeContract {
             .unwrap_or(PoolState { total_supplied: 0, total_borrowed: 0 })
     }
 
+    /// Height of `bitcoin-spv`'s best tip, if its header is recent enough
+    /// to measure a borrow's timelock margin from (#212).
+    fn fresh_tip_height(env: &Env, config: &Config) -> Result<u32, CommitmentTreeError> {
+        let tip: Option<BestTip> = env.invoke_contract(
+            &config.spv_contract,
+            &Symbol::new(env, "get_best_tip"),
+            Vec::new(env),
+        );
+        let tip = tip.ok_or(CommitmentTreeError::StaleBitcoinTip)?;
+        let header: Option<HeaderEntry> = env.invoke_contract(
+            &config.spv_contract,
+            &Symbol::new(env, "get_header"),
+            (tip.hash,).into_val(env),
+        );
+        let header = header.ok_or(CommitmentTreeError::StaleBitcoinTip)?;
+        if env.ledger().timestamp() > (header.time as u64).saturating_add(config.max_tip_age_secs) {
+            return Err(CommitmentTreeError::StaleBitcoinTip);
+        }
+        Ok(tip.height)
+    }
+
     fn stored_root(env: &Env) -> BytesN<32> {
         env.storage()
             .persistent()
@@ -1174,6 +1333,48 @@ impl CommitmentTreeContract {
 
 /// Extracts a `u32` from the last 4 bytes of a 32-byte field element.
 /// Used for boolean flags (`is_borrow`) and basis-point protocol parameters.
+/// A `u32` as the 32-byte big-endian field element a circuit publishes.
+pub(crate) fn u32_signal(env: &Env, v: u32) -> BytesN<32> {
+    let mut arr = [0u8; 32];
+    arr[28..32].copy_from_slice(&v.to_be_bytes());
+    BytesN::from_array(env, &arr)
+}
+
+/// Reads a `u32` signal, refusing any value wider than 32 bits rather than
+/// reading only its low bytes.
+pub(crate) fn u32_from_signal(sig: &BytesN<32>) -> Option<u32> {
+    let arr = sig.to_array();
+    if arr[0..28] != [0u8; 28] {
+        return None;
+    }
+    Some(u32::from_be_bytes([arr[28], arr[29], arr[30], arr[31]]))
+}
+
+/// A keeper key must not be the BabyJubJub identity (x = 0), whose pad
+/// anyone can compute; the circuit refuses it too.
+fn keeper_key_ok(x: &BytesN<32>) -> bool {
+    x.to_array() != [0u8; 32]
+}
+
+/// The proof's keeper key must be the configured one (#212).
+fn check_keeper_key(config: &Config, public_signals: &Vec<BytesN<32>>) -> Result<(), CommitmentTreeError> {
+    let x = public_signals.get(br::KEEPER_PUB_X as u32).unwrap();
+    let y = public_signals.get(br::KEEPER_PUB_Y as u32).unwrap();
+    if x != config.keeper_pub_x || y != config.keeper_pub_y {
+        return Err(CommitmentTreeError::KeeperKeyMismatch);
+    }
+    Ok(())
+}
+
+/// The keeper note's five signals, as published in the event.
+fn keeper_note(env: &Env, public_signals: &Vec<BytesN<32>>) -> Vec<BytesN<32>> {
+    let mut note = Vec::new(env);
+    for i in br::KEEPER_EPH_X..=br::KEEPER_CT2 {
+        note.push_back(public_signals.get(i as u32).unwrap());
+    }
+    note
+}
+
 pub(crate) fn sig_u32(sig: &BytesN<32>) -> u32 {
     let arr = sig.to_array();
     u32::from_be_bytes([arr[28], arr[29], arr[30], arr[31]])

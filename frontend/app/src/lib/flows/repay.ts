@@ -14,8 +14,10 @@ import {
   sealNote,
   bytesToHex,
   recipientLoHi,
+  requireTimelock,
   type Position,
 } from "@/lib/position";
+import { readBorrowContext } from "./borrowContext";
 import type { SignTransaction } from "@/lib/wallet/WalletProvider";
 import type { Emit } from "@/lib/flow/engine";
 import { submitPositionTx } from "./positionTx";
@@ -74,7 +76,8 @@ export async function repay(params: {
   const newVersion = position.version + 1;
   const newNonce = deriveNonce(f, position.index, newVersion);
 
-  const commitment = computeCommitment(collateral, oldDebt, secret, nonce);
+  const timelock = requireTimelock(position);
+  const commitment = computeCommitment(collateral, oldDebt, secret, nonce, timelock);
   const commitmentHex = commitment.toString(16).padStart(64, "0");
 
   emit?.({ type: "preparing", step: "merkle_path" });
@@ -87,6 +90,10 @@ export async function repay(params: {
   // but `repay()` doesn't check them - it pulls funds FROM `repayer`, so
   // there's no arbitrary-recipient risk to bind against here.
   const { lo: recipientLo, hi: recipientHi } = await recipientLoHi(repayer);
+
+  // Repay carries the keeper note too (a partial repay leaves debt); it is
+  // not held to the timelock margin, so a matured position can still repay.
+  const ctx = await readBorrowContext();
 
   emit?.({ type: "proving" });
   const { proof, publicSignals } = await proveBorrowRepay({
@@ -104,6 +111,10 @@ export async function repay(params: {
     min_ratio_bp: MIN_RATIO_BP,
     recipient_lo: recipientLo,
     recipient_hi: recipientHi,
+    timelock_height: String(timelock),
+    // The keeper note (#212): the new position's liquidation witness,
+    // encrypted inside the proof to the contract's keeper key.
+    ...ctx.inputs,
   });
 
   const newDebt = oldDebt - amountStroops;
@@ -113,6 +124,7 @@ export async function repay(params: {
       version: newVersion,
       collateralSats: collateral.toString(),
       debtStroops: newDebt.toString(),
+      timelockHeight: timelock,
     },
     deriveViewingKey(seed).publicKey,
   );
@@ -133,7 +145,7 @@ export async function repay(params: {
       enc_note: Buffer.from(encNote),
     }),
   );
-  const newCommitment = computeCommitment(collateral, newDebt, secret, newNonce);
+  const newCommitment = computeCommitment(collateral, newDebt, secret, newNonce, timelock);
   const updated: Position = {
     ...position,
     id: newCommitment.toString(),

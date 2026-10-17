@@ -28,6 +28,19 @@ describe("decodeTreeEvent", () => {
     }
   });
 
+  it("reads a borrow's keeper note (#212)", () => {
+    const d = decodeTreeEvent({
+      topic: [sym("borrow"), bytes(b32(9n))],
+      value: map({
+        new_commitment: bytes(b32(44n)),
+        enc_note: bytes(Buffer.alloc(0)),
+        keeper_note: xdr.ScVal.scvVec([1n, 2n, 3n, 4n, 5n].map((n) => bytes(b32(n)))),
+      }),
+    });
+    expect(d.keeperNote).toEqual([1n, 2n, 3n, 4n, 5n]);
+    expect(d.encNote).toBeUndefined();
+  });
+
   it("ignores other events", () => {
     expect(decodeTreeEvent({ topic: [sym("deposit"), bytes(b32(1n))], value: map({}) }).event).toBeUndefined();
   });

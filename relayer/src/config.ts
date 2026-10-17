@@ -60,6 +60,18 @@ export interface Config {
   /** Height to start syncing from - the bitcoin-spv checkpoint height. */
   spvSyncFromHeight: number | undefined;
   spvSyncIntervalMs: number;
+  // ZK keeper (#212)
+  /** BabyJubJub scalar whose public key commitment-tree holds as its keeper
+   * key; opens the keeper note every borrow and repay publishes. */
+  keeperBabyjubSecret: bigint | undefined;
+  /** Stellar secret of the account that pays a liquidated position's debt. */
+  keeperSecret: string | undefined;
+  keeperPollIntervalMs: number;
+  /** Must equal commitment-tree's oracle price, or liquidation proofs fail
+   * with PriceMismatch. The contract's Phase 1 oracle is a fixed $60,000. */
+  btcPriceStroops: bigint;
+  /** Must equal commitment-tree's liquidation_threshold_bp. */
+  liquidationThresholdBp: bigint;
 }
 
 // mempool.space rather than Blockstream: Blockstream's public API now
@@ -104,6 +116,8 @@ function loadConfig(): Config {
       COMMITMENT_TREE_ID: process.env["COMMITMENT_TREE_ID"],
       PRIVATE_LEND_ID: process.env["PRIVATE_LEND_ID"],
       BITCOIN_SPV_ID: process.env["BITCOIN_SPV_ID"],
+      KEEPER_SECRET: process.env["KEEPER_SECRET"],
+      KEEPER_BABYJUB_SECRET: process.env["KEEPER_BABYJUB_SECRET"],
     },
   });
 
@@ -133,6 +147,11 @@ function loadConfig(): Config {
     bitcoinSpvId: getEnv("BITCOIN_SPV_ID", ""),
     spvSyncFromHeight: process.env["SPV_SYNC_FROM_HEIGHT"] ? parseInt(process.env["SPV_SYNC_FROM_HEIGHT"], 10) : undefined,
     spvSyncIntervalMs: parseInt(getEnv("SPV_SYNC_INTERVAL_MS", "60000"), 10),
+    keeperBabyjubSecret: process.env["KEEPER_BABYJUB_SECRET"] ? BigInt(process.env["KEEPER_BABYJUB_SECRET"].trim()) : undefined,
+    keeperSecret: process.env["KEEPER_SECRET"],
+    keeperPollIntervalMs: parseInt(getEnv("KEEPER_POLL_INTERVAL_MS", "60000"), 10),
+    btcPriceStroops: BigInt(getEnv("BTC_PRICE_STROOPS", "600000000000")),
+    liquidationThresholdBp: BigInt(getEnv("LIQUIDATION_THRESHOLD_BP", "12000")),
   };
 }
 

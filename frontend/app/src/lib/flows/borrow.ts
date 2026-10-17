@@ -13,8 +13,10 @@ import {
   sealNote,
   bytesToHex,
   recipientLoHi,
+  requireTimelock,
   type Position,
 } from "@/lib/position";
+import { readBorrowContext } from "./borrowContext";
 import type { SignTransaction } from "@/lib/wallet/WalletProvider";
 import type { Emit } from "@/lib/flow/engine";
 import { submitPositionTx } from "./positionTx";
@@ -72,7 +74,8 @@ export async function borrow(params: {
   const newVersion = position.version + 1;
   const newNonce = deriveNonce(f, position.index, newVersion);
 
-  const commitment = computeCommitment(collateral, oldDebt, secret, nonce);
+  const timelock = requireTimelock(position);
+  const commitment = computeCommitment(collateral, oldDebt, secret, nonce, timelock);
   const commitmentHex = commitment.toString(16).padStart(64, "0");
 
   // Real Merkle path from the relayer; leafIndex looks up by position (the
@@ -84,6 +87,11 @@ export async function borrow(params: {
   // and resubmitted with a different recipient (GHSA-xxqv-6vhx-hhrx,
   // GHSA-mhp9-jmvc-x9mw).
   const { lo: recipientLo, hi: recipientHi } = await recipientLoHi(borrower);
+
+  // A borrow must leave the contract's margin before the owner can reclaim
+  // the BTC alone (#212); refuse before proving rather than after.
+  const ctx = await readBorrowContext();
+  if (timelock < ctx.minTimelockHeight) throw new Error("TimelockTooSoon");
 
   emit?.({ type: "proving" });
   const { proof, publicSignals } = await proveBorrowRepay({
@@ -103,6 +111,10 @@ export async function borrow(params: {
     min_ratio_bp: MIN_RATIO_BP,
     recipient_lo: recipientLo,
     recipient_hi: recipientHi,
+    timelock_height: String(timelock),
+    // The keeper note (#212): the new position's liquidation witness,
+    // encrypted inside the proof to the contract's keeper key.
+    ...ctx.inputs,
   });
 
   const newDebt = oldDebt + amountStroops;
@@ -113,6 +125,7 @@ export async function borrow(params: {
       version: newVersion,
       collateralSats: collateral.toString(),
       debtStroops: newDebt.toString(),
+      timelockHeight: timelock,
     },
     deriveViewingKey(seed).publicKey,
   );
@@ -133,7 +146,7 @@ export async function borrow(params: {
       enc_note: Buffer.from(encNote),
     }),
   );
-  const newCommitment = computeCommitment(collateral, newDebt, secret, newNonce);
+  const newCommitment = computeCommitment(collateral, newDebt, secret, newNonce, timelock);
   const updated: Position = {
     ...position,
     id: newCommitment.toString(),

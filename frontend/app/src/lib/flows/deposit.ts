@@ -17,6 +17,7 @@ import {
   bytesToHex,
   getPosition,
   savePosition,
+  requireTimelock,
   type Position,
 } from "@/lib/position";
 import type { SignTransaction } from "@/lib/wallet/WalletProvider";
@@ -118,7 +119,8 @@ export interface RegisterInput {
   /** Signs a message with the deposit's Bitcoin key; returns base64 (BIP-137). */
   signKeyProof: (message: string) => Promise<string>;
   emit: Emit;
-  onProved: (p: { commitment: bigint; nullifier: bigint }) => void;
+  /** `timelockHeight` is the deposit output's real CLTV height, now in the commitment (#212). */
+  onProved: (p: { commitment: bigint; nullifier: bigint; timelockHeight: number }) => void;
   onSigned: (hash: string) => void;
   onDropped: () => void;
 }
@@ -205,16 +207,17 @@ async function realRegister(input: RegisterInput): Promise<{ hash: string }> {
     btc_txid_hi: hi,
     min_deposit_satoshis: MIN_DEPOSIT_SATS,
     actual_satoshis: collateralSats.toString(),
+    timelock_height: String(output.timelockHeight),
   });
 
   // Public signals (deposit circuit): commitment[0], nullifier[1], ...
   const commitment = BigInt("0x" + publicSignals[0].toString("hex"));
-  if (commitment !== computeCommitment(collateralSats, 0n, secret, nonce)) {
+  if (commitment !== computeCommitment(collateralSats, 0n, secret, nonce, output.timelockHeight)) {
     throw new Error("Commitment mismatch - circuit output does not match local computation.");
   }
-  input.onProved({ commitment, nullifier: computeNullifier(secret, nonce) });
+  input.onProved({ commitment, nullifier: computeNullifier(secret, nonce), timelockHeight: output.timelockHeight });
 
-  const encNote = sealDepositNote(seed, pd.positionIndex, collateralSats);
+  const encNote = sealDepositNote(seed, pd.positionIndex, collateralSats, output.timelockHeight);
   const contractId = requireContract(config.contracts.commitmentTree, "commitment-tree");
   // The contract only accepts a deposit signed by the Bitcoin key the output
   // is locked to, over this contract, this account and this txid
@@ -320,9 +323,9 @@ export const depositDeps: DepositDeps = {
   sleep: abortableSleep,
 };
 
-function sealDepositNote(seed: Uint8Array, index: number, collateralSats: bigint): Uint8Array {
+function sealDepositNote(seed: Uint8Array, index: number, collateralSats: bigint, timelockHeight: number): Uint8Array {
   return sealNote(
-    { index, version: 0, collateralSats: collateralSats.toString(), debtStroops: "0" },
+    { index, version: 0, collateralSats: collateralSats.toString(), debtStroops: "0", timelockHeight },
     deriveViewingKey(seed).publicKey,
   );
 }
@@ -585,7 +588,7 @@ export async function finishDeposit(params: {
   try {
     let leafIndex: number | undefined;
     if (await deps.isCommitmentPending(commitmentHex)) {
-      const encNote = sealDepositNote(seed, position.index, BigInt(position.collateralSats));
+      const encNote = sealDepositNote(seed, position.index, BigInt(position.collateralSats), requireTimelock(position));
       ({ leafIndex } = await deps.insert({
         depositor: position.owner,
         commitmentHex,
@@ -649,10 +652,11 @@ export async function registerDeposit(params: {
       signTransaction,
       signKeyProof,
       emit,
-      onProved: ({ commitment, nullifier }) => {
+      onProved: ({ commitment, nullifier, timelockHeight }) => {
         pd = pendingDeposits.update(owner, {
           commitment: commitment.toString(),
           nullifier: nullifier.toString(),
+          timelockHeight,
         })!;
       },
       onSigned: (h) => {

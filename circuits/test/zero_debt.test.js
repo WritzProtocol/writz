@@ -1,5 +1,9 @@
 'use strict';
-const { poseidonHash, prove, verify, buildSingleLeafTree } = require('./helpers');
+const {
+    poseidonHash, prove, verify, buildSingleLeafTree,
+    TIMELOCK, liqKey, positionCommitment, positionNullifier,
+    keeperKeypair, openKeeperNote, unpackPosition,
+} = require('./helpers');
 
 const DEPTH = 20;
 const COLLATERAL = 1_000_000n; // 0.01 BTC
@@ -7,7 +11,7 @@ const SECRET = 0xaabbccdd11223344n;
 const NONCE  = 0x1122334455667788n;
 
 async function buildZeroDebtTree() {
-    const commitment = await poseidonHash([COLLATERAL, 0n, SECRET, NONCE]);
+    const commitment = await positionCommitment(COLLATERAL, 0n, SECRET, NONCE);
     const tree = await buildSingleLeafTree(commitment, DEPTH);
     return { commitment, ...tree };
 }
@@ -17,6 +21,7 @@ function zeroDebtInput({ tree }) {
         collateral_satoshis: String(COLLATERAL),
         secret:               String(SECRET),
         nonce:                String(NONCE),
+        timelock_height:      String(TIMELOCK),
         path_elements:        tree.pathElements.map(String),
         path_indices:         tree.pathIndices.map(String),
         merkle_root:          String(tree.root),
@@ -54,7 +59,7 @@ describe('zero_debt circuit', () => {
         // of producing. This is the core security property this circuit
         // exists for: it must be impossible to release BTC for a position
         // that still owes debt.
-        const debtCommitment = await poseidonHash([COLLATERAL, 500n, SECRET, NONCE]);
+        const debtCommitment = await positionCommitment(COLLATERAL, 500n, SECRET, NONCE);
         const tree = await buildSingleLeafTree(debtCommitment, DEPTH);
         const input = zeroDebtInput({ tree });
         await expect(prove('zero_debt', input)).rejects.toThrow();
@@ -96,11 +101,11 @@ describe('zero_debt circuit', () => {
         expect(valid).toBe(false);
     });
 
-    test('the nullifier output is Poseidon(secret, nonce), the value borrow_repay spends for this leaf (GHSA-w4rp-v54x-2cv3)', async () => {
+    test('the nullifier output is Poseidon(liq_key, nonce), the value borrow_repay spends for this leaf (GHSA-w4rp-v54x-2cv3)', async () => {
         const tree = await buildZeroDebtTree();
         const input = zeroDebtInput({ tree });
         const { publicSignals } = await prove('zero_debt', input);
-        const expected = await poseidonHash([SECRET, NONCE]);
+        const expected = await positionNullifier(SECRET, NONCE);
         expect(BigInt(publicSignals[1])).toBe(expected);
     });
 });

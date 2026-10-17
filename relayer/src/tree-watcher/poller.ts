@@ -17,6 +17,7 @@ import { applyTreeEvent } from "./apply.js";
 import { decodeTreeEvent, type DecodedTreeEvent } from "./decode.js";
 import { readCursor, writeCursor } from "./cursor-store.js";
 import type { EventsServer } from "../vault-watcher/poller.js";
+import type { KeeperNoteSink } from "../zk-keeper/runner.js";
 
 export { decodeTreeEvent, type DecodedTreeEvent } from "./decode.js";
 
@@ -38,6 +39,8 @@ export interface TreePollDeps {
   decodeEvent?: (raw: { topic: unknown[]; value: unknown }) => DecodedTreeEvent;
   store?: TreeStore;
   cursor?: { read(): string | null; write(cursor: string): void };
+  /** Receives each borrow/repay keeper note with the leaf it updated (#212). */
+  keeperNote?: KeeperNoteSink;
 }
 
 /** Last outcome, reported on /health so a stuck tree is visible. */
@@ -65,7 +68,7 @@ export async function runTreePollCycle(deps: TreePollDeps): Promise<void> {
   await withTreeLock(() => {
     let leaves = store.read();
     for (const raw of response.events) {
-      const { event, encNote } = decode(raw);
+      const { event, encNote, keeperNote } = decode(raw);
       if (!event) continue;
       const result = applyTreeEvent(leaves, event);
       if (result.status === "mismatch") {
@@ -78,6 +81,9 @@ export async function runTreePollCycle(deps: TreePollDeps): Promise<void> {
       }
       const leafIndex = result.leafIndex;
       if (encNote && leafIndex !== undefined) store.saveNote(leafIndex, encNote);
+      if (keeperNote && leafIndex !== undefined && event.kind === "update" && deps.keeperNote) {
+        deps.keeperNote(leafIndex, event.newCommitment, keeperNote);
+      }
     }
   });
 
@@ -103,11 +109,14 @@ export function startTreeWatcher(): { stop: () => void } {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { rpc } = require("@stellar/stellar-sdk") as typeof import("@stellar/stellar-sdk");
   const server = new rpc.Server(config.stellarRpcUrl, { allowHttp: config.stellarRpcUrl.startsWith("http://") });
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { keeperNoteSink } = require("../zk-keeper/runner.js") as typeof import("../zk-keeper/runner.js");
+  const keeperNote = keeperNoteSink(config.keeperBabyjubSecret);
   let stopped = false;
   void (async () => {
     while (!stopped) {
       try {
-        await runTreePollCycle({ server, contractId: config.commitmentTreeId });
+        await runTreePollCycle({ server, contractId: config.commitmentTreeId, keeperNote });
       } catch (e) {
         console.error("[tree-watcher] poll failed:", e instanceof Error ? e.message : e);
       }

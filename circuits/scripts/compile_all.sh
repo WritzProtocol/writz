@@ -23,6 +23,7 @@ compile_circuit() {
         --r1cs \
         --wasm \
         --sym \
+        --O2 \
         --output "$BUILD" \
         -l "$NODE_MODULES"
     echo "  ✓ $name: R1CS + WASM generated"

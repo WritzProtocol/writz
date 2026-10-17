@@ -60,6 +60,7 @@ describe("recovery notes (#18 Layer 2)", () => {
     version: 2,
     collateralSats: "1000000",
     debtStroops: "3000000000",
+    timelockHeight: 950_000,
   };
 
   test("seal → open round-trips with the owner's viewing key", () => {
@@ -88,6 +89,7 @@ describe("recovery notes (#18 Layer 2)", () => {
       BigInt(rec.debtStroops),
       secret,
       nonce,
+      rec.timelockHeight!,
     );
     expect(commitment).toBeGreaterThan(0n);
   });

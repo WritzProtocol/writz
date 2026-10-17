@@ -52,6 +52,26 @@ export async function getPoolState(): Promise<PoolState> {
   };
 }
 
+/** The keeper key and timelock margin a borrow proof is built against (#212). */
+export interface BorrowParams {
+  /** The keeper's BabyJubJub public key, as decimal field elements. */
+  keeperPubX: string;
+  keeperPubY: string;
+  /** Blocks a borrowing position must have left before its timelock. */
+  timelockMarginBlocks: number;
+}
+
+export async function getBorrowParams(): Promise<BorrowParams> {
+  const client = getClient();
+  const [keeper, margin] = await Promise.all([client.get_keeper_pubkey(), client.get_borrow_timelock_margin()]);
+  const [x, y] = keeper.result.unwrap();
+  return {
+    keeperPubX: BigInt("0x" + bytesToHex(x)).toString(),
+    keeperPubY: BigInt("0x" + bytesToHex(y)).toString(),
+    timelockMarginBlocks: margin.result.unwrap(),
+  };
+}
+
 /** A lender's supplied balance (stroops) from `get_supply_balance`. */
 export async function getSupplyBalance(lender: string): Promise<bigint> {
   const { result } = await getClient().get_supply_balance({ lender });

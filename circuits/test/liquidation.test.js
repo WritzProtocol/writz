@@ -1,10 +1,20 @@
 'use strict';
-const { poseidonHash, prove, verify, buildSingleLeafTree } = require('./helpers');
+const {
+    poseidonHash, prove, verify, buildSingleLeafTree,
+    TIMELOCK, liqKey, positionCommitment, positionNullifier,
+    keeperKeypair, openKeeperNote, unpackPosition,
+} = require('./helpers');
 
 const DEPTH = 20;
 const PRICE_STROOPS_PER_BTC = 600_000_000_000n; // $60,000 per BTC
 const LIQUIDATION_THRESHOLD_BP = 12_000n;        // 120%
 const SECRET = 0xdeadbeef12345678n;
+// #212: liquidation takes the position's liq_key, which the keeper reads from
+// the borrow's note, never the owner's secret.
+let LIQ_KEY;
+beforeAll(async () => {
+    LIQ_KEY = await liqKey(SECRET);
+});
 const NONCE  = 0x8765432112345678n;
 
 // Undercollateralized position:
@@ -22,7 +32,7 @@ const COLLATERAL_HEALTHY = 500_000n;
 const DEBT_HEALTHY       = 1_000_000_000n;
 
 async function buildTree(collateral, debt) {
-    const commitment = await poseidonHash([collateral, debt, SECRET, NONCE]);
+    const commitment = await positionCommitment(collateral, debt, SECRET, NONCE);
     const tree = await buildSingleLeafTree(commitment, DEPTH);
     return { commitment, ...tree };
 }
@@ -31,8 +41,9 @@ function liquidateInput({ tree, collateral, debt }) {
     return {
         collateral_satoshis:        String(collateral),
         debt_stroops:                String(debt),
-        secret:                      String(SECRET),
+        liq_key:                     String(LIQ_KEY),
         nonce:                       String(NONCE),
+        timelock_height:             String(TIMELOCK),
         path_elements:               tree.pathElements.map(String),
         path_indices:                tree.pathIndices.map(String),
         merkle_root:                 String(tree.root),
@@ -50,12 +61,12 @@ describe('liquidation circuit', () => {
         expect(valid).toBe(true);
     });
 
-    test('nullifier matches Poseidon(secret, nonce)', async () => {
+    test('nullifier matches Poseidon(liq_key, nonce)', async () => {
         const tree = await buildTree(COLLATERAL_UNDER, DEBT_UNDER);
         const input = liquidateInput({ tree, collateral: COLLATERAL_UNDER, debt: DEBT_UNDER });
         const { publicSignals } = await prove('liquidation', input);
 
-        const expectedNullifier = await poseidonHash([SECRET, NONCE]);
+        const expectedNullifier = await positionNullifier(SECRET, NONCE);
         // publicSignals[0] = nullifier (first output); publicSignals[1] = usdc_debt (second output)
         expect(BigInt(publicSignals[0])).toBe(expectedNullifier);
     });
@@ -117,5 +128,10 @@ describe('liquidation circuit', () => {
         tampered[0] = String(BigInt(publicSignals[0]) + 1n);
         const valid = await verify('liquidation', proof, tampered);
         expect(valid).toBe(false);
+    });
+    test('the owner secret in place of liq_key does not satisfy the circuit (#212)', async () => {
+        const tree = await buildTree(COLLATERAL_UNDER, DEBT_UNDER);
+        const input = { ...liquidateInput({ tree, collateral: COLLATERAL_UNDER, debt: DEBT_UNDER }), liq_key: String(SECRET) };
+        await expect(prove('liquidation', input)).rejects.toThrow();
     });
 });

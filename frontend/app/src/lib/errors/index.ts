@@ -396,6 +396,41 @@ const RULES: Rule[] = [
     },
   },
   {
+    // #212: thrown by the borrow flow before proving, or by the contract.
+    match: /TimelockTooSoon/,
+    build: () => ({
+      headline: "This loan's BTC unlocks too soon to borrow more against it.",
+      safety: "No USDC moved.",
+      action: "Repay or release this loan, then make a new deposit to borrow.",
+    }),
+  },
+  {
+    match: /^StaleBitcoinTip$/,
+    contract: "commitment-tree",
+    build: () => ({
+      headline: `Bitcoin data on ${NETWORK} is behind right now, so borrowing is paused.`,
+      safety: "No USDC moved.",
+      action: "Try again in a few minutes.",
+    }),
+  },
+  {
+    match: /^KeeperKeyMismatch$/,
+    contract: "commitment-tree",
+    build: () => ({
+      headline: "Loan settings changed while this was in progress.",
+      safety: "Nothing changed.",
+      action: "Refresh the page and try again.",
+    }),
+  },
+  {
+    match: /PositionMissingTimelock/,
+    build: () => ({
+      headline: "This device is missing this loan's Bitcoin lock details.",
+      safety: "Nothing changed. Your BTC is safe in its lock.",
+      action: "Use Recover positions, or open Writz on the device you deposited from.",
+    }),
+  },
+  {
     match: /^(WrongCircuitMode|SignalOverflow)$/,
     contract: "commitment-tree",
     build: () => WRONG_TX,

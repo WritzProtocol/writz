@@ -100,6 +100,8 @@ export interface DepositInput {
   /** The amount the transaction really paid the deposit script; the circuit
    * requires it to equal `collateral_satoshis`. */
   actual_satoshis: string;
+  /** CLTV height of the deposit script; the contract checks it against the output. */
+  timelock_height: string;
 }
 
 export interface BorrowRepayInput {
@@ -118,13 +120,24 @@ export interface BorrowRepayInput {
   /** sha256(recipient strkey) split into halves - see `recipientLoHi`. */
   recipient_lo: string;
   recipient_hi: string;
+  /** The position's CLTV height (private, carried into the new commitment). */
+  timelock_height: string;
+  /** Lower bound a borrow proves the timelock clears; see `borrowContext`. */
+  min_timelock_height: string;
+  /** Fresh ephemeral scalar for the keeper note. */
+  eph_sk: string;
+  /** The keeper's BabyJubJub key, as the contract stores it. */
+  keeper_pub_x: string;
+  keeper_pub_y: string;
 }
 
 export interface LiquidationInput {
   collateral_satoshis: string;
   debt_stroops: string;
-  secret: string;
+  /** The position's liquidation key, Poseidon(secret) - what the keeper holds. */
+  liq_key: string;
   nonce: string;
+  timelock_height: string;
   path_elements: string[];
   path_indices: Array<string | number>;
   merkle_root: string;
@@ -147,6 +160,8 @@ export interface ZeroDebtInput {
   secret: string;
   /** Current nonce after last borrow/repay (decimal string). */
   nonce: string;
+  /** The position's CLTV height (decimal string). */
+  timelock_height: string;
   /** Sibling hashes along the Merkle path (20 decimal strings). */
   path_elements: string[];
   /** Left/right direction at each level (20 values: 0 or 1). */
