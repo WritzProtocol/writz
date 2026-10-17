@@ -2,6 +2,7 @@ import {
   assertDeployTarget,
   findTargetConflicts,
   resolveDeployTarget,
+  lendingEnabled,
   MAINNET_PASSPHRASE,
   TESTNET_PASSPHRASE,
   type RawTargetEnv,
@@ -25,7 +26,6 @@ const validMainnet: RawTargetEnv = {
   stellarRpcUrl: 'https://mainnet.sorobanrpc.com',
   corsOrigin: 'https://app.writz.xyz',
   defindexVaultId: 'CVAULTMAINNET',
-  kmsKeyId: 'alias/writz-protocol-key',
 };
 
 describe('resolveDeployTarget', () => {
@@ -129,11 +129,29 @@ describe('findTargetConflicts - mainnet', () => {
     ).toMatch(/test network/);
   });
 
-  test('requires KMS and refuses the WIF fallback key', () => {
-    expect(findTargetConflicts({ ...validMainnet, kmsKeyId: '' })[0]).toMatch(/KMS_KEY_ID/);
+  test('holds no Bitcoin signing key at all: Earn-only refuses both KMS and the WIF fallback', () => {
+    expect(findTargetConflicts({ ...validMainnet, kmsKeyId: 'alias/writz-protocol-key' })[0]).toMatch(/KMS_KEY_ID/);
     expect(
       findTargetConflicts({ ...validMainnet, protocolSigningKeyWif: 'cVj...' })[0],
     ).toMatch(/PROTOCOL_SIGNING_KEY/);
+  });
+
+  test('refuses every lending secret and contract id, since lending is off on mainnet', () => {
+    const problems = findTargetConflicts({
+      ...validMainnet,
+      lending: { ADMIN_SECRET: 'SABC', RELAYER_SECRET: 'SDEF', COMMITMENT_TREE_ID: 'CTREE', PRIVATE_LEND_ID: '', BITCOIN_SPV_ID: undefined },
+    });
+    expect(problems).toEqual([
+      expect.stringMatching(/ADMIN_SECRET is set/),
+      expect.stringMatching(/RELAYER_SECRET is set/),
+      expect.stringMatching(/COMMITMENT_TREE_ID is set/),
+    ]);
+  });
+
+  test('lending is enabled everywhere except mainnet', () => {
+    expect(lendingEnabled('local')).toBe(true);
+    expect(lendingEnabled('testnet')).toBe(true);
+    expect(lendingEnabled('mainnet')).toBe(false);
   });
 
   test('refuses a wildcard or unset CORS origin', () => {
@@ -145,12 +163,18 @@ describe('findTargetConflicts - mainnet', () => {
 
   test('reports every problem at once rather than one per failed boot', () => {
     // The realistic mistake: the testnet service cloned into a mainnet one.
-    const problems = findTargetConflicts({ ...validTestnet, target: 'mainnet' });
+    const problems = findTargetConflicts({
+      ...validTestnet,
+      target: 'mainnet',
+      protocolSigningKeyWif: 'cVj...',
+      lending: { ADMIN_SECRET: 'SABC' },
+    });
     expect(problems).toEqual([
       expect.stringMatching(/BITCOIN_NETWORK/),
       expect.stringMatching(/STELLAR_NETWORK_PASSPHRASE/),
       expect.stringMatching(/test network/),
-      expect.stringMatching(/KMS_KEY_ID/),
+      expect.stringMatching(/PROTOCOL_SIGNING_KEY/),
+      expect.stringMatching(/ADMIN_SECRET/),
     ]);
   });
 });

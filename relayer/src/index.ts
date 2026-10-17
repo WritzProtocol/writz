@@ -8,8 +8,13 @@ import { vaultMetricsSnapshot } from "./defindex/metrics.js";
 import { startRepayWatcher } from "./repay-watcher/poller.js";
 import { startVaultWatcher } from "./vault-watcher/poller.js";
 import { startHeaderSync } from "./bitcoin/spv-submit.js";
+import { lendingEnabled } from "./deploy-target.js";
 
 const app = express();
+// Earn routes and the vault watcher run everywhere; the lending surface (SPV
+// proofs, the commitment tree, header sync, auto-cosign) only where lending
+// is enabled - not on mainnet, which is Earn-only (#122).
+const LENDING = lendingEnabled(config.target);
 
 app.use(express.json());
 
@@ -63,11 +68,15 @@ app.get("/", (_req, res) => {
     docs: "https://docs.writz.xyz",
     endpoints: {
       health: "GET /health",
-      spvProof: "GET /spv-proof/:txid",
-      merklePath: "GET /merkle-path",
-      notes: "GET /notes",
-      insertCommitment: "POST /insert-commitment",
-      updateLeaf: "POST /update-leaf",
+      ...(LENDING
+        ? {
+            spvProof: "GET /spv-proof/:txid",
+            merklePath: "GET /merkle-path",
+            notes: "GET /notes",
+            insertCommitment: "POST /insert-commitment",
+            updateLeaf: "POST /update-leaf",
+          }
+        : {}),
       defindexApy: "GET /defindex/apy",
       defindexPosition: "GET /defindex/position?address=G...",
       defindexDeposit: "POST /defindex/deposit",
@@ -86,14 +95,17 @@ app.get("/health", (_req, res) => {
     status: "ok",
     service: "writz-relayer",
     target: config.target,
+    lending: LENDING,
     bitcoinNetwork: config.bitcoinNetwork,
     esploraBaseUrl: config.esploraBaseUrl,
     defindex: vaultMetricsSnapshot(),
   });
 });
 
-app.use("/spv-proof", proofRouter);
-app.use("/", merkleRouter);
+if (LENDING) {
+  app.use("/spv-proof", proofRouter);
+  app.use("/", merkleRouter);
+}
 app.use("/defindex", defindexRouter);
 app.use("/metrics", metricsRouter);
 
@@ -112,11 +124,11 @@ app.listen(config.port, () => {
 
 // Auto-cosign repay watcher - no-ops with a warning if its
 // required config isn't set, so this never blocks the HTTP API from starting.
-startRepayWatcher();
+if (LENDING) startRepayWatcher();
 
 // DeFindex vault event watcher (#114) - no-ops with a warning until #102
 // deploys the vault and DEFINDEX_VAULT_ID is configured.
 startVaultWatcher();
 
 // bitcoin-spv header sync - no-ops until BITCOIN_SPV_ID and SPV_SYNC_FROM_HEIGHT are set.
-startHeaderSync();
+if (LENDING) startHeaderSync();
