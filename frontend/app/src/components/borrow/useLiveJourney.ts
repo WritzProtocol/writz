@@ -308,15 +308,26 @@ export function useLiveJourney(): JourneyModel {
     const origin = currentRoute();
     const index = pending.positionIndex;
     try {
+      // The deposit must be signed by the Bitcoin key its output is locked to,
+      // so the wallet that sent it has to be the one connected now.
+      if (!b.btcPubkey || b.btcPubkey !== pending.btcPubkey) {
+        throw new Error("Connect the Bitcoin wallet that sent this deposit, then try again.");
+      }
       await locks().withTxLock(address, () =>
-        registerDeposit({ owner: address, seed: w.seed!, signTransaction: w.signTransaction, emit }),
+        registerDeposit({
+          owner: address,
+          seed: w.seed!,
+          signTransaction: w.signTransaction,
+          signKeyProof: b.signMessage,
+          emit,
+        }),
       );
       notifyRegistered(origin, index);
     } catch (e) {
       emit({ type: "failed", error: e });
       notifySettled(origin, { href: origin, label: "Open deposit" }, { ok: false, error: e, what: "Registering your deposit" });
     }
-  }, [address, w.seed, w.signTransaction, pending, emit]);
+  }, [address, w.seed, w.signTransaction, b.btcPubkey, b.signMessage, pending, emit]);
 
   const finish = useCallback(async () => {
     if (!address || !w.seed) return;
