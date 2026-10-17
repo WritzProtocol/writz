@@ -139,13 +139,18 @@ async function simulate(source, contractId, method, args) {
 }
 
 async function invoke(source, contractId, method, args) {
+  const res = await invokeTx(source, contractId, method, args);
+  return res.returnValue ? scValToNative(res.returnValue) : undefined;
+}
+
+/** Like `invoke`, but returns the confirmed transaction (with its events). */
+async function invokeTx(source, contractId, method, args) {
   const tx = await build(source, contractId, method, args);
   const sim = await server.simulateTransaction(tx);
   if (SorobanRpc.Api.isSimulationError(sim)) throw new Error(`${method} simulation failed: ${sim.error}`);
   const prepared = SorobanRpc.assembleTransaction(tx, sim).build();
   prepared.sign(source);
-  const res = await sendAndWait(prepared);
-  return res.returnValue ? scValToNative(res.returnValue) : undefined;
+  return sendAndWait(prepared);
 }
 
 /** Asserts a call is rejected with the given contract error number. */
@@ -475,14 +480,15 @@ async function main() {
     [addr(borrower.publicKey()), proofVal(rogueKeeper.proof), signalsVal(rogueKeeper.publicSignals), bytes(Buffer.alloc(0))], 29,
     "a borrow whose keeper note the protocol's keeper could not open");
 
-  await invoke(borrower, ctId, 'borrow', borrowArgs(borrower));
+  const borrowTx = await invokeTx(borrower, ctId, 'borrow', borrowArgs(borrower));
   ok('the recipient the proof commits to borrows successfully');
 
   // The keeper reads the note from the borrow event and opens it with its key.
-  const events = await server.getEvents({ startLedger: Math.max(1, (await server.getLatestLedger()).sequence - 50), filters: [{ type: 'contract', contractIds: [ctId] }] });
-  const borrowEvent = events.events.find((e) => scValToNative(e.topic[0]) === 'borrow');
+  const borrowEvent = (borrowTx.events?.contractEventsXdr ?? []).flat()
+    .map((e) => e.body().v0())
+    .find((b) => scValToNative(b.topics()[0]) === 'borrow');
   if (!borrowEvent) throw new Error('no borrow event');
-  const published = scValToNative(borrowEvent.value).keeper_note.map((b) => BigInt('0x' + Buffer.from(b).toString('hex')));
+  const published = scValToNative(borrowEvent.data()).keeper_note.map((b) => BigInt('0x' + Buffer.from(b).toString('hex')));
   const shared = babyjub.mulPointEscalar([babyjub.F.e(published[0]), babyjub.F.e(published[1])], KEEPER_SK);
   const [sx, sy] = [babyjub.F.toObject(shared[0]), babyjub.F.toObject(shared[1])];
   const opened = [0, 1, 2].map((i) => (((published[2 + i] - H(sx, sy, BigInt(i))) % FIELD_PRIME) + FIELD_PRIME) % FIELD_PRIME);
@@ -536,4 +542,4 @@ async function main() {
   console.log(`\nAll ${passed} checks passed on the local network.`);
 }
 
-main().then(() => process.exit(0)).catch((e) => { console.error(`\nFAILED: ${e instanceof Error ? e.message : e}`); process.exit(1); });
+main().then(() => process.exit(0)).catch((e) => { console.error(`\nFAILED: ${e instanceof Error ? e.message : JSON.stringify(e)}`); process.exit(1); });
