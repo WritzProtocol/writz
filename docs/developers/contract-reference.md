@@ -234,7 +234,7 @@ Topic fields are in **bold**.
 Runs exactly once, atomically, as part of deployment (`__constructor`) - see GHSA-422m-f73x-fh58.
 
 ```rust
-pub fn __constructor(admin: Address, spv_contract: Address, zk_verifier: Address, usdc_token: Address, oracle: Address, min_confirmations: u32, protocol_pubkey: BytesN<33>)
+pub fn __constructor(admin: Address, spv_contract: Address, zk_verifier: Address, usdc_token: Address, oracle: Address, min_confirmations: u32, protocol_pubkey: BytesN<33>, keeper_pub_x: BytesN<32>, keeper_pub_y: BytesN<32>)
 ```
 
 ### `deposit`
@@ -333,6 +333,30 @@ Sets the ceiling on total outstanding borrows, in USDC stroops. Admin only. Lowe
 pub fn set_max_total_borrowed(caller: Address, max: i128) -> Result<(), CommitmentTreeError>
 ```
 
+### `set_keeper_pubkey`
+
+Rotates the keeper's BabyJubJub key (#212). Admin only. Positions whose last note went to the old key stay liquidatable by whoever holds it; their next borrow or repay re-encrypts to the new one.
+
+```rust
+pub fn set_keeper_pubkey(caller: Address, keeper_pub_x: BytesN<32>, keeper_pub_y: BytesN<32>) -> Result<(), CommitmentTreeError>
+```
+
+### `set_borrow_timelock_margin`
+
+Sets how many blocks a borrowing position must have left before its timelock (#212). Admin only; 144 (~1 day) up to the deposit window's own maximum.
+
+```rust
+pub fn set_borrow_timelock_margin(caller: Address, blocks: u32) -> Result<(), CommitmentTreeError>
+```
+
+### `set_max_tip_age`
+
+Sets how old `bitcoin-spv`'s tip may be for a borrow to rely on it (#212). Admin only; 1 to 48 hours.
+
+```rust
+pub fn set_max_tip_age(caller: Address, secs: u64) -> Result<(), CommitmentTreeError>
+```
+
 ### `set_paused`
 
 Pauses or unpauses new deposits/borrows/USDC supply. Admin only.
@@ -387,6 +411,22 @@ Extend the instance storage TTL to another 90-day window.
 
 ```rust
 pub fn refresh_instance_ttl()
+```
+
+### `get_keeper_pubkey`
+
+The keeper's BabyJubJub public key (x, y) every borrow and repay proof must encrypt its keeper note to (#212).
+
+```rust
+pub fn get_keeper_pubkey() -> Result<(BytesN<32>, BytesN<32>), CommitmentTreeError>
+```
+
+### `get_borrow_timelock_margin`
+
+Blocks a borrowing position must have left before its timelock (#212).
+
+```rust
+pub fn get_borrow_timelock_margin() -> Result<u32, CommitmentTreeError>
 ```
 
 ### `get_merkle_root`
@@ -453,8 +493,8 @@ Topic fields are in **bold**.
 |---|---|---|
 | `DepositEvent` | `deposit` | **commitment**, depositor, txid, nullifier, user_pubkey, timelock_height, enc_note |
 | `InsertLeafEvent` | `insert_leaf` | **new_root**, commitment, leaf_index |
-| `BorrowEvent` | `borrow` | **new_root**, borrower, usdc_amount, old_nullifier, new_commitment, enc_note |
-| `RepayEvent` | `repay` | **new_root**, repayer, usdc_amount, old_nullifier, new_commitment, enc_note |
+| `BorrowEvent` | `borrow` | **new_root**, borrower, usdc_amount, old_nullifier, new_commitment, enc_note, keeper_note |
+| `RepayEvent` | `repay` | **new_root**, repayer, usdc_amount, old_nullifier, new_commitment, enc_note, keeper_note |
 | `LiquidateEvent` | `liquidate` | **nullifier**, keeper, usdc_debt |
 | `SupplyEvent` | `supply` | **supplier**, usdc_amount, total_supplied |
 | `WithdrawEvent` | `withdraw` | **supplier**, usdc_amount, total_supplied |

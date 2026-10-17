@@ -49,15 +49,21 @@ The protocol sees only commitments and nullifiers - opaque hashes that prove act
 At the heart of the ZK layer is a **commitment**. A commitment is a hash of private data:
 
 ```
-commitment = Poseidon(amount, secret, nonce)
+liq_key    = Poseidon(secret)
+commitment = Poseidon(collateral, debt, liq_key, nonce, timelock_height)
 ```
 
 Where:
-- `amount` is the BTC deposit amount in satoshis (private)
-- `secret` is a random number only the user knows (private)
-- `nonce` is a unique value preventing commitment reuse (private)
+- `collateral` is the BTC deposit amount in satoshis (private)
+- `debt` is the USDC owed, in stroops (private)
+- `secret` is derived from the user's wallet signature and never leaves the device (private)
+- `liq_key` is enough to liquidate the position, not to borrow, repay or release it (private; also encrypted to the protocol keeper, see below)
+- `nonce` rotates on every change, so the new commitment cannot be linked to the old one (private)
+- `timelock_height` is the CLTV height of the deposit's Bitcoin script (private after deposit)
 
-**Poseidon** is a ZK-friendly hash function - designed specifically to be efficient inside ZK circuits. It is collision-resistant and hiding: given only the commitment, computing the preimage (amount, secret, nonce) is computationally infeasible.
+**Poseidon** is a ZK-friendly hash function - designed specifically to be efficient inside ZK circuits. It is collision-resistant and hiding: given only the commitment, computing the preimage is computationally infeasible.
+
+**Keeper notes.** Every borrow and repay proof also encrypts the new position's `liq_key`, nonce and amounts to the protocol keeper's key, inside the circuit, and the contract publishes the ciphertext in the event. Only the keeper can open it, and what it learns lets it liquidate an undercollateralized position without the owner, never move the owner's funds. Observers learn nothing from it.
 
 The commitment is stored on-chain in a Merkle tree. The preimage stays with the user.
 
@@ -68,33 +74,35 @@ The commitment is stored on-chain in a Merkle tree. The preimage stays with the 
 When a commitment is "consumed" (used in a borrow, repay, or withdraw), a **nullifier** is published:
 
 ```
-nullifier = Poseidon(secret, nonce)
+nullifier = Poseidon(liq_key, nonce)
 ```
 
 The nullifier is stored on-chain in a spent-nullifier set. It proves this commitment has been used - preventing double-spending - without revealing which commitment it corresponds to or what amount it represents.
 
-This is the same technique used by Tornado Cash, Aztec Network, and other ZK privacy protocols: the nullifier is the receipt that something happened, but it is unlinkable to the original commitment without the private `secret`.
+This is the same technique used by Tornado Cash, Aztec Network, and other ZK privacy protocols: the nullifier is the receipt that something happened, but it is unlinkable to the original commitment without the position's private keys.
 
 ---
 
 ## The ZK Circuits
 
-Writz uses three Circom circuits, each compiled to a Groth16 proof system over the BN254 curve.
+Writz uses five Circom circuits (deposit, borrow/repay, liquidation, zero-debt release and Merkle insertion), each compiled to a Groth16 proof system over the BN254 curve. The constraint counts below are measured with `circom --O2`.
 
 ### 1. Deposit Circuit
 
-**What it proves:** "I know (amount, secret, nonce) such that `commitment = Poseidon(amount, secret, nonce)` AND the transaction ID from SPV verification matches my claimed deposit."
+**What it proves:** "I know (collateral, secret, nonce) such that `commitment = Poseidon(collateral, 0, Poseidon(secret), nonce, timelock_height)`, the collateral equals what the SPV-verified transaction paid, and the transaction ID matches my claimed deposit."
 
 **Public inputs:**
-- The commitment hash (stored on-chain)
+- The commitment hash and nullifier (stored on-chain)
 - The `txid` returned by the SPV contract (binding the ZK proof to a specific Bitcoin transaction)
+- The minimum deposit and the real amount the contract parsed from the transaction
+- `timelock_height`, which the contract checks against the deposit's Bitcoin script (#212)
 
 **Private inputs:**
-- Amount (satoshis)
+- Collateral (satoshis)
 - Secret
 - Nonce
 
-**Constraint count:** ~597 non-linear + 714 linear constraints
+**Constraint count:** 855
 
 **Why the txid binding matters:** Without this binding, a malicious user could submit a ZK deposit proof that references a Bitcoin transaction that doesn't actually exist. The txid binding ensures that every ZK commitment corresponds to a real, SPV-verified Bitcoin deposit.
 
@@ -112,14 +120,18 @@ Writz uses three Circom circuits, each compiled to a Groth16 proof system over t
 - The minimum collateral ratio (150%)
 - A nullifier for the old state
 - A new commitment for the updated state (after borrow or repay)
+- The recipient binding
+- `min_timelock_height`: a borrow proves the position's timelock is at least this, and the contract requires it to be at least the Bitcoin tip plus a 30-day margin (#212)
+- The keeper's public key and the keeper note: the new position's liquidation witness, encrypted to that key inside the proof (#212)
 
 **Private inputs:**
-- Amount, secret, nonce (commitment preimage)
+- Collateral, secret, nonces and timelock (commitment preimage)
 - Current debt
 - Delta (borrow or repay amount)
 - Merkle path (proof of membership in the tree)
+- A fresh ephemeral key for the keeper note
 
-**Constraint count:** ~11,180 non-linear + 12,122 linear constraints (measured via `circom --r1cs`; grew slightly after the `is_borrow` soundness fix noted below added a boolean constraint plus two 120-bit debt-direction range checks)
+**Constraint count:** 15,410
 
 **Key design decision - no division in ZK circuits:** Division is expensive in ZK (requires a range proof for the denominator). The collateral ratio check is implemented as a multiplication: `loan_amount × min_ratio_bp ≤ collateral_amount × price × 10000`. This avoids division entirely.
 
@@ -133,6 +145,8 @@ Writz uses three Circom circuits, each compiled to a Groth16 proof system over t
 
 **What it proves:** "I know the preimage of a commitment in the Merkle tree, and the position's current health ratio is below 120% at the current oracle price."
 
+The witness is the position's `liq_key`, not its secret, so the keeper can prove it from the keeper note without the owner (#212).
+
 **Public inputs:**
 - The Merkle root
 - The oracle price
@@ -140,11 +154,11 @@ Writz uses three Circom circuits, each compiled to a Groth16 proof system over t
 - The liquidation threshold (120%)
 
 **Private inputs:**
-- Amount, secret, nonce (commitment preimage)
+- Collateral, `liq_key`, nonce and timelock (commitment preimage)
 - Current debt
 - Merkle path
 
-**Constraint count:** ~5,594 non-linear + ~6,196 linear constraints
+**Constraint count:** 5,699
 
 **Critical security property - `usdc_debt` binding:** The liquidation circuit's `usdc_debt` public output is computed inside the circuit from the private `debt_stroops` field. The liquidator cannot supply an arbitrary debt amount - it is derived from the private commitment and constrained by the circuit. This prevents a malicious keeper from claiming a larger debt than actually exists.
 

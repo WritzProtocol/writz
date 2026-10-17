@@ -41,7 +41,7 @@ How the protocol updates the Merkle commitment on every borrow or repay, preserv
 
 - **Borrow:** `delta = amount_stroops`, `is_borrow = 1`
 - **Repay:** `delta = (FIELD_PRIME − amount) mod FIELD_PRIME`, `is_borrow = 0`
-- The nonce rotates on every action; the commitment `Poseidon(collateral, debt, secret, nonce)` is replaced in the tree
+- The nonce rotates on every action; the commitment `Poseidon(collateral, debt, Poseidon(secret), nonce, timelock)` is replaced in the tree
 
 ---
 
