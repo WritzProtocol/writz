@@ -354,36 +354,6 @@ python3 scripts/diagrams/render-all.py
 
 ---
 
-## Roadmap
-
-![Roadmap](docs/diagrams/output/08-roadmap-phases.png)
-
-**Phase 1 - Foundation** *(current, Jul–Sep 2026)*
-
-- [x] 4 contracts live on Stellar testnet
-- [x] Full ZK E2E cycle verified on-chain
-- [x] P2WSH locking and release tested on Bitcoin Signet
-- [ ] SCF Build Award submitted (Open Track)
-- [ ] Trusted setup ceremony planned (5+ independent participants)
-- [x] Docs live at docs.writz.xyz
-
-**Phase 2 - Launch** *(Q4 2026)*
-
-- Audit Bank: Veridise (ZK circuits) + OtterSec (Soroban contracts)
-- Mainnet launch gated: $50K TVL cap, whitelist-only first 30 days
-- Frontend: full deposit / borrow / repay / repay UI with in-browser ZK proving
-- DeFiLlama listing on day 1
-
-**Phase 3 - Scale** *(2027)*
-
-- Dark Swap: private BTC → USDC conversions
-- BTC Savings: auto-routed USDC yield (Blend, Phoenix DEX)
-- ZK Proof of Reserve: enterprise B2B attestation product
-- WRTZ governance token: fair IDO at $5M TVL, real-yield buyback mechanics
-- SPV SDK published as open Stellar ecosystem infrastructure
-
----
-
 ## Business Model
 
 | Revenue Stream | Mechanism |
@@ -456,7 +426,6 @@ Full documentation lives in [`docs/`](docs/) and is published at **[docs.writz.x
 
 **Roadmap:**
 - [Vision](docs/roadmap/vision.md) - Where Writz is going by 2028.
-- [Phases](docs/roadmap/phases.md) - Phase-by-phase execution plan.
 
 ---
 

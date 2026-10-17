@@ -65,7 +65,7 @@ Stellar's Association Set Providers (ASPs) enable compliance without sacrificing
 - Phase 2: Integrate with an accredited ASP for users above certain deposit thresholds ($10,000+)
 - Enterprise Proof of Reserve: Always ASP-gated (institutional customers have their own compliance needs)
 
-**Integration plan - status: not yet researched, flagged as an open Phase 2 task.** This document names the ASP system as a requirement but has not identified a specific accredited ASP provider, integration cost, or technical scope. Before this becomes a Phase 2 exit criterion in `docs/roadmap/phases.md`, resolve:
+**Integration plan - status: not yet researched, flagged as an open Phase 2 task.** This document names the ASP system as a requirement but has not identified a specific accredited ASP provider, integration cost, or technical scope. Before this becomes a Phase 2 exit criterion, resolve:
 - **Provider:** which accredited ASP(s) are actually live/available for Soroban integration at Phase 2 time - this needs a fresh lookup, not an assumption, since ASP tooling on Stellar is new and the available provider list may change between now and Phase 2
 - **Technical scope:** integrating the allow-list/block-list ZK-membership check into the deposit/borrow flow - likely an additional circuit constraint or a separate proof the user submits alongside the existing deposit/borrow proof; needs a design pass once a provider's interface is known
 - **Cost:** no estimate exists yet. Do not publish a specific dollar figure for this until a provider quote or comparable integration's public cost is found - an invented number here would be exactly the kind of unverified claim this audit is trying to remove

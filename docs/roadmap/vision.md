@@ -108,7 +108,3 @@ What starts as a lending protocol becomes infrastructure. The SPV SDK becomes th
 That is the 2028 vision. The first step is a single Bitcoin transaction, verified by a Soroban contract, followed by the first private USDC loan issued against real BTC collateral.
 
 That step is months away.
-
----
-
-**See the execution plan:** [Phases →](/roadmap/phases)

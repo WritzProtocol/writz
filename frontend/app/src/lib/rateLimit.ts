@@ -5,9 +5,8 @@
  * Explicit limitation: this resets on redeploy/restart and does not
  * coordinate across multiple instances - it protects a single process from
  * being hammered, not a fleet from being hammered in aggregate. That matches
- * this app's current deployment reality (see docs/architecture/technical-overview.md
- * and the relayer/keeper architecture notes in docs/roadmap/phases.md - nothing
- * in this stack runs multi-instance today). If that changes, replace this with
+ * this app's current deployment reality (see docs/architecture/technical-overview.md:
+ * nothing in this stack runs multi-instance today). If that changes, replace this with
  * a shared store (e.g. Upstash Redis) keyed the same way; the call site
  * (`checkRateLimit`) is the only thing that would need to change.
  */

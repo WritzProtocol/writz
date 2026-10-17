@@ -48,7 +48,6 @@
 ## Roadmap
 
 * [Vision](/roadmap/vision)
-* [Phases](/roadmap/phases)
 
 ## Legal
 
