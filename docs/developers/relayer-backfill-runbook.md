@@ -130,12 +130,14 @@ Horizon - which keeps full transaction history - in
    curl https://horizon-testnet.stellar.org/transactions/<txHash>
    curl https://horizon-testnet.stellar.org/transactions/<txHash>/operations
    ```
+   (`horizon.stellar.org` for the mainnet vault.)
    The transaction gives `ledger` and `created_at`; the operation's
    `asset_balance_changes` gives the depositor (`from`), the vault (`to`)
    and the amount. Horizon no longer returns `result_meta_xdr`, so the
    contract event itself cannot be decoded from it - the balance change is
    the record to use.
-2. Add the entry to `GENESIS_VAULT_EVENTS` with a `cursor` that names the
+2. Add the entry to that vault's list (`GENESIS_VAULT_EVENTS` for testnet,
+   `MAINNET_GENESIS_VAULT_EVENTS` for mainnet) with a `cursor` that names the
    backfill (`backfill:horizon:tx-<prefix>`) rather than impersonating an
    RPC cursor position the row was never read at.
 3. Extend `relayer/test/vault-watcher-genesis.test.ts` to cover it.

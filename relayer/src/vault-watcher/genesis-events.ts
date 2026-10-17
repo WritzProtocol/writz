@@ -32,7 +32,7 @@
  * change is the authoritative record available. Re-verify against those two
  * endpoints before changing any value here.
  */
-import { TESTNET_PASSPHRASE } from "../deploy-target.js";
+import { MAINNET_PASSPHRASE, TESTNET_PASSPHRASE } from "../deploy-target.js";
 import { insertVaultEvent, type VaultEvent } from "./event-store.js";
 
 /**
@@ -73,6 +73,39 @@ export const GENESIS_VAULT_EVENTS: VaultEvent[] = [
 ];
 
 /**
+ * The mainnet Writz USDC vault (#122), recorded in
+ * `contracts/deployments/defindex-vault-mainnet.md`. Gated on the mainnet
+ * passphrase for the same reason testnet's entry is gated on testnet's.
+ */
+export const MAINNET_GENESIS_VAULT_ID = "CDODNWQY54F4WS7AZ5Z3AAIWRLKBFUMXHNOFEM4H3UNCTMFK4RF2A6GU";
+
+/**
+ * The mainnet vault's seed deposit: 20 USDC from the Manager multisig, moved
+ * in the deploy transaction (`create_defindex_vault_deposit`) on 2026-10-01.
+ * Without it the mainnet dashboard would report the seed as yield, exactly as
+ * testnet did before its entry above (#127). Read from
+ * `horizon.stellar.org/transactions/a157bddf.../operations`; it is the
+ * vault's only deposit before the mainnet relayer's first poll.
+ */
+export const MAINNET_GENESIS_VAULT_EVENTS: VaultEvent[] = [
+  {
+    cursor: "backfill:horizon:tx-a157bddff9",
+    kind: "deposit",
+    depositor: "GBQRR7SXDZFKQCUHFAIVYEDVQTD6DTWC2OKMNS63ETF2ORG6KJZUO7NH",
+    amountStroops: "200000000",
+    ledger: 64706364,
+    txHash: "a157bddff915ecbfea9bab72dd0ed0fd5d324bf9b3e571b323521e281e51357d",
+    ledgerCloseTime: 1790817602,
+  },
+];
+
+/** Each vault's backfill, bound to the one network it may be seeded on. */
+export const GENESIS: ReadonlyArray<{ vaultId: string; passphrase: string; events: VaultEvent[] }> = [
+  { vaultId: GENESIS_VAULT_ID, passphrase: TESTNET_PASSPHRASE, events: GENESIS_VAULT_EVENTS },
+  { vaultId: MAINNET_GENESIS_VAULT_ID, passphrase: MAINNET_PASSPHRASE, events: MAINNET_GENESIS_VAULT_EVENTS },
+];
+
+/**
  * Replays the genesis events into the event store, returning how many were
  * written without error. Safe to call on every boot: `insertVaultEvent` is
  * idempotent on (tx_hash, depositor, kind, amount), so a relayer that has
@@ -97,11 +130,13 @@ export function seedGenesisVaultEvents(
   networkPassphrase: string,
   persist: (event: VaultEvent) => void = insertVaultEvent,
 ): number {
-  if (vaultId.trim() !== GENESIS_VAULT_ID) return 0;
-  if (networkPassphrase.trim() !== TESTNET_PASSPHRASE) return 0;
+  const entry = GENESIS.find(
+    (g) => g.vaultId === vaultId.trim() && g.passphrase === networkPassphrase.trim(),
+  );
+  if (!entry) return 0;
 
   let seeded = 0;
-  for (const event of GENESIS_VAULT_EVENTS) {
+  for (const event of entry.events) {
     try {
       persist(event);
       seeded++;

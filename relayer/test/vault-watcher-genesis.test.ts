@@ -23,6 +23,8 @@ process.env.VAULT_EVENTS_SQLITE_PATH = path.join(TMP_DIR, "vault-events.db");
 import {
   GENESIS_VAULT_EVENTS,
   GENESIS_VAULT_ID,
+  MAINNET_GENESIS_VAULT_EVENTS,
+  MAINNET_GENESIS_VAULT_ID,
   seedGenesisVaultEvents,
 } from "../src/vault-watcher/genesis-events.js";
 import { readAllVaultEvents, type VaultEvent } from "../src/vault-watcher/event-store.js";
@@ -53,6 +55,20 @@ describe("GENESIS_VAULT_EVENTS", () => {
       expect(event.ledgerCloseTime).toBeLessThan(FIRST_POLLED_CLOSE_TIME);
     },
   );
+
+  test("carries the mainnet vault's seed deposit, as verified on Horizon", () => {
+    expect(MAINNET_GENESIS_VAULT_EVENTS).toEqual<VaultEvent[]>([
+      {
+        cursor: "backfill:horizon:tx-a157bddff9",
+        kind: "deposit",
+        depositor: "GBQRR7SXDZFKQCUHFAIVYEDVQTD6DTWC2OKMNS63ETF2ORG6KJZUO7NH",
+        amountStroops: "200000000",
+        ledger: 64706364,
+        txHash: "a157bddff915ecbfea9bab72dd0ed0fd5d324bf9b3e571b323521e281e51357d",
+        ledgerCloseTime: 1790817602,
+      },
+    ]);
+  });
 
   test("carries the vault's creation deposit, as verified on Horizon", () => {
     expect(GENESIS_VAULT_EVENTS).toEqual<VaultEvent[]>([
@@ -102,6 +118,29 @@ describe("seedGenesisVaultEvents", () => {
     const persisted: VaultEvent[] = [];
 
     const seeded = seedGenesisVaultEvents(GENESIS_VAULT_ID, MAINNET_PASSPHRASE, (e) =>
+      persisted.push(e),
+    );
+
+    expect(seeded).toBe(0);
+    expect(persisted).toEqual([]);
+  });
+
+  // #127: the mainnet dashboard needs the mainnet vault's seed deposit too.
+  test("persists the mainnet vault's seed deposit on a mainnet relayer", () => {
+    const persisted: VaultEvent[] = [];
+
+    const seeded = seedGenesisVaultEvents(MAINNET_GENESIS_VAULT_ID, MAINNET_PASSPHRASE, (e) =>
+      persisted.push(e),
+    );
+
+    expect(seeded).toBe(1);
+    expect(persisted).toEqual(MAINNET_GENESIS_VAULT_EVENTS);
+  });
+
+  test("refuses to seed mainnet history into a testnet relayer", () => {
+    const persisted: VaultEvent[] = [];
+
+    const seeded = seedGenesisVaultEvents(MAINNET_GENESIS_VAULT_ID, TESTNET_PASSPHRASE, (e) =>
       persisted.push(e),
     );
 
