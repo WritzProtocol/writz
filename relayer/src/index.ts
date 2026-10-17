@@ -10,6 +10,7 @@ import { startVaultWatcher } from "./vault-watcher/poller.js";
 import { startHeaderSync } from "./bitcoin/spv-submit.js";
 import { lendingEnabled } from "./deploy-target.js";
 import { startTreeWatcher, treeSyncStatus } from "./tree-watcher/poller.js";
+import { startZkKeeper } from "./zk-keeper/runner.js";
 
 const app = express();
 // Earn routes and the vault watcher run everywhere; the lending surface (SPV
@@ -138,3 +139,7 @@ if (LENDING) startHeaderSync();
 // Follows commitment-tree events so the leaf store never depends on a client
 // calling /update-leaf (GHSA-vwvv-3255-783f).
 if (LENDING) startTreeWatcher();
+
+// ZK keeper (#212): liquidates undercollateralized commitment-tree positions
+// from the keeper notes the tree watcher collects. Off unless its keys are set.
+if (LENDING) startZkKeeper();

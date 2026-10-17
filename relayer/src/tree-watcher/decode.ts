@@ -7,6 +7,8 @@ import type { TreeEvent } from "./apply.js";
 export interface DecodedTreeEvent {
   event: TreeEvent | undefined;
   encNote?: string;
+  /** A borrow/repay's keeper note, [eph_x, eph_y, ct0, ct1, ct2] (#212). */
+  keeperNote?: bigint[];
 }
 
 const toBig = (bytes: Uint8Array) => BigInt("0x" + Buffer.from(bytes).toString("hex"));
@@ -23,6 +25,7 @@ export function decodeTreeEvent(raw: { topic: unknown[]; value: unknown }): Deco
     leaf_index?: number;
     new_commitment?: Uint8Array;
     enc_note?: Uint8Array;
+    keeper_note?: Uint8Array[];
   };
   if (name === "insert_leaf") {
     if (!v.commitment || v.leaf_index === undefined) return { event: undefined };
@@ -30,5 +33,10 @@ export function decodeTreeEvent(raw: { topic: unknown[]; value: unknown }): Deco
   }
   if (!v.new_commitment) return { event: undefined };
   const encNote = v.enc_note && v.enc_note.length > 0 ? Buffer.from(v.enc_note).toString("hex") : undefined;
-  return { event: { kind: "update", newCommitment: toBig(v.new_commitment), newRoot }, ...(encNote ? { encNote } : {}) };
+  const keeperNote = Array.isArray(v.keeper_note) && v.keeper_note.length === 5 ? v.keeper_note.map(toBig) : undefined;
+  return {
+    event: { kind: "update", newCommitment: toBig(v.new_commitment), newRoot },
+    ...(encNote ? { encNote } : {}),
+    ...(keeperNote ? { keeperNote } : {}),
+  };
 }
