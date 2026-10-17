@@ -18,7 +18,7 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 const snarkjs = require('snarkjs');
-const { buildPoseidon } = require('circomlibjs');
+const { buildPoseidon, buildBabyjub } = require('circomlibjs');
 const { decToHex32, g1ToHex, g2ToHex, hexToRustBytes } = require('./lib/vkey_encode.js');
 
 // Fixed Stellar strkey used as the borrow recipient in this test chain -
@@ -42,6 +42,14 @@ function recipientLoHi(strkey) {
 const ROOT = path.resolve(__dirname, '..');
 const OUT = path.resolve(__dirname, '../../contracts/contracts/commitment-tree/src/integration_test_vectors.rs');
 const DEPTH = 20;
+// Must equal `TIMELOCK` in commitment-tree/src/test.rs: the deposit binds it
+// to the timelock the contract rebuilt the Bitcoin script with (#212).
+const TIMELOCK = 2_950_000n;
+// The borrow proofs' bound. test.rs's MockSpv reports a tip that leaves
+// exactly the default 4,320-block margin under it.
+const MIN_TIMELOCK = 2_910_000n;
+// Fixed keeper key for the tests; test.rs reads KEEPER_PUB_X/Y and KEEPER_SK.
+const KEEPER_SK = 0x0abcdef0123456789n;
 const FIELD_PRIME = 21888242871839275222246405745257275088548364400416034343698204186575808495617n;
 
 async function buildSingleLeafTree(poseidon, leaf, depth) {
@@ -69,6 +77,7 @@ function proofLines(name, proof, signals) {
         hexToRustBytes(piC, `${name}_PI_C`),
         ...signals.map((s, i) => hexToRustBytes(decToHex32(s), `${name}_SIGNAL_${i}`)),
         `pub const ${name}_NUM_SIGNALS: usize = ${signals.length};`,
+        `pub const ${name}_SIGNALS: [[u8; 32]; ${signals.length}] = [${signals.map((_, i) => `${name}_SIGNAL_${i}`).join(', ')}];`,
     ];
 }
 
@@ -82,6 +91,7 @@ function vkLines(name, vkey) {
         hexToRustBytes(delta, `${name}_VK_DELTA_G2`),
         ...vkey.IC.map((p, i) => hexToRustBytes(g1ToHex(p), `${name}_IC_${i}`)),
         `pub const ${name}_IC_LEN: usize = ${vkey.IC.length};`,
+        `pub const ${name}_IC: [[u8; 64]; ${vkey.IC.length}] = [${vkey.IC.map((_, i) => `${name}_IC_${i}`).join(', ')}];`,
     ];
 }
 
@@ -89,6 +99,19 @@ async function main() {
     const poseidon = await buildPoseidon();
     const F = poseidon.F;
     const poseidonHash = (inputs) => BigInt(F.toString(poseidon(inputs)));
+    // Position scheme (#212, circuits/src/position.circom).
+    const liqKey = (secret) => poseidonHash([secret]);
+    const commit = (c, d, secret, nonce) => poseidonHash([c, d, liqKey(secret), nonce, TIMELOCK]);
+    const babyjub = await buildBabyjub();
+    const keeperPubPoint = babyjub.mulPointEscalar(babyjub.Base8, KEEPER_SK);
+    const KEEPER_PUB = [babyjub.F.toObject(keeperPubPoint[0]), babyjub.F.toObject(keeperPubPoint[1])];
+    const keeperFields = (ephSk) => ({
+        timelock_height: TIMELOCK.toString(),
+        eph_sk: ephSk.toString(),
+        min_timelock_height: MIN_TIMELOCK.toString(),
+        keeper_pub_x: KEEPER_PUB[0].toString(),
+        keeper_pub_y: KEEPER_PUB[1].toString(),
+    });
 
     const COLLATERAL = 1_000_000n; // 0.01 BTC
     const SECRET = 0x5566778811223344n;
@@ -118,6 +141,7 @@ async function main() {
         // `build_deposit_tx(&s.env, 1_000_000, &deposit_spk(&s.env))` fixture -
         // that raw_tx must actually pay this exact amount (GHSA-2hjj-x5wr-4p68).
         actual_satoshis: COLLATERAL.toString(),
+        timelock_height: TIMELOCK.toString(),
     };
     const depositVkey = JSON.parse(fs.readFileSync(path.join(ROOT, 'keys/deposit_vkey.json'), 'utf8'));
     console.log('Generating chain step 1/4: deposit…');
@@ -128,7 +152,7 @@ async function main() {
     );
     if (!await snarkjs.groth16.verify(depositVkey, depSignals, depProof)) throw new Error('deposit proof invalid');
 
-    const commitment0 = poseidonHash([COLLATERAL, 0n, SECRET, N0]);
+    const commitment0 = commit(COLLATERAL, 0n, SECRET, N0);
     if (BigInt(depSignals[0]) !== commitment0) throw new Error('commitment0 mismatch');
     const tree0 = await buildSingleLeafTree(poseidon, commitment0, DEPTH);
 
@@ -171,14 +195,27 @@ async function main() {
         min_ratio_bp: MIN_RATIO_BP.toString(),
         recipient_lo: RECIPIENT_LO.toString(),
         recipient_hi: RECIPIENT_HI.toString(),
+        ...keeperFields(0x51n),
     };
     console.log('Generating chain step 2/4: borrow…');
     const { proof: borrowProof, publicSignals: borrowSignals } = await snarkjs.groth16.fullProve(borrowInput, brWasm, brZkey);
     if (!await snarkjs.groth16.verify(brVkey, borrowSignals, borrowProof)) throw new Error('borrow proof invalid');
 
-    const commitment1 = poseidonHash([COLLATERAL, BORROW_AMOUNT, SECRET, N1]);
+    const commitment1 = commit(COLLATERAL, BORROW_AMOUNT, SECRET, N1);
     const tree1 = await buildSingleLeafTree(poseidon, commitment1, DEPTH);
     if (BigInt(borrowSignals[0]) !== tree1.root) throw new Error('tree1 root mismatch');
+
+    // The keeper opens the borrow's note and rebuilds commitment1 without the secret.
+    {
+        const shared = babyjub.mulPointEscalar(
+            [babyjub.F.e(borrowSignals[3]), babyjub.F.e(borrowSignals[4])], KEEPER_SK);
+        const sx = babyjub.F.toObject(shared[0]), sy = babyjub.F.toObject(shared[1]);
+        const open = [0, 1, 2].map((i) =>
+            ((BigInt(borrowSignals[5 + i]) - poseidonHash([sx, sy, BigInt(i)])) % FIELD_PRIME + FIELD_PRIME) % FIELD_PRIME);
+        const packed = open[2];
+        const c = packed & ((1n << 52n) - 1n), d = (packed >> 52n) & ((1n << 120n) - 1n), t = packed >> 172n;
+        if (poseidonHash([c, d, open[0], open[1], t]) !== commitment1) throw new Error('keeper note does not rebuild commitment1');
+    }
 
     // ── 3. Repay: BORROW_AMOUNT -> 0 debt (full repayment), same position (N1 -> N2) ──
     const repayDelta = (FIELD_PRIME - BORROW_AMOUNT) % FIELD_PRIME; // field negation
@@ -199,12 +236,13 @@ async function main() {
         // reuse the same fixture value for a coherent proof.
         recipient_lo: RECIPIENT_LO.toString(),
         recipient_hi: RECIPIENT_HI.toString(),
+        ...keeperFields(0x52n),
     };
     console.log('Generating chain step 3/4: repay…');
     const { proof: repayProof, publicSignals: repaySignals } = await snarkjs.groth16.fullProve(repayInput, brWasm, brZkey);
     if (!await snarkjs.groth16.verify(brVkey, repaySignals, repayProof)) throw new Error('repay proof invalid');
 
-    const commitment2 = poseidonHash([COLLATERAL, 0n, SECRET, N2]);
+    const commitment2 = commit(COLLATERAL, 0n, SECRET, N2);
     const tree2 = await buildSingleLeafTree(poseidon, commitment2, DEPTH);
     if (BigInt(repaySignals[0]) !== tree2.root) throw new Error('tree2 root mismatch');
 
@@ -214,6 +252,7 @@ async function main() {
         collateral_satoshis: COLLATERAL.toString(),
         secret: SECRET.toString(),
         nonce: N2.toString(),
+        timelock_height: TIMELOCK.toString(),
         path_elements: tree2.pathElements.map(String),
         path_indices: tree2.pathIndices.map(String),
         merkle_root: tree2.root.toString(),
@@ -243,6 +282,7 @@ async function main() {
         min_ratio_bp: MIN_RATIO_BP.toString(),
         recipient_lo: RECIPIENT_LO.toString(),
         recipient_hi: RECIPIENT_HI.toString(),
+        ...keeperFields(0x53n),
     };
     const { proof: reborrowProof, publicSignals: reborrowSignals } = await snarkjs.groth16.fullProve(reborrowInput, brWasm, brZkey);
     if (!await snarkjs.groth16.verify(brVkey, reborrowSignals, reborrowProof)) throw new Error('re-borrow proof invalid');
@@ -254,14 +294,16 @@ async function main() {
     const LIQ_SECRET = 0x9988776655443322n;
     const LIQ_NONCE = 0x4444444444444444n;
     const LIQ_THRESHOLD_BP = 12_000n;
-    const liqCommitment = poseidonHash([LIQ_COLLATERAL, LIQ_DEBT, LIQ_SECRET, LIQ_NONCE]);
+    const liqCommitment = commit(LIQ_COLLATERAL, LIQ_DEBT, LIQ_SECRET, LIQ_NONCE);
     const liqTree = await buildSingleLeafTree(poseidon, liqCommitment, DEPTH);
     const liqVkey = JSON.parse(fs.readFileSync(path.join(ROOT, 'keys/liquidation_vkey.json'), 'utf8'));
     const liqInput = {
         collateral_satoshis: LIQ_COLLATERAL.toString(),
         debt_stroops: LIQ_DEBT.toString(),
-        secret: LIQ_SECRET.toString(),
+        // The keeper's witness: liq_key, not the owner's secret (#212).
+        liq_key: liqKey(LIQ_SECRET).toString(),
         nonce: LIQ_NONCE.toString(),
+        timelock_height: TIMELOCK.toString(),
         path_elements: liqTree.pathElements.map(String),
         path_indices: liqTree.pathIndices.map(String),
         merkle_root: liqTree.root.toString(),
@@ -290,6 +332,12 @@ async function main() {
         '// not mocked. Uses the dev trusted setup - NOT for mainnet.',
         '',
         hexToRustBytes(txidHex, 'DEPOSIT_TXID', '32 bytes: btc_txid_hi(16) || btc_txid_lo(16)'),
+        '',
+        '// ── Keeper (#212) ────────────────────────────────────────────────────────────',
+        hexToRustBytes(decToHex32(KEEPER_PUB[0].toString()), 'KEEPER_PUB_X'),
+        hexToRustBytes(decToHex32(KEEPER_PUB[1].toString()), 'KEEPER_PUB_Y'),
+        `pub const TIMELOCK: u32 = ${TIMELOCK};`,
+        `pub const MIN_TIMELOCK: u32 = ${MIN_TIMELOCK};`,
         '',
         '// ── Deposit ──────────────────────────────────────────────────────────────────',
         ...vkLines('DEPOSIT', depositVkey),

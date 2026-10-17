@@ -1,5 +1,5 @@
 'use strict';
-const { poseidonHash, prove, verify } = require('./helpers');
+const { prove, verify, TIMELOCK, positionCommitment, positionNullifier } = require('./helpers');
 
 // Test values - realistic but small enough for fast proving.
 const COLLATERAL = 1_000_000n;           // 0.01 BTC = 1,000,000 satoshis
@@ -20,6 +20,7 @@ function baseInput(overrides = {}) {
         // The honest case: what the prover claims equals what the contract
         // parsed from the real Bitcoin transaction.
         actual_satoshis:      String(COLLATERAL),
+        timelock_height:      String(TIMELOCK),
         ...overrides,
     };
 }
@@ -32,8 +33,8 @@ describe('deposit circuit', () => {
         // Public signals order (from circom output): commitment, nullifier, then public inputs
         // snarkjs orders: outputs first, then public inputs in declaration order
         // Check by computing expected values independently.
-        const expectedCommitment = await poseidonHash([COLLATERAL, 0n, SECRET, NONCE]);
-        const expectedNullifier  = await poseidonHash([SECRET, NONCE]);
+        const expectedCommitment = await positionCommitment(COLLATERAL, 0n, SECRET, NONCE);
+        const expectedNullifier  = await positionNullifier(SECRET, NONCE);
 
         expect(BigInt(publicSignals[0])).toBe(expectedCommitment);
         expect(BigInt(publicSignals[1])).toBe(expectedNullifier);
@@ -104,5 +105,15 @@ describe('deposit circuit', () => {
         tamperedSignals[0] = String(BigInt(publicSignals[0]) + 1n);
         const valid = await verify('deposit', proof, tamperedSignals);
         expect(valid).toBe(false);
+    });
+    test('timelock_height is public signal 6 and is bound into the commitment (#212)', async () => {
+        const other = TIMELOCK + 144n;
+        const { publicSignals } = await prove('deposit', baseInput({ timelock_height: String(other) }));
+        expect(BigInt(publicSignals[6])).toBe(other);
+        expect(BigInt(publicSignals[0])).toBe(await positionCommitment(COLLATERAL, 0n, SECRET, NONCE, other));
+    });
+
+    test('a timelock wider than 32 bits is rejected (#212)', async () => {
+        await expect(prove('deposit', baseInput({ timelock_height: String(1n << 32n) }))).rejects.toThrow();
     });
 });

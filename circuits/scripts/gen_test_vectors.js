@@ -15,7 +15,7 @@
 const path  = require('path');
 const fs    = require('fs');
 const snarkjs = require('snarkjs');
-const { buildPoseidon } = require('circomlibjs');
+const { buildPoseidon, buildBabyjub } = require('circomlibjs');
 const { decToHex32, g1ToHex, g2ToHex, hexToRustBytes } = require('./lib/vkey_encode.js');
 
 const ROOT = path.resolve(__dirname, '..');
@@ -52,6 +52,14 @@ async function buildSingleLeafTree(poseidon, leaf, depth) {
 async function main() {
     const poseidon = await buildPoseidon();
 
+    // Position scheme (#212, circuits/src/position.circom).
+    const hash = (xs) => BigInt(poseidon.F.toString(poseidon(xs)));
+    const TIMELOCK = 950_000n;
+    const commit = (c, d, secret, nonce) => hash([c, d, hash([secret]), nonce, TIMELOCK]);
+    const babyjub = await buildBabyjub();
+    const kp = babyjub.mulPointEscalar(babyjub.Base8, 0x0abcdef0123456789n);
+    const KEEPER_PUB = [babyjub.F.toObject(kp[0]), babyjub.F.toObject(kp[1])];
+
     // ── 1. Generate a deposit proof ───────────────────────────────────────────
     const COLLATERAL = 1_000_000n;
     const SECRET = 0xdeadbeefcafe1234n;
@@ -67,6 +75,8 @@ async function main() {
         btc_txid_lo:          TXID_LO.toString(),
         btc_txid_hi:          TXID_HI.toString(),
         min_deposit_satoshis: MIN_DEPOSIT.toString(),
+        actual_satoshis:      COLLATERAL.toString(),
+        timelock_height:      TIMELOCK.toString(),
     };
 
     console.log('Generating deposit proof…');
@@ -93,9 +103,7 @@ async function main() {
     const BR_MIN_RATIO   = 15_000n;          // 150% in bp
     const BR_BORROW      = 2_000_000_000n;   // $200 USDC - within the 150% ratio for this collateral
 
-    const brOldCommitment = BigInt(poseidon.F.toString(
-        poseidon([BR_COLLATERAL, BR_OLD_DEBT, BR_SECRET, BR_NONCE])
-    ));
+    const brOldCommitment = commit(BR_COLLATERAL, BR_OLD_DEBT, BR_SECRET, BR_NONCE);
     const brTree = await buildSingleLeafTree(poseidon, brOldCommitment, 20);
 
     const borrowRepayInput = {
@@ -111,6 +119,13 @@ async function main() {
         is_borrow:                 '1',
         btc_price_stroops_per_btc: BR_PRICE.toString(),
         min_ratio_bp:              BR_MIN_RATIO.toString(),
+        recipient_lo:              '0',
+        recipient_hi:              '0',
+        timelock_height:           TIMELOCK.toString(),
+        eph_sk:                    '81',
+        min_timelock_height:       (TIMELOCK - 10_000n).toString(),
+        keeper_pub_x:              KEEPER_PUB[0].toString(),
+        keeper_pub_y:              KEEPER_PUB[1].toString(),
     };
 
     console.log('Generating borrow_repay proof…');
@@ -134,18 +149,17 @@ async function main() {
     const LIQ_PRICE      = 600_000_000_000n; // stroops per BTC ($60k)
     const LIQ_THRESHOLD  = 12_000n;          // 120% in bp
 
-    // Commitment = Poseidon(collateral_satoshis, debt_stroops, secret, nonce)
-    const commitment = BigInt(poseidon.F.toString(
-        poseidon([LIQ_COLLATERAL, LIQ_DEBT, LIQ_SECRET, LIQ_NONCE])
-    ));
+    // Commitment = Poseidon(collateral_satoshis, debt_stroops, liq_key, nonce, timelock)
+    const commitment = commit(LIQ_COLLATERAL, LIQ_DEBT, LIQ_SECRET, LIQ_NONCE);
     const { root, pathElements, pathIndices } =
         await buildSingleLeafTree(poseidon, commitment, 20);
 
     const liqInput = {
         collateral_satoshis:      LIQ_COLLATERAL.toString(),
         debt_stroops:             LIQ_DEBT.toString(),
-        secret:                   LIQ_SECRET.toString(),
+        liq_key:                  hash([LIQ_SECRET]).toString(),
         nonce:                    LIQ_NONCE.toString(),
+        timelock_height:          TIMELOCK.toString(),
         path_elements:            pathElements.map(String),
         path_indices:             pathIndices.map(String),
         merkle_root:              root.toString(),
@@ -196,21 +210,25 @@ async function main() {
             hexToRustBytes(deltaHex, 'VK_DELTA_G2'),
             ...icHexes.map(({ name, hex }) => hexToRustBytes(hex, name)),
             `    pub const IC_LEN: usize = ${icHexes.length};`,
+            `    pub const IC: [[u8; 64]; ${icHexes.length}] = [${icHexes.map(({ name }) => name).join(', ')}];`,
             '',
             '    // ── Public signals ─────────────────────────────────────────────────────',
             ...signalHexes.map(({ name, hex, comment }) => hexToRustBytes(hex, name, comment)),
             `    pub const NUM_SIGNALS: usize = ${signalHexes.length};`,
+            `    pub const SIGNALS: [[u8; 32]; ${signalHexes.length}] = [${signalHexes.map(({ name }) => name).join(', ')}];`,
             '}',
         ];
     }
 
-    const depositSignalNames = ['commitment', 'nullifier', 'btc_txid_lo', 'btc_txid_hi', 'min_deposit'];
-    // Borrow/repay: 3 outputs (new_root, old_nullifier, new_commitment) then
-    // 5 public inputs - order must match `borrow_repay_signals` in
-    // contracts/contracts/commitment-tree/src/types.rs exactly.
+    const depositSignalNames = ['commitment', 'nullifier', 'btc_txid_lo', 'btc_txid_hi', 'min_deposit', 'actual_satoshis', 'timelock_height'];
+    // Borrow/repay: 8 outputs (new_root, old_nullifier, new_commitment, the
+    // keeper note) then 10 public inputs - order must match
+    // `borrow_repay_signals` in contracts/contracts/commitment-tree/src/types.rs exactly.
     const borrowRepaySignalNames = [
         'new_root', 'old_nullifier', 'new_commitment',
+        'keeper_eph_x', 'keeper_eph_y', 'keeper_ct0', 'keeper_ct1', 'keeper_ct2',
         'old_root', 'delta_stroops', 'is_borrow', 'btc_price_stroops_per_btc', 'min_ratio_bp',
+        'recipient_lo', 'recipient_hi', 'min_timelock_height', 'keeper_pub_x', 'keeper_pub_y',
     ];
     // Liquidation: 2 outputs (nullifier, usdc_debt) then 3 public inputs
     const liqSignalNames = ['nullifier', 'usdc_debt', 'merkle_root', 'btc_price_stroops_per_btc', 'liquidation_threshold_bp'];

@@ -4,6 +4,7 @@ include "circomlib/circuits/poseidon.circom";
 include "circomlib/circuits/comparators.circom";
 include "circomlib/circuits/mux1.circom";
 include "./merkle.circom";
+include "./position.circom";
 
 /*
  * Writz Protocol - Borrow/Repay Circuit
@@ -32,6 +33,19 @@ include "./merkle.circom";
  * a different recipient no longer verifies. See the borrow() doc comment in
  * commitment-tree/src/lib.rs for how the contract recomputes and checks them.
  *
+ * Timelock (#212): the position's CLTV height is a private input carried
+ * unchanged into the new commitment. A borrow must prove
+ * `timelock_height >= min_timelock_height`; commitment-tree requires that
+ * public bound to be at least the Bitcoin tip plus its safety margin, so a
+ * position cannot borrow right before its owner can reclaim the BTC alone.
+ * Only the bound is revealed, not the position's own timelock.
+ *
+ * Keeper note (#212): every borrow and repay encrypts the new position's
+ * liquidation witness (liq_key, new_nonce, and the packed collateral, debt
+ * and timelock) to `keeper_pub` inside the proof (KeeperNote in
+ * position.circom). The keeper can then prove the position undercollateralized
+ * without its owner; it cannot borrow, repay or release, which need `secret`.
+ *
  * Collateral ratio check (borrow only):
  *   collateral_satoshis × btc_price_stroops_per_btc ÷ 100_000_000 ÷ new_debt
  *   ≥ 1.5 (150%)
@@ -39,7 +53,7 @@ include "./merkle.circom";
  *   Rearranged to avoid division (ZK-friendly):
  *   collateral_satoshis × btc_price × 10_000 ≥ new_debt × 100_000_000 × 15_000
  *
- * Constraint count: 11,328 non-linear (measured via `circom --r1cs`, not an
+ * Constraint count: 15,410 non-linear (measured via `circom --r1cs`, not an
  * estimate - regenerate this comment if the circuit changes again rather
  * than trusting stale arithmetic here).
  *   - Old commitment hash: ~320
@@ -48,6 +62,8 @@ include "./merkle.circom";
  *   - New Merkle root update: ~5,200 (shared path, no double-count)
  *   - Ratio check + is_borrow boolean + debt-direction + collateral/price/
  *     min_ratio range proofs: ~832
+ *   - Timelock bound and its range checks: ~100
+ *   - Keeper note (two BabyJubJub scalar mults, three Poseidon pads): ~3,700
  *
  * Tree depth parameter: DEPTH = 20 (supports 1M+ positions)
  */
@@ -59,6 +75,8 @@ template BorrowRepayCircuit(DEPTH) {
     signal input secret;              // Position secret (constant across all operations)
     signal input nonce;               // Position nonce (constant; new nonce in new commit)
     signal input new_nonce;           // New nonce - prevents linking old and new commitments
+    signal input timelock_height;     // CLTV height of the position's Bitcoin script (unchanged)
+    signal input eph_sk;              // Fresh ephemeral scalar for the keeper note
 
     // Merkle tree path for the old commitment
     signal input path_elements[DEPTH];
@@ -85,17 +103,31 @@ template BorrowRepayCircuit(DEPTH) {
     signal input recipient_lo;        // Low 128 bits of sha256(borrower strkey)
     signal input recipient_hi;        // High 128 bits of sha256(borrower strkey)
 
+    // Lower bound on the position's timelock for a borrow; the contract
+    // requires it to be at least the Bitcoin tip plus its safety margin.
+    signal input min_timelock_height;
+    // The keeper's BabyJubJub public key; the contract pins it to config.
+    signal input keeper_pub_x;
+    signal input keeper_pub_y;
+
     // ── Public outputs ────────────────────────────────────────────────────────
     signal output new_root;           // Updated Merkle root after commitment swap
     signal output old_nullifier;      // Marks old commitment as spent
     signal output new_commitment;     // New commitment to add to tree
+    signal output keeper_eph_x;       // Keeper note: ephemeral public key
+    signal output keeper_eph_y;
+    signal output keeper_ct[3];       // Keeper note: [liq_key, new_nonce, packed position]
 
     // ── Step 1: Reconstruct and verify the old commitment ─────────────────────
-    component old_commit = Poseidon(4);
-    old_commit.inputs[0] <== collateral_satoshis;
-    old_commit.inputs[1] <== old_debt_stroops;
-    old_commit.inputs[2] <== secret;
-    old_commit.inputs[3] <== nonce;
+    component liq = LiquidationKey();
+    liq.secret <== secret;
+
+    component old_commit = PositionCommitment();
+    old_commit.collateral_satoshis <== collateral_satoshis;
+    old_commit.debt_stroops <== old_debt_stroops;
+    old_commit.liq_key <== liq.out;
+    old_commit.nonce <== nonce;
+    old_commit.timelock_height <== timelock_height;
     signal old_commitment <== old_commit.out;
 
     // ── Step 2: Verify old commitment is in the current Merkle tree ───────────
@@ -205,19 +237,52 @@ template BorrowRepayCircuit(DEPTH) {
     // Enforce: is_borrow * (1 - ratio_check.out) === 0
     is_borrow * (1 - ratio_check.out) === 0;
 
+    // ── Step 4b: Enough time left before the timelock (borrow only, #212) ────
+    // Both operands are range-checked to the comparator's width; the contract
+    // reads min_timelock_height as a u32.
+    component timelock_range = Num2Bits(32);
+    timelock_range.in <== timelock_height;
+    component min_timelock_range = Num2Bits(32);
+    min_timelock_range.in <== min_timelock_height;
+
+    component timelock_ok = GreaterEqThan(32);
+    timelock_ok.in[0] <== timelock_height;
+    timelock_ok.in[1] <== min_timelock_height;
+    is_borrow * (1 - timelock_ok.out) === 0;
+
     // ── Step 5: Compute the new commitment ────────────────────────────────────
-    component new_commit = Poseidon(4);
-    new_commit.inputs[0] <== collateral_satoshis;
-    new_commit.inputs[1] <== new_debt_stroops;
-    new_commit.inputs[2] <== secret;
-    new_commit.inputs[3] <== new_nonce;  // new nonce hides that this is the same position
+    component new_commit = PositionCommitment();
+    new_commit.collateral_satoshis <== collateral_satoshis;
+    new_commit.debt_stroops <== new_debt_stroops;
+    new_commit.liq_key <== liq.out;
+    new_commit.nonce <== new_nonce;  // new nonce hides that this is the same position
+    new_commit.timelock_height <== timelock_height;
     new_commitment <== new_commit.out;
 
     // ── Step 6: Nullifier - marks old commitment as spent ────────────────────
-    component null_hasher = Poseidon(2);
-    null_hasher.inputs[0] <== secret;
-    null_hasher.inputs[1] <== nonce;
+    component null_hasher = PositionNullifier();
+    null_hasher.liq_key <== liq.out;
+    null_hasher.nonce <== nonce;
     old_nullifier <== null_hasher.out;
+
+    // ── Step 6b: Keeper note for the new position (#212) ─────────────────────
+    component packed = PackPosition();
+    packed.collateral_satoshis <== collateral_satoshis;
+    packed.debt_stroops <== new_debt_stroops;
+    packed.timelock_height <== timelock_height;
+
+    component note = KeeperNote(3);
+    note.eph_sk <== eph_sk;
+    note.keeper_pub[0] <== keeper_pub_x;
+    note.keeper_pub[1] <== keeper_pub_y;
+    note.msg[0] <== liq.out;
+    note.msg[1] <== new_nonce;
+    note.msg[2] <== packed.out;
+    keeper_eph_x <== note.eph_pub[0];
+    keeper_eph_y <== note.eph_pub[1];
+    for (var i = 0; i < 3; i++) {
+        keeper_ct[i] <== note.ct[i];
+    }
 
     // ── Step 7: Update Merkle tree - verify old root, compute new root ────────
     component updater = MerkleTreeUpdater(DEPTH);
@@ -232,9 +297,11 @@ template BorrowRepayCircuit(DEPTH) {
 }
 
 // Public: old_root, delta_stroops, is_borrow, btc_price_stroops_per_btc, min_ratio_bp,
-//         recipient_lo, recipient_hi
-// Private: collateral_satoshis, old_debt_stroops, secret, nonce, new_nonce, path_elements, path_indices
-// Outputs (public): new_root, old_nullifier, new_commitment
+//         recipient_lo, recipient_hi, min_timelock_height, keeper_pub_x, keeper_pub_y
+// Private: collateral_satoshis, old_debt_stroops, secret, nonce, new_nonce, timelock_height,
+//          eph_sk, path_elements, path_indices
+// Outputs (public): new_root, old_nullifier, new_commitment, keeper_eph_x, keeper_eph_y,
+//                   keeper_ct[3]
 component main {public [
     old_root,
     delta_stroops,
@@ -242,5 +309,8 @@ component main {public [
     btc_price_stroops_per_btc,
     min_ratio_bp,
     recipient_lo,
-    recipient_hi
+    recipient_hi,
+    min_timelock_height,
+    keeper_pub_x,
+    keeper_pub_y
 ]} = BorrowRepayCircuit(20);
