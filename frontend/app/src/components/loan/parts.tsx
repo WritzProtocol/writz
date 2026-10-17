@@ -104,11 +104,18 @@ const LIQ_AT = pos(LIQ);
 const RISK_AT = pos(RISK);
 const LIMIT_AT = pos(LIMIT);
 const ZONES = [
-  { zone: "danger", label: "Liquidation", width: `${at(LIQ)}%` },
-  { zone: "warning", label: "Close to liquidation", width: `${at(RISK) - at(LIQ)}%` },
-  { zone: "info", label: "Below borrow limit", width: `${at(LIMIT) - at(RISK)}%` },
-  { zone: "positive", label: "Healthy", width: undefined },
+  { zone: "danger", label: "Liquidation", from: 0, to: at(LIQ) },
+  { zone: "warning", label: "Close to liquidation", from: at(LIQ), to: at(RISK) },
+  { zone: "info", label: "Below borrow limit", from: at(RISK), to: at(LIMIT) },
+  { zone: "positive", label: "Healthy", from: at(LIMIT), to: 100 },
 ] as const;
+
+// Bands sit on the same coordinates as the track's ticks, leaving the 2px
+// gap centred on each boundary, so the two rows cut in the same places.
+const bandStyle = (from: number, to: number) => ({
+  left: from === 0 ? "0" : `calc(${from}% + 1px)`,
+  right: to === 100 ? "0" : `calc(${100 - to}% + 1px)`,
+});
 
 /** A ratio that stands for "nothing owed" on the meter, past its right end. */
 export const NO_DEBT_BP = BigInt(MAX * 100);
@@ -159,7 +166,7 @@ export function HealthMeter({
         </div>
         <div className="ln-bm-bands" aria-hidden="true">
           {ZONES.map((z) => (
-            <span key={z.zone} className="ln-bm-z" data-zone={z.zone} style={z.width ? { width: z.width } : undefined} />
+            <span key={z.zone} className="ln-bm-z" data-zone={z.zone} style={bandStyle(z.from, z.to)} />
           ))}
         </div>
         {known ? <span className="ln-bm-marker" aria-hidden="true" /> : null}

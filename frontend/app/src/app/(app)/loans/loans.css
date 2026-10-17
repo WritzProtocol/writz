@@ -51,12 +51,12 @@
 .ln-bm-track { position: relative; height: 12px; border-radius: 6px; background: var(--deep); overflow: hidden; }
 .ln-bm-fill { position: absolute; inset: 0 auto 0 0; width: var(--at); background: var(--bm-fill); transform-origin: left; transition: width var(--dur-element) var(--ease-enter); }
 .ln-bm-tk { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--surface); }
-.ln-bm-bands { display: flex; gap: 2px; height: 4px; margin-top: 6px; }
-.ln-bm-z { height: 100%; }
+.ln-bm-bands { position: relative; height: 4px; margin-top: 6px; }
+.ln-bm-z { position: absolute; top: 0; bottom: 0; }
 .ln-bm-z[data-zone="danger"] { background: var(--danger); }
 .ln-bm-z[data-zone="warning"] { background: var(--warning); }
 .ln-bm-z[data-zone="info"] { background: color-mix(in oklab, var(--info) 50%, transparent); }
-.ln-bm-z[data-zone="positive"] { flex: 1; background: color-mix(in oklab, var(--positive) 55%, transparent); }
+.ln-bm-z[data-zone="positive"] { background: color-mix(in oklab, var(--positive) 55%, transparent); }
 .ln-bm[data-state="checking"] .ln-bm-z { background: var(--deep); }
 .ln-bm-marker, .ln-bm-pre { position: absolute; top: 0; width: 16px; height: 28px; margin-left: -8px; }
 .ln-bm-marker { left: var(--at); background: var(--mark); clip-path: polygon(calc(28px * var(--shear)) 0, 100% 0, calc(100% - 28px * var(--shear)) 100%, 0 100%); transition: left var(--dur-element) var(--ease-enter); }
