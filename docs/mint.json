@@ -2,12 +2,16 @@
   "name": "Writz Protocol",
   "favicon": "/brand/writz-icon.svg",
   "colors": {
-    "primary": "#F7931A",
-    "light": "#FFB347",
-    "dark": "#C47217",
+    "primary": "#15181E",
+    "light": "#FFC300",
+    "dark": "#15181E",
     "anchors": {
-      "from": "#F7931A",
-      "to": "#FF6B35"
+      "from": "#FFC300",
+      "to": "#FFC300"
+    },
+    "background": {
+      "light": "#F6F7F8",
+      "dark": "#0C0E12"
     }
   },
   "topbarLinks": [
@@ -48,7 +52,7 @@
     {
       "name": "Discord",
       "icon": "discord",
-      "url": "https://discord.gg/stellar"
+      "url": "https://discord.gg/zDa4xRN9Xe"
     }
   ],
   "navigation": [
@@ -110,8 +114,7 @@
     {
       "group": "Roadmap",
       "pages": [
-        "roadmap/vision",
-        "roadmap/phases"
+        "roadmap/vision"
       ]
     },
     {

@@ -56,7 +56,6 @@ Writz is a trustless Bitcoin lending protocol on Stellar. Lock real BTC. Borrow 
 
 ### Roadmap
 - [Vision](/roadmap/vision) - Where Writz goes by 2028. The three-layer moat.
-- [Phases](/roadmap/phases) - Phase-by-phase execution plan with milestones and metrics.
 
 ### Research (Internal Reference)
 - [Bitcoin SPV on Other Chains](/research/spv-implementations)

@@ -3,9 +3,15 @@
   "theme": "mint",
   "name": "Writz Protocol",
   "colors": {
-    "primary": "#F7931A",
-    "light": "#FFB347",
-    "dark": "#C47217"
+    "primary": "#15181E",
+    "light": "#FFC300",
+    "dark": "#15181E"
+  },
+  "background": {
+    "color": {
+      "light": "#F6F7F8",
+      "dark": "#0C0E12"
+    }
   },
   "logo": {
     "light": "/brand/writz-lockup-black.svg",
@@ -56,8 +62,7 @@
           {
             "group": "Roadmap",
             "pages": [
-              "roadmap/vision",
-              "roadmap/phases"
+              "roadmap/vision"
             ]
           }
         ]
@@ -131,7 +136,7 @@
         },
         {
           "anchor": "Discord",
-          "href": "https://discord.gg/stellar",
+          "href": "https://discord.gg/zDa4xRN9Xe",
           "icon": "discord"
         }
       ]

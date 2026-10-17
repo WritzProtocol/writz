@@ -4,9 +4,11 @@ import {
   Operation,
   Asset,
   BASE_FEE,
+  NotFoundError,
 } from "@stellar/stellar-sdk";
 import { config } from "@/config";
 import type { SignTransaction } from "@/lib/wallet/WalletProvider";
+import { AccountUnfundedError } from "@/lib/wallet/precheck";
 
 /**
  * Classic Stellar asset operations: check a trustline, read a balance, add a
@@ -106,7 +108,9 @@ export async function enableTrustline(params: {
 }): Promise<void> {
   const { address, asset, signTransaction } = params;
   const horizon = new Horizon.Server(config.horizonUrl);
-  const account = await horizon.loadAccount(address);
+  const account = await horizon.loadAccount(address).catch((e: unknown) => {
+    throw e instanceof NotFoundError ? new AccountUnfundedError() : e;
+  });
 
   const tx = new TransactionBuilder(account, {
     fee: BASE_FEE,

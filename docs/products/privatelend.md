@@ -164,14 +164,14 @@ The USDC pool is separate from borrower positions. As a lender, you are not expo
 
 ## Phase 2 Launch Parameters (planned, not yet scheduled)
 
-PrivateLend is planned to launch on mainnet in Q4 2026 with conservative initial parameters, once a set of gates are cleared - see `docs/roadmap/phases.md` for the live status of each:
+PrivateLend is planned to launch on mainnet in Q2 to Q3 2027 with conservative initial parameters, once a set of gates are cleared:
 
 - **TVL cap:** $50,000 BTC collateral (raised progressively)
 - **Whitelist-only** for the first 30 days
-- **Protocol fee:** 0% for 90-day bootstrap period
+- **Protocol fee:** the launch value is not decided yet (the contract charges 15% of interest today)
 - **USDC seed liquidity:** $50,000 protocol-owned (funding source not yet resolved - see `docs/research/growth-strategy.md`)
 
-These caps will be raised after a 30-day clean operation period and the completion of the Audit Bank engagement. The Q4 2026 date and every parameter above are contingent on gates that are not yet closed: a formed legal entity (not yet started), a real price oracle (currently a hardcoded stub in the contract), the ZK trusted setup ceremony (participants not yet identified), and the Audit Bank engagement itself (its stated qualification path runs through the SCF grant, which is not being pursued in the short term). None of this blocks using PrivateLend on testnet today - it means the mainnet date above is a target, not a commitment.
+These caps will be raised after a 30-day clean operation period and the completion of the Audit Bank engagement. The 2027 date and every parameter above are contingent on gates that are not yet closed: a formed legal entity (not yet started), a real price oracle (currently a hardcoded stub in the contract), the ZK trusted setup ceremony (participants not yet identified), and the Audit Bank engagement itself (its stated qualification path runs through the SCF grant, which is not being pursued in the short term). None of this blocks using PrivateLend on testnet today - it means the mainnet date above is a target, not a commitment.
 
 ---
 

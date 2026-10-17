@@ -72,6 +72,8 @@ export async function recoverPositions(params: {
     if (n.commitment !== null && commitment !== BigInt("0x" + n.commitment)) continue;
 
     const prior = existing.find((p) => p.index === note.index);
+    // The relayer can lag behind this device; an older note would restore a spent nullifier.
+    if (prior && prior.version > note.version) continue;
     if (prior) removePosition(owner, prior.id);
 
     const position: Position = {
@@ -84,12 +86,22 @@ export async function recoverPositions(params: {
       version: note.version,
       commitment: commitment.toString(),
       nullifier: computeNullifier(secret, nonce).toString(),
-      status: debt > 0n ? "active" : "closed",
+      // A note cannot show a release or liquidation, so keep what this device already knows.
+      status:
+        prior?.status === "released" || prior?.status === "liquidated"
+          ? prior.status
+          : debt > 0n
+            ? "active"
+            : "closed",
       createdAt: prior?.createdAt ?? Date.now(),
       btcPubkey: prior?.btcPubkey,
       timelockHeight: prior?.timelockHeight,
       vout: prior?.vout,
       leafIndex: n.leafIndex,
+      stellarTxHash: prior?.stellarTxHash,
+      releaseMarkedHash: prior?.releaseMarkedHash,
+      releaseTxid: prior?.releaseTxid,
+      releaseAddress: prior?.releaseAddress,
     };
     savePosition(position);
     recovered++;

@@ -10,7 +10,7 @@ export default function robots(): MetadataRoute.Robots {
       userAgent: "*",
       allow: "/",
       // Live on-chain state, so a crawled copy is stale the moment it is stored.
-      disallow: ["/api/", "/metrics"],
+      disallow: ["/api/", "/protocol"],
     },
   };
 }

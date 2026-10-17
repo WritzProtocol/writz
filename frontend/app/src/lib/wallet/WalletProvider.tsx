@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { Horizon, NotFoundError } from "@stellar/stellar-sdk";
 import type { User } from "@privy-io/react-auth";
 import type { WalletWithMetadata } from "@privy-io/react-auth";
 import { usePrivyBridge } from "@/lib/wallet/privy-bridge";
@@ -19,6 +20,8 @@ import {
   signMessageWithPrivy,
   signTransactionWithPrivy,
 } from "@/lib/wallet/privy-stellar";
+import { withRejection } from "@/lib/wallet/rejection";
+import { preflightSign, type AccountSnapshot } from "@/lib/wallet/precheck";
 
 /**
  * Signs a transaction XDR with the connected wallet. The return shape is
@@ -57,9 +60,28 @@ interface WalletState {
   unlock: () => Promise<void>;
   /** Active auth backend, or null when not connected. */
   walletBackend: WalletBackend | null;
+  /** A remembered session is still being restored, so whether a wallet is connected isn't known yet. */
+  restoring: boolean;
 }
 
 const BACKEND_KEY = "writz.walletBackend";
+
+function kitWalletName(): string | undefined {
+  try {
+    return ensureKit().selectedModule.productName;
+  } catch {
+    return undefined;
+  }
+}
+
+async function loadAccountSnapshot(address: string): Promise<AccountSnapshot | null> {
+  try {
+    return await new Horizon.Server(config.horizonUrl).loadAccount(address);
+  } catch (e) {
+    if (e instanceof NotFoundError) return null;
+    throw e;
+  }
+}
 
 function getStellarAddress(user: User | null): string | null {
   if (!user) return null;
@@ -232,13 +254,31 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       if (backend === "privy") {
         if (!address || !privy)
           throw new Error("No Privy wallet connected");
-        return signTransactionWithPrivy(xdr, address, privy.signRawHash);
+        await preflightSign({
+          xdr,
+          expectedPassphrase: config.networkPassphrase,
+          getWalletPassphrase: async () => null,
+          loadAccount: () => loadAccountSnapshot(address),
+        });
+        return withRejection("stellar", "Privy", () =>
+          signTransactionWithPrivy(xdr, address, privy.signRawHash),
+        );
       }
       const kit = ensureKit();
+      const walletName = kitWalletName();
       const { address: signerAddress } = await kit.getAddress();
-      const { signedTxXdr, signerAddress: signer } = await kit.signTransaction(
+      await preflightSign({
         xdr,
-        { address: signerAddress, networkPassphrase: config.networkPassphrase },
+        expectedPassphrase: config.networkPassphrase,
+        walletName,
+        getWalletPassphrase: async () => (await kit.getNetwork()).networkPassphrase,
+        loadAccount: () => loadAccountSnapshot(signerAddress),
+      });
+      const { signedTxXdr, signerAddress: signer } = await withRejection("stellar", walletName, () =>
+        kit.signTransaction(xdr, {
+          address: signerAddress,
+          networkPassphrase: config.networkPassphrase,
+        }),
       );
       return { signedTxXdr, signerAddress: signer ?? signerAddress };
     },
@@ -250,14 +290,19 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       if (backend === "privy") {
         if (!address || !privy)
           throw new Error("No Privy wallet connected");
-        return signMessageWithPrivy(message, address, privy.signRawHash);
+        return withRejection("stellar", "Privy", () =>
+          signMessageWithPrivy(message, address, privy.signRawHash),
+        );
       }
       const kit = ensureKit();
+      const walletName = kitWalletName();
       const { address: addr } = await kit.getAddress();
-      const { signedMessage } = await kit.signMessage(message, {
-        address: addr,
-        networkPassphrase: config.networkPassphrase,
-      });
+      const { signedMessage } = await withRejection("stellar", walletName, () =>
+        kit.signMessage(message, {
+          address: addr,
+          networkPassphrase: config.networkPassphrase,
+        }),
+      );
       return signedMessage;
     },
     [backend, address, privy],
@@ -282,6 +327,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       unlocked: seed !== null,
       unlock,
       walletBackend: backend,
+      restoring: address === null && (backend === "kit" || (backend === "privy" && privy !== null)),
     }),
     [
       address,
@@ -295,6 +341,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       seed,
       unlock,
       backend,
+      privy,
     ],
   );
 

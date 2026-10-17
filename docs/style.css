@@ -1,0 +1,18 @@
+#topbar-cta-button a > span:first-child {
+  border-radius: 0;
+  clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
+}
+
+#topbar-cta-button a {
+  padding-left: 18px;
+  padding-right: 16px;
+}
+
+html.dark #topbar-cta-button a > span:first-child {
+  background: #ffc300;
+}
+
+html.dark #topbar-cta-button a .text-white,
+html.dark #topbar-cta-button a svg {
+  color: #15181e;
+}

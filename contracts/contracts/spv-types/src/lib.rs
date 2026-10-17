@@ -75,8 +75,7 @@ pub const STUB_PRICE_STROOPS_PER_BTC: i128 = 60_000 * 10_000_000; // = 600_000_0
 /// swapping in a real price feed here requires changing this function's
 /// body (not just the `Config.oracle` address this contract already
 /// supports via its `set_oracle` setter), since the address alone is never
-/// read here yet. See `docs/roadmap/phases.md` for the Phase 2 oracle
-/// integration this blocks on.
+/// read here yet; the Phase 2 oracle integration blocks on it.
 ///
 /// Phase 2 migration: replace the body with a SEP-40 cross-contract call:
 /// ```text

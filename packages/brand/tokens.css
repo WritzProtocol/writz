@@ -1,0 +1,48 @@
+/* Writz Graphite & Gold tokens, shared by frontend/app and frontend/landing. */
+
+/* Geist Mono's metrics on a local monospace face (0.6em advance), so figures keep their size while the web font loads. */
+@font-face {
+  font-family: "Geist Mono Fallback";
+  src: local("Courier New"), local("CourierNewPSMT"), local("Liberation Mono"), local("Cousine");
+  ascent-override: 100.5%;
+  descent-override: 29.5%;
+  line-gap-override: 0%;
+  size-adjust: 100%;
+}
+
+:root {
+  --bg: #0c0e12;
+  --surface: #15181e;
+  --surface-2: #1c2027;
+  --deep: #2a303a;
+  --line: rgb(255 255 255 / 0.07);
+  --line-strong: rgb(255 255 255 / 0.14);
+  --heading: #f4f5f7;
+  --body: #b6bbc4;
+  --muted: #8b919b;
+  --accent: #ffc300;
+  --accent-hover: #ffd033;
+  --on-accent: #15181e;
+  --danger: #e5786c;
+  --positive: #4fbf8f;
+  --warning: #f0a33a;
+  --info: #8fb0d8;
+  --link: var(--accent);
+  --mark: var(--accent);
+  --tint-10: color-mix(in oklab, var(--heading) 7%, transparent);
+  --tint-20: color-mix(in oklab, var(--heading) 13%, transparent);
+
+  --shadow-border: 0 0 0 1px var(--line), 0 1px 2px -1px rgb(0 0 0 / 0.4), 0 2px 4px 0 rgb(0 0 0 / 0.3);
+
+  --font-sans: var(--ff-sans), "Work Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--ff-mono), "Geist Mono", ui-monospace, monospace;
+
+  --radius-control: 6px;
+
+  --dur-micro: 120ms;
+  --dur-element: 220ms;
+  --dur-section: 420ms;
+  --dur-signature: 900ms;
+  --ease-enter: cubic-bezier(0.2, 0, 0, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+}
