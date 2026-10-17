@@ -84,7 +84,7 @@ cd ../../bitcoin-script && bun run build
 cd ../relayer && bun install && bun run test
 ```
 
-Expected output: 219 tests pass.
+Expected output: 222 tests pass.
 
 ### ZK circuits (Circom + snarkjs, npm)
 
@@ -98,7 +98,7 @@ Expected output: 41 tests pass (proof generation, commitment correctness, ratio 
 
 If `verify()` assertions fail here while `prove()` succeeds, your local `circuits/keys/*_final.zkey` (gitignored, regenerated locally) is out of sync with the committed `circuits/keys/*_vkey.json`. Run `bash scripts/compile_all.sh && bash scripts/setup_dev.sh` to regenerate both together from a fresh dev trusted setup, then re-run `npm test`.
 
-### All together: 561 tests, all passing.
+### All together: 564 tests, all passing.
 
 ---
 
@@ -124,13 +124,13 @@ All four contracts are live on Stellar testnet. You can call them directly witho
 ```bash
 # Check the SPV contract is alive
 stellar contract invoke \
-  --id CB2BD6QCSZVNZN5NLI7C5NF356WXVJDSXT6LVAQFWHHS4SZ4NCKKNIVA \
+  --id CAHHY4S4WCIFU4LBSKBI3IP6A4QYR2COV6EACDEBXGPJFDWBJWGOMCLP \
   --network testnet \
   -- get_version
 
 # Check the Merkle root
 stellar contract invoke \
-  --id CDQCTFO3FK3M47QS47O2A4WLNPSQAQBSXBFPJ6RZEHFO5D7RY34FSBBP \
+  --id CAQBLCAPGXXCZTJDAJLY7E4PTJYGR6CY4YWH4JSJKFXYIHW3GANP6RFM \
   --network testnet \
   -- get_merkle_root
 # Returns: 0x2134e76ac74b4b8765b6e37992aa15f0... (Poseidon-2 empty tree root)

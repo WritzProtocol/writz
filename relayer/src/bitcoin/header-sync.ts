@@ -39,6 +39,27 @@ export interface HeaderSyncDeps {
 }
 
 /**
+ * Runs `fn`, retrying with exponential backoff while `isRetryable` accepts
+ * the error (an Esplora 429, in practice: a sync from an old checkpoint asks
+ * for hundreds of headers in a row and public Esplora instances throttle
+ * that). Throws the last error once `retries` are spent.
+ */
+export async function withBackoff<T>(
+  fn: () => Promise<T>,
+  isRetryable: (e: unknown) => boolean,
+  { retries = 5, baseDelayMs = 1_000, sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms)) } = {},
+): Promise<T> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await fn();
+    } catch (e) {
+      if (attempt >= retries || !isRetryable(e)) throw e;
+      await sleep(baseDelayMs * 2 ** attempt);
+    }
+  }
+}
+
+/**
  * How many blocks below bitcoin-spv's best tip each sync pass starts. The
  * contract skips headers it already stores, so this costs one cheap batch,
  * and it lets a Bitcoin reorg of up to this depth extend the new branch from

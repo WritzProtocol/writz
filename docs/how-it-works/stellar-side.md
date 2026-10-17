@@ -24,7 +24,7 @@ Verifies Bitcoin transactions on Soroban using Simplified Payment Verification. 
 
 This contract is called first in every deposit flow. Its output - specifically the `txid` - is passed to the commitment-tree contract and bound into the ZK proof, ensuring every position corresponds to a real Bitcoin transaction.
 
-**Deployed:** `CB2BD6QCSZVNZN5NLI7C5NF356WXVJDSXT6LVAQFWHHS4SZ4NCKKNIVA`
+**Deployed:** `CAHHY4S4WCIFU4LBSKBI3IP6A4QYR2COV6EACDEBXGPJFDWBJWGOMCLP`
 
 ---
 
@@ -49,7 +49,7 @@ Internally, this:
 
 Returns `true` if the proof is valid, `false` otherwise. Malformed proofs (invalid curve points) cause the host to reject the transaction entirely - the correct security behavior.
 
-**Deployed:** `CBNZU23QGCZATJB2QMNF2K6IST2SVP7FSGCKASQNBULTWDWGANDBYLFY`  
+**Deployed:** `CB5XAP6MF2GVVFATFTVCKVEXUODWWRQP4B3QFDMRTM55REP7N2YMXEUD`  
 All three verification keys are set on testnet (Deposit IC=6, BorrowRepay IC=9, Liquidation IC=6).
 
 ---
@@ -93,7 +93,7 @@ pub fn withdraw_supply(supplier: Address, amount: i128) -> Result<(), Commitment
 - Nullifier freshness is checked before any state change - double-spending is impossible
 - Merkle root must match the current on-chain root - stale proofs are rejected
 
-**Deployed:** `CDQCTFO3FK3M47QS47O2A4WLNPSQAQBSXBFPJ6RZEHFO5D7RY34FSBBP`
+**Deployed:** `CAQBLCAPGXXCZTJDAJLY7E4PTJYGR6CY4YWH4JSJKFXYIHW3GANP6RFM`
 
 ---
 
@@ -122,7 +122,7 @@ pub fn liquidate(keeper: Address, txid: BytesN<32>) -> Result<(), PrivateLendErr
 
 **Events emitted** (topic strings, matching `contracts/contracts/private-lend/src/events.rs` exactly): `deposit`, `borrow`, `repay`, `repay_full` (emitted in addition to `repay` when a repayment fully closes the debt), `liquidate`.
 
-**Deployed:** `CAAWVMDRUPEJNELSQ6RU2VMVX5EJLQ2E77T7IXDWGMW4DGSNAGECGSWR`
+**Deployed:** `CA3T7T2S7HV27BXO7OLIHSMGAMQ37BMOOUHQLTBGUQVL4B6Y2CDJPHHX`
 
 ---
 

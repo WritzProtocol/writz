@@ -1,5 +1,5 @@
 import { describe, expect, test } from '@jest/globals';
-import { planHeaderBatches, REORG_RESUBMIT_DEPTH, syncHeaders, syncStartHeight } from '../src/bitcoin/header-sync';
+import { planHeaderBatches, REORG_RESUBMIT_DEPTH, syncHeaders, syncStartHeight, withBackoff } from '../src/bitcoin/header-sync';
 
 describe('planHeaderBatches', () => {
   test('splits a range into contiguous batches of at most maxPerSubmit', () => {
@@ -75,5 +75,33 @@ describe('syncStartHeight', () => {
 
   test('starts at the configured height when the contract tip is unknown', () => {
     expect(syncStartHeight(280_000, undefined)).toBe(280_000);
+  });
+});
+
+describe('withBackoff', () => {
+  const noSleep = { sleep: async () => {} };
+
+  test('retries a retryable failure and returns the eventual result', async () => {
+    let calls = 0;
+    const delays: number[] = [];
+    const result = await withBackoff(
+      async () => { if (++calls < 3) throw new Error('429'); return 'ok'; },
+      () => true,
+      { baseDelayMs: 100, sleep: async (ms) => { delays.push(ms); } },
+    );
+    expect(result).toBe('ok');
+    expect(delays).toEqual([100, 200]);
+  });
+
+  test('does not retry an error it is told is final', async () => {
+    let calls = 0;
+    await expect(withBackoff(async () => { calls++; throw new Error('404'); }, () => false, noSleep)).rejects.toThrow('404');
+    expect(calls).toBe(1);
+  });
+
+  test('gives up after the configured retries', async () => {
+    let calls = 0;
+    await expect(withBackoff(async () => { calls++; throw new Error('429'); }, () => true, { retries: 2, ...noSleep })).rejects.toThrow('429');
+    expect(calls).toBe(3);
   });
 });

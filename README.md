@@ -28,7 +28,7 @@ No bridge. No custodian. No wrapped tokens. No public balance sheet.
 
 ## This Is Not a Whitepaper
 
-As of August 2026, four contracts are live on Stellar testnet, 561 tests pass, and real Bitcoin transactions have been verified on-chain.
+As of August 2026, four contracts are live on Stellar testnet, 564 tests pass, and real Bitcoin transactions have been verified on-chain.
 
 | What | Status |
 |---|---|
@@ -37,7 +37,7 @@ As of August 2026, four contracts are live on Stellar testnet, 561 tests pass, a
 | P2WSH locking + co-signed BTC release | ✓ Broadcast on Bitcoin Signet |
 | Poseidon Merkle commitment tree | ✓ Root updated on-chain |
 | Full deposit → borrow → repay ZK flow | ✓ 6 sequential testnet transactions |
-| 561 tests across all modules | ✓ All passing |
+| 564 tests across all modules | ✓ All passing |
 
 But a few months ago, it was a whitepaper. Version 1.0 (July 2026) is at [writz.xyz/whitepaper](https://writz.xyz/whitepaper) and archived on Zenodo with the DOI [10.5281/zenodo.23148520](https://doi.org/10.5281/zenodo.23148520).
 
@@ -45,10 +45,10 @@ But a few months ago, it was a whitepaper. Version 1.0 (July 2026) is at [writz.
 
 | Contract | Address | WASM | Tests |
 |---|---|---|---|
-| `bitcoin-spv` | `CB2BD6QCSZVNZN5NLI7C5NF356WXVJDSXT6LVAQFWHHS4SZ4NCKKNIVA` | 12.0 KB | 49 |
-| `zk-verifier` | `CBNZU23QGCZATJB2QMNF2K6IST2SVP7FSGCKASQNBULTWDWGANDBYLFY` | 14.5 KB | 25 |
-| `commitment-tree` | `CDQCTFO3FK3M47QS47O2A4WLNPSQAQBSXBFPJ6RZEHFO5D7RY34FSBBP` | 31.7 KB | 32 |
-| `private-lend` | `CAAWVMDRUPEJNELSQ6RU2VMVX5EJLQ2E77T7IXDWGMW4DGSNAGECGSWR` | 36.0 KB | 85 |
+| `bitcoin-spv` | `CAHHY4S4WCIFU4LBSKBI3IP6A4QYR2COV6EACDEBXGPJFDWBJWGOMCLP` | 12.0 KB | 49 |
+| `zk-verifier` | `CB5XAP6MF2GVVFATFTVCKVEXUODWWRQP4B3QFDMRTM55REP7N2YMXEUD` | 14.5 KB | 25 |
+| `commitment-tree` | `CAQBLCAPGXXCZTJDAJLY7E4PTJYGR6CY4YWH4JSJKFXYIHW3GANP6RFM` | 31.7 KB | 32 |
+| `private-lend` | `CA3T7T2S7HV27BXO7OLIHSMGAMQ37BMOOUHQLTBGUQVL4B6Y2CDJPHHX` | 36.0 KB | 85 |
 
 Full deployment log, init transactions, and verified calls: [`contracts/deployments/testnet.md`](contracts/deployments/testnet.md)
 
@@ -286,7 +286,7 @@ cd contracts && cargo test
 # 2. Bitcoin script toolkit - 60 tests (Bun's own test runner)
 cd ../bitcoin-script && bun install && bun test
 
-# 3. Relayer service - 219 tests
+# 3. Relayer service - 222 tests
 #    Deps install with Bun, but the suite itself is Jest (ts-jest), so it must
 #    be run through the package script - plain `bun test` picks Bun's runner
 #    instead and fails. The relayer also imports the local @writz/* packages
@@ -299,7 +299,7 @@ cd ../relayer && bun install && bun run test
 cd ../circuits && npm install && npm test
 ```
 
-All 561 tests pass. If anything fails, [open an issue](https://github.com/WritzProtocol/writz/issues).
+All 564 tests pass. If anything fails, [open an issue](https://github.com/WritzProtocol/writz/issues).
 
 ### Full ZK End-to-End on a Local Stellar Network
 
@@ -432,7 +432,7 @@ Full documentation lives in [`docs/`](docs/) and is published at **[docs.writz.x
 ## Contributing
 
 1. Fork the repo and create a branch from `main`.
-2. Run the full test suite before opening a PR - all 561 tests must pass.
+2. Run the full test suite before opening a PR - all 564 tests must pass.
 3. For new features, add tests. For bug fixes, add a regression test.
 4. Open a PR with a clear description of what changed and why.
 
