@@ -131,12 +131,14 @@ The relayer keeps four SQLite databases on local disk:
 | `data/watcher.db` | `repay-watcher/cursor-store.ts` | The repay watcher's cursor |
 | `data/vault-events.db` | `vault-watcher/event-store.ts` | **Every indexed vault deposit and withdrawal** |
 | `data/vault-watcher.db` | `vault-watcher/cursor-store.ts` | The vault watcher's cursor |
+| `data/tree-watcher.db` | `tree-watcher/cursor-store.ts` | The tree watcher's cursor |
+| `data/tree-events.db` | `tree-watcher/event-archive.ts` | **Every `insert_leaf`, `borrow` and `repay` the commitment tree emitted** |
 
 The container image declares no `VOLUME`, so on a fresh service that directory is ephemeral and every redeploy starts empty.
 
-That is recoverable for three of the four. It is not for `vault-events.db`. Soroban RPC retains events for days, not indefinitely (see `relayer-backfill-runbook.md`), and this database is the only durable record beyond that window. The metrics deliverable reports 30-day retention cohorts, which is longer than RPC will serve. Lose the file after the window closes and the history cannot be rebuilt from chain at all.
+Most of these are recoverable. `vault-events.db` and `tree-events.db` are not. Soroban RPC retains events for days, not indefinitely (see `relayer-backfill-runbook.md`), and this database is the only durable record beyond that window. The metrics deliverable reports 30-day retention cohorts, which is longer than RPC will serve. Lose the file after the window closes and the history cannot be rebuilt from chain at all. `tree-events.db` is the same for the commitment tree: it is the only record that lets a fresh relayer replay the tree's history and check each step against its root once RPC has dropped the events (#264). It only covers history from the moment it was first created, and the tree watcher logs a warning at startup when it is empty but the leaf store is not. `bun run check:tree-archive` in `relayer/` compares it with RPC while its first ledger is still in retention.
 
-**Mount a persistent volume at `/app/data`.** All four paths are overridable if the platform mounts elsewhere: `SQLITE_PATH`, `WATCHER_SQLITE_PATH`, `VAULT_EVENTS_SQLITE_PATH`, `VAULT_WATCHER_SQLITE_PATH`.
+**Mount a persistent volume at `/app/data`.** All six paths are overridable if the platform mounts elsewhere: `SQLITE_PATH`, `WATCHER_SQLITE_PATH`, `VAULT_EVENTS_SQLITE_PATH`, `VAULT_WATCHER_SQLITE_PATH`, `TREE_WATCHER_SQLITE_PATH`, `TREE_EVENTS_SQLITE_PATH`.
 
 Both watchers are always-on polling loops started in `src/index.ts`, not request-driven handlers. A platform that suspends the container when idle produces silent gaps in the same data, so scale-to-zero tiers are not suitable regardless of the volume.
 
