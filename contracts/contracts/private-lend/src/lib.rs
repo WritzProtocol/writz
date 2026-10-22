@@ -16,7 +16,7 @@ use events::{
     RepayFullEvent, SupplyEvent, WithdrawEvent,
 };
 use oracle::{collateral_value_stroops, get_btc_price_stroops, health_ratio_bp};
-use rates::{borrow_rate_bp, supply_rate_bp};
+use rates::{borrow_rate_bp, supply_rate_bp, total_supply_assets};
 use soroban_sdk::{
     contract, contractimpl, panic_with_error, token, Address, Bytes, BytesN, Env, IntoVal, Symbol, Vec,
 };
@@ -241,7 +241,8 @@ impl PrivateLendContract {
     // ── USDC supply ───────────────────────────────────────────────────────────
 
     /// Lender supplies USDC to the pool, making it available for borrowing.
-    /// Lenders earn `supply_rate_bp()` APR on their supplied amount.
+    /// The deposit is stored as scaled units, so the lender's balance grows
+    /// with `supply_index` as borrowers pay interest.
     pub fn supply_usdc(
         env: Env,
         supplier: Address,
@@ -253,25 +254,37 @@ impl PrivateLendContract {
             return Err(PrivateLendError::Paused);
         }
 
+        let mut proto = get_protocol(&env);
+        // Credit the interval that just ended to the existing lenders before
+        // this supply joins them, so a supply earns nothing from the past.
+        accrue_global(&env, &mut proto);
+
+        let scaled = amount.saturating_mul(rates::INDEX_ONE) / proto.supply_index;
+        if scaled <= 0 {
+            return Err(PrivateLendError::ZeroShareAmount);
+        }
+
         let token = token::Client::new(&env, &config.usdc_token);
         token.transfer(&supplier, &env.current_contract_address(), &amount);
 
-        let mut proto = get_protocol(&env);
-        // Price the interval that just ended before supply moves utilization.
-        accrue_global(&env, &mut proto);
-        proto.total_supplied = proto.total_supplied.saturating_add(amount);
+        proto.total_scaled_supply = proto.total_scaled_supply.saturating_add(scaled);
         set_protocol(&env, &proto);
 
         let bal = get_supply_balance(&env, &supplier);
-        set_supply_balance(&env, &supplier, bal.saturating_add(amount));
+        set_supply_balance(&env, &supplier, bal.saturating_add(scaled));
 
-        SupplyEvent { supplier, usdc_amount: amount, total_supplied: proto.total_supplied }
-            .publish(&env);
+        SupplyEvent {
+            supplier,
+            usdc_amount: amount,
+            total_supplied: total_supply_assets(&proto, proto.supply_index),
+        }
+        .publish(&env);
 
         Ok(())
     }
 
-    /// Lender withdraws previously supplied USDC from the pool.
+    /// Lender withdraws USDC from the pool, up to the current value of their
+    /// scaled balance (principal plus accrued interest).
     pub fn withdraw_supply(
         env: Env,
         supplier: Address,
@@ -279,30 +292,51 @@ impl PrivateLendContract {
     ) -> Result<(), PrivateLendError> {
         supplier.require_auth();
         let config = get_config(&env).ok_or(PrivateLendError::NotInitialized)?;
+        if amount <= 0 {
+            return Err(PrivateLendError::ZeroShareAmount);
+        }
 
-        let bal = get_supply_balance(&env, &supplier);
-        if amount > bal {
+        let mut proto = get_protocol(&env);
+        // Price the interval that just ended before withdrawal moves utilization.
+        accrue_global(&env, &mut proto);
+
+        let scaled_bal = get_supply_balance(&env, &supplier);
+        let value = scaled_bal.saturating_mul(proto.supply_index) / rates::INDEX_ONE;
+        if amount > value {
             return Err(PrivateLendError::InsufficientSupply);
         }
 
-        let mut proto2 = get_protocol(&env);
-        // Price the interval that just ended before withdrawal moves utilization.
-        accrue_global(&env, &mut proto2);
-        let available = proto2.total_supplied.saturating_sub(proto2.total_borrowed);
+        let assets = total_supply_assets(&proto, proto.supply_index);
+        let available = assets.saturating_sub(proto.total_borrowed);
         if amount > available {
             return Err(PrivateLendError::InsufficientLiquidity);
         }
 
-        set_supply_balance(&env, &supplier, bal - amount);
+        // Withdrawing the whole displayed value burns the whole balance, so it
+        // can never fail on rounding. Otherwise burn rounds up, in the pool's favour.
+        let burn = if amount == value {
+            scaled_bal
+        } else {
+            let up = amount
+                .saturating_mul(rates::INDEX_ONE)
+                .saturating_add(proto.supply_index - 1)
+                / proto.supply_index;
+            up.min(scaled_bal)
+        };
 
-        proto2.total_supplied = proto2.total_supplied.saturating_sub(amount);
-        set_protocol(&env, &proto2);
+        set_supply_balance(&env, &supplier, scaled_bal - burn);
+        proto.total_scaled_supply = proto.total_scaled_supply.saturating_sub(burn);
+        set_protocol(&env, &proto);
 
         let token = token::Client::new(&env, &config.usdc_token);
         token.transfer(&env.current_contract_address(), &supplier, &amount);
 
-        WithdrawEvent { supplier, usdc_amount: amount, total_supplied: proto2.total_supplied }
-            .publish(&env);
+        WithdrawEvent {
+            supplier,
+            usdc_amount: amount,
+            total_supplied: total_supply_assets(&proto, proto.supply_index),
+        }
+        .publish(&env);
 
         Ok(())
     }
@@ -341,7 +375,8 @@ impl PrivateLendContract {
         accrue_position_interest(&env, &mut pos, &mut proto);
 
         // Check pool has enough liquidity.
-        let available = proto.total_supplied.saturating_sub(proto.total_borrowed);
+        let available = total_supply_assets(&proto, proto.supply_index)
+            .saturating_sub(proto.total_borrowed);
         if usdc_amount > available {
             return Err(PrivateLendError::InsufficientLiquidity);
         }
@@ -739,14 +774,14 @@ impl PrivateLendContract {
     /// Current annual borrow rate in basis points (e.g. 800 = 8%).
     pub fn get_borrow_rate_bp(env: Env) -> i128 {
         let proto = get_protocol(&env);
-        borrow_rate_bp(proto.total_borrowed, proto.total_supplied)
+        borrow_rate_bp(proto.total_borrowed, total_supply_assets(&proto, proto.supply_index))
     }
 
     /// Current annual supply rate in basis points.
     pub fn get_supply_rate_bp(env: Env) -> i128 {
         let proto = get_protocol(&env);
-        let borrow = borrow_rate_bp(proto.total_borrowed, proto.total_supplied);
-        supply_rate_bp(borrow, proto.total_borrowed, proto.total_supplied)
+        let borrow = borrow_rate_bp(proto.total_borrowed, total_supply_assets(&proto, proto.supply_index));
+        supply_rate_bp(borrow, proto.total_borrowed, total_supply_assets(&proto, proto.supply_index))
     }
 
     /// Returns a snapshot of the global protocol state.
@@ -756,7 +791,8 @@ impl PrivateLendContract {
 
     /// Returns the USDC supply balance (in stroops) for a lender.
     pub fn get_supply_balance(env: Env, lender: Address) -> i128 {
-        get_supply_balance(&env, &lender)
+        let proto = get_protocol(&env);
+        get_supply_balance(&env, &lender).saturating_mul(proto.supply_index) / rates::INDEX_ONE
     }
 
     // ── TTL refresh (permissionless) ──────────────────────────────────────────
@@ -803,25 +839,16 @@ impl PrivateLendContract {
 
 /// Brings the global borrow index up to date, charging interest on all
 /// outstanding debt at the rate in force since the last update. Must run
-/// before anything changes `total_borrowed` or `total_supplied`, so the
+/// before anything changes `total_borrowed` or `total_scaled_supply`, so the
 /// interval just ended is priced at the utilization that held during it -
 /// not at whatever a caller sets it to right now (GHSA-c9gg-c476-9vc8).
 fn accrue_global(env: &Env, proto: &mut ProtocolState) {
     let current = env.ledger().sequence();
-    let elapsed = current.saturating_sub(proto.index_ledger) as i128;
-    if elapsed > 0 {
-        let rate = borrow_rate_bp(proto.total_borrowed, proto.total_supplied);
-        let old_index = proto.borrow_index;
-        let new_index = rates::grow_index(old_index, rate, elapsed);
-        if proto.total_borrowed > 0 && new_index > old_index {
-            let delta = proto.total_borrowed.saturating_mul(new_index - old_index) / old_index;
-            proto.total_borrowed = proto.total_borrowed.saturating_add(delta);
-            proto.reserve_usdc = proto
-                .reserve_usdc
-                .saturating_add(delta.saturating_mul(rates::PROTOCOL_FEE_BP) / rates::BP_SCALE);
-        }
-        proto.borrow_index = new_index;
-    }
+    let (borrow_index, supply_index, total_borrowed, reserve) = rates::project(proto, current);
+    proto.borrow_index = borrow_index;
+    proto.supply_index = supply_index;
+    proto.total_borrowed = total_borrowed;
+    proto.reserve_usdc = reserve;
     proto.index_ledger = current;
 }
 

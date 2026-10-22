@@ -11,6 +11,8 @@
 /// At U = 80%:             borrow rate =  48%,  supply rate ≈ 32.6%
 /// At U = 90%:             borrow rate = 128%,  supply rate ≈ 97.9%
 
+use crate::types::ProtocolState;
+
 /// 100% expressed in basis points.
 pub const BP_SCALE: i128 = 10_000;
 /// Optimal utilization: 75%.
@@ -40,6 +42,49 @@ pub fn grow_index(index: i128, rate_bp: i128, ledgers_elapsed: i128) -> i128 {
     accrue_interest(index, rate_bp, ledgers_elapsed)
 }
 
+/// USDC the lenders hold claim to: `floor(total_scaled_supply * index / INDEX_ONE)`.
+pub fn total_supply_assets(proto: &ProtocolState, supply_index: i128) -> i128 {
+    proto.total_scaled_supply.saturating_mul(supply_index) / INDEX_ONE
+}
+
+/// Interest accrual from `proto.index_ledger` to `current_ledger`, without
+/// writing anything. `accrue_global` stores the result; views read it.
+///
+/// Returns `(borrow_index, supply_index, total_borrowed, reserve_usdc)`.
+/// The interval is priced at the utilization that held during it, which uses
+/// the supply index as it stood before the interval. Of the interest `delta`
+/// added to `total_borrowed`, `PROTOCOL_FEE_BP` goes to the reserve and the
+/// rest to the supply index. The rounding remainder stays in the contract,
+/// unassigned.
+pub fn project(proto: &ProtocolState, current_ledger: u32) -> (i128, i128, i128, i128) {
+    let mut borrow_index = proto.borrow_index;
+    let mut supply_index = proto.supply_index;
+    let mut total_borrowed = proto.total_borrowed;
+    let mut reserve = proto.reserve_usdc;
+
+    let elapsed = current_ledger.saturating_sub(proto.index_ledger) as i128;
+    if elapsed > 0 {
+        let assets = total_supply_assets(proto, proto.supply_index);
+        let rate = borrow_rate_bp(proto.total_borrowed, assets);
+        let new_index = grow_index(proto.borrow_index, rate, elapsed);
+        if proto.total_borrowed > 0 && new_index > proto.borrow_index {
+            let delta =
+                proto.total_borrowed.saturating_mul(new_index - proto.borrow_index) / proto.borrow_index;
+            let fee = delta.saturating_mul(PROTOCOL_FEE_BP) / BP_SCALE;
+            let lender_share = delta - fee;
+            total_borrowed = total_borrowed.saturating_add(delta);
+            reserve = reserve.saturating_add(fee);
+            if proto.total_scaled_supply > 0 {
+                supply_index = supply_index.saturating_add(
+                    lender_share.saturating_mul(INDEX_ONE) / proto.total_scaled_supply,
+                );
+            }
+        }
+        borrow_index = new_index;
+    }
+    (borrow_index, supply_index, total_borrowed, reserve)
+}
+
 /// Returns the annual borrow rate in basis points given the current pool state.
 ///
 /// ```text
@@ -48,12 +93,12 @@ pub fn grow_index(index: i128, rate_bp: i128, ledgers_elapsed: i128) -> i128 {
 /// else:
 ///     rate = slope1 + ((U - Uoptimal) / (1 - Uoptimal)) × slope2
 /// ```
-pub fn borrow_rate_bp(total_borrowed: i128, total_supplied: i128) -> i128 {
-    if total_supplied == 0 || total_borrowed == 0 {
+pub fn borrow_rate_bp(total_borrowed: i128, total_supply_assets: i128) -> i128 {
+    if total_supply_assets == 0 || total_borrowed == 0 {
         return 0;
     }
     // U in basis points, capped at 100%.
-    let u_bp = (total_borrowed.saturating_mul(BP_SCALE) / total_supplied).min(BP_SCALE);
+    let u_bp = (total_borrowed.saturating_mul(BP_SCALE) / total_supply_assets).min(BP_SCALE);
 
     if u_bp <= U_OPTIMAL_BP {
         u_bp.saturating_mul(SLOPE1_BP) / U_OPTIMAL_BP
@@ -69,11 +114,11 @@ pub fn borrow_rate_bp(total_borrowed: i128, total_supplied: i128) -> i128 {
 /// ```text
 /// supply_rate = borrow_rate × U × (1 − protocol_fee)
 /// ```
-pub fn supply_rate_bp(borrow_rate: i128, total_borrowed: i128, total_supplied: i128) -> i128 {
-    if total_supplied == 0 || total_borrowed == 0 {
+pub fn supply_rate_bp(borrow_rate: i128, total_borrowed: i128, total_supply_assets: i128) -> i128 {
+    if total_supply_assets == 0 || total_borrowed == 0 {
         return 0;
     }
-    let u_bp = (total_borrowed.saturating_mul(BP_SCALE) / total_supplied).min(BP_SCALE);
+    let u_bp = (total_borrowed.saturating_mul(BP_SCALE) / total_supply_assets).min(BP_SCALE);
     // supply_rate = borrow_rate × U × (1 − protocol_fee)
     let gross = borrow_rate.saturating_mul(u_bp) / BP_SCALE;
     gross.saturating_mul(BP_SCALE - PROTOCOL_FEE_BP) / BP_SCALE

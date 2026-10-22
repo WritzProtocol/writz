@@ -15,7 +15,8 @@ pub enum DataKey {
     Protocol,
     /// Per-deposit position, keyed by the Bitcoin txid.
     Position(BytesN<32>),
-    /// Per-lender USDC supply balance in stroops.
+    /// Per-lender supply balance, **scaled**: USDC value is
+    /// `scaled * supply_index / INDEX_ONE`.
     SupplyBalance(Address),
     /// The relayer-published, co-signed Path A release PSBT for a fully
     /// repaid position, keyed by Bitcoin txid. Lets a user
@@ -78,7 +79,8 @@ pub fn get_protocol(env: &Env) -> ProtocolState {
         // `initialize()`, before the keeper has had any chance to act.
         None => ProtocolState {
             reserve_usdc: 0,
-            total_supplied: 0,
+            total_scaled_supply: 0,
+            supply_index: crate::rates::INDEX_ONE,
             total_borrowed: 0,
             last_keeper_heartbeat: env.ledger().timestamp(),
             borrow_index: crate::rates::INDEX_ONE,
