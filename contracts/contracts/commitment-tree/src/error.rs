@@ -36,4 +36,52 @@ pub enum CommitmentTreeError {
     /// refused. Existing positions can still repay, withdraw, and liquidate;
     /// a pause only blocks new risk-taking.
     Paused                  = 16,
+    /// `raw_tx` has no output paying the Writz P2WSH derived from the
+    /// protocol key, the depositor's key and the timelock - this deposit's
+    /// Bitcoin transaction never locked collateral under the protocol's
+    /// co-signing key (GHSA-2hjj-x5wr-4p68, GHSA-xp6j-g2rw-h5g6,
+    /// GHSA-mg4x-cr23-4x3v).
+    VaultOutputNotFound     = 17,
+    /// The proof's private `collateral_satoshis` (bound in-circuit to the
+    /// public `actual_satoshis` signal) does not match the amount this
+    /// contract independently parsed from `raw_tx`.
+    CollateralAmountMismatch = 18,
+    /// `signal[RECIPIENT_LO/HI]` (sha256 of the recipient's strkey address)
+    /// does not match the authenticated `borrower` argument - the proof was
+    /// generated for a different recipient and cannot be redirected
+    /// (GHSA-xxqv-6vhx-hhrx, GHSA-mhp9-jmvc-x9mw).
+    RecipientMismatch        = 19,
+    /// A constructor `protocol_pubkey` or deposit `user_pubkey` is not a
+    /// compressed secp256k1 key encoding (`02`/`03` prefix).
+    InvalidPubkey            = 20,
+    /// The deposit's timelock is outside 1,008..=105,000 blocks above the
+    /// Bitcoin block that confirmed it - an instant or absurdly distant
+    /// escape hatch.
+    InvalidTimelock          = 21,
+    /// An insertion proof targets a leaf other than the next empty one.
+    LeafIndexMismatch        = 22,
+    /// All 2^20 leaves of the commitment tree are used.
+    TreeFull                 = 23,
+    /// The borrow would take the pool past `Config::max_total_borrowed`.
+    ExposureCapExceeded      = 24,
+    /// `key_sig` is not a Bitcoin signed message by `user_pubkey` over this
+    /// contract, the depositor and the deposit txid (GHSA-862g-739q-x6h8).
+    InvalidKeyProof          = 25,
+    /// Another deposit already used this nullifier; a second leaf with it
+    /// could never be spent (GHSA-frj5-5wmv-wvm3).
+    DuplicateNullifier       = 26,
+    /// A borrow's `min_timelock_height` is below the Bitcoin tip plus
+    /// `Config::borrow_timelock_margin_blocks`, so the position could be
+    /// reclaimed alone too soon after borrowing (#212).
+    TimelockTooSoon          = 27,
+    /// `bitcoin-spv` has no tip, or its tip is older than
+    /// `Config::max_tip_age_secs`, so the timelock check cannot be trusted
+    /// (#212).
+    StaleBitcoinTip          = 28,
+    /// A borrow/repay proof encrypted its keeper note to a key other than
+    /// `Config::keeper_pub_x/y`, so the keeper could not liquidate the
+    /// position (#212).
+    KeeperKeyMismatch        = 29,
+    /// An admin setter was given a value outside its allowed range.
+    InvalidParameter         = 30,
 }

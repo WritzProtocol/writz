@@ -15,11 +15,13 @@ use events::{
 };
 use oracle::get_btc_price_stroops;
 use soroban_sdk::{
-    contract, contractimpl, token, Address, Bytes, BytesN, Env, IntoVal, Symbol, Vec,
+    contract, contractimpl, panic_with_error, token, Address, Bytes, BytesN, Env, IntoVal,
+    Symbol, Vec,
 };
-use spv_types::SpvVerificationResult;
+use spv_types::{btc_parser, key_proof, script, BestTip, HeaderEntry, SpvVerificationResult};
 use types::{
-    borrow_repay_signals as br, deposit_signals as ds, liquidation_signals as lq, Config,
+    borrow_repay_signals as br, deposit_signals as ds, insert_signals as ins,
+    liquidation_signals as lq, Config,
     DataKey, PoolState, Proof,
 };
 
@@ -53,6 +55,9 @@ pub const BN254_PRIME: [u8; 32] = [
     0x43, 0xe1, 0xf5, 0x93, 0xf0, 0x00, 0x00, 0x01,
 ];
 
+/// Leaf capacity of the depth-20 commitment tree.
+const MAX_LEAVES: u32 = 1 << 20;
+
 // Each ledger targets a 5-second close time.
 const LEDGERS_PER_DAY: u32 = 17_280;
 
@@ -67,6 +72,15 @@ const PERSISTENT_THRESHOLD: u32 = 30 * LEDGERS_PER_DAY;
 const NULLIFIER_BUMP:      u32 = 180 * LEDGERS_PER_DAY;
 const NULLIFIER_THRESHOLD: u32 =  30 * LEDGERS_PER_DAY;
 
+// #212: a borrowing position must have at least this many blocks (~30 days)
+// left before its owner can reclaim the BTC alone, measured from a Bitcoin tip
+// no older than DEFAULT_MAX_TIP_AGE_SECS.
+const DEFAULT_BORROW_TIMELOCK_MARGIN: u32 = 4_320;
+const MIN_BORROW_TIMELOCK_MARGIN: u32 = 144;
+const DEFAULT_MAX_TIP_AGE_SECS: u64 = 6 * 60 * 60;
+const MIN_TIP_AGE_SECS: u64 = 60 * 60;
+const MAX_TIP_AGE_SECS: u64 = 48 * 60 * 60;
+
 // ── Contract ──────────────────────────────────────────────────────────────────
 
 #[contract]
@@ -76,13 +90,14 @@ pub struct CommitmentTreeContract;
 impl CommitmentTreeContract {
     // ── Initialization ────────────────────────────────────────────────────────
 
-    /// One-time contract initialization.
+    /// Runs exactly once, atomically, as part of deployment (`__constructor`) -
+    /// see GHSA-422m-f73x-fh58.
     ///
     /// Stores the admin, external contract addresses, and protocol parameters.
     /// Initializes the on-chain Merkle root to the depth-20 Poseidon empty-tree
     /// root so that the first borrow proof's `old_root` can be independently
     /// verified off-chain without any trusted setup.
-    pub fn initialize(
+    pub fn __constructor(
         env: Env,
         admin: Address,
         spv_contract: Address,
@@ -90,9 +105,15 @@ impl CommitmentTreeContract {
         usdc_token: Address,
         oracle: Address,
         min_confirmations: u32,
-    ) -> Result<(), CommitmentTreeError> {
-        if env.storage().instance().has(&DataKey::Config) {
-            return Err(CommitmentTreeError::AlreadyInitialized);
+        protocol_pubkey: BytesN<33>,
+        keeper_pub_x: BytesN<32>,
+        keeper_pub_y: BytesN<32>,
+    ) {
+        if !script::is_compressed_pubkey(&protocol_pubkey) {
+            panic_with_error!(&env, CommitmentTreeError::InvalidPubkey);
+        }
+        if !keeper_key_ok(&keeper_pub_x) {
+            panic_with_error!(&env, CommitmentTreeError::InvalidParameter);
         }
         env.storage().instance().set(
             &DataKey::Config,
@@ -103,9 +124,15 @@ impl CommitmentTreeContract {
                 usdc_token,
                 oracle,
                 min_confirmations,
+                protocol_pubkey,
                 min_deposit_satoshis:     10_000,
                 min_collateral_ratio_bp:  15_000,
                 liquidation_threshold_bp: 12_000,
+                max_total_borrowed: 500_000_000_000, // 50,000 USDC, the same launch cap as private-lend
+                keeper_pub_x,
+                keeper_pub_y,
+                borrow_timelock_margin_blocks: DEFAULT_BORROW_TIMELOCK_MARGIN,
+                max_tip_age_secs: DEFAULT_MAX_TIP_AGE_SECS,
                 paused: false,
             },
         );
@@ -117,7 +144,6 @@ impl CommitmentTreeContract {
             NULLIFIER_THRESHOLD,
             NULLIFIER_BUMP,
         );
-        Ok(())
     }
 
     // ── Deposit ───────────────────────────────────────────────────────────────
@@ -134,6 +160,13 @@ impl CommitmentTreeContract {
     /// 4. **Protocol param** - `signal[MIN_DEPOSIT_SATS]` equals the
     ///    configured minimum.  This prevents generating a proof with a lower
     ///    minimum to sneak in an undersized deposit.
+    /// 4b. **Collateral binding** - `raw_tx` actually pays the Writz P2WSH
+    ///    rebuilt from `Config.protocol_pubkey`, `user_pubkey` and
+    ///    `timelock_height` (the timelock bounded to 1,008..=105,000 blocks
+    ///    above the confirming block), and `signal[ACTUAL_SATOSHIS]` equals
+    ///    that real amount (the circuit separately binds it to the private
+    ///    `collateral_satoshis`). Without this, the referenced transaction
+    ///    need not lock anything under the protocol's co-signing key.
     /// 5. **Nullifier freshness** - the nullifier was not previously spent.
     /// 6. **ZK proof** - Groth16 verification via the `zk-verifier` contract.
     ///
@@ -144,21 +177,26 @@ impl CommitmentTreeContract {
     /// # Public signals (deposit circuit)
     /// | Index | Signal | Description |
     /// |-------|--------|-------------|
-    /// | 0 | `commitment` | Poseidon(collateral, 0, secret, nonce) |
-    /// | 1 | `nullifier` | Poseidon(secret, nonce) |
+    /// | 0 | `commitment` | Poseidon(collateral, 0, liq_key, nonce, timelock) |
+    /// | 1 | `nullifier` | Poseidon(liq_key, nonce) |
     /// | 2 | `btc_txid_lo` | Low 128 bits of txid as Fr element |
     /// | 3 | `btc_txid_hi` | High 128 bits of txid as Fr element |
     /// | 4 | `min_deposit_sats` | Must equal `Config.min_deposit_satoshis` |
+    /// | 5 | `actual_satoshis` | Must equal the real amount parsed from `raw_tx` |
+    /// | 6 | `timelock_height` | Must equal the `timelock_height` argument (#212) |
     ///
     /// # Returns
     /// The commitment (the leaf value to be inserted into the Merkle tree).
     pub fn deposit(
         env: Env,
         depositor: Address,
-        headers: Vec<BytesN<80>>,
+        block_hash: BytesN<32>,
         merkle_proof_btc: Vec<BytesN<32>>,
         tx_index: u32,
         raw_tx: Bytes,
+        user_pubkey: BytesN<33>,
+        timelock_height: u32,
+        key_sig: BytesN<65>,
         zk_proof: Proof,
         public_signals: Vec<BytesN<32>>,
         enc_note: Bytes,
@@ -167,6 +205,9 @@ impl CommitmentTreeContract {
         let config = Self::load_config(&env)?;
         if config.paused {
             return Err(CommitmentTreeError::Paused);
+        }
+        if !script::is_compressed_pubkey(&user_pubkey) {
+            return Err(CommitmentTreeError::InvalidPubkey);
         }
 
         if public_signals.len() != ds::COUNT as u32 {
@@ -177,14 +218,34 @@ impl CommitmentTreeContract {
         let spv: SpvVerificationResult = env.invoke_contract(
             &config.spv_contract,
             &Symbol::new(&env, "verify_transaction"),
-            (headers, merkle_proof_btc, tx_index, raw_tx, config.min_confirmations)
+            (block_hash, merkle_proof_btc, tx_index, raw_tx.clone(), config.min_confirmations)
                 .into_val(&env),
         );
 
-        // 2. Reject duplicate deposits.
+        // The CLTV escape hatch must be neither instant nor absurdly far
+        // away, measured from the block that confirmed the deposit.
+        if !script::timelock_in_bounds(timelock_height, spv.block_height) {
+            return Err(CommitmentTreeError::InvalidTimelock);
+        }
+
+        // The caller must prove they control `user_pubkey`: otherwise anyone
+        // watching Bitcoin could register someone else's Writz deposit as
+        // their own position (GHSA-862g-739q-x6h8). See spv-types::key_proof.
+        let key_msg = key_proof::deposit_message(&env, &env.current_contract_address(), &depositor, &spv.txid);
+        if !key_proof::signed_by(&env, &key_msg, &key_sig, &user_pubkey) {
+            return Err(CommitmentTreeError::InvalidKeyProof);
+        }
+
+        // 2. Reject duplicate deposits, here and across both lending pools
+        //    (GHSA-2975-ggwh-pxw5): consume the txid in the shared registry.
         if env.storage().persistent().has(&DataKey::TxCommitment(spv.txid.clone())) {
             return Err(CommitmentTreeError::DuplicateDeposit);
         }
+        env.invoke_contract::<()>(
+            &config.spv_contract,
+            &Symbol::new(&env, "consume_deposit"),
+            (env.current_contract_address(), spv.txid.clone()).into_val(&env),
+        );
 
         // 3. Txid binding: the ZK proof must commit to this exact Bitcoin txid.
         //
@@ -209,12 +270,49 @@ impl CommitmentTreeContract {
             return Err(CommitmentTreeError::ProtocolParamMismatch);
         }
 
+        // 4b. Collateral binding: rebuild the Writz script this depositor's
+        //     BTC must be locked under, parse the real amount the transaction
+        //     paid to it, and require the proof's public actual_satoshis
+        //     signal to equal it. The circuit separately constrains
+        //     collateral_satoshis === actual_satoshis, so this one check
+        //     transitively binds the private collateral witness to Bitcoin
+        //     reality - closes GHSA-2hjj-x5wr-4p68, GHSA-xp6j-g2rw-h5g6,
+        //     GHSA-mg4x-cr23-4x3v. Same script and parser as private-lend.
+        //
+        //     A per-user script costs the ZK path no privacy: the txid and
+        //     depositor are already public in DepositEvent, and borrow/repay
+        //     never reference the script (#177).
+        let expected_spk = script::p2wsh_script_pubkey(
+            &env,
+            &config.protocol_pubkey,
+            &user_pubkey,
+            timelock_height,
+        );
+        let actual_satoshis = btc_parser::find_p2wsh_output(&raw_tx, &expected_spk)
+            .ok_or(CommitmentTreeError::VaultOutputNotFound)?;
+        let actual_satoshis_signal =
+            sig_u64(&public_signals.get(ds::ACTUAL_SATOSHIS as u32).unwrap());
+        if actual_satoshis_signal != actual_satoshis {
+            return Err(CommitmentTreeError::CollateralAmountMismatch);
+        }
+
+        // 4c. Timelock binding (#212): the commitment carries the timelock
+        //     the script above was rebuilt with, so `borrow` can later require
+        //     real time left on it without learning which position borrows.
+        if public_signals.get(ds::TIMELOCK_HEIGHT as u32).unwrap() != u32_signal(&env, timelock_height) {
+            return Err(CommitmentTreeError::InvalidTimelock);
+        }
+
         let commitment: BytesN<32> = public_signals.get(ds::COMMITMENT as u32).unwrap();
         let nullifier:  BytesN<32> = public_signals.get(ds::NULLIFIER  as u32).unwrap();
 
-        // 5. Nullifier must not be spent.
+        // 5. Nullifier must not be spent, nor used by an earlier deposit -
+        //    a second leaf sharing it could never be spent.
         if env.storage().persistent().has(&DataKey::SpentNullifier(nullifier.clone())) {
             return Err(CommitmentTreeError::NullifierAlreadySpent);
+        }
+        if env.storage().persistent().has(&DataKey::DepositNullifier(nullifier.clone())) {
+            return Err(CommitmentTreeError::DuplicateNullifier);
         }
 
         // 6. Groth16 proof verification.
@@ -234,39 +332,94 @@ impl CommitmentTreeContract {
         env.storage().persistent().extend_ttl(&txid_key, NULLIFIER_THRESHOLD, NULLIFIER_BUMP);
         env.storage().persistent().set(&pending_key, &spv.txid);
         env.storage().persistent().extend_ttl(&pending_key, PERSISTENT_THRESHOLD, PERSISTENT_BUMP);
+        let deposit_nullifier_key = DataKey::DepositNullifier(nullifier.clone());
+        env.storage().persistent().set(&deposit_nullifier_key, &true);
+        env.storage().persistent().extend_ttl(&deposit_nullifier_key, NULLIFIER_THRESHOLD, NULLIFIER_BUMP);
 
-        DepositEvent { commitment: commitment.clone(), depositor, txid: spv.txid, nullifier, enc_note }
-            .publish(&env);
+        DepositEvent {
+            commitment: commitment.clone(),
+            depositor,
+            txid: spv.txid,
+            nullifier,
+            user_pubkey,
+            timelock_height,
+            enc_note,
+        }
+        .publish(&env);
 
         Ok(commitment)
     }
 
-    // ── Merkle root management (Phase 1: trusted relayer) ─────────────────────
+    // ── Merkle root management ────────────────────────────────────────────────
 
     /// Insert a pending commitment into the Merkle tree and advance the root.
     ///
-    /// **Phase 1 (trusted admin):** the relayer runs the Poseidon tree off-chain
-    /// with circomlibjs, inserts the commitment at the next available leaf, and
-    /// submits the resulting root here.
+    /// The caller (the relayer, holding the admin key) supplies an `insert`
+    /// circuit proof that `new_root` is the stored root with the commitment
+    /// written into the empty leaf `NextLeafIndex` (#211, GHSA-prw2-j3jx-43qh).
+    /// The admin chooses when to insert, but no longer what the root becomes:
+    /// a compromised admin key or a relayer bug cannot install a root holding
+    /// invented leaves or dropping honest ones.
     ///
-    /// **Phase 2 (planned):** will require a ZK proof of correct insertion
-    /// (using `MerkleTreeUpdater`) making this operation fully trustless.
+    /// # Validations
+    /// * `signal[COMMITMENT]` is a pending deposit commitment.
+    /// * `signal[OLD_ROOT] == stored_root`.
+    /// * `signal[LEAF_INDEX] == NextLeafIndex` (so insertions are sequential
+    ///   and the circuit's empty-slot check can never overwrite a used leaf).
+    /// * Groth16 proof correctness.
     ///
-    /// The commitment must have been previously registered via `deposit`.
+    /// # Public signals (insert circuit)
+    /// | Index | Signal |
+    /// |-------|--------|
+    /// | 0 | `new_root` |
+    /// | 1 | `old_root` |
+    /// | 2 | `commitment` |
+    /// | 3 | `leaf_index` |
     pub fn insert_commitment(
         env: Env,
         caller: Address,
-        commitment: BytesN<32>,
-        new_root: BytesN<32>,
+        zk_proof: Proof,
+        public_signals: Vec<BytesN<32>>,
     ) -> Result<(), CommitmentTreeError> {
         caller.require_auth();
         let config = Self::load_config(&env)?;
         if caller != config.admin {
             return Err(CommitmentTreeError::Unauthorized);
         }
+        if public_signals.len() != ins::COUNT as u32 {
+            return Err(CommitmentTreeError::InvalidZkProof);
+        }
+
+        let commitment = public_signals.get(ins::COMMITMENT as u32).unwrap();
         if !env.storage().persistent().has(&DataKey::PendingCommitment(commitment.clone())) {
             return Err(CommitmentTreeError::CommitmentNotFound);
         }
+        if public_signals.get(ins::OLD_ROOT as u32).unwrap() != Self::stored_root(&env) {
+            return Err(CommitmentTreeError::RootMismatch);
+        }
+
+        let leaf_index = Self::next_leaf_index(&env);
+        if leaf_index >= MAX_LEAVES {
+            return Err(CommitmentTreeError::TreeFull);
+        }
+        // Compare the whole field element, not just its low bytes, so no
+        // other encoding can stand in for this index.
+        let mut expected_index = [0u8; 32];
+        expected_index[28..32].copy_from_slice(&leaf_index.to_be_bytes());
+        if public_signals.get(ins::LEAF_INDEX as u32).unwrap().to_array() != expected_index {
+            return Err(CommitmentTreeError::LeafIndexMismatch);
+        }
+
+        let verified: bool = env.invoke_contract(
+            &config.zk_verifier,
+            &Symbol::new(&env, "verify_insert"),
+            (zk_proof, public_signals.clone()).into_val(&env),
+        );
+        if !verified {
+            return Err(CommitmentTreeError::InvalidZkProof);
+        }
+
+        let new_root = public_signals.get(ins::NEW_ROOT as u32).unwrap();
         env.storage().persistent().remove(&DataKey::PendingCommitment(commitment.clone()));
         env.storage().persistent().set(&DataKey::MerkleRoot, &new_root);
         env.storage().persistent().extend_ttl(
@@ -274,8 +427,9 @@ impl CommitmentTreeContract {
             NULLIFIER_THRESHOLD,
             NULLIFIER_BUMP,
         );
+        env.storage().instance().set(&DataKey::NextLeafIndex, &(leaf_index + 1));
 
-        InsertLeafEvent { new_root, commitment }.publish(&env);
+        InsertLeafEvent { new_root, commitment, leaf_index }.publish(&env);
         Ok(())
     }
 
@@ -301,6 +455,17 @@ impl CommitmentTreeContract {
     /// * `min_ratio_bp == config.min_collateral_ratio_bp` - no custom thresholds.
     /// * `btc_price == oracle price` - no inflated collateral valuations.
     /// * `old_nullifier` not spent - no double-borrow.
+    /// * `signal[RECIPIENT_LO/HI] == sha256(borrower strkey)` - the proof
+    ///   commits to this exact recipient, so a proof copied from someone
+    ///   else's pending borrow transaction cannot be resubmitted with a
+    ///   different authenticated `borrower` to steal the payout
+    ///   (GHSA-xxqv-6vhx-hhrx, GHSA-mhp9-jmvc-x9mw).
+    /// * `min_timelock_height >= bitcoin-spv tip + borrow_timelock_margin_blocks`,
+    ///   with a tip no older than `max_tip_age_secs` - the circuit proves the
+    ///   position's timelock is at least that bound, so a borrow always
+    ///   leaves the margin before the owner can reclaim the BTC alone (#212).
+    /// * `keeper_pub == Config` - the proof encrypted the new position's
+    ///   liquidation witness to the keeper (#212).
     ///
     /// # Public signals (borrow_repay circuit)
     /// | Index | Signal |
@@ -308,11 +473,16 @@ impl CommitmentTreeContract {
     /// | 0 | `new_root` |
     /// | 1 | `old_nullifier` |
     /// | 2 | `new_commitment` |
-    /// | 3 | `old_root` |
-    /// | 4 | `delta_stroops` (positive i128 for borrow) |
-    /// | 5 | `is_borrow` (1) |
-    /// | 6 | `btc_price_stroops_per_btc` |
-    /// | 7 | `min_ratio_bp` |
+    /// | 3-7 | keeper note: `eph_x`, `eph_y`, `ct0..ct2` (#212) |
+    /// | 8 | `old_root` |
+    /// | 9 | `delta_stroops` (positive i128 for borrow) |
+    /// | 10 | `is_borrow` (1) |
+    /// | 11 | `btc_price_stroops_per_btc` |
+    /// | 12 | `min_ratio_bp` |
+    /// | 13 | `recipient_lo` (low 128 bits of sha256(borrower strkey)) |
+    /// | 14 | `recipient_hi` (high 128 bits of sha256(borrower strkey)) |
+    /// | 15 | `min_timelock_height` (#212) |
+    /// | 16-17 | `keeper_pub_x/y` (must equal Config) (#212) |
     pub fn borrow(
         env: Env,
         borrower: Address,
@@ -333,6 +503,8 @@ impl CommitmentTreeContract {
         let old_root_sig  = public_signals.get(br::OLD_ROOT      as u32).unwrap();
         let old_nullifier = public_signals.get(br::OLD_NULLIFIER as u32).unwrap();
         let new_root      = public_signals.get(br::NEW_ROOT      as u32).unwrap();
+        let new_commitment = public_signals.get(br::NEW_COMMITMENT as u32).unwrap();
+        let keeper_note = keeper_note(&env, &public_signals);
 
         // old_root must match stored root - prevents stale proofs.
         if old_root_sig != Self::stored_root(&env) {
@@ -365,16 +537,50 @@ impl CommitmentTreeContract {
             return Err(CommitmentTreeError::PriceMismatch);
         }
 
+        // Recipient binding: the proof must commit to this exact borrower,
+        // or a copy of it could be resubmitted by a different authenticated
+        // caller to redirect the payout (GHSA-xxqv-6vhx-hhrx,
+        // GHSA-mhp9-jmvc-x9mw). We recompute sha256(borrower strkey) the
+        // same way the prover does and split it into the same lo/hi halves
+        // as the circuit's public signals (mirrors the btc_txid_lo/hi
+        // pattern in `deposit`).
+        let addr_bytes = borrower.to_string().to_bytes();
+        let digest: BytesN<32> = env.crypto().sha256(&addr_bytes).into();
+        let digest_arr = digest.to_array();
+        let sig_lo = public_signals.get(br::RECIPIENT_LO as u32).unwrap().to_array();
+        let sig_hi = public_signals.get(br::RECIPIENT_HI as u32).unwrap().to_array();
+        let lo_ok = sig_lo[0..16] == [0u8; 16] && sig_lo[16..32] == digest_arr[16..32];
+        let hi_ok = sig_hi[0..16] == [0u8; 16] && sig_hi[16..32] == digest_arr[0..16];
+        if !lo_ok || !hi_ok {
+            return Err(CommitmentTreeError::RecipientMismatch);
+        }
+
+        // The keeper must be able to open this position's liquidation note.
+        check_keeper_key(&config, &public_signals)?;
+
+        // Enough time must remain before the owner can reclaim the BTC alone
+        // (#212). The circuit proves timelock >= min_timelock_height; the
+        // bound itself must clear the current tip plus the margin.
+        let min_timelock = u32_from_signal(&public_signals.get(br::MIN_TIMELOCK as u32).unwrap())
+            .ok_or(CommitmentTreeError::SignalOverflow)?;
+        let tip_height = Self::fresh_tip_height(&env, &config)?;
+        if (min_timelock as u64) < tip_height as u64 + config.borrow_timelock_margin_blocks as u64 {
+            return Err(CommitmentTreeError::TimelockTooSoon);
+        }
+
         // Extract the borrow amount from the proof - not from the caller.
         // delta_stroops is a positive 120-bit number for borrow operations.
         let usdc_amount = sig_i128(&public_signals.get(br::DELTA_STROOPS as u32).unwrap())
             .ok_or(CommitmentTreeError::SignalOverflow)?;
 
-        // Check pool liquidity.
+        // Check pool liquidity and the exposure cap.
         let mut pool = Self::load_pool(&env);
         let available = pool.total_supplied.saturating_sub(pool.total_borrowed);
         if usdc_amount > available {
             return Err(CommitmentTreeError::InsufficientLiquidity);
+        }
+        if pool.total_borrowed.saturating_add(usdc_amount) > config.max_total_borrowed {
+            return Err(CommitmentTreeError::ExposureCapExceeded);
         }
 
         // Groth16 proof verification - must come after all signal-level checks
@@ -408,7 +614,56 @@ impl CommitmentTreeContract {
             &usdc_amount,
         );
 
-        BorrowEvent { new_root, borrower, usdc_amount, old_nullifier, enc_note }.publish(&env);
+        BorrowEvent { new_root, borrower, usdc_amount, old_nullifier, new_commitment, enc_note, keeper_note }
+            .publish(&env);
+        Ok(())
+    }
+
+    // ── Release ───────────────────────────────────────────────────────────────
+
+    /// Records that a fully repaid position's BTC has been released, by
+    /// spending the zero-debt leaf's nullifier (GHSA-w4rp-v54x-2cv3,
+    /// GHSA-hcjf-8vjc-2hfv). After this, `borrow` on that leaf fails its
+    /// nullifier check.
+    ///
+    /// Permissionless: the zero-debt proof needs the position's secret and
+    /// nonce, so only its owner can produce one.
+    ///
+    /// Public signals (zero_debt circuit): [commitment, nullifier, merkle_root].
+    pub fn mark_released(
+        env: Env,
+        zk_proof: Proof,
+        public_signals: Vec<BytesN<32>>,
+    ) -> Result<(), CommitmentTreeError> {
+        let config = Self::load_config(&env)?;
+        if config.paused {
+            return Err(CommitmentTreeError::Paused);
+        }
+        if public_signals.len() != 3 {
+            return Err(CommitmentTreeError::InvalidZkProof);
+        }
+
+        let nullifier = public_signals.get(1).unwrap();
+        let root_sig = public_signals.get(2).unwrap();
+        if root_sig != Self::stored_root(&env) {
+            return Err(CommitmentTreeError::RootMismatch);
+        }
+        if env.storage().persistent().has(&DataKey::SpentNullifier(nullifier.clone())) {
+            return Err(CommitmentTreeError::NullifierAlreadySpent);
+        }
+
+        let verified: bool = env.invoke_contract(
+            &config.zk_verifier,
+            &Symbol::new(&env, "verify_zero_debt"),
+            (zk_proof, public_signals).into_val(&env),
+        );
+        if !verified {
+            return Err(CommitmentTreeError::InvalidZkProof);
+        }
+
+        let key = DataKey::SpentNullifier(nullifier.clone());
+        env.storage().persistent().set(&key, &true);
+        env.storage().persistent().extend_ttl(&key, NULLIFIER_THRESHOLD, NULLIFIER_BUMP);
         Ok(())
     }
 
@@ -434,6 +689,7 @@ impl CommitmentTreeContract {
     /// * `old_root == stored_root`
     /// * `is_borrow == 0`
     /// * `old_nullifier` not spent
+    /// * `keeper_pub == Config` (#212)
     /// * Groth16 proof correctness
     pub fn repay(
         env: Env,
@@ -453,6 +709,7 @@ impl CommitmentTreeContract {
         let old_nullifier  = public_signals.get(br::OLD_NULLIFIER as u32).unwrap();
         let new_commitment = public_signals.get(br::NEW_COMMITMENT as u32).unwrap();
         let new_root       = public_signals.get(br::NEW_ROOT      as u32).unwrap();
+        let keeper_note    = keeper_note(&env, &public_signals);
 
         if old_root_sig != Self::stored_root(&env) {
             return Err(CommitmentTreeError::RootMismatch);
@@ -460,6 +717,11 @@ impl CommitmentTreeContract {
         if env.storage().persistent().has(&DataKey::SpentNullifier(old_nullifier.clone())) {
             return Err(CommitmentTreeError::NullifierAlreadySpent);
         }
+
+        // A partly repaid position keeps debt, so the keeper must be able to
+        // open its new note too (#212). Repay has no timelock bound: a
+        // matured position can always repay.
+        check_keeper_key(&config, &public_signals)?;
 
         // is_borrow must be 0 - prevents a borrow proof being submitted here.
         let is_borrow = sig_u32(&public_signals.get(br::IS_BORROW as u32).unwrap());
@@ -506,7 +768,7 @@ impl CommitmentTreeContract {
         env.storage().persistent().set(&DataKey::Pool, &pool);
         env.storage().persistent().extend_ttl(&DataKey::Pool, PERSISTENT_THRESHOLD, PERSISTENT_BUMP);
 
-        RepayEvent { new_root, repayer, usdc_amount, old_nullifier, new_commitment, enc_note }
+        RepayEvent { new_root, repayer, usdc_amount, old_nullifier, new_commitment, enc_note, keeper_note }
             .publish(&env);
         Ok(())
     }
@@ -526,6 +788,11 @@ impl CommitmentTreeContract {
     /// `usdc_debt == debt_stroops` where `debt_stroops` is the private value
     /// hashed into the commitment, so a keeper cannot inflate or deflate the
     /// amount collected.
+    ///
+    /// Anyone holding the position's liquidation witness can call this - in
+    /// practice the keeper, which reads it from the note every borrow and
+    /// repay encrypts to `Config::keeper_pub` (#212). The witness is the
+    /// position's `liq_key`, not its secret, so it cannot borrow or release.
     ///
     /// Liquidation reveals the debt amount by design - the position is being
     /// publicly closed and the on-chain USDC transfer must match the proven debt.
@@ -768,6 +1035,88 @@ impl CommitmentTreeContract {
         Ok(())
     }
 
+    /// Sets the ceiling on total outstanding borrows, in USDC stroops. Admin
+    /// only. Lowering it below the current total blocks new borrows without
+    /// touching existing positions.
+    pub fn set_max_total_borrowed(
+        env: Env,
+        caller: Address,
+        max: i128,
+    ) -> Result<(), CommitmentTreeError> {
+        caller.require_auth();
+        let mut config = Self::load_config(&env)?;
+        if caller != config.admin {
+            return Err(CommitmentTreeError::Unauthorized);
+        }
+        config.max_total_borrowed = max;
+        env.storage().instance().set(&DataKey::Config, &config);
+        Ok(())
+    }
+
+    /// Rotates the keeper's BabyJubJub key (#212). Admin only. Positions
+    /// whose last note went to the old key stay liquidatable by whoever holds
+    /// it; their next borrow or repay re-encrypts to the new one.
+    pub fn set_keeper_pubkey(
+        env: Env,
+        caller: Address,
+        keeper_pub_x: BytesN<32>,
+        keeper_pub_y: BytesN<32>,
+    ) -> Result<(), CommitmentTreeError> {
+        caller.require_auth();
+        let mut config = Self::load_config(&env)?;
+        if caller != config.admin {
+            return Err(CommitmentTreeError::Unauthorized);
+        }
+        if !keeper_key_ok(&keeper_pub_x) {
+            return Err(CommitmentTreeError::InvalidParameter);
+        }
+        config.keeper_pub_x = keeper_pub_x;
+        config.keeper_pub_y = keeper_pub_y;
+        env.storage().instance().set(&DataKey::Config, &config);
+        Ok(())
+    }
+
+    /// Sets how many blocks a borrowing position must have left before its
+    /// timelock (#212). Admin only; 144 (~1 day) up to the deposit window's
+    /// own maximum.
+    pub fn set_borrow_timelock_margin(
+        env: Env,
+        caller: Address,
+        blocks: u32,
+    ) -> Result<(), CommitmentTreeError> {
+        caller.require_auth();
+        let mut config = Self::load_config(&env)?;
+        if caller != config.admin {
+            return Err(CommitmentTreeError::Unauthorized);
+        }
+        if !(MIN_BORROW_TIMELOCK_MARGIN..=script::MAX_TIMELOCK_MARGIN_BLOCKS).contains(&blocks) {
+            return Err(CommitmentTreeError::InvalidParameter);
+        }
+        config.borrow_timelock_margin_blocks = blocks;
+        env.storage().instance().set(&DataKey::Config, &config);
+        Ok(())
+    }
+
+    /// Sets how old `bitcoin-spv`'s tip may be for a borrow to rely on it
+    /// (#212). Admin only; 1 to 48 hours.
+    pub fn set_max_tip_age(
+        env: Env,
+        caller: Address,
+        secs: u64,
+    ) -> Result<(), CommitmentTreeError> {
+        caller.require_auth();
+        let mut config = Self::load_config(&env)?;
+        if caller != config.admin {
+            return Err(CommitmentTreeError::Unauthorized);
+        }
+        if !(MIN_TIP_AGE_SECS..=MAX_TIP_AGE_SECS).contains(&secs) {
+            return Err(CommitmentTreeError::InvalidParameter);
+        }
+        config.max_tip_age_secs = secs;
+        env.storage().instance().set(&DataKey::Config, &config);
+        Ok(())
+    }
+
     /// Pauses or unpauses new deposits/borrows/USDC supply. Admin only.
     ///
     /// A pause never affects existing positions: `repay`, `withdraw_supply`,
@@ -867,6 +1216,18 @@ impl CommitmentTreeContract {
 
     // ── View functions ────────────────────────────────────────────────────────
 
+    /// The keeper's BabyJubJub public key (x, y) every borrow and repay proof
+    /// must encrypt its keeper note to (#212).
+    pub fn get_keeper_pubkey(env: Env) -> Result<(BytesN<32>, BytesN<32>), CommitmentTreeError> {
+        let config = Self::load_config(&env)?;
+        Ok((config.keeper_pub_x, config.keeper_pub_y))
+    }
+
+    /// Blocks a borrowing position must have left before its timelock (#212).
+    pub fn get_borrow_timelock_margin(env: Env) -> Result<u32, CommitmentTreeError> {
+        Ok(Self::load_config(&env)?.borrow_timelock_margin_blocks)
+    }
+
     /// Returns the current Poseidon Merkle root of the position commitment tree.
     pub fn get_merkle_root(env: Env) -> BytesN<32> {
         Self::stored_root(&env)
@@ -880,6 +1241,12 @@ impl CommitmentTreeContract {
     /// Returns the commitment for a Bitcoin txid, or None if not deposited.
     pub fn get_commitment(env: Env, txid: BytesN<32>) -> Option<BytesN<32>> {
         env.storage().persistent().get(&DataKey::TxCommitment(txid))
+    }
+
+    /// Returns the index of the next empty Merkle leaf - the `leaf_index` the
+    /// next insertion proof must target.
+    pub fn get_next_leaf_index(env: Env) -> u32 {
+        Self::next_leaf_index(&env)
     }
 
     /// Returns true if a commitment is pending Merkle tree insertion.
@@ -911,11 +1278,36 @@ impl CommitmentTreeContract {
         Ok(config)
     }
 
+    fn next_leaf_index(env: &Env) -> u32 {
+        env.storage().instance().get(&DataKey::NextLeafIndex).unwrap_or(0)
+    }
+
     fn load_pool(env: &Env) -> PoolState {
         env.storage()
             .persistent()
             .get(&DataKey::Pool)
             .unwrap_or(PoolState { total_supplied: 0, total_borrowed: 0 })
+    }
+
+    /// Height of `bitcoin-spv`'s best tip, if its header is recent enough
+    /// to measure a borrow's timelock margin from (#212).
+    fn fresh_tip_height(env: &Env, config: &Config) -> Result<u32, CommitmentTreeError> {
+        let tip: Option<BestTip> = env.invoke_contract(
+            &config.spv_contract,
+            &Symbol::new(env, "get_best_tip"),
+            Vec::new(env),
+        );
+        let tip = tip.ok_or(CommitmentTreeError::StaleBitcoinTip)?;
+        let header: Option<HeaderEntry> = env.invoke_contract(
+            &config.spv_contract,
+            &Symbol::new(env, "get_header"),
+            (tip.hash,).into_val(env),
+        );
+        let header = header.ok_or(CommitmentTreeError::StaleBitcoinTip)?;
+        if env.ledger().timestamp() > (header.time as u64).saturating_add(config.max_tip_age_secs) {
+            return Err(CommitmentTreeError::StaleBitcoinTip);
+        }
+        Ok(tip.height)
     }
 
     fn stored_root(env: &Env) -> BytesN<32> {
@@ -941,6 +1333,48 @@ impl CommitmentTreeContract {
 
 /// Extracts a `u32` from the last 4 bytes of a 32-byte field element.
 /// Used for boolean flags (`is_borrow`) and basis-point protocol parameters.
+/// A `u32` as the 32-byte big-endian field element a circuit publishes.
+pub(crate) fn u32_signal(env: &Env, v: u32) -> BytesN<32> {
+    let mut arr = [0u8; 32];
+    arr[28..32].copy_from_slice(&v.to_be_bytes());
+    BytesN::from_array(env, &arr)
+}
+
+/// Reads a `u32` signal, refusing any value wider than 32 bits rather than
+/// reading only its low bytes.
+pub(crate) fn u32_from_signal(sig: &BytesN<32>) -> Option<u32> {
+    let arr = sig.to_array();
+    if arr[0..28] != [0u8; 28] {
+        return None;
+    }
+    Some(u32::from_be_bytes([arr[28], arr[29], arr[30], arr[31]]))
+}
+
+/// A keeper key must not be the BabyJubJub identity (x = 0), whose pad
+/// anyone can compute; the circuit refuses it too.
+fn keeper_key_ok(x: &BytesN<32>) -> bool {
+    x.to_array() != [0u8; 32]
+}
+
+/// The proof's keeper key must be the configured one (#212).
+fn check_keeper_key(config: &Config, public_signals: &Vec<BytesN<32>>) -> Result<(), CommitmentTreeError> {
+    let x = public_signals.get(br::KEEPER_PUB_X as u32).unwrap();
+    let y = public_signals.get(br::KEEPER_PUB_Y as u32).unwrap();
+    if x != config.keeper_pub_x || y != config.keeper_pub_y {
+        return Err(CommitmentTreeError::KeeperKeyMismatch);
+    }
+    Ok(())
+}
+
+/// The keeper note's five signals, as published in the event.
+fn keeper_note(env: &Env, public_signals: &Vec<BytesN<32>>) -> Vec<BytesN<32>> {
+    let mut note = Vec::new(env);
+    for i in br::KEEPER_EPH_X..=br::KEEPER_CT2 {
+        note.push_back(public_signals.get(i as u32).unwrap());
+    }
+    note
+}
+
 pub(crate) fn sig_u32(sig: &BytesN<32>) -> u32 {
     let arr = sig.to_array();
     u32::from_be_bytes([arr[28], arr[29], arr[30], arr[31]])

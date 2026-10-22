@@ -1,6 +1,5 @@
 #![no_std]
 
-mod btc_parser;
 mod error;
 mod events;
 mod oracle;
@@ -17,11 +16,11 @@ use events::{
     RepayFullEvent, SupplyEvent, WithdrawEvent,
 };
 use oracle::{collateral_value_stroops, get_btc_price_stroops, health_ratio_bp};
-use rates::{borrow_rate_bp, interest_delta, supply_rate_bp};
+use rates::{borrow_rate_bp, supply_rate_bp, total_supply_assets};
 use soroban_sdk::{
-    contract, contractimpl, token, Address, Bytes, BytesN, Env, IntoVal, Symbol, Vec,
+    contract, contractimpl, panic_with_error, token, Address, Bytes, BytesN, Env, IntoVal, Symbol, Vec,
 };
-use spv_types::SpvVerificationResult;
+use spv_types::{btc_parser, key_proof, script, SpvVerificationResult};
 use storage::{get_config, get_position, get_protocol, get_release_psbt, get_supply_balance,
                set_config, set_position, set_protocol, set_release_psbt, set_supply_balance};
 use types::{Config, Position, PositionStatus, ProtocolState};
@@ -33,7 +32,9 @@ pub struct PrivateLendContract;
 impl PrivateLendContract {
     // ── Initialization ────────────────────────────────────────────────────────
 
-    /// One-time contract initialization.  Can only be called once.
+    /// Runs exactly once, atomically, as part of deployment (`__constructor`):
+    /// no separate initialize transaction exists for anyone to front-run
+    /// (GHSA-422m-f73x-fh58).
     ///
     /// # Parameters
     /// - `admin`          - Address that can update the keeper.
@@ -45,7 +46,10 @@ impl PrivateLendContract {
     ///                       it is.
     /// - `keeper`         - Trusted liquidation keeper (Phase 1).
     /// - `relayer`        - Auto-cosign relayer watcher address.
-    pub fn initialize(
+    /// - `protocol_pubkey`- The protocol's 33-byte compressed Bitcoin
+    ///                       co-signing key; every deposit must be locked
+    ///                       under a script that contains it.
+    pub fn __constructor(
         env: Env,
         admin: Address,
         spv_contract: Address,
@@ -53,9 +57,10 @@ impl PrivateLendContract {
         oracle: Address,
         keeper: Address,
         relayer: Address,
-    ) -> Result<(), PrivateLendError> {
-        if get_config(&env).is_some() {
-            return Err(PrivateLendError::AlreadyInitialized);
+        protocol_pubkey: BytesN<33>,
+    ) {
+        if !script::is_compressed_pubkey(&protocol_pubkey) {
+            panic_with_error!(&env, PrivateLendError::InvalidProtocolPubkey);
         }
         set_config(
             &env,
@@ -66,6 +71,7 @@ impl PrivateLendContract {
                 oracle,
                 keeper,
                 relayer,
+                protocol_pubkey,
                 min_deposit_satoshis: 100_000,       // 0.001 BTC
                 min_collateral_ratio_bp: 15_000,      // 150%
                 liquidation_threshold_bp: 12_000,     // 120%
@@ -73,9 +79,9 @@ impl PrivateLendContract {
                 min_confirmations: 6,
                 keeper_stale_after_secs: 86_400,      // 24h stale-keeper liveness window
                 paused: false,
+                max_total_borrowed: 500_000_000_000, // 50,000 USDC - the launch cap in docs/research/tokenomics-fee-model.md
             },
         );
-        Ok(())
     }
 
     // ── Deposit ───────────────────────────────────────────────────────────────
@@ -83,21 +89,29 @@ impl PrivateLendContract {
     /// Register a BTC deposit by submitting an SPV proof.
     ///
     /// The contract:
-    /// 1. Calls the `bitcoin-spv` contract to verify the transaction inclusion.
-    /// 2. Parses the raw transaction on-chain to find the P2WSH output matching
+    /// 1. Rebuilds the Writz redeem script from the configured protocol key,
+    ///    `user_pubkey` and `timelock_height`, and requires
+    ///    `p2wsh_script_pubkey` to be exactly its P2WSH - so the collateral is
+    ///    provably locked under the protocol's co-signing key.
+    /// 2. Calls the `bitcoin-spv` contract to verify the transaction inclusion,
+    ///    and requires the timelock to lie 1,008..=105,000 blocks above the
+    ///    block that confirmed the deposit.
+    /// 3. Parses the raw transaction on-chain to find the P2WSH output matching
     ///    `p2wsh_script_pubkey` and read the deposited satoshi amount.
-    /// 3. Creates a `Position` entry in persistent storage.
+    /// 4. Creates a `Position` entry in persistent storage.
     ///
     /// After this call succeeds the user can borrow USDC against the position.
     ///
     /// # Parameters
     /// - `depositor`          - Stellar address of the depositor (must authorize).
-    /// - `headers`            - Bitcoin block headers (80 bytes each).
+    /// - `block_hash`         - Hash of the Bitcoin block holding the deposit; it must
+    ///                          already be stored and on the best chain in `bitcoin-spv`.
     /// - `merkle_proof`       - Sibling hashes for the Merkle inclusion proof.
     /// - `tx_index`           - 0-based index of the transaction in its block.
     /// - `raw_tx`             - Non-witness serialization of the Bitcoin transaction.
     /// - `p2wsh_script_pubkey`- 34-byte P2WSH scriptPubKey (OP_0 + 32-byte hash)
-    ///                          of the deposit output.
+    ///                          of the deposit output. Must equal the P2WSH of
+    ///                          the Writz redeem script for the other arguments.
     /// - `timelock_height`    - Bitcoin block height of the CLTV escape hatch.
     /// - `user_pubkey`        - Depositor's 33-byte compressed Bitcoin public
     ///                          key. Already public the moment
@@ -108,13 +122,14 @@ impl PrivateLendContract {
     pub fn deposit(
         env: Env,
         depositor: Address,
-        headers: Vec<BytesN<80>>,
+        block_hash: BytesN<32>,
         merkle_proof: Vec<BytesN<32>>,
         tx_index: u32,
         raw_tx: Bytes,
         p2wsh_script_pubkey: Bytes,
         timelock_height: u32,
         user_pubkey: BytesN<33>,
+        key_sig: BytesN<65>,
     ) -> Result<BytesN<32>, PrivateLendError> {
         depositor.require_auth();
 
@@ -123,9 +138,29 @@ impl PrivateLendContract {
             return Err(PrivateLendError::Paused);
         }
 
-        // Validate the scriptPubKey is 34 bytes (OP_0 0x20 <32 bytes>).
-        if p2wsh_script_pubkey.len() != 34 {
+        // Validate the scriptPubKey is P2WSH-shaped (OP_0 0x20 <32 bytes>).
+        if p2wsh_script_pubkey.len() != 34
+            || p2wsh_script_pubkey.get(0) != Some(0x00)
+            || p2wsh_script_pubkey.get(1) != Some(0x20)
+        {
             return Err(PrivateLendError::InvalidScriptPubKey);
+        }
+
+        // The output must be locked under the Writz script: the protocol's
+        // co-signing key, this depositor's key and this timelock. Deriving it
+        // here (rather than trusting the caller) is what stops a depositor
+        // from pledging BTC they can spend alone, or someone else's UTXO.
+        if !script::is_compressed_pubkey(&user_pubkey) {
+            return Err(PrivateLendError::InvalidUserPubkey);
+        }
+        let expected_spk = script::p2wsh_script_pubkey(
+            &env,
+            &config.protocol_pubkey,
+            &user_pubkey,
+            timelock_height,
+        );
+        if p2wsh_script_pubkey != expected_spk {
+            return Err(PrivateLendError::ScriptPubKeyMismatch);
         }
 
         // 1. Cross-contract SPV verification.
@@ -133,7 +168,7 @@ impl PrivateLendContract {
             &config.spv_contract,
             &Symbol::new(&env, "verify_transaction"),
             (
-                headers,
+                block_hash,
                 merkle_proof,
                 tx_index,
                 raw_tx.clone(),
@@ -143,10 +178,30 @@ impl PrivateLendContract {
         );
         let txid = spv_result.txid;
 
-        // 2. Reject duplicate deposits.
+        // The CLTV escape hatch must not be an instant exit, nor absurdly
+        // far away: bound it relative to the block that confirmed the deposit.
+        if !script::timelock_in_bounds(timelock_height, spv_result.block_height) {
+            return Err(PrivateLendError::InvalidTimelock);
+        }
+
+        // The caller must prove they control `user_pubkey`: otherwise anyone
+        // watching Bitcoin could register someone else's Writz deposit as
+        // their own position (GHSA-862g-739q-x6h8). See spv-types::key_proof.
+        let key_msg = key_proof::deposit_message(&env, &env.current_contract_address(), &depositor, &txid);
+        if !key_proof::signed_by(&env, &key_msg, &key_sig, &user_pubkey) {
+            return Err(PrivateLendError::InvalidKeyProof);
+        }
+
+        // 2. Reject duplicate deposits, here and across both lending pools
+        //    (GHSA-2975-ggwh-pxw5): consume the txid in the shared registry.
         if get_position(&env, &txid).is_some() {
             return Err(PrivateLendError::PositionAlreadyExists);
         }
+        env.invoke_contract::<()>(
+            &config.spv_contract,
+            &Symbol::new(&env, "consume_deposit"),
+            (env.current_contract_address(), txid.clone()).into_val(&env),
+        );
 
         // 3. Parse the raw transaction on-chain to find the P2WSH output.
         let btc_satoshis =
@@ -166,6 +221,7 @@ impl PrivateLendContract {
             p2wsh_script_pubkey,
             timelock_height,
             last_update_ledger: env.ledger().sequence(),
+            debt_index: rates::INDEX_ONE,
             depositor,
             status: PositionStatus::Active,
             user_pubkey,
@@ -185,7 +241,8 @@ impl PrivateLendContract {
     // ── USDC supply ───────────────────────────────────────────────────────────
 
     /// Lender supplies USDC to the pool, making it available for borrowing.
-    /// Lenders earn `supply_rate_bp()` APR on their supplied amount.
+    /// The deposit is stored as scaled units, so the lender's balance grows
+    /// with `supply_index` as borrowers pay interest.
     pub fn supply_usdc(
         env: Env,
         supplier: Address,
@@ -197,23 +254,37 @@ impl PrivateLendContract {
             return Err(PrivateLendError::Paused);
         }
 
+        let mut proto = get_protocol(&env);
+        // Credit the interval that just ended to the existing lenders before
+        // this supply joins them, so a supply earns nothing from the past.
+        accrue_global(&env, &mut proto);
+
+        let scaled = amount.saturating_mul(rates::INDEX_ONE) / proto.supply_index;
+        if scaled <= 0 {
+            return Err(PrivateLendError::ZeroShareAmount);
+        }
+
         let token = token::Client::new(&env, &config.usdc_token);
         token.transfer(&supplier, &env.current_contract_address(), &amount);
 
-        let mut proto = get_protocol(&env);
-        proto.total_supplied = proto.total_supplied.saturating_add(amount);
+        proto.total_scaled_supply = proto.total_scaled_supply.saturating_add(scaled);
         set_protocol(&env, &proto);
 
         let bal = get_supply_balance(&env, &supplier);
-        set_supply_balance(&env, &supplier, bal.saturating_add(amount));
+        set_supply_balance(&env, &supplier, bal.saturating_add(scaled));
 
-        SupplyEvent { supplier, usdc_amount: amount, total_supplied: proto.total_supplied }
-            .publish(&env);
+        SupplyEvent {
+            supplier,
+            usdc_amount: amount,
+            total_supplied: total_supply_assets(&proto, proto.supply_index),
+        }
+        .publish(&env);
 
         Ok(())
     }
 
-    /// Lender withdraws previously supplied USDC from the pool.
+    /// Lender withdraws USDC from the pool, up to the current value of their
+    /// scaled balance (principal plus accrued interest).
     pub fn withdraw_supply(
         env: Env,
         supplier: Address,
@@ -221,29 +292,51 @@ impl PrivateLendContract {
     ) -> Result<(), PrivateLendError> {
         supplier.require_auth();
         let config = get_config(&env).ok_or(PrivateLendError::NotInitialized)?;
+        if amount <= 0 {
+            return Err(PrivateLendError::ZeroShareAmount);
+        }
 
-        let bal = get_supply_balance(&env, &supplier);
-        if amount > bal {
+        let mut proto = get_protocol(&env);
+        // Price the interval that just ended before withdrawal moves utilization.
+        accrue_global(&env, &mut proto);
+
+        let scaled_bal = get_supply_balance(&env, &supplier);
+        let value = scaled_bal.saturating_mul(proto.supply_index) / rates::INDEX_ONE;
+        if amount > value {
             return Err(PrivateLendError::InsufficientSupply);
         }
 
-        let proto = get_protocol(&env);
-        let available = proto.total_supplied.saturating_sub(proto.total_borrowed);
+        let assets = total_supply_assets(&proto, proto.supply_index);
+        let available = assets.saturating_sub(proto.total_borrowed);
         if amount > available {
             return Err(PrivateLendError::InsufficientLiquidity);
         }
 
-        set_supply_balance(&env, &supplier, bal - amount);
+        // Withdrawing the whole displayed value burns the whole balance, so it
+        // can never fail on rounding. Otherwise burn rounds up, in the pool's favour.
+        let burn = if amount == value {
+            scaled_bal
+        } else {
+            let up = amount
+                .saturating_mul(rates::INDEX_ONE)
+                .saturating_add(proto.supply_index - 1)
+                / proto.supply_index;
+            up.min(scaled_bal)
+        };
 
-        let mut proto2 = get_protocol(&env);
-        proto2.total_supplied = proto2.total_supplied.saturating_sub(amount);
-        set_protocol(&env, &proto2);
+        set_supply_balance(&env, &supplier, scaled_bal - burn);
+        proto.total_scaled_supply = proto.total_scaled_supply.saturating_sub(burn);
+        set_protocol(&env, &proto);
 
         let token = token::Client::new(&env, &config.usdc_token);
         token.transfer(&env.current_contract_address(), &supplier, &amount);
 
-        WithdrawEvent { supplier, usdc_amount: amount, total_supplied: proto2.total_supplied }
-            .publish(&env);
+        WithdrawEvent {
+            supplier,
+            usdc_amount: amount,
+            total_supplied: total_supply_assets(&proto, proto.supply_index),
+        }
+        .publish(&env);
 
         Ok(())
     }
@@ -282,9 +375,13 @@ impl PrivateLendContract {
         accrue_position_interest(&env, &mut pos, &mut proto);
 
         // Check pool has enough liquidity.
-        let available = proto.total_supplied.saturating_sub(proto.total_borrowed);
+        let available = total_supply_assets(&proto, proto.supply_index)
+            .saturating_sub(proto.total_borrowed);
         if usdc_amount > available {
             return Err(PrivateLendError::InsufficientLiquidity);
+        }
+        if proto.total_borrowed.saturating_add(usdc_amount) > config.max_total_borrowed {
+            return Err(PrivateLendError::ExposureCapExceeded);
         }
 
         // Compute post-borrow collateral ratio.
@@ -387,9 +484,9 @@ impl PrivateLendContract {
     /// On success:
     /// - The caller's USDC covers the outstanding debt.
     /// - The position is marked `Liquidated`.
-    /// - A `liquidate` event is emitted containing the caller's address and
-    ///   the P2WSH scriptPubKey.  The Writz backend co-signs the Bitcoin
-    ///   release to the caller at a 10% discount (liquidation bonus in BTC).
+    /// - A `liquidate` event is emitted with the position txid and the
+    ///   caller's address. It does not release any Bitcoin: the collateral
+    ///   stays under the user's script (GHSA-5rxp-7f9g-r66x).
     /// - If the caller is the designated keeper, `last_keeper_heartbeat` is
     ///   refreshed (a keeper that successfully liquidates is provably alive).
     ///
@@ -434,6 +531,16 @@ impl PrivateLendContract {
         token.transfer(&keeper, &env.current_contract_address(), &debt);
 
         proto.total_borrowed = proto.total_borrowed.saturating_sub(debt);
+
+        // Keeper bonus in USDC from the protocol reserve, capped at what the
+        // reserve holds. Never paid in BTC: the protocol does not move BTC.
+        let bonus_due = debt.saturating_mul(config.liquidation_bonus_bp as i128) / rates::BP_SCALE;
+        let bonus_paid = bonus_due.min(proto.reserve_usdc);
+        if bonus_paid > 0 {
+            proto.reserve_usdc -= bonus_paid;
+            token.transfer(&env.current_contract_address(), &keeper, &bonus_paid);
+        }
+
         if is_designated_keeper {
             proto.last_keeper_heartbeat = env.ledger().timestamp();
         }
@@ -444,12 +551,7 @@ impl PrivateLendContract {
         set_position(&env, &txid, &pos);
         set_protocol(&env, &proto);
 
-        LiquidateEvent {
-            txid,
-            keeper,
-            p2wsh_script_pubkey:  pos.p2wsh_script_pubkey,
-            liquidation_bonus_bp: config.liquidation_bonus_bp,
-        }
+        LiquidateEvent { txid, keeper, bonus_paid }
         .publish(&env);
 
         Ok(())
@@ -458,6 +560,21 @@ impl PrivateLendContract {
     // ── Admin ─────────────────────────────────────────────────────────────────
 
     /// Update the keeper address.  Admin only.
+    pub fn set_max_total_borrowed(
+        env: Env,
+        caller: Address,
+        max: i128,
+    ) -> Result<(), PrivateLendError> {
+        caller.require_auth();
+        let mut config = get_config(&env).ok_or(PrivateLendError::NotInitialized)?;
+        if caller != config.admin {
+            return Err(PrivateLendError::Unauthorized);
+        }
+        config.max_total_borrowed = max;
+        set_config(&env, &config);
+        Ok(())
+    }
+
     pub fn set_keeper(
         env: Env,
         caller: Address,
@@ -657,14 +774,14 @@ impl PrivateLendContract {
     /// Current annual borrow rate in basis points (e.g. 800 = 8%).
     pub fn get_borrow_rate_bp(env: Env) -> i128 {
         let proto = get_protocol(&env);
-        borrow_rate_bp(proto.total_borrowed, proto.total_supplied)
+        borrow_rate_bp(proto.total_borrowed, total_supply_assets(&proto, proto.supply_index))
     }
 
     /// Current annual supply rate in basis points.
     pub fn get_supply_rate_bp(env: Env) -> i128 {
         let proto = get_protocol(&env);
-        let borrow = borrow_rate_bp(proto.total_borrowed, proto.total_supplied);
-        supply_rate_bp(borrow, proto.total_borrowed, proto.total_supplied)
+        let borrow = borrow_rate_bp(proto.total_borrowed, total_supply_assets(&proto, proto.supply_index));
+        supply_rate_bp(borrow, proto.total_borrowed, total_supply_assets(&proto, proto.supply_index))
     }
 
     /// Returns a snapshot of the global protocol state.
@@ -674,7 +791,8 @@ impl PrivateLendContract {
 
     /// Returns the USDC supply balance (in stroops) for a lender.
     pub fn get_supply_balance(env: Env, lender: Address) -> i128 {
-        get_supply_balance(&env, &lender)
+        let proto = get_protocol(&env);
+        get_supply_balance(&env, &lender).saturating_mul(proto.supply_index) / rates::INDEX_ONE
     }
 
     // ── TTL refresh (permissionless) ──────────────────────────────────────────
@@ -719,18 +837,29 @@ impl PrivateLendContract {
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
-/// Accrues interest on `pos` and updates `proto.total_borrowed` accordingly.
-/// Called at the start of every state-changing operation on a position.
-fn accrue_position_interest(env: &Env, pos: &mut Position, proto: &mut ProtocolState) {
+/// Brings the global borrow index up to date, charging interest on all
+/// outstanding debt at the rate in force since the last update. Must run
+/// before anything changes `total_borrowed` or `total_scaled_supply`, so the
+/// interval just ended is priced at the utilization that held during it -
+/// not at whatever a caller sets it to right now (GHSA-c9gg-c476-9vc8).
+fn accrue_global(env: &Env, proto: &mut ProtocolState) {
     let current = env.ledger().sequence();
-    let elapsed = current.saturating_sub(pos.last_update_ledger) as i128;
-    if elapsed == 0 || pos.usdc_debt == 0 {
-        pos.last_update_ledger = current;
-        return;
+    let (borrow_index, supply_index, total_borrowed, reserve) = rates::project(proto, current);
+    proto.borrow_index = borrow_index;
+    proto.supply_index = supply_index;
+    proto.total_borrowed = total_borrowed;
+    proto.reserve_usdc = reserve;
+    proto.index_ledger = current;
+}
+
+/// Brings `pos.usdc_debt` up to date with the global borrow index. The
+/// interest itself was already added to `total_borrowed` and the reserve by
+/// `accrue_global`, which this calls first.
+fn accrue_position_interest(env: &Env, pos: &mut Position, proto: &mut ProtocolState) {
+    accrue_global(env, proto);
+    if pos.usdc_debt > 0 && pos.debt_index > 0 {
+        pos.usdc_debt = pos.usdc_debt.saturating_mul(proto.borrow_index) / pos.debt_index;
     }
-    let rate = borrow_rate_bp(proto.total_borrowed, proto.total_supplied);
-    let delta = interest_delta(pos.usdc_debt, rate, elapsed);
-    pos.usdc_debt = pos.usdc_debt.saturating_add(delta);
-    proto.total_borrowed = proto.total_borrowed.saturating_add(delta);
-    pos.last_update_ledger = current;
+    pos.debt_index = proto.borrow_index;
+    pos.last_update_ledger = env.ledger().sequence();
 }

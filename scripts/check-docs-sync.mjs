@@ -93,11 +93,20 @@ const canonicalCounts = new Set([
 const ADDRESS_RE = /\bC[A-Z2-7]{55}\b/g;
 const COUNT_RE = /\b(\d+)(?:\s*\/\s*\d+)?\s+(?:unit\s+|integration\s+)?tests?\b/gi;
 
-// defindex-vault-testnet.md records a third-party (DeFindex factory / Blend
-// strategy) deployment, not a Writz-authored contract - its addresses live
-// outside testnet.md's source-of-truth model, so they're expected to be
-// "unknown" to it.
+// The defindex-vault-*.md records are third-party (DeFindex factory / Blend
+// strategy / Circle USDC) deployments, not Writz-authored contracts - their
+// addresses live outside testnet.md's source-of-truth model, so they're
+// expected to be "unknown" to it.
 const defindexVaultMdPath = path.join(repoRoot, "contracts/deployments/defindex-vault-testnet.md");
+const defindexVaultMainnetMdPath = path.join(repoRoot, "contracts/deployments/defindex-vault-mainnet.md");
+
+// Docs that cite a vault (docs/products/earn.md) are checked against these
+// records, so a redeployed vault flags them as stale like any other address.
+for (const record of [defindexVaultMdPath, defindexVaultMainnetMdPath]) {
+  for (const address of readFileSync(record, "utf8").match(/\bC[A-Z2-7]{55}\b/g) ?? []) {
+    knownAddresses.add(address);
+  }
+}
 
 // oracle-design.md and blend-usdc-integration.md document third-party price
 // oracle contracts (Reflector, Pyth, DIA) verified on-chain via
@@ -110,6 +119,7 @@ const skipForCounts = new Set([testnetMdPath]); // deployment log has no test-co
 const skipForAddresses = new Set([
   testnetMdPath,
   defindexVaultMdPath,
+  defindexVaultMainnetMdPath,
   oracleDesignMdPath,
   blendUsdcIntegrationMdPath,
 ]); // testnetMd IS the source of truth; these others record external addresses

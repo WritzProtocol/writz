@@ -21,7 +21,47 @@
 //! the expected return type for their `env.invoke_contract` calls into
 //! `bitcoin-spv`.
 
-use soroban_sdk::{contracttype, Address, BytesN, Env};
+use soroban_sdk::{contracttype, Address, BytesN, Env, U256};
+
+/// Bitcoin transaction output parsing. Moved here from `private-lend` (its
+/// original and, until now, only caller) so `commitment-tree` can share the
+/// same on-chain parser rather than re-implementing it - the "hand-copied
+/// verbatim into separate crates" problem this module's own doc comment
+/// above describes, applied to a parser instead of a struct.
+pub mod btc_parser;
+
+/// The Writz P2WSH locking script and its timelock bounds, shared by both
+/// lending contracts' deposit checks.
+pub mod script;
+
+/// Proof that a depositor controls the Bitcoin key their deposit names
+/// (GHSA-862g-739q-x6h8), shared by both lending contracts.
+pub mod key_proof;
+
+/// A header accepted into `bitcoin-spv`, keyed by its block hash. Shared so
+/// `commitment-tree` can read the tip's timestamp (#212).
+#[contracttype]
+#[derive(Clone, Debug)]
+pub struct HeaderEntry {
+    pub prev: BytesN<32>,
+    pub merkle_root: BytesN<32>,
+    pub height: u32,
+    pub bits: u32,
+    pub time: u32,
+    /// Timestamp of the first block of this header's difficulty period.
+    pub period_start_time: u32,
+    /// Cumulative work since the checkpoint (the checkpoint itself is 0).
+    pub chainwork: U256,
+}
+
+/// The tip of the most-work chain `bitcoin-spv` knows about.
+#[contracttype]
+#[derive(Clone, Debug)]
+pub struct BestTip {
+    pub hash: BytesN<32>,
+    pub height: u32,
+    pub chainwork: U256,
+}
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -30,11 +70,12 @@ pub struct SpvVerificationResult {
     pub txid: BytesN<32>,
 
     /// The hash (SHA256d) of the block that contains the transaction.
-    /// This is the hash of `headers[0]`.
     pub block_hash: BytesN<32>,
 
-    /// Number of block headers supplied by the caller.
-    /// Equal to the number of confirmations the caller is asserting.
+    /// Bitcoin height of the block that contains the transaction.
+    pub block_height: u32,
+
+    /// The block's depth below the best chain tip (the tip itself is 1).
     pub confirmations: u32,
 }
 
@@ -63,8 +104,7 @@ pub const STUB_PRICE_STROOPS_PER_BTC: i128 = 60_000 * 10_000_000; // = 600_000_0
 /// swapping in a real price feed here requires changing this function's
 /// body (not just the `Config.oracle` address this contract already
 /// supports via its `set_oracle` setter), since the address alone is never
-/// read here yet. See `docs/roadmap/phases.md` for the Phase 2 oracle
-/// integration this blocks on.
+/// read here yet; the Phase 2 oracle integration blocks on it.
 ///
 /// Phase 2 migration: replace the body with a SEP-40 cross-contract call:
 /// ```text

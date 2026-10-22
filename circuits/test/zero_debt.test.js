@@ -1,5 +1,9 @@
 'use strict';
-const { poseidonHash, prove, verify, buildSingleLeafTree } = require('./helpers');
+const {
+    poseidonHash, prove, verify, buildSingleLeafTree,
+    TIMELOCK, liqKey, positionCommitment, positionNullifier,
+    keeperKeypair, openKeeperNote, unpackPosition,
+} = require('./helpers');
 
 const DEPTH = 20;
 const COLLATERAL = 1_000_000n; // 0.01 BTC
@@ -7,7 +11,7 @@ const SECRET = 0xaabbccdd11223344n;
 const NONCE  = 0x1122334455667788n;
 
 async function buildZeroDebtTree() {
-    const commitment = await poseidonHash([COLLATERAL, 0n, SECRET, NONCE]);
+    const commitment = await positionCommitment(COLLATERAL, 0n, SECRET, NONCE);
     const tree = await buildSingleLeafTree(commitment, DEPTH);
     return { commitment, ...tree };
 }
@@ -17,6 +21,7 @@ function zeroDebtInput({ tree }) {
         collateral_satoshis: String(COLLATERAL),
         secret:               String(SECRET),
         nonce:                String(NONCE),
+        timelock_height:      String(TIMELOCK),
         path_elements:        tree.pathElements.map(String),
         path_indices:         tree.pathIndices.map(String),
         merkle_root:          String(tree.root),
@@ -32,12 +37,18 @@ describe('zero_debt circuit', () => {
         expect(valid).toBe(true);
     });
 
-    test('merkle_root is the only public signal, and it echoes the input root', async () => {
-        const tree = await buildZeroDebtTree();
+    test('public signals are [commitment, nullifier, merkle_root], and commitment echoes the real leaf (GHSA-6jmp-wf3x-3vxh, GHSA-9j8g-prh5-jhhj)', async () => {
+        // /api/cosign binds a zero-debt proof to the specific position it's
+        // releasing by checking publicSignals[0] against the caller-claimed
+        // commitment - without this output, a valid proof carried no
+        // indication of which position it was about, so a proof for position
+        // B could authorize releasing position A's BTC.
+        const { commitment, ...tree } = await buildZeroDebtTree();
         const input = zeroDebtInput({ tree });
         const { publicSignals } = await prove('zero_debt', input);
-        expect(publicSignals.length).toBe(1);
-        expect(BigInt(publicSignals[0])).toBe(tree.root);
+        expect(publicSignals.length).toBe(3);
+        expect(BigInt(publicSignals[0])).toBe(commitment);
+        expect(BigInt(publicSignals[2])).toBe(tree.root);
     });
 
     test('a commitment with non-zero debt cannot generate a valid proof', async () => {
@@ -48,7 +59,7 @@ describe('zero_debt circuit', () => {
         // of producing. This is the core security property this circuit
         // exists for: it must be impossible to release BTC for a position
         // that still owes debt.
-        const debtCommitment = await poseidonHash([COLLATERAL, 500n, SECRET, NONCE]);
+        const debtCommitment = await positionCommitment(COLLATERAL, 500n, SECRET, NONCE);
         const tree = await buildSingleLeafTree(debtCommitment, DEPTH);
         const input = zeroDebtInput({ tree });
         await expect(prove('zero_debt', input)).rejects.toThrow();
@@ -72,11 +83,29 @@ describe('zero_debt circuit', () => {
     });
 
     test('tampered merkle_root public signal fails verification', async () => {
+        const { commitment, ...tree } = await buildZeroDebtTree();
+        const input = zeroDebtInput({ tree });
+        const { proof, publicSignals } = await prove('zero_debt', input);
+        expect(BigInt(publicSignals[0])).toBe(commitment);
+        const tampered = [publicSignals[0], publicSignals[1], String(BigInt(publicSignals[2]) + 1n)];
+        const valid = await verify('zero_debt', proof, tampered);
+        expect(valid).toBe(false);
+    });
+
+    test('tampered commitment public signal fails verification - a proof cannot be relabeled to a different position (GHSA-6jmp-wf3x-3vxh)', async () => {
         const tree = await buildZeroDebtTree();
         const input = zeroDebtInput({ tree });
         const { proof, publicSignals } = await prove('zero_debt', input);
-        const tampered = [String(BigInt(publicSignals[0]) + 1n)];
+        const tampered = [String(BigInt(publicSignals[0]) + 1n), publicSignals[1], publicSignals[2]];
         const valid = await verify('zero_debt', proof, tampered);
         expect(valid).toBe(false);
+    });
+
+    test('the nullifier output is Poseidon(liq_key, nonce), the value borrow_repay spends for this leaf (GHSA-w4rp-v54x-2cv3)', async () => {
+        const tree = await buildZeroDebtTree();
+        const input = zeroDebtInput({ tree });
+        const { publicSignals } = await prove('zero_debt', input);
+        const expected = await positionNullifier(SECRET, NONCE);
+        expect(BigInt(publicSignals[1])).toBe(expected);
     });
 });

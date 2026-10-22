@@ -1,4 +1,6 @@
-# Bitcoin SPV SDK
+---
+title: "Bitcoin SPV SDK"
+---
 
 > **Accuracy note:** the `outputs: Vec<TxOutput>` field and per-output extraction pattern shown below do not exist in the current `bitcoin-spv` contract - the real return type (`SpvVerificationResult`, defined in the shared `spv-types` crate) only has `txid`, `block_hash`, and `confirmations`. There is no on-chain output-parsing/address-matching helper today; a caller who needs that must parse `raw_tx` themselves. Treat the "Return Type" and "outputs" sections below as an aspirational SDK surface, not the current contract interface, until this is either implemented or removed.
 
@@ -20,7 +22,7 @@ Building a Bitcoin SPV verifier on Soroban from scratch requires:
 - Extensive testing against real Bitcoin transactions
 - A security audit of the cryptographic implementation
 
-The Writz SPV contract has done all of this. It has 47 passing tests, is deployed on Soroban testnet, and has been verified against real Bitcoin mainnet transactions. Use it instead.
+The Writz SPV contract has done all of this. It has 47 passing tests, is deployed on Stellar testnet, and has been verified against real Bitcoin mainnet transactions. Use it instead.
 
 ---
 
@@ -72,7 +74,7 @@ match deposit_output {
 }
 ```
 
-**Testnet contract address:** `CB2BD6QCSZVNZN5NLI7C5NF356WXVJDSXT6LVAQFWHHS4SZ4NCKKNIVA`
+**Testnet contract address:** `CAHHY4S4WCIFU4LBSKBI3IP6A4QYR2COV6EACDEBXGPJFDWBJWGOMCLP`
 
 ### Return Type
 
@@ -193,4 +195,4 @@ The Writz SPV SDK verifies that a **transaction exists in the Bitcoin blockchain
 
 ---
 
-**Next:** [Contract Reference →](contract-reference.md)
+**Next:** [Contract Reference →](/developers/contract-reference)

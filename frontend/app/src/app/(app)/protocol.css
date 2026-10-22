@@ -1,0 +1,42 @@
+/* Protocol */
+.pr-grid { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 48px; margin-top: 48px; align-items: start; }
+.pr-block { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.pr-wide { margin-top: 64px; }
+.pr-block-head { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 4px 16px; margin-bottom: 16px; }
+.pr-h2 { font-size: clamp(21px, 1.8vw, 25px); font-weight: 600; letter-spacing: -0.014em; line-height: 1.25; }
+.pr-at { font-family: var(--ff-mono), ui-monospace, monospace; font-size: 13px; color: var(--muted); }
+.pr-note { margin-bottom: 16px; max-width: 60ch; font-size: 15px; color: var(--body); }
+.pr-text { font-size: 17px; line-height: 1.3; }
+.pr-block > .wz-hint { margin-top: 12px; }
+
+.pr-table { width: 100%; border-collapse: separate; border-spacing: 0 4px; font-size: 15px; }
+.pr-table th, .pr-table td { padding: 16px 20px 16px 0; text-align: left; font-weight: 400; color: var(--heading); vertical-align: middle; }
+.pr-table tbody th, .pr-table tbody td { background: color-mix(in oklab, var(--heading) 6%, var(--bg)); }
+.pr-table tbody th { padding-left: 20px; }
+.pr-table thead th { padding-top: 0; padding-bottom: 4px; font-size: 13px; color: var(--muted); }
+.pr-table thead th:first-child { padding-left: 20px; }
+.pr-ret { display: inline-flex; align-items: center; gap: 12px; }
+.pr-bar { position: relative; display: inline-block; width: 140px; height: 8px; border-radius: 4px; background: var(--tint-20); overflow: hidden; flex: none; }
+.pr-bar > span { display: block; height: 100%; border-radius: 4px; background: var(--positive); }
+.pr-bar[data-partial="true"] > span { background: var(--info); }
+
+.pr-contracts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 4px; margin: 0; }
+.pr-contracts > div { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 4px 16px; min-height: 56px; padding: 6px 20px; background: color-mix(in oklab, var(--heading) 6%, var(--bg)); font-size: 15px; }
+.pr-contracts dt { color: var(--body); }
+.pr-contracts dd { margin: 0; }
+.pr-contracts a { display: inline-flex; align-items: center; min-height: 44px; font-size: 14px; }
+
+@media (max-width: 1279px) {
+  .pr-grid { grid-template-columns: minmax(0, 1fr); gap: 48px; margin-top: 40px; }
+}
+@media (max-width: 767px) {
+  .pr-grid { margin-top: 32px; }
+  .pr-wide { margin-top: 48px; }
+  .pr-table thead { display: none; }
+  .pr-table, .pr-table tbody, .pr-table tr { display: block; }
+  .pr-table tr { margin-bottom: 4px; padding: 10px 16px; background: color-mix(in oklab, var(--heading) 6%, var(--bg)); }
+  .pr-table tbody th, .pr-table tbody td { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 4px 12px; padding: 6px 0; background: none; }
+  .pr-table th::before, .pr-table td::before { content: attr(data-label); color: var(--body); font-family: var(--font-sans); font-size: 14px; }
+  .pr-bar { width: 80px; }
+  .pr-contracts > div { padding: 6px 16px; }
+}

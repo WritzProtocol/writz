@@ -7,7 +7,7 @@
 # access, only the public r1cs, ptau, transcript, and final zkey.
 #
 # Usage: bash scripts/ceremony/03_verify_transcript.sh <circuit> [final.zkey]
-#   circuit:    deposit | borrow_repay | liquidation | zero_debt
+#   circuit:    deposit | borrow_repay | liquidation | zero_debt | insert
 #   final.zkey: defaults to ceremony/<circuit>/<highest-numbered>.zkey
 set -euo pipefail
 
@@ -101,7 +101,7 @@ print(f"  ✓ {len(transcript)} contribution(s) recorded, hash chain is consiste
 
 if len(transcript) < 6:  # coordinator's 0000 entry + 5 real participants
     print(f"WARNING: only {len(transcript) - 1} participant contribution(s) recorded - "
-          "docs/scf/milestone-plan.md requires a minimum of 5 independent participants "
+          "docs/research/circom-circuit-design.md requires a minimum of 5 independent participants "
           "per circuit for a production ceremony.", file=sys.stderr)
 PYEOF
 

@@ -1,0 +1,170 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "Writz Protocol",
+  "colors": {
+    "primary": "#15181E",
+    "light": "#FFC300",
+    "dark": "#15181E"
+  },
+  "background": {
+    "color": {
+      "light": "#F6F7F8",
+      "dark": "#0C0E12"
+    }
+  },
+  "logo": {
+    "light": "/brand/writz-lockup-black.svg",
+    "dark": "/brand/writz-lockup-white.svg",
+    "href": "https://writz.xyz"
+  },
+  "favicon": "/brand/writz-icon.svg",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Architecture",
+            "pages": [
+              "architecture/technical-overview",
+              "architecture/diagrams"
+            ]
+          },
+          {
+            "group": "Introduction",
+            "pages": [
+              "introduction/what-is-writz",
+              "introduction/the-problem",
+              "introduction/how-writz-works",
+              "introduction/why-stellar-why-now"
+            ]
+          },
+          {
+            "group": "Products",
+            "pages": [
+              "products/privatelend",
+              "products/earn",
+              "products/dark-swap",
+              "products/btc-savings",
+              "products/zk-proof-of-reserve"
+            ]
+          },
+          {
+            "group": "Security",
+            "pages": [
+              "security/security-model",
+              "security/audits",
+              "security/bug-bounty",
+              "security/stride-threat-model"
+            ]
+          },
+          {
+            "group": "Roadmap",
+            "pages": [
+              "roadmap/vision"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "How It Works",
+        "groups": [
+          {
+            "group": "How It Works",
+            "pages": [
+              "how-it-works/bitcoin-side",
+              "how-it-works/spv-verification",
+              "how-it-works/zk-privacy-layer",
+              "how-it-works/stellar-side"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Developers",
+        "groups": [
+          {
+            "group": "Developers",
+            "pages": [
+              "developers/quick-start",
+              "developers/runbook",
+              "developers/spv-sdk",
+              "developers/contract-reference",
+              "developers/contribution-guide"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Research",
+        "groups": [
+          {
+            "group": "Research",
+            "pages": [
+              "research/spv-implementations",
+              "research/market-landscape",
+              "research/protocol-x-ray-capabilities",
+              "research/soroban-compute-benchmarks",
+              "research/bitcoin-locking-script",
+              "research/oracle-design",
+              "research/interest-rate-model",
+              "research/liquidation-mechanism",
+              "research/circom-circuit-design",
+              "research/relayer-incentive-design",
+              "research/blend-usdc-integration",
+              "research/tokenomics-fee-model",
+              "research/security-audit-strategy",
+              "research/regulatory-landscape",
+              "research/growth-strategy"
+            ]
+          }
+        ]
+      }
+    ],
+    "global": {
+      "anchors": [
+        {
+          "anchor": "Testnet Explorer",
+          "href": "https://stellar.expert/explorer/testnet/contract/CAQBLCAPGXXCZTJDAJLY7E4PTJYGR6CY4YWH4JSJKFXYIHW3GANP6RFM",
+          "icon": "cube"
+        },
+        {
+          "anchor": "Bitcoin Signet Tx",
+          "href": "https://blockstream.info/signet/tx/119321009b2f92dac8f25f6bcddb2ed6a3ae778e8748ec52910cce90742e4098",
+          "icon": "bitcoin-sign"
+        },
+        {
+          "anchor": "Discord",
+          "href": "https://discord.gg/zDa4xRN9Xe",
+          "icon": "discord"
+        }
+      ]
+    }
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "GitHub",
+        "href": "https://github.com/WritzProtocol/writz"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Launch App",
+      "href": "https://writz.xyz"
+    }
+  },
+  "footer": {
+    "socials": {
+      "twitter": "https://twitter.com/writz_protocol",
+      "github": "https://github.com/WritzProtocol/writz"
+    }
+  },
+  "redirects": [
+    {
+      "source": "/docs/:slug*",
+      "destination": "/:slug*"
+    }
+  ]
+}

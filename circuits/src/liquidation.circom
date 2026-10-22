@@ -3,6 +3,7 @@ pragma circom 2.0.0;
 include "circomlib/circuits/poseidon.circom";
 include "circomlib/circuits/comparators.circom";
 include "./merkle.circom";
+include "./position.circom";
 
 /*
  * Writz Protocol - Liquidation Circuit
@@ -19,6 +20,13 @@ include "./merkle.circom";
  *   4. usdc_debt == debt_stroops - the public output is bound to the private
  *      debt field inside the commitment, so the contract can trust it.
  *
+ * Third-party liquidation (#212): the witness is the position's `liq_key`,
+ * not its `secret`. Every borrow and repay encrypts liq_key, nonce and the
+ * position's amounts to the keeper inside its proof, so the keeper can
+ * liquidate a ZK position without its owner. liq_key cannot borrow, repay or
+ * release: those circuits require `secret`, of which liq_key is a Poseidon
+ * hash.
+ *
  * The circuit does NOT compute the liquidation proceeds or bonus - those are
  * computed on-chain using the public inputs (price, threshold) once the proof
  * is verified. The liquidator receives BTC at a 10% discount to market price.
@@ -30,14 +38,16 @@ include "./merkle.circom";
  *   3: btc_price_stroops_per_btc  - public input, from oracle
  *   4: liquidation_threshold_bp   - public input, 12_000 = 120%
  *
- * Constraint count: measured via `circom --r1cs` after the collateral/price
- * range-check fix below - regenerate this comment if the circuit changes
- * again rather than trusting stale arithmetic here.
+ * Constraint count: 5,699 non-linear (measured via `circom --r1cs`, not an
+ * estimate - regenerate this comment if the circuit changes again rather
+ * than trusting stale arithmetic here).
  *   - Commitment hash: ~320
  *   - Merkle proof (depth 20): ~5,200
  *   - Undercollateral check: ~200
- *   - collateral_satoshis / btc_price_stroops_per_btc range checks: ~120
- *     (previously unconstrained here - see the comment at Step 3)
+ *   - collateral_satoshis / btc_price_stroops_per_btc / liquidation_threshold_bp
+ *     range checks: ~152
+ *     (collateral/price previously unconstrained here - see the comment at
+ *     Step 3; threshold range check added for GHSA-px5w-x8xp-wh2h)
  *   - Nullifier: ~160
  *   - usdc_debt binding: ~1
  */
@@ -46,8 +56,9 @@ template LiquidationCircuit(DEPTH) {
     // ── Private inputs ────────────────────────────────────────────────────────
     signal input collateral_satoshis; // BTC collateral (hidden)
     signal input debt_stroops;        // Current USDC debt (hidden)
-    signal input secret;              // Position secret
+    signal input liq_key;             // Position liquidation key, Poseidon(secret)
     signal input nonce;               // Position nonce
+    signal input timelock_height;     // CLTV height carried in the commitment
 
     // Merkle tree membership proof
     signal input path_elements[DEPTH];
@@ -63,11 +74,12 @@ template LiquidationCircuit(DEPTH) {
     signal output usdc_debt;  // Proven outstanding debt - bound to the commitment's debt field
 
     // ── Step 1: Reconstruct the position commitment ───────────────────────────
-    component commit = Poseidon(4);
-    commit.inputs[0] <== collateral_satoshis;
-    commit.inputs[1] <== debt_stroops;
-    commit.inputs[2] <== secret;
-    commit.inputs[3] <== nonce;
+    component commit = PositionCommitment();
+    commit.collateral_satoshis <== collateral_satoshis;
+    commit.debt_stroops <== debt_stroops;
+    commit.liq_key <== liq_key;
+    commit.nonce <== nonce;
+    commit.timelock_height <== timelock_height;
     signal commitment <== commit.out;
 
     // ── Step 2: Verify commitment is in the Merkle tree ──────────────────────
@@ -92,6 +104,19 @@ template LiquidationCircuit(DEPTH) {
     collateral_range.in <== collateral_satoshis;
     component price_range = Num2Bits(64); // generous headroom over any realistic USD price
     price_range.in <== btc_price_stroops_per_btc;
+
+    // `liquidation_threshold_bp` had no range check at all: it feeds `rhs_bp`
+    // below as an unconstrained BN254 field element. The contract only
+    // checks it against the configured 12_000 via `sig_u32`, which reads the
+    // last 4 bytes of the 32-byte signal - so a prover could submit a field
+    // element whose low 32 bits read 12_000 but whose true value is
+    // enormous, making `rhs_bp` wrap modulo the field and mark a healthy
+    // position as undercollateralized (GHSA-px5w-x8xp-wh2h). 32 bits is
+    // generous headroom over any realistic basis-point value; once range-
+    // checked here, no value that reaches a valid proof can have non-zero
+    // high bytes, so the contract's `sig_u32` read is safe again.
+    component threshold_range = Num2Bits(32);
+    threshold_range.in <== liquidation_threshold_bp;
 
     // ── Step 3: Prove the position is undercollateralized ─────────────────────
     // Collateral ratio = (collateral_satoshis × price / 100_000_000) / debt
@@ -118,10 +143,10 @@ template LiquidationCircuit(DEPTH) {
     under_check.out === 1;
 
     // ── Step 4: Compute nullifier ─────────────────────────────────────────────
-    // nullifier = Poseidon(secret, nonce)
-    component null_hasher = Poseidon(2);
-    null_hasher.inputs[0] <== secret;
-    null_hasher.inputs[1] <== nonce;
+    // nullifier = Poseidon(liq_key, nonce)
+    component null_hasher = PositionNullifier();
+    null_hasher.liq_key <== liq_key;
+    null_hasher.nonce <== nonce;
     nullifier <== null_hasher.out;
 
     // ── Step 5: Bind public debt output to private debt field ─────────────────
@@ -134,7 +159,7 @@ template LiquidationCircuit(DEPTH) {
 
 // Public outputs (always public): nullifier, usdc_debt
 // Public inputs: merkle_root, btc_price_stroops_per_btc, liquidation_threshold_bp
-// Private: collateral_satoshis, debt_stroops, secret, nonce, path_elements, path_indices
+// Private: collateral_satoshis, debt_stroops, liq_key, nonce, timelock_height, path_elements, path_indices
 component main {public [
     merkle_root,
     btc_price_stroops_per_btc,

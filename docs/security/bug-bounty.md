@@ -1,4 +1,6 @@
-# Bug Bounty
+---
+title: "Bug Bounty"
+---
 
 **Responsible disclosure program for Writz Protocol.**
 

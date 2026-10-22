@@ -30,6 +30,15 @@ pub enum ZkVerifierError {
     PublicInputCountMismatch = 5,
     /// Proof verification failed - the proof is invalid.
     InvalidProof            = 6,
+    /// A public signal's raw bytes encode a BN254 field element >= the
+    /// scalar modulus r. `Bn254Fr::from_bytes` (used below) silently
+    /// reduces such values mod r, so `signal` and `signal - r` verify as
+    /// the same field element - but callers (commitment-tree) use the raw
+    /// bytes as storage keys, so the two would alias to different keys for
+    /// what the circuit and this verifier treat as one value
+    /// (GHSA-cq44-4536-mfm2). Rejected here, before any signal is used for
+    /// anything, rather than trusted to be canonical.
+    NonCanonicalPublicSignal = 7,
 }
 
 // ── Contract ──────────────────────────────────────────────────────────────────
@@ -41,14 +50,10 @@ pub struct ZkVerifierContract;
 impl ZkVerifierContract {
     // ── Initialization ────────────────────────────────────────────────────────
 
-    /// One-time setup: record the admin address.
+    /// Runs exactly once, atomically, as part of deployment (`__constructor`).
     /// The admin is the only account that can call `set_verification_key`.
-    pub fn initialize(env: Env, admin: Address) -> Result<(), ZkVerifierError> {
-        if storage::has_admin(&env) {
-            return Err(ZkVerifierError::AlreadyInitialized);
-        }
+    pub fn __constructor(env: Env, admin: Address) {
         storage::set_admin(&env, &admin);
-        Ok(())
     }
 
     // ── Verification key management ───────────────────────────────────────────
@@ -147,6 +152,20 @@ impl ZkVerifierContract {
         Self::verify_for_circuit(&env, CircuitId::BorrowRepay, proof, public_signals)
     }
 
+    /// Verify a Groth16 proof for the zero-debt release circuit.
+    ///
+    /// Public signals (in order):
+    ///   [0] commitment  - the zero-debt leaf being released
+    ///   [1] nullifier   - Poseidon(secret, nonce); recorded as spent on release
+    ///   [2] merkle_root - must match the on-chain root
+    pub fn verify_zero_debt(
+        env: Env,
+        proof: Proof,
+        public_signals: Vec<BytesN<32>>,
+    ) -> Result<bool, ZkVerifierError> {
+        Self::verify_for_circuit(&env, CircuitId::ZeroDebt, proof, public_signals)
+    }
+
     /// Verify a Groth16 proof for the liquidation circuit.
     ///
     /// Public signals (in order):
@@ -160,6 +179,21 @@ impl ZkVerifierContract {
         public_signals: Vec<BytesN<32>>,
     ) -> Result<bool, ZkVerifierError> {
         Self::verify_for_circuit(&env, CircuitId::Liquidation, proof, public_signals)
+    }
+
+    /// Verify a Groth16 proof for the Merkle insertion circuit.
+    ///
+    /// Public signals (in order):
+    ///   [0] new_root   - the root after the insertion
+    ///   [1] old_root   - must match the on-chain root
+    ///   [2] commitment - the leaf written into the empty slot
+    ///   [3] leaf_index - must match the contract's next free leaf
+    pub fn verify_insert(
+        env: Env,
+        proof: Proof,
+        public_signals: Vec<BytesN<32>>,
+    ) -> Result<bool, ZkVerifierError> {
+        Self::verify_for_circuit(&env, CircuitId::Insert, proof, public_signals)
     }
 
     // ── Internal helpers ──────────────────────────────────────────────────────
@@ -178,8 +212,31 @@ impl ZkVerifierContract {
             return Err(ZkVerifierError::PublicInputCountMismatch);
         }
 
+        // Every signal must already be canonical (< r) before it reaches
+        // verify_groth16 - see NonCanonicalPublicSignal's doc comment.
+        for sig in public_signals.iter() {
+            if !is_canonical_bn254_scalar(&sig) {
+                return Err(ZkVerifierError::NonCanonicalPublicSignal);
+            }
+        }
+
         Ok(verify_groth16(env, &vk, &proof, &public_signals))
     }
+}
+
+/// The BN254 scalar field modulus r, as a 32-byte big-endian value.
+const BN254_SCALAR_MODULUS: [u8; 32] = [
+    0x30, 0x64, 0x4e, 0x72, 0xe1, 0x31, 0xa0, 0x29, 0xb8, 0x50, 0x45, 0xb6, 0x81, 0x81, 0x58, 0x5d,
+    0x28, 0x33, 0xe8, 0x48, 0x79, 0xb9, 0x70, 0x91, 0x43, 0xe1, 0xf5, 0x93, 0xf0, 0x00, 0x00, 0x01,
+];
+
+/// True if `sig`'s big-endian value is strictly less than the BN254 scalar
+/// modulus r - i.e. it's the unique canonical representative of its field
+/// element, not `element + k*r` for some k >= 1. Plain byte-array
+/// lexicographic comparison: both operands are already the same 32-byte
+/// big-endian width, so this is equivalent to numeric comparison.
+fn is_canonical_bn254_scalar(sig: &BytesN<32>) -> bool {
+    sig.to_array() < BN254_SCALAR_MODULUS
 }
 
 // ── Core Groth16 verification ─────────────────────────────────────────────────

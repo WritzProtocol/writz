@@ -1,0 +1,372 @@
+/* The whitepaper is a light paper page in Graphite & Gold, apart from the dark landing. */
+
+body:has(.paper-doc) {
+  background: #f6f7f8;
+}
+
+.paper-doc {
+  --paper: #f6f7f8;
+  --panel: #ffffff;
+  --ink: var(--on-accent);
+  --gold: var(--accent);
+  --body: #4b515b;
+  --muted: #646a73;
+  --rule: #e2e4e8;
+
+  min-height: 100vh;
+  min-height: 100svh;
+  background: var(--paper);
+  color: var(--body);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+.paper-doc .wrap {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.paper-doc header.masthead {
+  border-bottom: 1px solid var(--rule);
+  padding: 40px 0 72px;
+}
+
+.paper-doc .masthead .lockup {
+  height: 32px;
+  aspect-ratio: 355.44 / 100;
+  background: var(--ink);
+  -webkit-mask: url("/brand/writz-lockup.svg") no-repeat center / contain;
+  mask: url("/brand/writz-lockup.svg") no-repeat center / contain;
+  margin-bottom: 64px;
+}
+
+.paper-doc h1 {
+  font-size: 52px;
+  font-weight: 600;
+  letter-spacing: -0.028em;
+  line-height: 1.08;
+  color: var(--ink);
+  margin: 0 0 20px;
+}
+
+.paper-doc .lead {
+  font-size: 21px;
+  font-weight: 400;
+  letter-spacing: -0.008em;
+  line-height: 1.45;
+  max-width: 680px;
+  margin: 0;
+}
+
+.paper-doc section {
+  padding: 72px 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.paper-doc section:last-of-type {
+  border-bottom: 0;
+}
+
+.paper-doc h2 {
+  font-size: 36px;
+  font-weight: 600;
+  letter-spacing: -0.022em;
+  line-height: 1.15;
+  color: var(--ink);
+  margin: 0 0 12px;
+}
+
+.paper-doc p {
+  font-size: 17px;
+  line-height: 1.6;
+  max-width: 680px;
+  margin: 0 0 16px;
+}
+
+.paper-doc .label {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  line-height: 1.2;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 20px;
+}
+
+.paper-doc a {
+  color: var(--ink);
+  text-decoration-color: var(--rule);
+  text-underline-offset: 3px;
+  transition: text-decoration-color var(--dur-micro) var(--ease-enter);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .paper-doc a:hover {
+    text-decoration-color: var(--ink);
+  }
+}
+
+.paper-doc .caption {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--muted);
+  margin: 14px 0 0;
+  max-width: 680px;
+}
+
+.paper-doc blockquote {
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 24px 26px;
+  margin: 20px 0 0;
+  max-width: 760px;
+}
+
+.paper-doc blockquote p:last-child {
+  margin-bottom: 0;
+}
+
+.paper-doc blockquote p {
+  overflow-wrap: anywhere;
+}
+
+.paper-doc blockquote .head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.paper-doc blockquote .head .name {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.paper-doc .copy {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 5px 11px;
+  cursor: pointer;
+  transition: border-color var(--dur-micro) var(--ease-enter);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .paper-doc .copy:hover {
+    border-color: var(--ink);
+  }
+}
+
+.paper-doc footer.colophon {
+  padding: 48px 0 72px;
+  font-size: 15px;
+  color: var(--muted);
+}
+
+.paper-doc footer.colophon .links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+}
+
+.paper-doc .doc-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 28px;
+  margin: 28px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 15px;
+  color: var(--muted);
+}
+
+.paper-doc .doc-meta li {
+  margin: 0;
+}
+
+.paper-doc .doc-meta strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.paper-doc .doc-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 32px;
+}
+
+/* Ink on Gold is 11.05:1. Gold is a surface here, never type. */
+.paper-doc a.btn {
+  display: inline-flex;
+  align-items: center;
+  min-height: 48px;
+  padding: 0 24px;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  text-decoration: none;
+  border: 1px solid var(--ink);
+  color: var(--ink);
+  background: transparent;
+}
+
+.paper-doc a.btn.primary {
+  background: var(--gold);
+  border-color: var(--gold);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .paper-doc a.btn:hover {
+    text-decoration: none;
+    background: var(--ink);
+    border-color: var(--ink);
+    color: var(--paper);
+  }
+}
+
+.paper-doc a.btn:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+}
+
+.paper-doc .contributions,
+.paper-doc .contents {
+  max-width: 680px;
+  margin: 0;
+  padding: 0 0 0 22px;
+}
+
+.paper-doc .contributions {
+  list-style: decimal;
+}
+
+.paper-doc .contributions li,
+.paper-doc .contents li {
+  font-size: 17px;
+  line-height: 1.6;
+  margin: 0 0 14px;
+}
+
+.paper-doc .contributions strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.paper-doc .contents {
+  max-width: none;
+  list-style: none;
+  padding: 0;
+  border-top: 1px solid var(--rule);
+}
+
+.paper-doc .contents li {
+  display: flex;
+  gap: 20px;
+  margin: 0;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.paper-doc .contents .num {
+  flex: 0 0 28px;
+  color: var(--muted);
+  font-family: var(--ff-mono), ui-monospace, monospace;
+  font-size: 14px;
+  padding-top: 2px;
+}
+
+.paper-doc .contents .name {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.paper-doc .contents .note {
+  display: block;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.paper-doc pre.cite {
+  margin: 16px 0 0;
+  overflow-x: auto;
+  font-family: var(--ff-mono), ui-monospace, monospace;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--ink);
+  white-space: pre;
+}
+
+@media (max-width: 720px) {
+  .paper-doc h1 {
+    font-size: 34px;
+  }
+
+  .paper-doc h2 {
+    font-size: 27px;
+  }
+
+  .paper-doc .lead {
+    font-size: 18px;
+  }
+
+  .paper-doc p {
+    font-size: 16px;
+  }
+
+  .paper-doc section {
+    padding: 48px 0;
+  }
+
+  .paper-doc header.masthead {
+    padding: 32px 0 48px;
+  }
+
+  .paper-doc .masthead .lockup {
+    margin-bottom: 40px;
+  }
+
+  .paper-doc .doc-actions {
+    flex-direction: column;
+  }
+
+  .paper-doc a.btn {
+    justify-content: center;
+  }
+}
+
+.paper-doc .copy {
+  touch-action: manipulation;
+}
+
+@media (pointer: coarse) {
+  .paper-doc .copy {
+    position: relative;
+  }
+  .paper-doc .copy::after {
+    content: "";
+    position: absolute;
+    inset: -9px 0;
+  }
+  .paper-doc footer.colophon .links a {
+    display: inline-flex;
+    align-items: center;
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .paper-doc :is(p, .doc-meta) a:not(.btn) {
+    padding-block: 13px;
+  }
+}

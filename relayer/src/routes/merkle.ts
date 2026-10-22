@@ -1,14 +1,67 @@
 import { Router, Request, Response } from "express";
-import { Keypair, Transaction } from "@stellar/stellar-sdk";
+import { rateLimit } from "express-rate-limit";
+import { Keypair, Transaction, rpc } from "@stellar/stellar-sdk";
 import { Client } from "commitment-tree";
 import { config } from "../config.js";
 import { computePath, computeRoot } from "../merkle.js";
 import { readLeaves, writeLeaves, saveNote, readNotes } from "../leaf-store.js";
+import { verifyInsertAuth, lookupDepositorOnChain, InsertAuthError } from "../insert-auth.js";
+import { proveInsertion } from "../insert-prover.js";
+import { withTreeLock } from "../tree-lock.js";
 
 const COMMITMENT_RE = /^[0-9a-f]{64}$/i;
 const HEX_RE = /^[0-9a-f]+$/i;
 
 export const merkleRouter = Router();
+
+// Per-IP limiter for the two mutating, previously-unauthenticated routes
+// (js/missing-rate-limiting, flagged by CodeQL on /insert-commitment once it
+// started doing real authorization - a check worth throttling regardless of
+// outcome, since /insert-commitment's failure path still does a Soroban RPC
+// event scan, and /update-leaf's still does a get_merkle_root() call). A
+// generous but finite budget: real deposits/borrows/repays are infrequent
+// per wallet, so this only bites a caller hammering the endpoint.
+const writeLimiter = rateLimit({
+  windowMs: 60_000,
+  limit: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many requests - please slow down and try again shortly." },
+});
+
+// Read-only calls use this fixed dummy address as `publicKey` - the
+// generated Client requires one to build a simulation envelope, but
+// `get_merkle_root` never checks an auth source, so any syntactically valid
+// account works.
+const READ_ONLY_SOURCE = "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF";
+
+/** Fetches the index of the next empty leaf the contract will accept. */
+async function fetchOnChainNextLeafIndex(): Promise<number> {
+  const readClient = new Client({
+    contractId: config.commitmentTreeId,
+    networkPassphrase: config.networkPassphrase,
+    rpcUrl: config.stellarRpcUrl,
+    allowHttp: config.stellarRpcUrl.startsWith("http://"),
+    publicKey: READ_ONLY_SOURCE,
+  });
+  const { result } = await readClient.get_next_leaf_index();
+  return Number(result);
+}
+
+
+/** Fetches the real on-chain Merkle root. Throws if `COMMITMENT_TREE_ID` is
+ * unset or the RPC call fails - callers decide how to respond to either. */
+async function fetchOnChainRoot(): Promise<bigint> {
+  const readClient = new Client({
+    contractId: config.commitmentTreeId,
+    networkPassphrase: config.networkPassphrase,
+    rpcUrl: config.stellarRpcUrl,
+    allowHttp: config.stellarRpcUrl.startsWith("http://"),
+    publicKey: READ_ONLY_SOURCE,
+  });
+  const { result: onChainRootBytes } = await readClient.get_merkle_root();
+  return BigInt("0x" + Buffer.from(onChainRootBytes).toString("hex"));
+}
 
 // ---------------------------------------------------------------------------
 // Retry wrapper for Soroban simulations that can fail transiently right after
@@ -41,7 +94,7 @@ async function simulateWithRetry<T>(
 // ---------------------------------------------------------------------------
 // POST /insert-commitment
 // ---------------------------------------------------------------------------
-merkleRouter.post("/insert-commitment", async (req: Request, res: Response): Promise<void> => {
+merkleRouter.post("/insert-commitment", writeLimiter, async (req: Request, res: Response): Promise<void> => {
   if (!config.adminSecret) {
     res.status(500).json({ error: "ADMIN_SECRET not configured" });
     return;
@@ -51,9 +104,10 @@ merkleRouter.post("/insert-commitment", async (req: Request, res: Response): Pro
     return;
   }
 
-  const { commitment: commitmentHex, encNote } = req.body as {
+  const { commitment: commitmentHex, encNote, authTxXdr } = req.body as {
     commitment?: string;
     encNote?: string;
+    authTxXdr?: string;
   };
   if (!commitmentHex || !COMMITMENT_RE.test(commitmentHex)) {
     res.status(400).json({ error: "commitment must be a 64-char hex string" });
@@ -63,73 +117,97 @@ merkleRouter.post("/insert-commitment", async (req: Request, res: Response): Pro
     res.status(400).json({ error: "encNote must be a hex string" });
     return;
   }
+  if (!authTxXdr || typeof authTxXdr !== "string") {
+    res.status(400).json({ error: "authTxXdr is required - see docs/how-it-works for the deposit flow" });
+    return;
+  }
 
   try {
-    const keypair = Keypair.fromSecret(config.adminSecret);
-    const admin = keypair.publicKey();
-    const commitment = BigInt("0x" + commitmentHex);
-    const toBytes = (n: bigint) => Buffer.from(n.toString(16).padStart(64, "0"), "hex");
-
-    // Verify local leaf store matches on-chain root before inserting.
-    const existingLeaves = readLeaves();
-    const computedRoot = computeRoot(existingLeaves);
-
-    const readClient = new Client({
-      contractId: config.commitmentTreeId,
-      networkPassphrase: config.networkPassphrase,
-      rpcUrl: config.stellarRpcUrl,
-      allowHttp: config.stellarRpcUrl.startsWith("http://"),
-      publicKey: "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF",
-    });
-
-    const { result: onChainRootBytes } = await readClient.get_merkle_root();
-    const onChainRoot = BigInt("0x" + Buffer.from(onChainRootBytes).toString("hex"));
-
-    if (computedRoot !== onChainRoot) {
-      res.status(409).json({
-        error:
-          "Leaf store is out of sync with the on-chain Merkle root. " +
-          "Manual resync required before new insertions can proceed.",
-        onChainRoot: onChainRoot.toString(16).padStart(64, "0"),
-        computedRoot: computedRoot.toString(16).padStart(64, "0"),
-        leafCount: existingLeaves.length,
+    // Authorization: authTxXdr must be signed by this commitment's real,
+    // on-chain depositor (GHSA-wqp4-3573-552v, GHSA-prw2-j3jx-43qh) - not
+    // just "any network-reachable caller", which is what let a third party
+    // hijack someone else's pending deposit before this fix.
+    try {
+      await verifyInsertAuth(authTxXdr, commitmentHex, {
+        networkPassphrase: config.networkPassphrase,
+        lookupDepositor: (hex) =>
+          lookupDepositorOnChain(
+            new rpc.Server(config.stellarRpcUrl, { allowHttp: config.stellarRpcUrl.startsWith("http://") }),
+            config.commitmentTreeId,
+            hex,
+          ),
       });
-      return;
+    } catch (e) {
+      if (e instanceof InsertAuthError) {
+        res.status(403).json({ error: e.message });
+        return;
+      }
+      throw e;
     }
 
-    const newLeaves = [...existingLeaves, commitment];
-    const newRoot = computeRoot(newLeaves);
+    const adminSecret = config.adminSecret;
+    // One writer at a time: each proof targets "the next leaf", and the tree
+    // watcher writes the same store (see tree-lock.ts).
+    await withTreeLock(async () => {
+      const keypair = Keypair.fromSecret(adminSecret);
+      const admin = keypair.publicKey();
+      const commitment = BigInt("0x" + commitmentHex);
 
-    const writeClient = new Client({
-      contractId: config.commitmentTreeId,
-      networkPassphrase: config.networkPassphrase,
-      rpcUrl: config.stellarRpcUrl,
-      allowHttp: config.stellarRpcUrl.startsWith("http://"),
-      publicKey: admin,
-    });
+      // Verify local leaf store matches on-chain root before inserting.
+      const existingLeaves = readLeaves();
+      const computedRoot = computeRoot(existingLeaves);
+      const [onChainRoot, onChainNextLeaf] = await Promise.all([fetchOnChainRoot(), fetchOnChainNextLeafIndex()]);
 
-    const signTransaction = async (xdr: string) => {
-      const tx = new Transaction(xdr, config.networkPassphrase);
-      tx.sign(keypair);
-      return { signedTxXdr: tx.toXDR(), signerAddress: admin };
-    };
+      if (computedRoot !== onChainRoot || onChainNextLeaf !== existingLeaves.length) {
+        res.status(409).json({
+          error:
+            "Leaf store is out of sync with the on-chain Merkle root. " +
+            "Manual resync required before new insertions can proceed.",
+          onChainRoot: onChainRoot.toString(16).padStart(64, "0"),
+          computedRoot: computedRoot.toString(16).padStart(64, "0"),
+          leafCount: existingLeaves.length,
+          onChainNextLeaf,
+        });
+        return;
+      }
 
-    const tx = await simulateWithRetry(() =>
-      writeClient.insert_commitment({
-        caller: admin,
-        commitment: toBytes(commitment),
-        new_root: toBytes(newRoot),
-      }),
-    );
-    const sent = await tx.signAndSend({ signTransaction });
+      // The contract only accepts a proof that the new root is the current one
+      // with this commitment in the next empty leaf (#211) - it no longer
+      // takes a root from us.
+      const { proof, publicSignals, newRoot, leafIndex } = await proveInsertion(existingLeaves, commitment);
+      const newLeaves = [...existingLeaves, commitment];
 
-    writeLeaves(newLeaves);
-    if (encNote) saveNote(existingLeaves.length, encNote);
+      const writeClient = new Client({
+        contractId: config.commitmentTreeId,
+        networkPassphrase: config.networkPassphrase,
+        rpcUrl: config.stellarRpcUrl,
+        allowHttp: config.stellarRpcUrl.startsWith("http://"),
+        publicKey: admin,
+      });
 
-    res.json({
-      txHash: sent.sendTransactionResponse?.hash,
-      leafIndex: existingLeaves.length,
-      newRoot: newRoot.toString(16).padStart(64, "0"),
+      const signTransaction = async (xdr: string) => {
+        const tx = new Transaction(xdr, config.networkPassphrase);
+        tx.sign(keypair);
+        return { signedTxXdr: tx.toXDR(), signerAddress: admin };
+      };
+
+      const tx = await simulateWithRetry(() =>
+        writeClient.insert_commitment({
+          caller: admin,
+          zk_proof: proof,
+          public_signals: publicSignals,
+        }),
+      );
+      const sent = await tx.signAndSend({ signTransaction });
+
+      writeLeaves(newLeaves);
+      if (encNote) saveNote(leafIndex, encNote);
+
+      res.json({
+        txHash: sent.sendTransactionResponse?.hash,
+        leafIndex,
+        newRoot: newRoot.toString(16).padStart(64, "0"),
+      });
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
@@ -165,15 +243,7 @@ merkleRouter.get("/merkle-path", async (req: Request, res: Response): Promise<vo
   // returning a path whose siblings don't match the chain.
   if (config.commitmentTreeId) {
     try {
-      const readClient = new Client({
-        contractId: config.commitmentTreeId,
-        networkPassphrase: config.networkPassphrase,
-        rpcUrl: config.stellarRpcUrl,
-        allowHttp: config.stellarRpcUrl.startsWith("http://"),
-        publicKey: "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF",
-      });
-      const { result: onChainRootBytes } = await readClient.get_merkle_root();
-      const onChainRoot = BigInt("0x" + Buffer.from(onChainRootBytes).toString("hex"));
+      const onChainRoot = await fetchOnChainRoot();
       const localRoot = computeRoot(leaves);
 
       if (localRoot !== onChainRoot) {
@@ -232,8 +302,22 @@ merkleRouter.get("/merkle-path", async (req: Request, res: Response): Promise<vo
 
 // ---------------------------------------------------------------------------
 // POST /update-leaf
+//
+// Unauthenticated by design (the frontend calls this from the browser right
+// after a real borrow/repay confirms - there's no admin key involved here,
+// unlike /insert-commitment). That used to mean anyone could overwrite any
+// leaf with arbitrary garbage (GHSA-ffx5-7x4m-939g): no auth, no validation
+// that `newCommitment` came from a real on-chain event.
+//
+// Instead of adding identity-based auth (which the legitimate caller - any
+// borrower/repayer - can't be meaningfully distinguished from an attacker by
+// anyway), this validates the write against ground truth: a real borrow/repay
+// has already advanced the on-chain Merkle root to exactly the value this
+// update would produce. Only a write that reproduces the real root is
+// accepted, so an attacker without a matching on-chain state transition can't
+// get anything persisted, no matter what they submit.
 // ---------------------------------------------------------------------------
-merkleRouter.post("/update-leaf", (req: Request, res: Response): void => {
+merkleRouter.post("/update-leaf", writeLimiter, async (req: Request, res: Response): Promise<void> => {
   const { leafIndex, newCommitment, encNote } = req.body as {
     leafIndex?: number;
     newCommitment?: string;
@@ -252,21 +336,50 @@ merkleRouter.post("/update-leaf", (req: Request, res: Response): void => {
     res.status(400).json({ error: "encNote must be a hex string" });
     return;
   }
-
-  const leaves = readLeaves();
-  if (leafIndex >= leaves.length) {
-    res.status(400).json({
-      error: `leafIndex ${leafIndex} out of range - leaf store has ${leaves.length} leaves`,
-    });
+  if (!config.commitmentTreeId) {
+    res.status(500).json({ error: "COMMITMENT_TREE_ID not configured; cannot validate leaf updates" });
     return;
   }
 
-  leaves[leafIndex] = BigInt("0x" + newCommitment);
-  writeLeaves(leaves);
-  if (encNote) saveNote(leafIndex, encNote);
+  await withTreeLock(async () => {
+    const leaves = readLeaves();
+    if (leafIndex >= leaves.length) {
+      res.status(400).json({
+        error: `leafIndex ${leafIndex} out of range - leaf store has ${leaves.length} leaves`,
+      });
+      return;
+    }
 
-  const newRoot = computeRoot(leaves);
-  res.json({ newRoot: newRoot.toString() });
+    const candidate = [...leaves];
+    candidate[leafIndex] = BigInt("0x" + newCommitment);
+    const candidateRoot = computeRoot(candidate);
+
+    let onChainRoot: bigint;
+    try {
+      onChainRoot = await fetchOnChainRoot();
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      res.status(502).json({ error: message });
+      return;
+    }
+
+    if (candidateRoot !== onChainRoot) {
+      res.status(409).json({
+        error:
+          "This update does not reproduce the current on-chain Merkle root - " +
+          "either it doesn't correspond to a real confirmed borrow/repay, or " +
+          "the local leaf store has drifted and needs an operator resync.",
+        onChainRoot: onChainRoot.toString(16).padStart(64, "0"),
+        candidateRoot: candidateRoot.toString(16).padStart(64, "0"),
+      });
+      return;
+    }
+
+    writeLeaves(candidate);
+    if (encNote) saveNote(leafIndex, encNote);
+
+    res.json({ newRoot: candidateRoot.toString() });
+  });
 });
 
 // ---------------------------------------------------------------------------

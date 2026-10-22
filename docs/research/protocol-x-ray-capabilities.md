@@ -1,4 +1,7 @@
-# Research: Stellar ZK Infrastructure - Protocol 25, 26 & 27
+---
+title: "Research: Stellar ZK Infrastructure - Protocol 25, 26 & 27"
+sidebarTitle: "Stellar ZK Infrastructure - Protocol 25, 26 & 27"
+---
 
 **Author:** Justin (Business Analyst) + Technical Research
 **Date:** 2026-06-22

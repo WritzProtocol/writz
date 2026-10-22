@@ -1,4 +1,7 @@
-# Research: Stellar USDC Liquidity & Blend Ecosystem
+---
+title: "Research: Stellar USDC Liquidity & Blend Ecosystem"
+sidebarTitle: "Stellar USDC Liquidity & Blend Ecosystem"
+---
 
 **Author:** Research
 **Date:** 2026-06-22

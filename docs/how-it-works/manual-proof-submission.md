@@ -2,7 +2,7 @@
 
 **What to do if the Writz relayer is unavailable and you need to submit an SPV proof yourself.**
 
-`bitcoin-spv::verify_transaction` (see [SPV Verification](./spv-verification.md)) takes `raw_tx` as the **non-witness serialization** of a Bitcoin transaction - the txid is `SHA256d(raw_tx)`, and Bitcoin's block Merkle tree is built from non-witness txids. The Writz relayer strips SegWit witness data automatically before submitting a proof. This document explains that step so a technical user can reproduce it manually if the relayer is down.
+`bitcoin-spv::verify_transaction` (see [SPV Verification](/how-it-works/spv-verification)) takes `raw_tx` as the **non-witness serialization** of a Bitcoin transaction - the txid is `SHA256d(raw_tx)`, and Bitcoin's block Merkle tree is built from non-witness txids. The Writz relayer strips SegWit witness data automatically before submitting a proof. This document explains that step so a technical user can reproduce it manually if the relayer is down.
 
 This is a **liveness** concern only: if the raw transaction bytes are stripped incorrectly, `verify_transaction` simply fails with `MerkleProofInvalid` and your deposit is rejected - it can be retried with correct bytes. No funds are ever at risk from a stripping mistake.
 

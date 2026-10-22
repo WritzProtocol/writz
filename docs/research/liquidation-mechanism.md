@@ -1,4 +1,7 @@
-# Research: Liquidation Mechanism Design
+---
+title: "Research: Liquidation Mechanism Design"
+sidebarTitle: "Liquidation Mechanism Design"
+---
 
 **Author:** Research
 **Date:** 2026-06-22

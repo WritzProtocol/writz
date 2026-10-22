@@ -7,7 +7,7 @@
 # Run this ONCE per circuit, by the ceremony coordinator only.
 #
 # Usage: bash scripts/ceremony/01_new_zkey.sh <circuit> [power]
-#   circuit: deposit | borrow_repay | liquidation | zero_debt
+#   circuit: deposit | borrow_repay | liquidation | zero_debt | insert
 #   power:   must match the ptau already fetched via 00_fetch_ptau.sh (default 15)
 set -euo pipefail
 
@@ -20,7 +20,7 @@ PTAU="$CEREMONY/ptau/powersOfTau28_hez_final_${POWER}.ptau"
 CIRCUIT="${1:-}"
 if [ -z "$CIRCUIT" ]; then
   echo "Usage: bash scripts/ceremony/01_new_zkey.sh <circuit> [power]" >&2
-  echo "  circuit: deposit | borrow_repay | liquidation | zero_debt" >&2
+  echo "  circuit: deposit | borrow_repay | liquidation | zero_debt | insert" >&2
   exit 1
 fi
 

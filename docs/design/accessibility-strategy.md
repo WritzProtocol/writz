@@ -8,7 +8,7 @@
 ## Where this stands today
 
 Accessibility is not mentioned anywhere in Writz's product or roadmap documentation
-(`docs/introduction/`, `docs/products/`, `docs/roadmap/phases.md`) as of this
+(`docs/introduction/`, `docs/products/`) as of this
 writing. The frontend code itself is ahead of the documentation: there's real,
 if inconsistent, ARIA work already in place -
 
@@ -51,8 +51,8 @@ focus states, form inputs with associated labels (not just placeholder text -
 `DepositFlow.tsx`'s BTC amount and txid inputs currently rely on `<label>`
 correctly, keep that pattern everywhere), error messages programmatically
 associated with their field, and color never the *only* signal (the health
-factor already pairs color with a numeric label - `text-ok`/`text-amber`/`text-crit`
-plus the percentage text - keep extending that pattern, don't let a future
+factor already pairs color with a numeric label - the status in words plus
+the percentage text - keep extending that pattern, don't let a future
 change drop the text and leave only color).
 
 **P1 - the rest of the app dashboard:** consistent landmark regions, skip-to-content
@@ -69,9 +69,8 @@ someone using a screen reader decides whether the product is for them at all.
 
 ## Process, not just a checklist
 
-- Add "Accessibility (WCAG AA)" as an explicit exit criterion in
-  `docs/roadmap/phases.md` Phase 2, alongside the other frontend items -
-  done, see that document.
+- Treat "Accessibility (WCAG AA)" as an explicit exit criterion for the
+  mainnet launch, alongside the other frontend items.
 - Automated baseline: run `axe-core` (or `@axe-core/react` in dev) in CI
   against the app dashboard routes. Automated tools catch roughly a third of
   real issues - necessary, not sufficient.
@@ -79,7 +78,7 @@ someone using a screen reader decides whether the product is for them at all.
   deposit → borrow → repay → release cycle, plus a screen reader smoke test
   (VoiceOver or NVDA) of the same flow. This should be a named task with an
   owner, not an implicit expectation.
-- No new PR touching `frontend/src/components/` or `frontend/src/app/`
+- No new PR touching `frontend/app/src/components/` or `frontend/app/src/app/`
   should introduce a component with an interactive element that has no
   accessible name - this is cheap to catch in review once it's an explicit
   standard, expensive to retrofit later.
@@ -90,5 +89,5 @@ It doesn't hand off a component-by-component remediation list - that requires
 an actual audit pass (automated + manual) against the criteria above, which
 hasn't happened yet. This document sets the target and the process; the audit
 is the next concrete step, and it should happen once the deposit/borrow/repay
-UI is out of "in progress" per `docs/roadmap/phases.md`, not before (auditing
+UI is out of "in progress", not before (auditing
 UI that's still actively changing wastes the audit).

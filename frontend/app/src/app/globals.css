@@ -1,0 +1,77 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-deep: var(--deep);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-heading: var(--heading);
+  --color-body: var(--body);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-on-accent: var(--on-accent);
+  --color-danger: var(--danger);
+  --color-positive: var(--positive);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior-y: none;
+    scroll-padding-bottom: calc(80px + env(safe-area-inset-bottom));
+  }
+  body {
+    min-height: 100vh;
+    min-height: 100svh;
+    background: var(--bg);
+    color: var(--body);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  h1,
+  h2,
+  h3 {
+    color: var(--heading);
+    text-wrap: balance;
+  }
+  ::selection {
+    background: var(--accent);
+    color: var(--on-accent);
+  }
+}
+
+/* Native smooth scroll for anchor-link jumps only - replaces the removed
+ * Lenis JS scroll-hijacking library. Lenis drove scroll with fractional
+ * (sub-pixel) scrollTop values every animation frame, which made text
+ * (serif display type especially) visibly shimmer/wobble during scroll -
+ * a rendering-precision artifact, not something main-thread optimization
+ * could fix. Native scroll has no such artifact, since the browser's own
+ * compositor handles it without any per-frame JS repositioning. */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@keyframes indeterminate {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(300%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-\[indeterminate_1\.4s_ease-in-out_infinite\] {
+    animation: none !important;
+    width: 100% !important;
+    opacity: 0.4;
+  }
+}

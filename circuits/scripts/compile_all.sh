@@ -23,6 +23,7 @@ compile_circuit() {
         --r1cs \
         --wasm \
         --sym \
+        --O2 \
         --output "$BUILD" \
         -l "$NODE_MODULES"
     echo "  ✓ $name: R1CS + WASM generated"
@@ -32,6 +33,7 @@ compile_circuit deposit
 compile_circuit borrow_repay
 compile_circuit liquidation
 compile_circuit zero_debt
+compile_circuit insert
 
 echo ""
 echo "✅ All circuits compiled."

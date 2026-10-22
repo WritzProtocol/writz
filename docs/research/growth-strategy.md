@@ -1,4 +1,7 @@
-# Research: Growth Strategy & Business Development
+---
+title: "Research: Growth Strategy & Business Development"
+sidebarTitle: "Growth Strategy & Business Development"
+---
 
 **Author:** Research
 **Date:** 2026-06-22
@@ -155,10 +158,10 @@ Points convert to WRTZ token allocation at launch. Anti-Sybil thresholds (defaul
 **Why points, not an immediate airdrop:** Points programs create sustained engagement over months. They reward the users who actually use the protocol (not farmers who deposit and immediately withdraw), and they create excitement around a future token event without committing to a specific date or distribution.
 
 2. **Strategic deposit incentives**
-For the first 90 days, reduce the protocol fee to 0%. 100% of interest goes to USDC suppliers. This creates above-market APY for early lenders (10–15%+ vs. 5% elsewhere on Stellar), bootstrapping the liquidity pool.
+Option under evaluation, not a commitment: reduce the protocol fee for an initial period, so more of the interest goes to USDC suppliers. This would create above-market APY for early lenders (10–15%+ vs. 5% elsewhere on Stellar), bootstrapping the liquidity pool.
 
 3. **Protocol-owned liquidity seed**
-Seed the USDC pool with $50,000 of protocol-owned capital (matches the `docs/roadmap/phases.md` mainnet launch figure) so borrowers can actually borrow from day one without waiting for organic lenders. **Funding source is currently unresolved:** this was originally scoped as coming from SCF grant proceeds, but the SCF application has no short-term submission plan (see `docs/roadmap/phases.md`), so this $50K needs a funding source that doesn't depend on it - founder capital, a separate raise, or another mechanism - before it can be treated as a settled part of the mainnet launch checklist.
+Seed the USDC pool with $50,000 of protocol-owned capital (the planned mainnet launch figure) so borrowers can actually borrow from day one without waiting for organic lenders. **Funding source is currently unresolved:** this was originally scoped as coming from SCF grant proceeds, but the SCF application has no short-term submission plan, so this $50K needs a funding source that doesn't depend on it - founder capital, a separate raise, or another mechanism - before it can be treated as a settled part of the mainnet launch checklist.
 
 4. **Integration with Stellar wallet ecosystem**
 Work with Freighter and Lobstr to list PrivateLend as a featured dApp. Both wallets have millions of users who are one click from becoming Writz lenders. This is the fastest path to Segment 2 (Stellar native users).
@@ -293,7 +296,7 @@ Writz Protocol Discord
 |---|---|---|
 | Primary acquisition channel | Technical content + open-source | Bitcoin holders trust proof, not advertising |
 | Incentive structure | Points program (pre-token) | Rewards real usage, not farming |
-| Liquidity bootstrap | Protocol-owned seed + 0% fee period | Chicken/egg solved with own capital |
+| Liquidity bootstrap | Protocol-owned seed, with a reduced launch fee as an option | Chicken/egg solved with own capital |
 | Token launch timing | Post $5M TVL | Product-market fit first |
 | Institutional GTM | Direct BD, not ads | High-value segment requires relationship sales |
 | Traction proof | On-chain dashboard + DeFiLlama | Third-party verification is more credible than self-reported |

@@ -3,7 +3,7 @@ import { defineRailway, github, preserve, project, service, volume } from "railw
 export default defineRailway(() => {
   const writzVolume = volume("writz-volume", { alerts: { usage: { "100": {}, "80": {}, "95": {} } }, allowOnlineResize: true, region: "sfo", sizeMB: 500 });
   const writz = service("writz", {
-    source: github("WritzProtocol/writz", { commitSha: "d5d4f8f6adc3b1ae47c09ff3765723115b84d77e", upstreamUrl: "https://github.com/WritzProtocol/writz" }),
+    source: github("WritzProtocol/writz", { branch: "main" }),
     build: { buildEnvironment: "V3", builder: "DOCKERFILE", dockerfilePath: "Dockerfile" },
     healthcheck: "/health",
     healthcheckTimeout: 30,

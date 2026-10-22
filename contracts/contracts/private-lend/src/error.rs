@@ -45,4 +45,24 @@ pub enum PrivateLendError {
     /// The oracle's last price update is older than
     /// `oracle::MAX_PRICE_STALENESS_SECS`.
     OraclePriceStale = 19,
+    /// `user_pubkey` is not a compressed secp256k1 public key encoding.
+    InvalidUserPubkey = 20,
+    /// The supplied scriptPubKey is not the P2WSH of the Writz redeem script
+    /// derived from the protocol key, `user_pubkey` and `timelock_height`,
+    /// so the output is not locked under the protocol's control.
+    ScriptPubKeyMismatch = 21,
+    /// `timelock_height` is not within the allowed window above the deposit
+    /// block: too soon (an instant exit for a fresh position) or too far.
+    InvalidTimelock = 22,
+    /// The configured protocol public key is not a compressed secp256k1
+    /// public key encoding.
+    InvalidProtocolPubkey = 23,
+    /// The borrow would take the pool past its total exposure cap (see `Config::max_total_borrowed`).
+    ExposureCapExceeded = 24,
+    /// `key_sig` is not a Bitcoin signed message by `user_pubkey` over this
+    /// contract, the depositor and the deposit txid (GHSA-862g-739q-x6h8).
+    InvalidKeyProof = 25,
+    /// The amount is too small to mint or burn a single scaled unit at the
+    /// current supply index, or is not positive.
+    ZeroShareAmount = 26,
 }

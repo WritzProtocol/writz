@@ -1,4 +1,6 @@
-# The Bitcoin Side
+---
+title: "The Bitcoin Side"
+---
 
 **How your BTC is locked - and why nobody else can touch it.**
 
@@ -110,7 +112,7 @@ If the time-lock has expired and a user wants to reclaim their BTC without a pro
 
 This ensures that user funds are never permanently inaccessible, even in a worst-case scenario where Writz stops operating.
 
-> **[WARNING] `nSequence` interaction:** `OP_CHECKLOCKTIMEVERIFY` has a non-obvious interaction with `nSequence` - if the spending input's `nSequence` is `0xFFFFFFFF` (Bitcoin's "final" value, which many wallets use by default), the Bitcoin Script interpreter causes `CLTV` to fail immediately, **even if the timelock has genuinely expired**. There is no clear error message - the transaction is simply rejected by the network, and it's easy to mistakenly conclude the timelock hasn't expired when it has. The Writz frontend and the `bitcoin-script` package's `buildEmergencyTransaction`/`finalizePathB` helpers already set this correctly and hardcode it (it cannot be overridden by a caller). If you are constructing this recovery transaction manually with a third-party wallet or library instead of using Writz's own tooling, you must set `nSequence` yourself - see [Manual Emergency Recovery](./manual-emergency-recovery.md) for a safe, copy-pasteable reference implementation.
+> **[WARNING] `nSequence` interaction:** `OP_CHECKLOCKTIMEVERIFY` has a non-obvious interaction with `nSequence` - if the spending input's `nSequence` is `0xFFFFFFFF` (Bitcoin's "final" value, which many wallets use by default), the Bitcoin Script interpreter causes `CLTV` to fail immediately, **even if the timelock has genuinely expired**. There is no clear error message - the transaction is simply rejected by the network, and it's easy to mistakenly conclude the timelock hasn't expired when it has. The Writz frontend and the `bitcoin-script` package's `buildEmergencyTransaction`/`finalizePathB` helpers already set this correctly and hardcode it (it cannot be overridden by a caller). If you are constructing this recovery transaction manually with a third-party wallet or library instead of using Writz's own tooling, you must set `nSequence` yourself - see [Manual Emergency Recovery](/how-it-works/manual-emergency-recovery) for a safe, copy-pasteable reference implementation.
 
 ---
 
@@ -154,4 +156,4 @@ In Phase 2+, Writz will migrate to **Taproot (P2TR)**:
 
 ---
 
-**Next:** [How SPV Verification Works →](spv-verification.md)
+**Next:** [How SPV Verification Works →](/how-it-works/spv-verification)

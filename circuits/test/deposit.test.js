@@ -1,5 +1,5 @@
 'use strict';
-const { poseidonHash, prove, verify } = require('./helpers');
+const { prove, verify, TIMELOCK, positionCommitment, positionNullifier } = require('./helpers');
 
 // Test values - realistic but small enough for fast proving.
 const COLLATERAL = 1_000_000n;           // 0.01 BTC = 1,000,000 satoshis
@@ -17,6 +17,10 @@ function baseInput(overrides = {}) {
         btc_txid_lo:          String(TXID_LO),
         btc_txid_hi:          String(TXID_HI),
         min_deposit_satoshis: String(MIN_DEPOSIT),
+        // The honest case: what the prover claims equals what the contract
+        // parsed from the real Bitcoin transaction.
+        actual_satoshis:      String(COLLATERAL),
+        timelock_height:      String(TIMELOCK),
         ...overrides,
     };
 }
@@ -29,8 +33,8 @@ describe('deposit circuit', () => {
         // Public signals order (from circom output): commitment, nullifier, then public inputs
         // snarkjs orders: outputs first, then public inputs in declaration order
         // Check by computing expected values independently.
-        const expectedCommitment = await poseidonHash([COLLATERAL, 0n, SECRET, NONCE]);
-        const expectedNullifier  = await poseidonHash([SECRET, NONCE]);
+        const expectedCommitment = await positionCommitment(COLLATERAL, 0n, SECRET, NONCE);
+        const expectedNullifier  = await positionNullifier(SECRET, NONCE);
 
         expect(BigInt(publicSignals[0])).toBe(expectedCommitment);
         expect(BigInt(publicSignals[1])).toBe(expectedNullifier);
@@ -49,6 +53,7 @@ describe('deposit circuit', () => {
         const { publicSignals: sig1 } = await prove('deposit', baseInput());
         const { publicSignals: sig2 } = await prove('deposit', baseInput({
             collateral_satoshis: String(2_000_000n),
+            actual_satoshis: String(2_000_000n),
         }));
         expect(sig1[0]).not.toBe(sig2[0]);
     });
@@ -62,15 +67,35 @@ describe('deposit circuit', () => {
     });
 
     test('deposit below minimum is rejected', async () => {
-        const input = baseInput({ collateral_satoshis: String(MIN_DEPOSIT - 1n) });
+        const input = baseInput({
+            collateral_satoshis: String(MIN_DEPOSIT - 1n),
+            actual_satoshis: String(MIN_DEPOSIT - 1n),
+        });
         await expect(prove('deposit', input)).rejects.toThrow();
     });
 
     test('deposit at exactly minimum is accepted', async () => {
-        const input = baseInput({ collateral_satoshis: String(MIN_DEPOSIT) });
+        const input = baseInput({
+            collateral_satoshis: String(MIN_DEPOSIT),
+            actual_satoshis: String(MIN_DEPOSIT),
+        });
         const { proof, publicSignals } = await prove('deposit', input);
         const valid = await verify('deposit', proof, publicSignals);
         expect(valid).toBe(true);
+    });
+
+    // GHSA-2hjj-x5wr-4p68, GHSA-xp6j-g2rw-h5g6, GHSA-mg4x-cr23-4x3v: nothing
+    // used to bind the private collateral_satoshis to the amount the
+    // referenced Bitcoin transaction actually paid - a prover could declare
+    // any collateral, regardless of what (if anything) was really locked.
+    // 1_000_000_000_000 (10,000 BTC) declared against a real payment of only
+    // 1_000 sats mirrors the advisory's own inflated-claim reproduction.
+    test('collateral inflated beyond the real BTC amount is rejected (GHSA-2hjj-x5wr-4p68)', async () => {
+        const input = baseInput({
+            collateral_satoshis: String(1_000_000_000_000n), // claimed: 10,000 BTC
+            actual_satoshis: String(1_000n), // real: 0.00001 BTC actually paid
+        });
+        await expect(prove('deposit', input)).rejects.toThrow();
     });
 
     test('tampered public signal fails verification', async () => {
@@ -80,5 +105,15 @@ describe('deposit circuit', () => {
         tamperedSignals[0] = String(BigInt(publicSignals[0]) + 1n);
         const valid = await verify('deposit', proof, tamperedSignals);
         expect(valid).toBe(false);
+    });
+    test('timelock_height is public signal 6 and is bound into the commitment (#212)', async () => {
+        const other = TIMELOCK + 144n;
+        const { publicSignals } = await prove('deposit', baseInput({ timelock_height: String(other) }));
+        expect(BigInt(publicSignals[6])).toBe(other);
+        expect(BigInt(publicSignals[0])).toBe(await positionCommitment(COLLATERAL, 0n, SECRET, NONCE, other));
+    });
+
+    test('a timelock wider than 32 bits is rejected (#212)', async () => {
+        await expect(prove('deposit', baseInput({ timelock_height: String(1n << 32n) }))).rejects.toThrow();
     });
 });

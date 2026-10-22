@@ -30,6 +30,17 @@ export interface RawTargetEnv {
   defindexVaultId?: string | undefined;
   kmsKeyId?: string | undefined;
   protocolSigningKeyWif?: string | undefined;
+  /** Lending-only settings, by variable name. Must all be unset on mainnet. */
+  lending?: Record<string, string | undefined> | undefined;
+}
+
+/**
+ * BTC-collateralized lending stays off on mainnet until the audit (epic #122
+ * is Earn-only). It is a property of the target, not a variable, so turning
+ * it on is a reviewed code change rather than a dashboard edit.
+ */
+export function lendingEnabled(target: DeployTarget): boolean {
+  return target !== "mainnet";
 }
 
 /**
@@ -96,18 +107,26 @@ export function findTargetConflicts(env: RawTargetEnv): string[] {
     );
   }
 
-  // `resolveProtocolSigner` already refuses a WIF key when BITCOIN_NETWORK is
-  // mainnet, but that fires lazily on the first co-sign. Checking here means a
-  // mainnet relayer with the wrong custody model never accepts traffic at all.
-  if (!env.kmsKeyId?.trim()) {
-    problems.push(
-      "KMS_KEY_ID is not set. The mainnet target must co-sign through KMS, not a WIF key.",
-    );
-  }
+  // The mainnet relayer serves Earn only, so it holds no signing key at all:
+  // nothing it runs could use one, and a key it does not hold cannot leak.
+  // When lending ships on mainnet this becomes "KMS_KEY_ID required, WIF
+  // forbidden" again.
   if (env.protocolSigningKeyWif?.trim()) {
     problems.push(
       "PROTOCOL_SIGNING_KEY is set. It is a testnet/signet-only fallback and must be unset on the mainnet target.",
     );
+  }
+  if (env.kmsKeyId?.trim()) {
+    problems.push(
+      "KMS_KEY_ID is set. The mainnet target serves Earn only and must not hold a Bitcoin co-signing key.",
+    );
+  }
+  for (const [name, value] of Object.entries(env.lending ?? {})) {
+    if (value?.trim()) {
+      problems.push(
+        `${name} is set. Lending is not enabled on the mainnet target (Earn only), so it must be unset.`,
+      );
+    }
   }
 
   const corsOrigin = env.corsOrigin?.trim();

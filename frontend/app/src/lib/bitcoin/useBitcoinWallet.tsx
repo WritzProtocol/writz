@@ -1,0 +1,152 @@
+"use client";
+
+import { createContext, useCallback, useContext, useMemo, useState } from "react";
+import Wallet, { AddressPurpose, BitcoinNetworkType, MessageSigningProtocols, RpcErrorCode } from "sats-connect";
+import { config, BTC_NETWORK_LABEL } from "@/config";
+import { xverseRequest } from "./xverse";
+
+/** Map the configured BTC network string to the sats-connect network type. */
+function walletNetwork(): BitcoinNetworkType {
+  switch (config.bitcoin.network) {
+    case "mainnet":
+      return BitcoinNetworkType.Mainnet;
+    case "signet":
+      return BitcoinNetworkType.Signet;
+    case "testnet4":
+      return BitcoinNetworkType.Testnet4;
+    default:
+      return BitcoinNetworkType.Testnet;
+  }
+}
+
+export interface BitcoinWalletState {
+  btcAddress: string | null;
+  btcPubkey: string | null;
+  connecting: boolean;
+  error: string | null;
+  connect: () => Promise<void>;
+  disconnect: () => void;
+  sendBtc: (toAddress: string, amountSats: number) => Promise<string>;
+  signPsbt: (psbtBase64: string) => Promise<string>;
+  /** Signs `message` with the connected payment key (ECDSA, BIP-137); returns base64. */
+  signMessage: (message: string) => Promise<string>;
+}
+
+const BitcoinWalletContext = createContext<BitcoinWalletState | null>(null);
+
+/**
+ * Shares one Bitcoin-wallet connection across the whole app. Without this, each
+ * `useBitcoinWallet()` caller (header button, deposit form, position card) would
+ * hold its own state, so connecting in one place wouldn't be visible in another
+ * (e.g. the release flow would think the wallet is disconnected).
+ */
+export function BitcoinWalletProvider({ children }: { children: React.ReactNode }) {
+  const [btcAddress, setBtcAddress] = useState<string | null>(null);
+  const [btcPubkey, setBtcPubkey] = useState<string | null>(null);
+  const [connecting, setConnecting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const connect = useCallback(async () => {
+    setError(null);
+    setConnecting(true);
+    try {
+      // `wallet_connect` establishes the connection + read permissions in one
+      // step and returns the addresses. Calling `getAddresses` directly (before
+      // connecting) makes Xverse reject with ACCESS_DENIED. We also request the
+      // configured network (Signet) so the returned addresses match the protocol.
+      const res = await Wallet.request("wallet_connect", {
+        addresses: [AddressPurpose.Payment],
+        message: "Connect your Bitcoin wallet to Writz Protocol",
+        network: walletNetwork(),
+      });
+      if (res.status === "error") {
+        if (res.error.code === RpcErrorCode.USER_REJECTION) {
+          throw new Error("Connection rejected in your Bitcoin wallet.");
+        }
+        throw new Error(res.error.message ?? "Failed to connect Bitcoin wallet");
+      }
+      const payment = res.result.addresses.find(
+        (a) => a.purpose === AddressPurpose.Payment,
+      );
+      if (!payment) throw new Error("No payment address returned by wallet");
+
+      const active = res.result.network.bitcoin.name;
+      if (active !== walletNetwork()) {
+        throw new Error(
+          `Switch your Bitcoin wallet to ${BTC_NETWORK_LABEL} (currently ${active}).`,
+        );
+      }
+      setBtcAddress(payment.address);
+      setBtcPubkey(payment.publicKey);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to connect Bitcoin wallet");
+    } finally {
+      setConnecting(false);
+    }
+  }, []);
+
+  const disconnect = useCallback(() => {
+    setBtcAddress(null);
+    setBtcPubkey(null);
+    setError(null);
+  }, []);
+
+  const sendBtc = useCallback(
+    async (toAddress: string, amountSats: number): Promise<string> => {
+      const res = await xverseRequest(() =>
+        Wallet.request("sendTransfer", {
+          recipients: [{ address: toAddress, amount: amountSats }],
+        }),
+      );
+      return res.txid;
+    },
+    [],
+  );
+
+  const signPsbt = useCallback(
+    async (psbtBase64: string): Promise<string> => {
+      if (!btcAddress) throw new Error("Connect your Bitcoin wallet first");
+      const res = await xverseRequest(() =>
+        Wallet.request("signPsbt", {
+          psbt: psbtBase64,
+          // signInputs is keyed by address → input indices it should sign. The
+          // release PSBT has a single P2WSH input (index 0) the user must sign.
+          signInputs: { [btcAddress]: [0] },
+          broadcast: false,
+        }),
+      );
+      return res.psbt;
+    },
+    [btcAddress],
+  );
+
+  const signMessage = useCallback(
+    async (message: string): Promise<string> => {
+      if (!btcAddress) throw new Error("Connect your Bitcoin wallet first");
+      const res = await xverseRequest(() =>
+        Wallet.request("signMessage", {
+          address: btcAddress,
+          message,
+          // ECDSA (BIP-137) is what the lending contracts verify on-chain;
+          // BIP-322 signatures have a different shape.
+          protocol: MessageSigningProtocols.ECDSA,
+        }),
+      );
+      return res.signature;
+    },
+    [btcAddress],
+  );
+
+  const value = useMemo<BitcoinWalletState>(
+    () => ({ btcAddress, btcPubkey, connecting, error, connect, disconnect, sendBtc, signPsbt, signMessage }),
+    [btcAddress, btcPubkey, connecting, error, connect, disconnect, sendBtc, signPsbt, signMessage],
+  );
+
+  return <BitcoinWalletContext.Provider value={value}>{children}</BitcoinWalletContext.Provider>;
+}
+
+export function useBitcoinWallet(): BitcoinWalletState {
+  const ctx = useContext(BitcoinWalletContext);
+  if (!ctx) throw new Error("useBitcoinWallet must be used within a BitcoinWalletProvider");
+  return ctx;
+}

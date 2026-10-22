@@ -43,3 +43,6 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+
+# Soroban regenerates these on every `cargo test`
+test_snapshots/

@@ -1,4 +1,6 @@
-# What is Writz?
+---
+title: "What is Writz?"
+---
 
 Bitcoin is where wealth lives. It is the foundation - scarce, reliable, and built to hold value through anything. USDC is where wealth moves - the stablecoin that pays invoices, covers expenses, and flows through the real economy. And wrapped around both, an electric fence: zero-knowledge proofs that make your financial position visible only to you.
 
@@ -84,13 +86,12 @@ Writz's competitive position compounds with time:
 As of June 2026, Writz has completed Phase 1 - Foundation:
 
 - Four Soroban contracts deployed on testnet
-- 406 tests passing across all modules
+- 623 tests passing across all modules
 - Full ZK proof cycle (deposit → borrow → repay) verified on-chain
 - Real Bitcoin transactions broadcast and confirmed on Bitcoin Signet
-- SCF Build Award application drafted (not submitted; no short-term plan to submit)
 
 The protocol is not yet available on mainnet. Mainnet launch is targeted for Q2 to Q3 2027 (Phase 2), starting with a gated, TVL-capped release of PrivateLend.
 
 ---
 
-**Next:** [How Writz Works →](how-writz-works.md) - A plain-English explanation anyone can follow.
+**Next:** [How Writz Works →](/introduction/how-writz-works) - A plain-English explanation anyone can follow.

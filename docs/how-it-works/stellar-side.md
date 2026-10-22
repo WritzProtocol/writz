@@ -1,4 +1,6 @@
-# The Stellar Side
+---
+title: "The Stellar Side"
+---
 
 **Four contracts, one system - how Writz lives on Soroban.**
 
@@ -22,7 +24,7 @@ Verifies Bitcoin transactions on Soroban using Simplified Payment Verification. 
 
 This contract is called first in every deposit flow. Its output - specifically the `txid` - is passed to the commitment-tree contract and bound into the ZK proof, ensuring every position corresponds to a real Bitcoin transaction.
 
-**Deployed:** `CB2BD6QCSZVNZN5NLI7C5NF356WXVJDSXT6LVAQFWHHS4SZ4NCKKNIVA`
+**Deployed:** `CAHHY4S4WCIFU4LBSKBI3IP6A4QYR2COV6EACDEBXGPJFDWBJWGOMCLP`
 
 ---
 
@@ -47,7 +49,7 @@ Internally, this:
 
 Returns `true` if the proof is valid, `false` otherwise. Malformed proofs (invalid curve points) cause the host to reject the transaction entirely - the correct security behavior.
 
-**Deployed:** `CBNZU23QGCZATJB2QMNF2K6IST2SVP7FSGCKASQNBULTWDWGANDBYLFY`  
+**Deployed:** `CB5XAP6MF2GVVFATFTVCKVEXUODWWRQP4B3QFDMRTM55REP7N2YMXEUD`  
 All three verification keys are set on testnet (Deposit IC=6, BorrowRepay IC=9, Liquidation IC=6).
 
 ---
@@ -59,11 +61,12 @@ The core privacy and lending contract. Manages the Poseidon Merkle commitment tr
 **Key functions** (simplified signatures - see `contracts/contracts/commitment-tree/src/lib.rs` for the exact ABI, including the full SPV header/Merkle-proof arguments `deposit` also takes):
 
 ```rust
-// Deposit: verify SPV + ZK, create commitment. Returns the new commitment.
-pub fn deposit(depositor: Address, /* SPV proof args */, zk_proof: Proof, public_signals: Vec<BytesN<32>>, enc_note: Bytes) -> Result<BytesN<32>, CommitmentTreeError>
+// Deposit: verify SPV, the depositor's Writz script and the ZK proof; create commitment. Returns the new commitment.
+pub fn deposit(depositor: Address, /* SPV proof args */, user_pubkey: BytesN<33>, timelock_height: u32, zk_proof: Proof, public_signals: Vec<BytesN<32>>, enc_note: Bytes) -> Result<BytesN<32>, CommitmentTreeError>
 
-// Insert a pending commitment into the Merkle tree (admin/relayer in Phase 1). Emits `insert_leaf`.
-pub fn insert_commitment(caller: Address, commitment: BytesN<32>, new_root: BytesN<32>) -> Result<(), CommitmentTreeError>
+// Insert a pending commitment into the Merkle tree, with a proof that the new root is the
+// old one plus this leaf in the next empty slot (#211). Admin/relayer. Emits `insert_leaf`.
+pub fn insert_commitment(caller: Address, zk_proof: Proof, public_signals: Vec<BytesN<32>>) -> Result<(), CommitmentTreeError>
 
 // Borrow: ZK proof + oracle price → USDC transferred to borrower.
 pub fn borrow(borrower: Address, zk_proof: Proof, public_signals: Vec<BytesN<32>>, enc_note: Bytes) -> Result<(), CommitmentTreeError>
@@ -90,7 +93,7 @@ pub fn withdraw_supply(supplier: Address, amount: i128) -> Result<(), Commitment
 - Nullifier freshness is checked before any state change - double-spending is impossible
 - Merkle root must match the current on-chain root - stale proofs are rejected
 
-**Deployed:** `CDQCTFO3FK3M47QS47O2A4WLNPSQAQBSXBFPJ6RZEHFO5D7RY34FSBBP`
+**Deployed:** `CAQBLCAPGXXCZTJDAJLY7E4PTJYGR6CY4YWH4JSJKFXYIHW3GANP6RFM`
 
 ---
 
@@ -119,7 +122,7 @@ pub fn liquidate(keeper: Address, txid: BytesN<32>) -> Result<(), PrivateLendErr
 
 **Events emitted** (topic strings, matching `contracts/contracts/private-lend/src/events.rs` exactly): `deposit`, `borrow`, `repay`, `repay_full` (emitted in addition to `repay` when a repayment fully closes the debt), `liquidate`.
 
-**Deployed:** `CAAWVMDRUPEJNELSQ6RU2VMVX5EJLQ2E77T7IXDWGMW4DGSNAGECGSWR`
+**Deployed:** `CA3T7T2S7HV27BXO7OLIHSMGAMQ37BMOOUHQLTBGUQVL4B6Y2CDJPHHX`
 
 ---
 
@@ -269,24 +272,27 @@ User (browser)
     │  2. assemble SPV proof bundle (relayer API or Esplora)
     │
     ▼
-commitment-tree.deposit(spv_proof, zk_proof)
+commitment-tree.deposit(spv_proof, user_pubkey, timelock_height, zk_proof)
     │
-    ├──► bitcoin-spv.verify_transaction(headers, merkle_proof, tx_index, raw_tx, 6)
-    │         returns: SpvVerificationResult { txid, block_hash, confirmations }
+    ├──► bitcoin-spv.verify_transaction(block_hash, merkle_proof, tx_index, raw_tx, min_confirmations)
+    │         returns: SpvVerificationResult { txid, block_hash, block_height, confirmations }
+    ├── check: timelock_height within 1,008..=105,000 blocks above block_height
+    ├──► bitcoin-spv.consume_deposit(commitment-tree, txid)   (one registry for both lenders)
+    ├── check: raw_tx pays the Writz P2WSH rebuilt from protocol key, user_pubkey, timelock;
+    │          that output's value == proof's actual_satoshis
+    ├──► zk-verifier.verify_deposit(proof, [commitment, nullifier, txid_lo, txid_hi, min_sats, actual_sats])
     │
-    ├──► zk-verifier.verify_groth16(Deposit, proof, [commitment, txid])
-    │         returns: bool (true = valid)
-    │
-    ├── store: pending_commitment[txid] = commitment
-    └── emit: DepositVerified { txid, commitment }
+    ├── store: pending_commitment[commitment] = txid
+    └── emit: DepositEvent { commitment, depositor, txid, nullifier, user_pubkey, timelock_height, enc_note }
 
 Admin/relayer calls:
-commitment-tree.insert_commitment(commitment)
-    ├── compute new Merkle root (Poseidon hash of commitment + siblings)
-    ├── store: merkle_root = new_root
-    └── emit: CommitmentInserted { commitment, new_root, leaf_index }
+commitment-tree.insert_commitment(insert_proof, [new_root, old_root, commitment, leaf_index])
+    ├── check: commitment is pending, old_root == merkle_root, leaf_index == next_leaf_index
+    ├──► zk-verifier.verify_insert(proof, signals)
+    ├── store: merkle_root = new_root, next_leaf_index += 1
+    └── emit: InsertLeafEvent { new_root, commitment, leaf_index }
 ```
 
 ---
 
-**Next:** [Developer Quick Start →](../developers/quick-start.md)
+**Next:** [Developer Quick Start →](/developers/quick-start)

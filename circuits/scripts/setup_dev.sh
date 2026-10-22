@@ -62,6 +62,7 @@ setup_circuit deposit
 setup_circuit borrow_repay
 setup_circuit liquidation
 setup_circuit zero_debt
+setup_circuit insert
 
 echo ""
 echo "✅ Development setup complete."
@@ -70,4 +71,4 @@ echo "   Verification keys:  keys/*_vkey.json"
 echo ""
 echo "WARNING: These keys are for development ONLY."
 echo "         For mainnet, use a proper multi-party trusted setup ceremony."
-echo "         See docs/scf/milestone-plan.md Phase 2.3 for the production ceremony plan."
+echo "         See docs/research/circom-circuit-design.md for the production ceremony plan."

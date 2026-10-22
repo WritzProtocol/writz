@@ -1,4 +1,7 @@
-# Research: Relayer Incentive Design
+---
+title: "Research: Relayer Incentive Design"
+sidebarTitle: "Relayer Incentive Design"
+---
 
 **Author:** Research
 **Date:** 2026-06-22

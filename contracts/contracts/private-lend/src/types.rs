@@ -33,6 +33,9 @@ pub struct Position {
     pub timelock_height: u32,
     /// Stellar ledger sequence number at the last interest accrual.
     pub last_update_ledger: u32,
+    /// `ProtocolState::borrow_index` when `usdc_debt` was last brought up to
+    /// date. Current debt is `usdc_debt * borrow_index / debt_index`.
+    pub debt_index: i128,
     /// The depositor's Stellar address (must repay to close the position).
     pub depositor: Address,
     pub status: PositionStatus,
@@ -52,10 +55,15 @@ pub struct Position {
 #[contracttype]
 #[derive(Clone, Debug)]
 pub struct ProtocolState {
-    /// Total USDC supplied by lenders (in stroops). Does not decrease when
-    /// interest accrues - interest earned increases the effective value of
-    /// each lender's share.
-    pub total_supplied: i128,
+    /// Sum of every lender's scaled balance. A lender's USDC value is
+    /// `scaled * supply_index / INDEX_ONE`, so interest reaches lenders by
+    /// growing `supply_index`, never by touching a per-lender entry. Use
+    /// `total_supply_assets` for the pool's supplied USDC.
+    pub total_scaled_supply: i128,
+    /// Cumulative supply index, scaled by `rates::INDEX_ONE`. Grows by the
+    /// lenders' 85% share of the interest each accrual adds to
+    /// `total_borrowed`. The counterpart of `borrow_index`.
+    pub supply_index: i128,
     /// Total outstanding USDC debt across all active positions (in stroops).
     /// Updated on every borrow, repay, accrual, and liquidation.
     pub total_borrowed: i128,
@@ -65,6 +73,19 @@ pub struct ProtocolState {
     /// undercollateralization check after `config.keeper_stale_after_secs`.
     /// Explicit `keeper_heartbeat` calls also update this.
     pub last_keeper_heartbeat: u64,
+    /// Protocol reserve in USDC (stroops): the share of accrued interest kept
+    /// back from lenders (`PROTOCOL_FEE_BP`). Pays the keeper's liquidation
+    /// bonus, so the bonus never comes from BTC and never from lender principal
+    /// beyond this reserve (GHSA-5rxp-7f9g-r66x, #193).
+    pub reserve_usdc: i128,
+    /// Cumulative borrow index, scaled by `rates::INDEX_ONE`. It grows at the
+    /// borrow rate in force over each interval and is brought up to date
+    /// before anything changes utilization, so a past interval is always
+    /// priced at the rate that applied during it (GHSA-c9gg-c476-9vc8,
+    /// GHSA-frj5-5wmv-wvm3).
+    pub borrow_index: i128,
+    /// Ledger `borrow_index` was last brought up to date at.
+    pub index_ledger: u32,
 }
 
 /// Protocol configuration, set at initialization. Most fields are fixed for
@@ -90,6 +111,11 @@ pub struct Config {
     /// Address authorized to publish a co-signed release PSBT via
     /// `publish_release_psbt` (the auto-cosign relayer watcher).
     pub relayer: Address,
+    /// The protocol's 33-byte compressed Bitcoin co-signing public key - the
+    /// key embedded in every Writz redeem script (path A). `deposit` derives
+    /// the expected scriptPubKey from it, so it is fixed for the contract's
+    /// lifetime; rotating it means deploying a new contract.
+    pub protocol_pubkey: BytesN<33>,
     /// Minimum BTC deposit in satoshis (default: 100_000 = 0.001 BTC).
     pub min_deposit_satoshis: u64,
     /// Minimum collateral ratio in basis points (15_000 = 150%).
@@ -112,6 +138,10 @@ pub struct Config {
     /// `set_paused`. See `docs/architecture/contract-migration-runbook.md`,
     /// Track 2, for why this exists.
     pub paused: bool,
+    /// Ceiling on total USDC the pool may have borrowed out, in stroops. A
+    /// cap bounds how much bad debt a price crash can leave behind when
+    /// liquidation cannot release BTC (GHSA-5rxp-7f9g-r66x, #193).
+    pub max_total_borrowed: i128,
 }
 
 // The cross-contract SPV verification call's return type, `SpvVerificationResult`,

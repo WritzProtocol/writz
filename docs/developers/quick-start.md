@@ -1,6 +1,8 @@
-# Quick Start
+---
+title: "Quick Start"
+---
 
-The core lending and verification logic in this repository is working code, not a mockup: the contracts are deployed on Soroban testnet, the tests pass, and the deposit → borrow → repay ZK flow has run end-to-end on-chain (see `docs/developers/runbook.md`). `private-lend/src/oracle.rs`'s `get_btc_price_stroops` now calls a real Reflector oracle on testnet (see `docs/research/oracle-design.md`) - the one remaining placeholder is `commitment-tree`, which still returns a hardcoded price pending a ZK circuit change (tracked in `docs/roadmap/phases.md`) - it does not affect the SPV or lending-mechanics logic below, but `commitment-tree` position pricing is not yet live-market-driven. Start here and have something running in under 5 minutes.
+The core lending and verification logic in this repository is working code, not a mockup: the contracts are deployed on Stellar testnet, the tests pass, and the deposit → borrow → repay ZK flow has run end-to-end on-chain (see `docs/developers/runbook.md`). `private-lend/src/oracle.rs`'s `get_btc_price_stroops` now calls a real Reflector oracle on testnet (see `docs/research/oracle-design.md`) - the one remaining placeholder is `commitment-tree`, which still returns a hardcoded price pending a ZK circuit change - it does not affect the SPV or lending-mechanics logic below, but `commitment-tree` position pricing is not yet live-market-driven. Start here and have something running in under 5 minutes.
 
 ---
 
@@ -57,7 +59,7 @@ cd contracts
 cargo test
 ```
 
-Expected output: 195 tests pass across `bitcoin-spv` (49), `zk-verifier` (25), `commitment-tree` (32), and `private-lend` (89).
+Expected output: 263 tests pass across `bitcoin-spv` (68), `zk-verifier` (26), `commitment-tree` (59), `private-lend` (100), and `spv-types` (10).
 
 ### Bitcoin script toolkit (TypeScript, Bun)
 
@@ -82,7 +84,7 @@ cd ../../bitcoin-script && bun run build
 cd ../relayer && bun install && bun run test
 ```
 
-Expected output: 122 tests pass.
+Expected output: 248 tests pass.
 
 ### ZK circuits (Circom + snarkjs, npm)
 
@@ -92,11 +94,11 @@ npm install
 npm test
 ```
 
-Expected output: 29 tests pass (proof generation, commitment correctness, ratio enforcement, nullifiers).
+Expected output: 52 tests pass (proof generation, commitment correctness, ratio enforcement, nullifiers).
 
 If `verify()` assertions fail here while `prove()` succeeds, your local `circuits/keys/*_final.zkey` (gitignored, regenerated locally) is out of sync with the committed `circuits/keys/*_vkey.json`. Run `bash scripts/compile_all.sh && bash scripts/setup_dev.sh` to regenerate both together from a fresh dev trusted setup, then re-run `npm test`.
 
-### All together: 406 tests, all passing.
+### All together: 623 tests, all passing.
 
 ---
 
@@ -117,18 +119,18 @@ This produces Wasm artifacts in `contracts/target/wasm32v1-none/release/`:
 
 ## Use the Testnet Deployments
 
-All four contracts are live on Soroban testnet. You can call them directly without deploying:
+All four contracts are live on Stellar testnet. You can call them directly without deploying:
 
 ```bash
 # Check the SPV contract is alive
 stellar contract invoke \
-  --id CB2BD6QCSZVNZN5NLI7C5NF356WXVJDSXT6LVAQFWHHS4SZ4NCKKNIVA \
+  --id CAHHY4S4WCIFU4LBSKBI3IP6A4QYR2COV6EACDEBXGPJFDWBJWGOMCLP \
   --network testnet \
   -- get_version
 
 # Check the Merkle root
 stellar contract invoke \
-  --id CDQCTFO3FK3M47QS47O2A4WLNPSQAQBSXBFPJ6RZEHFO5D7RY34FSBBP \
+  --id CAQBLCAPGXXCZTJDAJLY7E4PTJYGR6CY4YWH4JSJKFXYIHW3GANP6RFM \
   --network testnet \
   -- get_merkle_root
 # Returns: 0x2134e76ac74b4b8765b6e37992aa15f0... (Poseidon-2 empty tree root)
@@ -138,27 +140,25 @@ stellar contract invoke \
 
 ## Run the Full ZK End-to-End Flow
 
-This script runs the complete deposit → borrow → repay cycle on Soroban testnet using the deployed contracts. It generates real ZK proofs and submits them on-chain.
+`scripts/deploy/e2e_local.mjs` deploys all four contracts through their
+constructors on a local Stellar network, registers the verification keys and
+runs deposit → borrow → repay → release with real Groth16 proofs. It also
+replays the closed attacks (a deposit claiming someone else's output, a
+redirected borrow, a re-borrow after release, the same txid in both lenders)
+and expects each to fail. CI runs it as the `e2e-local` job. No testnet
+account or real keys are involved.
 
 ```bash
-# You need a Stellar testnet key with XLM and USDC
-# Get testnet XLM: https://laboratory.stellar.org/#account-creator?network=test
-
-WRITZ_DEV_SECRET=<your-testnet-secret-key> node scripts/deploy/e2e_zkflow.js
+docker run -d --rm --name writz-local-stellar -p 8000:8000 \
+  stellar/quickstart:latest --local --enable rpc
+(cd contracts && cargo build --release --target wasm32v1-none --locked)
+(cd circuits && npm ci && npm run compile && npm run setup:dev)
+(cd scripts/deploy && bun install)
+node scripts/deploy/e2e_local.mjs
 ```
 
-This script:
-1. Initializes the commitment-tree contract with a USDC pool
-2. Supplies 1,000 USDC to the pool
-3. Generates a Groth16 deposit proof (circom WASM)
-4. Submits the SPV proof + ZK proof → commitment created on-chain
-5. Inserts the commitment into the Merkle tree (Poseidon root updated)
-6. Generates a Groth16 borrow proof (150% collateral ratio enforced)
-7. Submits the borrow → 200 XLM transferred from pool
-8. Generates a Groth16 repay proof (field-negation amount recovery)
-9. Submits the repay → debt cleared
-
-All 6 transactions land on testnet. You can verify them on [Stellar Expert (testnet)](https://stellar.expert/explorer/testnet).
+`npm run setup:dev` regenerates the development keys in `circuits/keys/`;
+restore the committed ones afterwards with `git checkout circuits/keys`.
 
 ---
 
@@ -192,40 +192,20 @@ Reference transactions (already executed on Bitcoin Signet):
 
 ## Deploy Your Own Contracts
 
-If you want to deploy fresh contract instances to testnet:
+`scripts/deploy/deploy_stack.mjs` deploys and wires up all four contracts in
+the order they depend on each other. Without `--execute` it only validates its
+inputs and prints the plan. Set `STELLAR_NETWORK=local` to rehearse against the
+local network above. The inputs are listed in `scripts/deploy/.env.example`.
 
 ```bash
-cd contracts
-
-# Build
-stellar contract build
-
-# Deploy bitcoin-spv
-stellar contract deploy \
-  --wasm target/wasm32v1-none/release/bitcoin_spv.wasm \
-  --source <your-account> \
-  --network testnet
-
-# Deploy zk-verifier
-stellar contract deploy \
-  --wasm target/wasm32v1-none/release/zk_verifier.wasm \
-  --source <your-account> \
-  --network testnet
-
-# Initialize the zk-verifier with verification keys
-node scripts/deploy/set_vkeys.js \
-  --verifier <zk-verifier-contract-id> \
-  --network testnet \
-  --secret <your-secret>
-
-# Deploy commitment-tree
-stellar contract deploy \
-  --wasm target/wasm32v1-none/release/commitment_tree.wasm \
-  --source <your-account> \
-  --network testnet
+(cd contracts && cargo build --release --target wasm32v1-none --locked)
+cd scripts/deploy
+node deploy_stack.mjs             # validate and print the plan
+node deploy_stack.mjs --execute   # deploy
 ```
 
-See [`contracts/deployments/testnet.md`](../../contracts/deployments/testnet.md) for the full init sequence and verified transaction hashes.
+Do not deploy to the shared testnet or to mainnet without the project owner's
+sign-off.
 
 ---
 
@@ -241,7 +221,7 @@ contracts/
       crypto.rs     - SHA256d implementation in Soroban Wasm
       types.rs      - Config, Checkpoint (SpvVerificationResult now lives in the shared `spv-types` crate)
     zk-verifier/src/
-      lib.rs        - verify_groth16(), set_vkey()
+      lib.rs        - verify_deposit(), verify_borrow_repay(), set_verification_key()
     commitment-tree/src/
       lib.rs        - deposit(), borrow(), repay(), liquidate()
       oracle.rs     - SEP-40 oracle interface
@@ -274,4 +254,4 @@ bitcoin-script/src/
 
 ---
 
-**Next:** [Bitcoin SPV SDK →](spv-sdk.md)
+**Next:** [Bitcoin SPV SDK →](/developers/spv-sdk)

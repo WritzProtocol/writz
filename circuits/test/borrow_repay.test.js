@@ -1,5 +1,9 @@
 'use strict';
-const { poseidonHash, prove, verify, buildSingleLeafTree } = require('./helpers');
+const {
+    poseidonHash, prove, verify, buildSingleLeafTree,
+    TIMELOCK, liqKey, positionCommitment, positionNullifier,
+    keeperKeypair, openKeeperNote, unpackPosition,
+} = require('./helpers');
 
 // Fixed position parameters shared across tests.
 const COLLATERAL   = 1_000_000n;   // 0.01 BTC = 1,000,000 satoshis
@@ -15,9 +19,25 @@ const PRICE_STROOPS_PER_BTC = 600_000_000_000n;
 const MAX_BORROW = 4_000_000_000n;
 const MIN_RATIO_BP = 15_000n;  // 150%
 const DEPTH = 20;
+// Recipient binding (GHSA-xxqv-6vhx-hhrx, GHSA-mhp9-jmvc-x9mw): unconstrained
+// in-circuit (like btc_txid_lo/hi), so any fixed value keeps these tests
+// focused on what they actually check. See commitment-tree/src/test.rs for
+// the contract-side check against a real sha256(recipient strkey).
+const RECIPIENT_LO = 0n;
+const RECIPIENT_HI = 0n;
+
+// #212: the keeper the notes are encrypted to, a fresh ephemeral scalar per
+// proof, and a timelock bound the position's TIMELOCK clears.
+const KEEPER_SK = 0x1234567890abcdefn;
+const EPH_SK = 0x0fedcba987654321n;
+const MIN_TIMELOCK = TIMELOCK - 10_000n;
+let KEEPER;
+beforeAll(async () => {
+    KEEPER = await keeperKeypair(KEEPER_SK);
+});
 
 async function buildBaseTree() {
-    const oldCommitment = await poseidonHash([COLLATERAL, OLD_DEBT, SECRET, NONCE]);
+    const oldCommitment = await positionCommitment(COLLATERAL, OLD_DEBT, SECRET, NONCE);
     const tree = await buildSingleLeafTree(oldCommitment, DEPTH);
     return { oldCommitment, ...tree };
 }
@@ -36,6 +56,13 @@ function borrowInput({ tree, oldDebt = OLD_DEBT, newNonce = NEW_NONCE, delta, is
         is_borrow:                   String(isBorrow),
         btc_price_stroops_per_btc:   String(PRICE_STROOPS_PER_BTC),
         min_ratio_bp:                String(MIN_RATIO_BP),
+        recipient_lo:                String(RECIPIENT_LO),
+        recipient_hi:                String(RECIPIENT_HI),
+        timelock_height:             String(TIMELOCK),
+        eph_sk:                      String(EPH_SK),
+        min_timelock_height:         String(MIN_TIMELOCK),
+        keeper_pub_x:                String(KEEPER.pub[0]),
+        keeper_pub_y:                String(KEEPER.pub[1]),
     };
 }
 
@@ -56,9 +83,7 @@ describe('borrow_repay circuit', () => {
         const { publicSignals } = await prove('borrow_repay', input);
 
         // new_commitment = Poseidon(collateral, old_debt + borrow, secret, new_nonce)
-        const expectedNewCommitment = await poseidonHash([
-            COLLATERAL, OLD_DEBT + BORROW, SECRET, NEW_NONCE,
-        ]);
+        const expectedNewCommitment = await positionCommitment(COLLATERAL, OLD_DEBT + BORROW, SECRET, NEW_NONCE);
         // publicSignals[1] is new_root, [2] is old_nullifier, [0] is new_commitment
         // Actual order depends on circuit output declaration order
         // In our circuit: new_root, old_nullifier, new_commitment
@@ -67,12 +92,12 @@ describe('borrow_repay circuit', () => {
         expect(commitment).toBeDefined();
     });
 
-    test('nullifier matches Poseidon(secret, nonce)', async () => {
+    test('nullifier matches Poseidon(liq_key, nonce)', async () => {
         const tree = await buildBaseTree();
         const input = borrowInput({ tree, delta: 500_000_000n, isBorrow: 1 });
         const { publicSignals } = await prove('borrow_repay', input);
 
-        const expectedNullifier = await poseidonHash([SECRET, NONCE]);
+        const expectedNullifier = await positionNullifier(SECRET, NONCE);
         const found = publicSignals.find((s) => BigInt(s) === expectedNullifier);
         expect(found).toBeDefined();
     });
@@ -92,6 +117,29 @@ describe('borrow_repay circuit', () => {
         await expect(prove('borrow_repay', input)).rejects.toThrow();
     });
 
+    // GHSA-c73p-xqvh-xx96: min_ratio_bp was an unconstrained public signal -
+    // the circuit used its full BN254 field value in rhs_scaled, but the
+    // contract's sig_u32() read only the last 4 bytes to check it against
+    // the configured 15_000. A field element whose low 32 bits read 15_000
+    // but whose true value is enormous makes rhs_scaled wrap modulo the
+    // field to something *smaller* than lhs_scaled, so the ratio comparator
+    // accepts a borrow tens of thousands of times over the real limit.
+    // This crafted value and the 100,000,000,000-stroop over-borrow are the
+    // exact reproduction from the advisory, not invented for this test -
+    // both must be reproducible against this fixture's COLLATERAL/PRICE.
+    test('a crafted min_ratio_bp whose low 32 bits alias 15_000 does not bypass the real ratio check (GHSA-c73p-xqvh-xx96)', async () => {
+        const tree = await buildBaseTree();
+        const CRAFTED_MIN_RATIO_BP =
+            21888242871839275222246405745257275088548364400416034343698204186571781978776n;
+        expect(CRAFTED_MIN_RATIO_BP % 2n ** 32n).toBe(15000n); // low 32 bits alias the real 15_000
+        const HUGE_OVER_BORROW = 100_000_000_000n; // ~25,000x MAX_BORROW
+        const input = {
+            ...borrowInput({ tree, delta: HUGE_OVER_BORROW, isBorrow: 1 }),
+            min_ratio_bp: String(CRAFTED_MIN_RATIO_BP),
+        };
+        await expect(prove('borrow_repay', input)).rejects.toThrow();
+    });
+
     test('repay reduces debt without ratio check', async () => {
         // First borrow $200.
         const tree1 = await buildBaseTree();
@@ -102,9 +150,7 @@ describe('borrow_repay circuit', () => {
         const newRootAfterBorrow = BigInt(borrowSigs[0]);
 
         // Build a new tree with the updated commitment at index 0.
-        const newCommitmentAfterBorrow = await poseidonHash([
-            COLLATERAL, BORROW, SECRET, NEW_NONCE,
-        ]);
+        const newCommitmentAfterBorrow = await positionCommitment(COLLATERAL, BORROW, SECRET, NEW_NONCE);
         const tree2 = await buildSingleLeafTree(newCommitmentAfterBorrow, DEPTH);
         // Sanity: the computed root should match the proof's new_root.
         expect(tree2.root).toBe(newRootAfterBorrow);
@@ -136,6 +182,13 @@ describe('borrow_repay circuit', () => {
             is_borrow:                 '0',  // repay - skip ratio check
             btc_price_stroops_per_btc: String(PRICE_STROOPS_PER_BTC),
             min_ratio_bp:              String(MIN_RATIO_BP),
+            recipient_lo:              String(RECIPIENT_LO),
+            recipient_hi:              String(RECIPIENT_HI),
+            timelock_height:           String(TIMELOCK),
+            eph_sk:                    String(EPH_SK + 1n),
+            min_timelock_height:       String(MIN_TIMELOCK),
+            keeper_pub_x:              String(KEEPER.pub[0]),
+            keeper_pub_y:              String(KEEPER.pub[1]),
         };
 
         const { proof: repayProof, publicSignals: repaySigs } = await prove('borrow_repay', inputRepay);
@@ -168,7 +221,7 @@ describe('borrow_repay circuit', () => {
         // Mirror case: is_borrow=1 must mean new_debt >= old_debt. Start from
         // a non-zero old_debt and submit a negative (field-encoded) delta.
         const oldDebt = 2_000_000_000n;
-        const oldCommitment = await poseidonHash([COLLATERAL, oldDebt, SECRET, NONCE]);
+        const oldCommitment = await positionCommitment(COLLATERAL, oldDebt, SECRET, NONCE);
         const tree = await buildSingleLeafTree(oldCommitment, DEPTH);
         const fieldPrime = 21888242871839275222246405745257275088548364400416034343698204186575808495617n;
         const decreaseAmount = 500_000_000n;
@@ -183,6 +236,93 @@ describe('borrow_repay circuit', () => {
     test('non-boolean is_borrow is rejected regardless of other signals', async () => {
         const tree = await buildBaseTree();
         const input = borrowInput({ tree, delta: 0n, isBorrow: 2 }); // delta=0 satisfies both direction checks trivially
+        await expect(prove('borrow_repay', input)).rejects.toThrow();
+    });
+    // ── #212: timelock bound and keeper note ────────────────────────────────
+
+    test('a borrow whose position matures before min_timelock_height is rejected', async () => {
+        const tree = await buildBaseTree();
+        const input = {
+            ...borrowInput({ tree, delta: 1_000_000_000n, isBorrow: 1 }),
+            min_timelock_height: String(TIMELOCK + 1n),
+        };
+        await expect(prove('borrow_repay', input)).rejects.toThrow();
+    });
+
+    test('a borrow exactly at min_timelock_height succeeds', async () => {
+        const tree = await buildBaseTree();
+        const input = {
+            ...borrowInput({ tree, delta: 1_000_000_000n, isBorrow: 1 }),
+            min_timelock_height: String(TIMELOCK),
+        };
+        const { proof, publicSignals } = await prove('borrow_repay', input);
+        expect(await verify('borrow_repay', proof, publicSignals)).toBe(true);
+    });
+
+    test('a repay is not held to the timelock bound, so a matured position can still repay', async () => {
+        const oldDebt = 2_000_000_000n;
+        const oldCommitment = await positionCommitment(COLLATERAL, oldDebt, SECRET, NONCE);
+        const tree = await buildSingleLeafTree(oldCommitment, DEPTH);
+        const fieldPrime = 21888242871839275222246405745257275088548364400416034343698204186575808495617n;
+        const input = {
+            ...borrowInput({ tree, oldDebt, delta: fieldPrime - oldDebt, isBorrow: 0 }),
+            min_timelock_height: String(TIMELOCK + 50_000n),
+        };
+        const { proof, publicSignals } = await prove('borrow_repay', input);
+        expect(await verify('borrow_repay', proof, publicSignals)).toBe(true);
+    });
+
+    test('the timelock is carried unchanged into the new commitment', async () => {
+        const tree = await buildBaseTree();
+        const input = borrowInput({ tree, delta: 1_000_000_000n, isBorrow: 1 });
+        const { publicSignals } = await prove('borrow_repay', input);
+        expect(BigInt(publicSignals[2])).toBe(
+            await positionCommitment(COLLATERAL, 1_000_000_000n, SECRET, NEW_NONCE, TIMELOCK),
+        );
+    });
+
+    test('a timelock wider than 32 bits is rejected', async () => {
+        const wide = TIMELOCK + (1n << 32n);
+        const oldCommitment = await positionCommitment(COLLATERAL, OLD_DEBT, SECRET, NONCE, wide);
+        const tree = await buildSingleLeafTree(oldCommitment, DEPTH);
+        const input = {
+            ...borrowInput({ tree, delta: 1_000_000_000n, isBorrow: 1 }),
+            timelock_height: String(wide),
+        };
+        await expect(prove('borrow_repay', input)).rejects.toThrow();
+    });
+
+    test('the keeper opens the note and recovers exactly the liquidation witness of the new position', async () => {
+        const tree = await buildBaseTree();
+        const BORROW = 1_500_000_000n;
+        const input = borrowInput({ tree, delta: BORROW, isBorrow: 1 });
+        const { publicSignals } = await prove('borrow_repay', input);
+        // Outputs: new_root, old_nullifier, new_commitment, eph_x, eph_y, ct0, ct1, ct2.
+        const eph = [publicSignals[3], publicSignals[4]];
+        const ct = publicSignals.slice(5, 8);
+        const [k, nonce, packed] = await openKeeperNote(KEEPER_SK, eph, ct);
+        expect(k).toBe(await liqKey(SECRET));
+        expect(nonce).toBe(NEW_NONCE);
+        expect(unpackPosition(packed)).toEqual({ collateral: COLLATERAL, debt: BORROW, timelock: TIMELOCK });
+        // And those values rebuild the new commitment without the secret.
+        expect(await poseidonHash([COLLATERAL, BORROW, k, nonce, TIMELOCK])).toBe(BigInt(publicSignals[2]));
+    });
+
+    test('a different key cannot open the note', async () => {
+        const tree = await buildBaseTree();
+        const input = borrowInput({ tree, delta: 1_000_000_000n, isBorrow: 1 });
+        const { publicSignals } = await prove('borrow_repay', input);
+        const [k] = await openKeeperNote(KEEPER_SK + 1n, [publicSignals[3], publicSignals[4]], publicSignals.slice(5, 8));
+        expect(k).not.toBe(await liqKey(SECRET));
+    });
+
+    test('the identity point is refused as a keeper key', async () => {
+        const tree = await buildBaseTree();
+        const input = {
+            ...borrowInput({ tree, delta: 1_000_000_000n, isBorrow: 1 }),
+            keeper_pub_x: '0',
+            keeper_pub_y: '1',
+        };
         await expect(prove('borrow_repay', input)).rejects.toThrow();
     });
 });

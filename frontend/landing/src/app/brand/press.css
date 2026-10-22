@@ -1,0 +1,748 @@
+/*
+  Brand page. It sits inside `.landing`, so it takes the landing's tokens,
+  navbar and footer; everything here is scoped under `.press-root`.
+*/
+
+.press-root {
+  -webkit-font-smoothing: antialiased;
+  min-height: 100%;
+}
+
+/* Gold selection on a gold ground highlights nothing. Both selector forms: the
+   text sits directly in the tile, so the descendant one alone never matches. */
+.press-root .on-gold::selection,
+.press-root .on-gold ::selection {
+  background: var(--on-accent);
+  color: var(--accent);
+}
+
+.press-root :is(.masthead, section, .colophon) a {
+  color: var(--heading);
+  text-decoration: underline;
+  text-decoration-color: var(--line-strong);
+  text-underline-offset: 3px;
+  transition: text-decoration-color 120ms var(--ease-enter);
+}
+
+.press-root code {
+  font-family: var(--ff-mono), ui-monospace, monospace;
+  font-size: 0.92em;
+  background: var(--surface-2);
+  border-radius: 4px;
+  padding: 1px 5px;
+  color: var(--heading);
+}
+
+/* ── Masthead ───────────────────────────────────────────────────────── */
+
+.press-root .masthead {
+  padding: calc(72px + 72px) 0 56px;
+  border-bottom: 1px solid var(--line);
+}
+
+.press-root h1 {
+  margin: 0 0 20px;
+  font-size: 56px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  color: var(--heading);
+}
+
+.press-root .lead {
+  max-width: 640px;
+  margin: 0;
+  font-size: 21px;
+  line-height: 1.45;
+  text-wrap: pretty;
+}
+
+.press-root .index {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0 24px;
+  margin: 48px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.press-root .masthead .index a {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--body);
+  text-decoration: none;
+  transition: color 120ms var(--ease-enter);
+}
+
+.press-root .num {
+  font-family: var(--ff-mono), ui-monospace, monospace;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--accent);
+}
+
+.press-root .eyebrow .num {
+  margin-right: -2px;
+}
+
+/* ── Sections ───────────────────────────────────────────────────────── */
+
+.press-root section {
+  padding: 88px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.press-root section:last-of-type {
+  border-bottom: 0;
+}
+
+.press-root h2 {
+  margin: 0 0 12px;
+}
+
+.press-root h3 {
+  margin: 48px 0 12px;
+  font-size: 25px;
+  font-weight: 600;
+  letter-spacing: -0.014em;
+  line-height: 1.25;
+  color: var(--heading);
+}
+
+.press-root p {
+  max-width: 680px;
+  margin: 0 0 16px;
+  font-size: 17px;
+  line-height: 1.6;
+}
+
+.press-root .caption {
+  max-width: 680px;
+  margin: 16px 0 0;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+/* One surface for every specimen: Ink card, faint edge, 12px radius. */
+.press-root .asset,
+.press-root .clearspace,
+.press-root .ladder,
+.press-root .specimen,
+.press-root .gfx .cell,
+.press-root blockquote,
+.press-root .dont figure {
+  background: var(--surface);
+  border-radius: 12px;
+  box-shadow: var(--shadow-border);
+}
+
+/* Masked artwork, so a specimen can be tinted to any colour, including the
+   wrong ones the misuse tiles have to show. */
+.press-root .mark,
+.press-root .lockup-art {
+  flex: none;
+  background: currentColor;
+}
+
+.press-root .mark {
+  aspect-ratio: 912 / 628;
+  -webkit-mask: url("/brand/writz-mark.svg") no-repeat center / contain;
+  mask: url("/brand/writz-mark.svg") no-repeat center / contain;
+}
+
+.press-root .lockup-art {
+  aspect-ratio: 355.44 / 100;
+  -webkit-mask: url("/brand/writz-lockup.svg") no-repeat center / contain;
+  mask: url("/brand/writz-lockup.svg") no-repeat center / contain;
+}
+
+/* ── Logo ───────────────────────────────────────────────────────────── */
+
+.press-root .assets {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 196px), 1fr));
+  gap: 16px;
+  margin-top: 36px;
+}
+
+.press-root .asset {
+  overflow: hidden;
+}
+
+.press-root .asset .stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 160px;
+  padding: 24px;
+  background: var(--bg);
+}
+
+.press-root .asset .meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 18px 16px;
+}
+
+.press-root .asset .name {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--heading);
+}
+
+.press-root .asset .files {
+  display: flex;
+  gap: 12px;
+  font-family: var(--ff-mono), ui-monospace, monospace;
+  font-size: 13px;
+}
+
+/* ── Clear space and size ───────────────────────────────────────────── */
+
+.press-root .clearspace {
+  display: flex;
+  justify-content: center;
+  margin-top: 32px;
+  padding: 40px 24px;
+}
+
+.press-root .clearspace .box {
+  position: relative;
+  border: 1px dashed var(--accent);
+  border-radius: 10px;
+}
+
+/* The corner square is the unit itself, drawn rather than labelled. */
+.press-root .clearspace .unit {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border-right: 1px solid var(--accent);
+  border-bottom: 1px solid var(--accent);
+  opacity: 0.55;
+}
+
+.press-root .ladder {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 42px;
+  margin-top: 32px;
+  padding: 40px 28px 28px;
+}
+
+.press-root .ladder .step {
+  text-align: center;
+}
+
+.press-root .ladder .slot {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  height: 52px;
+}
+
+.press-root .ladder .tag {
+  margin-top: 12px;
+  font-family: var(--ff-mono), ui-monospace, monospace;
+  font-size: 13px;
+  white-space: nowrap;
+  color: var(--muted);
+}
+
+.press-root .ladder .step.floor .tag {
+  font-weight: 500;
+  color: var(--accent);
+}
+
+.press-root .ladder .step.dead .tag {
+  color: var(--danger);
+}
+
+/* ── Colour ─────────────────────────────────────────────────────────── */
+
+.press-root .swatches {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr));
+  gap: 18px;
+  margin-top: 36px;
+}
+
+.press-root .swatch .chip {
+  height: 112px;
+  border-radius: 12px;
+  box-shadow: 0 0 0 1px var(--line-strong);
+}
+
+.press-root .swatch .chip.small {
+  height: 56px;
+}
+
+.press-root .swatch .name {
+  margin: 14px 0 2px;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--heading);
+}
+
+.press-root .swatch .hex {
+  font-family: var(--ff-mono), ui-monospace, monospace;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.press-root .swatch .role {
+  margin-top: 6px;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.press-root .pairs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr));
+  gap: 18px;
+  margin-top: 28px;
+}
+
+.press-root .pairs .pair {
+  padding: 22px 18px 16px;
+  border-radius: 12px;
+  box-shadow: 0 0 0 1px var(--line);
+}
+
+.press-root .pairs .aa {
+  font-size: 34px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.press-root .pairs .ratio {
+  margin-top: 14px;
+  font-family: var(--ff-mono), ui-monospace, monospace;
+  font-size: 13px;
+  opacity: 0.75;
+}
+
+.press-root .pairs .pair.split {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+}
+
+.press-root .pairs .pair.split .half {
+  padding: 22px 18px 16px;
+}
+
+.press-root .pairs .pair.split .half + .half {
+  padding-top: 14px;
+}
+
+.press-root .pairs .label {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.press-root .pairs .pair:not(.split) .label {
+  margin-top: 6px;
+  opacity: 0.85;
+}
+
+.press-root .pairs.status .half .label {
+  margin-bottom: 8px;
+}
+
+.press-root .pairs.status .half .ratio {
+  margin-top: 0;
+}
+
+.press-root .pairs .pair.fail {
+  box-shadow: 0 0 0 2px var(--danger);
+}
+
+/* ── Type ───────────────────────────────────────────────────────────── */
+
+.press-root .specimen {
+  margin-top: 32px;
+}
+
+.press-root .specimen .row {
+  display: flex;
+  align-items: baseline;
+  gap: 24px;
+  padding: 18px 24px;
+}
+
+.press-root .specimen .row + .row {
+  border-top: 1px solid var(--line);
+}
+
+.press-root .specimen .spec {
+  flex: none;
+  width: 172px;
+  font-family: var(--ff-mono), ui-monospace, monospace;
+  font-size: 13px;
+  white-space: nowrap;
+  color: var(--muted);
+}
+
+.press-root .specimen .sample {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--heading);
+}
+
+/* ── Graphic language ───────────────────────────────────────────────── */
+
+.press-root .gfx {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 18px;
+  margin-top: 32px;
+}
+
+.press-root .gfx .cell {
+  padding: 22px;
+}
+
+.press-root .gfx .cap {
+  margin-bottom: 16px;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.press-root .gfx .note {
+  font-family: var(--ff-mono), ui-monospace, monospace;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.press-root .shard {
+  position: relative;
+  height: 54px;
+  overflow: hidden;
+  border-radius: 6px;
+}
+
+.press-root .shard span {
+  position: absolute;
+  top: -12px;
+  width: 18px;
+  height: 80px;
+  opacity: 0.5;
+  transform: skewX(-16deg);
+}
+
+.press-root .tints {
+  display: flex;
+  gap: 5px;
+}
+
+.press-root .tints span {
+  flex: 1;
+  height: 32px;
+  border-radius: 4px;
+}
+
+.press-root .redact {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 15px;
+  color: var(--body);
+}
+
+/* ── Copy ───────────────────────────────────────────────────────────── */
+
+.press-root blockquote {
+  max-width: 780px;
+  margin: 24px 0 0;
+  padding: 24px 26px;
+}
+
+.press-root blockquote p {
+  color: var(--heading);
+}
+
+.press-root blockquote p:last-child {
+  margin-bottom: 0;
+}
+
+.press-root blockquote .head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.press-root blockquote .head .name {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.press-root .copy {
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  box-shadow: 0 0 0 1px var(--line-strong);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--heading);
+  cursor: pointer;
+  transition: box-shadow 120ms var(--ease-enter);
+}
+
+/* ── Misuse ─────────────────────────────────────────────────────────── */
+
+.press-root .dont {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+  margin-top: 32px;
+}
+
+.press-root .dont figure {
+  margin: 0;
+  overflow: hidden;
+}
+
+.press-root .dont .stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 128px;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.press-root .dont .busy {
+  position: relative;
+  background: var(--deep);
+}
+
+/* Flat blocks standing in for a photograph, so the tile reads busy without a pattern. */
+.press-root .dont .busy .blocks span {
+  position: absolute;
+  background: var(--surface-2);
+}
+
+.press-root .dont .busy .blocks span:nth-child(1) {
+  inset: 0 62% 40% 0;
+  background: var(--muted);
+}
+
+.press-root .dont .busy .blocks span:nth-child(2) {
+  inset: 18% 20% 0 30%;
+  background: var(--body);
+}
+
+.press-root .dont .busy .blocks span:nth-child(3) {
+  inset: 0 0 55% 70%;
+  background: var(--surface-2);
+}
+
+.press-root .dont .busy .blocks span:nth-child(4) {
+  inset: 60% 55% 0 0;
+  background: var(--bg);
+}
+
+.press-root .dont .busy .blocks span:nth-child(5) {
+  inset: 45% 0 0 78%;
+  background: var(--muted);
+}
+
+
+.press-root .dont .busy .mark {
+  position: relative;
+}
+
+.press-root .dont figcaption {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--body);
+}
+
+.press-root .dont figcaption::before {
+  content: "\00d7";
+  font-weight: 600;
+  color: var(--danger);
+}
+
+/* ── Rules ──────────────────────────────────────────────────────────── */
+
+.press-root .rules {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 32px;
+  margin-top: 32px;
+}
+
+.press-root .rules ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.press-root .rules li {
+  position: relative;
+  padding: 12px 0 12px 24px;
+  border-top: 1px solid var(--line);
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.press-root .rules li::before {
+  position: absolute;
+  top: 12px;
+  left: 0;
+  font-weight: 600;
+}
+
+.press-root .rules .allowed li::before {
+  content: "+";
+  color: var(--accent);
+}
+
+.press-root .rules .forbidden li::before {
+  content: "\00d7";
+  color: var(--danger);
+}
+
+.press-root .colophon {
+  padding-top: 8px;
+  padding-bottom: 72px;
+  font-size: 15px;
+  color: var(--muted);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .press-root :is(.masthead, section, .colophon) a:hover {
+    text-decoration-color: var(--accent);
+  }
+
+  .press-root .masthead .index a:hover {
+    color: var(--heading);
+  }
+
+  .press-root .copy:hover {
+    box-shadow: 0 0 0 1px var(--heading);
+  }
+}
+
+@media (max-width: 860px) {
+  .press-root .dont {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 720px) {
+  .press-root h1 {
+    font-size: 38px;
+  }
+
+  .press-root h3 {
+    font-size: 21px;
+  }
+
+  .press-root .lead {
+    font-size: 18px;
+  }
+
+  .press-root p {
+    font-size: 16px;
+  }
+
+  .press-root .masthead {
+    padding: calc(72px + 40px) 0 40px;
+  }
+
+  .press-root section {
+    padding: 56px 0;
+  }
+
+  .press-root .gfx {
+    grid-template-columns: 1fr;
+  }
+
+  .press-root .specimen .spec {
+    width: 116px;
+  }
+
+  .press-root .specimen .row {
+    gap: 14px;
+    padding: 14px 16px;
+  }
+
+  .press-root .ladder {
+    gap: 22px;
+  }
+
+  /* The diagram is drawn at a fixed 168px mark, wider than a phone. */
+  .press-root .clearspace .box {
+    zoom: 0.62;
+  }
+}
+
+@media (max-width: 480px) {
+  .press-root .dont {
+    grid-template-columns: 1fr;
+  }
+}
+
+.press-root .copy {
+  touch-action: manipulation;
+}
+
+@media (pointer: coarse) {
+  .press-root :is(.masthead .lead, .colophon, section p) a {
+    padding-block: 13px;
+  }
+  .press-root .masthead .lead a {
+    padding-inline: 17px;
+    margin-inline: -17px;
+  }
+  .press-root .masthead .index a {
+    min-height: 44px;
+  }
+  .press-root .asset .files {
+    gap: 4px;
+  }
+  .press-root .asset .files a {
+    display: inline-flex;
+    align-items: center;
+    min-width: 44px;
+    min-height: 44px;
+    margin-block: -13px;
+  }
+  .press-root .copy {
+    position: relative;
+  }
+  .press-root .copy::after {
+    content: "";
+    position: absolute;
+    inset: -9px 0;
+  }
+}

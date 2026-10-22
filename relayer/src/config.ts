@@ -55,11 +55,32 @@ export interface Config {
   /** How often (ms) the vault watcher (#114) polls Soroban RPC for new
    * deposit/withdraw events. */
   vaultWatcherPollIntervalMs: number;
+  /** bitcoin-spv contract id; the header sync feeds it. */
+  bitcoinSpvId: string;
+  /** Height to start syncing from - the bitcoin-spv checkpoint height. */
+  spvSyncFromHeight: number | undefined;
+  spvSyncIntervalMs: number;
+  // ZK keeper (#212)
+  /** BabyJubJub scalar whose public key commitment-tree holds as its keeper
+   * key; opens the keeper note every borrow and repay publishes. */
+  keeperBabyjubSecret: bigint | undefined;
+  /** Stellar secret of the account that pays a liquidated position's debt. */
+  keeperSecret: string | undefined;
+  keeperPollIntervalMs: number;
+  /** Must equal commitment-tree's oracle price, or liquidation proofs fail
+   * with PriceMismatch. The contract's Phase 1 oracle is a fixed $60,000. */
+  btcPriceStroops: bigint;
+  /** Must equal commitment-tree's liquidation_threshold_bp. */
+  liquidationThresholdBp: bigint;
 }
 
+// mempool.space rather than Blockstream: Blockstream's public API now
+// enforces a monthly quota on unauthenticated callers, and a header sync from
+// an older checkpoint exhausted it within minutes (every pass then failed
+// with 429). Both serve the same Esplora API.
 const ESPLORA_URLS: Record<BitcoinNetwork, string> = {
-  mainnet: "https://blockstream.info/api",
-  signet: "https://blockstream.info/signet/api",
+  mainnet: "https://mempool.space/api",
+  signet: "https://mempool.space/signet/api",
 };
 
 const TESTNET_RPC = "https://soroban-testnet.stellar.org";
@@ -89,6 +110,15 @@ function loadConfig(): Config {
     defindexVaultId,
     kmsKeyId: process.env["KMS_KEY_ID"],
     protocolSigningKeyWif: process.env["PROTOCOL_SIGNING_KEY"],
+    lending: {
+      ADMIN_SECRET: process.env["ADMIN_SECRET"],
+      RELAYER_SECRET: process.env["RELAYER_SECRET"],
+      COMMITMENT_TREE_ID: process.env["COMMITMENT_TREE_ID"],
+      PRIVATE_LEND_ID: process.env["PRIVATE_LEND_ID"],
+      BITCOIN_SPV_ID: process.env["BITCOIN_SPV_ID"],
+      KEEPER_SECRET: process.env["KEEPER_SECRET"],
+      KEEPER_BABYJUB_SECRET: process.env["KEEPER_BABYJUB_SECRET"],
+    },
   });
 
   return {
@@ -114,6 +144,14 @@ function loadConfig(): Config {
     defindexApiUrl: getEnv("DEFINDEX_API_URL", "https://api.defindex.io"),
     defindexVaultId,
     vaultWatcherPollIntervalMs: parseInt(getEnv("VAULT_WATCHER_POLL_INTERVAL_MS", "30000"), 10),
+    bitcoinSpvId: getEnv("BITCOIN_SPV_ID", ""),
+    spvSyncFromHeight: process.env["SPV_SYNC_FROM_HEIGHT"] ? parseInt(process.env["SPV_SYNC_FROM_HEIGHT"], 10) : undefined,
+    spvSyncIntervalMs: parseInt(getEnv("SPV_SYNC_INTERVAL_MS", "60000"), 10),
+    keeperBabyjubSecret: process.env["KEEPER_BABYJUB_SECRET"] ? BigInt(process.env["KEEPER_BABYJUB_SECRET"].trim()) : undefined,
+    keeperSecret: process.env["KEEPER_SECRET"],
+    keeperPollIntervalMs: parseInt(getEnv("KEEPER_POLL_INTERVAL_MS", "60000"), 10),
+    btcPriceStroops: BigInt(getEnv("BTC_PRICE_STROOPS", "600000000000")),
+    liquidationThresholdBp: BigInt(getEnv("LIQUIDATION_THRESHOLD_BP", "12000")),
   };
 }
 

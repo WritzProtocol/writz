@@ -1,4 +1,6 @@
-# PrivateLend
+---
+title: "PrivateLend"
+---
 
 **Deposit Bitcoin. Borrow USDC. Your position is yours alone.**
 
@@ -21,7 +23,7 @@ Interest accrues continuously at a variable rate determined by how much of the p
 | Minimum collateral ratio | 150% (BTC value must be 1.5× the USDC borrowed) |
 | Maximum LTV | 66.7% (you can borrow up to 2/3 of your BTC's value) |
 | Liquidation threshold | 120% (position is eligible for liquidation below this ratio) |
-| Liquidation penalty | 10% (liquidator receives a 10% discount on BTC vs. market price) |
+| Liquidation bonus | 10% of the debt, paid to the liquidator in USDC from the protocol reserve |
 | Minimum confirmations | 6 Bitcoin blocks (~60 minutes) |
 | Protocol fee | 15% of interest spread |
 
@@ -72,7 +74,7 @@ Select how much BTC you want to deposit as collateral. Writz will show you the m
 <details>
 <summary>How this works technically</summary>
 
-The generated address is a P2WSH (Pay-to-Witness-Script-Hash) address. It encodes your public key, Writz's co-signing key, and a time-lock specific to your loan term - see [Bitcoin Side](../how-it-works/bitcoin-side.md) for the full script design.
+The generated address is a P2WSH (Pay-to-Witness-Script-Hash) address. It encodes your public key, Writz's co-signing key, and a time-lock specific to your loan term - see [Bitcoin Side](/how-it-works/bitcoin-side) for the full script design.
 
 </details>
 
@@ -89,7 +91,7 @@ Once your transaction has 6 confirmations, the Writz app automatically proves yo
 <details>
 <summary>How this works technically</summary>
 
-The app assembles an SPV proof (Bitcoin block headers + Merkle proof + raw transaction) and submits it to the Soroban `bitcoin-spv` contract. The contract verifies your BTC transaction cryptographically - checking proof-of-work and Merkle inclusion, not trusting any third party's word for it - and signals the commitment-tree contract. See [SPV Verification](../how-it-works/spv-verification.md) for the full mechanics.
+The app assembles an SPV proof (Bitcoin block headers + Merkle proof + raw transaction) and submits it to the Soroban `bitcoin-spv` contract. The contract verifies your BTC transaction cryptographically - checking proof-of-work and Merkle inclusion, not trusting any third party's word for it - and signals the commitment-tree contract. See [SPV Verification](/how-it-works/spv-verification) for the full mechanics.
 
 </details>
 
@@ -104,7 +106,7 @@ Your position now exists on Stellar, visible only to you - not to other users, n
 
 Your browser generates a zero-knowledge proof of your deposit and submits it to the commitment-tree contract, which records a cryptographic commitment. Your position's spending keys are derived deterministically from a signature of your connected Stellar wallet (not randomly generated, so nothing to lose), and an encrypted recovery note is published on-chain alongside the commitment. "Recover positions" re-derives your keys, scans the on-chain notes, and rebuilds your position from them.
 
-One caveat: the Bitcoin-side details needed to release your BTC on repayment (your Bitcoin pubkey, the timelock height, and the deposit's output index) are cached locally and are not part of the recovery note. In the rare case those are lost on a device you never repaid from, contact support before repaying so they can be reconstructed from your original deposit transaction, or use the [manual emergency recovery path](../how-it-works/manual-emergency-recovery.md) once the CLTV timelock expires.
+One caveat: the Bitcoin-side details needed to release your BTC on repayment (your Bitcoin pubkey, the timelock height, and the deposit's output index) are cached locally and are not part of the recovery note. In the rare case those are lost on a device you never repaid from, contact support before repaying so they can be reconstructed from your original deposit transaction, or use the [manual emergency recovery path](/how-it-works/manual-emergency-recovery) once the CLTV timelock expires.
 
 </details>
 
@@ -138,7 +140,7 @@ If your health factor drops below 1.2 (collateral ratio below 120%), your positi
 
 **How private liquidation works:** A keeper monitors positions using a private operator key - this means the keeper can see position details that no outside observer can, which is what lets it detect risk without a public health-factor feed. When a position is undercollateralized, the keeper generates a ZK proof that says "this position's health ratio is below 120%." Your collateral amount and identity stay hidden from everyone else; the USDC debt amount is published (the liquidator needs it to pay it, and it's cryptographically bound to your commitment so it can't be faked). Anyone can verify this proof and complete the liquidation.
 
-The liquidator pays the outstanding USDC debt. The protocol co-signs the BTC release to the liquidator. The liquidator receives BTC at a 10% discount to market value - the liquidation bonus that makes this economically rational.
+The liquidator pays the outstanding USDC debt, and the contract records the liquidation. Your BTC stays under your own script: the protocol never moves it, so liquidation does not hand BTC to the liquidator. The liquidator also receives a 10% USDC bonus from the protocol reserve, which is funded by 15% of interest. If the reserve is smaller than the bonus, the liquidator gets what the reserve holds.
 
 **Protecting yourself from liquidation:**
 - Keep your health factor above 1.5 (a 50% buffer above the minimum) - the app color-codes it (green above 150%, amber 120–150%, red below 120%) on your position dashboard
@@ -146,7 +148,7 @@ The liquidator pays the outstanding USDC debt. The protocol co-signs the BTC rel
 - Maintain USDC reserves to repay quickly if needed
 - Borrow conservatively - taking 50% LTV instead of 66% gives you significant buffer
 
-**If you are liquidated:** your position's status updates to "liquidated" and the app explains what happened - your outstanding debt is cleared, but the BTC collateral is gone (see the [liquidation notification design](../design/liquidation-notification-spec.md) for how this is detected). There is no silent loss; you will not have to guess why your collateral disappeared.
+**If you are liquidated:** your position's status updates to "liquidated" and the app explains what happened - your outstanding debt is cleared, but the BTC collateral is gone (see the [liquidation notification design](/design/liquidation-notification-spec) for how this is detected). There is no silent loss; you will not have to guess why your collateral disappeared.
 
 ---
 
@@ -162,15 +164,15 @@ The USDC pool is separate from borrower positions. As a lender, you are not expo
 
 ## Phase 2 Launch Parameters (planned, not yet scheduled)
 
-PrivateLend is planned to launch on mainnet in Q2 to Q3 2027 with conservative initial parameters, once a set of gates are cleared - see `docs/roadmap/phases.md` for the live status of each:
+PrivateLend is planned to launch on mainnet in Q2 to Q3 2027 with conservative initial parameters, once a set of gates are cleared:
 
 - **TVL cap:** $50,000 BTC collateral (raised progressively)
 - **Whitelist-only** for the first 30 days
-- **Protocol fee:** 0% for 90-day bootstrap period
+- **Protocol fee:** the launch value is not decided yet (the contract charges 15% of interest today)
 - **USDC seed liquidity:** $50,000 protocol-owned (funding source not yet resolved - see `docs/research/growth-strategy.md`)
 
-These caps will be raised after a 30-day clean operation period and the completion of the Audit Bank engagement. The Q2 to Q3 2027 date and every parameter above are contingent on gates that are not yet closed: a formed legal entity (not yet started), a real price oracle (currently a hardcoded stub in the contract), the ZK trusted setup ceremony (participants not yet identified), and the Audit Bank engagement itself (its stated qualification path runs through the SCF grant, which is not being pursued in the short term). None of this blocks using PrivateLend on testnet today - it means the mainnet date above is a target, not a commitment.
+These caps will be raised after a 30-day clean operation period and the completion of the Audit Bank engagement. The 2027 date and every parameter above are contingent on gates that are not yet closed: a formed legal entity (not yet started), a real price oracle (currently a hardcoded stub in the contract), the ZK trusted setup ceremony (participants not yet identified), and the Audit Bank engagement itself (its stated qualification path runs through the SCF grant, which is not being pursued in the short term). None of this blocks using PrivateLend on testnet today - it means the mainnet date above is a target, not a commitment.
 
 ---
 
-**Deeper reading:** [How the ZK Privacy Layer Works →](../how-it-works/zk-privacy-layer.md)
+**Deeper reading:** [How the ZK Privacy Layer Works →](/how-it-works/zk-privacy-layer)

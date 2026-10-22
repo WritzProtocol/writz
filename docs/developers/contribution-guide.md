@@ -1,4 +1,6 @@
-# Contributing to Writz
+---
+title: "Contributing to Writz"
+---
 
 Writz is open source. Contributions - bug reports, code improvements, documentation, and security research - are welcome. This page explains how to contribute effectively.
 
@@ -12,7 +14,7 @@ Writz is open source. Contributions - bug reports, code improvements, documentat
 
 **Documentation:** Spotted something unclear, incorrect, or missing? Open a PR directly against the `docs/` directory.
 
-**Security research:** See the [Bug Bounty](../security/bug-bounty.md) page for responsible disclosure guidelines and rewards.
+**Security research:** See the [Bug Bounty](/security/bug-bounty) page for responsible disclosure guidelines and rewards.
 
 **ZK ceremony participation:** The Groth16 trusted setup ceremony requires independent participants. If you're interested in participating, [open an issue](https://github.com/WritzProtocol/writz/issues) (`writz.xyz` has no mailbox yet). No technical background required - participants just need to run a script and discard their randomness.
 
@@ -33,13 +35,13 @@ cd ../../relayer && bun install
 cd ../circuits && npm install
 ```
 
-All 406 tests should pass on a clean checkout.
+All 623 tests should pass on a clean checkout.
 
 ---
 
 ## Secrets
 
-`relayer/.env.example` and `frontend/.env.example` are tracked deliberately, so
+`relayer/.env.example` and `frontend/app/.env.example` are tracked deliberately, so
 no `.gitignore` rule protects them, and a directory-wide `git add` stages
 whatever they happen to contain.
 

@@ -1,4 +1,6 @@
-# Audits
+---
+title: "Audits"
+---
 
 **Current status: Pre-audit. Mainnet will not launch before audit completion.**
 
@@ -14,11 +16,11 @@ Writz uses the **Stellar Foundation's Audit Bank** program, which subsidizes the
 
 | Criterion | Status |
 |---|---|
-| SCF Build Award received | **Not applied for.** Application exists only as a draft, no short-term plan to submit - see `docs/roadmap/phases.md`. Audit Bank qualification is described as SCF-gated in `docs/research/security-audit-strategy.md`, so this is an open blocker on the audit-funding path, not a scheduled step |
-| Contracts deployed on testnet with passing tests | ✓ Done - 195/195 tests |
-| STRIDE threat model completed | v0.1 draft complete - `docs/scf/stride-threat-model.md`. Full revision is planned to accompany a future Tranche #1 submission, which is not currently scheduled |
+| SCF Build Award received | Pending |
+| Contracts deployed on testnet with passing tests | ✓ Done - 263/263 tests |
+| STRIDE threat model completed | v0.1 draft complete - [`docs/security/stride-threat-model.md`](/security/stride-threat-model). Full revision planned before the audit |
 | Self-service security scan completed | Pending - Phase 2 task |
-| Integration tests covering all flows | ✓ Done - e2e_zkflow.js |
+| Integration tests covering all flows | ✓ Done - `scripts/deploy/e2e_local.mjs`, run in CI on a local network |
 | Dataflow diagram produced | Pending - Phase 2 task |
 
 ---
@@ -84,7 +86,7 @@ Before the formal Audit Bank engagement, Writz applies the following:
 - Custom constraint analysis for ZK circuits (circom-specific tooling)
 
 **Test coverage:**
-- 406 tests covering happy paths and error cases
+- 623 tests covering happy paths and error cases
 - End-to-end integration tests covering the full deposit→borrow→repay→liquidate cycle
 - ZK circuit tests verifying proof acceptance for valid inputs and rejection for invalid inputs
 - Bitcoin transaction tests verifying witness construction against real Bitcoin script interpretation
@@ -106,4 +108,4 @@ This table will be updated as audits are completed. All published audit reports 
 
 ---
 
-**Next:** [Bug Bounty →](bug-bounty.md)
+**Next:** [Bug Bounty →](/security/bug-bounty)

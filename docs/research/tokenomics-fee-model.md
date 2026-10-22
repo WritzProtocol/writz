@@ -1,4 +1,7 @@
-# Research: Tokenomics & Fee Model
+---
+title: "Research: Tokenomics & Fee Model"
+sidebarTitle: "Tokenomics & Fee Model"
+---
 
 **Author:** Research
 **Date:** 2026-06-22
@@ -170,7 +173,7 @@ These are conservative estimates. At BTCfi's current 28× annual TVL growth rate
 | Token supply | 100M fixed | Simple, no inflation |
 | Token launch timing | Post $5M TVL | Product-market fit first |
 | Protocol fee % | 15% of interest spread (`PROTOCOL_FEE_BP = 1_500` in contract) | Higher than Aave (10%) due to ZK infrastructure costs |
-| Mainnet bootstrap fee waiver | 0% protocol fee for the first 90 days after mainnet launch, per `docs/roadmap/phases.md` | Bootstrap incentive to attract early liquidity; the 15% fee is a contract constant, so this waiver is a launch-time parameter change, not yet implemented in `rates.rs` - flag as an explicit pre-mainnet task, not an assumed feature |
+| Mainnet bootstrap fee waiver (option, not decided) | One option under evaluation: a reduced or 0% protocol fee for an initial period after mainnet launch | Would attract early liquidity; the 15% fee is a contract constant, so any waiver is a launch-time parameter change. Not a commitment |
 | Insurance fund target | 10% of TVL | Industry standard; covers typical bad debt scenarios |
 | Revenue distribution | 30/30/25/15 | Balanced between safety, token health, operations, growth |
 
@@ -186,7 +189,7 @@ The $5K launch seed (`docs/research/security-audit-strategy.md` pre-mainnet chec
 | $250K (post 30-day clean operation) | $25K | Must accrue from protocol fee revenue (30% slice) between launch and the cap raise |
 | $5M+ (Phase 3 scale) | $500K+ | Ongoing accrual from protocol fee revenue |
 
-**Open gap:** the fund is meant to grow from the 30% "safety" slice of protocol fee revenue, but the protocol fee is 0% for the first 90 days (bootstrap waiver, see the row above). That means the fund cannot accrue past its initial $5K seed during the exact window when TVL is scaling from $50K toward $250K, unless a separate top-up is planned. This needs an explicit answer before the 30-day TVL cap raise is exercised - either delay the cap raise until the fund has organically caught up, or fund the gap from another source.
+**Open gap:** the fund is meant to grow from the 30% "safety" slice of protocol fee revenue, but if the bootstrap fee waiver above is adopted, the protocol fee would be 0% for that period. In that case the fund cannot accrue past its initial $5K seed during the exact window when TVL is scaling from $50K toward $250K, unless a separate top-up is planned. This needs an explicit answer before the 30-day TVL cap raise is exercised - either delay the cap raise until the fund has organically caught up, or fund the gap from another source.
 
 ---
 

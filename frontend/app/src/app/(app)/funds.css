@@ -1,0 +1,71 @@
+/* Earn, Lend, and the page frame Protocol and Reclaim share */
+.fu-page { display: flex; flex-direction: column; padding-top: 16px; }
+.fu-h1 { font-size: clamp(44px, 6.2vw, 92px); font-weight: 600; letter-spacing: -0.04em; line-height: 1; text-wrap: balance; outline: none; }
+.fu-lede { margin-top: 16px; max-width: 56ch; font-size: clamp(18px, 1.5vw, 21px); line-height: 1.45; color: var(--body); text-wrap: pretty; }
+.fu-stale { margin-top: 32px; max-width: 760px; }
+
+.fu-grid { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 16px 48px; margin-top: 48px; align-items: start; }
+.fu-figures { min-width: 0; }
+.fu-act { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+
+.fu-hero { container-type: inline-size; padding: 64px 48px 48px 64px; background: var(--panel); }
+.fu-hero-k { font-size: 16px; color: var(--body); }
+.fu-big { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 14px; margin: 8px 0 0; }
+.fu-big .mono { font-size: clamp(40px, calc((100cqi - var(--u, 4) * 11.4px - 16px) / (var(--n, 8) * 0.58)), 96px); font-weight: 400; line-height: 1; letter-spacing: -0.045em; color: var(--heading); }
+.fu-big .fu-unit { font-family: var(--ff-mono), ui-monospace, monospace; font-size: 19px; font-weight: 500; line-height: 1; color: var(--body); }
+.fu-big .fu-sk { width: min(100%, 360px); height: 80px; }
+.fu-big .fu-na { font-size: 28px; color: var(--muted); }
+.fu-hero .fu-caption { margin: 12px 0 0; }
+
+.fu-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 4px; margin: 4px 0 0; }
+.fu-tiles > div { display: flex; flex-direction: column; gap: 6px; min-width: 0; padding: 22px 24px; background: color-mix(in oklab, var(--heading) 6%, var(--bg)); }
+.fu-tiles dt { font-size: 15px; color: var(--body); }
+.fu-tiles dd { margin: 0; }
+.fu-tile-v { display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 10px; color: var(--heading); }
+.fu-tile-v .mono { font-size: clamp(20px, 1.8vw, 26px); line-height: 1.2; overflow-wrap: anywhere; }
+.fu-tile-v .fu-unit { font-family: var(--ff-mono), ui-monospace, monospace; font-size: clamp(20px, 1.8vw, 26px); line-height: 1.2; }
+.fu-tile-v .fu-na { font-size: 17px; color: var(--muted); }
+.fu-sk { display: inline-block; width: 140px; height: 28px; vertical-align: middle; }
+.fu-caption { margin: 0; font-size: 14px; line-height: 1.45; color: var(--muted); }
+
+.fu-risk { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; margin-top: 32px; max-width: 60ch; }
+.fu-risk p { display: flex; gap: 14px; font-size: 16px; line-height: 1.55; color: var(--heading); }
+.fu-risk p::before { content: ""; width: 8px; height: 15px; margin-top: 5px; background: var(--mark); transform: skewX(-16deg); flex: none; }
+.app .fu-textlink { display: inline-flex; align-items: center; min-height: 44px; font-weight: 500; text-underline-offset: 0.22em; }
+
+.fu-seg { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.fu-panel { padding: 32px; background: var(--panel); }
+.fu-panel .wz-label { font-size: 15px; letter-spacing: 0; text-transform: none; color: var(--heading); }
+.fu-panel .wz-field { min-height: 64px; }
+.fu-panel .wz-field + .wz-hint, .fu-panel .wz-field + .wz-error { font-size: 15px; }
+.fu-panel .wz-field + .wz-hint { color: var(--body); }
+.fu-panel .wz-field input { height: 60px; font-size: 26px; }
+.fu-panel .wz-stack > .wz-actions { margin: 8px 0 0 -7px; }
+.fu-act .wz-note { padding: 18px 20px; font-size: 15px; }
+
+.fu-sk-hero { height: 320px; }
+.fu-sk-act { height: 300px; }
+
+@media (max-width: 1279px) {
+  .fu-grid { grid-template-columns: minmax(0, 1fr); gap: 32px; margin-top: 40px; }
+  .fu-act { max-width: 640px; }
+}
+@media (max-width: 767px) {
+  .fu-page { padding-top: 8px; }
+  .fu-grid { margin-top: 32px; gap: 24px; }
+  .fu-hero { padding: 64px 16px 28px; }
+  .fu-tiles { grid-template-columns: minmax(0, 1fr); }
+  .fu-tiles > div { flex-direction: row; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 12px; padding: 16px; }
+  .fu-tiles .fu-tile-v { justify-content: flex-end; margin-left: auto; text-align: right; }
+  .fu-tile-v .mono, .fu-tile-v .fu-unit { font-size: 18px; }
+  .fu-tiles .fu-caption { flex-basis: 100%; }
+  .fu-panel { padding: 24px 16px; }
+  .fu-panel .wz-field input { font-size: 22px; }
+  .fu-sk-hero { height: 220px; }
+}
+@media (max-width: 359px) {
+  .fu-tiles > div { flex-direction: column; flex-wrap: nowrap; align-items: stretch; }
+  .fu-tiles .fu-caption { flex-basis: auto; }
+  .fu-tiles .fu-tile-v { justify-content: flex-start; margin-left: 0; text-align: left; }
+}
+.fu-panel a.wz-link { display: inline-flex; align-items: center; min-height: 44px; }

@@ -1,4 +1,4 @@
-use soroban_sdk::{contractevent, Address, Bytes, BytesN};
+use soroban_sdk::{contractevent, Address, Bytes, BytesN, Vec};
 
 /// Emitted when a BTC deposit is successfully registered and the ZK
 /// commitment is queued for insertion into the Merkle tree.
@@ -9,6 +9,11 @@ pub struct DepositEvent {
     pub depositor:  Address,
     pub txid:       BytesN<32>,
     pub nullifier:  BytesN<32>,
+    /// The depositor's Bitcoin key and CLTV height the collateral is locked
+    /// under. With the protocol key they rebuild the deposit's redeem
+    /// script, so the timelock exit stays recoverable from chain data alone.
+    pub user_pubkey:     BytesN<33>,
+    pub timelock_height: u32,
     /// Opaque ciphertext of the position note ({collateral, debt, nonce, ...})
     /// encrypted to the owner's viewing key, for cross-device recovery. The
     /// contract never decrypts it - it only echoes the client-supplied blob.
@@ -22,6 +27,7 @@ pub struct InsertLeafEvent {
     #[topic]
     pub new_root:   BytesN<32>,
     pub commitment: BytesN<32>,
+    pub leaf_index: u32,
 }
 
 /// Emitted when a borrower draws USDC against a ZK position.
@@ -33,8 +39,16 @@ pub struct BorrowEvent {
     pub borrower:      Address,
     pub usdc_amount:   i128,
     pub old_nullifier: BytesN<32>,
+    /// The leaf that replaces the borrowing position's old one. With
+    /// `new_root` it lets anyone rebuild the tree from events alone; which
+    /// leaf changed is found by matching the root, not published
+    /// (GHSA-vwvv-3255-783f).
+    pub new_commitment: BytesN<32>,
     /// Encrypted position note for the new (higher-debt) commitment. See DepositEvent.
     pub enc_note:      Bytes,
+    /// The position's liquidation witness encrypted to the keeper inside the
+    /// proof: [eph_x, eph_y, ct0, ct1, ct2] (#212). Only the keeper can open it.
+    pub keeper_note: Vec<BytesN<32>>,
 }
 
 /// Emitted when a borrower repays USDC debt on a ZK position.
@@ -50,6 +64,9 @@ pub struct RepayEvent {
     pub new_commitment: BytesN<32>,
     /// Encrypted position note for the new (lower-debt) commitment. See DepositEvent.
     pub enc_note:       Bytes,
+    /// The position's liquidation witness encrypted to the keeper inside the
+    /// proof: [eph_x, eph_y, ct0, ct1, ct2] (#212). Only the keeper can open it.
+    pub keeper_note: Vec<BytesN<32>>,
 }
 
 /// Emitted when a keeper liquidates an undercollateralized ZK position.

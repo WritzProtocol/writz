@@ -11,6 +11,8 @@
 /// At U = 80%:             borrow rate =  48%,  supply rate ≈ 32.6%
 /// At U = 90%:             borrow rate = 128%,  supply rate ≈ 97.9%
 
+use crate::types::ProtocolState;
+
 /// 100% expressed in basis points.
 pub const BP_SCALE: i128 = 10_000;
 /// Optimal utilization: 75%.
@@ -25,6 +27,64 @@ pub const PROTOCOL_FEE_BP: i128 = 1_500;
 /// 60s/5s × 60min × 24h × 365.25d = 6_311_520
 pub const LEDGERS_PER_YEAR: i128 = 6_311_520;
 
+/// Fixed-point one for the borrow index (18 decimals).
+pub const INDEX_ONE: i128 = 1_000_000_000_000_000_000;
+
+/// Grows `index` by `rate_bp` (annual) over `ledgers_elapsed`, simple interest
+/// within the interval; intervals compound because each starts from the
+/// previous index.
+/// It is `accrue_interest` applied to the index, so the property tests
+/// below cover both.
+pub fn grow_index(index: i128, rate_bp: i128, ledgers_elapsed: i128) -> i128 {
+    if ledgers_elapsed <= 0 || rate_bp <= 0 {
+        return index;
+    }
+    accrue_interest(index, rate_bp, ledgers_elapsed)
+}
+
+/// USDC the lenders hold claim to: `floor(total_scaled_supply * index / INDEX_ONE)`.
+pub fn total_supply_assets(proto: &ProtocolState, supply_index: i128) -> i128 {
+    proto.total_scaled_supply.saturating_mul(supply_index) / INDEX_ONE
+}
+
+/// Interest accrual from `proto.index_ledger` to `current_ledger`, without
+/// writing anything. `accrue_global` stores the result; views read it.
+///
+/// Returns `(borrow_index, supply_index, total_borrowed, reserve_usdc)`.
+/// The interval is priced at the utilization that held during it, which uses
+/// the supply index as it stood before the interval. Of the interest `delta`
+/// added to `total_borrowed`, `PROTOCOL_FEE_BP` goes to the reserve and the
+/// rest to the supply index. The rounding remainder stays in the contract,
+/// unassigned.
+pub fn project(proto: &ProtocolState, current_ledger: u32) -> (i128, i128, i128, i128) {
+    let mut borrow_index = proto.borrow_index;
+    let mut supply_index = proto.supply_index;
+    let mut total_borrowed = proto.total_borrowed;
+    let mut reserve = proto.reserve_usdc;
+
+    let elapsed = current_ledger.saturating_sub(proto.index_ledger) as i128;
+    if elapsed > 0 {
+        let assets = total_supply_assets(proto, proto.supply_index);
+        let rate = borrow_rate_bp(proto.total_borrowed, assets);
+        let new_index = grow_index(proto.borrow_index, rate, elapsed);
+        if proto.total_borrowed > 0 && new_index > proto.borrow_index {
+            let delta =
+                proto.total_borrowed.saturating_mul(new_index - proto.borrow_index) / proto.borrow_index;
+            let fee = delta.saturating_mul(PROTOCOL_FEE_BP) / BP_SCALE;
+            let lender_share = delta - fee;
+            total_borrowed = total_borrowed.saturating_add(delta);
+            reserve = reserve.saturating_add(fee);
+            if proto.total_scaled_supply > 0 {
+                supply_index = supply_index.saturating_add(
+                    lender_share.saturating_mul(INDEX_ONE) / proto.total_scaled_supply,
+                );
+            }
+        }
+        borrow_index = new_index;
+    }
+    (borrow_index, supply_index, total_borrowed, reserve)
+}
+
 /// Returns the annual borrow rate in basis points given the current pool state.
 ///
 /// ```text
@@ -33,12 +93,12 @@ pub const LEDGERS_PER_YEAR: i128 = 6_311_520;
 /// else:
 ///     rate = slope1 + ((U - Uoptimal) / (1 - Uoptimal)) × slope2
 /// ```
-pub fn borrow_rate_bp(total_borrowed: i128, total_supplied: i128) -> i128 {
-    if total_supplied == 0 || total_borrowed == 0 {
+pub fn borrow_rate_bp(total_borrowed: i128, total_supply_assets: i128) -> i128 {
+    if total_supply_assets == 0 || total_borrowed == 0 {
         return 0;
     }
     // U in basis points, capped at 100%.
-    let u_bp = (total_borrowed.saturating_mul(BP_SCALE) / total_supplied).min(BP_SCALE);
+    let u_bp = (total_borrowed.saturating_mul(BP_SCALE) / total_supply_assets).min(BP_SCALE);
 
     if u_bp <= U_OPTIMAL_BP {
         u_bp.saturating_mul(SLOPE1_BP) / U_OPTIMAL_BP
@@ -54,11 +114,11 @@ pub fn borrow_rate_bp(total_borrowed: i128, total_supplied: i128) -> i128 {
 /// ```text
 /// supply_rate = borrow_rate × U × (1 − protocol_fee)
 /// ```
-pub fn supply_rate_bp(borrow_rate: i128, total_borrowed: i128, total_supplied: i128) -> i128 {
-    if total_supplied == 0 || total_borrowed == 0 {
+pub fn supply_rate_bp(borrow_rate: i128, total_borrowed: i128, total_supply_assets: i128) -> i128 {
+    if total_supply_assets == 0 || total_borrowed == 0 {
         return 0;
     }
-    let u_bp = (total_borrowed.saturating_mul(BP_SCALE) / total_supplied).min(BP_SCALE);
+    let u_bp = (total_borrowed.saturating_mul(BP_SCALE) / total_supply_assets).min(BP_SCALE);
     // supply_rate = borrow_rate × U × (1 − protocol_fee)
     let gross = borrow_rate.saturating_mul(u_bp) / BP_SCALE;
     gross.saturating_mul(BP_SCALE - PROTOCOL_FEE_BP) / BP_SCALE
@@ -85,6 +145,7 @@ pub fn accrue_interest(debt: i128, rate_bp: i128, ledgers_elapsed: i128) -> i128
 
 /// Returns the interest that will accrue on `debt` over `ledgers_elapsed`
 /// ledgers at `rate_bp` (without modifying the debt).
+#[cfg(test)]
 pub fn interest_delta(debt: i128, rate_bp: i128, ledgers_elapsed: i128) -> i128 {
     accrue_interest(debt, rate_bp, ledgers_elapsed) - debt
 }
@@ -196,5 +257,90 @@ mod tests {
             interest_delta(d, r, l),
             accrue_interest(d, r, l) - d
         );
+    }
+}
+
+#[cfg(test)]
+mod property_tests {
+    use super::*;
+
+    /// Deterministic 64-bit LCG so the cases are reproducible without a dev-dependency.
+    struct Lcg(u64);
+    impl Lcg {
+        fn next(&mut self) -> u64 {
+            self.0 = self.0.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+            self.0
+        }
+        /// A value in [0, max], biased toward small and boundary values.
+        fn below(&mut self, max: i128) -> i128 {
+            let raw = (self.next() as i128) << 32 | (self.next() as i128 & 0xffff_ffff);
+            let v = raw.rem_euclid(max.max(1) + 1);
+            match self.next() % 8 {
+                0 => 0,
+                1 => max,
+                _ => v,
+            }
+        }
+    }
+
+    const CASES: usize = 20_000;
+
+    #[test]
+    fn borrow_rate_is_bounded_and_monotone_in_utilization() {
+        let mut rng = Lcg(1);
+        let max_rate = SLOPE1_BP + SLOPE2_BP;
+        for _ in 0..CASES {
+            let supplied = rng.below(1i128 << 60).max(1);
+            let borrowed_a = rng.below(supplied);
+            let borrowed_b = rng.below(supplied);
+            let (lo, hi) = if borrowed_a <= borrowed_b { (borrowed_a, borrowed_b) } else { (borrowed_b, borrowed_a) };
+
+            let r_lo = borrow_rate_bp(lo, supplied);
+            let r_hi = borrow_rate_bp(hi, supplied);
+            assert!((0..=max_rate).contains(&r_lo), "rate {} out of bounds", r_lo);
+            assert!(r_lo <= r_hi, "rate fell as utilization rose: {} > {}", r_lo, r_hi);
+        }
+    }
+
+    #[test]
+    fn lenders_never_earn_more_than_borrowers_pay() {
+        let mut rng = Lcg(2);
+        for _ in 0..CASES {
+            let supplied = rng.below(1i128 << 60).max(1);
+            let borrowed = rng.below(supplied);
+            let borrow = borrow_rate_bp(borrowed, supplied);
+            let supply = supply_rate_bp(borrow, borrowed, supplied);
+            assert!(supply >= 0, "negative supply rate");
+            assert!(supply <= borrow, "supply {} exceeds borrow {}", supply, borrow);
+        }
+    }
+
+    #[test]
+    fn interest_is_never_negative_and_grows_with_time() {
+        let mut rng = Lcg(3);
+        for _ in 0..CASES {
+            let debt = rng.below(1i128 << 50);
+            let rate = rng.below(SLOPE1_BP + SLOPE2_BP);
+            let t1 = rng.below(LEDGERS_PER_YEAR * 10);
+            let t2 = t1 + rng.below(LEDGERS_PER_YEAR * 10);
+            let d1 = interest_delta(debt, rate, t1);
+            let d2 = interest_delta(debt, rate, t2);
+            assert!(d1 >= 0, "negative interest");
+            assert!(d1 <= d2, "interest shrank as time passed");
+            assert!(accrue_interest(debt, rate, t1) >= debt);
+        }
+    }
+
+    #[test]
+    fn protocol_share_is_exactly_its_fee_of_interest() {
+        let mut rng = Lcg(4);
+        for _ in 0..CASES {
+            let debt = rng.below(1i128 << 50);
+            let rate = rng.below(SLOPE1_BP + SLOPE2_BP);
+            let t = rng.below(LEDGERS_PER_YEAR);
+            let interest = interest_delta(debt, rate, t);
+            let share = interest.saturating_mul(PROTOCOL_FEE_BP) / BP_SCALE;
+            assert!(share <= interest, "protocol share exceeds interest");
+        }
     }
 }

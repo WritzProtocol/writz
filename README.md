@@ -4,12 +4,12 @@
 
 [![CI](https://github.com/WritzProtocol/writz/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/WritzProtocol/writz/actions/workflows/ci.yml?query=branch%3Amain)
 [![Tests](https://img.shields.io/badge/tests-406%20passing-brightgreen)](https://github.com/WritzProtocol/writz/actions)
-[![Network](https://img.shields.io/badge/network-Soroban%20Testnet-blue)](https://stellar.expert/explorer/testnet)
+[![Network](https://img.shields.io/badge/network-Stellar%20Testnet-blue)](https://stellar.expert/explorer/testnet)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 **[Live App](https://writz.xyz)** · **[Docs](https://docs.writz.xyz)** · **[Relayer API](https://api.testnet.writz.xyz)**
 
-**Writz** is the first trustless Bitcoin lending protocol on Stellar. Lock real BTC directly from your Bitcoin wallet, borrow USDC on Stellar, and keep every position private - always.
+**Writz** is a Bitcoin lending protocol on Stellar where the collateral never leaves Bitcoin. Lock real BTC directly from your Bitcoin wallet, borrow USDC on Stellar, and keep every position private.
 
 No bridge. No custodian. No wrapped tokens. No public balance sheet.
 
@@ -28,7 +28,7 @@ No bridge. No custodian. No wrapped tokens. No public balance sheet.
 
 ## This Is Not a Whitepaper
 
-As of August 2026, four contracts are live on Soroban testnet, 406 tests pass, and real Bitcoin transactions have been verified on-chain.
+As of August 2026, four contracts are live on Stellar testnet, 623 tests pass, and real Bitcoin transactions have been verified on-chain.
 
 | What | Status |
 |---|---|
@@ -37,16 +37,18 @@ As of August 2026, four contracts are live on Soroban testnet, 406 tests pass, a
 | P2WSH locking + co-signed BTC release | ✓ Broadcast on Bitcoin Signet |
 | Poseidon Merkle commitment tree | ✓ Root updated on-chain |
 | Full deposit → borrow → repay ZK flow | ✓ 6 sequential testnet transactions |
-| 406 tests across all modules | ✓ All passing |
+| 623 tests across all modules | ✓ All passing |
+
+But a few months ago, it was a whitepaper. Version 1.0 (July 2026) is at [writz.xyz/whitepaper](https://writz.xyz/whitepaper) and archived on Zenodo with the DOI [10.5281/zenodo.23148520](https://doi.org/10.5281/zenodo.23148520).
 
 ### Live Testnet Contracts
 
 | Contract | Address | WASM | Tests |
 |---|---|---|---|
-| `bitcoin-spv` | `CB2BD6QCSZVNZN5NLI7C5NF356WXVJDSXT6LVAQFWHHS4SZ4NCKKNIVA` | 12.0 KB | 49 |
-| `zk-verifier` | `CBNZU23QGCZATJB2QMNF2K6IST2SVP7FSGCKASQNBULTWDWGANDBYLFY` | 14.5 KB | 25 |
-| `commitment-tree` | `CDQCTFO3FK3M47QS47O2A4WLNPSQAQBSXBFPJ6RZEHFO5D7RY34FSBBP` | 31.7 KB | 32 |
-| `private-lend` | `CAAWVMDRUPEJNELSQ6RU2VMVX5EJLQ2E77T7IXDWGMW4DGSNAGECGSWR` | 36.0 KB | 85 |
+| `bitcoin-spv` | `CAHHY4S4WCIFU4LBSKBI3IP6A4QYR2COV6EACDEBXGPJFDWBJWGOMCLP` | 12.0 KB | 49 |
+| `zk-verifier` | `CB5XAP6MF2GVVFATFTVCKVEXUODWWRQP4B3QFDMRTM55REP7N2YMXEUD` | 14.5 KB | 25 |
+| `commitment-tree` | `CAQBLCAPGXXCZTJDAJLY7E4PTJYGR6CY4YWH4JSJKFXYIHW3GANP6RFM` | 31.7 KB | 32 |
+| `private-lend` | `CA3T7T2S7HV27BXO7OLIHSMGAMQ37BMOOUHQLTBGUQVL4B6Y2CDJPHHX` | 36.0 KB | 85 |
 
 Full deployment log, init transactions, and verified calls: [`contracts/deployments/testnet.md`](contracts/deployments/testnet.md)
 
@@ -223,7 +225,7 @@ writz/
 │   └── commitment-tree/     # Generated TypeScript bindings for commitment-tree
 │
 ├── scripts/
-│   ├── deploy/              # Deployment scripts · e2e_zkflow.js · set_vkeys.js
+│   ├── deploy/              # Deployment scripts · deploy_stack.mjs · e2e_local.mjs
 │   └── diagrams/            # Graphviz architecture diagrams (Python)
 │
 └── docs/                    # Full documentation (Mintlify)
@@ -278,13 +280,13 @@ Each module has its own toolchain - there is no unifying root build, and the
 package manager is **not** the same everywhere. Run them from the repo root:
 
 ```bash
-# 1. Soroban contracts - 195 tests
+# 1. Soroban contracts - 263 tests
 cd contracts && cargo test
 
 # 2. Bitcoin script toolkit - 60 tests (Bun's own test runner)
 cd ../bitcoin-script && bun install && bun test
 
-# 3. Relayer service - 122 tests
+# 3. Relayer service - 248 tests
 #    Deps install with Bun, but the suite itself is Jest (ts-jest), so it must
 #    be run through the package script - plain `bun test` picks Bun's runner
 #    instead and fails. The relayer also imports the local @writz/* packages
@@ -293,28 +295,31 @@ cd ../packages/commitment-tree && bun install
 cd ../../bitcoin-script && bun run build
 cd ../relayer && bun install && bun run test
 
-# 4. ZK circuits - 29 tests (npm + Jest; needs circom on PATH)
+# 4. ZK circuits - 52 tests (npm + Jest; needs circom on PATH)
 cd ../circuits && npm install && npm test
 ```
 
-All 406 tests pass. If anything fails, [open an issue](https://github.com/WritzProtocol/writz/issues).
+All 623 tests pass. If anything fails, [open an issue](https://github.com/WritzProtocol/writz/issues).
 
-### Full ZK End-to-End on Soroban Testnet
+### Full ZK End-to-End on a Local Stellar Network
 
-Deploys a fresh commitment-tree and runs the complete deposit → borrow → repay cycle with real Groth16 proofs:
+Deploys all four contracts on a local network and runs deposit → borrow → repay → release with real Groth16 proofs, plus the closed attacks:
 
 ```bash
-WRITZ_DEV_SECRET=<your-testnet-key> node scripts/deploy/e2e_zkflow.js
+docker run -d --rm --name writz-local-stellar -p 8000:8000 \
+  stellar/quickstart:latest --local --enable rpc
+(cd contracts && cargo build --release --target wasm32v1-none --locked)
+(cd circuits && npm ci && npm run compile && npm run setup:dev)
+(cd scripts/deploy && bun install)
+node scripts/deploy/e2e_local.mjs
 ```
 
-Get a free testnet key and fund it with [Stellar Friendbot](https://friendbot.stellar.org).
-
-This needs compiled circuit artifacts and a built contract wasm, neither of which is in git. **Read the [Testnet Runbook](docs/developers/runbook.md) first** - it covers the build chain, the trusted-setup caveat that otherwise makes proofs fail on-chain, the testnet assumptions (XLM stands in for USDC, the Bitcoin transaction is fabricated), and the manual Signet walkthrough for the Bitcoin half.
+No testnet key needed. The [Testnet Runbook](docs/developers/runbook.md) covers the manual Signet walkthrough for the Bitcoin half.
 
 ### Frontend Dev Server
 
 ```bash
-cd frontend
+cd frontend/app
 cp .env.example .env.local
 # Fill in NEXT_PUBLIC_* contract addresses from contracts/deployments/testnet.md
 # Set NEXT_PUBLIC_RELAYER_URL=https://api.testnet.writz.xyz
@@ -346,36 +351,6 @@ python3 scripts/diagrams/render-all.py
 | Bitcoin script toolkit | TypeScript | 60 | `cd bitcoin-script && bun test` |
 | ZK circuits | Circom / JS | 20 | `cd circuits && npm test` |
 | **Total** | | **274** | |
-
----
-
-## Roadmap
-
-![Roadmap](docs/diagrams/output/08-roadmap-phases.png)
-
-**Phase 1 - Foundation** *(current, Jul–Sep 2026)*
-
-- [x] 4 contracts live on Soroban testnet
-- [x] Full ZK E2E cycle verified on-chain
-- [x] P2WSH locking and release tested on Bitcoin Signet
-- [ ] SCF Build Award submitted (Open Track)
-- [ ] Trusted setup ceremony planned (5+ independent participants)
-- [x] Docs live at docs.writz.xyz
-
-**Phase 2 - Launch** *(Q2 to Q3 2027)*
-
-- Audit Bank: Veridise (ZK circuits) + OtterSec (Soroban contracts)
-- Mainnet launch gated: $50K TVL cap, whitelist-only first 30 days
-- Frontend: full deposit / borrow / repay / repay UI with in-browser ZK proving
-- DeFiLlama listing on day 1
-
-**Phase 3 - Scale** *(2027)*
-
-- Dark Swap: private BTC → USDC conversions
-- BTC Savings: auto-routed USDC yield (Blend, Phoenix DEX)
-- ZK Proof of Reserve: enterprise B2B attestation product
-- WRTZ governance token: fair IDO at $5M TVL, real-yield buyback mechanics
-- SPV SDK published as open Stellar ecosystem infrastructure
 
 ---
 
@@ -424,6 +399,7 @@ To report a security issue: open a private [GitHub Security Advisory](https://gi
 Full documentation lives in [`docs/`](docs/) and is published at **[docs.writz.xyz](https://docs.writz.xyz)**:
 
 **Start here:**
+- [Whitepaper](https://writz.xyz/whitepaper) - The technical paper: stateless SPV, Groth16 position privacy and the lending market. DOI [10.5281/zenodo.23148520](https://doi.org/10.5281/zenodo.23148520).
 - [What is Writz?](docs/introduction/what-is-writz.md) - Plain English. No jargon. 5 minutes.
 - [The Problem](docs/introduction/the-problem.md) - Why public DeFi breaks BTC holders.
 - [How Writz Works](docs/introduction/how-writz-works.md) - Full flow for any reader.
@@ -450,14 +426,13 @@ Full documentation lives in [`docs/`](docs/) and is published at **[docs.writz.x
 
 **Roadmap:**
 - [Vision](docs/roadmap/vision.md) - Where Writz is going by 2028.
-- [Phases](docs/roadmap/phases.md) - Phase-by-phase execution plan.
 
 ---
 
 ## Contributing
 
 1. Fork the repo and create a branch from `main`.
-2. Run the full test suite before opening a PR - all 406 tests must pass.
+2. Run the full test suite before opening a PR - all 623 tests must pass.
 3. For new features, add tests. For bug fixes, add a regression test.
 4. Open a PR with a clear description of what changed and why.
 

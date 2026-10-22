@@ -11,5 +11,6 @@ soroban-sdk = { workspace = true }
 spv-types = { path = "../spv-types" }
 
 [dev-dependencies]
+k256 = { version = "0.13.4", default-features = false, features = ["ecdsa"] }
 soroban-sdk = { workspace = true, features = ["testutils"] }
 zk-verifier = { path = "../zk-verifier" }

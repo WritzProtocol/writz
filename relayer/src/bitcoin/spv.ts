@@ -46,6 +46,13 @@ export interface SPVProofBundle {
   rawTxNoWitness: string;
 
   /**
+   * Hash of the block that confirmed the transaction, internal byte order.
+   * Maps to the `block_hash` parameter of `commitment-tree::deposit`; the
+   * header must already be in bitcoin-spv (see header-sync.ts).
+   */
+  blockHash: string;
+
+  /**
    * 0-based index of the transaction within its block.
    * Maps to the `tx_index` parameter of `verify_transaction`.
    */
@@ -64,7 +71,8 @@ export interface SPVProofBundle {
    * hex string. `headers[0]` is the block containing the transaction;
    * subsequent headers provide confirmation depth.
    *
-   * Maps to the `headers` parameter of `verify_transaction`.
+   * Not sent to the deposit call any more - bitcoin-spv holds headers via
+   * header-sync.ts. Kept for confirmation-depth checks and the route response.
    */
   headers: string[];
 
@@ -134,6 +142,9 @@ export async function buildSPVProof(
   return {
     txid,
     rawTxNoWitness,
+    // bitcoin-spv keys headers by their internal-order sha256d; this is the
+    // `block_hash` the deposit call needs (the confirming block).
+    blockHash: toInternalByteOrder(blockHashes[0].trim()),
     txIndex: merkleProofData.pos,
     // Esplora returns siblings in display order; the contract folds in internal
     // order, so reverse each before sending on-chain (see toInternalByteOrder).
