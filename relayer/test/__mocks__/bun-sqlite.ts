@@ -9,8 +9,9 @@
  * Implements just enough of the `Database` API surface for four fixed
  * shapes: the single-row `watcher_cursor` table (`cursor-store.ts`,
  * `vault-watcher/cursor-store.ts`), the append-only `vault_events` table
- * (`vault-watcher/event-store.ts`), and the `leaves`/`notes` tables
- * (`leaf-store.ts`). State is persisted to a JSON sidecar
+ * (`vault-watcher/event-store.ts`), the `leaves`/`notes` tables
+ * (`leaf-store.ts`), and the append-only `tree_events` archive
+ * (`tree-watcher/event-archive.ts`). State is persisted to a JSON sidecar
  * file next to the given DB path - not an in-memory object - so it
  * genuinely survives `jest.resetModules()` within a test process, the same
  * way the real sqlite file survives a real process restart. This is what
@@ -43,8 +44,21 @@ interface NoteRow {
   encNote: string;
 }
 
+interface TreeEventRow {
+  id: string;
+  ledger: number;
+  txHash: string;
+  kind: string;
+  newRoot: string;
+  commitment: string;
+  leafIndex: number | null;
+  encNote: string | null;
+  rawXdr: string;
+}
+
 interface State {
   cursor?: string;
+  treeEvents?: TreeEventRow[];
   vaultEvents?: VaultEventRow[];
   leaves?: LeafRow[];
   notes?: NoteRow[];
@@ -76,13 +90,24 @@ export class Database {
   query<T, _A extends unknown[]>(sql: string) {
     return {
       get: (): T | undefined => {
+        if (/COUNT\(\*\) AS n FROM tree_events/.test(sql)) {
+          return { n: (this.readState().treeEvents ?? []).length } as T;
+        }
         if (!/watcher_cursor/.test(sql)) {
           throw new Error(`mock bun:sqlite: unsupported query: ${sql}`);
         }
         const state = this.readState();
         return state.cursor !== undefined ? ({ cursor: state.cursor } as CursorRow as T) : undefined;
       },
-      all: (): T[] => {
+      all: (...args: unknown[]): T[] => {
+        if (/FROM tree_events/.test(sql)) {
+          const after = /WHERE id > \?/.test(sql) ? (args[0] as string) : undefined;
+          const limit = args[args.length - 1] as number;
+          return ([...(this.readState().treeEvents ?? [])]
+            .filter((r) => after === undefined || r.id > after)
+            .sort((a, b) => a.ledger - b.ledger || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+            .slice(0, limit) as unknown[]) as T[];
+        }
         if (/vault_events/.test(sql)) {
           const state = this.readState();
           return ((state.vaultEvents ?? []) as unknown[]) as T[];
@@ -134,6 +159,18 @@ export class Database {
             rows.push({ cursor, kind, depositor, amountStroops, ledger, txHash, ledgerCloseTime });
           }
           this.writeState({ ...state, vaultEvents: rows });
+          return;
+        }
+        if (/INTO tree_events/.test(sql)) {
+          const [id, ledger, txHash, kind, newRoot, commitment, leafIndex, encNote, rawXdr] =
+            args as unknown as [string, number, string, string, string, string, number | null, string | null, string];
+          const state = this.readState();
+          const rows = state.treeEvents ?? [];
+          // INSERT OR IGNORE on the primary key.
+          if (!rows.some((r) => r.id === id)) {
+            rows.push({ id, ledger, txHash, kind, newRoot, commitment, leafIndex, encNote, rawXdr });
+          }
+          this.writeState({ ...state, treeEvents: rows });
           return;
         }
         if (/INTO leaves/.test(sql)) {

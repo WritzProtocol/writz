@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
-import { nativeToScVal, xdr } from "@stellar/stellar-sdk";
-import { decodeTreeEvent } from "../src/tree-watcher/decode";
+import { nativeToScVal, StrKey, xdr } from "@stellar/stellar-sdk";
+import { decodeTreeEvent, encodeRawTreeEvent } from "../src/tree-watcher/decode";
 
 const b32 = (n: bigint) => Buffer.from(n.toString(16).padStart(64, "0"), "hex");
 const sym = (s: string) => xdr.ScVal.scvSymbol(s);
@@ -15,6 +15,7 @@ describe("decodeTreeEvent", () => {
       value: map({ commitment: bytes(b32(22n)), leaf_index: nativeToScVal(3, { type: "u32" }) }),
     });
     expect(d.event).toEqual({ kind: "insert", commitment: 22n, leafIndex: 3, newRoot: 7n });
+    expect(d.event && d.kind).toBe("insert");
   });
 
   it("reads borrow and repay as leaf updates, with their note", () => {
@@ -24,7 +25,8 @@ describe("decodeTreeEvent", () => {
         value: map({ new_commitment: bytes(b32(44n)), enc_note: bytes(Buffer.from("beef", "hex")) }),
       });
       expect(d.event).toEqual({ kind: "update", newCommitment: 44n, newRoot: 9n });
-      expect(d.encNote).toBe("beef");
+      expect(d.event && d.kind).toBe(name);
+      expect(d.event && d.encNote).toBe("beef");
     }
   });
 
@@ -37,11 +39,25 @@ describe("decodeTreeEvent", () => {
         keeper_note: xdr.ScVal.scvVec([1n, 2n, 3n, 4n, 5n].map((n) => bytes(b32(n)))),
       }),
     });
-    expect(d.keeperNote).toEqual([1n, 2n, 3n, 4n, 5n]);
-    expect(d.encNote).toBeUndefined();
+    expect(d.event && d.keeperNote).toEqual([1n, 2n, 3n, 4n, 5n]);
+    expect(d.event && d.encNote).toBeUndefined();
   });
 
   it("ignores other events", () => {
     expect(decodeTreeEvent({ topic: [sym("deposit"), bytes(b32(1n))], value: map({}) }).event).toBeUndefined();
+  });
+});
+
+describe("encodeRawTreeEvent", () => {
+  it("round-trips the event as the contract's xdr.ContractEvent (#264)", () => {
+    const contractId = StrKey.encodeContract(Buffer.alloc(32, 7));
+    const topic = [sym("borrow"), bytes(b32(9n))];
+    const value = map({ new_commitment: bytes(b32(44n)), enc_note: bytes(Buffer.from("beef", "hex")) });
+    const back = xdr.ContractEvent.fromXDR(encodeRawTreeEvent({ topic, value }, contractId), "base64");
+    expect(StrKey.encodeContract(Buffer.from(back.contractId()!))).toBe(contractId);
+    const body = back.body().v0();
+    expect(body.topics().map((t) => t.toXDR("base64"))).toEqual(topic.map((t) => t.toXDR("base64")));
+    expect(body.data().toXDR("base64")).toBe(value.toXDR("base64"));
+    expect(decodeTreeEvent({ topic: body.topics(), value: body.data() }).event).toEqual({ kind: "update", newCommitment: 44n, newRoot: 9n });
   });
 });

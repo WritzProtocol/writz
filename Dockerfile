@@ -31,6 +31,9 @@ RUN bun install --frozen-lockfile
 
 COPY relayer/tsconfig.json ./
 COPY relayer/src ./src
+# Operator scripts run inside the container, next to the data volume
+# (`bun run check:tree-archive`, #264).
+COPY relayer/scripts ./scripts
 # Insert-circuit prover artifacts (#211): /insert-commitment proves each
 # Merkle insertion instead of submitting a root.
 COPY relayer/circuits ./circuits

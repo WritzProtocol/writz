@@ -50,6 +50,8 @@ export interface EventsServer {
       | { filters: { type: "contract"; contractIds: string[] }[]; startLedger: number },
   ): Promise<{
     events: {
+      /** RPC event id: a TOID and event index, ordered like the chain. */
+      id: string;
       topic: unknown[];
       value: unknown;
       ledger: number;
