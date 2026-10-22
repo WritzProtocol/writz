@@ -62,4 +62,7 @@ pub enum PrivateLendError {
     /// `key_sig` is not a Bitcoin signed message by `user_pubkey` over this
     /// contract, the depositor and the deposit txid (GHSA-862g-739q-x6h8).
     InvalidKeyProof = 25,
+    /// The amount is too small to mint or burn a single scaled unit at the
+    /// current supply index, or is not positive.
+    ZeroShareAmount = 26,
 }

@@ -55,10 +55,15 @@ pub struct Position {
 #[contracttype]
 #[derive(Clone, Debug)]
 pub struct ProtocolState {
-    /// Total USDC supplied by lenders (in stroops). Does not decrease when
-    /// interest accrues - interest earned increases the effective value of
-    /// each lender's share.
-    pub total_supplied: i128,
+    /// Sum of every lender's scaled balance. A lender's USDC value is
+    /// `scaled * supply_index / INDEX_ONE`, so interest reaches lenders by
+    /// growing `supply_index`, never by touching a per-lender entry. Use
+    /// `total_supply_assets` for the pool's supplied USDC.
+    pub total_scaled_supply: i128,
+    /// Cumulative supply index, scaled by `rates::INDEX_ONE`. Grows by the
+    /// lenders' 85% share of the interest each accrual adds to
+    /// `total_borrowed`. The counterpart of `borrow_index`.
+    pub supply_index: i128,
     /// Total outstanding USDC debt across all active positions (in stroops).
     /// Updated on every borrow, repay, accrual, and liquidation.
     pub total_borrowed: i128,

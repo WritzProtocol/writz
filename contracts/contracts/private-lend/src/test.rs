@@ -314,7 +314,8 @@ fn setup() -> Setup {
 fn initialize_sets_config() {
     let s = setup();
     let state = s.client.get_protocol_state();
-    assert_eq!(state.total_supplied, 0);
+    assert_eq!(state.total_scaled_supply, 0);
+    assert_eq!(state.supply_index, crate::rates::INDEX_ONE);
     assert_eq!(state.total_borrowed, 0);
 }
 
@@ -800,7 +801,7 @@ fn supply_increases_pool_and_balance() {
     let amount = 1_000_000_000_i128; // 100 USDC
     s.client.supply_usdc(&s.supplier, &amount);
     let state = s.client.get_protocol_state();
-    assert_eq!(state.total_supplied, amount);
+    assert_eq!(state.total_scaled_supply, amount);
     assert_eq!(s.client.get_supply_balance(&s.supplier), amount);
 }
 
@@ -811,7 +812,7 @@ fn withdraw_supply_decreases_pool_and_balance() {
     s.client.supply_usdc(&s.supplier, &amount);
     s.client.withdraw_supply(&s.supplier, &1_000_000_000);
     assert_eq!(s.client.get_supply_balance(&s.supplier), 1_000_000_000);
-    assert_eq!(s.client.get_protocol_state().total_supplied, 1_000_000_000);
+    assert_eq!(s.client.get_protocol_state().total_scaled_supply, 1_000_000_000);
 }
 
 #[test]
@@ -1499,7 +1500,9 @@ fn interest_after_year(flash_supply: i128) -> i128 {
     usdc.mint(&s.depositor, &1_i128);
     s.client.repay(&s.depositor, &txid, &1_i128);
     if flash_supply > 0 {
-        s.client.withdraw_supply(&s.depositor, &flash_supply);
+        // Rounding favours the pool, so the supply is worth up to 1 stroop less.
+        let value = s.client.get_supply_balance(&s.depositor);
+        s.client.withdraw_supply(&s.depositor, &value);
     }
     let pos: Position = s.client.get_position(&txid).unwrap();
     pos.usdc_debt + 1 - borrow
@@ -1540,4 +1543,216 @@ fn a_rate_change_only_reprices_the_time_after_it() {
     let second_half = (borrow + first_half) * rate_after / 10_000 / 2;
     let expected = first_half + second_half;
     assert!((interest - expected).abs() <= 2, "interest {interest}, expected {expected}");
+}
+
+// ── Lender yield: supply index and scaled balances (#255) ─────────────────────
+
+const YEAR: u32 = 6_311_520;
+
+/// Supplies 265.4 USDC, borrows 199 (75% utilization), lets a year pass, then
+/// repays everything. Returns the setup, the txid and the interest paid.
+fn lender_year_fully_repaid() -> (Setup, i128) {
+    let s = setup();
+    let txid = setup_with_supply_and_deposit(&s, 2_654_000_000_i128);
+    let borrow = 1_990_000_000_i128;
+    s.client.borrow(&s.depositor, &txid, &borrow);
+    s.env.ledger().set_sequence_number(1_000 + YEAR);
+
+    let usdc = StellarAssetClient::new(&s.env, &s.usdc);
+    usdc.mint(&s.depositor, &1_i128);
+    s.client.repay(&s.depositor, &txid, &1_i128);
+    let debt = s.client.get_position(&txid).unwrap().usdc_debt;
+    usdc.mint(&s.depositor, &debt);
+    s.client.repay(&s.depositor, &txid, &debt);
+    (s, debt + 1 - borrow)
+}
+
+#[test]
+fn lender_earns_85_percent_of_the_interest_and_the_reserve_15() {
+    let (s, interest) = lender_year_fully_repaid();
+    assert!(interest > 150_000_000, "interest {interest}");
+
+    let principal = 2_654_000_000_i128;
+    let value = s.client.get_supply_balance(&s.supplier);
+    let fee = interest * 1_500 / 10_000;
+    assert!((value - (principal + interest - fee)).abs() <= 2, "value {value}");
+
+    let reserve = s.client.get_protocol_state().reserve_usdc;
+    assert!((reserve - fee).abs() <= 2, "reserve {reserve}, fee {fee}");
+}
+
+#[test]
+fn lender_withdraws_more_than_they_supplied() {
+    let (s, _) = lender_year_fully_repaid();
+    let usdc = TokenClient::new(&s.env, &s.usdc);
+    let before = usdc.balance(&s.supplier);
+
+    // Withdrawing exactly the displayed value never fails on rounding.
+    let value = s.client.get_supply_balance(&s.supplier);
+    s.client.withdraw_supply(&s.supplier, &value);
+
+    assert_eq!(usdc.balance(&s.supplier) - before, value);
+    assert!(value > 2_654_000_000_i128);
+    assert_eq!(s.client.get_supply_balance(&s.supplier), 0);
+    assert_eq!(s.client.get_protocol_state().total_scaled_supply, 0);
+}
+
+#[test]
+fn a_supply_in_the_ledger_of_an_accrual_earns_nothing_from_the_past() {
+    let s = setup();
+    let txid = setup_with_supply_and_deposit(&s, 2_654_000_000_i128);
+    s.client.borrow(&s.depositor, &txid, &1_990_000_000_i128);
+    s.env.ledger().set_sequence_number(1_000 + YEAR);
+
+    let late = s.depositor.clone();
+    let amount = 1_000_000_000_i128;
+    StellarAssetClient::new(&s.env, &s.usdc).mint(&late, &amount);
+    s.client.supply_usdc(&late, &amount);
+
+    let value = s.client.get_supply_balance(&late);
+    assert!(value <= amount && amount - value <= 1, "value {value}");
+}
+
+#[test]
+fn a_supply_that_mints_no_scaled_units_is_rejected() {
+    let (s, _) = lender_year_fully_repaid();
+    // The index is above 1 now, so one stroop rounds down to zero units.
+    assert_eq!(
+        s.client.try_supply_usdc(&s.supplier, &1_i128),
+        Err(Ok(PrivateLendError::ZeroShareAmount)),
+    );
+}
+
+#[test]
+fn withdrawing_more_than_the_value_is_rejected() {
+    let (s, _) = lender_year_fully_repaid();
+    let value = s.client.get_supply_balance(&s.supplier);
+    assert_eq!(
+        s.client.try_withdraw_supply(&s.supplier, &(value + 1)),
+        Err(Ok(PrivateLendError::InsufficientSupply)),
+    );
+}
+
+#[test]
+fn lenders_cannot_withdraw_what_is_lent_out() {
+    let s = setup();
+    let txid = setup_with_supply_and_deposit(&s, 1_000_000_000_i128);
+    s.client.borrow(&s.depositor, &txid, &600_000_000_i128);
+    assert_eq!(
+        s.client.try_withdraw_supply(&s.supplier, &500_000_000_i128),
+        Err(Ok(PrivateLendError::InsufficientLiquidity)),
+    );
+    s.client.withdraw_supply(&s.supplier, &400_000_000_i128);
+}
+
+#[test]
+fn utilization_counts_accrued_supply_not_principal_only() {
+    // After a year of interest the lenders' assets exceed the principal, so
+    // utilization (and the rate) must be lower than on principal alone.
+    let s = setup();
+    let txid = setup_with_supply_and_deposit(&s, 2_654_000_000_i128);
+    s.client.borrow(&s.depositor, &txid, &1_990_000_000_i128);
+    s.env.ledger().set_sequence_number(1_000 + YEAR);
+    StellarAssetClient::new(&s.env, &s.usdc).mint(&s.depositor, &1_i128);
+    s.client.repay(&s.depositor, &txid, &1_i128);
+
+    let p = s.client.get_protocol_state();
+    let assets = crate::rates::total_supply_assets(&p, p.supply_index);
+    assert!(assets > 2_654_000_000_i128);
+    assert_eq!(
+        s.client.get_borrow_rate_bp(),
+        crate::rates::borrow_rate_bp(p.total_borrowed, assets),
+    );
+}
+
+/// Lender claims plus the reserve never exceed what the contract holds plus
+/// what borrowers still owe it.
+fn assert_solvent(s: &Setup) {
+    let p = s.client.get_protocol_state();
+    let held = TokenClient::new(&s.env, &s.usdc).balance(&s.client.address);
+    let claims = crate::rates::total_supply_assets(&p, p.supply_index) + p.reserve_usdc;
+    assert!(held + p.total_borrowed >= claims, "held {held} + borrowed {} < claims {claims}", p.total_borrowed);
+}
+
+#[test]
+fn two_lenders_share_interest_in_proportion_to_when_they_joined() {
+    let s = setup();
+    let txid = setup_with_supply_and_deposit(&s, 2_000_000_000_i128); // lender A, from the start
+    s.client.borrow(&s.depositor, &txid, &1_000_000_000_i128);
+    s.env.ledger().set_sequence_number(1_000 + YEAR / 2);
+
+    let b = s.depositor.clone(); // lender B joins half a year in with the same amount
+    StellarAssetClient::new(&s.env, &s.usdc).mint(&b, &2_000_000_000_i128);
+    s.client.supply_usdc(&b, &2_000_000_000_i128);
+    s.env.ledger().set_sequence_number(1_000 + YEAR);
+
+    // Touch the pool so the index is current, then compare.
+    StellarAssetClient::new(&s.env, &s.usdc).mint(&b, &1_i128);
+    s.client.repay(&b, &txid, &1_i128);
+
+    let a_gain = s.client.get_supply_balance(&s.supplier) - 2_000_000_000;
+    let b_gain = s.client.get_supply_balance(&b) - 2_000_000_000;
+    assert!(a_gain > 0 && b_gain > 0);
+    // A earned over a full year and the first half alone; B only the second half.
+    assert!(a_gain > b_gain, "a {a_gain}, b {b_gain}");
+    assert_solvent(&s);
+}
+
+#[test]
+fn partial_withdrawals_round_in_the_pools_favour_and_stay_solvent() {
+    let (s, _) = lender_year_fully_repaid();
+    let mut withdrawn = 0_i128;
+    let before = s.client.get_supply_balance(&s.supplier);
+    for amt in [1_i128, 7, 333_333_333, 1, 999_999_999] {
+        s.client.withdraw_supply(&s.supplier, &amt);
+        withdrawn += amt;
+        // The balance falls by at least what was taken: no free USDC from rounding.
+        let left = s.client.get_supply_balance(&s.supplier);
+        assert!(before - left >= withdrawn, "left {left}, withdrawn {withdrawn}");
+        assert_solvent(&s);
+    }
+}
+
+#[test]
+fn solvency_holds_across_a_mixed_sequence() {
+    let s = setup();
+    let txid = setup_with_supply_and_deposit(&s, 5_000_000_000_i128);
+    let usdc = StellarAssetClient::new(&s.env, &s.usdc);
+    let b = s.depositor.clone();
+    usdc.mint(&b, &10_000_000_000_i128);
+    s.client.borrow(&b, &txid, &1_000_000_000_i128);
+    assert_solvent(&s);
+
+    let mut seq = 1_000_u32;
+    for step in 0..12_u32 {
+        seq += 400_000 + step * 37_001;
+        s.env.ledger().set_sequence_number(seq);
+        match step % 4 {
+            0 => s.client.supply_usdc(&b, &(123_456_789 + step as i128)),
+            1 => s.client.repay(&b, &txid, &(10_000_001 + step as i128)),
+            2 => {
+                let v = s.client.get_supply_balance(&s.supplier);
+                s.client.withdraw_supply(&s.supplier, &(v / 5));
+            }
+            _ => s.client.borrow(&b, &txid, &(5_000_000 + step as i128)),
+        }
+        assert_solvent(&s);
+    }
+}
+
+#[test]
+fn liquidation_keeps_the_pool_solvent_and_the_lender_gains() {
+    let s = setup();
+    let supply = 10_000_000_000_i128;
+    let txid = setup_with_supply_and_deposit(&s, supply);
+    s.client.borrow(&s.depositor, &txid, &1_999_000_000_i128);
+    s.env.ledger().set_sequence_number(1_000 + 80_000_000);
+    StellarAssetClient::new(&s.env, &s.usdc).mint(&s.keeper, &100_000_000_000_i128);
+
+    s.client.liquidate(&s.keeper, &txid);
+
+    assert_solvent(&s);
+    assert!(s.client.get_supply_balance(&s.supplier) > supply);
+    let v = s.client.get_supply_balance(&s.supplier);
+    s.client.withdraw_supply(&s.supplier, &v);
 }
