@@ -130,7 +130,7 @@ export function formatTvlParts(stroops: bigint | null): {
   formatted: string;
 } {
   if (stroops === null) {
-    return { whole: "—", frac: "", formatted: "—" };
+    return { whole: "-", frac: "", formatted: "-" };
   }
 
   const negative = stroops < 0n;

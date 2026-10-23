@@ -136,7 +136,7 @@ Engage with ZK proof researchers and BTCfi builders. Not promotional - education
 
 ---
 
-### Phase 2: First 1,000 Users (Mainnet Launch - Q4 2026 to Q2 2027)
+### Phase 2: First 1,000 Users (Mainnet Launch - Q2 to Q3 2027)
 
 **Goal:** $1M TVL, 1,000 active wallets, first institutional customer for Proof of Reserve.
 

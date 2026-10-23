@@ -125,7 +125,7 @@ describe("cohort analysis (#113-#117)", () => {
   });
 
   it("formats TVL into whole and fractional parts", () => {
-    expect(formatTvlParts(null)).toEqual({ whole: "—", frac: "", formatted: "—" });
+    expect(formatTvlParts(null)).toEqual({ whole: "-", frac: "", formatted: "-" });
     expect(formatTvlParts(200_000_000n)).toEqual({
       whole: "20",
       frac: ".00",
