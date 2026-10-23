@@ -29,10 +29,11 @@ cd writz
 # Install all dependencies. Note the package manager differs per module:
 # Bun for bitcoin-script / relayer / frontend / packages/*, npm for circuits.
 cd contracts && cargo fetch
-cd ../bitcoin-script && bun install && bun run build
-cd ../packages/commitment-tree && bun install
-cd ../../relayer && bun install
-cd ../circuits && npm install
+cd ../privacy/contracts && cargo fetch
+cd ../../bitcoin-script && bun install && bun run build
+cd ../privacy/packages/commitment-tree && bun install
+cd ../../../relayer && bun install
+cd ../privacy/circuits && npm install
 ```
 
 All 623 tests should pass on a clean checkout.

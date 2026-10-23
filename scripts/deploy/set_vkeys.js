@@ -7,7 +7,7 @@
  * Usage:
  *   ZK_VERIFIER_ID=C... WRITZ_DEV_SECRET=S... node set_vkeys.js
  *
- * Reads vkey JSON files from circuits/keys/ and calls set_verification_key
+ * Reads vkey JSON files from privacy/circuits/keys/ and calls set_verification_key
  * for the Deposit, BorrowRepay, Liquidation, ZeroDebt and Insert circuits.
  */
 import * as StellarSdk from '@stellar/stellar-sdk';
@@ -163,7 +163,7 @@ const circuits = [
 ];
 
 for (const { name, file } of circuits) {
-    const vkeyPath = path.join(ROOT, 'circuits/keys', file);
+    const vkeyPath = path.join(ROOT, 'privacy/circuits/keys', file);
     const vkey = JSON.parse(fs.readFileSync(vkeyPath, 'utf8'));
 
     console.log(`\nSetting VK for ${name} (IC length: ${vkey.IC.length})…`);

@@ -1,6 +1,8 @@
 # Writz Protocol - Soroban Contracts
 
-Four Soroban contracts that implement the Writz Protocol on Stellar.
+The Writz v1 Soroban contracts: `bitcoin-spv`, `writz-lend` and the shared `spv-types` crate.
+
+The privacy edition's contracts (`zk-verifier`, `commitment-tree`) are not part of v1. They live in their own Cargo workspace under [`../privacy/contracts/`](../privacy/contracts/), so this workspace builds, tests and deploys without them. See [`../privacy/README.md`](../privacy/README.md).
 
 ## Contracts
 
@@ -10,23 +12,15 @@ Verifies Bitcoin SPV proofs on Soroban. Given a raw Bitcoin transaction, a block
 
 Key functions: `verify_transaction(headers, merkle_proof, tx_index, raw_tx, min_confirmations)`
 
-### `zk-verifier`
-
-Stores Groth16 BN254 verification keys for the three Writz circuits (Deposit, BorrowRepay, Liquidation) and verifies proofs using Protocol 26 host functions (`bn254.g1_msm`, `bn254.pairing_check`).
-
-Key functions: `initialize`, `set_verification_key`, `verify_deposit`, `verify_borrow_repay`, `verify_liquidation`
-
-### `commitment-tree`
-
-Implements the Poseidon Merkle commitment tree and the core lending logic. Accepts ZK proofs for deposits, borrows, repays, and liquidations. Calls `bitcoin-spv` and `zk-verifier` as dependencies.
-
-Key functions: `deposit`, `insert_commitment`, `borrow`, `repay`, `liquidate`
-
 ### `writz-lend`
 
 Phase 1, non-ZK lending contract: plaintext BTC-collateralized positions, USDC pool supply/withdraw, and its own liquidation logic. Calls `bitcoin-spv` directly to verify deposits.
 
-> **Note:** `writz-lend` and `commitment-tree` are independent, parallel implementations of the lending flow against the shared `bitcoin-spv`/`zk-verifier` primitives - `writz-lend` does **not** call or compose `commitment-tree`. Each performs its own txid-based deposit deduplication; see `docs/security/security-model.md` for why this closes the Merkle duplicate-leaf ambiguity at the deposit layer rather than in the Merkle verifier itself.
+> **Note:** `writz-lend` does **not** call or compose the privacy edition's `commitment-tree` or `zk-verifier`. Both lenders register with `bitcoin-spv`'s consumed-txid registry, so one Bitcoin deposit cannot back a position in each; see `docs/security/security-model.md`.
+
+### `spv-types`
+
+Types and helpers shared by `bitcoin-spv` and the lending contracts that call it: `SpvVerificationResult`, the P2WSH deposit script and its parser, and the Bitcoin key-ownership proof. A library crate, not a deployed contract.
 
 ## Build
 

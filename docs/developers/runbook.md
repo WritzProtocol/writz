@@ -53,39 +53,40 @@ chmod +x ~/.local/bin/circom     # macOS: circom-macos-amd64
 circom --version                 # expect: circom compiler 2.2.3
 ```
 
-`snarkjs` needs no global install - it is a dependency of `circuits/`.
+`snarkjs` needs no global install - it is a dependency of `privacy/circuits/`.
 
 ---
 
 ## 2. Build the artifacts a clean checkout lacks
 
-Four directories the scripts depend on are **gitignored**, so a fresh clone does
+These paths the scripts depend on are **gitignored**, so a fresh clone does
 not have them:
 
 | Path | In git? | Produced by |
 |---|---|---|
-| `circuits/build/` (r1cs + prover wasm) | No | `npm run compile` |
-| `circuits/ptau/` (Powers of Tau) | No | `bash scripts/setup_dev.sh` |
-| `circuits/keys/*.zkey` (proving keys) | No | `bash scripts/setup_dev.sh` |
-| `circuits/keys/*_vkey.json` (verification keys) | **Yes** | committed; pushed on-chain by `set_vkeys.js` |
+| `privacy/circuits/build/` (r1cs + prover wasm) | No | `npm run compile` |
+| `privacy/circuits/ptau/` (Powers of Tau) | No | `bash scripts/setup_dev.sh` |
+| `privacy/circuits/keys/*.zkey` (proving keys) | No | `bash scripts/setup_dev.sh` |
+| `privacy/circuits/keys/*_vkey.json` (verification keys) | **Yes** | committed; pushed on-chain by `set_vkeys.js` |
 | `contracts/target/wasm32v1-none/release/*.wasm` | No | `stellar contract build` |
+| `privacy/contracts/target/wasm32v1-none/release/*.wasm` | No | `stellar contract build` in `privacy/contracts` |
 
 ```bash
 # ZK circuits
-cd circuits
+cd privacy/circuits
 npm install
 npm run compile          # → build/*.r1cs, build/*_js/*.wasm
 
 # Soroban contracts → wasm
-cd ../contracts/contracts/commitment-tree && make build
-# → contracts/target/wasm32v1-none/release/commitment_tree.wasm
+cd ../contracts && stellar contract build
+# → privacy/contracts/target/wasm32v1-none/release/commitment_tree.wasm
 ```
 
 ---
 
 ## 3. Trusted setup - read before running `setup_dev.sh`
 
-`circuits/scripts/setup_dev.sh` generates the proving keys. It seeds its
+`privacy/circuits/scripts/setup_dev.sh` generates the proving keys. It seeds its
 entropy with `$(date)`:
 
 ```bash
@@ -106,7 +107,7 @@ The shared testnet `zk-verifier` holds the verification keys from the
 regenerated setup submitted to it fail with `InvalidZkProof` - that is a key
 mismatch, not a bug in your proof. The scripted flow below avoids this by
 deploying its own `zk-verifier` and registering whatever keys are in
-`circuits/keys/`.
+`privacy/circuits/keys/`.
 
 ---
 

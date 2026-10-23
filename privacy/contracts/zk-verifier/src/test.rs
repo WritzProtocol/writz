@@ -373,9 +373,9 @@ fn admin_can_update_verification_key() {
 // ── Borrow/repay circuit ─────────────────────────────────────────────────────
 //
 // No coverage existed for this circuit before - `test_vectors.rs` had no
-// `borrow_repay` module (see `circuits/scripts/gen_test_vectors.js`, updated
+// `borrow_repay` module (see `privacy/circuits/scripts/gen_test_vectors.js`, updated
 // alongside this test to actually generate one). This is the entrypoint that
-// the `is_borrow` soundness fix in `circuits/src/borrow_repay.circom` lives
+// the `is_borrow` soundness fix in `privacy/circuits/src/borrow_repay.circom` lives
 // behind on-chain; it needs the same direct verifier coverage the other two
 // circuits already had.
 

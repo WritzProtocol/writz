@@ -248,7 +248,7 @@ All three verification keys are set on testnet (Deposit IC=6, BorrowRepay IC=9, 
 
 The privacy edition's lending contract. Manages the Poseidon Merkle commitment tree and all ZK-gated lending operations. This is where positions are created, loans are issued, and repayments are recorded.
 
-**Key functions** (simplified signatures - see `contracts/contracts/commitment-tree/src/lib.rs` for the exact ABI, including the full SPV header/Merkle-proof arguments `deposit` also takes):
+**Key functions** (simplified signatures - see `privacy/contracts/commitment-tree/src/lib.rs` for the exact ABI, including the full SPV header/Merkle-proof arguments `deposit` also takes):
 
 ```rust
 // Deposit: verify SPV, the depositor's Writz script and the ZK proof; create commitment. Returns the new commitment.
@@ -274,7 +274,7 @@ pub fn supply_usdc(supplier: Address, amount: i128) -> Result<(), CommitmentTree
 pub fn withdraw_supply(supplier: Address, amount: i128) -> Result<(), CommitmentTreeError>
 ```
 
-**Events emitted** (topic strings, matching `contracts/contracts/commitment-tree/src/events.rs` exactly): `deposit`, `insert_leaf`, `borrow`, `repay`, `liquidate`. There is currently no event for `supply_usdc`/`withdraw_supply` - an indexer tracking pool liquidity needs to read `get_pool_state`/`get_supply_balance` directly rather than listen for an event that doesn't exist.
+**Events emitted** (topic strings, matching `privacy/contracts/commitment-tree/src/events.rs` exactly): `deposit`, `insert_leaf`, `borrow`, `repay`, `liquidate`. There is currently no event for `supply_usdc`/`withdraw_supply` - an indexer tracking pool liquidity needs to read `get_pool_state`/`get_supply_balance` directly rather than listen for an event that doesn't exist.
 
 **Security properties:**
 - The `borrow` amount is extracted from the ZK proof's public signal - the caller cannot supply an arbitrary amount

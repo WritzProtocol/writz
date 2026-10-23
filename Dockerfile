@@ -11,11 +11,12 @@ FROM oven/bun:1.3.14-alpine
 
 WORKDIR /app
 
-# The package.json references commitment-tree as file:../packages/commitment-tree
-# WORKDIR is /app, so ../packages resolves to /packages - copy there
+# The package.json references commitment-tree as file:../privacy/packages/commitment-tree
+# (the privacy edition's bindings, still used for the testnet commitment tree).
+# WORKDIR is /app, so ../privacy resolves to /privacy - copy there
 # and install its own dependencies first.
-COPY packages/commitment-tree/ /packages/commitment-tree/
-RUN cd /packages/commitment-tree && bun install
+COPY privacy/packages/commitment-tree/ /privacy/packages/commitment-tree/
+RUN cd /privacy/packages/commitment-tree && bun install
 
 # The package.json references @writz/bitcoin-script as file:../bitcoin-script.
 # WORKDIR is /app, so ../bitcoin-script resolves to /bitcoin-script - copy

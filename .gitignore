@@ -15,9 +15,9 @@ yarn-debug.log*
 target/
 
 # ── ZK artifacts (large binaries) ────────────────────────────────────────────
-circuits/build/
-circuits/ptau/
-circuits/keys/*.zkey
+privacy/circuits/build/
+privacy/circuits/ptau/
+privacy/circuits/keys/*.zkey
 
 # ── AI agents (track skills + stellar-loop tooling; ignore local/runtime) ─────
 .claude/settings.json

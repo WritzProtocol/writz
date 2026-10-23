@@ -103,7 +103,7 @@ When the loan is fully repaid, the relayer's repay watcher builds the release PS
 
 ## Privacy edition (in progress)
 
-Writz v1 has no privacy layer: positions, amounts and collateral are public on chain. Privacy is not part of the protocol. It is being designed as a separate, opt-in edition with its own contracts (today `commitment-tree`, `zk-verifier` and the Circom circuits in [`circuits/`](circuits/), on testnet only), its own pool, its own audit and its own trusted-setup ceremony. It is planned for after v1 is live on mainnet, on its own subdomain, and has no date. Users who do not want privacy never interact with it. Design notes: [Privacy edition (in progress)](docs/how-it-works/privacy-edition.md).
+Writz v1 has no privacy layer: positions, amounts and collateral are public on chain. Privacy is not part of the protocol. It is being designed as a separate, opt-in edition with its own contracts (today `commitment-tree`, `zk-verifier` and the Circom circuits in [`privacy/circuits/`](privacy/circuits/), on testnet only), its own pool, its own audit and its own trusted-setup ceremony. It is planned for after v1 is live on mainnet, on its own subdomain, and has no date. Users who do not want privacy never interact with it. Design notes: [Privacy edition (in progress)](docs/how-it-works/privacy-edition.md).
 
 ---
 
@@ -163,22 +163,23 @@ The **Bitcoin SPV SDK** is also open infrastructure. Any Stellar protocol that n
 
 ```
 writz/
-├── contracts/               # Soroban smart contracts (Rust)
+├── contracts/               # Writz v1 Soroban contracts (Rust)
 │   ├── contracts/
 │   │   ├── bitcoin-spv/     # SHA256d · PoW · Merkle inclusion · block headers
 │   │   ├── writz-lend/      # Deposits · USDC pool · interest model · liquidation
-│   │   ├── zk-verifier/     # Privacy edition (in progress) · Groth16 BN254
-│   │   └── commitment-tree/ # Privacy edition (in progress) · Poseidon Merkle tree
+│   │   └── spv-types/       # Types shared by bitcoin-spv and its consumers
 │   └── deployments/
 │       └── testnet.md       # Live addresses · tx hashes · verified calls
 │
-├── circuits/                # Privacy edition circuits (Circom 2.2.3 + snarkjs)
-│   ├── src/
-│   │   ├── deposit.circom
-│   │   ├── borrow_repay.circom
-│   │   ├── liquidation.circom
-│   │   └── merkle.circom
-│   └── keys/                # Verification keys (committed to repo)
+├── privacy/                 # Privacy edition · in progress · testnet only · not part of v1
+│   ├── contracts/           # Its own Cargo workspace
+│   │   ├── zk-verifier/     # Groth16 BN254 · verification key store
+│   │   └── commitment-tree/ # Poseidon Merkle tree · ZK lending logic
+│   ├── circuits/            # ZK circuits (Circom 2.2.3 + snarkjs)
+│   │   ├── src/             # deposit · borrow_repay · liquidation · insert · zero_debt
+│   │   └── keys/            # Verification keys (committed to repo)
+│   └── packages/
+│       └── commitment-tree/ # Generated TypeScript bindings for commitment-tree
 │
 ├── relayer/                 # SPV Relayer service (TypeScript · Express · Bun)
 │   └── src/
@@ -199,7 +200,7 @@ writz/
 │       └── lib/position/    # Local cache of positions read from writz-lend
 │
 ├── packages/
-│   └── commitment-tree/     # Generated TypeScript bindings for commitment-tree
+│   └── brand/               # Graphite & Gold design tokens
 │
 ├── scripts/
 │   ├── deploy/              # Deployment scripts · deploy_stack.mjs · e2e_local.mjs
@@ -246,7 +247,7 @@ curl -fL -o ~/.local/bin/circom \
   https://github.com/iden3/circom/releases/download/v2.2.3/circom-linux-amd64
 chmod +x ~/.local/bin/circom   # macOS: use circom-macos-amd64
 circom --version               # expect: circom compiler 2.2.3
-# snarkjs needs no global install - it is already a dependency of circuits/
+# snarkjs needs no global install - it is already a dependency of privacy/circuits/
 ```
 
 ### Run All Tests
@@ -255,23 +256,25 @@ Each module has its own toolchain - there is no unifying root build, and the
 package manager is **not** the same everywhere. Run them from the repo root:
 
 ```bash
-# 1. Soroban contracts - 263 tests
+# 1. Soroban contracts - 263 tests (v1, then the privacy edition's own workspace)
 cd contracts && cargo test
+cd ../privacy/contracts && cargo test
+cd ../..
 
 # 2. Bitcoin script toolkit - 60 tests (Bun's own test runner)
-cd ../bitcoin-script && bun install && bun test
+cd bitcoin-script && bun install && bun test
 
 # 3. Relayer service - 248 tests
 #    Deps install with Bun, but the suite itself is Jest (ts-jest), so it must
 #    be run through the package script - plain `bun test` picks Bun's runner
 #    instead and fails. The relayer also imports the local @writz/* packages
 #    via their built dist/ output, so build those first.
-cd ../packages/commitment-tree && bun install
-cd ../../bitcoin-script && bun run build
+cd ../privacy/packages/commitment-tree && bun install
+cd ../../../bitcoin-script && bun run build
 cd ../relayer && bun install && bun run test
 
 # 4. Privacy edition ZK circuits - 52 tests (npm + Jest; needs circom on PATH)
-cd ../circuits && npm install && npm test
+cd ../privacy/circuits && npm install && npm test
 ```
 
 All 623 tests pass. If anything fails, [open an issue](https://github.com/WritzProtocol/writz/issues).
@@ -284,7 +287,8 @@ Deploys all four contracts on a local network and runs deposit → borrow → re
 docker run -d --rm --name writz-local-stellar -p 8000:8000 \
   stellar/quickstart:latest --local --enable rpc
 (cd contracts && cargo build --release --target wasm32v1-none --locked)
-(cd circuits && npm ci && npm run compile && npm run setup:dev)
+(cd privacy/contracts && cargo build --release --target wasm32v1-none --locked)
+(cd privacy/circuits && npm ci && npm run compile && npm run setup:dev)
 (cd scripts/deploy && bun install)
 node scripts/deploy/e2e_local.mjs
 ```
@@ -319,12 +323,12 @@ python3 scripts/diagrams/render-all.py
 | Module | Language | Tests | How to run |
 |---|---|---|---|
 | `bitcoin-spv` contract | Rust | 47 | `cd contracts && cargo test -p bitcoin-spv` |
-| `zk-verifier` contract | Rust | 18 | `cd contracts && cargo test -p zk-verifier` |
-| `commitment-tree` contract | Rust | 18 | `cd contracts && cargo test -p commitment-tree` |
+| `zk-verifier` contract | Rust | 18 | `cd privacy/contracts && cargo test -p zk-verifier` |
+| `commitment-tree` contract | Rust | 18 | `cd privacy/contracts && cargo test -p commitment-tree` |
 | `writz-lend` contract | Rust | 63 | `cd contracts && cargo test -p writz-lend` |
 | Relayer service | TypeScript | 48 | `cd relayer && bun run test` |
 | Bitcoin script toolkit | TypeScript | 60 | `cd bitcoin-script && bun test` |
-| ZK circuits | Circom / JS | 20 | `cd circuits && npm test` |
+| ZK circuits | Circom / JS | 20 | `cd privacy/circuits && npm test` |
 | **Total** | | **274** | |
 
 ---

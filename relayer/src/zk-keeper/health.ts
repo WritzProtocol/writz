@@ -1,7 +1,7 @@
 /**
  * The liquidation circuit's undercollateralization test, in integers:
  *   debt × 10^8 × threshold_bp  >  collateral × price × 10^4
- * Kept identical to circuits/src/liquidation.circom so the keeper never
+ * Kept identical to privacy/circuits/src/liquidation.circom so the keeper never
  * spends a proof attempt on a position the circuit would refuse.
  */
 export function isLiquidatable(

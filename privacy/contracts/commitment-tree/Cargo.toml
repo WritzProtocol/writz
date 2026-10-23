@@ -8,7 +8,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 soroban-sdk = { workspace = true }
-spv-types = { path = "../spv-types" }
+spv-types = { path = "../../../contracts/contracts/spv-types" }
 
 [dev-dependencies]
 k256 = { version = "0.13.4", default-features = false, features = ["ecdsa"] }

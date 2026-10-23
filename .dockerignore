@@ -10,7 +10,8 @@
 # Subprojects the relayer image doesn't build from.
 frontend
 contracts
-circuits
+privacy/contracts
+privacy/circuits
 docs
 scripts
 

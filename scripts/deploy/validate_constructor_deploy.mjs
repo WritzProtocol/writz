@@ -15,8 +15,8 @@ const { Keypair, Networks, Contract, Address, nativeToScVal, rpc: SorobanRpc, Tr
 
 const RPC_URL = 'https://soroban-testnet.stellar.org';
 const NETWORK = Networks.TESTNET;
-const WASM = new URL('../../contracts/target/wasm32v1-none/release/commitment_tree.wasm', import.meta.url);
-// Must match EMPTY_TREE_ROOT in contracts/contracts/commitment-tree/src/lib.rs.
+const WASM = new URL('../../privacy/contracts/target/wasm32v1-none/release/commitment_tree.wasm', import.meta.url);
+// Must match EMPTY_TREE_ROOT in privacy/contracts/commitment-tree/src/lib.rs.
 const EMPTY_TREE_ROOT = '2134e76ac5d21aab186c2be1dd8f84ee880a1e46eaf712f9d371b6df22191f3e';
 
 const secret = process.env.WRITZ_DEV_SECRET;

@@ -215,7 +215,7 @@ template BorrowRepayCircuit(DEPTH) {
 
 For Groth16, ~10K constraints is a medium-sized circuit - proof generation should take under 5 seconds in WASM.
 
-*(This section is the original Phase 0 estimate, kept for historical context. The built circuit's real count, after an `is_borrow` soundness fix added a boolean constraint and two debt-direction range checks, is ~11,180 non-linear constraints - see `docs/how-it-works/zk-privacy-layer.md` for the measured figure and `circuits/src/borrow_repay.circom` for the source of truth.)*
+*(This section is the original Phase 0 estimate, kept for historical context. The built circuit's real count, after an `is_borrow` soundness fix added a boolean constraint and two debt-direction range checks, is ~11,180 non-linear constraints - see `docs/how-it-works/privacy-edition.md` for the measured figure and `privacy/circuits/src/borrow_repay.circom` for the source of truth.)*
 
 ---
 
@@ -224,7 +224,7 @@ For Groth16, ~10K constraints is a medium-sized circuit - proof generation shoul
 ### Purpose
 Prove that a specific position (identified by its commitment) is undercollateralized, without revealing the collateral amount or position owner, enabling a liquidator to claim the collateral.
 
-> **Note (updated to match the shipped circuit):** the pseudocode below described an earlier design where `usdc_to_repay` was supplied as a separate **public input**, checked for equality against the private debt field. The circuit as implemented (`circuits/src/liquidation.circom`) is stronger: it has no `usdc_to_repay` input at all. `usdc_debt` is instead a circuit **output**, structurally bound to the private commitment (`usdc_debt <== debt_stroops`). This is a meaningful difference - see "Privacy tradeoff" below.
+> **Note (updated to match the shipped circuit):** the pseudocode below described an earlier design where `usdc_to_repay` was supplied as a separate **public input**, checked for equality against the private debt field. The circuit as implemented (`privacy/circuits/src/liquidation.circom`) is stronger: it has no `usdc_to_repay` input at all. `usdc_debt` is instead a circuit **output**, structurally bound to the private commitment (`usdc_debt <== debt_stroops`). This is a meaningful difference - see "Privacy tradeoff" below.
 
 ### Inputs/Outputs (as implemented)
 
@@ -272,9 +272,9 @@ template LiquidationCircuit(DEPTH) {
 
 There's a fundamental tension in private liquidations: the liquidator (or the contract, on the liquidator's behalf) needs to know how much USDC to pay to execute the liquidation. This means the debt amount is published on-chain at liquidation time regardless of circuit design - that part of the tradeoff is inherent and cannot be engineered away while liquidation remains permissionless.
 
-What the circuit design *can* control is whether that published amount is **trustworthy** - i.e. whether a keeper (or anyone else constructing the liquidation call) could claim a different amount than what the position actually owes. The original pseudocode above modeled `usdc_to_repay` as a public input checked for equality against the private debt - functionally adequate, but it leaves the "declare the correct amount" burden on an external equality constraint, callable with any input. **The shipped circuit removes that input entirely**: `usdc_debt` is a circuit *output*, computed as `usdc_debt <== debt_stroops` directly from the private commitment. A malicious keeper cannot supply a different value - there is no signal for them to lie in. `contracts/contracts/commitment-tree/src/lib.rs` extracts `usdc_debt` from the proof's output signal, never from a caller-supplied parameter, so this guarantee is enforced on-chain as well as in the circuit.
+What the circuit design *can* control is whether that published amount is **trustworthy** - i.e. whether a keeper (or anyone else constructing the liquidation call) could claim a different amount than what the position actually owes. The original pseudocode above modeled `usdc_to_repay` as a public input checked for equality against the private debt - functionally adequate, but it leaves the "declare the correct amount" burden on an external equality constraint, callable with any input. **The shipped circuit removes that input entirely**: `usdc_debt` is a circuit *output*, computed as `usdc_debt <== debt_stroops` directly from the private commitment. A malicious keeper cannot supply a different value - there is no signal for them to lie in. `privacy/contracts/commitment-tree/src/lib.rs` extracts `usdc_debt` from the proof's output signal, never from a caller-supplied parameter, so this guarantee is enforced on-chain as well as in the circuit.
 
-**Phase 1 status:** debt amount is revealed on-chain at liquidation time (unavoidable given a permissionless/keeper-based liquidator model), but the amount is provably correct - see `docs/how-it-works/zk-privacy-layer.md`.
+**Phase 1 status:** debt amount is revealed on-chain at liquidation time (unavoidable given a permissionless/keeper-based liquidator model), but the amount is provably correct - see `docs/how-it-works/privacy-edition.md`.
 
 **Phase 2 options (blocked on a decentralized keeper network):**
 1. **Encrypted debt in commitment** - liquidator receives an encrypted hint containing the debt amount, decryptable only with a specific key.
@@ -300,7 +300,7 @@ Groth16 requires a per-circuit trusted setup. The setup has two phases:
 
 This is a **pre-mainnet requirement**. The ceremony must be completed and the results audited before any mainnet deployment.
 
-**Tooling:** the coordinator/participant scripts, transcript format, verification, and on-chain rotation runbook implementing all of the above are in `circuits/scripts/ceremony/` - see that directory's `README.md` for the exact step-by-step process. A CI job (`circuits-ceremony-verify` in `.github/workflows/ci.yml`) mechanically checks the committed manifest's hashes and rejects any transcript with a "dev"-labeled participant before a rotation is accepted; it does not replace the human verification steps in the runbook.
+**Tooling:** the coordinator/participant scripts, transcript format, verification, and on-chain rotation runbook implementing all of the above are in `privacy/circuits/scripts/ceremony/` - see that directory's `README.md` for the exact step-by-step process. A CI job (`circuits-ceremony-verify` in `.github/workflows/ci.yml`) mechanically checks the committed manifest's hashes and rejects any transcript with a "dev"-labeled participant before a rotation is accepted; it does not replace the human verification steps in the runbook.
 
 ---
 
