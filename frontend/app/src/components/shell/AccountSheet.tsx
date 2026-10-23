@@ -8,6 +8,7 @@ import { formatBtc, shortAddress } from "@/lib/borrow/journey";
 import { btcAddressUrl, stellarAccountUrl } from "@/lib/explorer";
 import { BTC_FAUCETS, DOCS_URL, GITHUB_ISSUES_URL, GITHUB_SECURITY_URL } from "@/lib/links";
 import { CopyButton, ErrorBox, ExternalLink, Notice } from "@/components/ui";
+import type { PollarLogin } from "@/lib/wallet/WalletProvider";
 import { useShellAccount, type ShellAccount } from "./account";
 
 type Chain = "stellar" | "bitcoin";
@@ -66,6 +67,9 @@ function StellarChecks({ a }: { a: ShellAccount }) {
       </Notice>
     );
   }
+  if (s.feesSponsored && s.funding.kind === "ok" && s.funding.value.kind === "unfunded") {
+    return <p className="wz-hint">Your account is being created on Stellar. This takes a few seconds.</p>;
+  }
   if (s.funding.kind === "ok" && s.funding.value.kind === "unfunded") {
     // Friendbot only exists on testnet; a mainnet account is funded with real XLM.
     if (config.target === "mainnet") {
@@ -89,7 +93,7 @@ function StellarChecks({ a }: { a: ShellAccount }) {
       </Notice>
     );
   }
-  if (s.funding.kind === "ok" && s.funding.value.kind === "low") {
+  if (s.funding.kind === "ok" && s.funding.value.kind === "low" && !s.feesSponsored) {
     return (
       <Notice tone="warning" label="Low XLM">
         <p>Only {s.funding.value.xlm} XLM left. Keep at least 2 XLM for fees.</p>
@@ -97,6 +101,130 @@ function StellarChecks({ a }: { a: ShellAccount }) {
     );
   }
   return null;
+}
+
+const POLLAR_WORKING: Partial<Record<string, string>> = {
+  creating_session: "Starting sign-in...",
+  opening_oauth: "Finish signing in in the popup",
+  sending_email: "Sending your code...",
+  verifying_email_code: "Checking your code...",
+  authenticating: "Signing you in...",
+};
+
+function PollarSignIn({ pollar }: { pollar: PollarLogin }) {
+  const [email, setEmail] = useState<string | null>(null);
+  const [code, setCode] = useState("");
+  const auth = pollar.session.auth;
+  const working = POLLAR_WORKING[auth.step];
+
+  if (auth.step === "authenticated") {
+    return <p className="wz-hint">Creating your Stellar account...</p>;
+  }
+
+  if (auth.step === "entering_code") {
+    return (
+      <form
+        className="wz-stack"
+        style={{ gap: 8 }}
+        onSubmit={(e) => {
+          e.preventDefault();
+          pollar.verifyCode(code.trim());
+        }}
+      >
+        <label htmlFor="sh-code" className="wz-label">
+          Code
+        </label>
+        <div className="wz-field" data-size="sm">
+          <input
+            id="sh-code"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            enterKeyHint="go"
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            autoFocus
+          />
+        </div>
+        <p className="wz-hint">We sent a code to {auth.email}.</p>
+        <div className="wz-actions">
+          <button type="submit" className="wz-btn wz-btn-gold wz-btn-sm" disabled={!code.trim()}>
+            Verify
+          </button>
+          <button type="button" className="wz-btn wz-btn-line wz-btn-sm" onClick={pollar.cancel}>
+            Cancel
+          </button>
+        </div>
+      </form>
+    );
+  }
+
+  if (working) {
+    return (
+      <div className="wz-actions">
+        <p className="wz-hint">{working}</p>
+        <button type="button" className="wz-btn wz-btn-line wz-btn-sm" onClick={pollar.cancel}>
+          Cancel
+        </button>
+      </div>
+    );
+  }
+
+  if (email !== null) {
+    return (
+      <form
+        className="wz-stack"
+        style={{ gap: 8 }}
+        onSubmit={(e) => {
+          e.preventDefault();
+          setCode("");
+          pollar.loginWithEmail(email.trim());
+        }}
+      >
+        <label htmlFor="sh-email" className="wz-label">
+          Email
+        </label>
+        <div className="wz-field" data-size="sm">
+          <input
+            id="sh-email"
+            type="email"
+            autoComplete="email"
+            enterKeyHint="send"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoFocus
+          />
+        </div>
+        <div className="wz-actions">
+          <button type="submit" className="wz-btn wz-btn-gold wz-btn-sm" disabled={!email.includes("@")}>
+            Send code
+          </button>
+          <button type="button" className="wz-btn wz-btn-line wz-btn-sm" onClick={() => setEmail(null)}>
+            Cancel
+          </button>
+        </div>
+      </form>
+    );
+  }
+
+  return (
+    <>
+      <p className="wz-hint">
+        No wallet? Sign in to get a test account with fees paid. Pollar holds its key, so use it for testing only.
+      </p>
+      {auth.step === "error" ? <p className="wz-error">{auth.message}</p> : null}
+      <div className="wz-actions">
+        <button type="button" className="wz-btn wz-btn-line wz-btn-sm" onClick={() => pollar.login("google")}>
+          Google
+        </button>
+        <button type="button" className="wz-btn wz-btn-line wz-btn-sm" onClick={() => pollar.login("github")}>
+          GitHub
+        </button>
+        <button type="button" className="wz-btn wz-btn-line wz-btn-sm" onClick={() => setEmail("")}>
+          Email
+        </button>
+      </div>
+    </>
+  );
 }
 
 export function AccountSheetBody() {
@@ -136,13 +264,9 @@ export function AccountSheetBody() {
             <button type="button" className="wz-btn wz-btn-gold wz-btn-sm" disabled={s.connecting} onClick={s.connect}>
               {s.connecting ? "Confirm in your wallet" : "Connect Stellar wallet"}
             </button>
-            {s.connectWithPrivy ? (
-              <button type="button" className="wz-btn wz-btn-line wz-btn-sm" onClick={s.connectWithPrivy}>
-                Email or social login
-              </button>
-            ) : null}
           </div>
         )}
+        {!s.address && s.pollar ? <PollarSignIn pollar={s.pollar} /> : null}
       </section>
 
       <section className="sh-section" aria-labelledby="sh-bitcoin">

@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, u
 import { Horizon, NotFoundError } from "@stellar/stellar-sdk";
 import { config } from "@/config";
 import { MAINNET_PASSPHRASE } from "@/config/target";
-import { useWallet } from "@/lib/wallet/WalletProvider";
+import { useWallet, type PollarLogin } from "@/lib/wallet/WalletProvider";
 import { ensureKit } from "@/lib/wallet/kit";
 import { networkName } from "@/lib/wallet/precheck";
 import { useBitcoinWallet } from "@/lib/bitcoin/useBitcoinWallet";
@@ -38,8 +38,11 @@ export interface ShellAccount {
     fundBusy: boolean;
     usdcAdded: Read<boolean>;
     switchedFrom: string | null;
+    /** Pollar pays the network fees of the wallet it created, so low XLM is not a problem. */
+    feesSponsored: boolean;
     connect(): void;
-    connectWithPrivy: (() => void) | null;
+    /** Email, Google and GitHub sign-in, or null when it is not offered. */
+    pollar: PollarLogin | null;
     disconnect(): void;
     fund(): void;
   };
@@ -168,10 +171,12 @@ function useLiveAccount(): BaseAccount {
   }, [address, w.walletBackend]);
   const net = network?.key === address ? network : null;
   const wrongNetwork = net?.passphrase && net.passphrase !== config.networkPassphrase ? networkName(net.passphrase) : null;
-  const walletName = w.walletBackend === "privy" ? "Privy" : (net?.name ?? "your wallet");
+  const walletName = w.walletBackend === "pollar" ? "Pollar" : (net?.name ?? "your wallet");
 
   const [nonce, setNonce] = useState(0);
-  const funding = useRead(address ? `fund:${address}:${nonce}` : null, () => loadFunding(address!));
+  // A Pollar account lands on the ledger after sign-in; read it again once it does.
+  const provisioning = w.walletBackend === "pollar" ? w.pollar?.session.provisioning : null;
+  const funding = useRead(address ? `fund:${address}:${nonce}:${provisioning}` : null, () => loadFunding(address!));
   const trust = useRead(address ? `usdc:${address}:${nonce}` : null, () => getAssetBalance(address!, POOL_ASSET));
   const usdcAdded: Read<boolean> = trust.kind === "ok" ? { kind: "ok", value: trust.value !== null } : trust;
   const btcAddress = b.btcAddress;
@@ -222,8 +227,9 @@ function useLiveAccount(): BaseAccount {
       fundBusy,
       usdcAdded,
       switchedFrom: seen.address === address ? seen.switchedFrom : null,
+      feesSponsored: w.walletBackend === "pollar",
       connect: () => void w.connect(),
-      connectWithPrivy: config.privyAppId ? w.connectWithPrivy : null,
+      pollar: w.pollar,
       disconnect: w.disconnect,
       fund,
     },
@@ -276,8 +282,9 @@ function mockAccount(world: MockWorld): BaseAccount {
       fundBusy: false,
       usdcAdded: fromReading(world.loan?.trustline ?? world.earn?.trustline ?? world.lend?.trustline, { kind: "ok", value: true }),
       switchedFrom: sw?.switchedFrom ?? null,
+      feesSponsored: false,
       connect: noop,
-      connectWithPrivy: null,
+      pollar: null,
       disconnect: noop,
       fund: noop,
     },

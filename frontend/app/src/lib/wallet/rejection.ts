@@ -25,14 +25,13 @@ export function errorMessage(e: unknown): string {
  *   Albedo     "Action canceled by the user"
  *   Rabet      "User rejected"
  *   Lobstr     "User rejected the request"
- *   Privy      "User rejected request", "User closed the modal"
  *
  * Matching on wording is unavoidable, so it is split by how much each word
  * proves. "Rejected", "declined" and "denied" only ever describe a decision,
  * so they stand alone. "Cancelled", "dismissed" and "closed" also describe
  * things that break on their own ("the connection was closed", "request
  * cancelled" from an aborted fetch), so they count only next to the actor who
- * would have done it deliberately. Privy signs over the network, so a dropped
+ * would have done it deliberately. Pollar signs over the network, so a dropped
  * connection mid-signing is a real case, and telling someone they declined
  * when the wallet actually broke sends them to the wrong fix.
  */

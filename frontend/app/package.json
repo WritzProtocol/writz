@@ -13,7 +13,8 @@
     "@bitcoinerlab/secp256k1": "^1.0.5",
     "@creit.tech/stellar-wallets-kit": "^2.4.0",
     "@noble/hashes": "^2.2.0",
-    "@privy-io/react-auth": "^3.32.2",
+    "@pollar/core": "0.11.5",
+    "@pollar/react": "0.11.5",
     "@stellar/stellar-sdk": "^16.0.1",
     "bitcoinjs-lib": "^6.1.7",
     "framer-motion": "^12.43.0",
@@ -24,9 +25,6 @@
     "sats-connect": "^4.2.1"
   },
   "devDependencies": {
-    "@solana-program/system": "^0.12.2",
-    "@solana-program/token": "^0.13.0",
-    "@solana/kit": "^6.10.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
