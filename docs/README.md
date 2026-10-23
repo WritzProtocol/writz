@@ -15,7 +15,7 @@ Writz is a trustless Bitcoin lending protocol on Stellar. Lock real BTC. Borrow 
 | New to Writz | [What is Writz? →](/introduction/what-is-writz) |
 | Want to understand how it works (no jargon) | [How Writz Works →](/introduction/how-writz-works) |
 | Ready to use Writz Lend | [Writz Lend Guide →](/products/writz-lend) |
-| A developer building on Stellar | [Quick Start →](/developers/quick-start) |
+| A developer building on Stellar | [Build on Writz →](/developers/integrate) |
 | A Stellar protocol that needs Bitcoin verification | [SPV SDK →](/developers/spv-sdk) |
 | An institution exploring Proof of Reserve | [ZK Proof of Reserve →](/products/zk-proof-of-reserve) |
 | An investor or grant reviewer | [Vision →](/roadmap/vision) |
@@ -43,6 +43,8 @@ Writz is a trustless Bitcoin lending protocol on Stellar. Lock real BTC. Borrow 
 - [Stellar Side](/how-it-works/stellar-side) - Four contracts, interest model, USDC pool, oracles.
 
 ### Developers
+- [Build on Writz](/developers/integrate) - Prove a Bitcoin transaction from your contract or app, on testnet, in 15 minutes.
+- [For AI Agents](/developers/for-ai-agents) - Exact IDs, signatures and verified examples for coding agents.
 - [Quick Start](/developers/quick-start) - Clone, build, test, deploy in under 5 minutes.
 - [SPV SDK](/developers/spv-sdk) - Free Bitcoin verification for any Stellar protocol.
 - [Contract Reference](/developers/contract-reference) - All public interfaces, parameters, events.
