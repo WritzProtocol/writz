@@ -138,6 +138,14 @@ The container image declares no `VOLUME`, so on a fresh service that directory i
 
 Most of these are recoverable. `vault-events.db` and `tree-events.db` are not. Soroban RPC retains events for days, not indefinitely (see `relayer-backfill-runbook.md`), and this database is the only durable record beyond that window. The metrics deliverable reports 30-day retention cohorts, which is longer than RPC will serve. Lose the file after the window closes and the history cannot be rebuilt from chain at all. `tree-events.db` is the same for the commitment tree: it is the only record that lets a fresh relayer replay the tree's history and check each step against its root once RPC has dropped the events (#264). It only covers history from the moment it was first created, and the tree watcher logs a warning at startup when it is empty but the leaf store is not. `bun run check:tree-archive` in `relayer/` compares it with RPC while its first ledger is still in retention.
 
+If `merkle.db` is lost or wrong, `bun run rebuild-tree` in `relayer/` rebuilds the leaves and notes from the tree's events (#265). It replays them from an empty tree with the same root check the tree watcher applies, then requires the result to match the contract's `MerkleRoot` and `NextLeafIndex` at the ledger the replay ended on. Only after that does it swap the result in and point the tree watcher's cursor just after the last event it applied. Any failure exits non-zero, names the event that broke the replay, and leaves the live store as it was.
+
+- `--source rpc` (the default) replays RPC events from `--from-ledger`, or from `COMMITMENT_TREE_DEPLOY_LEDGER`, or else from the oldest ledger RPC still has. It refuses a start ledger outside RPC's event retention.
+- `--source archive --archive-db <file>` replays a `tree-events.db`, then RPC for what came after it.
+- `--dry-run` runs every check and swaps nothing.
+
+Stop the relayer before a swap: the command takes the tree lock of its own process only, so a tree watcher running in another process could write back the store it read before the swap.
+
 **Mount a persistent volume at `/app/data`.** All six paths are overridable if the platform mounts elsewhere: `SQLITE_PATH`, `WATCHER_SQLITE_PATH`, `VAULT_EVENTS_SQLITE_PATH`, `VAULT_WATCHER_SQLITE_PATH`, `TREE_WATCHER_SQLITE_PATH`, `TREE_EVENTS_SQLITE_PATH`.
 
 Both watchers are always-on polling loops started in `src/index.ts`, not request-driven handlers. A platform that suspends the container when idle produces silent gaps in the same data, so scale-to-zero tiers are not suitable regardless of the volume.

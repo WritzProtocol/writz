@@ -24,9 +24,9 @@ beforeEach(() => {
 });
 
 const insertAfter = [11n, 22n];
-// The borrow and repay touch leaf 0, not the leaf the page inserts: replaying
-// an insert whose leaf a later event in the same page replaced is refused by
-// applyTreeEvent, which is the watcher's concern, not the archive's.
+// The borrow and repay touch leaf 0, so replaying this whole page (cursor
+// rewound to its start) is clean. A page that inserts a leaf and then updates
+// it only replays from where the watcher stopped: see the #286 test below.
 const borrowAfter = [2222n, 22n];
 const repayAfter = [3333n, 22n];
 const page: DecodedTreeEvent[] = [
@@ -35,9 +35,12 @@ const page: DecodedTreeEvent[] = [
   { kind: 'repay', event: { kind: 'update', newCommitment: 3333n, newRoot: computeRoot(repayAfter) } },
 ];
 const ids = ['0000000429496729600-0000000000', '0000000429496729600-0000000001', '0000000433791696896-0000000000'];
+/** Like RPC, returns the events after the request's cursor. */
 const serverFor = (page: DecodedTreeEvent[]) => ({
-  getEvents: async () => ({
-    events: page.map((d, i) => ({ id: ids[i]!, topic: [], value: d, ledger: i < 2 ? 100 : 101, ledgerClosedAt: '', txHash: `tx${i}` })),
+  getEvents: async (req: { cursor?: string }) => ({
+    events: page
+      .map((d, i) => ({ id: ids[i]!, topic: [], value: d, ledger: i < 2 ? 100 : 101, ledgerClosedAt: '', txHash: `tx${i}` }))
+      .filter((e) => req.cursor === undefined || e.id > req.cursor),
     cursor: '0000000433791696896-0000000001',
   }),
   getLatestLedger: async () => ({ sequence: 1_000_000 }),
@@ -89,23 +92,41 @@ describe('tree event archive', () => {
     expect(poller.treeSyncStatus.ok).toBe(true);
   });
 
-  test('a crash between the archive write and the cursor write loses and duplicates nothing', async () => {
-    const before = '0000000000000000000-0000000000';
-    const m = memory([11n], before);
-    {
+  // #286: a page that inserts leaf 1 and then borrows and repays on it. With
+  // the cursor moved once per page, a crash replayed the insert onto the
+  // updated leaf, which is a mismatch, and the watcher never recovered.
+  const sameLeaf: DecodedTreeEvent[] = [
+    { kind: 'insert', event: { kind: 'insert', commitment: 22n, leafIndex: 1, newRoot: computeRoot([11n, 22n]) } },
+    { kind: 'borrow', event: { kind: 'update', newCommitment: 2222n, newRoot: computeRoot([11n, 2222n]) } },
+    { kind: 'repay', event: { kind: 'update', newCommitment: 3333n, newRoot: computeRoot([11n, 3333n]) } },
+  ];
+  // Cursor writes 1-3 follow each event's archive row; write 4 is the page's cursor.
+  test.each([1, 2, 3, 4])(
+    'a crash at cursor write %i, after the leaf and archive writes, recovers on restart (#286)',
+    async (crashAt) => {
+      const before = '0000000000000000000-0000000000';
+      const m = memory([11n], before);
+      {
+        const { poller } = load();
+        let writes = 0;
+        const crashing = {
+          read: m.cursor.read,
+          write: (c: string) => {
+            if (++writes === crashAt) throw new Error('killed');
+            m.state.cursor = c;
+          },
+        };
+        await expect(cycle(poller, m, crashing, sameLeaf)).rejects.toThrow('killed');
+      }
+      jest.resetModules();
       const { archive, poller } = load();
-      const crashing = { read: m.cursor.read, write: () => { throw new Error('killed'); } };
-      await expect(cycle(poller, m, crashing)).rejects.toThrow('killed');
-      expect(archive.countTreeEvents()).toBe(3);
-      expect(m.state.cursor).toBe(before);
-    }
-    jest.resetModules();
-    const { archive, poller } = load();
-    await cycle(poller, m);
-    expect(archive.listTreeEvents({ limit: 10 }).map((r) => r.id)).toEqual(ids);
-    expect(m.state.cursor).toBe('0000000433791696896-0000000001');
-    expect(poller.treeSyncStatus.ok).toBe(true);
-  });
+      await cycle(poller, m, m.cursor, sameLeaf);
+      expect(poller.treeSyncStatus.ok).toBe(true);
+      expect(m.state.leaves).toEqual([11n, 3333n]);
+      expect(m.state.cursor).toBe('0000000433791696896-0000000001');
+      expect(archive.listTreeEvents({ limit: 10 }).map((r) => r.id)).toEqual(ids);
+    },
+  );
 
   test('an event the store cannot explain is not archived, the ones before it are', async () => {
     const { archive, poller } = load();

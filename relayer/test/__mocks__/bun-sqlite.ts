@@ -128,6 +128,10 @@ export class Database {
       // not `.prepare()` - matches real bun:sqlite's Statement, which supports
       // both entry points.
       run: (): void => {
+        if (/DELETE FROM notes/.test(sql)) {
+          this.writeState({ ...this.readState(), notes: [] });
+          return;
+        }
         if (!/DELETE FROM leaves/.test(sql)) {
           throw new Error(`mock bun:sqlite: unsupported statement: ${sql}`);
         }

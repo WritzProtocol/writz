@@ -92,4 +92,20 @@ describe('runTreePollCycle', () => {
     expect(treeSyncStatus.ok).toBe(false);
     expect(treeSyncStatus.lastError).toMatch(/update at ledger 100/);
   });
+
+  test("a first run never asks for a ledger before RPC's oldest (#286)", async () => {
+    const h = harness([], null);
+    const requests: unknown[] = [];
+    await runTreePollCycle({
+      server: {
+        getEvents: async (req: unknown) => { requests.push(req); return { events: [], cursor: 'c1' }; },
+        // A network younger than the six-day lookback, like any local one.
+        getLatestLedger: async () => ({ sequence: 86 }),
+        getHealth: async () => ({ oldestLedger: 7 }),
+      } as never,
+      contractId: 'CTREE', decodeEvent: unwrap, store: h.store, cursor: h.cursor, ...noArchive,
+    });
+    expect(requests).toEqual([expect.objectContaining({ startLedger: 7 })]);
+    expect(h.state.cursor).toBe('c1');
+  });
 });

@@ -57,6 +57,7 @@ const _insert = db.prepare<void, [number, string]>(
 const _saveNote = db.prepare<void, [number, string]>(
   "INSERT OR REPLACE INTO notes (leaf_index, enc_note) VALUES (?, ?)",
 );
+const _deleteNotes = db.query<void, []>("DELETE FROM notes");
 const _readNotes = db.query<{ leafIndex: number; encNote: string }, []>(
   "SELECT leaf_index AS leafIndex, enc_note AS encNote FROM notes ORDER BY leaf_index",
 );
@@ -73,6 +74,19 @@ export function writeLeaves(leaves: bigint[]): void {
     for (let i = 0; i < leaves.length; i++) {
       _insert.run(i, leaves[i].toString());
     }
+  })();
+}
+
+/**
+ * Replaces the leaves and every note in one transaction, for a rebuild from
+ * chain (#265): a reader sees either the old tree or the rebuilt one.
+ */
+export function replaceTree(leaves: bigint[], notes: Map<number, string>): void {
+  db.transaction(() => {
+    _deleteAll.run();
+    for (let i = 0; i < leaves.length; i++) _insert.run(i, leaves[i].toString());
+    _deleteNotes.run();
+    for (const [leafIndex, encNote] of notes) _saveNote.run(leafIndex, encNote);
   })();
 }
 
