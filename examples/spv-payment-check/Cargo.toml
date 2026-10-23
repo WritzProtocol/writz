@@ -1,0 +1,31 @@
+[package]
+name = "spv-payment-check"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+# Standalone crate: not a member of the contracts/ workspace.
+[workspace]
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+doctest = false
+
+[dependencies]
+soroban-sdk = "26"
+# Shared Writz types and the on-chain Bitcoin output parser.
+# Pinned to a commit so a later change on main cannot break this example.
+spv-types = { git = "https://github.com/WritzProtocol/writz", rev = "0a1065991ee0498ad2c54367e0ffa69ca4a59a9a" }
+
+[dev-dependencies]
+soroban-sdk = { version = "26", features = ["testutils"] }
+
+[profile.release]
+opt-level = "z"
+overflow-checks = true
+debug = 0
+strip = "symbols"
+debug-assertions = false
+panic = "abort"
+codegen-units = 1
+lto = true
