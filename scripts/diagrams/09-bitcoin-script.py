@@ -38,7 +38,7 @@ with g.subgraph(name="cluster_path_a") as a:
     a.attr(**cluster_attr("Path A - Cooperative Release", B_SUCCESS, "Normal case: loan fully repaid"))
     a.node("repay", hl(
         "User repays USDC",
-        "commitment-tree · repay() verified on-chain",
+        "writz-lend · repay() clears the debt on-chain",
     ), fillcolor=F_SUCCESS, color=B_SUCCESS)
     a.node("cosign", hl(
         "Protocol co-signature",

@@ -2,7 +2,7 @@
 title: "Quick Start"
 ---
 
-The core lending and verification logic in this repository is working code, not a mockup: the contracts are deployed on Stellar testnet, the tests pass, and the deposit → borrow → repay ZK flow has run end-to-end on-chain (see `docs/developers/runbook.md`). `writz-lend/src/oracle.rs`'s `get_btc_price_stroops` now calls a real Reflector oracle on testnet (see `docs/research/oracle-design.md`) - the one remaining placeholder is `commitment-tree`, which still returns a hardcoded price pending a ZK circuit change - it does not affect the SPV or lending-mechanics logic below, but `commitment-tree` position pricing is not yet live-market-driven. Start here and have something running in under 5 minutes.
+The core lending and verification logic in this repository is working code, not a mockup: the contracts are deployed on Stellar testnet, and the tests pass (see `docs/developers/runbook.md`). Writz v1 is `bitcoin-spv` and `writz-lend`; `zk-verifier`, `commitment-tree` and `circuits/` belong to the separate privacy edition, in progress and testnet only. `writz-lend/src/oracle.rs`'s `get_btc_price_stroops` now calls a real Reflector oracle on testnet (see `docs/research/oracle-design.md`) - the privacy edition's `commitment-tree` still returns a hardcoded price; it is not part of v1. Start here and have something running in under 5 minutes.
 
 ---
 
@@ -138,7 +138,7 @@ stellar contract invoke \
 
 ---
 
-## Run the Full ZK End-to-End Flow
+## Run the Privacy Edition End-to-End Flow
 
 `scripts/deploy/e2e_local.mjs` deploys all four contracts through their
 constructors on a local Stellar network, registers the verification keys and

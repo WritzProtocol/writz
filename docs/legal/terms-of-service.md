@@ -29,8 +29,8 @@ The Writz frontend may implement address or IP-based screening against sanctione
 
 Using Writz involves risks inherent to experimental financial software. By using the protocol, you acknowledge and accept:
 
-- **Smart contract risk.** The Soroban contracts, the Bitcoin locking scripts, and the zero-knowledge circuits may contain undiscovered bugs, despite testing and any completed audits. A bug could result in partial or total loss of deposited collateral.
-- **Zero-knowledge circuit risk.** The privacy layer depends on the correctness of the Circom circuits and the security of the trusted setup ceremony. A flaw in either could, in principle, allow an invalid proof to be accepted.
+- **Smart contract risk.** The Soroban contracts and the Bitcoin locking scripts may contain undiscovered bugs, despite testing and any completed audits. A bug could result in partial or total loss of deposited collateral.
+- **Public positions.** Writz Lend has no privacy layer. Your positions, their amounts and the addresses linked to them are public on-chain and visible to anyone, including other market participants.
 - **Bitcoin and Stellar network risk.** Writz depends on the underlying security, liveness, and finality guarantees of both the Bitcoin and Stellar networks. Congestion, reorganizations, or protocol-level issues on either network can delay or affect your ability to interact with the protocol.
 - **Oracle risk.** Liquidations and collateral valuation depend on price oracle data. Oracle failure or manipulation, while mitigated by design, is not impossible.
 - **Early-stage software risk.** Writz is early-stage software under active development. Interfaces, contract addresses, and mechanics may change between testnet and mainnet, and after mainnet launch as the protocol matures.

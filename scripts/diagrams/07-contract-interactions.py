@@ -1,6 +1,8 @@
 """
 Writz Protocol - 07 Contract Interactions
-The four Soroban contracts and how they call each other.
+Writz v1 contracts (bitcoin-spv + writz-lend) and how they call each other.
+The privacy edition (in progress) is a separate group with no edge into writz-lend.
+Contract IDs: contracts/deployments/testnet.md (2026-10-11 redeploy).
 """
 import sys, os
 sys.path.insert(0, os.path.dirname(__file__))
@@ -13,8 +15,8 @@ g.attr(**base_graph_attr(
     splines="spline",
     size="14,10",
     label=hl(
-        "Writz Protocol - Soroban Contract Interactions",
-        "Four live contracts on testnet · all ZK verification goes through zk-verifier",
+        "Writz Protocol - Soroban Contract Interactions (v1)",
+        "bitcoin-spv + writz-lend on testnet · USDC SAC · Reflector oracle · relayer",
     ),
 ))
 g.attr("node", **base_node_attr())
@@ -27,57 +29,59 @@ with g.subgraph(name="cluster_actors") as a:
            fillcolor=F_FRONTEND, color=B_FRONTEND)
     a.node("lender", hl("Lender", "Stellar address", "supply_usdc · withdraw_supply"),
            fillcolor=F_FRONTEND, color=B_FRONTEND)
-    a.node("keeper", hl("Keeper", "Liquidation bot", "liquidate()"),
+    a.node("keeper", hl("Keeper", "Designated · anyone after 24h stale", "liquidate()"),
            fillcolor=F_DANGER, color=B_DANGER)
-    a.node("admin", hl("Admin", "ADMIN_SECRET (Phase 1)", "insert_commitment()"),
+    a.node("relayer", hl("Relayer", "Header submitter · repay watcher", "submit headers · publish_release_psbt()"),
            fillcolor=F_RELAYER, color=B_RELAYER)
 
-# ── Contracts ─────────────────────────────────────────────────────────────────
-g.node("bitcoin_spv",
-       hl("bitcoin-spv", "CAE5L7BO2GNF7…", "verify_spv_proof(headers, merkle_proof, raw_tx)"),
-       fillcolor=F_BITCOIN, color=B_BITCOIN)
+# ── v1 contracts ──────────────────────────────────────────────────────────────
+with g.subgraph(name="cluster_v1") as v:
+    v.attr(**cluster_attr("Writz v1", B_STELLAR, "Plaintext positions"))
+    v.node("writz_lend",
+           hl("writz-lend", "CA3T7T2S7HV27BXO… · deposit · supply_usdc · withdraw_supply · borrow · repay",
+              "liquidate · publish_release_psbt · get_release_psbt"),
+           fillcolor=F_STELLAR, color=B_STELLAR, penwidth="2.2")
+    v.node("bitcoin_spv",
+           hl("bitcoin-spv", "CAHHY4S4WCIFU4LB…", "verify_transaction · consume_deposit"),
+           fillcolor=F_BITCOIN, color=B_BITCOIN)
+    v.node("usdc_token",
+           hl("USDC Token (SAC)", "Stellar Asset Contract", "SEP-41 · 7 decimals (stroops)"),
+           fillcolor=F_DEFAULT, color=B_DEFAULT)
+    v.node("oracle",
+           hl("Reflector Oracle", "SEP-40 · BTC/USD", "lastprice · decimals"),
+           fillcolor=F_DEFAULT, color=B_DEFAULT)
 
-g.node("zk_verifier",
-       hl("zk-verifier", "CDV45GLXG4AOU6…", "verify_deposit · verify_borrow_repay · verify_liquidation"),
-       fillcolor=F_ZK, color=B_ZK)
-
-g.node("commitment_tree",
-       hl("commitment-tree", "CDFAP3J4WLFZC2…", "deposit · borrow · repay · liquidate\ninsert_commitment · get_merkle_root"),
-       fillcolor=F_STELLAR, color=B_STELLAR)
-
-g.node("writz_lend",
-       hl("writz-lend", "CCLH2GJYG3QSHZ…", "supply_usdc · withdraw_supply\nborrow_usdc · repay_usdc"),
-       fillcolor=F_STELLAR, color=B_STELLAR)
-
-g.node("usdc_token",
-       hl("USDC Token (SAC)", "Stellar Asset Contract", "SEP-41 · 7 decimals (stroops)"),
-       fillcolor=F_DEFAULT, color=B_DEFAULT)
+# ── Privacy edition (separate) ────────────────────────────────────────────────
+with g.subgraph(name="cluster_privacy") as p:
+    p.attr(**cluster_attr("Privacy edition (in progress)", B_DEFAULT,
+                          "Separate, opt-in · own pool · testnet only · not part of v1"))
+    p.attr(style="rounded,dashed")
+    p.node("commitment_tree", hl("commitment-tree", "CAQBLCAPGXXCZTJD…", "privacy edition"),
+           fillcolor=F_DEFAULT, color=B_DEFAULT, style="filled,rounded,dashed")
+    p.node("zk_verifier", hl("zk-verifier", "CB5XAP6MF2GVVFAT…", "privacy edition"),
+           fillcolor=F_DEFAULT, color=B_DEFAULT, style="filled,rounded,dashed")
 
 # ── Actor → contract ──────────────────────────────────────────────────────────
-g.edge("borrower", "commitment_tree",
-       label="deposit() · borrow() · repay()", color=B_STELLAR, fontcolor=B_STELLAR, penwidth="2")
-g.edge("lender", "writz_lend",
-       label="supply_usdc() · withdraw_supply()", color=B_STELLAR, fontcolor=B_STELLAR)
-g.edge("keeper", "commitment_tree",
-       label="liquidate()", color=B_DANGER, fontcolor=B_DANGER)
-g.edge("admin", "commitment_tree",
-       label="insert_commitment()", style="dashed", color=B_RELAYER, fontcolor=B_RELAYER)
+g.edge("borrower", "writz_lend", label="deposit() · borrow() · repay()",
+       color=B_STELLAR, fontcolor=B_STELLAR, penwidth="2")
+g.edge("lender", "writz_lend", label="supply_usdc() · withdraw_supply()",
+       color=B_STELLAR, fontcolor=B_STELLAR)
+g.edge("keeper", "writz_lend", label="liquidate()", color=B_DANGER, fontcolor=B_DANGER)
+g.edge("relayer", "writz_lend", label="publish_release_psbt()", style="dashed",
+       color=B_RELAYER, fontcolor=B_RELAYER)
+g.edge("relayer", "bitcoin_spv", label="submit headers", style="dashed",
+       color=B_RELAYER, fontcolor=B_RELAYER)
 
-# ── commitment-tree → others ──────────────────────────────────────────────────
-g.edge("commitment_tree", "bitcoin_spv",
-       label="verify_spv_proof()", color=B_BITCOIN, fontcolor=B_BITCOIN)
-g.edge("commitment_tree", "zk_verifier",
-       label="verify_deposit()\nverify_borrow_repay()\nverify_liquidation()",
-       color=B_ZK, fontcolor=B_ZK, penwidth="2")
-g.edge("commitment_tree", "writz_lend",
-       label="borrow_usdc() · repay_usdc()", color=B_STELLAR, fontcolor=B_STELLAR, penwidth="2")
+# ── writz-lend → others ───────────────────────────────────────────────────────
+g.edge("writz_lend", "bitcoin_spv", label="verify_transaction()\nconsume_deposit()",
+       color=B_BITCOIN, fontcolor=B_BITCOIN, penwidth="2")
+g.edge("writz_lend", "oracle", label="lastprice()", color=B_DEFAULT)
+g.edge("writz_lend", "usdc_token", label="transfer()", color=B_DEFAULT)
+g.edge("usdc_token", "borrower", label="borrowed USDC", style="dashed",
+       color=B_SUCCESS, fontcolor=B_SUCCESS)
 
-# ── writz-lend → USDC ───────────────────────────────────────────────────────
-g.edge("writz_lend", "usdc_token",
-       label="transfer()", color=B_DEFAULT)
-g.edge("usdc_token", "lender",
-       label="supply / withdrawal", style="dashed", color=B_DEFAULT)
-g.edge("usdc_token", "borrower",
-       label="borrowed USDC", style="dashed", color=B_SUCCESS, fontcolor=B_SUCCESS)
+# ── Privacy edition internal (no edge into writz-lend) ────────────────────────
+g.edge("commitment_tree", "zk_verifier", style="dotted", color=E_DEFAULT)
+g.edge("commitment_tree", "bitcoin_spv", label="shared deposit registry", style="dotted", color=E_DEFAULT)
 
 render(g, "07-contract-interactions")

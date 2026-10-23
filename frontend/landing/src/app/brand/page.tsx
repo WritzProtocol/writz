@@ -113,7 +113,7 @@ const ONE_LINE =
   "Lock real BTC. Borrow USDC on Stellar. No bridge, no custodian, no wrapped token.";
 
 const BOILERPLATE =
-  "Writz is a lending protocol built on Stellar and backed by native BTC. It lets Bitcoin holders borrow dollars against their coins without handing them to a custodian and without converting them into a wrapped token: the collateral stays on Bitcoin, held by a Bitcoin Script, while the loan runs on Soroban. Positions are recorded as commitments, so a loan is visible on chain without its owner or its size being visible with it. The protocol is open source under Apache 2.0 and is currently live on Stellar testnet. Learn more at writz.xyz.";
+  "Writz is a lending protocol built on Stellar and backed by native BTC. It lets Bitcoin holders borrow dollars against their coins without handing them to a custodian and without converting them into a wrapped token: the collateral stays on Bitcoin, held by a Bitcoin Script, while the loan runs on Soroban. Positions are recorded on chain in the open, like in any other lending market. The protocol is open source under Apache 2.0 and is currently live on Stellar testnet. Learn more at writz.xyz.";
 
 const ALLOWED = [
   "Refer to Writz in an article, listing, directory or slide.",

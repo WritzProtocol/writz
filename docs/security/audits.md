@@ -4,7 +4,7 @@ title: "Audits"
 
 **Current status: Pre-audit. Mainnet will not launch before audit completion.**
 
-Writz will not launch on mainnet with real funds until at least two independent security audits are complete: one for the Soroban smart contracts and one for the ZK circuits.
+Writz will not launch on mainnet with real funds until an independent security audit of the Soroban smart contracts (`bitcoin-spv`, `writz-lend`) is complete. The ZK circuits belong to the separate privacy edition (in progress) and get their own audit before that edition launches.
 
 ---
 
@@ -29,11 +29,13 @@ Writz uses the **Stellar Foundation's Audit Bank** program, which subsidizes the
 
 ### ZK Circuits - Veridise
 
+> The circuits belong to the separate privacy edition (in progress), not to Writz v1. Their audit is that edition's audit and is not on the v1 mainnet path.
+
 Veridise specializes in ZK circuit security. They have audited Tornado Cash, Aztec, and multiple Groth16-based systems. ZK circuit bugs (underconstrained circuits, soundness issues) are a category that requires specialized expertise - general smart contract auditors do not have this depth.
 
 **Scope:** All three Circom circuits (`deposit.circom`, `borrow_repay.circom`, `liquidation.circom`), the shared Merkle components (`merkle.circom`), and the trusted setup ceremony procedure.
 
-**Target timeline:** Q3 2026 - after the trusted setup ceremony is planned and before mainnet launch.
+**Target timeline:** with the privacy edition, after Writz v1 is live on mainnet. No date.
 
 ### Soroban Contracts - OtterSec or Zellic
 
@@ -47,7 +49,7 @@ For the Soroban contracts, Writz will engage either OtterSec or Zellic - both ar
 - Oracle manipulation vectors
 - Re-entrancy (less common in Soroban but must be checked)
 
-**Target timeline:** Q3–Q4 2026 - concurrent with ZK circuit audit.
+**Target timeline:** before mainnet.
 
 ---
 

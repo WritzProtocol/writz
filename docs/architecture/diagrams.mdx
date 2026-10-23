@@ -1,19 +1,19 @@
 ---
 title: "Architecture Diagrams"
-description: "Visual reference for the full Writz Protocol - from Bitcoin locking to ZK proofs on Soroban."
+description: "Visual reference for Writz Protocol v1 - from Bitcoin locking to SPV verification and lending on Soroban."
 ---
 
 ## System Architecture
 
-End-to-end view of how Bitcoin, the SPV Relayer, the four Soroban contracts, and the browser interact.
+End-to-end view of how Bitcoin, the relayer, the Writz v1 contracts (`bitcoin-spv`, `writz-lend`) and the browser interact. The privacy edition's contracts are drawn as a separate group: `writz-lend` never calls them.
 
 ![Writz System Architecture](/diagrams/output/01-system-architecture.png)
 
 **Key layers:**
 - **Bitcoin** - P2WSH locks collateral; two spending paths (cooperative co-sign or CLTV timelock)
-- **SPV Relayer** - watches Bitcoin, produces Merkle inclusion proofs on demand
-- **Soroban contracts** - `bitcoin-spv`, `zk-verifier`, `commitment-tree`, `writz-lend` verify proofs and manage positions
-- **Browser** - generates all ZK proofs locally; private witness values never leave the device
+- **Relayer** - submits Bitcoin headers to `bitcoin-spv`, serves SPV proofs, and co-signs the release PSBT after a full repayment
+- **Soroban contracts** - `bitcoin-spv` verifies Bitcoin transactions; `writz-lend` holds plaintext positions, the USDC pool and liquidation, priced by the Reflector oracle
+- **Browser** - the Bitcoin wallet signs the key-control proof and the release; the Stellar wallet signs Soroban transactions
 
 ---
 
@@ -26,22 +26,20 @@ Step-by-step path from connecting a Bitcoin wallet to having an active position 
 1. Connect Bitcoin wallet (Xverse) and Stellar wallet (Freighter)
 2. Derive unique P2WSH address from protocol key + user key + timelock height
 3. Send BTC to that address on-chain
-4. Relayer produces SPV proof (block headers + Merkle path)
-5. Browser generates Groth16 ZK proof binding commitment to the Bitcoin txid
-6. `commitment-tree.deposit()` verifies SPV proof + ZK proof on Soroban
-7. Admin calls `insert_commitment()` - position becomes active
+4. Relayer serves the SPV proof (block hash + Merkle path + raw transaction)
+5. The Bitcoin wallet signs the key-control message (BIP-137) for this contract, depositor and txid
+6. `writz-lend.deposit()` rebuilds the P2WSH, calls `bitcoin-spv.verify_transaction`, checks the timelock window and the signature, consumes the txid and creates the position
 
 ---
 
 ## Borrow & Repay Flow
 
-How the protocol updates the Merkle commitment on every borrow or repay, preserving privacy throughout.
+How `writz-lend` handles a borrow or a repayment.
 
 ![Borrow and Repay Flow](/diagrams/output/03-borrow-repay-flow.png)
 
-- **Borrow:** `delta = amount_stroops`, `is_borrow = 1`
-- **Repay:** `delta = (FIELD_PRIME − amount) mod FIELD_PRIME`, `is_borrow = 0`
-- The nonce rotates on every action; the commitment `Poseidon(collateral, debt, Poseidon(secret), nonce, timelock)` is replaced in the tree
+- **Borrow:** only the depositor; interest accrues first; the post-borrow ratio at the Reflector price must stay at or above 150%, within pool liquidity and the 50,000 USDC total cap
+- **Repay:** partial or full; a full repayment closes the position and emits `repay_full`
 
 ---
 
@@ -51,15 +49,31 @@ Cooperative co-signed release after full repayment.
 
 ![BTC Release Flow](/diagrams/output/04-btc-release-flow.png)
 
-- The server (`/api/cosign`) verifies the commitment is no longer pending before signing
-- `PROTOCOL_SIGNING_KEY` is server-only - never exposed to the browser
+- The relayer's repay watcher reacts to `repay_full`, builds the PSBT and co-signs it with the protocol key (KMS, or a raw WIF on testnet only)
+- The half-signed PSBT is published on `writz-lend` (`publish_release_psbt`) and can be read with `get_release_psbt` even if Writz is down
 - Final witness: `[user_sig, protocol_sig, 0x01, redeemScript]`
 
 ---
 
-## ZK Circuits
+## Soroban Contract Interactions
 
-All three Groth16 circuits (Circom / BN254), their private inputs, public inputs, and public outputs.
+How the Writz v1 testnet contracts call each other.
+
+![Contract Interactions](/diagrams/output/07-contract-interactions.png)
+
+| Contract | Role |
+|---|---|
+| `bitcoin-spv` | Verifies Bitcoin transactions against its stored header chain; shared deposit txid registry |
+| `writz-lend` | Deposits, USDC pool, interest, keeper liquidation, release PSBT storage |
+| `commitment-tree`, `zk-verifier` | Privacy edition (in progress), testnet only; not part of v1 and never called by `writz-lend` |
+
+---
+
+## Privacy edition (in progress): ZK Circuits
+
+> These circuits belong to the separate, opt-in privacy edition, in progress and on testnet only. They are not part of Writz v1 and are not used by `writz-lend`. See [Privacy edition (in progress)](/how-it-works/privacy-edition).
+
+The main Groth16 circuits (Circom / BN254), their private inputs, public inputs, and public outputs.
 
 ![ZK Circuits](/diagrams/output/05-zk-circuits.png)
 
@@ -71,9 +85,11 @@ All three Groth16 circuits (Circom / BN254), their private inputs, public inputs
 
 ---
 
-## Commitment State Machine
+## Privacy edition (in progress): Commitment State Machine
 
-Complete lifecycle of a position from pending to BTC release (or liquidation).
+> Privacy edition only. Writz Lend positions on `writz-lend` have no commitments: they are plaintext, keyed by the Bitcoin txid, with the statuses Active, Closed and Liquidated.
+
+Complete lifecycle of a privacy edition position from pending to BTC release (or liquidation).
 
 ![Commitment State Machine](/diagrams/output/06-commitment-state-machine.png)
 
@@ -85,21 +101,6 @@ Complete lifecycle of a position from pending to BTC release (or liquidation).
 | **Closed** | Full repayment done; old nullifier spent |
 | **Released** | Path A PSBT finalized; BTC returned on Bitcoin |
 | **Liquidated** | Ratio below 120%; keeper repaid debt |
-
----
-
-## Soroban Contract Interactions
-
-How the four live testnet contracts call each other.
-
-![Contract Interactions](/diagrams/output/07-contract-interactions.png)
-
-| Contract | Role |
-|---|---|
-| `bitcoin-spv` | Verifies Bitcoin SPV proofs (block headers + Merkle path) |
-| `zk-verifier` | Groth16 verification via Protocol X-Ray host functions |
-| `commitment-tree` | Merkle tree of commitments; orchestrates all flows |
-| `writz-lend` | USDC liquidity pool; lender deposits + borrower drawdowns |
 
 ---
 

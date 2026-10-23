@@ -2,33 +2,223 @@
 title: "The Stellar Side"
 ---
 
-**Four contracts, one system - how Writz lives on Soroban.**
+**Two contracts, one system - how Writz lives on Soroban.**
 
-The Stellar side of Writz consists of four Soroban smart contracts, a USDC liquidity pool, an interest rate model, and an oracle layer. This page walks through each component, how they interact, and the design decisions behind them.
+The Stellar side of Writz v1 consists of two Soroban smart contracts (`bitcoin-spv` and `writz-lend`), Circle's native USDC, the Reflector BTC/USD oracle, and an off-chain relayer that submits Bitcoin headers and co-signs releases. This page walks through each component, how they interact, and the design decisions behind them. Positions are plaintext: amounts, collateral and addresses are public on chain.
 
 ---
 
-## The Four Contracts
+## The Contracts
 
 ```
-bitcoin-spv          zk-verifier
-     │                    │
-     └──────────┬──────────┘
-                │
-          commitment-tree  ←──  writz-lend
+      Reflector oracle        USDC (SAC)
+             │                    │
+             └────────┬───────────┘
+                      │
+   relayer  ──►  writz-lend  ──►  bitcoin-spv  ◄──  relayer
+ (release PSBT)                                  (header submission)
 ```
 
 ### 1. bitcoin-spv
 
-Verifies Bitcoin transactions on Soroban using Simplified Payment Verification. Completely stateless - no Bitcoin headers are stored on-chain. Takes a proof bundle (headers + Merkle proof + raw transaction) and returns a `SpvVerificationResult` (defined once in the shared `spv-types` crate, not duplicated per contract) containing the txid, block hash, and confirmation count.
+Verifies Bitcoin transactions on Soroban using Simplified Payment Verification. It keeps a compact header chain on Stellar, anchored at a checkpoint, and proves transactions against it (see [SPV Verification](/how-it-works/spv-verification)). `verify_transaction` takes a block hash, a Merkle proof, the transaction index and the raw transaction, and returns a `SpvVerificationResult` (defined once in the shared `spv-types` crate) containing the txid, block hash, block height and confirmation count.
 
-This contract is called first in every deposit flow. Its output - specifically the `txid` - is passed to the commitment-tree contract and bound into the ZK proof, ensuring every position corresponds to a real Bitcoin transaction.
+It also holds the shared deposit registry: `consume_deposit` records a Bitcoin txid the first time a registered lending contract uses it, so the same output can never back two positions.
 
 **Deployed:** `CAHHY4S4WCIFU4LBSKBI3IP6A4QYR2COV6EACDEBXGPJFDWBJWGOMCLP`
 
 ---
 
-### 2. zk-verifier
+### 2. writz-lend
+
+The lending contract. It registers Bitcoin deposits as positions keyed by txid, runs the USDC pool, accrues interest, handles liquidation and stores the co-signed release PSBT. Positions are plaintext.
+
+**Key functions** (simplified - `deposit` also takes the full SPV arguments, see `contracts/contracts/writz-lend/src/lib.rs`):
+
+```rust
+// Deposit: rebuilds the Writz P2WSH from the protocol key, user_pubkey and timelock_height,
+// verifies SPV, checks key_sig, consumes the txid and creates a position keyed by txid.
+pub fn deposit(depositor: Address, /* SPV proof args */, p2wsh_script_pubkey: Bytes, timelock_height: u32, user_pubkey: BytesN<33>, key_sig: BytesN<65>) -> Result<BytesN<32>, WritzLendError>
+
+// Supply / withdraw USDC to and from the pool (scaled balances that grow with interest).
+pub fn supply_usdc(supplier: Address, amount: i128) -> Result<(), WritzLendError>
+pub fn withdraw_supply(supplier: Address, amount: i128) -> Result<(), WritzLendError>
+
+// Borrow: checks the 150% collateral ratio at the current oracle price, pool liquidity and the total borrow cap.
+pub fn borrow(borrower: Address, txid: BytesN<32>, usdc_amount: i128) -> Result<(), WritzLendError>
+
+// Repay: reduces outstanding debt. Emits `repay`, or `repay_full` and closes the position when the debt reaches zero.
+pub fn repay(repayer: Address, txid: BytesN<32>, usdc_amount: i128) -> Result<(), WritzLendError>
+
+// Liquidate: the designated keeper, or anyone once the keeper is stale (24h) - checks oracle undercollateralization (< 120%).
+pub fn liquidate(keeper: Address, txid: BytesN<32>) -> Result<(), WritzLendError>
+
+// Relayer only: store the co-signed Path A release PSBT for a repaid position; anyone can read it back.
+pub fn publish_release_psbt(relayer: Address, txid: BytesN<32>, psbt: Bytes) -> Result<(), WritzLendError>
+pub fn get_release_psbt(txid: BytesN<32>) -> Option<Bytes>
+```
+
+**Security properties:**
+- The deposit output must be exactly the P2WSH of the Writz script for the protocol key in the contract's config, so BTC the depositor could spend alone can never become collateral
+- `key_sig` is a BIP-137 signature by `user_pubkey` over a message naming this contract, the depositor and the txid, so nobody can register someone else's deposit
+- The timelock must lie 1,008..=105,000 blocks above the confirming block
+- Liquidation pays the liquidator a USDC bonus from the protocol reserve and never moves BTC (GHSA-5rxp-7f9g-r66x)
+- A pause (`set_paused`) stops new deposits, borrows and supply, never `repay`, `withdraw_supply`, `liquidate` or `publish_release_psbt`
+
+**Events emitted** (topic strings, matching `contracts/contracts/writz-lend/src/events.rs` exactly): `deposit`, `borrow`, `repay`, `repay_full` (emitted instead of `repay` when a repayment fully closes the debt), `liquidate`, `supply`, `withdraw`, `paused_set`, `oracle_set`.
+
+**Deployed:** `CA3T7T2S7HV27BXO7OLIHSMGAMQ37BMOOUHQLTBGUQVL4B6Y2CDJPHHX`
+
+---
+
+## Interest Rate Model
+
+Writz uses a **kinked utilization curve** - the same model pioneered by Aave and Compound, adapted for Writz's parameters.
+
+```
+utilization = total_borrowed_usdc / total_supplied_usdc
+
+if utilization ≤ Uoptimal (75%):
+    borrow_rate = base_rate + (utilization / Uoptimal) × slope1
+else:
+    borrow_rate = base_rate + slope1 + ((utilization − Uoptimal) / (1 − Uoptimal)) × slope2
+```
+
+**Parameters:**
+
+| Parameter | Value | Rationale |
+|---|---|---|
+| `base_rate` | 0% | No charge when pool is empty |
+| `Uoptimal` | 75% | Target utilization where rates are attractive to both sides |
+| `slope1` | 8% APR | Gradual increase up to target |
+| `slope2` | 200% APR | Steep increase above target - strong incentive to repay/supply |
+| Protocol fee | 15% | Share of interest kept as the protocol reserve; the rest goes to USDC suppliers |
+
+**Rate examples:**
+
+| Utilization | Borrow APR | Supply APR |
+|---|---|---|
+| 0% | 0% | 0% |
+| 50% | 5.33% | 2.27% |
+| 75% | 8.00% | 5.10% |
+| 90% | 128.0% | 97.9% |
+| 100% | 208.0% | 176.8% |
+
+Supply APR = borrow APR x utilization x (1 - 15%), as in `contracts/contracts/writz-lend/src/rates.rs`.
+
+Interest accrues continuously. Every position-touching call (borrow, repay, liquidate) applies accrued interest before processing the action.
+
+---
+
+## Oracle Design
+
+Writz uses a multi-oracle approach for BTC/USD price feeds, with a **median aggregation** strategy to resist price manipulation.
+
+**Primary oracle:** Pyth Network (pull model, verifier contract - real cross-exchange BTC/USD)
+**Secondary oracle:** Reflector's external-prices instance (SEP-40 interface, `lastprice({"Other":"BTC"})`) - confirmed live on testnet with a real, updating BTC/USD price
+
+*(Corrected 2026-09-16, then re-verified by directly calling both contracts on testnet - see `docs/research/oracle-design.md`. RedStone was dropped: it doesn't list Stellar among its supported chains. DIA was parked: its documented testnet contract address returns "contract not found" when queried.)*
+
+**Staleness check:** Price data older than 60 minutes is rejected (corrected - previously stated 90 seconds; see `docs/research/oracle-design.md` for rationale). At full design maturity, borrowing and liquidation pause when both oracles are stale.
+
+**Interim status (2026-09-17):** only Reflector is wired into `writz-lend` today - see `contracts/contracts/writz-lend/src/oracle.rs`. There is no median yet, so "both oracles stale" does not apply; a stale or unavailable Reflector price alone currently blocks the calling operation (`OraclePriceStale`/`OraclePriceUnavailable`) rather than silently mispricing. Do not treat this as the finished manipulation-resistance story until Pyth is also wired - see `docs/security/security-model.md` for the same caveat.
+
+**Manipulation resistance:**
+- Median of two oracles: a single oracle manipulation requires moving the median
+- Liquidation smoothing (design): large liquidations could be executed in parts to blunt single-block oracle manipulation; not implemented in `writz-lend` today
+
+**SEP-40 interface:** `writz-lend` calls a real Reflector oracle live over the Stellar SEP-40 standard interface (`contracts/contracts/writz-lend/src/oracle.rs`); (The privacy edition's `commitment-tree` still uses a hardcoded stub; it is not part of v1.) For `writz-lend`, switching oracle providers requires only updating the oracle contract address - no changes to lending logic.
+
+---
+
+## Storage and TTL Management
+
+Soroban's storage has a time-to-live (TTL) system. Every storage entry has an expiration point; entries that are not accessed eventually expire and are deleted.
+
+Writz manages TTL per-entry (not one contract-wide setting) to ensure user positions never expire unexpectedly:
+
+| Entry type | Contract | TTL window |
+|---|---|---|
+| Position (by txid) | writz-lend | 180-day window |
+| Per-lender supply balances | writz-lend | 180-day window |
+| Config / Protocol accounting | writz-lend | 90-day window |
+| Published release PSBT (by txid) | writz-lend | 90-day window |
+| Config / Checkpoint | bitcoin-spv | 90-day window |
+
+**Permissionless refresh:** every entry above has a public `refresh_*` function (or is covered by a contract-wide `refresh_ttl`/`refresh_instance_ttl`) that extends its TTL. Any keeper - including Writz's own keeper, a third-party keeper, or even the user themselves - can call these to prevent expiry. No permission required. This is a genuinely load-bearing safety net, not a nice-to-have: none of these entries auto-renews just from being read by an unrelated call, and an idle deployment (low traffic, or a position nobody touches for months) is exactly the case these functions exist for.
+
+```rust
+// writz-lend
+pub fn refresh_position_ttl(env: Env, txid: BytesN<32>) -> bool
+pub fn refresh_supply_balance_ttl(env: Env, lender: Address) -> bool
+pub fn refresh_protocol_ttl(env: Env)
+pub fn refresh_release_psbt_ttl(env: Env, txid: BytesN<32>) -> bool
+
+// bitcoin-spv
+pub fn refresh_ttl(env: Env)  // extends Config and Checkpoint together
+```
+
+`writz-lend`'s `refresh_release_psbt_ttl` is a recent addition - before it, a published release PSBT could only have its TTL bumped as a side effect of fetching or re-publishing it, with no standalone way to keep it alive.
+
+---
+
+## Events
+
+Contract state changes emit structured events using Soroban's `#[contractevent]` annotation. Topic strings below match `events.rs` in each contract exactly - an indexer or the relayer's event watcher must filter on these, not on invented names.
+
+| Topic | Contract | When emitted |
+|---|---|---|
+| `deposit` | writz-lend | SPV deposit accepted, position created |
+| `borrow` | writz-lend | USDC loan issued |
+| `repay` | writz-lend | Loan partially repaid |
+| `repay_full` | writz-lend | Loan fully repaid, position closed (emitted instead of `repay`) |
+| `liquidate` | writz-lend | Position liquidated |
+| `supply` | writz-lend | Lender supplied USDC to the pool |
+| `withdraw` | writz-lend | Lender withdrew USDC from the pool |
+| `paused_set` | writz-lend | Admin paused or unpaused new deposits/borrows/supply |
+| `oracle_set` | writz-lend | Admin changed the oracle address |
+
+`supply`/`withdraw` carry `supplier`, `usdc_amount`, and the resulting `total_supplied` - enough to enumerate every lender an off-chain indexer needs, the same way `deposit` events let you enumerate borrowers (see `docs/architecture/contract-migration-runbook.md`).
+
+Events are the primary mechanism for the Writz backend to detect loan repayments (`repay_full` on `writz-lend`) and trigger the BTC co-signing release on the Bitcoin side - see `relayer/src/repay-watcher/`.
+
+---
+
+## Contract Interactions: Full Deposit Flow
+
+```
+User (browser)
+    │
+    │  1. fetch the SPV proof bundle (relayer API or Esplora)
+    │  2. sign the key-control message with the Bitcoin wallet (BIP-137)
+    │
+    ▼
+writz-lend.deposit(spv_proof, p2wsh_script_pubkey, timelock_height, user_pubkey, key_sig)
+    │
+    ├── check: p2wsh_script_pubkey == P2WSH(protocol key, user_pubkey, timelock_height)
+    ├──► bitcoin-spv.verify_transaction(block_hash, merkle_proof, tx_index, raw_tx, min_confirmations)
+    │         returns: SpvVerificationResult { txid, block_hash, block_height, confirmations }
+    ├── check: timelock_height within 1,008..=105,000 blocks above block_height
+    ├── check: key_sig is user_pubkey's signature over (contract, depositor, txid)
+    ├──► bitcoin-spv.consume_deposit(writz-lend, txid)   (shared registry: one position per output)
+    ├── read: amount paid to the P2WSH output in raw_tx; require >= 100,000 sats
+    │
+    ├── store: position[txid] = { depositor, btc_satoshis, user_pubkey, timelock_height, debt: 0 }
+    └── emit: DepositEvent { txid, btc_satoshis, timelock_height }
+
+On full repayment:
+writz-lend.repay(...)  ──►  emit: RepayFullEvent { txid, repayer, p2wsh_script_pubkey }
+relayer repay watcher  ──►  build + co-sign Path A PSBT  ──►  writz-lend.publish_release_psbt(txid, psbt)
+User                   ──►  writz-lend.get_release_psbt(txid), sign with Bitcoin wallet, broadcast
+```
+
+---
+
+## Privacy edition contracts (in progress, not part of v1)
+
+`zk-verifier` and `commitment-tree` are deployed on testnet for the separate, opt-in [privacy edition (in progress)](/how-it-works/privacy-edition). They have their own pool, and `writz-lend` never calls them; the only thing they share with v1 is `bitcoin-spv` and its deposit registry. The summary below records their current design.
+
+### zk-verifier
 
 Verifies Groth16 BN254 proofs on Soroban using Protocol X-Ray's BN254 host functions. Stores one verification key per circuit type (`Deposit`, `BorrowRepay`, `Liquidation`).
 
@@ -54,9 +244,9 @@ All three verification keys are set on testnet (Deposit IC=6, BorrowRepay IC=9, 
 
 ---
 
-### 3. commitment-tree
+### commitment-tree
 
-The core privacy and lending contract. Manages the Poseidon Merkle commitment tree and all ZK-gated lending operations. This is where positions are created, loans are issued, and repayments are recorded.
+The privacy edition's lending contract. Manages the Poseidon Merkle commitment tree and all ZK-gated lending operations. This is where positions are created, loans are issued, and repayments are recorded.
 
 **Key functions** (simplified signatures - see `contracts/contracts/commitment-tree/src/lib.rs` for the exact ABI, including the full SPV header/Merkle-proof arguments `deposit` also takes):
 
@@ -94,204 +284,6 @@ pub fn withdraw_supply(supplier: Address, amount: i128) -> Result<(), Commitment
 - Merkle root must match the current on-chain root - stale proofs are rejected
 
 **Deployed:** `CAQBLCAPGXXCZTJDAJLY7E4PTJYGR6CY4YWH4JSJKFXYIHW3GANP6RFM`
-
----
-
-### 4. writz-lend
-
-A non-ZK lending skeleton that provides the borrowing and repayment interface without the ZK layer. Used for:
-- Phase 1 testing (simpler than the full ZK flow)
-- A reference implementation showing the core lending mechanics
-- Future: may be used as a "fast lane" for users who opt out of ZK privacy
-
-**Key functions** (simplified - `deposit` also takes the full SPV header/Merkle-proof args plus the P2WSH script details, see `contracts/contracts/writz-lend/src/lib.rs`):
-
-```rust
-// Deposit: verifies SPV directly, creates a transparent position keyed by txid.
-pub fn deposit(depositor: Address, /* SPV proof args */, p2wsh_script_pubkey: Bytes, timelock_height: u32, user_pubkey: BytesN<33>) -> Result<BytesN<32>, WritzLendError>
-
-// Borrow: checks collateral ratio at current oracle price → USDC transferred.
-pub fn borrow(borrower: Address, txid: BytesN<32>, usdc_amount: i128) -> Result<(), WritzLendError>
-
-// Repay: reduces outstanding debt. Emits `repay`, and `repay_full` additionally when the debt reaches zero.
-pub fn repay(repayer: Address, txid: BytesN<32>, usdc_amount: i128) -> Result<(), WritzLendError>
-
-// Liquidate: the designated keeper, or anyone once the keeper is stale - checks oracle undercollateralization.
-pub fn liquidate(keeper: Address, txid: BytesN<32>) -> Result<(), WritzLendError>
-```
-
-**Events emitted** (topic strings, matching `contracts/contracts/writz-lend/src/events.rs` exactly): `deposit`, `borrow`, `repay`, `repay_full` (emitted in addition to `repay` when a repayment fully closes the debt), `liquidate`.
-
-**Deployed:** `CA3T7T2S7HV27BXO7OLIHSMGAMQ37BMOOUHQLTBGUQVL4B6Y2CDJPHHX`
-
----
-
-## Interest Rate Model
-
-Writz uses a **kinked utilization curve** - the same model pioneered by Aave and Compound, adapted for Writz's parameters.
-
-```
-utilization = total_borrowed_usdc / total_supplied_usdc
-
-if utilization ≤ Uoptimal (75%):
-    borrow_rate = base_rate + (utilization / Uoptimal) × slope1
-else:
-    borrow_rate = base_rate + slope1 + ((utilization − Uoptimal) / (1 − Uoptimal)) × slope2
-```
-
-**Parameters:**
-
-| Parameter | Value | Rationale |
-|---|---|---|
-| `base_rate` | 0% | No charge when pool is empty |
-| `Uoptimal` | 75% | Target utilization where rates are attractive to both sides |
-| `slope1` | 8% APR | Gradual increase up to target |
-| `slope2` | 200% APR | Steep increase above target - strong incentive to repay/supply |
-| Protocol fee | 15% | Share of borrow rate captured by protocol; rest goes to USDC suppliers |
-
-**Rate examples:**
-
-| Utilization | Borrow APR | Supply APR |
-|---|---|---|
-| 0% | 0% | 0% |
-| 50% | 5.33% | 4.53% |
-| 75% | 8.00% | 6.80% |
-| 90% | 48.0% | 40.8% |
-| 100% | 208.0% | 176.8% |
-
-Interest accrues continuously. Every position-touching call (borrow, repay, liquidate) applies accrued interest before processing the action.
-
----
-
-## Oracle Design
-
-Writz uses a multi-oracle approach for BTC/USD price feeds, with a **median aggregation** strategy to resist price manipulation.
-
-**Primary oracle:** Pyth Network (pull model, verifier contract - real cross-exchange BTC/USD)
-**Secondary oracle:** Reflector's external-prices instance (SEP-40 interface, `lastprice({"Other":"BTC"})`) - confirmed live on testnet with a real, updating BTC/USD price
-
-*(Corrected 2026-09-16, then re-verified by directly calling both contracts on testnet - see `docs/research/oracle-design.md`. RedStone was dropped: it doesn't list Stellar among its supported chains. DIA was parked: its documented testnet contract address returns "contract not found" when queried.)*
-
-**Staleness check:** Price data older than 60 minutes is rejected (corrected - previously stated 90 seconds; see `docs/research/oracle-design.md` for rationale). At full design maturity, borrowing and liquidation pause when both oracles are stale.
-
-**Interim status (2026-09-17):** only Reflector is wired into `writz-lend` today - see `contracts/contracts/writz-lend/src/oracle.rs`. There is no median yet, so "both oracles stale" does not apply; a stale or unavailable Reflector price alone currently blocks the calling operation (`OraclePriceStale`/`OraclePriceUnavailable`) rather than silently mispricing. Do not treat this as the finished manipulation-resistance story until Pyth is also wired - see `docs/security/security-model.md` for the same caveat.
-
-**Manipulation resistance:**
-- Median of two oracles: a single oracle manipulation requires moving the median
-- Liquidation smoothing: large liquidations can be executed in tranches to prevent single-block oracle manipulation attacks
-
-**SEP-40 interface:** `writz-lend` calls a real Reflector oracle live over the Stellar SEP-40 standard interface (`contracts/contracts/writz-lend/src/oracle.rs`); `commitment-tree` still uses a hardcoded stub, deliberately, because its ZK circuits cannot yet tolerate a live, moving price (see `contracts/contracts/spv-types/src/lib.rs`). For `writz-lend`, switching oracle providers requires only updating the oracle contract address - no changes to lending logic.
-
----
-
-## Storage and TTL Management
-
-Soroban's storage has a time-to-live (TTL) system. Every storage entry has an expiration point; entries that are not accessed eventually expire and are deleted.
-
-Writz manages TTL per-entry (not one contract-wide setting) to ensure user positions never expire unexpectedly:
-
-| Entry type | Contract | TTL window |
-|---|---|---|
-| Spent nullifiers | commitment-tree | 180-day window (near Soroban mainnet max) |
-| Merkle root | commitment-tree | 180-day window |
-| ZK commitments (by txid) | commitment-tree | 180-day window |
-| USDC pool balance | commitment-tree | 90-day window |
-| Per-lender supply balances | commitment-tree | 90-day window |
-| Position (by txid) | writz-lend | 180-day window |
-| Per-lender supply balances | writz-lend | 180-day window |
-| Config / Protocol accounting | writz-lend | 90-day window |
-| Published release PSBT (by txid) | writz-lend | 90-day window |
-| Config / Checkpoint | bitcoin-spv | 90-day window |
-| Admin | zk-verifier | 90-day window (instance storage) |
-| Verification key (per circuit) | zk-verifier | 90-day window |
-
-**Permissionless refresh:** every entry above has a public `refresh_*` function (or is covered by a contract-wide `refresh_ttl`/`refresh_instance_ttl`) that extends its TTL. Any keeper - including Writz's own keeper, a third-party keeper, or even the user themselves - can call these to prevent expiry. No permission required. This is a genuinely load-bearing safety net, not a nice-to-have: none of these entries auto-renews just from being read by an unrelated call, and an idle deployment (low traffic, or a position nobody touches for months) is exactly the case these functions exist for.
-
-```rust
-// commitment-tree
-pub fn refresh_nullifier_ttl(env: Env, nullifier: BytesN<32>) -> bool
-pub fn refresh_commitment_ttl(env: Env, txid: BytesN<32>) -> bool
-pub fn refresh_merkle_root_ttl(env: Env)
-pub fn refresh_pool_ttl(env: Env)
-pub fn refresh_supply_balance_ttl(env: Env, lender: Address) -> bool
-pub fn refresh_instance_ttl(env: Env)
-
-// writz-lend
-pub fn refresh_position_ttl(env: Env, txid: BytesN<32>) -> bool
-pub fn refresh_supply_balance_ttl(env: Env, lender: Address) -> bool
-pub fn refresh_protocol_ttl(env: Env)
-pub fn refresh_release_psbt_ttl(env: Env, txid: BytesN<32>) -> bool
-
-// bitcoin-spv
-pub fn refresh_ttl(env: Env)  // extends Config and Checkpoint together
-
-// zk-verifier
-pub fn refresh_ttl(env: Env)  // extends Admin and every set circuit's VerificationKey together
-```
-
-`zk-verifier`'s `refresh_ttl` and `writz-lend`'s `refresh_release_psbt_ttl` are recent additions - before them, `zk-verifier` had no TTL management at all (a real gap: if a verification key's TTL lapsed, `verify_deposit`/`verify_borrow_repay`/`verify_liquidation` would start failing with `VerificationKeyNotSet` with no prior on-chain warning), and a published release PSBT could only have its TTL bumped as a side effect of fetching or re-publishing it, with no standalone way to keep it alive.
-
----
-
-## Events
-
-Contract state changes emit structured events using Soroban's `#[contractevent]` annotation. Topic strings below match `events.rs` in each contract exactly - an indexer or the relayer's event watcher must filter on these, not on invented names.
-
-| Topic | Contract | When emitted |
-|---|---|---|
-| `deposit` | commitment-tree | SPV + ZK deposit accepted |
-| `insert_leaf` | commitment-tree | New commitment added to Merkle tree |
-| `borrow` | commitment-tree | USDC loan issued |
-| `repay` | commitment-tree | Loan partially or fully repaid |
-| `liquidate` | commitment-tree | Position liquidated |
-| `supply` | commitment-tree | Lender supplied USDC to the pool |
-| `withdraw` | commitment-tree | Lender withdrew USDC from the pool |
-| `paused_set` | commitment-tree | Admin paused or unpaused new deposits/borrows/supply |
-| `deposit` | writz-lend | SPV deposit accepted (transparent position) |
-| `borrow` | writz-lend | USDC loan issued |
-| `repay` | writz-lend | Loan partially repaid |
-| `repay_full` | writz-lend | Loan fully repaid (emitted in addition to `repay`) |
-| `liquidate` | writz-lend | Position liquidated |
-| `supply` | writz-lend | Lender supplied USDC to the pool |
-| `withdraw` | writz-lend | Lender withdrew USDC from the pool |
-| `paused_set` | writz-lend | Admin paused or unpaused new deposits/borrows/supply |
-| `vk_rotated` | zk-verifier | A circuit's verification key was set or replaced - carries `old_vk_hash`/`new_vk_hash` fingerprints as the audit trail for rotation, since storage only ever holds the current key |
-
-`supply`/`withdraw` carry `supplier`, `usdc_amount`, and the resulting `total_supplied` - enough to enumerate every lender an off-chain indexer needs, the same way `deposit` events let you enumerate borrowers (see `docs/architecture/contract-migration-runbook.md`).
-
-Events are the primary mechanism for the Writz backend to detect loan repayments (`repay_full` on `writz-lend`) and trigger the BTC co-signing release on the Bitcoin side - see `relayer/src/repay-watcher/`.
-
----
-
-## Contract Interactions: Full Deposit Flow
-
-```
-User (browser)
-    │
-    │  1. generate ZK deposit proof locally (circom WASM)
-    │  2. assemble SPV proof bundle (relayer API or Esplora)
-    │
-    ▼
-commitment-tree.deposit(spv_proof, user_pubkey, timelock_height, zk_proof)
-    │
-    ├──► bitcoin-spv.verify_transaction(block_hash, merkle_proof, tx_index, raw_tx, min_confirmations)
-    │         returns: SpvVerificationResult { txid, block_hash, block_height, confirmations }
-    ├── check: timelock_height within 1,008..=105,000 blocks above block_height
-    ├──► bitcoin-spv.consume_deposit(commitment-tree, txid)   (one registry for both lenders)
-    ├── check: raw_tx pays the Writz P2WSH rebuilt from protocol key, user_pubkey, timelock;
-    │          that output's value == proof's actual_satoshis
-    ├──► zk-verifier.verify_deposit(proof, [commitment, nullifier, txid_lo, txid_hi, min_sats, actual_sats])
-    │
-    ├── store: pending_commitment[commitment] = txid
-    └── emit: DepositEvent { commitment, depositor, txid, nullifier, user_pubkey, timelock_height, enc_note }
-
-Admin/relayer calls:
-commitment-tree.insert_commitment(insert_proof, [new_root, old_root, commitment, leaf_index])
-    ├── check: commitment is pending, old_root == merkle_root, leaf_index == next_leaf_index
-    ├──► zk-verifier.verify_insert(proof, signals)
-    ├── store: merkle_root = new_root, next_leaf_index += 1
-    └── emit: InsertLeafEvent { new_root, commitment, leaf_index }
-```
 
 ---
 
