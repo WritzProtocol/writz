@@ -221,7 +221,7 @@ The ceremony requires multiple independent participants. The security guarantee 
 
 The ceremony transcript is published publicly. Anyone can verify it was executed correctly.
 
-**When:** The trusted setup ceremony is planned for Q3–Q4 2026, before mainnet launch. The current development keys (`pot15` from snarkjs) are used for testing only - they are NOT suitable for production.
+**When:** The trusted setup ceremony is planned for Q1 to Q2 2027, before mainnet launch. The current development keys (`pot15` from snarkjs) are used for testing only - they are NOT suitable for production.
 
 **Rotating the on-chain key once the real ceremony completes:** `zk-verifier.set_verification_key` (admin-only) replaces a circuit's key immediately - there is no grace period during which the previous key is also accepted. That's a deliberate choice: accepting proofs against a stale key is a strictly weaker security posture than requiring the current one. What the contract does provide is an audit trail - every call emits a `vk_rotated` event carrying a fingerprint of the old and new key, so there's an on-chain record of exactly when the dev key was replaced by the real ceremony's output, even though storage itself only ever holds the current key.
 

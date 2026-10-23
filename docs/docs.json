@@ -167,7 +167,7 @@
       "destination": "/:slug*"
     },
     {
-      "source": "/products/privatelend",
+      "source": "/products/writz-lend",
       "destination": "/products/writz-lend"
     }
   ]

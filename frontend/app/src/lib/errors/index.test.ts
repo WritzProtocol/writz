@@ -50,7 +50,7 @@ describe("every message follows the copy rules", () => {
       expect(e.headline.length).toBeGreaterThan(0);
       expect(shown).not.toContain("HostError");
       expect(shown).not.toContain("Error(Contract");
-      expect(shown).not.toMatch(/[—–~]/);
+      expect(shown).not.toMatch(/[\u2014\u2013~]/);
       expect(shown).not.toMatch(/\b(Soroban|nullifier|commitment|Merkle|we)\b/i);
       expect(e.raw.length).toBeGreaterThan(0);
     }

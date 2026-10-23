@@ -11,7 +11,7 @@ export default defineRailway(() => {
     deploy: { restartPolicyMaxRetries: 3 },
     domains: ["api.testnet.writz.xyz"],
     volumeMounts: { "/app/data": writzVolume },
-    env: { BITCOIN_NETWORK: preserve(), COMMITMENT_TREE_ID: preserve(), CORS_ORIGIN: preserve(), DEFINDEX_API_KEY: preserve(), DEFINDEX_VAULT_ID: preserve(), PRIVATE_LEND_ID: preserve(), STELLAR_NETWORK_PASSPHRASE: preserve(), STELLAR_RPC_URL: preserve(), WRITZ_ENV: preserve() },
+    env: { BITCOIN_NETWORK: preserve(), COMMITMENT_TREE_ID: preserve(), CORS_ORIGIN: preserve(), DEFINDEX_API_KEY: preserve(), DEFINDEX_VAULT_ID: preserve(), WRITZ_LEND_ID: preserve(), STELLAR_NETWORK_PASSPHRASE: preserve(), STELLAR_RPC_URL: preserve(), WRITZ_ENV: preserve() },
   });
 
   return project("writz-relayer", {

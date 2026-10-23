@@ -43,7 +43,7 @@ const deployTarget = assertDeployTarget({
     NEXT_PUBLIC_COMMITMENT_TREE_ID: process.env.NEXT_PUBLIC_COMMITMENT_TREE_ID,
     NEXT_PUBLIC_BITCOIN_SPV_ID: process.env.NEXT_PUBLIC_BITCOIN_SPV_ID,
     NEXT_PUBLIC_ZK_VERIFIER_ID: process.env.NEXT_PUBLIC_ZK_VERIFIER_ID,
-    NEXT_PUBLIC_WRITZ_LEND_ID: process.env.NEXT_PUBLIC_WRITZ_LEND_ID ?? process.env.NEXT_PUBLIC_PRIVATE_LEND_ID,
+    NEXT_PUBLIC_WRITZ_LEND_ID: process.env.NEXT_PUBLIC_WRITZ_LEND_ID ?? process.env.NEXT_PUBLIC_WRITZ_LEND_ID,
     NEXT_PUBLIC_PROTOCOL_BTC_PUBKEY: process.env.NEXT_PUBLIC_PROTOCOL_BTC_PUBKEY,
   },
 });
@@ -72,8 +72,8 @@ export const config = {
     commitmentTree: process.env.NEXT_PUBLIC_COMMITMENT_TREE_ID ?? "",
     bitcoinSpv: process.env.NEXT_PUBLIC_BITCOIN_SPV_ID ?? "",
     zkVerifier: process.env.NEXT_PUBLIC_ZK_VERIFIER_ID ?? "",
-    // NEXT_PUBLIC_PRIVATE_LEND_ID is the name the contract had before it was renamed to writz-lend.
-    writzLend: process.env.NEXT_PUBLIC_WRITZ_LEND_ID ?? process.env.NEXT_PUBLIC_PRIVATE_LEND_ID ?? "",
+    // NEXT_PUBLIC_WRITZ_LEND_ID is the name the contract had before it was renamed to writz-lend.
+    writzLend: process.env.NEXT_PUBLIC_WRITZ_LEND_ID ?? process.env.NEXT_PUBLIC_WRITZ_LEND_ID ?? "",
     usdcToken: process.env.NEXT_PUBLIC_USDC_TOKEN_ID ?? "",
   },
   services: {
