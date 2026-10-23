@@ -129,13 +129,13 @@ const GLOBAL: Scenario[] = [
   define("G1", "Hydrating", () => home({ globals: { hydrating: true } })),
   define("G2", "Stellar wallet on the wrong network", () => home({ wallets: { ...BOTH_WALLETS, stellar: wrongNetwork.stellar } })),
   define("G3", "Wallet account switched in the extension", () =>
-    home({ wallets: { ...BOTH_WALLETS, stellar: stellarWallet({ switchedFrom: OTHER_STELLAR_ADDRESS, loans: "unsigned" }) } }),
+    home({ wallets: { ...BOTH_WALLETS, stellar: stellarWallet({ switchedFrom: OTHER_STELLAR_ADDRESS, loans: "finding" }) } }),
   ),
   define("G4", "Stellar RPC unreachable", (now) =>
     home({ globals: { rpcUnreachable: true }, positions: [{ ...loans.healthy(1, now), expect: "checking" }] }),
   ),
   define("G5", "Relayer catching up", (now) =>
-    home({ globals: { relayerCatchingUp: true }, positions: [{ ...loans.healthy(1, now), syncing: true }] }),
+    home({ globals: { relayerCatchingUp: true }, positions: [loans.syncing(1, now)] }),
   ),
   define("G6", "Mainnet guard tripped", () => home({ globals: { mainnetGuard: true } })),
   define("G7", "Another tab has a transaction in flight", (now) =>
@@ -150,13 +150,13 @@ const HOME: Scenario[] = [
   define("H1", "New, nothing connected", () => home({ wallets: NO_WALLETS })),
   define("H2", "Stellar connected, Bitcoin not, no loans", () => home({ wallets: STELLAR_ONLY })),
   define("H3", "Both connected, no loans", () => home()),
-  define("H4", "Connected, loans not found this session", () =>
-    home({ wallets: { ...BOTH_WALLETS, stellar: stellarWallet({ loans: "unsigned" }) } }),
+  define("H4", "Connected, finding loans failed", () =>
+    home({ wallets: { ...BOTH_WALLETS, stellar: stellarWallet({ loans: "failed" }) } }),
   ),
   define("H5", "Finding loans", () => home({ wallets: { ...BOTH_WALLETS, stellar: stellarWallet({ loans: "finding" }) } })),
   define("H6", "Deposit in progress, confirming", (now) => home({ positions: [deposits.confirming(1, now)] })),
   define("H7", "Deposit ready to register", (now) => home({ positions: [deposits.ready(1, now)] })),
-  define("H8", "Deposit registration failed (step 2)", (now) => home({ positions: [deposits.registerFailed(1, now)] })),
+  define("H8", "Deposit registered, saving on this device", (now) => home({ positions: [deposits.registering(1, now, true)] })),
   define("H9", "Deposit BTC not seen", (now) => home({ positions: [deposits.unseen(1, now)] })),
   define("H10", "One healthy loan", (now) => home({ positions: [loans.healthy(1, now)] })),
   define("H11", "Loan close to liquidation", (now) => home({ positions: [loans.atRisk(1, now)] })),
@@ -177,7 +177,7 @@ const HOME: Scenario[] = [
   define("H20", "Read failure", (now) =>
     home({ globals: { rpcUnreachable: true }, positions: [{ ...loans.healthy(1, now), expect: "checking" }] }),
   ),
-  define("H21", "Changed on another device", (now) => home({ positions: [loans.changedElsewhere(1, now)] })),
+  define("H21", "Repaid from another device", (now) => home({ positions: [loans.repaidElsewhere(1, now)] })),
   define("H22", "Two open loans, one below borrow limit", (now) =>
     home({ positions: [loans.healthy(1, now), loans.belowLimit(2, now)] }),
   ),
@@ -196,8 +196,8 @@ const DEPOSIT: Scenario[] = [
   define("B5", "Stellar connect rejected", () =>
     borrowNew({ wallets: { ...NO_WALLETS, connect: { wallet: "stellar", state: "rejected" } } }),
   ),
-  define("B6", "Stellar sign to find loans", () =>
-    borrowNew({ wallets: { stellar: stellarWallet({ loans: "unsigned" }), bitcoin: null } }),
+  define("B6", "Stellar finding loans failed", () =>
+    borrowNew({ wallets: { stellar: stellarWallet({ loans: "failed" }), bitcoin: null } }),
   ),
   define("B7", "Stellar finding loans", () => borrowNew({ wallets: { stellar: stellarWallet({ loans: "finding" }), bitcoin: null } })),
   define("B8", "Existing pending deposit found", (now) => borrowNew({ positions: [deposits.confirming(1, now)] })),
@@ -230,8 +230,8 @@ const DEPOSIT: Scenario[] = [
   ),
   define("B24", "m of m, relayer behind", (now) => borrowNew({ positions: [deposits.relayerBehind(1, now)] })),
   define("B25", "Ready to register", (now) => borrowNew({ positions: [deposits.ready(1, now)] })),
-  define("B26", "Preparing (proof)", (now) =>
-    borrowNew({ positions: [deposits.proving(1, now)], flow: flow("deposit", "preparing") }),
+  define("B26", "Preparing the deposit", (now) =>
+    borrowNew({ positions: [deposits.ready(1, now)], flow: flow("deposit", "preparing") }),
   ),
   define("B27", "Awaiting Stellar signature", (now) =>
     borrowNew({ positions: [deposits.ready(1, now)], flow: flow("deposit", "awaiting_signature") }),
@@ -239,17 +239,17 @@ const DEPOSIT: Scenario[] = [
   define("B28", "Stellar signature cancelled", (now) =>
     borrowNew({ positions: [deposits.ready(1, now)], flow: flow("deposit", "signature_cancelled") }),
   ),
-  define("B29", "Submitted, recording 1 of 2", (now) =>
-    borrowNew({ positions: [deposits.registering(1, now, 1)], flow: flow("deposit", "submitted") }),
+  define("B29", "Submitted, recording on Stellar", (now) =>
+    borrowNew({ positions: [deposits.registering(1, now, false)], flow: flow("deposit", "submitted") }),
   ),
-  define("B30", "Adding position 2 of 2", (now) =>
+  define("B30", "Recorded, saving the loan", (now) =>
     borrowNew({
-      positions: [deposits.registering(1, now, 2)],
-      flow: flow("deposit", "submitted", { phase: "post_processing", step: "insert", hash: STELLAR_TX }),
+      positions: [deposits.registering(1, now, true)],
+      flow: flow("deposit", "submitted", { phase: "post_processing", step: "finalize", hash: STELLAR_TX }),
     }),
   ),
-  define("B31", "Step 2 failed", (now) =>
-    borrowNew({ positions: [deposits.registerFailed(1, now)], flow: flow("deposit", "needs_attention") }),
+  define("B31", "Recorded, saving the loan failed", (now) =>
+    borrowNew({ positions: [deposits.registering(1, now, true)], flow: flow("deposit", "needs_attention") }),
   ),
   define("B32", "Already registered on resume", (now) => borrowNew({ positions: [deposits.alreadyRegistered(1, now)] })),
   define("B33", "Done", (now) =>
@@ -287,8 +287,8 @@ const LOAN: Scenario[] = [
     loanWorld(loans.neverBorrowed(1, now), {}, { panel: "borrow", poolAvailableStroops: ok(usdc(300)) }),
   ),
   define("L11", "Action in flight", (now) => loanWorld(loans.healthy(1, now), { flow: flow("borrow", "submitted") }, { panel: "borrow" })),
-  define("L12", "Action landed, relayer syncing", (now) =>
-    loanWorld(loans.syncing(1, now), { flow: flow("borrow", "confirmed", { phase: "settled", hash: STELLAR_TX, syncPending: true }) }),
+  define("L12", "Repaid, waiting for Writz to co-sign", (now) =>
+    loanWorld(loans.syncing(1, now), { flow: flow("repay", "confirmed", { phase: "settled", hash: STELLAR_TX }) }, { panel: "release" }),
   ),
   define("L13", "Repaid, BTC still locked", (now) => loanWorld(loans.repaidLocked(1, now), {}, { panel: "release" })),
   define("L14", "Release, wrong Bitcoin account", (now) =>
@@ -307,8 +307,8 @@ const LOAN: Scenario[] = [
   ),
   define("L18", "Released", (now) => loanWorld(loans.released(1, now))),
   define("L19", "Liquidated", (now) => loanWorld(loans.liquidated(1, now))),
-  define("L20", "Liquidated, no tx found", (now) => loanWorld(loans.closedOnChain(1, now))),
-  define("L21", "Changed on another device", (now) => loanWorld(loans.changedElsewhere(1, now))),
+  define("L20", "Liquidated, no tx found", (now) => loanWorld(loans.liquidatedNoTx(1, now))),
+  define("L21", "Repaid from another device", (now) => loanWorld(loans.repaidElsewhere(1, now))),
   define("L22", "Reclaim available", (now) => loanWorld(loans.reclaimable(1, now))),
   define("L23", "Missing Bitcoin deposit details", (now) => loanWorld(loans.missingBtcDetails(1, now))),
   define("L24", "Not found (bad n)", (now) => loanWorld(loans.healthy(1, now), { route: "/loans/7" }, { n: 7 })),
@@ -416,9 +416,7 @@ const STATUS: Scenario[] = [
   statusRow("btc_unseen", (now) => deposits.unseen(1, now)),
   statusRow("confirming", (now) => deposits.confirming(1, now)),
   statusRow("ready_to_register", (now) => deposits.ready(1, now)),
-  statusRow("proving", (now) => deposits.proving(1, now)),
-  statusRow("registering", (now) => deposits.registering(1, now, 2)),
-  statusRow("register_failed", (now) => deposits.registerFailed(1, now)),
+  statusRow("registering", (now) => deposits.registering(1, now, true)),
   statusRow("active", (now) => loans.healthy(1, now)),
   statusRow("at_risk", (now) => loans.atRisk(1, now)),
   statusRow("liquidatable", (now) => loans.liquidatable(1, now)),
@@ -426,7 +424,6 @@ const STATUS: Scenario[] = [
   statusRow("releasing", (now) => loans.releasing(1, now)),
   statusRow("released", (now) => loans.released(1, now)),
   statusRow("liquidated", (now) => loans.liquidated(1, now)),
-  statusRow("changed_elsewhere", (now) => loans.changedElsewhere(1, now)),
   statusRow("reclaimable", (now) => loans.reclaimable(1, now)),
   statusRow("syncing", (now) => loans.syncing(1, now)),
 ];

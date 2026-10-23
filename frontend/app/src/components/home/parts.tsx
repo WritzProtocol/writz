@@ -5,7 +5,7 @@ import { useState } from "react";
 import { BTC_NETWORK_LABEL, config } from "@/config";
 import { chooseDepositTimelock } from "@/lib/bitcoin/timelock";
 import { formatBtc, formatUsd, formatUsdc, maxBorrowStroops, parseBtcAmount, timeLeft } from "@/lib/borrow/journey";
-import { btcTxUrl, stellarTxUrl } from "@/lib/explorer";
+import { btcTxUrl } from "@/lib/explorer";
 import type { HomeLoan, Urgent } from "@/lib/home/model";
 import { BTC_FAUCETS } from "@/lib/links";
 import { setDraftAmount } from "@/lib/borrow/draft";
@@ -29,7 +29,7 @@ function ratioOf(s: PositionStatus): bigint | null {
   return s.kind === "active" || s.kind === "at_risk" || s.kind === "liquidatable" ? s.ratioBp : null;
 }
 
-function cardAction(l: HomeLoan, findLoans: () => void): { label: string; href?: string; onClick?: () => void } | null {
+function cardAction(l: HomeLoan): { label: string; href?: string; onClick?: () => void } | null {
   const s = l.derived.status;
   const n = l.position.index;
   switch (s.kind) {
@@ -40,10 +40,6 @@ function cardAction(l: HomeLoan, findLoans: () => void): { label: string; href?:
       return { label: "Repay", href: loanHref(n, "repay") };
     case "repaid_locked":
       return s.neverBorrowed ? { label: "Borrow", href: loanHref(n, "borrow") } : { label: "Release BTC", href: loanHref(n, "release") };
-    case "register_failed":
-      return { label: "Finish deposit", href: "/borrow/new" };
-    case "changed_elsewhere":
-      return { label: "Find my loans", onClick: findLoans };
     default:
       return null;
   }
@@ -60,28 +56,27 @@ function secondaryAction(l: HomeLoan): { label: string; href: string } | null {
 export function LoanSummaryCard({
   loan,
   price,
-  findLoans,
   compact = false,
   primary = true,
   enter = false,
 }: {
   loan: HomeLoan;
   price: Read<bigint>;
-  findLoans: () => void;
   compact?: boolean;
   primary?: boolean;
   enter?: boolean;
 }) {
   const p = loan.position;
   const s = loan.derived.status;
-  const collateral = BigInt(p.collateralSats);
-  const debt = BigInt(p.debtStroops);
+  // The chain's figures once read; this device's last read until then.
+  const collateral = loan.derived.onChain?.collateralSats ?? BigInt(p.collateralSats);
+  const debt = loan.derived.onChain?.debtStroops ?? BigInt(p.debtStroops);
   const health = healthOf(s);
   const liq = liquidationPriceFor(collateral, debt);
-  const action = cardAction(loan, findLoans);
+  const action = cardAction(loan);
   const secondary = secondaryAction(loan);
   const showsRisk = health !== null || s.kind === "checking";
-  const closed = s.kind === "released" || s.kind === "liquidated" || s.kind === "closed_on_chain";
+  const closed = s.kind === "released" || s.kind === "liquidated";
   const actionClass = `wz-btn ${primary ? "wz-btn-gold" : "wz-btn-line"}${compact ? " wz-btn-sm" : ""}`;
   const open = useEntrance(`loan-${p.id}`, "open", { ready: enter });
 
@@ -212,39 +207,14 @@ export function LoanSkeleton() {
 
 function DepositCard({ u, m, onCheckAgain }: { u: Extract<Urgent, { kind: "deposit" }>; m: number; onCheckAgain: () => void }) {
   const s = u.status;
-  const open = useEntrance("urgent", "open", { ready: s.kind !== "register_failed" && s.kind !== "btc_unseen" });
+  const open = useEntrance("urgent", "open", { ready: s.kind !== "btc_unseen" });
   const txid = u.deposit?.pd.btcTxid ?? u.loan?.position.txid;
-  const stellarHash = u.deposit?.pd.stellarTxHash ?? u.loan?.position.stellarTxHash;
   const mempool = txid ? (
     <ExternalLink href={btcTxUrl(txid)} className="wz-btn wz-btn-text">
       View on mempool
     </ExternalLink>
   ) : null;
 
-  if (s.kind === "register_failed") {
-    return (
-      <Notice
-        tone="warning"
-        label="Finish deposit"
-        actions={
-          <>
-            <Link href="/borrow/new" className="wz-btn wz-btn-gold">
-              Finish deposit
-            </Link>
-            {stellarHash ? (
-              <ExternalLink href={stellarTxUrl(stellarHash)} className="wz-btn wz-btn-text">
-                Stellar transaction
-              </ExternalLink>
-            ) : null}
-          </>
-        }
-      >
-        <p>
-          <b>Your BTC is safe in the lock.</b> One step is left to finish your deposit.
-        </p>
-      </Notice>
-    );
-  }
   if (s.kind === "btc_unseen") {
     return (
       <Notice
@@ -284,7 +254,7 @@ function DepositCard({ u, m, onCheckAgain }: { u: Extract<Urgent, { kind: "depos
   const n = s.kind === "confirming" ? s.n : s.kind === "btc_sent" ? 0 : m;
   const total = s.kind === "confirming" ? s.m : m;
   const ready = s.kind === "ready_to_register";
-  const registering = s.kind === "proving" || s.kind === "registering";
+  const registering = s.kind === "registering";
   return (
     <section {...open("hm-card hm-urgent wz-cut-sm")} aria-labelledby="urgent-title">
       <span className="wz-label">Deposit in progress</span>
@@ -312,13 +282,11 @@ export function UrgentCard({
   price,
   m,
   onCheckAgain,
-  findLoans,
 }: {
   u: Urgent;
   price: Read<bigint>;
   m: number;
   onCheckAgain: () => void;
-  findLoans: () => void;
 }) {
   switch (u.kind) {
     case "deposit":
@@ -326,7 +294,11 @@ export function UrgentCard({
     case "at_risk":
     case "liquidatable": {
       const p = u.loan.position;
-      const toSafe = price.kind === "ok" ? repayToSafeStroops(BigInt(p.collateralSats), BigInt(p.debtStroops), price.value) : null;
+      const chain = u.loan.derived.onChain;
+      const toSafe =
+        price.kind === "ok"
+          ? repayToSafeStroops(chain?.collateralSats ?? BigInt(p.collateralSats), chain?.debtStroops ?? BigInt(p.debtStroops), price.value)
+          : null;
       const label = u.kind === "liquidatable" ? "Can be liquidated now" : "Close to liquidation";
       return (
         <Notice
@@ -363,20 +335,6 @@ export function UrgentCard({
           <p>
             <b>{loanName(u.loan)} is repaid.</b> Your BTC is still locked. Release it to your wallet.
           </p>
-        </Notice>
-      );
-    case "changed":
-      return (
-        <Notice
-          tone="info"
-          label="Changed on another device"
-          actions={
-            <button type="button" className="wz-btn wz-btn-gold" onClick={findLoans}>
-              Find my loans
-            </button>
-          }
-        >
-          <p>{loanName(u.loan)} changed on another device.</p>
         </Notice>
       );
     case "reclaimable":

@@ -6,7 +6,7 @@ import { BTC_NETWORK_LABEL, config } from "@/config";
 import { btcTxUrl, stellarTxUrl } from "@/lib/explorer";
 import { hashOf, isInFlight, type FlowState } from "@/lib/flow/engine";
 import { formatBtc, formatUsd, formatUsdc, shortAddress } from "@/lib/borrow/journey";
-import { releaseBlocker } from "@/lib/flows/release";
+import { releaseAddressOf, releaseBlocker } from "@/lib/flows/release";
 import { AT_RISK_BP, BORROW_LIMIT_BP, LIQUIDATION_BP } from "@/lib/status/derive";
 import { LIQUIDATION_DOCS_URL } from "@/lib/links";
 import {
@@ -69,12 +69,6 @@ export function badgeOf(status: PositionStatus): { label: string; tone: Tone } {
       return { label: "BTC released", tone: "positive" };
     case "liquidated":
       return { label: "Liquidated", tone: "danger" };
-    case "closed_on_chain":
-      return { label: "Closed on chain", tone: "info" };
-    case "changed_elsewhere":
-      return { label: "Changed on another device", tone: "info" };
-    case "register_failed":
-      return { label: "Finish deposit", tone: "warning" };
     default:
       return { label: "Registering on Stellar", tone: "info" };
   }
@@ -323,7 +317,7 @@ export function TxRunning({ flow, walletName }: { flow: FlowState; walletName: s
     case "post_processing":
       return <Status>Confirmed on {STELLAR}. Updating Writz...</Status>;
     default:
-      return <Status>Preparing... About 10 seconds. Keep this tab open.</Status>;
+      return <Status>Preparing...</Status>;
   }
 }
 
@@ -497,23 +491,6 @@ function usePreview(onPreview: ((bp: bigint | null) => void) | undefined, bp: bi
   useEffect(() => () => onPreview?.(null), [onPreview]);
 }
 
-function SignFirst({ m }: { m: LoanModel }) {
-  const s = m.stellar;
-  return (
-    <div className="wz-stack" style={{ gap: 10 }}>
-      <p className="wz-hint">
-        Sign once so this app can use your loan keys. Your wallet asks you to sign a message. It is free and sends no transaction.
-      </p>
-      {s.unlockError ? <ErrorBox error={s.unlockError} label="Not signed" /> : null}
-      <div>
-        <button type="button" className="wz-btn wz-btn-gold" onClick={s.unlock} disabled={s.unlocking}>
-          {s.unlocking ? `Confirm in ${s.walletName}` : "Sign to continue"}
-        </button>
-      </div>
-    </div>
-  );
-}
-
 const usdcAmount = (s: bigint) => <span className="mono">{formatUsdc(s)}</span>;
 
 // ── Borrow ───────────────────────────────────────────────────────────────
@@ -623,8 +600,6 @@ export function BorrowPanel({
       )}
       {running ? (
         <TxRunning flow={m.flow} walletName={m.stellar.walletName} />
-      ) : !m.stellar.keysReady ? (
-        <SignFirst m={m} />
       ) : mine && m.flow.phase === "timed_out" ? null : (
         <div className="wz-stack" style={{ gap: 8 }}>
           <div>
@@ -735,8 +710,6 @@ export function RepayPanel({
       )}
       {running ? (
         <TxRunning flow={m.flow} walletName={m.stellar.walletName} />
-      ) : !m.stellar.keysReady ? (
-        <SignFirst m={m} />
       ) : mine && m.flow.phase === "timed_out" ? null : (
         <div>
           <button type="submit" className="wz-btn wz-btn-gold" aria-disabled={amount === null || Boolean(error)}>
@@ -758,6 +731,8 @@ export function ReleasePanel({ m, position, neverBorrowed }: { m: LoanModel; pos
   const btc = formatBtc(sats);
   const fee = m.releaseFeeSats;
   const blocker = releaseBlocker(position, { address: m.bitcoin.address, pubkey: m.bitcoin.pubkey });
+  // The release pays the deposit key's own address; Writz builds it from the key on chain.
+  const destination = position.btcPubkey ? releaseAddressOf(position.btcPubkey) : null;
 
   if (step !== null)
     return (
@@ -788,7 +763,7 @@ export function ReleasePanel({ m, position, neverBorrowed }: { m: LoanModel; pos
     <div className="wz-stack">
       <p>
         {neverBorrowed
-          ? "Nothing is owed on this loan, so you can release your BTC."
+          ? "Nothing is owed on this loan, so you can close it and release your BTC."
           : "Your loan is repaid, but your BTC stays locked until you release it."}
       </p>
       {mine && m.flow.phase === "failed" && <ErrorBox error={m.flow.error} context={{ flow: "release" }} label="Not released" />}
@@ -830,8 +805,8 @@ export function ReleasePanel({ m, position, neverBorrowed }: { m: LoanModel; pos
         <>
           <dl className="wz-well" id={reviewId}>
             <div className="wz-row wz-row-wrap">
-              <dt>Send to your Xverse wallet</dt>
-              <dd className="mono wz-break">{m.bitcoin.address}</dd>
+              <dt>Send to your Bitcoin key&apos;s address</dt>
+              <dd className="mono wz-break">{destination}</dd>
             </div>
             <div className="wz-row">
               <dt>Amount</dt>
@@ -847,27 +822,30 @@ export function ReleasePanel({ m, position, neverBorrowed }: { m: LoanModel; pos
             </div>
           </dl>
           <p className="wz-hint">
-            You sign twice: in {m.stellar.walletName} to record the release on {STELLAR}, then in Xverse. Writz co-signs. The Bitcoin network fee
+            {neverBorrowed ? (
+              <>
+                You sign twice: in {m.stellar.walletName} to close the loan on {STELLAR}, then in Xverse.
+              </>
+            ) : (
+              <>You sign once, in Xverse.</>
+            )}{" "}
+            Writz co-signs once the loan is closed. The Bitcoin network fee
             {fee !== null ? <>, about {fee.toLocaleString("en-US")} sats,</> : null} comes out of the released amount. The BTC goes only to
-            the wallet that made this deposit.
+            the address of the Bitcoin key that made this deposit.
           </p>
-          {m.stellar.keysReady ? (
-            <SlideToConfirm
-              key={m.flow.phase}
-              label={`Slide to release ${btc} BTC`}
-              armedLabel={`Press Enter again to release ${btc} BTC`}
-              doneLabel={
-                m.flow.phase === "awaiting_signature" && m.flow.wallet === "stellar"
-                  ? `Confirm in ${m.stellar.walletName}...`
-                  : "Confirm in Xverse..."
-              }
-              describedBy={reviewId}
-              disabled={fee === null || m.otherTx || m.catchingUp}
-              onConfirm={m.release}
-            />
-          ) : (
-            <SignFirst m={m} />
-          )}
+          <SlideToConfirm
+            key={m.flow.phase}
+            label={`Slide to release ${btc} BTC`}
+            armedLabel={`Press Enter again to release ${btc} BTC`}
+            doneLabel={
+              m.flow.phase === "awaiting_signature" && m.flow.wallet === "stellar"
+                ? `Confirm in ${m.stellar.walletName}...`
+                : "Confirm in Xverse..."
+            }
+            describedBy={reviewId}
+            disabled={fee === null || destination === null || m.otherTx || m.catchingUp}
+            onConfirm={m.release}
+          />
         </>
       )}
     </div>
@@ -884,7 +862,7 @@ export function ClosedNotice({ status, position }: { status: PositionStatus; pos
       return (
         <Notice tone="info" label="Loan repaid">
           <p>
-            <b>Your BTC is still locked.</b> Release it to your Xverse wallet. Writz co-signs.
+            <b>Your BTC is still locked.</b> Release it to your Bitcoin wallet. Writz co-signs.
           </p>
         </Notice>
       );
@@ -921,35 +899,23 @@ export function ClosedNotice({ status, position }: { status: PositionStatus; pos
             closed. You owe nothing on it.
           </p>
           <div className="wz-actions">
-            <ExternalLink href={stellarTxUrl(status.txHash)} className="wz-btn wz-btn-text">
-              View the liquidation on {STELLAR}
-            </ExternalLink>
+            {status.txHash ? (
+              <ExternalLink href={stellarTxUrl(status.txHash)} className="wz-btn wz-btn-text">
+                View the liquidation on {STELLAR}
+              </ExternalLink>
+            ) : null}
             <ExternalLink href={LIQUIDATION_DOCS_URL} className="wz-btn wz-btn-text">
               Read how liquidation works
             </ExternalLink>
           </div>
         </Notice>
       );
-    case "closed_on_chain":
-      return (
-        <Notice tone="info" label="Closed on chain" actions={<FindLoans />}>
-          <p>This loan was closed on {STELLAR}. Checking what closed it...</p>
-        </Notice>
-      );
-    case "changed_elsewhere":
-      return (
-        <Notice tone="info" label="Changed on another device" actions={<FindLoans />}>
-          <p>This loan changed on another device. Find your loans again to see where it stands.</p>
-        </Notice>
-      );
     case "registering":
-    case "register_failed":
     case "ready_to_register":
-    case "proving":
       return (
         <Notice
-          tone={status.kind === "register_failed" ? "warning" : "info"}
-          label={status.kind === "register_failed" ? "Finish deposit" : "Registering on Stellar"}
+          tone="info"
+          label="Registering on Stellar"
           actions={
             <Link href="/borrow/new" className="wz-btn wz-btn-line wz-btn-sm">
               Go to your deposit
@@ -964,44 +930,24 @@ export function ClosedNotice({ status, position }: { status: PositionStatus; pos
   }
 }
 
-function FindLoans() {
-  return (
-    <Link href="/" className="wz-btn wz-btn-line wz-btn-sm">
-      Find my loans
-    </Link>
-  );
-}
-
 export function MissingDetails({ m, height }: { m: LoanModel; height: number | null }) {
   return (
-    <Notice tone="warning" label="Bitcoin details missing">
-      <p>This device doesn&apos;t have the Bitcoin details for this loan, so it can&apos;t build the release.</p>
-      <ul className="wz-need" style={{ marginTop: 4 }}>
-        <li>Open Writz on the device you deposited from.</li>
-        <li>Or import your loan backup on this device.</li>
-        <li>
-          Or, after <BlockRef height={height} />, reclaim the BTC alone.{" "}
-          <Link href={`/help/reclaim?loan=${m.n}`} className="wz-btn wz-btn-text wz-inline">
-            How to reclaim
-          </Link>
-        </li>
-      </ul>
-      {m.importState.error ? <ErrorBox error={m.importState.error} label="Backup not imported" /> : null}
-      {m.importState.done ? <p>Backup imported.</p> : null}
-      <div className="wz-actions">
-        <label className="wz-btn wz-btn-line wz-btn-sm ln-file">
-          {m.importState.busy ? "Importing..." : "Import loan backup"}
-          <input
-            type="file"
-            accept="application/json,.json"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) m.importBackup(f);
-              e.target.value = "";
-            }}
-          />
-        </label>
-      </div>
+    <Notice
+      tone="warning"
+      label="Bitcoin details missing"
+      actions={
+        <button type="button" className="wz-btn wz-btn-line wz-btn-sm" onClick={m.checkAgain}>
+          Check again
+        </button>
+      }
+    >
+      <p>Writz couldn&apos;t read this deposit from Bitcoin yet, so it can&apos;t check whether your BTC is still locked.</p>
+      <p>
+        If it stays this way, after <BlockRef height={height} /> you can reclaim the BTC alone.{" "}
+        <Link href={`/help/reclaim?loan=${m.n}`} className="wz-btn wz-btn-text wz-inline">
+          How to reclaim
+        </Link>
+      </p>
     </Notice>
   );
 }

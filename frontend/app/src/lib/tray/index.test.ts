@@ -37,9 +37,9 @@ describe("trayItems", () => {
     expect(items[0]).toMatchObject({ label: "Deposit BTC", loan: "Loan 2", stateLabel: "One signature left", action: "resume" });
   });
 
-  test("a deposit whose insert failed offers Finish deposit", () => {
-    const [item] = trayItems({ pendingDeposit: pd, depositStatus: { kind: "register_failed" }, pendingTxs: [], recent: [], now: NOW });
-    expect(item.action).toBe("finish_deposit");
+  test("a deposit recorded on Stellar but not saved here yet stays in progress", () => {
+    const [item] = trayItems({ pendingDeposit: pd, depositStatus: { kind: "registering" }, pendingTxs: [], recent: [], now: NOW });
+    expect(item).toMatchObject({ state: "in_progress", action: "resume" });
   });
 
   test("finished items drop after a day; pending ones stay however old", () => {

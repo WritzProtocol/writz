@@ -7,11 +7,21 @@ import type { Position, PositionsBackup } from "./types";
 const KEY_PREFIX = "writz.positions.";
 const keyFor = (owner: string) => `${KEY_PREFIX}${owner}`;
 
+/**
+ * Records saved before the app moved to `writz-lend` are keyed by a
+ * commitment-tree commitment, not a Bitcoin txid; those loans live on the
+ * other contract and this app does not serve them, so they are skipped.
+ */
+const isWritzLend = (p: Position) => typeof p.txid === "string" && p.id === p.txid;
+
+function parse(raw: string | null): Position[] {
+  return raw ? (JSON.parse(raw) as Position[]).filter(isWritzLend) : [];
+}
+
 function read(owner: string): Position[] {
   if (typeof window === "undefined") return [];
   try {
-    const raw = localStorage.getItem(keyFor(owner));
-    return raw ? (JSON.parse(raw) as Position[]) : [];
+    return parse(localStorage.getItem(keyFor(owner)));
   } catch {
     return [];
   }
@@ -58,7 +68,12 @@ export function positionsSnapshot(owner: string): readonly Position[] {
   const raw = localStorage.getItem(keyFor(owner));
   const cached = snapshotCache.get(owner);
   if (cached && cached.raw === raw) return cached.value;
-  const value = raw ? (JSON.parse(raw) as Position[]) : [];
+  let value: Position[];
+  try {
+    value = parse(raw);
+  } catch {
+    value = [];
+  }
   snapshotCache.set(owner, { raw, value });
   return value;
 }
@@ -100,7 +115,7 @@ export function importPositions(json: string): { owner: string; count: number } 
     throw new Error("Invalid positions backup");
   }
   const byId = new Map(read(data.owner).map((p) => [p.id, p]));
-  for (const p of data.positions) byId.set(p.id, p);
+  for (const p of data.positions.filter(isWritzLend)) byId.set(p.id, p);
   write(data.owner, [...byId.values()]);
   return { owner: data.owner, count: data.positions.length };
 }

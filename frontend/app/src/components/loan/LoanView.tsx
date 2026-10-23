@@ -87,24 +87,14 @@ export function LoanView({ m }: { m: LoanModel }) {
       />
     );
 
-  if (m.access === "locked" || m.access === "finding")
+  if (m.access === "finding")
     return (
       <Empty
         n={n}
-        body={
-          <p>
-            Your wallet will ask you to sign a message. It is free and sends no transaction. It lets this app find loans made with this
-            wallet.
-          </p>
-        }
+        body={<p>Looking up the loans this wallet holds.</p>}
         action={
-          <button
-            type="button"
-            className="wz-btn wz-btn-gold"
-            onClick={m.stellar.unlock}
-            disabled={m.stellar.unlocking || m.access === "finding"}
-          >
-            {m.access === "finding" ? "Finding your loans..." : m.stellar.unlocking ? `Confirm in ${m.stellar.walletName}` : "Sign to find my loans"}
+          <button type="button" className="wz-btn wz-btn-gold" disabled>
+            Finding your loans...
           </button>
         }
       />
@@ -163,7 +153,7 @@ export function LoanView({ m }: { m: LoanModel }) {
   const liq = liquidationPriceFor(collateral, debt);
   const released = status.kind === "released" || status.kind === "releasing";
   // A closed loan has nothing left to reclaim; don't point a liquidated borrower at the timelock.
-  const closed = released || status.kind === "liquidated" || status.kind === "closed_on_chain";
+  const closed = released || status.kind === "liquidated";
   const landedElsewhere = m.action && m.action !== "release" && m.flow.phase === "settled" && (m.action !== tab || !tabs[tab].enabled);
 
   const onTabKey = (e: KeyboardEvent<HTMLButtonElement>, t: LoanTab) => {
@@ -194,8 +184,8 @@ export function LoanView({ m }: { m: LoanModel }) {
       </Notice>
     ) : null,
     m.catchingUp && !checking ? (
-      <Notice key="catching" tone="info" label="Writz is catching up">
-        <p>Writz is catching up with the chain. Your funds are safe. Try again in a minute.</p>
+      <Notice key="catching" tone="info" label="Waiting for Writz">
+        <p>Your loan is repaid. Writz is co-signing the release of your BTC. It is usually ready within a minute. Your BTC is safe.</p>
       </Notice>
     ) : null,
   ].filter(Boolean);

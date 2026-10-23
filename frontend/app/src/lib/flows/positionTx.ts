@@ -1,37 +1,12 @@
 import type { contract } from "@stellar/stellar-sdk";
-import { config } from "@/config";
 import { getPosition, removePosition, savePosition, type Position } from "@/lib/position";
 import type { SignTransaction } from "@/lib/wallet/WalletProvider";
 import type { Emit } from "@/lib/flow/engine";
-import {
-  activity,
-  reconcilePendingTxs,
-  retryLeafUpdates,
-  type LeafOutcome,
-  type LeafUpdate,
-  type PendingTx,
-} from "@/lib/flow/pendingTx";
+import { activity, reconcilePendingTxs, type PendingTx } from "@/lib/flow/pendingTx";
 import { getTxStatus, signAndSubmit, TxTimedOutError } from "@/lib/flow/stellarTx";
 
-export async function postLeafUpdate(u: Pick<LeafUpdate, "leafIndex" | "newCommitment" | "encNote">): Promise<LeafOutcome> {
-  const relayerUrl = config.services.relayerUrl;
-  if (!relayerUrl) return "unreachable";
-  const res = await fetch(`${relayerUrl}/update-leaf`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      leafIndex: u.leafIndex,
-      newCommitment: u.newCommitment,
-      encNote: u.encNote,
-    }),
-  }).catch(() => null);
-  if (!res) return "unreachable";
-  if (res.ok) return "accepted";
-  return res.status >= 400 && res.status < 500 ? "rejected" : "unreachable";
-}
-
 function replacePosition(removeId: string, save: Position) {
-  removePosition(save.owner, removeId);
+  if (removeId !== save.id) removePosition(save.owner, removeId);
   savePosition(save);
 }
 
@@ -46,9 +21,6 @@ function singleFlight(run: (owner: string) => Promise<void>): (owner: string) =>
     return next;
   };
 }
-
-/** Retries every `/update-leaf` this device still owes the relayer. */
-export const syncLeafUpdates = singleFlight((owner) => retryLeafUpdates(owner, { store: activity, post: postLeafUpdate }));
 
 /** Applies confirmed transactions left over from a closed tab and drops the ones that never landed. */
 export const reconcileActivity = singleFlight((owner) =>
@@ -86,25 +58,27 @@ export async function submitTrackedTx<T>(params: {
 }
 
 /**
- * Submits a borrow or repay: records the pending transaction (with the
- * position change and leaf update it implies) before submit, applies it once
- * confirmed, then syncs the relayer leaf store. A failed sync stays queued and
- * is retried on the next load instead of failing a transaction that landed.
+ * Submits a borrow or repay: records the pending transaction (with the local
+ * position change it implies) before submit and applies it once confirmed,
+ * so a reload mid-confirmation still lands the change.
  */
 export async function submitPositionTx<T>(params: {
   kind: "borrow" | "repay";
   tx: contract.AssembledTransaction<T>;
   position: Position;
   updated: Position;
-  leafUpdate?: PendingTx["leafUpdate"];
   signTransaction: SignTransaction;
   emit?: Emit;
-}): Promise<{ hash: string; syncPending: boolean }> {
-  const { kind, tx, position, updated, leafUpdate, signTransaction, emit } = params;
+  /** Leave the flow open for a follow-up transaction instead of settling it. */
+  keepOpen?: boolean;
+}): Promise<{ hash: string; ledger?: number }> {
+  const { kind, tx, position, updated, signTransaction, emit } = params;
   const owner = position.owner;
   let hash: string;
+  let ledger: number | undefined;
   try {
-    ({ hash } = await signAndSubmit(tx, {
+    let sent: Awaited<ReturnType<typeof signAndSubmit<T>>>["sent"];
+    ({ hash, sent } = await signAndSubmit(tx, {
       signTransaction,
       emit,
       onSigned: (h) =>
@@ -113,10 +87,11 @@ export async function submitPositionTx<T>(params: {
           kind,
           createdAt: Date.now(),
           positionUpdate: { removeId: position.id, save: updated },
-          leafUpdate,
         }),
       onDropped: (h) => activity.removeTx(owner, h),
     }));
+    const landed = sent.getTransactionResponse;
+    ledger = landed && "ledger" in landed ? landed.ledger : undefined;
   } catch (e) {
     if (e instanceof TxTimedOutError) emit?.({ type: "timed_out", hash: e.hash });
     throw e;
@@ -124,19 +99,6 @@ export async function submitPositionTx<T>(params: {
 
   replacePosition(position.id, updated);
   activity.removeTx(owner, hash);
-
-  let syncPending = false;
-  if (leafUpdate) {
-    emit?.({ type: "post_processing", step: "update_leaf" });
-    activity.enqueueLeaf(owner, leafUpdate);
-    for (let attempt = 0; attempt < 3; attempt++) {
-      // The relayer checks the update against its own RPC view, which can lag a ledger behind ours.
-      if (attempt > 0) await new Promise((r) => setTimeout(r, 3_000));
-      await syncLeafUpdates(owner);
-      syncPending = activity.leafUpdates(owner).some((u) => u.leafIndex === leafUpdate.leafIndex);
-      if (!syncPending) break;
-    }
-  }
-  emit?.({ type: "settled", hash, syncPending });
-  return { hash, syncPending };
+  if (!params.keepOpen) emit?.({ type: "settled", hash });
+  return { hash, ledger };
 }

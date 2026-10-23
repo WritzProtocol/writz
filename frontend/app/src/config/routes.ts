@@ -6,7 +6,7 @@
  * reached by URL would still try to build loans against contracts that do not
  * exist there, so the paths themselves are closed.
  */
-export const LENDING_PATHS = ["/borrow", "/loans", "/lend", "/help/reclaim", "/dev", "/api/cosign"] as const;
+export const LENDING_PATHS = ["/borrow", "/loans", "/lend", "/help/reclaim", "/dev"] as const;
 
 const under = (pathname: string, base: string) => pathname === base || pathname.startsWith(`${base}/`);
 

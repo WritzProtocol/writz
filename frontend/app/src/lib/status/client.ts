@@ -1,6 +1,7 @@
 import { rpc, xdr } from "@stellar/stellar-sdk";
-import { config, requireContract } from "@/config";
-import { getCommitmentForTxid, isCommitmentPending, isNullifierSpent } from "@/lib/contracts/commitmentTree";
+import { config } from "@/config";
+import { getBtcPriceStroops } from "@/lib/contracts/oracle";
+import { getReleasePsbt, internalTxid, readPosition, writzLendId } from "@/lib/contracts/writzLend";
 import type { RelayerSource, StatusSource } from "./source";
 import type { BtcTxView, LiquidationLookup, Outspend } from "./types";
 
@@ -51,8 +52,8 @@ function closeTimeMs(t: string): number {
 
 /**
  * Client fallback until the relayer indexes Liquidate events and serves
- * `/status`: SPV-proof polling for confirmations, merkle-path 409 for catching
- * up, and RPC events (retention window only) for liquidations.
+ * `/status`: SPV-proof polling for confirmations and RPC events (retention
+ * window only) for the transaction that liquidated a position.
  */
 export function clientRelayerSource(deps: {
   relayerUrl: string;
@@ -77,13 +78,14 @@ export function clientRelayerSource(deps: {
       return { confirmations: bundle.confirmations };
     },
 
-    async liquidation(nullifierHex, since): Promise<LiquidationLookup> {
+    async liquidation(btcTxid, since): Promise<LiquidationLookup> {
       const server = deps.server();
       const { oldestLedger } = await server.getHealth();
+      // `writz-lend`'s LiquidateEvent: topics ["liquidate", txid], the txid in internal byte order.
       const topics = [
         [
           xdr.ScVal.scvSymbol("liquidate").toXDR("base64"),
-          xdr.ScVal.scvBytes(Buffer.from(nullifierHex, "hex")).toXDR("base64"),
+          xdr.ScVal.scvBytes(internalTxid(btcTxid)).toXDR("base64"),
         ],
       ];
       const res = await server.getEvents({
@@ -94,25 +96,15 @@ export function clientRelayerSource(deps: {
       if (hit) return { found: true, txHash: hit.txHash };
       return { found: false, complete: since >= closeTimeMs(res.oldestLedgerCloseTime) };
     },
-
-    async catchingUp(commitmentHex, leafIndex) {
-      const qs = leafIndex === undefined ? "" : `&leafIndex=${leafIndex}`;
-      const res = await deps.get(`${relayer()}/merkle-path?commitment=${commitmentHex}${qs}`);
-      if (res.status === 409) return true;
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return false;
-    },
   };
 }
 
-/** Today's reads: contract, Esplora, and the client relayer fallbacks. */
+/** Today's reads: `writz-lend`, the oracle, Esplora, and the client relayer fallbacks. */
 export function createClientStatusSource(get: Fetch = (url) => fetch(url)): StatusSource {
   return {
-    getCommitmentForTxid,
-    isCommitmentPending,
-    isNullifierSpent,
-    // The contract's oracle is a stub with no getter; proofs must carry this same configured price.
-    getOraclePrice: async () => BigInt(config.btcPriceStroops),
+    getPosition: readPosition,
+    hasReleasePsbt: async (txid) => (await getReleasePsbt(txid)) !== null,
+    getOraclePrice: getBtcPriceStroops,
     ...esploraReads(config.bitcoin.apiUrl, get),
     relayer: clientRelayerSource({
       relayerUrl: config.services.relayerUrl,
@@ -121,7 +113,7 @@ export function createClientStatusSource(get: Fetch = (url) => fetch(url)): Stat
         new rpc.Server(config.rpcUrl, {
           allowHttp: config.rpcUrl.startsWith("http://"),
         }) as unknown as LiquidationEventsServer,
-      contractId: () => requireContract(config.contracts.commitmentTree, "commitment-tree"),
+      contractId: writzLendId,
     }),
   };
 }

@@ -11,19 +11,17 @@ const derived = (status: PositionStatus, reclaimable = false): DerivedStatus => 
   reclaimable,
   timelock: null,
   syncing: false,
+  onChain: null,
 });
 
 const loan = (index: number, status: PositionStatus, over: Partial<Position> = {}): HomeLoan => ({
   position: {
-    id: String(index),
+    id: String(index).padStart(64, "0"),
     owner: "GOWNER",
-    txid: "ab".repeat(32),
+    txid: String(index).padStart(64, "0"),
     collateralSats: "5000000",
     debtStroops: "0",
     index,
-    version: 1,
-    commitment: "1",
-    nullifier: "2",
     status: "active",
     createdAt: NOW - index * 1000,
     ...over,
@@ -66,7 +64,7 @@ describe("sortLoans", () => {
   });
 
   test("a loan still being checked stays with the open ones", () => {
-    const { open, closed } = sortLoans([loan(0, { kind: "checking", missing: ["nullifier"] })]);
+    const { open, closed } = sortLoans([loan(0, { kind: "checking", missing: ["position"] })]);
     expect(open).toHaveLength(1);
     expect(closed).toHaveLength(0);
   });
@@ -92,9 +90,9 @@ describe("pickUrgent", () => {
     expect(u).toMatchObject({ kind: "deposit", status: { kind: "checking" } });
   });
 
-  test("a registered loan whose tree insert failed is a deposit to finish", () => {
-    const u = pickUrgent([loan(0, { kind: "register_failed" })], null);
-    expect(u).toMatchObject({ kind: "deposit", status: { kind: "register_failed" } });
+  test("a loan still registering is a deposit on its way", () => {
+    const u = pickUrgent([loan(0, { kind: "registering" })], null);
+    expect(u).toMatchObject({ kind: "deposit", status: { kind: "registering" } });
   });
 
   test("a never-borrowed deposit is not a repaid loan to release", () => {
@@ -102,10 +100,9 @@ describe("pickUrgent", () => {
     expect(pickUrgent([loan(0, repaid)], null)?.kind).toBe("repaid");
   });
 
-  test("the exit path beats a repaid loan; changed elsewhere surfaces when nothing else does", () => {
+  test("the exit path beats a repaid loan", () => {
     const reclaim = { ...loan(0, repaid), derived: derived(repaid, true) };
     expect(pickUrgent([reclaim], null)?.kind).toBe("reclaimable");
-    expect(pickUrgent([loan(0, { kind: "changed_elsewhere" })], null)?.kind).toBe("changed");
   });
 
   test("nothing urgent for a healthy loan", () => {

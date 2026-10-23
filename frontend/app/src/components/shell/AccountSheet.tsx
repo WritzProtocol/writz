@@ -182,21 +182,9 @@ export function AccountSheetBody() {
       {s.address ? (
         <section className="sh-section" aria-labelledby="sh-loans">
           <h3 id="sh-loans" className="sh-h">
-            Your loans on this device
+            Your loans
           </h3>
-          {a.loans.state === "unsigned" || a.loans.state === "signing" ? (
-            <>
-              <p className="wz-hint">
-                Your wallet will ask you to sign a message. It is free and sends no transaction. It lets this app find loans
-                made with this wallet.
-              </p>
-              <div className="wz-actions">
-                <button type="button" className="wz-btn wz-btn-gold wz-btn-sm" disabled={a.loans.state === "signing"} onClick={a.loans.sign}>
-                  {a.loans.state === "signing" ? `Confirm in ${s.walletName}` : "Sign to find my loans"}
-                </button>
-              </div>
-            </>
-          ) : a.loans.state === "failed" ? (
+          {a.loans.state === "failed" ? (
             <ErrorBox
               error={a.loans.error}
               label="Loans not loaded"
@@ -210,7 +198,7 @@ export function AccountSheetBody() {
             <p className="wz-hint">
               {a.loans.state === "finding"
                 ? "Finding your loans..."
-                : `Found with your Stellar wallet: ${a.loanStatuses.length} ${a.loanStatuses.length === 1 ? "loan" : "loans"}.`}
+                : `Found on Stellar for this wallet: ${a.loanStatuses.length} ${a.loanStatuses.length === 1 ? "loan" : "loans"}.`}
             </p>
           )}
           {a.positions.length > 0 ? (
@@ -221,7 +209,8 @@ export function AccountSheetBody() {
                 </button>
               </div>
               <p className="wz-hint">
-                To release BTC from another device, that device needs this deposit&apos;s Bitcoin details. Keep this file.
+                Your loans are on Stellar and load on any device with this wallet. The backup keeps each deposit&apos;s Bitcoin transaction ID for
+                reclaiming without Writz.
               </p>
             </>
           ) : null}

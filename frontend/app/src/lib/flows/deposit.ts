@@ -1,25 +1,10 @@
-import { Client } from "@/lib/contracts/generated";
-import { depositKeyMessage, parseMessageSignature } from "@/lib/bitcoin/keyProof";
 import { Buffer } from "buffer";
-import { Account, TransactionBuilder, Operation } from "@stellar/stellar-sdk";
-import { config, requireContract } from "@/config";
-import { proveDeposit } from "@/lib/prover";
-import { getCommitmentForTxid, isCommitmentPending } from "@/lib/contracts/commitmentTree";
-import { simulateWithRetry } from "./submit";
-import {
-  computeCommitment,
-  computeNullifier,
-  seedToField,
-  deriveSecret,
-  deriveNonce,
-  deriveViewingKey,
-  sealNote,
-  bytesToHex,
-  getPosition,
-  savePosition,
-  requireTimelock,
-  type Position,
-} from "@/lib/position";
+import { depositKeyMessage, parseMessageSignature } from "@/lib/bitcoin/keyProof";
+import { config } from "@/config";
+import { readPosition, writzLendClient, writzLendId } from "@/lib/contracts/writzLend";
+import { simulateWritzLend } from "./submit";
+import { syncPosition } from "./discover";
+import type { Position } from "@/lib/position";
 import type { SignTransaction } from "@/lib/wallet/WalletProvider";
 import type { Emit } from "@/lib/flow/engine";
 import { locks } from "@/lib/flow/lock";
@@ -28,67 +13,10 @@ import { activity, type TxStatus } from "@/lib/flow/pendingTx";
 import { getTxStatus, signAndSubmit, TxTimedOutError } from "@/lib/flow/stellarTx";
 import { fetchTipHeight, findDepositOutput } from "@/lib/bitcoin/timelock";
 import { deriveP2WSH } from "@/lib/bitcoin/address";
-
-// Must match the contract's `min_deposit_satoshis` config (set at initialization).
-const MIN_DEPOSIT_SATS = "10000"; // 0.0001 BTC
-
-// Must match relayer/src/insert-auth.ts's INSERT_COMMITMENT_DATA_NAME.
-const INSERT_COMMITMENT_DATA_NAME = "writz-insert-commitment";
+import { MIN_DEPOSIT_SATS } from "@/lib/borrow/journey";
 
 const POLL_MS = 10_000;
 const MAX_BACKOFF_MS = 60_000;
-
-/**
- * Builds and signs a throwaway transaction (never submitted) authorizing
- * `/insert-commitment` to insert exactly this commitment. The relayer
- * verifies the signature is genuinely `depositor`'s and cross-checks it
- * against the real on-chain DepositEvent before signing the admin-only
- * insertion - without this, any network-reachable caller could hijack a
- * pending deposit (GHSA-wqp4-3573-552v, GHSA-prw2-j3jx-43qh). The sequence
- * number is a dummy "0": this transaction is only ever inspected for its
- * signature, source account, and operation, never broadcast.
- */
-export async function buildInsertAuthTx(
-  depositor: string,
-  commitmentHex: string,
-  signTransaction: SignTransaction,
-): Promise<string> {
-  const account = new Account(depositor, "0");
-  const tx = new TransactionBuilder(account, {
-    fee: "100",
-    networkPassphrase: config.networkPassphrase,
-  })
-    .addOperation(
-      Operation.manageData({
-        name: INSERT_COMMITMENT_DATA_NAME,
-        value: Buffer.from(commitmentHex, "hex"),
-      }),
-    )
-    .setTimeout(30)
-    .build();
-  const { signedTxXdr } = await signTransaction(tx.toXDR());
-  return signedTxXdr;
-}
-
-async function sha256d(bytes: ArrayBuffer): Promise<Buffer> {
-  const h1 = await crypto.subtle.digest("SHA-256", bytes);
-  const h2 = await crypto.subtle.digest("SHA-256", h1);
-  return Buffer.from(h2);
-}
-
-/**
- * Split the internal-order txid (SHA256d of raw tx) into the two 128-bit
- * halves the deposit circuit expects as `btc_txid_lo` / `btc_txid_hi`.
- */
-export async function txidParts(rawTxHex: string): Promise<{ lo: string; hi: string }> {
-  const raw = Buffer.from(rawTxHex, "hex");
-  const buf = await sha256d(raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength));
-  const hi = BigInt("0x" + buf.subarray(0, 16).toString("hex")).toString();
-  const lo = BigInt("0x" + buf.subarray(16, 32).toString("hex")).toString();
-  return { lo, hi };
-}
-
-const toHex64 = (n: bigint) => n.toString(16).padStart(64, "0");
 
 export interface SpvBundle {
   txid: string;
@@ -114,13 +42,12 @@ export type DepositLookup = (DepositLock & { vout: number; sats: bigint }) | "un
 export interface RegisterInput {
   pd: PendingDeposit;
   bundle: SpvBundle;
-  seed: Uint8Array;
   signTransaction: SignTransaction;
   /** Signs a message with the deposit's Bitcoin key; returns base64 (BIP-137). */
   signKeyProof: (message: string) => Promise<string>;
   emit: Emit;
-  /** `timelockHeight` is the deposit output's real CLTV height, now in the commitment (#212). */
-  onProved: (p: { commitment: bigint; nullifier: bigint; timelockHeight: number }) => void;
+  /** `timelockHeight` is the deposit output's real CLTV height, read from the transaction. */
+  onLocated: (p: { timelockHeight: number }) => void;
   onSigned: (hash: string) => void;
   onDropped: () => void;
 }
@@ -131,18 +58,13 @@ export interface DepositDeps {
   findOutput(txid: string, address: string): Promise<OutputLookup>;
   /** Finds this Bitcoin key's Writz output in `txid` and the timelock it was built with. */
   locateDeposit(txid: string, btcPubkey: string): Promise<DepositLookup>;
-  getCommitment(btcTxid: string): Promise<string | null>;
-  isCommitmentPending(commitmentHex: string): Promise<boolean>;
+  /** The depositor of `get_position(txid)` on `writz-lend`, or null when it has none. */
+  getDepositor(btcTxid: string): Promise<string | null>;
   getTxStatus(hash: string): Promise<TxStatus>;
-  /** Proves, signs and submits `deposit()`; resolves once confirmed. */
+  /** Signs and submits `deposit()`; resolves once confirmed. */
   register(input: RegisterInput): Promise<{ hash: string }>;
-  insert(input: {
-    depositor: string;
-    commitmentHex: string;
-    encNote: Uint8Array;
-    signTransaction: SignTransaction;
-  }): Promise<{ leafIndex?: number }>;
-  lookupLeafIndex(commitmentHex: string): Promise<number | undefined>;
+  /** Reads the registered position from the chain and saves it on this device. */
+  finalize(pd: PendingDeposit): Promise<Position>;
   sleep(ms: number, signal?: AbortSignal): Promise<void>;
 }
 
@@ -176,49 +98,49 @@ function abortableSleep(ms: number, signal?: AbortSignal): Promise<void> {
   });
 }
 
+/** The `writz-lend.deposit` arguments for a confirmed deposit. Pure, for tests. */
+export function depositArgs(params: {
+  pd: Pick<PendingDeposit, "stellarAddress" | "btcPubkey">;
+  bundle: Pick<SpvBundle, "sorobanArgs">;
+  scriptPubKey: Buffer;
+  timelockHeight: number;
+  keySig: Buffer;
+}) {
+  const { pd, bundle, scriptPubKey, timelockHeight, keySig } = params;
+  const { sorobanArgs } = bundle;
+  return {
+    depositor: pd.stellarAddress,
+    block_hash: Buffer.from(sorobanArgs.block_hash, "hex"),
+    merkle_proof: sorobanArgs.merkle_proof.map((h) => Buffer.from(h, "hex")),
+    tx_index: sorobanArgs.tx_index,
+    raw_tx: Buffer.from(sorobanArgs.raw_tx, "hex"),
+    p2wsh_script_pubkey: scriptPubKey,
+    timelock_height: timelockHeight,
+    user_pubkey: Buffer.from(pd.btcPubkey, "hex"),
+    key_sig: keySig,
+  };
+}
+
 async function realRegister(input: RegisterInput): Promise<{ hash: string }> {
-  const { pd, bundle, seed, signTransaction, emit } = input;
+  const { pd, bundle, signTransaction, emit } = input;
   // The contract rebuilds this depositor's script and counts exactly that
-  // output's value as collateral, so the proof must commit to the same output.
+  // output's value as collateral, so the call must name the same output.
+  const protocolPubkeyHex = requireProtocolPubkey();
   const output = findDepositOutput({
     rawTxHex: bundle.rawTxNoWitness,
-    protocolPubkeyHex: requireProtocolPubkey(),
+    protocolPubkeyHex,
     userPubkeyHex: pd.btcPubkey,
     tipHeight: await fetchTipHeight(config.bitcoin.apiUrl),
     hintTimelock: pd.timelockHeight,
   });
   if (!output) throw new Error("This transaction does not pay your deposit address.");
-  const collateralSats = output.valueSats;
-  if (collateralSats < BigInt(MIN_DEPOSIT_SATS)) {
-    throw new Error(`This deposit pays ${collateralSats} sats; the minimum is ${MIN_DEPOSIT_SATS}.`);
+  if (output.valueSats < MIN_DEPOSIT_SATS) {
+    throw new Error(`This deposit pays ${output.valueSats} sats; the minimum is ${MIN_DEPOSIT_SATS}.`);
   }
-  const { lo, hi } = await txidParts(bundle.rawTxNoWitness);
+  input.onLocated({ timelockHeight: output.timelockHeight });
+  const { scriptPubKey } = deriveP2WSH(protocolPubkeyHex, pd.btcPubkey, output.timelockHeight);
 
-  const f = seedToField(seed);
-  const secret = deriveSecret(f, pd.positionIndex);
-  const nonce = deriveNonce(f, pd.positionIndex, 0);
-
-  emit({ type: "proving" });
-  const { proof, publicSignals } = await proveDeposit({
-    collateral_satoshis: collateralSats.toString(),
-    secret: secret.toString(),
-    nonce: nonce.toString(),
-    btc_txid_lo: lo,
-    btc_txid_hi: hi,
-    min_deposit_satoshis: MIN_DEPOSIT_SATS,
-    actual_satoshis: collateralSats.toString(),
-    timelock_height: String(output.timelockHeight),
-  });
-
-  // Public signals (deposit circuit): commitment[0], nullifier[1], ...
-  const commitment = BigInt("0x" + publicSignals[0].toString("hex"));
-  if (commitment !== computeCommitment(collateralSats, 0n, secret, nonce, output.timelockHeight)) {
-    throw new Error("Commitment mismatch - circuit output does not match local computation.");
-  }
-  input.onProved({ commitment, nullifier: computeNullifier(secret, nonce), timelockHeight: output.timelockHeight });
-
-  const encNote = sealDepositNote(seed, pd.positionIndex, collateralSats, output.timelockHeight);
-  const contractId = requireContract(config.contracts.commitmentTree, "commitment-tree");
+  const contractId = writzLendId();
   // The contract only accepts a deposit signed by the Bitcoin key the output
   // is locked to, over this contract, this account and this txid
   // (GHSA-862g-739q-x6h8).
@@ -226,30 +148,10 @@ async function realRegister(input: RegisterInput): Promise<{ hash: string }> {
   const keySig = parseMessageSignature(
     await input.signKeyProof(depositKeyMessage(contractId, pd.stellarAddress, pd.btcTxid)),
   );
-  const client = new Client({
-    contractId,
-    networkPassphrase: config.networkPassphrase,
-    rpcUrl: config.rpcUrl,
-    allowHttp: config.rpcUrl.startsWith("http://"),
-    publicKey: pd.stellarAddress,
-  });
-  const { sorobanArgs } = bundle;
+  const client = writzLendClient(pd.stellarAddress, contractId);
   emit({ type: "preparing", step: "building" });
-  const tx = await simulateWithRetry(() =>
-    client.deposit({
-      depositor: pd.stellarAddress,
-      block_hash: Buffer.from(sorobanArgs.block_hash, "hex"),
-      merkle_proof_btc: sorobanArgs.merkle_proof.map((h) => Buffer.from(h, "hex")),
-      tx_index: sorobanArgs.tx_index,
-      raw_tx: Buffer.from(sorobanArgs.raw_tx, "hex"),
-      user_pubkey: Buffer.from(pd.btcPubkey, "hex"),
-      timelock_height: output.timelockHeight,
-      key_sig: keySig,
-      zk_proof: proof,
-      public_signals: publicSignals,
-      enc_note: Buffer.from(encNote),
-    }),
-  );
+  const args = depositArgs({ pd, bundle, scriptPubKey, timelockHeight: output.timelockHeight, keySig });
+  const tx = await simulateWritzLend(() => client.deposit(args));
   const { hash } = await signAndSubmit(tx, {
     signTransaction,
     emit,
@@ -257,6 +159,17 @@ async function realRegister(input: RegisterInput): Promise<{ hash: string }> {
     onDropped: input.onDropped,
   });
   return { hash };
+}
+
+/** Saves the registered position, with the chain's figures, and closes the pending deposit. */
+async function realFinalize(pd: PendingDeposit): Promise<Position> {
+  const position = await syncPosition(pd.stellarAddress, pd.btcTxid, {
+    stellarTxHash: pd.stellarTxHash,
+    createdAt: pd.createdAt,
+    index: pd.positionIndex,
+  });
+  if (!position) throw new Error("PositionNotFound");
+  return position;
 }
 
 export const depositDeps: DepositDeps = {
@@ -297,58 +210,14 @@ export const depositDeps: DepositDeps = {
     const { address } = deriveP2WSH(protocolPubkeyHex, btcPubkey, out.timelockHeight);
     return { vout: out.vout, sats: out.valueSats, timelockHeight: out.timelockHeight, p2wsh: address };
   },
-  getCommitment: getCommitmentForTxid,
-  isCommitmentPending,
+  async getDepositor(btcTxid) {
+    return (await readPosition(btcTxid))?.depositor ?? null;
+  },
   getTxStatus,
   register: realRegister,
-  async insert({ depositor, commitmentHex, encNote, signTransaction }) {
-    const authTxXdr = await buildInsertAuthTx(depositor, commitmentHex, signTransaction);
-    const res = await fetch(`${relayerUrl()}/insert-commitment`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ commitment: commitmentHex, encNote: bytesToHex(encNote), authTxXdr }),
-    });
-    if (!res.ok) {
-      const body = (await res.json().catch(() => ({}))) as { error?: string };
-      throw new Error(`Merkle insertion failed: ${body.error ?? res.status}`);
-    }
-    return (await res.json().catch(() => ({}))) as { leafIndex?: number };
-  },
-  async lookupLeafIndex(commitmentHex) {
-    const res = await fetch(`${relayerUrl()}/merkle-path?commitment=${commitmentHex}`).catch(() => null);
-    if (!res?.ok) return undefined;
-    const body = (await res.json().catch(() => ({}))) as { leafIndex?: number };
-    return body.leafIndex;
-  },
+  finalize: realFinalize,
   sleep: abortableSleep,
 };
-
-function sealDepositNote(seed: Uint8Array, index: number, collateralSats: bigint, timelockHeight: number): Uint8Array {
-  return sealNote(
-    { index, version: 0, collateralSats: collateralSats.toString(), debtStroops: "0", timelockHeight },
-    deriveViewingKey(seed).publicKey,
-  );
-}
-
-function registeringPosition(pd: PendingDeposit, commitment: string, nullifier: string): Position {
-  return {
-    id: commitment,
-    owner: pd.stellarAddress,
-    txid: pd.btcTxid,
-    collateralSats: pd.sats,
-    debtStroops: "0",
-    index: pd.positionIndex,
-    version: 0,
-    commitment,
-    nullifier,
-    status: "registering",
-    createdAt: pd.createdAt,
-    btcPubkey: pd.btcPubkey,
-    timelockHeight: pd.timelockHeight,
-    vout: pd.vout,
-    stellarTxHash: pd.stellarTxHash,
-  };
-}
 
 // ── Starting a deposit ────────────────────────────────────────────────────
 
@@ -424,10 +293,7 @@ export async function startDepositFromTxid(
 
 // ── Resuming and driving a deposit ────────────────────────────────────────
 
-export type TrackResult =
-  | { status: "ready"; pd: PendingDeposit }
-  | { status: "registering"; position: Position }
-  | { status: "active"; position: Position };
+export type TrackResult = { status: "ready"; pd: PendingDeposit } | { status: "active"; position: Position };
 
 async function withRetry<T>(fn: () => Promise<T>, deps: DepositDeps, signal?: AbortSignal): Promise<T> {
   for (let attempt = 1; ; attempt++) {
@@ -494,29 +360,10 @@ async function waitForConfirmations(
   }
 }
 
-async function finalizeDeposit(
-  pd: PendingDeposit,
-  commitmentHex: string,
-  deps: DepositDeps,
-): Promise<Position> {
-  const id = BigInt("0x" + commitmentHex).toString();
-  const existing = getPosition(pd.stellarAddress, id);
-  const base = existing ?? registeringPosition(pd, id, pd.nullifier ?? "");
-  const leafIndex = base.leafIndex ?? (await deps.lookupLeafIndex(commitmentHex));
-  const position: Position = { ...base, status: "active", leafIndex };
-  savePosition(position);
+async function finalizeDeposit(pd: PendingDeposit, deps: DepositDeps): Promise<Position> {
+  const position = await deps.finalize(pd);
   pendingDeposits.clear(pd.stellarAddress);
   await locks().releasePositionIndex(pd.stellarAddress, pd.positionIndex);
-  return position;
-}
-
-function ensureRegistering(pd: PendingDeposit, commitmentHex: string): Position {
-  const id = BigInt("0x" + commitmentHex).toString();
-  const existing = getPosition(pd.stellarAddress, id);
-  if (existing) return existing;
-  const position = registeringPosition(pd, id, pd.nullifier ?? "");
-  savePosition(position);
-  pendingDeposits.update(pd.stellarAddress, { step: "registering" });
   return position;
 }
 
@@ -535,23 +382,18 @@ export async function trackDeposit(
     let pd = pendingDeposits.load(owner);
     if (!pd) throw new Error("No deposit in progress.");
 
-    const commitmentForTxid = await withRetry(() => deps.getCommitment(pd!.btcTxid), deps, signal);
-    const commitmentPending = commitmentForTxid
-      ? await withRetry(() => deps.isCommitmentPending(commitmentForTxid), deps, signal)
-      : null;
+    const depositorForTxid = await withRetry(() => deps.getDepositor(pd!.btcTxid), deps, signal);
     const stellarTx =
-      pd.stellarTxHash && !commitmentForTxid
+      pd.stellarTxHash && !depositorForTxid
         ? await deps.getTxStatus(pd.stellarTxHash).catch(() => "NOT_FOUND" as const)
         : null;
 
-    const plan = planResume(pd, { commitmentForTxid, commitmentPending, stellarTx }, Date.now());
+    const plan = planResume(pd, { depositorForTxid, stellarTx }, Date.now());
     switch (plan.action) {
       case "finalize":
-        return { status: "active", position: await finalizeDeposit(pd, plan.commitment, deps) };
+        return { status: "active", position: await finalizeDeposit(pd, deps) };
       case "conflict":
-        throw new Error("DuplicateDeposit");
-      case "insert":
-        return { status: "registering", position: ensureRegistering(pd, plan.commitment) };
+        throw new Error("PositionAlreadyExists");
       case "await_stellar":
         emit({ type: "submitted", hash: plan.hash });
         await deps.sleep(5_000, signal);
@@ -573,61 +415,19 @@ export async function trackDeposit(
   }
 }
 
-/** Adds a deposited commitment to the tree. Retries only the relayer insert, never `deposit()`. */
-export async function finishDeposit(params: {
-  position: Position;
-  seed: Uint8Array;
-  signTransaction: SignTransaction;
-  emit: Emit;
-  deps?: DepositDeps;
-}): Promise<Position> {
-  const { position, seed, signTransaction, emit } = params;
-  const deps = params.deps ?? depositDeps;
-  const commitmentHex = toHex64(BigInt(position.commitment));
-  emit({ type: "post_processing", step: "insert" });
-  try {
-    let leafIndex: number | undefined;
-    if (await deps.isCommitmentPending(commitmentHex)) {
-      const encNote = sealDepositNote(seed, position.index, BigInt(position.collateralSats), requireTimelock(position));
-      ({ leafIndex } = await deps.insert({
-        depositor: position.owner,
-        commitmentHex,
-        encNote,
-        signTransaction,
-      }));
-    } else {
-      leafIndex = await deps.lookupLeafIndex(commitmentHex);
-    }
-    const active: Position = { ...position, status: "active", leafIndex };
-    savePosition(active);
-    const pd = pendingDeposits.load(position.owner);
-    if (pd && pd.btcTxid === position.txid) {
-      pendingDeposits.clear(position.owner);
-      await locks().releasePositionIndex(position.owner, pd.positionIndex);
-    }
-    emit({ type: "settled", hash: position.stellarTxHash });
-    return active;
-  } catch (error) {
-    emit({ type: "needs_attention", action: "finish_deposit", error, hash: position.stellarTxHash });
-    throw error;
-  }
-}
-
 /**
- * Proves and submits the Stellar deposit for a confirmed BTC transaction,
- * then inserts it. Checks the chain first so a resumed deposit never calls
- * `deposit()` twice.
+ * Signs and submits the Stellar deposit for a confirmed BTC transaction.
+ * Checks the chain first so a resumed deposit never calls `deposit()` twice.
  */
 export async function registerDeposit(params: {
   owner: string;
-  seed: Uint8Array;
   signTransaction: SignTransaction;
   signKeyProof: (message: string) => Promise<string>;
   emit: Emit;
   signal?: AbortSignal;
   deps?: DepositDeps;
 }): Promise<Position> {
-  const { owner, seed, signTransaction, signKeyProof, emit, signal } = params;
+  const { owner, signTransaction, signKeyProof, emit, signal } = params;
   const deps = params.deps ?? depositDeps;
 
   const tracked = await trackDeposit(owner, { emit, signal, deps });
@@ -635,12 +435,9 @@ export async function registerDeposit(params: {
     emit({ type: "settled", hash: tracked.position.stellarTxHash });
     return tracked.position;
   }
-  if (tracked.status === "registering") {
-    return finishDeposit({ position: tracked.position, seed, signTransaction, emit, deps });
-  }
 
   let pd = tracked.pd;
-  emit({ type: "preparing", step: "building" });
+  emit({ type: "preparing", step: "reading" });
   const bundle = await waitForConfirmations(pd, emit, deps, signal);
 
   let hash: string;
@@ -648,16 +445,11 @@ export async function registerDeposit(params: {
     ({ hash } = await deps.register({
       pd,
       bundle,
-      seed,
       signTransaction,
       signKeyProof,
       emit,
-      onProved: ({ commitment, nullifier, timelockHeight }) => {
-        pd = pendingDeposits.update(owner, {
-          commitment: commitment.toString(),
-          nullifier: nullifier.toString(),
-          timelockHeight,
-        })!;
+      onLocated: ({ timelockHeight }) => {
+        pd = pendingDeposits.update(owner, { timelockHeight })!;
       },
       onSigned: (h) => {
         pd = pendingDeposits.update(owner, {
@@ -682,8 +474,20 @@ export async function registerDeposit(params: {
   }
 
   activity.removeTx(owner, hash);
-  pd = pendingDeposits.update(owner, { step: "registering" })!;
-  const position = registeringPosition(pd, pd.commitment!, pd.nullifier!);
-  savePosition(position);
-  return finishDeposit({ position, seed, signTransaction, emit, deps });
+  emit({ type: "post_processing", step: "finalize" });
+  // The RPC that confirmed the deposit can trail its own read of the new position by a ledger.
+  let position: Position | null = null;
+  for (let attempt = 0; !position; attempt++) {
+    try {
+      position = await finalizeDeposit(pd, deps);
+    } catch (e) {
+      if (attempt >= 4) {
+        emit({ type: "needs_attention", action: "finish_deposit", error: e, hash });
+        throw e;
+      }
+      await deps.sleep(3_000, signal);
+    }
+  }
+  emit({ type: "settled", hash });
+  return position;
 }

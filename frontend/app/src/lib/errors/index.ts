@@ -85,13 +85,6 @@ const NOT_READY: Parts = {
   action: "Try again later.",
 };
 
-const WRONG_TX: Parts = {
-  headline: "The app prepared the wrong kind of transaction.",
-  safety: "Nothing changed.",
-  action: "Try again.",
-  report: "if_repeats",
-};
-
 function setupNoun(flow?: ErrorFlow): string {
   switch (flow) {
     case "deposit":
@@ -214,39 +207,6 @@ const RULES: Rule[] = [
     }),
   },
   {
-    match: /Merkle insertion failed/,
-    build: () => ({
-      headline:
-        "Your deposit is recorded on Stellar, but the last step failed, so you can't borrow against it yet.",
-      safety: "Your BTC is still locked and safe.",
-      action: "Select Finish deposit to try again.",
-      report: "if_repeats",
-    }),
-  },
-  {
-    match: /Merkle path (unavailable|fetch failed)/,
-    build: () => ({
-      headline: "Can't reach the Writz relayer to check your loan.",
-      safety: "Nothing was sent.",
-      action: "Try again in a minute.",
-    }),
-  },
-  {
-    match: /Failed to fetch notes/,
-    build: () => ({
-      headline: "Can't reach the Writz relayer to find your loans.",
-      safety: "Your loans are not affected.",
-      action: "Check your connection and select Recover positions again.",
-    }),
-  },
-  {
-    match: /Demo insertion failed/,
-    build: () => ({
-      headline: "Couldn't add a sample loan.",
-      action: "Try again in a minute.",
-    }),
-  },
-  {
     match: /Relayer error (\d+)/,
     build: (ctx, subject) => ({
       headline: `The Writz relayer returned an error (${/Relayer error (\d+)/.exec(subject)?.[1]}).`,
@@ -257,12 +217,29 @@ const RULES: Rule[] = [
 
   // --- Bitcoin release ---
   {
-    match: /Co-sign failed/,
+    match: /^ReleaseNotCosigned$/,
     build: () => ({
-      headline: "Writz didn't co-sign the release.",
+      headline: "Writz hasn't co-signed the release yet.",
       safety: "Your BTC is still locked and safe.",
       action: "Try again in a minute.",
       report: "if_repeats",
+    }),
+  },
+  {
+    match: /^ReleaseMismatch/,
+    build: () => ({
+      headline: "The release Writz prepared doesn't match this loan, so it was not sent to your wallet.",
+      safety: "Your BTC is still locked and safe.",
+      action: "Don't retry.",
+      report: "always",
+    }),
+  },
+  {
+    match: /^LoanNotRepaid$/,
+    build: () => ({
+      headline: "This loan still has debt, so its BTC can't be released yet.",
+      safety: "Your BTC is still locked and safe.",
+      action: "Repay the loan in full, then release.",
     }),
   },
   {
@@ -291,89 +268,9 @@ const RULES: Rule[] = [
       action: "Check the ID.",
     }),
   },
-  {
-    match: /Commitment mismatch/,
-    build: () => ({
-      headline: "This browser computed different deposit data than expected, so nothing was sent.",
-      safety: "Your BTC is safe in its lock.",
-      action: "Don't retry. Include the BTC amount you entered in your report.",
-      report: "always",
-    }),
-  },
-  {
-    match: /^ProverUnavailable/,
-    build: () => ({
-      headline: "Couldn't load the files this browser needs to prepare the transaction.",
-      safety: "Nothing was sent.",
-      action: "Try again.",
-    }),
-  },
-  {
-    match: /Assert Failed/,
-    build: () => ({
-      headline: "That amount is outside what this loan allows.",
-      safety: "Nothing was sent.",
-      action: "Check the amount and try again.",
-    }),
-  },
-
-  // --- Commitment tree contract ---
-  {
-    match: /^InvalidZkProof$/,
-    contract: "commitment-tree",
-    build: (ctx) =>
-      ctx.flow === "borrow" || ctx.flow === "repay"
-        ? {
-            headline: `Stellar didn't accept this ${ctx.flow}.`,
-            safety: "Nothing changed.",
-            action: "Select Recover positions, then try again.",
-          }
-        : {
-            headline: "Stellar didn't accept this deposit.",
-            safety: "Nothing changed. Your BTC is safe in its lock.",
-            action: "Try again.",
-            report: "if_repeats",
-          },
-  },
-  {
-    match: /^RootMismatch$/,
-    contract: "commitment-tree",
-    build: () => ({
-      headline: "Another transaction landed first, so this one wasn't applied.",
-      safety: "Nothing changed.",
-      action: "Try again.",
-    }),
-  },
-  {
-    match: /^NullifierAlreadySpent$/,
-    contract: "commitment-tree",
-    build: () => ({
-      headline: "This loan was already updated, maybe from another tab or device.",
-      safety: "Nothing changed.",
-      action: "Select Recover positions to load its current state.",
-    }),
-  },
-  {
-    match: /^DuplicateDeposit$/,
-    contract: "commitment-tree",
-    build: () => ({
-      headline: "This Bitcoin transaction is already recorded as a deposit.",
-      safety: "Your BTC is safe in its lock.",
-      action: "Select Recover positions to load it.",
-    }),
-  },
-  {
-    match: /^CommitmentNotFound$/,
-    contract: "commitment-tree",
-    build: () => ({
-      headline: "This loan isn't on Stellar yet.",
-      safety: "Nothing changed.",
-      action: "If your deposit just finished, wait a minute and try again.",
-    }),
-  },
+  // --- Lending contracts ---
   {
     match: /^InsufficientLiquidity$/,
-    contract: "commitment-tree",
     build: (ctx) => {
       if (!ctx.availableUsdc) {
         return {
@@ -396,77 +293,103 @@ const RULES: Rule[] = [
     },
   },
   {
-    // #212: thrown by the borrow flow before proving, or by the contract.
-    match: /TimelockTooSoon/,
+    match: /^ExceedsCollateralRatio$/,
+    contract: "writz-lend",
     build: () => ({
-      headline: "This loan's BTC unlocks too soon to borrow more against it.",
+      headline: "That would take this loan below the 150% borrow limit at the current BTC price.",
       safety: "No USDC moved.",
-      action: "Repay or release this loan, then make a new deposit to borrow.",
+      action: "Enter a smaller amount.",
     }),
   },
   {
-    match: /^StaleBitcoinTip$/,
-    contract: "commitment-tree",
+    match: /^ExposureCapExceeded$/,
+    contract: "writz-lend",
     build: () => ({
-      headline: `Bitcoin data on ${NETWORK} is behind right now, so borrowing is paused.`,
+      headline: "The pool has reached its borrowing limit for now.",
       safety: "No USDC moved.",
+      action: "Enter a smaller amount, or try again later.",
+    }),
+  },
+  {
+    match: /^RepayExceedsDebt$/,
+    contract: "writz-lend",
+    build: () => ({
+      headline: "That's more than this loan owes right now.",
+      safety: "No USDC moved.",
+      action: "Refresh the loan and try again.",
+    }),
+  },
+  {
+    match: /^(OraclePriceUnavailable|OraclePriceStale)$/,
+    contract: "writz-lend",
+    build: () => ({
+      headline: "The BTC price is unavailable right now.",
+      safety: "Nothing changed.",
       action: "Try again in a few minutes.",
     }),
   },
   {
-    match: /^KeeperKeyMismatch$/,
-    contract: "commitment-tree",
+    match: /^PositionNotFound$/,
+    contract: "writz-lend",
     build: () => ({
-      headline: "Loan settings changed while this was in progress.",
+      headline: "This loan isn't on Stellar yet.",
       safety: "Nothing changed.",
-      action: "Refresh the page and try again.",
+      action: "If your deposit just finished, wait a minute and try again.",
     }),
   },
   {
-    match: /PositionMissingTimelock/,
+    match: /^PositionNotActive$/,
+    contract: "writz-lend",
     build: () => ({
-      headline: "This device is missing this loan's Bitcoin lock details.",
+      headline: "This loan is already closed.",
+      safety: "Nothing changed.",
+      action: "Refresh the loan to see where it stands.",
+    }),
+  },
+  {
+    match: /^PositionAlreadyExists$/,
+    contract: "writz-lend",
+    build: () => ({
+      headline: "This Bitcoin transaction is already recorded as a deposit.",
+      safety: "Your BTC is safe in its lock.",
+      action: "Select Find my loans to load it.",
+    }),
+  },
+  {
+    match: /^InvalidKeyProof$/,
+    contract: "writz-lend",
+    build: () => ({
+      headline: "The Bitcoin signature doesn't match the key this deposit is locked to.",
       safety: "Nothing changed. Your BTC is safe in its lock.",
-      action: "Use Recover positions, or open Writz on the device you deposited from.",
+      action: "Connect the Bitcoin wallet that sent this deposit, then try again.",
     }),
   },
   {
-    match: /^(WrongCircuitMode|SignalOverflow)$/,
-    contract: "commitment-tree",
-    build: () => WRONG_TX,
-  },
-  {
-    match: /^ProtocolParamMismatch$/,
-    contract: "commitment-tree",
+    match: /^(DepositTooSmall)$/,
+    contract: "writz-lend",
     build: () => ({
-      headline: "Loan settings changed while this was in progress.",
-      safety: "Nothing changed.",
-      action: "Refresh the page and try again.",
+      headline: "This deposit is below the minimum Writz accepts.",
+      safety: "Your BTC is safe in its lock.",
+      action: "Reclaim it after its lock date, then deposit at least the minimum.",
     }),
   },
   {
-    // The proof's price is fixed when the app is built, so a retry repeats the mismatch.
-    match: /^PriceMismatch$/,
-    contract: "commitment-tree",
+    match: /^(OutputNotFound|ScriptPubKeyMismatch|InvalidScriptPubKey|InvalidUserPubkey|InvalidTimelock)$/,
+    contract: "writz-lend",
     build: () => ({
-      headline: `The BTC price in this app doesn't match the oracle price on ${NETWORK}.`,
-      safety: "Nothing changed.",
-      action: "Trying again won't help until the app is updated.",
-      report: "always",
+      headline: "Stellar didn't accept this deposit: it doesn't match a Writz lock for your Bitcoin key.",
+      safety: "Nothing changed. Your BTC is safe in its lock.",
+      action: "Check that the connected Bitcoin wallet sent this deposit.",
+      report: "if_repeats",
     }),
   },
   {
-    match: /^TxidMismatch$/,
-    contract: "commitment-tree",
-    build: () => ({
-      headline: "That transaction ID doesn't match the Bitcoin transaction that was verified.",
-      safety: "Nothing changed.",
-      action: "Check the ID for this deposit and try again.",
-    }),
+    match: /^(SpvVerificationFailed|Overflow)$/,
+    contract: "writz-lend",
+    build: () => BTC_DATA_CHECK,
   },
   {
     match: /^Paused$/,
-    contract: "commitment-tree",
     build: () => ({
       headline: "Writz is paused for maintenance.",
       safety: "Nothing moved. Your BTC stays in its lock.",
@@ -491,7 +414,6 @@ const RULES: Rule[] = [
   },
   {
     match: /^Unauthorized$/,
-    contract: "commitment-tree",
     build: () => ({
       headline: "The connected wallet doesn't own this loan.",
       safety: "Nothing changed.",
@@ -500,7 +422,7 @@ const RULES: Rule[] = [
   },
   {
     match: /^NotInitialized$/,
-    contract: "commitment-tree",
+    contract: "writz-lend",
     build: () => ({
       headline: `Writz on ${NETWORK} isn't ready right now.`,
       safety: "Nothing was sent.",
@@ -675,7 +597,8 @@ function fallback(ctx: ErrorContext): Parts {
 export function describeError(error: unknown, ctx: ErrorContext = {}): FriendlyError {
   const raw = errorMessage(error);
   const onVault = ctx.flow === "earn-deposit" || ctx.flow === "earn-withdraw";
-  const contract = onVault ? null : resolveContractError(raw);
+  const onPool = ctx.flow === "lend" || ctx.flow === "withdraw";
+  const contract = onVault ? null : resolveContractError(raw, undefined, onPool ? "commitment-tree" : "writz-lend");
   const subject = contract?.variant ?? raw;
   for (const rule of RULES) {
     if (rule.contract && contract && rule.contract !== contract.contract) continue;
