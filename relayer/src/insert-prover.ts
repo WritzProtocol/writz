@@ -5,10 +5,10 @@
  * written into the next empty leaf. The relayer builds that proof from public
  * data only: the current leaves and the commitment.
  *
- * Circuit: circuits/src/insert.circom. Artifacts: relayer/circuits/insert.wasm
+ * Circuit: privacy/circuits/src/insert.circom. Artifacts: relayer/circuits/insert.wasm
  * and insert_final.zkey, which must come from the same trusted setup as the
  * `Insert` verification key registered on zk-verifier
- * (test/insert-artifacts.test.ts checks them against circuits/keys/).
+ * (test/insert-artifacts.test.ts checks them against privacy/circuits/keys/).
  */
 import path from "path";
 import { groth16, type Groth16ProofJSON } from "snarkjs";

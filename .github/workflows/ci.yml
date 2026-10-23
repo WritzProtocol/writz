@@ -19,6 +19,7 @@ jobs:
       relayer: ${{ steps.filter.outputs.relayer }}
       bitcoin_script: ${{ steps.filter.outputs.bitcoin_script }}
       contracts: ${{ steps.filter.outputs.contracts }}
+      privacy_contracts: ${{ steps.filter.outputs.privacy_contracts }}
       circuits: ${{ steps.filter.outputs.circuits }}
       e2e: ${{ steps.filter.outputs.e2e }}
     steps:
@@ -32,7 +33,7 @@ jobs:
               - '.github/workflows/ci.yml'
             relayer:
               - 'relayer/**'
-              - 'packages/commitment-tree/**'
+              - 'privacy/packages/commitment-tree/**'
               - 'bitcoin-script/**'
               - 'Dockerfile'
               - '.dockerignore'
@@ -43,12 +44,20 @@ jobs:
             contracts:
               - 'contracts/**'
               - '.github/workflows/ci.yml'
+            # The privacy edition's workspace also builds spv-types from the
+            # v1 workspace through a path dependency.
+            privacy_contracts:
+              - 'privacy/contracts/**'
+              - 'contracts/Cargo.toml'
+              - 'contracts/contracts/spv-types/**'
+              - '.github/workflows/ci.yml'
             circuits:
-              - 'circuits/**'
+              - 'privacy/circuits/**'
               - '.github/workflows/ci.yml'
             e2e:
               - 'contracts/**'
-              - 'circuits/**'
+              - 'privacy/contracts/**'
+              - 'privacy/circuits/**'
               - 'scripts/deploy/**'
               - '.github/workflows/ci.yml'
 
@@ -135,7 +144,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-bun-
       - run: bun install --frozen-lockfile
-        working-directory: packages/commitment-tree
+        working-directory: privacy/packages/commitment-tree
       # relayer's repay-watcher depends on the local
       # @writz/bitcoin-script package's built dist/ output (its `main`
       # field points there) - build it before relayer's own install/test.
@@ -204,7 +213,7 @@ jobs:
       - run: bun test
 
   contracts:
-    name: contracts (clippy + cargo test)
+    name: contracts v1 (clippy + cargo test)
     needs: changes
     if: needs.changes.outputs.contracts == 'true'
     runs-on: ubuntu-latest
@@ -228,6 +237,28 @@ jobs:
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings -A clippy::bool-assert-comparison -A clippy::doc-overindented-list-items -A clippy::empty-line-after-doc-comments -A clippy::manual-is-multiple-of -A clippy::manual-repeat-n -A clippy::needless-borrows-for-generic-args -A clippy::too-many-arguments -A clippy::unnecessary-cast
       - run: cargo test --workspace --locked
 
+  # The privacy edition (in progress, testnet only) is its own Cargo
+  # workspace, so v1 above builds and tests without it.
+  privacy-contracts:
+    name: privacy contracts (clippy + cargo test)
+    needs: changes
+    if: needs.changes.outputs.privacy_contracts == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: privacy/contracts
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: privacy/contracts
+      # Same allow-list as the v1 job.
+      - run: cargo clippy --workspace --all-targets --locked -- -D warnings -A clippy::bool-assert-comparison -A clippy::doc-overindented-list-items -A clippy::empty-line-after-doc-comments -A clippy::manual-is-multiple-of -A clippy::manual-repeat-n -A clippy::needless-borrows-for-generic-args -A clippy::too-many-arguments -A clippy::unnecessary-cast
+      - run: cargo test --workspace --locked
+
   circuits:
     name: circuits (circom compile + test)
     needs: changes
@@ -235,15 +266,15 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: circuits
+        working-directory: privacy/circuits
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: circuits/package-lock.json
-      # circuits/ is npm-managed (package-lock.json), unlike the bun-managed
+          cache-dependency-path: privacy/circuits/package-lock.json
+      # privacy/circuits/ is npm-managed (package-lock.json), unlike the bun-managed
       # bitcoin-script/relayer packages - matches its existing convention.
       - run: npm ci
       - name: Cache circom binary
@@ -273,15 +304,15 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            circuits/build
-            circuits/ptau
-            circuits/keys
+            privacy/circuits/build
+            privacy/circuits/ptau
+            privacy/circuits/keys
           # IMPORTANT: Bump this key's "-v1" suffix when the circom version
           # in the "Cache circom binary" step (above) changes - the hash below
           # only covers circuit sources and setup scripts, not the compiler
           # version. A circom version upgrade requires a manual bump here too,
           # or stale compiled output will silently be reused with the new compiler.
-          key: circuits-setup-v1-${{ hashFiles('circuits/src/**', 'circuits/scripts/compile_all.sh', 'circuits/scripts/setup_dev.sh') }}
+          key: circuits-setup-v1-${{ hashFiles('privacy/circuits/src/**', 'privacy/circuits/scripts/compile_all.sh', 'privacy/circuits/scripts/setup_dev.sh') }}
       - run: npm run compile
         if: steps.cache-circuits.outputs.cache-hit != 'true'
       # The existing test suite proves real deposit/borrow_repay/liquidation
@@ -310,17 +341,22 @@ jobs:
           targets: wasm32v1-none
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: contracts
-      - name: Build the contracts the run deploys
+          workspaces: |
+            contracts
+            privacy/contracts
+      - name: Build the v1 contracts the run deploys
         working-directory: contracts
-        run: cargo build --release --target wasm32v1-none --locked -p zk-verifier -p bitcoin-spv -p commitment-tree -p writz-lend
+        run: cargo build --release --target wasm32v1-none --locked -p bitcoin-spv -p writz-lend
+      - name: Build the privacy contracts the run deploys
+        working-directory: privacy/contracts
+        run: cargo build --release --target wasm32v1-none --locked -p zk-verifier -p commitment-tree
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: circuits/package-lock.json
+          cache-dependency-path: privacy/circuits/package-lock.json
       - name: Install circuit dependencies
-        working-directory: circuits
+        working-directory: privacy/circuits
         run: npm ci
       - name: Cache circom binary
         id: cache-circom
@@ -347,16 +383,16 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            circuits/build
-            circuits/ptau
-            circuits/keys
-          key: circuits-setup-v1-${{ hashFiles('circuits/src/**', 'circuits/scripts/compile_all.sh', 'circuits/scripts/setup_dev.sh') }}
+            privacy/circuits/build
+            privacy/circuits/ptau
+            privacy/circuits/keys
+          key: circuits-setup-v1-${{ hashFiles('privacy/circuits/src/**', 'privacy/circuits/scripts/compile_all.sh', 'privacy/circuits/scripts/setup_dev.sh') }}
       - name: Compile circuits
-        working-directory: circuits
+        working-directory: privacy/circuits
         if: steps.cache-circuits.outputs.cache-hit != 'true'
         run: npm run compile
       - name: Dev trusted setup
-        working-directory: circuits
+        working-directory: privacy/circuits
         if: steps.cache-circuits.outputs.cache-hit != 'true'
         run: npm run setup:dev
       - uses: oven-sh/setup-bun@v2
@@ -391,7 +427,7 @@ jobs:
   # Gates committed ceremony/verification-key artifacts. This is
   # a mechanical sanity check (hash + IC-length + transcript consistency),
   # not a substitute for the human verification steps in
-  # circuits/scripts/ceremony/README.md. Cheap no-op until
+  # privacy/circuits/scripts/ceremony/README.md. Cheap no-op until
   # keys/CEREMONY_MANIFEST.json exists (i.e. until a real ceremony has run
   # at least once) - the repo currently only has dev keys, so this job
   # exits early on every run today; it activates automatically the moment
@@ -403,7 +439,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: circuits
+        working-directory: privacy/circuits
     steps:
       - uses: actions/checkout@v4
       - name: Check for ceremony manifest
@@ -467,7 +503,7 @@ jobs:
               }
               if (entry.ic_length !== expected) {
                 console.error(`ERROR: ${circuit} manifest ic_length=${entry.ic_length}, expected ${expected} - ` +
-                  "this must match contracts/contracts/zk-verifier/src/test_vectors.rs's public-signal counts");
+                  "this must match privacy/contracts/zk-verifier/src/test_vectors.rs's public-signal counts");
                 failed = true;
               } else {
                 console.log(`  ✓ ${circuit}: IC length matches expected (${expected})`);
@@ -487,6 +523,7 @@ jobs:
       - relayer-docker-build
       - bitcoin-script
       - contracts
+      - privacy-contracts
       - circuits
       - circuits-ceremony-verify
       - e2e-local

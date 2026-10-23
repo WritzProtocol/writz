@@ -119,7 +119,7 @@ pub struct Proof {
 // These match the public input declaration order in each circom circuit.
 // The contract reads every signal - these constants are all used in lib.rs.
 
-/// Public signals of the insert circuit (`circuits/src/insert.circom`).
+/// Public signals of the insert circuit (`privacy/circuits/src/insert.circom`).
 pub mod insert_signals {
     /// Root after the insertion.
     pub const NEW_ROOT:   usize = 0;

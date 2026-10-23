@@ -22,7 +22,7 @@ g.attr("edge", **base_edge_attr())
 
 # ── Deposit Circuit ────────────────────────────────────────────────────────────
 with g.subgraph(name="cluster_deposit") as d:
-    d.attr(**cluster_attr("Deposit Circuit", B_BITCOIN, "circuits/deposit.circom"))
+    d.attr(**cluster_attr("Deposit Circuit", B_BITCOIN, "privacy/circuits/src/deposit.circom"))
     d.node("dep_priv", hl("Private Inputs", "collateral_satoshis", "secret · nonce"),
            fillcolor=F_BITCOIN, color=B_BITCOIN)
     d.node("dep_pub_in", hl("Public Inputs", "btc_txid_lo · btc_txid_hi", "min_deposit_satoshis"),
@@ -37,7 +37,7 @@ with g.subgraph(name="cluster_deposit") as d:
 
 # ── Borrow/Repay Circuit ──────────────────────────────────────────────────────
 with g.subgraph(name="cluster_br") as b:
-    b.attr(**cluster_attr("Borrow / Repay Circuit", B_STELLAR, "circuits/borrow_repay.circom"))
+    b.attr(**cluster_attr("Borrow / Repay Circuit", B_STELLAR, "privacy/circuits/src/borrow_repay.circom"))
     b.node("br_priv", hl("Private Inputs", "collateral · old_debt · secret · nonce · new_nonce", "path_elements · path_indices · old_root"),
            fillcolor=F_STELLAR, color=B_STELLAR)
     b.node("br_pub_in", hl("Public Inputs", "delta_stroops · is_borrow (0 or 1)", "btc_price_stroops_per_btc · min_ratio_bp"),
@@ -52,7 +52,7 @@ with g.subgraph(name="cluster_br") as b:
 
 # ── Liquidation Circuit ───────────────────────────────────────────────────────
 with g.subgraph(name="cluster_liq") as l:
-    l.attr(**cluster_attr("Liquidation Circuit", B_DANGER, "circuits/liquidation.circom"))
+    l.attr(**cluster_attr("Liquidation Circuit", B_DANGER, "privacy/circuits/src/liquidation.circom"))
     l.node("liq_priv", hl("Private Inputs", "collateral · debt · secret · nonce", "path_elements · path_indices"),
            fillcolor=F_DANGER, color=B_DANGER)
     l.node("liq_pub_in", hl("Public Inputs", "merkle_root · btc_price_stroops_per_btc", "liquidation_threshold_bp"),

@@ -28,7 +28,8 @@
  *   docker run -d --rm --name writz-local-stellar -p 8000:8000 \
  *     stellar/quickstart:latest --local --enable rpc
  *   (cd contracts && stellar contract build)
- *   (cd circuits && npm ci && npm run compile && npm run setup:dev)
+ *   (cd privacy/contracts && stellar contract build)
+ *   (cd privacy/circuits && npm ci && npm run compile && npm run setup:dev)
  *   node scripts/deploy/e2e_local.mjs
  *
  * It refuses to run against anything but the local standalone network.
@@ -50,8 +51,13 @@ const {
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '../..');
-const WASM = (name) => fs.readFileSync(path.join(ROOT, 'contracts/target/wasm32v1-none/release', `${name}.wasm`));
-const CIRCUITS = path.join(ROOT, 'circuits');
+// v1 (bitcoin-spv, writz-lend) and the privacy edition (zk-verifier,
+// commitment-tree) build in separate Cargo workspaces.
+const PRIVACY_WASMS = new Set(['zk_verifier', 'commitment_tree']);
+const WASM = (name) => fs.readFileSync(path.join(
+  ROOT, PRIVACY_WASMS.has(name) ? 'privacy/contracts' : 'contracts', 'target/wasm32v1-none/release', `${name}.wasm`,
+));
+const CIRCUITS = path.join(ROOT, 'privacy/circuits');
 
 const RPC_URL = process.env.RPC_URL ?? 'http://localhost:8000/soroban/rpc';
 const FRIENDBOT = process.env.FRIENDBOT_URL ?? 'http://localhost:8000/friendbot';

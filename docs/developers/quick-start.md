@@ -25,7 +25,7 @@ cargo install --locked stellar-cli
 # https://nodejs.org/
 
 # Bun 1.1+ - bitcoin-script, relayer, frontend and packages/* install with Bun,
-# not npm. Only circuits/ is npm-managed.
+# not npm. Only privacy/circuits/ is npm-managed.
 curl -fsSL https://bun.sh/install | bash
 
 # circom (for ZK circuit tests only).
@@ -36,7 +36,7 @@ curl -fL -o ~/.local/bin/circom \
 chmod +x ~/.local/bin/circom   # macOS: use circom-macos-amd64
 circom --version               # expect: circom compiler 2.2.3
 
-# snarkjs needs no global install - it is a dependency of circuits/
+# snarkjs needs no global install - it is a dependency of privacy/circuits/
 ```
 
 ---
@@ -79,8 +79,8 @@ fails. It also imports the local `@writz/*` packages via their built `dist/`
 output, so build those first.
 
 ```bash
-cd packages/commitment-tree && bun install
-cd ../../bitcoin-script && bun run build
+cd privacy/packages/commitment-tree && bun install
+cd ../../../bitcoin-script && bun run build
 cd ../relayer && bun install && bun run test
 ```
 
@@ -89,14 +89,14 @@ Expected output: 248 tests pass.
 ### ZK circuits (Circom + snarkjs, npm)
 
 ```bash
-cd circuits
+cd privacy/circuits
 npm install
 npm test
 ```
 
 Expected output: 52 tests pass (proof generation, commitment correctness, ratio enforcement, nullifiers).
 
-If `verify()` assertions fail here while `prove()` succeeds, your local `circuits/keys/*_final.zkey` (gitignored, regenerated locally) is out of sync with the committed `circuits/keys/*_vkey.json`. Run `bash scripts/compile_all.sh && bash scripts/setup_dev.sh` to regenerate both together from a fresh dev trusted setup, then re-run `npm test`.
+If `verify()` assertions fail here while `prove()` succeeds, your local `privacy/circuits/keys/*_final.zkey` (gitignored, regenerated locally) is out of sync with the committed `privacy/circuits/keys/*_vkey.json`. Run `bash scripts/compile_all.sh && bash scripts/setup_dev.sh` to regenerate both together from a fresh dev trusted setup, then re-run `npm test`.
 
 ### All together: 623 tests, all passing.
 
@@ -107,13 +107,17 @@ If `verify()` assertions fail here while `prove()` succeeds, your local `circuit
 ```bash
 cd contracts
 stellar contract build
+cd ../privacy/contracts
+stellar contract build
 ```
 
 This produces Wasm artifacts in `contracts/target/wasm32v1-none/release/`:
 - `bitcoin_spv.wasm` - 28.4 KB
+- `writz_lend.wasm` - 23.7 KB
+
+and, for the privacy edition, in `privacy/contracts/target/wasm32v1-none/release/`:
 - `zk_verifier.wasm` - 11.8 KB
 - `commitment_tree.wasm` - ~38 KB
-- `writz_lend.wasm` - 23.7 KB
 
 ---
 
@@ -152,13 +156,14 @@ account or real keys are involved.
 docker run -d --rm --name writz-local-stellar -p 8000:8000 \
   stellar/quickstart:latest --local --enable rpc
 (cd contracts && cargo build --release --target wasm32v1-none --locked)
-(cd circuits && npm ci && npm run compile && npm run setup:dev)
+(cd privacy/contracts && cargo build --release --target wasm32v1-none --locked)
+(cd privacy/circuits && npm ci && npm run compile && npm run setup:dev)
 (cd scripts/deploy && bun install)
 node scripts/deploy/e2e_local.mjs
 ```
 
-`npm run setup:dev` regenerates the development keys in `circuits/keys/`;
-restore the committed ones afterwards with `git checkout circuits/keys`.
+`npm run setup:dev` regenerates the development keys in `privacy/circuits/keys/`;
+restore the committed ones afterwards with `git checkout privacy/circuits/keys`.
 
 ---
 
@@ -199,8 +204,10 @@ local network above. The inputs are listed in `scripts/deploy/.env.example`.
 
 ```bash
 (cd contracts && cargo build --release --target wasm32v1-none --locked)
+(cd privacy/contracts && cargo build --release --target wasm32v1-none --locked)
 cd scripts/deploy
 node deploy_stack.mjs             # validate and print the plan
+node deploy_stack.mjs --v1-only   # bitcoin-spv and writz-lend only
 node deploy_stack.mjs --execute   # deploy
 ```
 
@@ -220,16 +227,18 @@ contracts/
       merkle.rs     - Merkle proof verification
       crypto.rs     - SHA256d implementation in Soroban Wasm
       types.rs      - Config, Checkpoint (SpvVerificationResult now lives in the shared `spv-types` crate)
-    zk-verifier/src/
-      lib.rs        - verify_deposit(), verify_borrow_repay(), set_verification_key()
-    commitment-tree/src/
-      lib.rs        - deposit(), borrow(), repay(), liquidate()
-      oracle.rs     - SEP-40 oracle interface
     writz-lend/src/
       lib.rs        - non-ZK lending skeleton
       rates.rs      - kinked interest rate model
 
-circuits/
+privacy/contracts/
+  zk-verifier/src/
+    lib.rs        - verify_deposit(), verify_borrow_repay(), set_verification_key()
+  commitment-tree/src/
+    lib.rs        - deposit(), borrow(), repay(), liquidate()
+    oracle.rs     - SEP-40 oracle interface
+
+privacy/circuits/
   src/
     deposit.circom      - Deposit ZK circuit
     borrow_repay.circom - Borrow/Repay ZK circuit

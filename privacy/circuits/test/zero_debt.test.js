@@ -54,7 +54,7 @@ describe('zero_debt circuit', () => {
     test('a commitment with non-zero debt cannot generate a valid proof', async () => {
         // Build a tree from a commitment that actually encodes debt=500 -
         // the circuit hardcodes 0 as the second Poseidon input (see
-        // circuits/src/zero_debt.circom, Step 1), so proving against this
+        // privacy/circuits/src/zero_debt.circom, Step 1), so proving against this
         // tree's root requires a leaf the circuit is structurally incapable
         // of producing. This is the core security property this circuit
         // exists for: it must be impossible to release BTC for a position

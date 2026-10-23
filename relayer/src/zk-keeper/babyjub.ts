@@ -2,7 +2,7 @@
  * BabyJubJub arithmetic for opening keeper notes (#212).
  *
  * Every borrow and repay proof encrypts the new position's liquidation witness
- * to the keeper's BabyJubJub key (circuits/src/position.circom, KeeperNote):
+ * to the keeper's BabyJubJub key (privacy/circuits/src/position.circom, KeeperNote):
  *   eph_pub = eph_sk · B8,  shared = eph_sk · keeper_pub,
  *   ct[i]   = msg[i] + Poseidon(shared.x, shared.y, i)
  * The keeper recomputes `shared = keeper_sk · eph_pub` and strips the pads.
