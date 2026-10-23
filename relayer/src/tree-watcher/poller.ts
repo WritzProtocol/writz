@@ -2,11 +2,14 @@
  * Tree watcher: keeps the relayer's leaf store in step with the
  * commitment-tree contract by replaying its events (GHSA-vwvv-3255-783f).
  *
- * Follows `insert_leaf`, `borrow` and `repay` from a persisted cursor, with
- * the same at-least-once semantics as the vault watcher: the cursor only
- * advances once every event in the batch has been applied or recognised as
- * already applied. Each applied event is also written to the append-only
- * archive (#264) before the cursor moves, so history outlives RPC retention. A client's `/update-leaf` call is now just a faster path
+ * Follows `insert_leaf`, `borrow` and `repay` from a persisted cursor, one
+ * event at a time: each is applied (or recognised as already applied),
+ * written to the append-only archive (#264) so history outlives RPC
+ * retention, and only then made the cursor. A restart therefore replays at
+ * most the one event in flight, which always replays cleanly. Advancing per
+ * page instead stalled the watcher for good after a crash whenever the page
+ * inserted a leaf and then updated it: the replayed insert found the updated
+ * commitment and was a mismatch (#286). A client's `/update-leaf` call is now just a faster path
  * to the same state, not the only one.
  *
  * Deliberately does not statically import `@stellar/stellar-sdk` at module
@@ -23,8 +26,8 @@ import type { KeeperNoteSink } from "../zk-keeper/runner.js";
 
 export { decodeTreeEvent, type DecodedTreeEvent } from "./decode.js";
 
-/** How far back a first-ever run looks, in ledgers (about six days). Kept
- * inside RPC's event retention so the request is not refused. */
+/** How far back a first-ever run looks, in ledgers (about six days), never
+ * before the oldest ledger RPC still has, so the request is not refused. */
 const FIRST_RUN_LOOKBACK_LEDGERS = 6 * 17_280;
 
 export interface TreeStore {
@@ -36,7 +39,8 @@ export interface TreeStore {
 const sqliteStore: TreeStore = { read: readLeaves, write: writeLeaves, saveNote };
 
 export interface TreePollDeps {
-  server: EventsServer;
+  /** `getHealth` bounds a first run to RPC's retention (#286). */
+  server: EventsServer & { getHealth?(): Promise<{ oldestLedger: number }> };
   contractId: string;
   decodeEvent?: (raw: { topic: unknown[]; value: unknown }) => DecodedTreeEvent;
   store?: TreeStore;
@@ -69,13 +73,16 @@ export async function runTreePollCycle(deps: TreePollDeps): Promise<void> {
     ? await deps.server.getEvents({ filters, cursor: persisted })
     : await deps.server.getEvents({
         filters,
-        startLedger: Math.max(1, (await deps.server.getLatestLedger()).sequence - FIRST_RUN_LOOKBACK_LEDGERS),
+        startLedger: Math.max(
+          1,
+          (await deps.server.getLatestLedger()).sequence - FIRST_RUN_LOOKBACK_LEDGERS,
+          deps.server.getHealth ? (await deps.server.getHealth()).oldestLedger : 1,
+        ),
       });
 
   let failure: string | null = null;
   await withTreeLock(() => {
     let leaves = store.read();
-    const archived: ArchivedTreeEvent[] = [];
     for (const raw of response.events) {
       const decoded = decode(raw);
       if (!decoded.event) continue;
@@ -90,7 +97,13 @@ export async function runTreePollCycle(deps: TreePollDeps): Promise<void> {
         store.write(leaves);
       }
       const leafIndex = result.leafIndex;
-      archived.push({
+      if (encNote && leafIndex !== undefined) store.saveNote(leafIndex, encNote);
+      if (keeperNote && leafIndex !== undefined && event.kind === "update" && deps.keeperNote) {
+        deps.keeperNote(leafIndex, event.newCommitment, keeperNote);
+      }
+      // Archive, then cursor: a crash between them replays this one event,
+      // and the archive ignores the repeat.
+      archive([{
         id: raw.id,
         ledger: raw.ledger,
         txHash: raw.txHash,
@@ -100,21 +113,16 @@ export async function runTreePollCycle(deps: TreePollDeps): Promise<void> {
         leafIndex: event.kind === "insert" ? event.leafIndex : null,
         encNote: encNote ?? null,
         rawXdr: encodeRaw(raw),
-      });
-      if (encNote && leafIndex !== undefined) store.saveNote(leafIndex, encNote);
-      if (keeperNote && leafIndex !== undefined && event.kind === "update" && deps.keeperNote) {
-        deps.keeperNote(leafIndex, event.newCommitment, keeperNote);
-      }
+      }]);
+      // An event id is a valid getEvents cursor, and an exclusive one.
+      cursor.write(raw.id);
     }
-    // Everything applied so far, even when a later event in the batch failed:
-    // those leaves are already written. Ids make a replay a no-op.
-    archive(archived);
   });
 
   if (failure) {
     treeSyncStatus.ok = false;
     treeSyncStatus.lastError = failure;
-    console.error(`[tree-watcher] ${failure} - cursor held; the leaf store needs a rebuild`);
+    console.error(`[tree-watcher] ${failure} - cursor held; the leaf store needs \`bun run rebuild-tree\` (#265)`);
     return;
   }
   cursor.write(response.cursor);
