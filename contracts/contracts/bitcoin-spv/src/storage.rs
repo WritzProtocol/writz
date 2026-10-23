@@ -6,7 +6,7 @@ use crate::types::{BestTip, Checkpoint, Config, HeaderEntry};
 ///
 /// Using per-entry keying (not a single growing map) prevents unbounded
 /// instance storage growth, matching the convention already used in
-/// `private-lend`/`commitment-tree`.
+/// `writz-lend`/`commitment-tree`.
 #[contracttype]
 pub enum DataKey {
     /// Singleton: contract admin (set once at initialization).
@@ -29,7 +29,7 @@ pub enum DataKey {
 const LEDGERS_PER_DAY: u32 = 17_280;
 
 // Config and Checkpoint are read on every `verify_transaction` call, so they
-// use the same frequently-touched-singleton window as `private-lend`'s
+// use the same frequently-touched-singleton window as `writz-lend`'s
 // Config/Protocol entries.
 const PERSISTENT_BUMP: u32 = 90 * LEDGERS_PER_DAY;
 const PERSISTENT_THRESHOLD: u32 = 30 * LEDGERS_PER_DAY;
@@ -136,7 +136,7 @@ pub fn set_best_tip(env: &Env, tip: &BestTip) {
 }
 
 /// Extends the TTL of both Config and Checkpoint. Permissionless - mirrors
-/// `private-lend::refresh_protocol_ttl`. Extends both entries so an
+/// `writz-lend::refresh_protocol_ttl`. Extends both entries so an
 /// inactive deployment doesn't silently expire into
 /// `NotInitialized`/`CheckpointNotSet`.
 pub fn refresh_ttl(env: &Env) {

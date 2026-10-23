@@ -1,7 +1,7 @@
 /**
  * Repay-watcher poller.
  *
- * Polls Soroban RPC for `repay_full` events on the `private-lend` contract
+ * Polls Soroban RPC for `repay_full` events on the `writz-lend` contract
  * from a persisted cursor (never from "now" - see cursor-store.ts), and
  * hands each matching event to a handler function.
  *
@@ -130,9 +130,9 @@ export function startRepayWatcher(): RepayWatcherHandle {
   const { config } = require("../config.js") as typeof import("../config.js");
 
   const hasSignerConfig = Boolean(config.kmsKeyId || config.protocolSigningKeyWif);
-  if (!config.privateLendId || !config.relayerSecret || !hasSignerConfig) {
+  if (!config.writzLendId || !config.relayerSecret || !hasSignerConfig) {
     console.warn(
-      "[repay-watcher] PRIVATE_LEND_ID / RELAYER_SECRET / (KMS_KEY_ID or " +
+      "[repay-watcher] WRITZ_LEND_ID / RELAYER_SECRET / (KMS_KEY_ID or " +
         "PROTOCOL_SIGNING_KEY) not fully configured - auto-cosign watcher disabled",
     );
     return { stop: () => {} };
@@ -173,7 +173,7 @@ export function startRepayWatcher(): RepayWatcherHandle {
         }
         await runPollCycle({
           server,
-          contractId: config.privateLendId,
+          contractId: config.writzLendId,
           handle: (txid) => handleRepayFull(txid, { esplora, signer: signer!, relayerKeypair }),
         });
       } catch (e) {

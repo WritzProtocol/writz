@@ -120,7 +120,7 @@ async function main() {
     const N2 = 0x3333333333333333n;
     // Must equal Config.min_deposit_satoshis, hardcoded at 10_000 in
     // commitment-tree's initialize() (contracts/contracts/commitment-tree/src/lib.rs) -
-    // not the private-lend/frontend default of 100_000.
+    // not the writz-lend/frontend default of 100_000.
     const MIN_DEPOSIT = 10_000n;
     const TXID_HI = 0x0fedcba987654321n;
     const TXID_LO = 0xabcdef1234567890n;

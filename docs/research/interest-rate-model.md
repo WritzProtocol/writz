@@ -11,7 +11,7 @@ sidebarTitle: "Interest Rate Model"
 
 ## Overview
 
-PrivateLend's interest rate model determines how much borrowers pay and how much lenders earn. A well-calibrated model keeps liquidity available, prevents extreme rate volatility, and ensures the protocol remains solvent under stress.
+Writz Lend's interest rate model determines how much borrowers pay and how much lenders earn. A well-calibrated model keeps liquidity available, prevents extreme rate volatility, and ensures the protocol remains solvent under stress.
 
 This document analyzes production models from Aave v3, Compound v2, and Blend, then proposes Writz's specific parameters.
 
@@ -180,7 +180,7 @@ Rather than building a standalone lending contract, Writz could **use Blend as t
 - Less control over the economic model
 - Revenue sharing with Blend protocol
 
-**Recommendation:** Build independent PrivateLend for Phase 1. The ZK privacy requirement necessitates deep integration with the position management system - Blend's architecture makes this very difficult to retrofit. Use Blend as inspiration, not as the foundation.
+**Recommendation:** Build independent Writz Lend for Phase 1. The ZK privacy requirement necessitates deep integration with the position management system - Blend's architecture makes this very difficult to retrofit. Use Blend as inspiration, not as the foundation.
 
 ---
 

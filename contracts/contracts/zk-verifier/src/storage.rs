@@ -8,7 +8,7 @@ const LEDGERS_PER_DAY: u32 = 17_280;
 // Admin (instance storage) and each circuit's VerificationKey (persistent
 // storage) are read on every proof verification, so they use the same
 // frequently-touched-singleton window as bitcoin-spv's Config/Checkpoint and
-// private-lend's Config/Protocol. Before this module existed, nothing in this
+// writz-lend's Config/Protocol. Before this module existed, nothing in this
 // contract ever called `extend_ttl` - an idle deployment would silently run
 // its verification keys past their TTL and start failing `verify_deposit`/
 // `verify_borrow_repay`/`verify_liquidation` with `VerificationKeyNotSet`,
@@ -67,7 +67,7 @@ pub fn set_verification_key(env: &Env, circuit: CircuitId, vk: &VerificationKey)
 
 /// Extends the TTL of the admin entry and every circuit's verification key
 /// that has actually been set. Permissionless - mirrors
-/// `bitcoin-spv::refresh_ttl` / `private-lend::refresh_protocol_ttl`. Safe to
+/// `bitcoin-spv::refresh_ttl` / `writz-lend::refresh_protocol_ttl`. Safe to
 /// call on a schedule (e.g. from the same job that refreshes the SPV
 /// checkpoint) so an infrequently-used deployment doesn't silently expire.
 pub fn refresh_ttl(env: &Env) {

@@ -11,7 +11,7 @@ sidebarTitle: "Liquidation Mechanism Design"
 
 ## Overview
 
-Liquidations are the safety mechanism that keeps PrivateLend solvent. When a user's BTC collateral drops in value and their loan becomes undercollateralized, a liquidation must occur quickly to protect the USDC lenders.
+Liquidations are the safety mechanism that keeps Writz Lend solvent. When a user's BTC collateral drops in value and their loan becomes undercollateralized, a liquidation must occur quickly to protect the USDC lenders.
 
 The challenge for Writz: **how do you liquidate a private position?** The collateral amount and debt are hidden by ZK proofs. Liquidators can't see who is undercollateralized.
 
@@ -92,7 +92,7 @@ Writz Keeper (off-chain)
 ├── Monitors BTC/USD price continuously
 ├── When BTC price × collateral / debt < 120%:
 │   1. Generates ZK proof of undercollateralization
-│   2. Calls PrivateLend.liquidate(zk_proof, liquidator_address)
+│   2. Calls Writz Lend.liquidate(zk_proof, liquidator_address)
 │   3. Protocol verifies ZK proof on-chain
 │   4. Protocol co-signs BTC release to liquidator
 │   5. USDC debt is burned
@@ -103,7 +103,7 @@ Writz Keeper (off-chain)
 **Emergency fallback mechanism - the two lending contracts differ here, by design:**
 
 1. **`commitment-tree::liquidate`** - Writz's ZK liquidation path - needs no fallback at all. It is fully permissionless from the start: it requires only `keeper.require_auth()` (the caller authorizing their own USDC payment) plus a valid Groth16 undercollateralization proof, with no keeper-address check to fall back from. "Anyone who can submit a valid ZK proof" already describes its normal operating mode, not an emergency-only path.
-2. **`private-lend::liquidate`** - the plaintext (non-ZK) lending contract - restricts liquidation to a designated keeper by default, with a **time-based** fallback: `Config.keeper_stale_after_secs` (default 86,400 = 24h) and `ProtocolState.last_keeper_heartbeat`. If the designated keeper hasn't successfully liquidated or called `keeper_heartbeat` within that window, `liquidate` opens to any caller who can satisfy the (caller-independent) undercollateralization check. See `contracts/contracts/private-lend/src/lib.rs`.
+2. **`writz-lend::liquidate`** - the plaintext (non-ZK) lending contract - restricts liquidation to a designated keeper by default, with a **time-based** fallback: `Config.keeper_stale_after_secs` (default 86,400 = 24h) and `ProtocolState.last_keeper_heartbeat`. If the designated keeper hasn't successfully liquidated or called `keeper_heartbeat` within that window, `liquidate` opens to any caller who can satisfy the (caller-independent) undercollateralization check. See `contracts/contracts/writz-lend/src/lib.rs`.
 
 ### Phase 2: Decentralized Keeper Network
 

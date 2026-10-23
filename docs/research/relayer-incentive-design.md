@@ -101,7 +101,7 @@ When Writz launches a decentralized relayer network, relayers need economic ince
 
 **Per-proof fee:** Users pay a small fee (e.g., 1,000 satoshis in USDC equivalent ~$1) when requesting a proof bundle. This fee is:
 - Charged in USDC on Stellar (simplest for users)
-- Collected by the PrivateLend contract as part of the deposit transaction
+- Collected by the Writz Lend contract as part of the deposit transaction
 - Distributed to the relayer that provided the proof bundle
 
 **Collateral requirement:** Relayers post a bond (e.g., $500 in USDC) when registering. If they provide invalid data that causes a failed transaction, the bond is partially slashed and distributed to the affected user.

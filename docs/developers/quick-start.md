@@ -2,7 +2,7 @@
 title: "Quick Start"
 ---
 
-The core lending and verification logic in this repository is working code, not a mockup: the contracts are deployed on Stellar testnet, the tests pass, and the deposit → borrow → repay ZK flow has run end-to-end on-chain (see `docs/developers/runbook.md`). `private-lend/src/oracle.rs`'s `get_btc_price_stroops` now calls a real Reflector oracle on testnet (see `docs/research/oracle-design.md`) - the one remaining placeholder is `commitment-tree`, which still returns a hardcoded price pending a ZK circuit change - it does not affect the SPV or lending-mechanics logic below, but `commitment-tree` position pricing is not yet live-market-driven. Start here and have something running in under 5 minutes.
+The core lending and verification logic in this repository is working code, not a mockup: the contracts are deployed on Stellar testnet, the tests pass, and the deposit → borrow → repay ZK flow has run end-to-end on-chain (see `docs/developers/runbook.md`). `writz-lend/src/oracle.rs`'s `get_btc_price_stroops` now calls a real Reflector oracle on testnet (see `docs/research/oracle-design.md`) - the one remaining placeholder is `commitment-tree`, which still returns a hardcoded price pending a ZK circuit change - it does not affect the SPV or lending-mechanics logic below, but `commitment-tree` position pricing is not yet live-market-driven. Start here and have something running in under 5 minutes.
 
 ---
 
@@ -59,7 +59,7 @@ cd contracts
 cargo test
 ```
 
-Expected output: 263 tests pass across `bitcoin-spv` (68), `zk-verifier` (26), `commitment-tree` (59), `private-lend` (100), and `spv-types` (10).
+Expected output: 263 tests pass across `bitcoin-spv` (68), `zk-verifier` (26), `commitment-tree` (59), `writz-lend` (100), and `spv-types` (10).
 
 ### Bitcoin script toolkit (TypeScript, Bun)
 
@@ -113,7 +113,7 @@ This produces Wasm artifacts in `contracts/target/wasm32v1-none/release/`:
 - `bitcoin_spv.wasm` - 28.4 KB
 - `zk_verifier.wasm` - 11.8 KB
 - `commitment_tree.wasm` - ~38 KB
-- `private_lend.wasm` - 23.7 KB
+- `writz_lend.wasm` - 23.7 KB
 
 ---
 
@@ -225,7 +225,7 @@ contracts/
     commitment-tree/src/
       lib.rs        - deposit(), borrow(), repay(), liquidate()
       oracle.rs     - SEP-40 oracle interface
-    private-lend/src/
+    writz-lend/src/
       lib.rs        - non-ZK lending skeleton
       rates.rs      - kinked interest rate model
 

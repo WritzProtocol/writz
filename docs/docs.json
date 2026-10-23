@@ -43,7 +43,7 @@
           {
             "group": "Products",
             "pages": [
-              "products/privatelend",
+              "products/writz-lend",
               "products/earn",
               "products/dark-swap",
               "products/btc-savings",
@@ -165,6 +165,10 @@
     {
       "source": "/docs/:slug*",
       "destination": "/:slug*"
+    },
+    {
+      "source": "/products/privatelend",
+      "destination": "/products/writz-lend"
     }
   ]
 }

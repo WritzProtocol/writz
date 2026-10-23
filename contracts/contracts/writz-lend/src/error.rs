@@ -2,7 +2,7 @@ use soroban_sdk::contracterror;
 
 #[contracterror]
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub enum PrivateLendError {
+pub enum WritzLendError {
     /// Contract has already been initialized.
     AlreadyInitialized = 1,
     /// Contract has not been initialized yet.

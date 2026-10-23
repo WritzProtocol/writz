@@ -337,5 +337,5 @@ fn g2_from_point(env: &Env, p: &G2Point) -> Bn254G2Affine {
     Bn254G2Affine::from_bytes(BytesN::from_array(env, &p.bytes.to_array()))
 }
 
-// Re-export for use in other crates (e.g. PrivateLend cross-contract call).
+// Re-export for use in other crates (e.g. WritzLend cross-contract call).
 pub use soroban_sdk::unwrap::UnwrapOptimized;

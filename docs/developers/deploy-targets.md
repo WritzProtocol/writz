@@ -40,7 +40,7 @@ Leaving the variable unset means `local` and validates nothing. That is delibera
 | `NEXT_PUBLIC_HORIZON_URL` set and not a test network (frontend) | - | yes |
 | `NEXT_PUBLIC_RELAYER_URL` set, https, and not a test deployment (frontend) | - | yes |
 | Earn mock forbidden (frontend) | - | yes |
-| No signing key or lending setting: `KMS_KEY_ID`, `PROTOCOL_SIGNING_KEY`, `ADMIN_SECRET`, `RELAYER_SECRET`, `COMMITMENT_TREE_ID`, `PRIVATE_LEND_ID`, `BITCOIN_SPV_ID` all unset (relayer) | - | yes |
+| No signing key or lending setting: `KMS_KEY_ID`, `PROTOCOL_SIGNING_KEY`, `ADMIN_SECRET`, `RELAYER_SECRET`, `COMMITMENT_TREE_ID`, `WRITZ_LEND_ID`, `BITCOIN_SPV_ID` all unset (relayer) | - | yes |
 | `CORS_ORIGIN` must name explicit origins, not `*` (relayer) | - | yes |
 
 Testnet is deliberately looser. It is allowed to run with the Earn mock and with pieces still missing while the epic is being built out; mainnet is allowed to inherit nothing by omission.

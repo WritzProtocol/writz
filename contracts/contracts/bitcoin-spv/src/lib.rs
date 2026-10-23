@@ -47,7 +47,7 @@ const MAX_FUTURE_DRIFT_SECS: u64 = 2 * 60 * 60;
 /// `verify_transaction` then proves a transaction against a *stored* header,
 /// so a caller can no longer present a header chain it mined privately.
 ///
-/// `PrivateLend` and `CommitmentTree` call `verify_transaction` to confirm a
+/// `WritzLend` and `CommitmentTree` call `verify_transaction` to confirm a
 /// user's BTC deposit has the required confirmations before crediting USDC.
 #[contract]
 pub struct BitcoinSpvContract;

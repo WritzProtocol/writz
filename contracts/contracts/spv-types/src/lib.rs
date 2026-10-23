@@ -3,7 +3,7 @@
 //! Shared cross-contract types for Bitcoin SPV verification.
 //!
 //! Before this crate existed, `SpvVerificationResult` (as `VerificationResult`
-//! in `bitcoin-spv` and `SpvResult` in `commitment-tree`/`private-lend`) was
+//! in `bitcoin-spv` and `SpvResult` in `commitment-tree`/`writz-lend`) was
 //! hand-copied verbatim into three separate crates, each with a comment
 //! warning that "field names must match exactly for XDR round-tripping" - a
 //! constraint the compiler could not check, since nothing tied the three
@@ -17,13 +17,13 @@
 //! `bitcoin-spv::verify_transaction` returns this type directly (a rename
 //! from its previous local `VerificationResult` - no field changes, so any
 //! caller decoding by field name is unaffected; only the on-chain contract
-//! spec's type name changes). `commitment-tree` and `private-lend` use it as
+//! spec's type name changes). `commitment-tree` and `writz-lend` use it as
 //! the expected return type for their `env.invoke_contract` calls into
 //! `bitcoin-spv`.
 
 use soroban_sdk::{contracttype, Address, BytesN, Env, U256};
 
-/// Bitcoin transaction output parsing. Moved here from `private-lend` (its
+/// Bitcoin transaction output parsing. Moved here from `writz-lend` (its
 /// original and, until now, only caller) so `commitment-tree` can share the
 /// same on-chain parser rather than re-implementing it - the "hand-copied
 /// verbatim into separate crates" problem this module's own doc comment
@@ -83,9 +83,9 @@ pub struct SpvVerificationResult {
 /// (7 decimal places) so that:
 ///   collateral_usdc = btc_satoshis × STUB_PRICE / 100_000_000
 ///
-/// As of 2026-09-17, `private-lend` no longer uses this - it calls a real
+/// As of 2026-09-17, `writz-lend` no longer uses this - it calls a real
 /// Reflector oracle via its own `oracle::get_btc_price_stroops`
-/// (`contracts/contracts/private-lend/src/oracle.rs`). This stub remains
+/// (`contracts/contracts/writz-lend/src/oracle.rs`). This stub remains
 /// solely for `commitment-tree`, which cannot safely take a live, moving
 /// price yet: its ZK circuits commit to an exact `btc_price` public signal
 /// with no tolerance window or timestamp, so a price that changes between
@@ -99,7 +99,7 @@ pub const STUB_PRICE_STROOPS_PER_BTC: i128 = 60_000 * 10_000_000; // = 600_000_0
 
 /// Returns the BTC/USD price as USDC stroops per BTC.
 ///
-/// Only `commitment-tree` still routes through this stub (`private-lend`
+/// Only `commitment-tree` still routes through this stub (`writz-lend`
 /// now calls a real Reflector oracle via its own `oracle.rs` instead) -
 /// swapping in a real price feed here requires changing this function's
 /// body (not just the `Config.oracle` address this contract already

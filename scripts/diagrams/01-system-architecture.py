@@ -46,7 +46,7 @@ with g.subgraph(name="cluster_soroban") as s:
            fillcolor=F_ZK, color=B_ZK)
     s.node("commitment_tree", hl("commitment-tree", "Poseidon Merkle tree · depth 20", "deposit · borrow · repay · insert_commitment"),
            fillcolor=F_STELLAR, color=B_STELLAR)
-    s.node("private_lend", hl("private-lend", "USDC lending pool", "supply · withdraw · collateral ratio · liquidation"),
+    s.node("writz_lend", hl("writz-lend", "USDC lending pool", "supply · withdraw · collateral ratio · liquidation"),
            fillcolor=F_STELLAR, color=B_STELLAR)
 
 # ── Browser / Frontend ────────────────────────────────────────────────────────
@@ -80,7 +80,7 @@ g.edge("zk_prover", "commitment_tree",
        label="ZK proof + public signals", color=B_ZK, fontcolor=B_ZK, penwidth="2")
 g.edge("stellar_wallet", "commitment_tree",
        label="signed deposit/borrow/repay tx", color=B_STELLAR, fontcolor=B_STELLAR)
-g.edge("stellar_wallet", "private_lend",
+g.edge("stellar_wallet", "writz_lend",
        label="supply / withdraw", style="dashed", color=B_STELLAR)
 g.edge("admin_api", "commitment_tree",
        label="insert_commitment (Phase 1)", style="dashed", color=B_RELAYER, fontcolor=B_RELAYER)
@@ -90,7 +90,7 @@ g.edge("bitcoin_spv", "commitment_tree",
        label="SPV verified", color=B_STELLAR)
 g.edge("commitment_tree", "zk_verifier",
        label="verify_deposit / verify_borrow_repay", color=B_ZK, fontcolor=B_ZK)
-g.edge("commitment_tree", "private_lend",
+g.edge("commitment_tree", "writz_lend",
        label="USDC transfer", color=B_STELLAR)
 
 # ── Release flow ──────────────────────────────────────────────────────────────

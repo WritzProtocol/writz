@@ -238,7 +238,7 @@ Both `summa-tx/bitcoin-spv` (Rust) and `interbtc` (Rust/Substrate) are written i
 Every failed implementation either ignored relayer incentives or added them as an afterthought. For stateless SPV, relayers are less critical (no on-chain header chain to maintain), but someone still needs to provide valid headers to users. A small fee mechanism for header provision should be designed into the protocol.
 
 ### 4. Bitcoin confirmation time is a UX problem, not a technical one
-6 confirmations ≈ 60 minutes. A tiered confirmation option was evaluated in `docs/research/bitcoin-locking-script.md` - fast lane (3 confirmations, capped deposit size) vs. standard lane (6 confirmations) - but was not adopted for the current spec. Writz requires a flat 6 confirmations for all deposit sizes; see `docs/products/privatelend.md` and `docs/how-it-works/spv-verification.md` for the adopted policy.
+6 confirmations ≈ 60 minutes. A tiered confirmation option was evaluated in `docs/research/bitcoin-locking-script.md` - fast lane (3 confirmations, capped deposit size) vs. standard lane (6 confirmations) - but was not adopted for the current spec. Writz requires a flat 6 confirmations for all deposit sizes; see `docs/products/writz-lend.md` and `docs/how-it-works/spv-verification.md` for the adopted policy.
 
 ### 5. The SPV math is solved - focus engineering effort on economics
 The cryptographic verification (SHA256d, Merkle proofs, header validation) is well-understood and implemented. The unsolved problems are: incentive design, reorg handling, UX around Bitcoin's slow finality, and the BTC locking mechanism on the Bitcoin side.

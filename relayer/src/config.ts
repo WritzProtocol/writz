@@ -26,7 +26,7 @@ export interface Config {
   commitmentTreeId: string;
   adminSecret: string | undefined;
   // Repay watcher
-  privateLendId: string;
+  writzLendId: string;
   relayerSecret: string | undefined;
   kmsKeyId: string | undefined;
   /** WIF-encoded protocol signing key - testnet/signet-only fallback used
@@ -114,7 +114,7 @@ function loadConfig(): Config {
       ADMIN_SECRET: process.env["ADMIN_SECRET"],
       RELAYER_SECRET: process.env["RELAYER_SECRET"],
       COMMITMENT_TREE_ID: process.env["COMMITMENT_TREE_ID"],
-      PRIVATE_LEND_ID: process.env["PRIVATE_LEND_ID"],
+      WRITZ_LEND_ID: process.env["WRITZ_LEND_ID"] ?? process.env["PRIVATE_LEND_ID"],
       BITCOIN_SPV_ID: process.env["BITCOIN_SPV_ID"],
       KEEPER_SECRET: process.env["KEEPER_SECRET"],
       KEEPER_BABYJUB_SECRET: process.env["KEEPER_BABYJUB_SECRET"],
@@ -134,7 +134,8 @@ function loadConfig(): Config {
     networkPassphrase,
     commitmentTreeId: getEnv("COMMITMENT_TREE_ID", ""),
     adminSecret: process.env["ADMIN_SECRET"],
-    privateLendId: getEnv("PRIVATE_LEND_ID", ""),
+    // PRIVATE_LEND_ID is the name the contract had before it was renamed to writz-lend.
+    writzLendId: getEnv("WRITZ_LEND_ID", process.env["PRIVATE_LEND_ID"] ?? ""),
     relayerSecret: process.env["RELAYER_SECRET"],
     kmsKeyId: process.env["KMS_KEY_ID"],
     protocolSigningKeyWif: process.env["PROTOCOL_SIGNING_KEY"],

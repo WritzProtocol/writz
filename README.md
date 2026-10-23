@@ -48,7 +48,7 @@ But a few months ago, it was a whitepaper. Version 1.0 (July 2026) is at [writz.
 | `bitcoin-spv` | `CAHHY4S4WCIFU4LBSKBI3IP6A4QYR2COV6EACDEBXGPJFDWBJWGOMCLP` | 12.0 KB | 49 |
 | `zk-verifier` | `CB5XAP6MF2GVVFATFTVCKVEXUODWWRQP4B3QFDMRTM55REP7N2YMXEUD` | 14.5 KB | 25 |
 | `commitment-tree` | `CAQBLCAPGXXCZTJDAJLY7E4PTJYGR6CY4YWH4JSJKFXYIHW3GANP6RFM` | 31.7 KB | 32 |
-| `private-lend` | `CA3T7T2S7HV27BXO7OLIHSMGAMQ37BMOOUHQLTBGUQVL4B6Y2CDJPHHX` | 36.0 KB | 85 |
+| `writz-lend` | `CA3T7T2S7HV27BXO7OLIHSMGAMQ37BMOOUHQLTBGUQVL4B6Y2CDJPHHX` | 36.0 KB | 85 |
 
 Full deployment log, init transactions, and verified calls: [`contracts/deployments/testnet.md`](contracts/deployments/testnet.md)
 
@@ -82,7 +82,7 @@ The protocol operates across two blockchains. Bitcoin is the custody layer - BTC
 5. The `bitcoin-spv` Soroban contract verifies the bundle cryptographically - no oracle, no trust.
 6. The browser generates a Groth16 ZK proof (deposit circuit): proves BTC was locked and a valid commitment exists, without revealing the amount.
 7. The `commitment-tree` contract verifies the ZK proof on-chain and inserts the commitment into the Poseidon Merkle tree.
-8. The user can now borrow up to 66% of BTC value in USDC from the `private-lend` pool.
+8. The user can now borrow up to 66% of BTC value in USDC from the `writz-lend` pool.
 
 ### 2 - Borrow & Repay
 
@@ -136,11 +136,11 @@ Circuits use Groth16 over BN254. Verification runs on Soroban via Protocol 26 ho
 | `bitcoin-spv` | SHA256d, PoW validation, checkpoint-anchored difficulty check, Merkle inclusion, block header chain | - |
 | `zk-verifier` | Stores Groth16 verification keys; verifies deposit/borrow_repay/liquidation proofs | - |
 | `commitment-tree` | Poseidon Merkle tree; core deposit/borrow/repay/liquidate logic, ZK-private | `bitcoin-spv` + `zk-verifier` |
-| `private-lend` | USDC lending pool; supply, withdraw, interest rate model, plaintext (non-ZK) positions | `bitcoin-spv` |
+| `writz-lend` | USDC lending pool; supply, withdraw, interest rate model, plaintext (non-ZK) positions | `bitcoin-spv` |
 
 **Interest rate model** - kinked curve: base rate + linear slope up to 75% utilization, then a steep slope to discourage over-borrowing. Protocol captures the spread between borrow and supply rates.
 
-**Note on `private-lend` vs. `commitment-tree`:** these are independent, parallel lending implementations against the shared `bitcoin-spv`/`zk-verifier` primitives, not a layered dependency - `private-lend` is the Phase 1 non-private MVP; `commitment-tree` is the ZK-private product described above, built as a standalone contract for cleaner separation of concerns rather than embedding ZK logic into `private-lend`. Each independently rejects a reused Bitcoin txid before creating a position/commitment - see `docs/security/security-model.md` for how this closes the Merkle duplicate-leaf ambiguity (CVE-2012-2459-class) at the deposit layer.
+**Note on `writz-lend` vs. `commitment-tree`:** these are independent, parallel lending implementations against the shared `bitcoin-spv`/`zk-verifier` primitives, not a layered dependency - `writz-lend` is the Phase 1 non-private MVP; `commitment-tree` is the ZK-private product described above, built as a standalone contract for cleaner separation of concerns rather than embedding ZK logic into `writz-lend`. Each independently rejects a reused Bitcoin txid before creating a position/commitment - see `docs/security/security-model.md` for how this closes the Merkle duplicate-leaf ambiguity (CVE-2012-2459-class) at the deposit layer.
 
 ---
 
@@ -172,7 +172,7 @@ See [`bitcoin-script/`](bitcoin-script/) for the full P2WSH builder, address der
 
 | Product | Description | Status |
 |---|---|---|
-| **PrivateLend** | Deposit BTC as collateral → borrow USDC privately | Phase 1 - testnet ✓ |
+| **Writz Lend** | Deposit BTC as collateral → borrow USDC privately | Phase 1 - testnet ✓ |
 | **Dark Swap** | Convert BTC to USDC directly · no exchange · no visible order | Phase 3 - planned |
 | **BTC Savings** | BTC collateral + USDC auto-routed to highest-yield Stellar pools | Phase 3 - planned |
 | **ZK Proof of Reserve** | Prove BTC holdings without revealing wallets or amounts · B2B SaaS | Phase 3 - planned |
@@ -190,7 +190,7 @@ writz/
 │   │   ├── bitcoin-spv/     # SHA256d · PoW · Merkle inclusion · block headers
 │   │   ├── zk-verifier/     # Groth16 BN254 · verification key store
 │   │   ├── commitment-tree/ # Poseidon Merkle tree · ZK lending logic
-│   │   └── private-lend/    # USDC pool · interest model · orchestration
+│   │   └── writz-lend/    # USDC pool · interest model · orchestration
 │   └── deployments/
 │       └── testnet.md       # Live addresses · tx hashes · verified calls
 │
@@ -346,7 +346,7 @@ python3 scripts/diagrams/render-all.py
 | `bitcoin-spv` contract | Rust | 47 | `cd contracts && cargo test -p bitcoin-spv` |
 | `zk-verifier` contract | Rust | 18 | `cd contracts && cargo test -p zk-verifier` |
 | `commitment-tree` contract | Rust | 18 | `cd contracts && cargo test -p commitment-tree` |
-| `private-lend` contract | Rust | 63 | `cd contracts && cargo test -p private-lend` |
+| `writz-lend` contract | Rust | 63 | `cd contracts && cargo test -p writz-lend` |
 | Relayer service | TypeScript | 48 | `cd relayer && bun run test` |
 | Bitcoin script toolkit | TypeScript | 60 | `cd bitcoin-script && bun test` |
 | ZK circuits | Circom / JS | 20 | `cd circuits && npm test` |
@@ -358,7 +358,7 @@ python3 scripts/diagrams/render-all.py
 
 | Revenue Stream | Mechanism |
 |---|---|
-| **Lending spread** | Borrow rate minus supply rate on PrivateLend |
+| **Lending spread** | Borrow rate minus supply rate on Writz Lend |
 | **Swap fees** | Basis points on each Dark Swap conversion |
 | **SPV API fees** | Per-verification or subscription for third-party Stellar protocol integrations |
 | **Proof of Reserve SaaS** | Monthly subscription for enterprise B2B customers |
@@ -406,7 +406,7 @@ Full documentation lives in [`docs/`](docs/) and is published at **[docs.writz.x
 - [Why Stellar, Why Now](docs/introduction/why-stellar-why-now.md) - The strategic window.
 
 **Products:**
-- [PrivateLend](docs/products/privatelend.md) - Step-by-step user guide.
+- [Writz Lend](docs/products/writz-lend.md) - Step-by-step user guide.
 - [ZK Proof of Reserve](docs/products/zk-proof-of-reserve.md) - The B2B enterprise product.
 
 **How it works (technical):**
@@ -444,7 +444,7 @@ See [`docs/developers/contribution-guide.md`](docs/developers/contribution-guide
 
 | You are | Start here |
 |---|---|
-| **BTC holder** who wants to borrow USDC privately | [PrivateLend →](docs/products/privatelend.md) |
+| **BTC holder** who wants to borrow USDC privately | [Writz Lend →](docs/products/writz-lend.md) |
 | **Developer** who wants to build on the protocol | [Quick Start →](docs/developers/quick-start.md) |
 | **Stellar protocol** that needs Bitcoin verification | [SPV SDK →](docs/developers/spv-sdk.md) |
 | **Institution** exploring ZK Proof of Reserve | [ZK PoR →](docs/products/zk-proof-of-reserve.md) |

@@ -2,11 +2,11 @@
 title: "Dark Swap"
 ---
 
-> **Scope status:** This is a problem-and-hypothesis exploration, not a committed roadmap item. No circuit, contract, or engineering work exists for Dark Swap today - it is fully speculative. Before investing further spec or engineering time here, validate real user demand from PrivateLend's mainnet launch first; this document should not expand further until that validation exists.
+> **Scope status:** This is a problem-and-hypothesis exploration, not a committed roadmap item. No circuit, contract, or engineering work exists for Dark Swap today - it is fully speculative. Before investing further spec or engineering time here, validate real user demand from Writz Lend's mainnet launch first; this document should not expand further until that validation exists.
 
 **Convert BTC to USDC directly - no exchange, no KYC, no visible order.**
 
-Dark Swap is the second product in the Writz Protocol suite. Planned for Phase 3 (2027), it uses the same Bitcoin SPV infrastructure as PrivateLend to enable direct BTC-to-USDC conversion with ZK-private swap sizes.
+Dark Swap is the second product in the Writz Protocol suite. Planned for Phase 3 (2027), it uses the same Bitcoin SPV infrastructure as Writz Lend to enable direct BTC-to-USDC conversion with ZK-private swap sizes.
 
 ---
 
@@ -18,9 +18,9 @@ No exchange account. No KYC form. No order book that reveals your trade.
 
 ---
 
-## How It Differs From PrivateLend
+## How It Differs From Writz Lend
 
-| | PrivateLend | Dark Swap |
+| | Writz Lend | Dark Swap |
 |---|---|---|
 | BTC returned? | Yes (after repayment) | No - BTC is sold |
 | Output | USDC loan | USDC outright |
@@ -54,10 +54,10 @@ The AMM-style liquidity pool on the USDC side is seeded by protocol-owned liquid
 
 ## Status
 
-Dark Swap is planned for Phase 3 (Q2–Q3 2027), after PrivateLend has been live on mainnet for six or more months.
+Dark Swap is planned for Phase 3 (Q2–Q3 2027), after Writz Lend has been live on mainnet for six or more months.
 
-The SPV contract and ZK verifier required for Dark Swap are already deployed and tested - the same contracts used by PrivateLend. The additional work is the swap AMM contract and the updated ZK circuit for swap-specific constraints.
+The SPV contract and ZK verifier required for Dark Swap are already deployed and tested - the same contracts used by Writz Lend. The additional work is the swap AMM contract and the updated ZK circuit for swap-specific constraints.
 
 ---
 
-**Back to:** [All Products →](/products/privatelend)
+**Back to:** [All Products →](/products/writz-lend)

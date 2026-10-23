@@ -137,9 +137,9 @@ template DepositCircuit() {
 
 **On-chain flow:**
 1. Soroban SPV contract verifies BTC transaction → emits: `verified(txid, amount_satoshis, recipient_p2wsh_address)`
-2. PrivateLend reads SPV verification result
+2. Writz Lend reads SPV verification result
 3. User submits ZK deposit proof with `commitment` as public output
-4. PrivateLend adds `commitment` to the Merkle tree
+4. Writz Lend adds `commitment` to the Merkle tree
 5. User stores `(collateral_satoshis, 0, secret, nonce, commitment_index)` privately
 
 ### Constraint count estimate

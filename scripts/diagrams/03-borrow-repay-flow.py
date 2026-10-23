@@ -36,7 +36,7 @@ with g.subgraph(name="cluster_borrow") as b:
            fillcolor=F_ZK, color=B_ZK)
     b.node("b_tx", hl("borrow() on-chain", "commitment-tree contract", "Verifies proof · updates root · transfers USDC out"),
            fillcolor=F_STELLAR, color=B_STELLAR)
-    b.node("b_usdc", hl("USDC → User Wallet", "Stellar USDC transfer", "private-lend pool → borrower"),
+    b.node("b_usdc", hl("USDC → User Wallet", "Stellar USDC transfer", "writz-lend pool → borrower"),
            fillcolor=F_SUCCESS, color=B_SUCCESS)
 
 # ── Repay branch ──────────────────────────────────────────────────────────────
@@ -46,7 +46,7 @@ with g.subgraph(name="cluster_repay") as r:
            fillcolor=F_ZK, color=B_ZK)
     r.node("r_tx", hl("repay() on-chain", "commitment-tree contract", "Verifies proof · nullifies old commitment · USDC in"),
            fillcolor=F_STELLAR, color=B_STELLAR)
-    r.node("r_usdc", hl("USDC ← User Wallet", "Stellar USDC transfer", "borrower → private-lend pool"),
+    r.node("r_usdc", hl("USDC ← User Wallet", "Stellar USDC transfer", "borrower → writz-lend pool"),
            fillcolor=F_DANGER, color=B_DANGER)
 
 # ── Shared nonce update ───────────────────────────────────────────────────────

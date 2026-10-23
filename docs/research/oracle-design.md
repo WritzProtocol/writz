@@ -40,7 +40,7 @@ The original version of this document (still in git history) recommended **RedSt
 
 ## Overview
 
-PrivateLend requires a reliable, manipulation-resistant BTC/USD price feed to:
+Writz Lend requires a reliable, manipulation-resistant BTC/USD price feed to:
 1. Calculate collateral ratios (how much USDC a user can borrow against their BTC)
 2. Determine when a position is liquidatable (BTC value dropped below liquidation threshold)
 3. Compute fair liquidation prices
@@ -79,7 +79,7 @@ Oracle manipulation is the #1 attack vector in DeFi lending protocols. This docu
 
 ### 4. RedStone - removed as a candidate
 
-Stellar isn't in RedStone's own list of 110+ supported chains; its Stellar-side SEP-40 feeds (per its own blog posts) target RWA assets (USDC, EURC, XLM, PYUSD, tokenized debt, Centrifuge tokens), not BTC/USD. Never had a testnet address to verify in the first place. Kept here only because earlier project docs (this file's pre-2026-09-16 versions, `docs/roadmap/phases.md`, `docs/security/security-model.md`, `docs/how-it-works/stellar-side.md`, `docs/architecture/technical-overview.md`, `docs/developers/contribution-guide.md`, `docs/security/stride-threat-model.md`, `docs/research/security-audit-strategy.md`, `docs/research/blend-usdc-integration.md`, and Rust doc comments in `contracts/contracts/private-lend/src/{types,lib}.rs`) all named it as primary - those are now corrected to Pyth + Reflector.
+Stellar isn't in RedStone's own list of 110+ supported chains; its Stellar-side SEP-40 feeds (per its own blog posts) target RWA assets (USDC, EURC, XLM, PYUSD, tokenized debt, Centrifuge tokens), not BTC/USD. Never had a testnet address to verify in the first place. Kept here only because earlier project docs (this file's pre-2026-09-16 versions, `docs/roadmap/phases.md`, `docs/security/security-model.md`, `docs/how-it-works/stellar-side.md`, `docs/architecture/technical-overview.md`, `docs/developers/contribution-guide.md`, `docs/security/stride-threat-model.md`, `docs/research/security-audit-strategy.md`, `docs/research/blend-usdc-integration.md`, and Rust doc comments in `contracts/contracts/writz-lend/src/{types,lib}.rs`) all named it as primary - those are now corrected to Pyth + Reflector.
 
 ---
 
@@ -181,8 +181,8 @@ Updated against the on-chain verification pass above:
 3. **Get a working DIA contract address** directly from DIA (their docs' listed address doesn't resolve) if DIA is still wanted as a third median leg.
 4. **Confirm Pyth's Hermes access policy** (API key requirement, rate limits) at whatever call volume Writz's relayer/keeper will actually generate.
 5. Re-run `contracts/scripts/verify-oracles.sh` against **mainnet** addresses before any mainnet deployment - everything confirmed above is testnet-only.
-6. **Done for `private-lend` (2026-09-17):** `get_btc_price_stroops` now calls Reflector's external-prices instance live, replacing `STUB_PRICE_STROOPS_PER_BTC` - see `contracts/contracts/private-lend/src/oracle.rs`. Reads `decimals()` live rather than assuming 14, per the note above. `commitment-tree` is unchanged and still stubbed - see that crate's `oracle.rs` and `spv-types`'s doc comment for why (the ZK circuit's exact-match price signal has no tolerance window, so a live price would make honest borrows/repays fail intermittently until the circuit itself changes).
-7. **Still open:** Pyth is not wired anywhere yet. `private-lend` is single-source (Reflector only) until it is - see `docs/security/security-model.md` for what that means for manipulation resistance in the interim.
+6. **Done for `writz-lend` (2026-09-17):** `get_btc_price_stroops` now calls Reflector's external-prices instance live, replacing `STUB_PRICE_STROOPS_PER_BTC` - see `contracts/contracts/writz-lend/src/oracle.rs`. Reads `decimals()` live rather than assuming 14, per the note above. `commitment-tree` is unchanged and still stubbed - see that crate's `oracle.rs` and `spv-types`'s doc comment for why (the ZK circuit's exact-match price signal has no tolerance window, so a live price would make honest borrows/repays fail intermittently until the circuit itself changes).
+7. **Still open:** Pyth is not wired anywhere yet. `writz-lend` is single-source (Reflector only) until it is - see `docs/security/security-model.md` for what that means for manipulation resistance in the interim.
 
 ---
 

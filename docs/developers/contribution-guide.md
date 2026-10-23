@@ -117,7 +117,7 @@ The following areas are actively looking for contributors:
 
 | Area | Description | Skill needed |
 |---|---|---|
-| Frontend (app.writz.xyz) | React/Next.js frontend for PrivateLend | React, TypeScript, Stellar Wallets Kit |
+| Frontend (app.writz.xyz) | React/Next.js frontend for Writz Lend | React, TypeScript, Stellar Wallets Kit |
 | WASM prover integration | Integrate circom WASM prover in browser | TypeScript, snarkjs |
 | Phase 2 ceremony tooling | Scripts for Powers of Tau Phase 2 ceremony | snarkjs, cryptography |
 | Taproot migration | Upgrade P2WSH to P2TR for Phase 2 | Bitcoin Script, bitcoinjs-lib |

@@ -32,7 +32,7 @@ The DeFi industry has fundamentally changed its tokenomics approach:
 
 ## Revenue Streams
 
-### Primary: Lending Spread (PrivateLend)
+### Primary: Lending Spread (Writz Lend)
 The difference between the borrow rate (what borrowers pay) and the supply rate (what lenders earn).
 
 ```

@@ -11,7 +11,7 @@
  *   3. commitment-tree  __constructor(admin, spv, zk_verifier, usdc, oracle,
  *                                     min_confirmations, protocol_pubkey,
  *                                     keeper_pub_x, keeper_pub_y)
- *   4. private-lend     __constructor(admin, spv, usdc, oracle, keeper,
+ *   4. writz-lend     __constructor(admin, spv, usdc, oracle, keeper,
  *                                     relayer, protocol_pubkey)
  *   5. verification keys for Deposit, BorrowRepay, Liquidation, ZeroDebt, Insert
  *   6. set_consumer on bitcoin-spv for both lenders
@@ -118,7 +118,7 @@ if (stellarNetwork === 'mainnet') {
   if (minConfirmations < 6) errors.push('mainnet needs MIN_CONFIRMATIONS >= 6');
 }
 
-const WASMS = ['zk_verifier', 'bitcoin_spv', 'commitment_tree', 'private_lend'];
+const WASMS = ['zk_verifier', 'bitcoin_spv', 'commitment_tree', 'writz_lend'];
 const wasm = {};
 for (const name of WASMS) {
   const file = path.join(WASM_DIR, `${name}.wasm`);
@@ -150,7 +150,7 @@ const sha256 = (b) => crypto.createHash('sha256').update(b).digest('hex');
 console.log(`Writz coordinated redeploy - ${stellarNetwork} (Bitcoin ${bitcoinNetwork})`);
 console.log(`  rpc               ${rpcUrl}`);
 console.log(`  admin / deployer  ${admin.publicKey()}`);
-console.log(`  relayer           ${relayer}  (private-lend relayer${bitcoinNetwork === 'signet' ? ', bitcoin-spv submitter' : ''})`);
+console.log(`  relayer           ${relayer}  (writz-lend relayer${bitcoinNetwork === 'signet' ? ', bitcoin-spv submitter' : ''})`);
 console.log(`  keeper            ${keeper}`);
 console.log(`  usdc              ${usdc}`);
 console.log(`  oracle            ${oracle}`);
@@ -254,15 +254,15 @@ out.commitmentTree = await deployWithConstructor({
 });
 console.log(`   ${out.commitmentTree}`);
 
-console.log('4. private-lend');
-out.privateLend = await deployWithConstructor({
-  ...deployer, wasm: wasm.private_lend,
+console.log('4. writz-lend');
+out.writzLend = await deployWithConstructor({
+  ...deployer, wasm: wasm.writz_lend,
   constructorArgs: [
     addr(admin.publicKey()), addr(out.bitcoinSpv), addr(usdc), addr(oracle), addr(keeper), addr(relayer),
     bytes(protocolKey),
   ],
 });
-console.log(`   ${out.privateLend}`);
+console.log(`   ${out.writzLend}`);
 
 console.log('5. verification keys');
 for (const [circuit] of CIRCUITS) {
@@ -273,7 +273,7 @@ for (const [circuit] of CIRCUITS) {
 }
 
 console.log('6. register both lenders with the shared txid registry');
-for (const [name, id] of [['commitment-tree', out.commitmentTree], ['private-lend', out.privateLend]]) {
+for (const [name, id] of [['commitment-tree', out.commitmentTree], ['writz-lend', out.writzLend]]) {
   out.txs[`consumer_${name}`] = await invoke(out.bitcoinSpv, 'set_consumer', [
     addr(admin.publicKey()), addr(id), nativeToScVal(true),
   ]);
@@ -284,7 +284,7 @@ if (maxTotalBorrowed !== undefined) {
   // A borrower can reclaim BTC through the timelock exit while still owing
   // USDC, so each lender's total exposure is capped (GHSA-5rxp).
   console.log('7. exposure cap');
-  for (const [name, id] of [['commitment-tree', out.commitmentTree], ['private-lend', out.privateLend]]) {
+  for (const [name, id] of [['commitment-tree', out.commitmentTree], ['writz-lend', out.writzLend]]) {
     out.txs[`maxTotalBorrowed_${name}`] = await invoke(id, 'set_max_total_borrowed', [
       addr(admin.publicKey()), nativeToScVal(maxTotalBorrowed, { type: 'i128' }),
     ]);
@@ -301,10 +301,10 @@ console.log('\nfrontend/app/.env');
 console.log(`NEXT_PUBLIC_ZK_VERIFIER_ID=${out.zkVerifier}`);
 console.log(`NEXT_PUBLIC_BITCOIN_SPV_ID=${out.bitcoinSpv}`);
 console.log(`NEXT_PUBLIC_COMMITMENT_TREE_ID=${out.commitmentTree}`);
-console.log(`NEXT_PUBLIC_PRIVATE_LEND_ID=${out.privateLend}`);
+console.log(`NEXT_PUBLIC_WRITZ_LEND_ID=${out.writzLend}`);
 console.log('\nrelayer/.env');
 console.log(`COMMITMENT_TREE_ID=${out.commitmentTree}`);
-console.log(`PRIVATE_LEND_ID=${out.privateLend}`);
+console.log(`WRITZ_LEND_ID=${out.writzLend}`);
 console.log(`BITCOIN_SPV_ID=${out.bitcoinSpv}`);
 console.log(`SPV_SYNC_FROM_HEIGHT=${checkpoint.height}`);
 console.log('\nNext: put the admin account behind the multisig, then record the addresses in contracts/deployments/.');

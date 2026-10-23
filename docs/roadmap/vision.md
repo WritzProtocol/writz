@@ -52,7 +52,7 @@ By the time there are 5 integrations, Writz is load-bearing infrastructure for S
 
 ## Writz in 2028 - The Full Picture
 
-### $100M+ TVL in PrivateLend
+### $100M+ TVL in Writz Lend
 
 Bitcoin holders trust Writz because:
 - The smart contracts have passed two Audit Bank engagements (initial + Growth Audit)
@@ -76,7 +76,7 @@ This is not a token launched to raise money. It is a token launched to give owne
 
 By 2028, all four products are live:
 
-- **PrivateLend** - the flagship, proven, at $100M TVL
+- **Writz Lend** - the flagship, proven, at $100M TVL
 - **Dark Swap** - processing $10M+/month in BTC-to-USDC conversions, capturing a category that currently requires KYC-gated exchanges
 - **BTC Savings** - serving retail and institutional Bitcoin holders who want USDC yield without selling
 - **ZK Proof of Reserve** - 20+ enterprise customers paying monthly subscriptions

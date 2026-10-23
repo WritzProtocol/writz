@@ -48,7 +48,7 @@ export const metadata: Metadata = {
 
 const ABSTRACT = [
   "Existing Bitcoin DeFi protocols force users to choose between custodial risk, where a bridge operator holds the coins, and public exposure, where every position size is visible to all observers. Writz Protocol is a Bitcoin lending protocol on Stellar's Soroban smart contract platform that combines SPV-verified native BTC collateral with zero-knowledge position privacy.",
-  "The protocol makes three technical contributions: a stateless Bitcoin SPV client on Soroban that verifies P2WSH locking transactions without on-chain header storage or trusted relayers; a Groth16 commitment scheme over BN254 that hides collateral, debt and liquidation thresholds while the chain still enforces the lending invariants; and PrivateLend, a lending market with a two-slope interest rate model calibrated for Bitcoin collateral and a multi-oracle price aggregator conforming to SEP-40.",
+  "The protocol makes three technical contributions: a stateless Bitcoin SPV client on Soroban that verifies P2WSH locking transactions without on-chain header storage or trusted relayers; a Groth16 commitment scheme over BN254 that hides collateral, debt and liquidation thresholds while the chain still enforces the lending invariants; and WritzLend, a lending market with a two-slope interest rate model calibrated for Bitcoin collateral and a multi-oracle price aggregator conforming to SEP-40.",
 ];
 
 const CONTRIBUTIONS = [
@@ -62,7 +62,7 @@ const CONTRIBUTIONS = [
   },
   {
     name: "A lending market.",
-    text: "PrivateLend, with a kinked interest rate model, ZK-private liquidation proofs and a median oracle, plus security propositions with proof arguments.",
+    text: "WritzLend, with a kinked interest rate model, ZK-private liquidation proofs and a median oracle, plus security propositions with proof arguments.",
   },
 ];
 

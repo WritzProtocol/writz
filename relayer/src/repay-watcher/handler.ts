@@ -23,7 +23,7 @@ import {
   buildReleaseTransaction,
   pubkeyToP2WPKHAddress,
 } from "@writz/bitcoin-script";
-import { Client as PrivateLendClient, type Position } from "../contracts/privateLend.js";
+import { Client as WritzLendClient, type Position } from "../contracts/writzLend.js";
 import { EsploraClient } from "../bitcoin/esplora.js";
 import { parseOutput } from "../bitcoin/tx.js";
 import { config } from "../config.js";
@@ -38,9 +38,9 @@ export function getBitcoinNetwork(): btc.networks.Network {
   return config.bitcoinNetwork === "mainnet" ? btc.networks.bitcoin : btc.networks.testnet;
 }
 
-function readOnlyClient(): PrivateLendClient {
-  return new PrivateLendClient({
-    contractId: config.privateLendId,
+function readOnlyClient(): WritzLendClient {
+  return new WritzLendClient({
+    contractId: config.writzLendId,
     networkPassphrase: config.networkPassphrase,
     rpcUrl: config.stellarRpcUrl,
     allowHttp: config.stellarRpcUrl.startsWith("http://"),
@@ -145,8 +145,8 @@ export async function handleRepayFull(
   // frontend /api/cosign route's behavior (never auto-finalizes).
   await psbt.signInputAsync(0, deps.signer);
 
-  const writeClient = new PrivateLendClient({
-    contractId: config.privateLendId,
+  const writeClient = new WritzLendClient({
+    contractId: config.writzLendId,
     networkPassphrase: config.networkPassphrase,
     rpcUrl: config.stellarRpcUrl,
     allowHttp: config.stellarRpcUrl.startsWith("http://"),

@@ -7,7 +7,7 @@
     "contracts/bitcoin-spv": 68,
     "contracts/zk-verifier": 26,
     "contracts/commitment-tree": 59,
-    "contracts/private-lend": 100,
+    "contracts/writz-lend": 100,
     "contracts/spv-types": 10,
     "bitcoin-script": 60,
     "relayer": 248,

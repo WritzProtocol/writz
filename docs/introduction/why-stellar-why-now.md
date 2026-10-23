@@ -84,4 +84,4 @@ Protocol X-Ray shipped in January 2026. The compute budget was confirmed feasibl
 
 ---
 
-**Next:** [PrivateLend - the flagship product →](/products/privatelend)
+**Next:** [Writz Lend - the flagship product →](/products/writz-lend)

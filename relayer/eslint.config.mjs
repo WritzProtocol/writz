@@ -14,7 +14,7 @@ export default tseslint.config(
       // satisfy lint rules would fight every future regeneration and gains
       // nothing - mirrors frontend/eslint.config.mjs's treatment of its own
       // generated contract bindings.
-      "src/contracts/privateLend.ts",
+      "src/contracts/writzLend.ts",
     ],
   },
   {

@@ -20,7 +20,7 @@ order and arguments).
 | `bitcoin-spv` | `CAHHY4S4WCIFU4LBSKBI3IP6A4QYR2COV6EACDEBXGPJFDWBJWGOMCLP` |
 | `zk-verifier` | `CB5XAP6MF2GVVFATFTVCKVEXUODWWRQP4B3QFDMRTM55REP7N2YMXEUD` |
 | `commitment-tree` | `CAQBLCAPGXXCZTJDAJLY7E4PTJYGR6CY4YWH4JSJKFXYIHW3GANP6RFM` |
-| `private-lend` | `CA3T7T2S7HV27BXO7OLIHSMGAMQ37BMOOUHQLTBGUQVL4B6Y2CDJPHHX` |
+| `writz-lend` | `CA3T7T2S7HV27BXO7OLIHSMGAMQ37BMOOUHQLTBGUQVL4B6Y2CDJPHHX` |
 
 These are the instances from the coordinated redeploy (#177, 2026-10-11) and
 run the interfaces documented here. See `contracts/deployments/testnet.md`.
@@ -502,7 +502,7 @@ Topic fields are in **bold**.
 
 ---
 
-## private-lend
+## writz-lend
 
 ### `__constructor`
 
@@ -517,7 +517,7 @@ pub fn __constructor(admin: Address, spv_contract: Address, usdc_token: Address,
 Register a BTC deposit by submitting an SPV proof.
 
 ```rust
-pub fn deposit(depositor: Address, block_hash: BytesN<32>, merkle_proof: Vec<BytesN<32>>, tx_index: u32, raw_tx: Bytes, p2wsh_script_pubkey: Bytes, timelock_height: u32, user_pubkey: BytesN<33>, key_sig: BytesN<65>) -> Result<BytesN<32>, PrivateLendError>
+pub fn deposit(depositor: Address, block_hash: BytesN<32>, merkle_proof: Vec<BytesN<32>>, tx_index: u32, raw_tx: Bytes, p2wsh_script_pubkey: Bytes, timelock_height: u32, user_pubkey: BytesN<33>, key_sig: BytesN<65>) -> Result<BytesN<32>, WritzLendError>
 ```
 
 ### `supply_usdc`
@@ -525,7 +525,7 @@ pub fn deposit(depositor: Address, block_hash: BytesN<32>, merkle_proof: Vec<Byt
 Lender supplies USDC to the pool, making it available for borrowing. Lenders earn `supply_rate_bp()` APR on their supplied amount.
 
 ```rust
-pub fn supply_usdc(supplier: Address, amount: i128) -> Result<(), PrivateLendError>
+pub fn supply_usdc(supplier: Address, amount: i128) -> Result<(), WritzLendError>
 ```
 
 ### `withdraw_supply`
@@ -533,7 +533,7 @@ pub fn supply_usdc(supplier: Address, amount: i128) -> Result<(), PrivateLendErr
 Lender withdraws previously supplied USDC from the pool.
 
 ```rust
-pub fn withdraw_supply(supplier: Address, amount: i128) -> Result<(), PrivateLendError>
+pub fn withdraw_supply(supplier: Address, amount: i128) -> Result<(), WritzLendError>
 ```
 
 ### `borrow`
@@ -541,7 +541,7 @@ pub fn withdraw_supply(supplier: Address, amount: i128) -> Result<(), PrivateLen
 Borrow USDC against an existing BTC deposit.
 
 ```rust
-pub fn borrow(borrower: Address, txid: BytesN<32>, usdc_amount: i128) -> Result<(), PrivateLendError>
+pub fn borrow(borrower: Address, txid: BytesN<32>, usdc_amount: i128) -> Result<(), WritzLendError>
 ```
 
 ### `repay`
@@ -549,7 +549,7 @@ pub fn borrow(borrower: Address, txid: BytesN<32>, usdc_amount: i128) -> Result<
 Repay some or all of the USDC debt on a position.
 
 ```rust
-pub fn repay(repayer: Address, txid: BytesN<32>, usdc_amount: i128) -> Result<(), PrivateLendError>
+pub fn repay(repayer: Address, txid: BytesN<32>, usdc_amount: i128) -> Result<(), WritzLendError>
 ```
 
 ### `liquidate`
@@ -557,7 +557,7 @@ pub fn repay(repayer: Address, txid: BytesN<32>, usdc_amount: i128) -> Result<()
 Liquidate an undercollateralized position.
 
 ```rust
-pub fn liquidate(keeper: Address, txid: BytesN<32>) -> Result<(), PrivateLendError>
+pub fn liquidate(keeper: Address, txid: BytesN<32>) -> Result<(), WritzLendError>
 ```
 
 ### `set_max_total_borrowed`
@@ -565,13 +565,13 @@ pub fn liquidate(keeper: Address, txid: BytesN<32>) -> Result<(), PrivateLendErr
 Update the keeper address.  Admin only.
 
 ```rust
-pub fn set_max_total_borrowed(caller: Address, max: i128) -> Result<(), PrivateLendError>
+pub fn set_max_total_borrowed(caller: Address, max: i128) -> Result<(), WritzLendError>
 ```
 
 ### `set_keeper`
 
 ```rust
-pub fn set_keeper(caller: Address, new_keeper: Address) -> Result<(), PrivateLendError>
+pub fn set_keeper(caller: Address, new_keeper: Address) -> Result<(), WritzLendError>
 ```
 
 ### `keeper_heartbeat`
@@ -579,7 +579,7 @@ pub fn set_keeper(caller: Address, new_keeper: Address) -> Result<(), PrivateLen
 Explicit liveness signal from the designated keeper.
 
 ```rust
-pub fn keeper_heartbeat(keeper: Address) -> Result<(), PrivateLendError>
+pub fn keeper_heartbeat(keeper: Address) -> Result<(), WritzLendError>
 ```
 
 ### `set_keeper_stale_window`
@@ -587,7 +587,7 @@ pub fn keeper_heartbeat(keeper: Address) -> Result<(), PrivateLendError>
 Updates how many seconds of keeper inactivity before liquidation opens to any caller.  Admin only.
 
 ```rust
-pub fn set_keeper_stale_window(caller: Address, secs: u64) -> Result<(), PrivateLendError>
+pub fn set_keeper_stale_window(caller: Address, secs: u64) -> Result<(), WritzLendError>
 ```
 
 ### `set_relayer`
@@ -595,7 +595,7 @@ pub fn set_keeper_stale_window(caller: Address, secs: u64) -> Result<(), Private
 Updates the relayer address authorized to call `publish_release_psbt`. Admin only.
 
 ```rust
-pub fn set_relayer(caller: Address, new_relayer: Address) -> Result<(), PrivateLendError>
+pub fn set_relayer(caller: Address, new_relayer: Address) -> Result<(), WritzLendError>
 ```
 
 ### `set_oracle`
@@ -603,7 +603,7 @@ pub fn set_relayer(caller: Address, new_relayer: Address) -> Result<(), PrivateL
 Updates the oracle contract address used for BTC/USD pricing. Admin only.
 
 ```rust
-pub fn set_oracle(caller: Address, new_oracle: Address) -> Result<(), PrivateLendError>
+pub fn set_oracle(caller: Address, new_oracle: Address) -> Result<(), WritzLendError>
 ```
 
 ### `set_spv_contract`
@@ -611,7 +611,7 @@ pub fn set_oracle(caller: Address, new_oracle: Address) -> Result<(), PrivateLen
 Updates the bitcoin-spv contract address used for deposit verification. Admin only. Changing this mid-flight affects only deposits submitted after the change - an in-flight deposit's SPV proof was already verified against the previous contract by the time this would run.
 
 ```rust
-pub fn set_spv_contract(caller: Address, new_spv_contract: Address) -> Result<(), PrivateLendError>
+pub fn set_spv_contract(caller: Address, new_spv_contract: Address) -> Result<(), WritzLendError>
 ```
 
 ### `set_paused`
@@ -619,7 +619,7 @@ pub fn set_spv_contract(caller: Address, new_spv_contract: Address) -> Result<()
 Pauses or unpauses new deposits/borrows/USDC supply. Admin only.
 
 ```rust
-pub fn set_paused(caller: Address, paused: bool) -> Result<(), PrivateLendError>
+pub fn set_paused(caller: Address, paused: bool) -> Result<(), WritzLendError>
 ```
 
 ### `publish_release_psbt`
@@ -627,7 +627,7 @@ pub fn set_paused(caller: Address, paused: bool) -> Result<(), PrivateLendError>
 Publishes a co-signed Path A release PSBT for a repaid position.
 
 ```rust
-pub fn publish_release_psbt(relayer: Address, txid: BytesN<32>, psbt: Bytes) -> Result<(), PrivateLendError>
+pub fn publish_release_psbt(relayer: Address, txid: BytesN<32>, psbt: Bytes) -> Result<(), WritzLendError>
 ```
 
 ### `get_release_psbt`
@@ -651,7 +651,7 @@ pub fn get_position(txid: BytesN<32>) -> Option<Position>
 Returns the health ratio (in basis points) for a position.
 
 ```rust
-pub fn get_health_ratio_bp(txid: BytesN<32>) -> Result<i128, PrivateLendError>
+pub fn get_health_ratio_bp(txid: BytesN<32>) -> Result<i128, WritzLendError>
 ```
 
 ### `get_borrow_rate_bp`
