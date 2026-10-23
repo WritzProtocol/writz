@@ -99,17 +99,17 @@ Protocol 26, nicknamed **Yardstick**, brought precision and optimization to Stel
 #### CAP-0077: Quorum Freeze (Ledger Entry Freezing)
 The first consensus-driven on-chain mechanism to freeze compromised ledger entries. A validator quorum can freeze a specific key or contract without a full protocol upgrade.
 
-**Writz relevance:** If a critical vulnerability is discovered in the Writz SPV contract or PrivateLend, the network now has a mechanism to freeze the affected contract while a fix is deployed. This is a meaningful security improvement for DeFi protocols on Stellar.
+**Writz relevance:** If a critical vulnerability is discovered in the Writz SPV contract or Writz Lend, the network now has a mechanism to freeze the affected contract while a fix is deployed. This is a meaningful security improvement for DeFi protocols on Stellar.
 
 #### CAP-0082: Checked 256-bit Integer Arithmetic
 256-bit integer operations in Soroban now **trap on overflow** rather than silently wrapping around. Any arithmetic that would exceed the 256-bit boundary aborts the transaction with an error.
 
-**Writz relevance:** Critical for PrivateLend's financial calculations. Overflow in lending calculations (interest accumulation, collateral ratios, liquidation thresholds) is a classic DeFi exploit vector. Protocol 26 makes these errors explicit and transaction-aborting rather than silent.
+**Writz relevance:** Critical for Writz Lend's financial calculations. Overflow in lending calculations (interest accumulation, collateral ratios, liquidation thresholds) is a classic DeFi exploit vector. Protocol 26 makes these errors explicit and transaction-aborting rather than silent.
 
 #### SAC Improvements
 The Stellar Asset Contract (SAC) can now create unlimited trustlines for G-accounts directly and auto-create account entries when sending XLM to new addresses.
 
-**Writz relevance:** Simplifies USDC pool management - PrivateLend can create trustlines for lenders programmatically without pre-existing account setup.
+**Writz relevance:** Simplifies USDC pool management - Writz Lend can create trustlines for lenders programmatically without pre-existing account setup.
 
 ---
 
@@ -246,7 +246,7 @@ Users can be required to prove they are on the allow list AND not on the block l
 
 | Stellar Private Payments feature | Writz adaptation |
 |---|---|
-| Commitment = Poseidon(amount, secret, nonce) | PrivateLend position = Poseidon(collateral_btc, usdc_debt, secret, nonce) |
+| Commitment = Poseidon(amount, secret, nonce) | Writz Lend position = Poseidon(collateral_btc, usdc_debt, secret, nonce) |
 | Merkle tree of commitments | Merkle tree of active lending positions |
 | Nullifier set (prevent double-spend) | Nullifier set (prevent double-repay / double-liquidation) |
 | Circom circuit for transfer | Circom circuit for borrow/repay/liquidation proofs |
@@ -343,7 +343,7 @@ The Writz architecture doc assumed a single protocol co-signing key. Protocol 27
 A Groth16 verification costs ~40M instructions, roughly half the per-transaction budget. Complex circuits with many constraints will approach this limit. Protocol 26's MSM host functions help. Circuit complexity (number of constraints) should be minimized in the Writz Circom design.
 
 ### 5. Protocol 26's overflow protection is free safety
-Use `checked_add`, `checked_mul` etc. throughout the PrivateLend contract. Overflow in collateral ratio calculations is a classic exploit - Protocol 26 makes this a guaranteed transaction abort rather than silent corruption.
+Use `checked_add`, `checked_mul` etc. throughout the Writz Lend contract. Overflow in collateral ratio calculations is a classic exploit - Protocol 26 makes this a guaranteed transaction abort rather than silent corruption.
 
 ### 6. The compliance layer (ASPs) is built, not custom
 Stellar Private Payments already implements the ASP membership/block-list system. Writz should reuse or integrate this rather than building custom compliance infrastructure.

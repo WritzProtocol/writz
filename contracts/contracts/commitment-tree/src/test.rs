@@ -112,7 +112,7 @@ fn deposit_spk(env: &Env) -> Bytes {
 }
 
 /// Builds a minimal legacy Bitcoin transaction with a single output paying
-/// `value_sat` to `spk`. Mirrors `private-lend`'s own `build_deposit_tx`.
+/// `value_sat` to `spk`. Mirrors `writz-lend`'s own `build_deposit_tx`.
 fn build_deposit_tx(env: &Env, value_sat: u64, spk: &Bytes) -> Bytes {
     let mut spk_bytes = std::vec![0u8; spk.len() as usize];
     spk.copy_into_slice(&mut spk_bytes);
@@ -266,7 +266,7 @@ fn set_zk_verifier_by_non_admin_panics() {
 // it) since none of the tests it originally supported call `supply_usdc`/
 // `withdraw_supply`. Those two functions need a real SEP-41 token to
 // transfer, so this section deploys its own Stellar Asset Contract instead
-// of reusing `setup()`, mirroring the pattern in `private-lend/src/test.rs`.
+// of reusing `setup()`, mirroring the pattern in `writz-lend/src/test.rs`.
 
 fn setup_with_real_usdc(
     env: &Env,
@@ -466,7 +466,7 @@ fn i128_from_be32_low_accepts_max_i128() {
 // through a real deployed `zk-verifier` instance, not a mock verifier.
 //
 // A note on `liquidate`'s test: this contract has no interest-accrual
-// mechanism for ZK positions (unlike `private-lend`, which accrues interest
+// mechanism for ZK positions (unlike `writz-lend`, which accrues interest
 // over ledger time - see its `liquidation_of_undercollateralized_position`
 // test), and `borrow`'s circuit enforces >=150% collateralization at the
 // moment of borrowing. With a fixed oracle price (the Phase 1 stub), there is
@@ -1096,7 +1096,7 @@ fn insertion_against_a_stale_root_is_rejected() {
     assert_eq!(try_insert(&s, &insert_signals(&s.env)), Err(crate::error::CommitmentTreeError::RootMismatch));
 }
 
-// ── Exposure cap (GHSA-5rxp, mirrored from private-lend) ──────────────────────
+// ── Exposure cap (GHSA-5rxp, mirrored from writz-lend) ──────────────────────
 
 #[test]
 fn borrowing_past_the_exposure_cap_is_rejected() {

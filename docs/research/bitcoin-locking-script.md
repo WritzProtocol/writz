@@ -200,7 +200,7 @@ For users willing to pay a higher fee and accept slightly elevated risk:
 - Cap the maximum deposit size to $5,000 at 3-confirmation tier
 - Standard deposits (>$5,000) always require 6 confirmations
 
-**Status:** This option was evaluated but is not part of the current product spec. `docs/products/privatelend.md`, `docs/how-it-works/spv-verification.md`, and `docs/how-it-works/stellar-side.md` all specify a flat 6-confirmation requirement with no fast lane, and the contract's `min_confirmations` parameter is set by the caller with no fast-lane logic in `bitcoin-spv`. If the fast lane is revisited, update those three docs together with this one.
+**Status:** This option was evaluated but is not part of the current product spec. `docs/products/writz-lend.md`, `docs/how-it-works/spv-verification.md`, and `docs/how-it-works/stellar-side.md` all specify a flat 6-confirmation requirement with no fast lane, and the contract's `min_confirmations` parameter is set by the caller with no fast-lane logic in `bitcoin-spv`. If the fast lane is revisited, update those three docs together with this one.
 
 ---
 
@@ -216,12 +216,12 @@ DEPOSIT:
 4. User sends BTC to the P2WSH address
 5. After 6 Bitcoin confirmations, Writz UI prompts user to submit SPV proof
 6. User (or Writz UI) submits proof to Soroban SPV contract
-7. SPV contract verifies and signals PrivateLend contract
-8. PrivateLend creates ZK position commitment, allows USDC borrowing
+7. SPV contract verifies and signals Writz Lend contract
+8. Writz Lend creates ZK position commitment, allows USDC borrowing
 
-REPAYMENT (private-lend's plaintext flow - automated):
-1. User repays USDC + interest via PrivateLend contract
-2. PrivateLend contract emits a repay_full event
+REPAYMENT (writz-lend's plaintext flow - automated):
+1. User repays USDC + interest via Writz Lend contract
+2. Writz Lend contract emits a repay_full event
 3. relayer/src/repay-watcher polls Soroban RPC for this event (persisted cursor,
    survives relayer restarts)
 4. The watcher co-signs a Bitcoin transaction spending path A:

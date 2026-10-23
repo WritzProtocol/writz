@@ -128,7 +128,7 @@ impl CommitmentTreeContract {
                 min_deposit_satoshis:     10_000,
                 min_collateral_ratio_bp:  15_000,
                 liquidation_threshold_bp: 12_000,
-                max_total_borrowed: 500_000_000_000, // 50,000 USDC, the same launch cap as private-lend
+                max_total_borrowed: 500_000_000_000, // 50,000 USDC, the same launch cap as writz-lend
                 keeper_pub_x,
                 keeper_pub_y,
                 borrow_timelock_margin_blocks: DEFAULT_BORROW_TIMELOCK_MARGIN,
@@ -277,7 +277,7 @@ impl CommitmentTreeContract {
         //     collateral_satoshis === actual_satoshis, so this one check
         //     transitively binds the private collateral witness to Bitcoin
         //     reality - closes GHSA-2hjj-x5wr-4p68, GHSA-xp6j-g2rw-h5g6,
-        //     GHSA-mg4x-cr23-4x3v. Same script and parser as private-lend.
+        //     GHSA-mg4x-cr23-4x3v. Same script and parser as writz-lend.
         //
         //     A per-user script costs the ZK path no privacy: the txid and
         //     depositor are already public in DepositEvent, and borrow/repay

@@ -2,7 +2,7 @@
 title: "BTC Savings"
 ---
 
-> **Scope status:** This is a problem-and-hypothesis exploration, not a committed roadmap item. No circuit, contract, or engineering work exists for BTC Savings today - it is fully speculative. Before investing further spec or engineering time here, validate real user demand from PrivateLend's mainnet launch first; this document should not expand further until that validation exists.
+> **Scope status:** This is a problem-and-hypothesis exploration, not a committed roadmap item. No circuit, contract, or engineering work exists for BTC Savings today - it is fully speculative. Before investing further spec or engineering time here, validate real user demand from Writz Lend's mainnet launch first; this document should not expand further until that validation exists.
 
 **Earn USDC yield on your Bitcoin - without selling a sat.**
 
@@ -12,9 +12,9 @@ BTC Savings is the third product in the Writz Protocol suite. Planned for Phase 
 
 ## What BTC Savings Does
 
-BTC Savings is PrivateLend with automated yield routing. You deposit BTC. Writz borrows USDC against it on your behalf at a conservative LTV. That USDC is automatically deployed into yield-bearing positions on Stellar - Blend lending pools, AMM liquidity positions, and other vetted sources.
+BTC Savings is Writz Lend with automated yield routing. You deposit BTC. Writz borrows USDC against it on your behalf at a conservative LTV. That USDC is automatically deployed into yield-bearing positions on Stellar - Blend lending pools, AMM liquidity positions, and other vetted sources.
 
-The yield accumulates in USDC. The BTC remains your collateral - protected by the same Bitcoin Script as PrivateLend. Your yield position compounds automatically. Withdraw at any time.
+The yield accumulates in USDC. The BTC remains your collateral - protected by the same Bitcoin Script as Writz Lend. Your yield position compounds automatically. Withdraw at any time.
 
 ---
 
@@ -36,7 +36,7 @@ In a year where BTC rises 30% and USDC yield averages 6% APR, a BTC Savings user
 
 ## Risk Disclosure
 
-BTC Savings carries the same liquidation risk as PrivateLend. If BTC price drops significantly, the auto-borrowed USDC may not be sufficient collateral. The product is designed with conservative LTV (40% vs. PrivateLend's 66%) to provide a larger safety buffer, but it is not risk-free.
+BTC Savings carries the same liquidation risk as Writz Lend. If BTC price drops significantly, the auto-borrowed USDC may not be sufficient collateral. The product is designed with conservative LTV (40% vs. Writz Lend's 66%) to provide a larger safety buffer, but it is not risk-free.
 
 The yield routing is also subject to smart contract risk in the downstream protocols where USDC is deployed. Writz vets these protocols and diversifies across multiple pools to reduce concentration risk.
 
@@ -44,9 +44,9 @@ The yield routing is also subject to smart contract risk in the downstream proto
 
 ## Architecture
 
-BTC Savings adds one component on top of PrivateLend:
+BTC Savings adds one component on top of Writz Lend:
 
-1. **Yield Router contract:** A Soroban contract that accepts USDC from the PrivateLend borrow and routes it to approved yield sources (Blend, Phoenix DEX LP, others). It maintains a live accounting of yields earned and rebalances across sources periodically.
+1. **Yield Router contract:** A Soroban contract that accepts USDC from the Writz Lend borrow and routes it to approved yield sources (Blend, Phoenix DEX LP, others). It maintains a live accounting of yields earned and rebalances across sources periodically.
 2. **Strategy whitelisting:** Only audited, established protocols are eligible yield destinations. Writz governance (eventually WRTZ token holders) controls the whitelist.
 3. **Auto-compounding:** Yield is harvested and re-deployed periodically by a keeper service.
 
@@ -62,8 +62,8 @@ BTC Savings adds one component on top of PrivateLend:
 
 ## Status
 
-BTC Savings is planned for Phase 3 (Q3–Q4 2027), after PrivateLend is live and stable on mainnet.
+BTC Savings is planned for Phase 3 (Q3–Q4 2027), after Writz Lend is live and stable on mainnet.
 
 ---
 
-**Back to:** [All Products →](/products/privatelend)
+**Back to:** [All Products →](/products/writz-lend)

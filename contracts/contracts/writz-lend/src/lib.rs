@@ -10,7 +10,7 @@ mod types;
 #[cfg(test)]
 mod test;
 
-use error::PrivateLendError;
+use error::WritzLendError;
 use events::{
     BorrowEvent, DepositEvent, LiquidateEvent, OracleSetEvent, PausedSetEvent, RepayEvent,
     RepayFullEvent, SupplyEvent, WithdrawEvent,
@@ -26,10 +26,10 @@ use storage::{get_config, get_position, get_protocol, get_release_psbt, get_supp
 use types::{Config, Position, PositionStatus, ProtocolState};
 
 #[contract]
-pub struct PrivateLendContract;
+pub struct WritzLendContract;
 
 #[contractimpl]
-impl PrivateLendContract {
+impl WritzLendContract {
     // ── Initialization ────────────────────────────────────────────────────────
 
     /// Runs exactly once, atomically, as part of deployment (`__constructor`):
@@ -60,7 +60,7 @@ impl PrivateLendContract {
         protocol_pubkey: BytesN<33>,
     ) {
         if !script::is_compressed_pubkey(&protocol_pubkey) {
-            panic_with_error!(&env, PrivateLendError::InvalidProtocolPubkey);
+            panic_with_error!(&env, WritzLendError::InvalidProtocolPubkey);
         }
         set_config(
             &env,
@@ -130,12 +130,12 @@ impl PrivateLendContract {
         timelock_height: u32,
         user_pubkey: BytesN<33>,
         key_sig: BytesN<65>,
-    ) -> Result<BytesN<32>, PrivateLendError> {
+    ) -> Result<BytesN<32>, WritzLendError> {
         depositor.require_auth();
 
-        let config = get_config(&env).ok_or(PrivateLendError::NotInitialized)?;
+        let config = get_config(&env).ok_or(WritzLendError::NotInitialized)?;
         if config.paused {
-            return Err(PrivateLendError::Paused);
+            return Err(WritzLendError::Paused);
         }
 
         // Validate the scriptPubKey is P2WSH-shaped (OP_0 0x20 <32 bytes>).
@@ -143,7 +143,7 @@ impl PrivateLendContract {
             || p2wsh_script_pubkey.get(0) != Some(0x00)
             || p2wsh_script_pubkey.get(1) != Some(0x20)
         {
-            return Err(PrivateLendError::InvalidScriptPubKey);
+            return Err(WritzLendError::InvalidScriptPubKey);
         }
 
         // The output must be locked under the Writz script: the protocol's
@@ -151,7 +151,7 @@ impl PrivateLendContract {
         // here (rather than trusting the caller) is what stops a depositor
         // from pledging BTC they can spend alone, or someone else's UTXO.
         if !script::is_compressed_pubkey(&user_pubkey) {
-            return Err(PrivateLendError::InvalidUserPubkey);
+            return Err(WritzLendError::InvalidUserPubkey);
         }
         let expected_spk = script::p2wsh_script_pubkey(
             &env,
@@ -160,7 +160,7 @@ impl PrivateLendContract {
             timelock_height,
         );
         if p2wsh_script_pubkey != expected_spk {
-            return Err(PrivateLendError::ScriptPubKeyMismatch);
+            return Err(WritzLendError::ScriptPubKeyMismatch);
         }
 
         // 1. Cross-contract SPV verification.
@@ -181,7 +181,7 @@ impl PrivateLendContract {
         // The CLTV escape hatch must not be an instant exit, nor absurdly
         // far away: bound it relative to the block that confirmed the deposit.
         if !script::timelock_in_bounds(timelock_height, spv_result.block_height) {
-            return Err(PrivateLendError::InvalidTimelock);
+            return Err(WritzLendError::InvalidTimelock);
         }
 
         // The caller must prove they control `user_pubkey`: otherwise anyone
@@ -189,13 +189,13 @@ impl PrivateLendContract {
         // their own position (GHSA-862g-739q-x6h8). See spv-types::key_proof.
         let key_msg = key_proof::deposit_message(&env, &env.current_contract_address(), &depositor, &txid);
         if !key_proof::signed_by(&env, &key_msg, &key_sig, &user_pubkey) {
-            return Err(PrivateLendError::InvalidKeyProof);
+            return Err(WritzLendError::InvalidKeyProof);
         }
 
         // 2. Reject duplicate deposits, here and across both lending pools
         //    (GHSA-2975-ggwh-pxw5): consume the txid in the shared registry.
         if get_position(&env, &txid).is_some() {
-            return Err(PrivateLendError::PositionAlreadyExists);
+            return Err(WritzLendError::PositionAlreadyExists);
         }
         env.invoke_contract::<()>(
             &config.spv_contract,
@@ -206,11 +206,11 @@ impl PrivateLendContract {
         // 3. Parse the raw transaction on-chain to find the P2WSH output.
         let btc_satoshis =
             btc_parser::find_p2wsh_output(&raw_tx, &p2wsh_script_pubkey)
-                .ok_or(PrivateLendError::OutputNotFound)?;
+                .ok_or(WritzLendError::OutputNotFound)?;
 
         // 4. Enforce minimum deposit.
         if btc_satoshis < config.min_deposit_satoshis {
-            return Err(PrivateLendError::DepositTooSmall);
+            return Err(WritzLendError::DepositTooSmall);
         }
 
         // 5. Create the position.
@@ -247,11 +247,11 @@ impl PrivateLendContract {
         env: Env,
         supplier: Address,
         amount: i128,
-    ) -> Result<(), PrivateLendError> {
+    ) -> Result<(), WritzLendError> {
         supplier.require_auth();
-        let config = get_config(&env).ok_or(PrivateLendError::NotInitialized)?;
+        let config = get_config(&env).ok_or(WritzLendError::NotInitialized)?;
         if config.paused {
-            return Err(PrivateLendError::Paused);
+            return Err(WritzLendError::Paused);
         }
 
         let mut proto = get_protocol(&env);
@@ -261,7 +261,7 @@ impl PrivateLendContract {
 
         let scaled = amount.saturating_mul(rates::INDEX_ONE) / proto.supply_index;
         if scaled <= 0 {
-            return Err(PrivateLendError::ZeroShareAmount);
+            return Err(WritzLendError::ZeroShareAmount);
         }
 
         let token = token::Client::new(&env, &config.usdc_token);
@@ -289,11 +289,11 @@ impl PrivateLendContract {
         env: Env,
         supplier: Address,
         amount: i128,
-    ) -> Result<(), PrivateLendError> {
+    ) -> Result<(), WritzLendError> {
         supplier.require_auth();
-        let config = get_config(&env).ok_or(PrivateLendError::NotInitialized)?;
+        let config = get_config(&env).ok_or(WritzLendError::NotInitialized)?;
         if amount <= 0 {
-            return Err(PrivateLendError::ZeroShareAmount);
+            return Err(WritzLendError::ZeroShareAmount);
         }
 
         let mut proto = get_protocol(&env);
@@ -303,13 +303,13 @@ impl PrivateLendContract {
         let scaled_bal = get_supply_balance(&env, &supplier);
         let value = scaled_bal.saturating_mul(proto.supply_index) / rates::INDEX_ONE;
         if amount > value {
-            return Err(PrivateLendError::InsufficientSupply);
+            return Err(WritzLendError::InsufficientSupply);
         }
 
         let assets = total_supply_assets(&proto, proto.supply_index);
         let available = assets.saturating_sub(proto.total_borrowed);
         if amount > available {
-            return Err(PrivateLendError::InsufficientLiquidity);
+            return Err(WritzLendError::InsufficientLiquidity);
         }
 
         // Withdrawing the whole displayed value burns the whole balance, so it
@@ -354,19 +354,19 @@ impl PrivateLendContract {
         borrower: Address,
         txid: BytesN<32>,
         usdc_amount: i128,
-    ) -> Result<(), PrivateLendError> {
+    ) -> Result<(), WritzLendError> {
         borrower.require_auth();
-        let config = get_config(&env).ok_or(PrivateLendError::NotInitialized)?;
+        let config = get_config(&env).ok_or(WritzLendError::NotInitialized)?;
         if config.paused {
-            return Err(PrivateLendError::Paused);
+            return Err(WritzLendError::Paused);
         }
 
-        let mut pos = get_position(&env, &txid).ok_or(PrivateLendError::PositionNotFound)?;
+        let mut pos = get_position(&env, &txid).ok_or(WritzLendError::PositionNotFound)?;
         if pos.status != PositionStatus::Active {
-            return Err(PrivateLendError::PositionNotActive);
+            return Err(WritzLendError::PositionNotActive);
         }
         if pos.depositor != borrower {
-            return Err(PrivateLendError::Unauthorized);
+            return Err(WritzLendError::Unauthorized);
         }
 
         let mut proto = get_protocol(&env);
@@ -378,21 +378,21 @@ impl PrivateLendContract {
         let available = total_supply_assets(&proto, proto.supply_index)
             .saturating_sub(proto.total_borrowed);
         if usdc_amount > available {
-            return Err(PrivateLendError::InsufficientLiquidity);
+            return Err(WritzLendError::InsufficientLiquidity);
         }
         if proto.total_borrowed.saturating_add(usdc_amount) > config.max_total_borrowed {
-            return Err(PrivateLendError::ExposureCapExceeded);
+            return Err(WritzLendError::ExposureCapExceeded);
         }
 
         // Compute post-borrow collateral ratio.
         let new_debt = pos.usdc_debt.saturating_add(usdc_amount);
         let price = get_btc_price_stroops(&env, &config.oracle)?;
         let collateral = collateral_value_stroops(pos.btc_satoshis, price)
-            .ok_or(PrivateLendError::Overflow)?;
+            .ok_or(WritzLendError::Overflow)?;
         let health = health_ratio_bp(collateral, new_debt);
 
         if health < config.min_collateral_ratio_bp as i128 {
-            return Err(PrivateLendError::ExceedsCollateralRatio);
+            return Err(WritzLendError::ExceedsCollateralRatio);
         }
 
         // Commit state.
@@ -423,20 +423,20 @@ impl PrivateLendContract {
         repayer: Address,
         txid: BytesN<32>,
         usdc_amount: i128,
-    ) -> Result<(), PrivateLendError> {
+    ) -> Result<(), WritzLendError> {
         repayer.require_auth();
-        let config = get_config(&env).ok_or(PrivateLendError::NotInitialized)?;
+        let config = get_config(&env).ok_or(WritzLendError::NotInitialized)?;
 
-        let mut pos = get_position(&env, &txid).ok_or(PrivateLendError::PositionNotFound)?;
+        let mut pos = get_position(&env, &txid).ok_or(WritzLendError::PositionNotFound)?;
         if pos.status != PositionStatus::Active {
-            return Err(PrivateLendError::PositionNotActive);
+            return Err(WritzLendError::PositionNotActive);
         }
 
         let mut proto = get_protocol(&env);
         accrue_position_interest(&env, &mut pos, &mut proto);
 
         if usdc_amount > pos.usdc_debt {
-            return Err(PrivateLendError::RepayExceedsDebt);
+            return Err(WritzLendError::RepayExceedsDebt);
         }
 
         // Transfer USDC from repayer into pool.
@@ -474,7 +474,7 @@ impl PrivateLendContract {
     /// `keeper_heartbeat` in `config.keeper_stale_after_secs`, default 24h),
     /// in which case any caller with a genuinely undercollateralized
     /// position may liquidate it. This is a liveness/censorship
-    /// fallback, not a privacy mechanism - `private-lend` positions are
+    /// fallback, not a privacy mechanism - `writz-lend` positions are
     /// already plaintext. Safety is unaffected by who calls: the
     /// undercollateralization check below is independent of caller identity.
     ///
@@ -496,21 +496,21 @@ impl PrivateLendContract {
         env: Env,
         keeper: Address,
         txid: BytesN<32>,
-    ) -> Result<(), PrivateLendError> {
+    ) -> Result<(), WritzLendError> {
         keeper.require_auth();
-        let config = get_config(&env).ok_or(PrivateLendError::NotInitialized)?;
+        let config = get_config(&env).ok_or(WritzLendError::NotInitialized)?;
         let mut proto = get_protocol(&env);
 
         let is_designated_keeper = keeper == config.keeper;
         let keeper_is_stale = env.ledger().timestamp()
             > proto.last_keeper_heartbeat.saturating_add(config.keeper_stale_after_secs);
         if !is_designated_keeper && !keeper_is_stale {
-            return Err(PrivateLendError::Unauthorized);
+            return Err(WritzLendError::Unauthorized);
         }
 
-        let mut pos = get_position(&env, &txid).ok_or(PrivateLendError::PositionNotFound)?;
+        let mut pos = get_position(&env, &txid).ok_or(WritzLendError::PositionNotFound)?;
         if pos.status != PositionStatus::Active {
-            return Err(PrivateLendError::PositionNotActive);
+            return Err(WritzLendError::PositionNotActive);
         }
 
         accrue_position_interest(&env, &mut pos, &mut proto);
@@ -518,11 +518,11 @@ impl PrivateLendContract {
         // Check the position is actually undercollateralized.
         let price = get_btc_price_stroops(&env, &config.oracle)?;
         let collateral = collateral_value_stroops(pos.btc_satoshis, price)
-            .ok_or(PrivateLendError::Overflow)?;
+            .ok_or(WritzLendError::Overflow)?;
         let health = health_ratio_bp(collateral, pos.usdc_debt);
 
         if health >= config.liquidation_threshold_bp as i128 {
-            return Err(PrivateLendError::PositionHealthy);
+            return Err(WritzLendError::PositionHealthy);
         }
 
         // Keeper pays the full outstanding debt.
@@ -564,11 +564,11 @@ impl PrivateLendContract {
         env: Env,
         caller: Address,
         max: i128,
-    ) -> Result<(), PrivateLendError> {
+    ) -> Result<(), WritzLendError> {
         caller.require_auth();
-        let mut config = get_config(&env).ok_or(PrivateLendError::NotInitialized)?;
+        let mut config = get_config(&env).ok_or(WritzLendError::NotInitialized)?;
         if caller != config.admin {
-            return Err(PrivateLendError::Unauthorized);
+            return Err(WritzLendError::Unauthorized);
         }
         config.max_total_borrowed = max;
         set_config(&env, &config);
@@ -579,11 +579,11 @@ impl PrivateLendContract {
         env: Env,
         caller: Address,
         new_keeper: Address,
-    ) -> Result<(), PrivateLendError> {
+    ) -> Result<(), WritzLendError> {
         caller.require_auth();
-        let mut config = get_config(&env).ok_or(PrivateLendError::NotInitialized)?;
+        let mut config = get_config(&env).ok_or(WritzLendError::NotInitialized)?;
         if caller != config.admin {
-            return Err(PrivateLendError::Unauthorized);
+            return Err(WritzLendError::Unauthorized);
         }
         config.keeper = new_keeper;
         set_config(&env, &config);
@@ -595,11 +595,11 @@ impl PrivateLendContract {
     /// Lets the keeper reset the stale-window clock even when there is
     /// nothing to liquidate right now (`liquidate` itself also refreshes
     /// this on every successful call - this entrypoint covers idle periods).
-    pub fn keeper_heartbeat(env: Env, keeper: Address) -> Result<(), PrivateLendError> {
+    pub fn keeper_heartbeat(env: Env, keeper: Address) -> Result<(), WritzLendError> {
         keeper.require_auth();
-        let config = get_config(&env).ok_or(PrivateLendError::NotInitialized)?;
+        let config = get_config(&env).ok_or(WritzLendError::NotInitialized)?;
         if keeper != config.keeper {
-            return Err(PrivateLendError::Unauthorized);
+            return Err(WritzLendError::Unauthorized);
         }
         let mut proto = get_protocol(&env);
         proto.last_keeper_heartbeat = env.ledger().timestamp();
@@ -613,11 +613,11 @@ impl PrivateLendContract {
         env: Env,
         caller: Address,
         secs: u64,
-    ) -> Result<(), PrivateLendError> {
+    ) -> Result<(), WritzLendError> {
         caller.require_auth();
-        let mut config = get_config(&env).ok_or(PrivateLendError::NotInitialized)?;
+        let mut config = get_config(&env).ok_or(WritzLendError::NotInitialized)?;
         if caller != config.admin {
-            return Err(PrivateLendError::Unauthorized);
+            return Err(WritzLendError::Unauthorized);
         }
         config.keeper_stale_after_secs = secs;
         set_config(&env, &config);
@@ -630,11 +630,11 @@ impl PrivateLendContract {
         env: Env,
         caller: Address,
         new_relayer: Address,
-    ) -> Result<(), PrivateLendError> {
+    ) -> Result<(), WritzLendError> {
         caller.require_auth();
-        let mut config = get_config(&env).ok_or(PrivateLendError::NotInitialized)?;
+        let mut config = get_config(&env).ok_or(WritzLendError::NotInitialized)?;
         if caller != config.admin {
-            return Err(PrivateLendError::Unauthorized);
+            return Err(WritzLendError::Unauthorized);
         }
         config.relayer = new_relayer;
         set_config(&env, &config);
@@ -657,11 +657,11 @@ impl PrivateLendContract {
         env: Env,
         caller: Address,
         new_oracle: Address,
-    ) -> Result<(), PrivateLendError> {
+    ) -> Result<(), WritzLendError> {
         caller.require_auth();
-        let mut config = get_config(&env).ok_or(PrivateLendError::NotInitialized)?;
+        let mut config = get_config(&env).ok_or(WritzLendError::NotInitialized)?;
         if caller != config.admin {
-            return Err(PrivateLendError::Unauthorized);
+            return Err(WritzLendError::Unauthorized);
         }
         config.oracle = new_oracle.clone();
         set_config(&env, &config);
@@ -677,11 +677,11 @@ impl PrivateLendContract {
         env: Env,
         caller: Address,
         new_spv_contract: Address,
-    ) -> Result<(), PrivateLendError> {
+    ) -> Result<(), WritzLendError> {
         caller.require_auth();
-        let mut config = get_config(&env).ok_or(PrivateLendError::NotInitialized)?;
+        let mut config = get_config(&env).ok_or(WritzLendError::NotInitialized)?;
         if caller != config.admin {
-            return Err(PrivateLendError::Unauthorized);
+            return Err(WritzLendError::Unauthorized);
         }
         config.spv_contract = new_spv_contract;
         set_config(&env, &config);
@@ -698,11 +698,11 @@ impl PrivateLendContract {
         env: Env,
         caller: Address,
         paused: bool,
-    ) -> Result<(), PrivateLendError> {
+    ) -> Result<(), WritzLendError> {
         caller.require_auth();
-        let mut config = get_config(&env).ok_or(PrivateLendError::NotInitialized)?;
+        let mut config = get_config(&env).ok_or(WritzLendError::NotInitialized)?;
         if caller != config.admin {
-            return Err(PrivateLendError::Unauthorized);
+            return Err(WritzLendError::Unauthorized);
         }
         config.paused = paused;
         set_config(&env, &config);
@@ -725,14 +725,14 @@ impl PrivateLendContract {
         relayer: Address,
         txid: BytesN<32>,
         psbt: Bytes,
-    ) -> Result<(), PrivateLendError> {
+    ) -> Result<(), WritzLendError> {
         relayer.require_auth();
-        let config = get_config(&env).ok_or(PrivateLendError::NotInitialized)?;
+        let config = get_config(&env).ok_or(WritzLendError::NotInitialized)?;
         if relayer != config.relayer {
-            return Err(PrivateLendError::Unauthorized);
+            return Err(WritzLendError::Unauthorized);
         }
         if get_position(&env, &txid).is_none() {
-            return Err(PrivateLendError::PositionNotFound);
+            return Err(WritzLendError::PositionNotFound);
         }
         set_release_psbt(&env, &txid, &psbt);
         Ok(())
@@ -759,15 +759,15 @@ impl PrivateLendContract {
     pub fn get_health_ratio_bp(
         env: Env,
         txid: BytesN<32>,
-    ) -> Result<i128, PrivateLendError> {
-        let config = get_config(&env).ok_or(PrivateLendError::NotInitialized)?;
-        let pos = get_position(&env, &txid).ok_or(PrivateLendError::PositionNotFound)?;
+    ) -> Result<i128, WritzLendError> {
+        let config = get_config(&env).ok_or(WritzLendError::NotInitialized)?;
+        let pos = get_position(&env, &txid).ok_or(WritzLendError::PositionNotFound)?;
         if pos.usdc_debt == 0 {
             return Ok(i128::MAX);
         }
         let price = get_btc_price_stroops(&env, &config.oracle)?;
         let collateral = collateral_value_stroops(pos.btc_satoshis, price)
-            .ok_or(PrivateLendError::Overflow)?;
+            .ok_or(WritzLendError::Overflow)?;
         Ok(health_ratio_bp(collateral, pos.usdc_debt))
     }
 

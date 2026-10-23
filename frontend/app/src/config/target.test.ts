@@ -22,7 +22,7 @@ const validMainnet = {
   },
   lendingOnly: {
     NEXT_PUBLIC_COMMITMENT_TREE_ID: undefined,
-    NEXT_PUBLIC_PRIVATE_LEND_ID: "",
+    NEXT_PUBLIC_WRITZ_LEND_ID: "",
   },
 };
 

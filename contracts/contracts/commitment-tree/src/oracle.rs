@@ -7,5 +7,5 @@
 /// `spv_types`'s own doc comment and
 /// `docs/superpowers/plans/2026-09-17-reflector-oracle-integration.md`,
 /// "Why commitment-tree is not included", before attempting to wire a real
-/// oracle in here the same way `private-lend` now does.
+/// oracle in here the same way `writz-lend` now does.
 pub use spv_types::get_btc_price_stroops;

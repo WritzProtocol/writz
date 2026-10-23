@@ -344,15 +344,15 @@ async function main() {
     ],
   });
   ok(`commitment-tree  ${ctId}`);
-  // The oracle is only read by borrow/liquidate, which this run does not call on private-lend.
+  // The oracle is only read by borrow/liquidate, which this run does not call on writz-lend.
   const plId = await deployWithConstructor({
-    ...deployer, wasm: WASM('private_lend'),
+    ...deployer, wasm: WASM('writz_lend'),
     constructorArgs: [
       addr(admin.publicKey()), addr(spvId), addr(nativeSac), addr(admin.publicKey()),
       addr(admin.publicKey()), addr(admin.publicKey()), bytes(PROTOCOL_PUBKEY),
     ],
   });
-  ok(`private-lend  ${plId}`);
+  ok(`writz-lend  ${plId}`);
   const root0 = await simulate(admin, ctId, 'get_merkle_root', []);
   ok('constructor ran in the deploy transaction: the tree starts at the empty root');
   void root0;

@@ -38,7 +38,7 @@ All three became production-ready in 2025–2026. Writz is the first protocol to
 
 ## What You Can Do With Writz
 
-### PrivateLend *(available Phase 2 - mainnet)*
+### Writz Lend *(available Phase 2 - mainnet)*
 
 Deposit BTC as collateral. Borrow USDC up to 66% of your BTC's value. Your collateral amount, loan size, and health ratio stay private - visible only to you. Interest accrues at market rates. Repay anytime and get your BTC back.
 
@@ -90,7 +90,7 @@ As of June 2026, Writz has completed Phase 1 - Foundation:
 - Full ZK proof cycle (deposit → borrow → repay) verified on-chain
 - Real Bitcoin transactions broadcast and confirmed on Bitcoin Signet
 
-The protocol is not yet available on mainnet. Mainnet launch is targeted for Q2 to Q3 2027 (Phase 2), starting with a gated, TVL-capped release of PrivateLend.
+The protocol is not yet available on mainnet. Mainnet launch is targeted for Q2 to Q3 2027 (Phase 2), starting with a gated, TVL-capped release of Writz Lend.
 
 ---
 

@@ -7,7 +7,7 @@
 
 ## Context
 
-None of the four Writz contracts (`bitcoin-spv`, `commitment-tree`, `private-lend`, `zk-verifier`) implement `update_current_contract_wasm` or any other upgrade mechanism - confirmed by an exhaustive grep across `contracts/contracts/**/*.rs`. This was not a deliberate architectural choice documented anywhere; it's simply the state the contracts are in. That's the gap this ADR closes - not by changing the code, but by making the choice explicit and stating its consequences.
+None of the four Writz contracts (`bitcoin-spv`, `commitment-tree`, `writz-lend`, `zk-verifier`) implement `update_current_contract_wasm` or any other upgrade mechanism - confirmed by an exhaustive grep across `contracts/contracts/**/*.rs`. This was not a deliberate architectural choice documented anywhere; it's simply the state the contracts are in. That's the gap this ADR closes - not by changing the code, but by making the choice explicit and stating its consequences.
 
 ## The decision to make
 
@@ -34,7 +34,7 @@ The real cost is operational, not security: a bug found post-mainnet requires a 
 - How existing open positions (collateral locked, debt owed) get represented in the new contract - a snapshot-and-replay of state, or a claim-based migration where users re-submit proof of their existing commitment against the old contract's still-readable (if not writable) state
 - Who has authority to declare a migration necessary and execute it, and what the multisig/governance requirement is for that action specifically (this should be at least as strict as the admin multisig policy in Fase 2, arguably stricter, since a migration touches every user at once)
 
-**This runbook now exists:** `docs/architecture/contract-migration-runbook.md`. It recommends a wind-down model (old contract keeps running for existing positions, new activity goes to the new contract) rather than a forced state transplant - partly because that's what Blend does, and partly because `commitment-tree`'s privacy model makes a forced bulk migration architecturally impossible for ZK positions regardless of preference. It surfaced two prerequisite gaps, both now closed: `private-lend`/`commitment-tree` have a `paused` flag (`set_paused`, admin-gated, blocks new deposits/borrows/supply while leaving repay/withdraw/liquidate open), and both contracts now emit `supply`/`withdraw` events so lenders can be enumerated the same way borrowers already could.
+**This runbook now exists:** `docs/architecture/contract-migration-runbook.md`. It recommends a wind-down model (old contract keeps running for existing positions, new activity goes to the new contract) rather than a forced state transplant - partly because that's what Blend does, and partly because `commitment-tree`'s privacy model makes a forced bulk migration architecturally impossible for ZK positions regardless of preference. It surfaced two prerequisite gaps, both now closed: `writz-lend`/`commitment-tree` have a `paused` flag (`set_paused`, admin-gated, blocks new deposits/borrows/supply while leaving repay/withdraw/liquidate open), and both contracts now emit `supply`/`withdraw` events so lenders can be enumerated the same way borrowers already could.
 
 ## What this ADR does not decide
 

@@ -12,7 +12,7 @@ End-to-end view of how Bitcoin, the SPV Relayer, the four Soroban contracts, and
 **Key layers:**
 - **Bitcoin** - P2WSH locks collateral; two spending paths (cooperative co-sign or CLTV timelock)
 - **SPV Relayer** - watches Bitcoin, produces Merkle inclusion proofs on demand
-- **Soroban contracts** - `bitcoin-spv`, `zk-verifier`, `commitment-tree`, `private-lend` verify proofs and manage positions
+- **Soroban contracts** - `bitcoin-spv`, `zk-verifier`, `commitment-tree`, `writz-lend` verify proofs and manage positions
 - **Browser** - generates all ZK proofs locally; private witness values never leave the device
 
 ---
@@ -99,7 +99,7 @@ How the four live testnet contracts call each other.
 | `bitcoin-spv` | Verifies Bitcoin SPV proofs (block headers + Merkle path) |
 | `zk-verifier` | Groth16 verification via Protocol X-Ray host functions |
 | `commitment-tree` | Merkle tree of commitments; orchestrates all flows |
-| `private-lend` | USDC liquidity pool; lender deposits + borrower drawdowns |
+| `writz-lend` | USDC liquidity pool; lender deposits + borrower drawdowns |
 
 ---
 

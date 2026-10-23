@@ -45,8 +45,8 @@ g.node("commitment_tree",
        hl("commitment-tree", "CDFAP3J4WLFZC2…", "deposit · borrow · repay · liquidate\ninsert_commitment · get_merkle_root"),
        fillcolor=F_STELLAR, color=B_STELLAR)
 
-g.node("private_lend",
-       hl("private-lend", "CCLH2GJYG3QSHZ…", "supply_usdc · withdraw_supply\nborrow_usdc · repay_usdc"),
+g.node("writz_lend",
+       hl("writz-lend", "CCLH2GJYG3QSHZ…", "supply_usdc · withdraw_supply\nborrow_usdc · repay_usdc"),
        fillcolor=F_STELLAR, color=B_STELLAR)
 
 g.node("usdc_token",
@@ -56,7 +56,7 @@ g.node("usdc_token",
 # ── Actor → contract ──────────────────────────────────────────────────────────
 g.edge("borrower", "commitment_tree",
        label="deposit() · borrow() · repay()", color=B_STELLAR, fontcolor=B_STELLAR, penwidth="2")
-g.edge("lender", "private_lend",
+g.edge("lender", "writz_lend",
        label="supply_usdc() · withdraw_supply()", color=B_STELLAR, fontcolor=B_STELLAR)
 g.edge("keeper", "commitment_tree",
        label="liquidate()", color=B_DANGER, fontcolor=B_DANGER)
@@ -69,11 +69,11 @@ g.edge("commitment_tree", "bitcoin_spv",
 g.edge("commitment_tree", "zk_verifier",
        label="verify_deposit()\nverify_borrow_repay()\nverify_liquidation()",
        color=B_ZK, fontcolor=B_ZK, penwidth="2")
-g.edge("commitment_tree", "private_lend",
+g.edge("commitment_tree", "writz_lend",
        label="borrow_usdc() · repay_usdc()", color=B_STELLAR, fontcolor=B_STELLAR, penwidth="2")
 
-# ── private-lend → USDC ───────────────────────────────────────────────────────
-g.edge("private_lend", "usdc_token",
+# ── writz-lend → USDC ───────────────────────────────────────────────────────
+g.edge("writz_lend", "usdc_token",
        label="transfer()", color=B_DEFAULT)
 g.edge("usdc_token", "lender",
        label="supply / withdrawal", style="dashed", color=B_DEFAULT)

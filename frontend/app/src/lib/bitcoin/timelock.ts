@@ -4,7 +4,7 @@ import { deriveP2WSH } from "./address";
 /**
  * Deposit timelock policy.
  *
- * `commitment-tree::deposit` and `private-lend::deposit` accept a CLTV height
+ * `commitment-tree::deposit` and `writz-lend::deposit` accept a CLTV height
  * only within 1,008..=105,000 blocks above the block that confirms the deposit
  * (`spv-types::script::timelock_in_bounds`). The UI aims for about a year past
  * the current tip, which stays inside that window even if confirmation takes

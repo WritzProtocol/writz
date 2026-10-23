@@ -1,14 +1,14 @@
 ---
-title: "PrivateLend"
+title: "Writz Lend"
 ---
 
 **Deposit Bitcoin. Borrow USDC. Your position is yours alone.**
 
-PrivateLend is the flagship product of Writz Protocol. It is a collateralized lending system where Bitcoin is the collateral, USDC is the borrowed asset, and zero-knowledge proofs ensure that nobody - not bots, not competitors, not anyone watching the chain - can see your position.
+Writz Lend is the flagship product of Writz Protocol. It is a collateralized lending system where Bitcoin is the collateral, USDC is the borrowed asset, and zero-knowledge proofs ensure that nobody - not bots, not competitors, not anyone watching the chain - can see your position.
 
 ---
 
-## What PrivateLend Does
+## What Writz Lend Does
 
 You deposit BTC. You borrow up to 66% of its USD value in USDC. The BTC stays locked on Bitcoin, secured by a script that only releases when you repay. Your collateral amount, loan size, and health factor are hidden behind a ZK commitment. When you repay, you get your BTC back - plus the ZK commitment is nullified, so it cannot be reused.
 
@@ -61,7 +61,7 @@ The model is designed to keep utilization near 75% - the point where lenders ear
 - BTC to deposit (minimum 0.001 BTC)
 - A small amount of XLM for Stellar transaction fees (~1 XLM)
 
-You don't need to understand SPV, Merkle proofs, or zero-knowledge proofs to use PrivateLend - the steps below tell you what to click and what to expect. Each step also has an optional "How this works" note for anyone who wants the technical detail; skip those freely on a first read.
+You don't need to understand SPV, Merkle proofs, or zero-knowledge proofs to use Writz Lend - the steps below tell you what to click and what to expect. Each step also has an optional "How this works" note for anyone who wants the technical detail; skip those freely on a first read.
 
 ### Step 1 - Connect Your Wallets
 
@@ -154,7 +154,7 @@ The liquidator pays the outstanding USDC debt, and the contract records the liqu
 
 ## For USDC Lenders
 
-PrivateLend is also a yield opportunity for USDC holders. You supply USDC to the pool and earn the supply rate - currently tracking 5–7% APR depending on utilization.
+Writz Lend is also a yield opportunity for USDC holders. You supply USDC to the pool and earn the supply rate - currently tracking 5–7% APR depending on utilization.
 
 Your USDC earns yield continuously. Withdraw at any time (subject to pool liquidity). There is no lockup.
 
@@ -164,14 +164,14 @@ The USDC pool is separate from borrower positions. As a lender, you are not expo
 
 ## Phase 2 Launch Parameters (planned, not yet scheduled)
 
-PrivateLend is planned to launch on mainnet in Q2 to Q3 2027 with conservative initial parameters, once a set of gates are cleared:
+Writz Lend is planned to launch on mainnet in Q2 to Q3 2027 with conservative initial parameters, once a set of gates are cleared:
 
 - **TVL cap:** $50,000 BTC collateral (raised progressively)
 - **Whitelist-only** for the first 30 days
 - **Protocol fee:** the launch value is not decided yet (the contract charges 15% of interest today)
 - **USDC seed liquidity:** $50,000 protocol-owned (funding source not yet resolved - see `docs/research/growth-strategy.md`)
 
-These caps will be raised after a 30-day clean operation period and the completion of the Audit Bank engagement. The 2027 date and every parameter above are contingent on gates that are not yet closed: a formed legal entity (not yet started), a real price oracle (currently a hardcoded stub in the contract), the ZK trusted setup ceremony (participants not yet identified), and the Audit Bank engagement itself (its stated qualification path runs through the SCF grant, which is not being pursued in the short term). None of this blocks using PrivateLend on testnet today - it means the mainnet date above is a target, not a commitment.
+These caps will be raised after a 30-day clean operation period and the completion of the Audit Bank engagement. The 2027 date and every parameter above are contingent on gates that are not yet closed: a formed legal entity (not yet started), a real price oracle (currently a hardcoded stub in the contract), the ZK trusted setup ceremony (participants not yet identified), and the Audit Bank engagement itself (its stated qualification path runs through the SCF grant, which is not being pursued in the short term). None of this blocks using Writz Lend on testnet today - it means the mainnet date above is a target, not a commitment.
 
 ---
 

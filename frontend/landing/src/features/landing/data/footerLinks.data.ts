@@ -8,7 +8,7 @@ export const footerLinkGroups: FooterLinkGroup[] = [
     title: "Product",
     links: [
       { label: "Open app", href: APP_ROUTE },
-      { label: "Borrow", href: `${DOCS_URL}/products/privatelend` },
+      { label: "Borrow", href: `${DOCS_URL}/products/writz-lend` },
       { label: "Earn", href: `${DOCS_URL}/products/earn` },
       { label: "Protocol", href: `${APP_ROUTE}/protocol` },
     ],

@@ -43,7 +43,7 @@ than you did.
 ## Scope
 
 In scope - the four Soroban contracts (`bitcoin-spv`, `zk-verifier`,
-`commitment-tree`, `private-lend`), the three Circom circuits, the P2WSH
+`commitment-tree`, `writz-lend`), the three Circom circuits, the P2WSH
 scripts in `bitcoin-script/`, and the SPV relayer.
 
 Out of scope - denial of service, social engineering, findings that require

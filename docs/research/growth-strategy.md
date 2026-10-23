@@ -120,7 +120,7 @@ More protocols built on Writz → more SPV API revenue
 Write technical threads on X about what we're building as we build it: how Bitcoin SPV works in Rust, how Circom circuits for lending work, what ZK-private liquidations look like. This is not marketing - it is education that positions Writz as the most technically credible BTCfi protocol on Stellar. Technical credibility is the only credibility that matters in this audience.
 
 2. **Testnet early access program**
-Invite 100–200 technical users to test the SPV client and PrivateLend on testnet before mainnet. Assign unique testnet NFTs or "early contributor" tags. These users become the first word-of-mouth advocates and beta testers who catch bugs before real money is at risk.
+Invite 100–200 technical users to test the SPV client and Writz Lend on testnet before mainnet. Assign unique testnet NFTs or "early contributor" tags. These users become the first word-of-mouth advocates and beta testers who catch bugs before real money is at risk.
 
 3. **Open-source GitHub presence**
 A well-documented, actively maintained public GitHub is a growth channel. Stellar developers browsing for Bitcoin infrastructure will find Writz's SPV SDK. Star count and contributor count are credibility signals to both users and investors.
@@ -164,7 +164,7 @@ Option under evaluation, not a commitment: reduce the protocol fee for an initia
 Seed the USDC pool with $50,000 of protocol-owned capital (the planned mainnet launch figure) so borrowers can actually borrow from day one without waiting for organic lenders. **Funding source is currently unresolved:** this was originally scoped as coming from SCF grant proceeds, but the SCF application has no short-term submission plan, so this $50K needs a funding source that doesn't depend on it - founder capital, a separate raise, or another mechanism - before it can be treated as a settled part of the mainnet launch checklist.
 
 4. **Integration with Stellar wallet ecosystem**
-Work with Freighter and Lobstr to list PrivateLend as a featured dApp. Both wallets have millions of users who are one click from becoming Writz lenders. This is the fastest path to Segment 2 (Stellar native users).
+Work with Freighter and Lobstr to list Writz Lend as a featured dApp. Both wallets have millions of users who are one click from becoming Writz lenders. This is the fastest path to Segment 2 (Stellar native users).
 
 5. **Proof of Reserve first enterprise customer**
 Direct outreach to 10 crypto companies on Stellar (exchanges, OTC desks, fintechs using Stellar USDC) offering the Proof of Reserve product. Goal: 1 paying customer before the end of Q4 2026. A real enterprise customer is the most credible signal to subsequent customers.

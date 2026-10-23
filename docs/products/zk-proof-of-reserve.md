@@ -2,7 +2,7 @@
 title: "ZK Proof of Reserve"
 ---
 
-> **Scope status:** This is a problem-and-hypothesis exploration, not a committed roadmap item. No circuit, contract, or engineering work exists for ZK Proof of Reserve today - it is fully speculative. Before investing further spec or engineering time here, validate real user demand from PrivateLend's mainnet launch first; this document should not expand further until that validation exists.
+> **Scope status:** This is a problem-and-hypothesis exploration, not a committed roadmap item. No circuit, contract, or engineering work exists for ZK Proof of Reserve today - it is fully speculative. Before investing further spec or engineering time here, validate real user demand from Writz Lend's mainnet launch first; this document should not expand further until that validation exists.
 
 **Prove you hold Bitcoin. Without revealing your wallet.**
 
@@ -82,7 +82,7 @@ All plans include the on-premise PoR client, public verification tooling, and do
 
 ## Technical Foundation
 
-ZK Proof of Reserve uses the same Groth16 BN254 circuit infrastructure as PrivateLend's ZK layer. The ZK circuit is purpose-built for reserve attestation:
+ZK Proof of Reserve uses the same Groth16 BN254 circuit infrastructure as Writz Lend's ZK layer. The ZK circuit is purpose-built for reserve attestation:
 
 - Input: UTXO set (private), block hash at attestation time (public), threshold (public)
 - Constraint: sum of UTXO values ≥ threshold
@@ -94,9 +94,9 @@ The circuit is compiled, the trusted setup ceremony is run publicly, and the ver
 
 ## Status and Timeline
 
-ZK Proof of Reserve is planned for Phase 3 (Q3 2027), after PrivateLend is live on mainnet and the ZK infrastructure has been audited.
+ZK Proof of Reserve is planned for Phase 3 (Q3 2027), after Writz Lend is live on mainnet and the ZK infrastructure has been audited.
 
-The circuit design is complete. The required ZK infrastructure (zk-verifier contract, Groth16 BN254 pairing) is already deployed on Stellar testnet as part of the PrivateLend stack.
+The circuit design is complete. The required ZK infrastructure (zk-verifier contract, Groth16 BN254 pairing) is already deployed on Stellar testnet as part of the Writz Lend stack.
 
 ---
 
@@ -111,4 +111,4 @@ not receive mail - use GitHub until a mailbox is live.)
 
 ---
 
-**Back to:** [All Products →](/products/privatelend)
+**Back to:** [All Products →](/products/writz-lend)

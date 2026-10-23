@@ -14,7 +14,7 @@
 //! Both lending contracts' `deposit` derive the expected scriptPubKey from
 //! the configured protocol key, the depositor's key and the timelock, so an
 //! output can only count as collateral if it really is locked under the
-//! protocol's co-signing key. Moved here from `private-lend` so
+//! protocol's co-signing key. Moved here from `writz-lend` so
 //! `commitment-tree` checks the exact same script rather than a copy.
 
 use soroban_sdk::{Bytes, BytesN, Env};

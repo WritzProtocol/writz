@@ -28,7 +28,7 @@ The following are in-scope for the bug bounty program:
 - `commitment-tree` - ZK lending logic, nullifier set, Merkle tree
 - `zk-verifier` - Groth16 verification, verification key management
 - `bitcoin-spv` - SPV verification, SHA256d implementation, Merkle proofs
-- `private-lend` - Lending mechanics, interest accrual, liquidation
+- `writz-lend` - Lending mechanics, interest accrual, liquidation
 
 **ZK circuits:**
 - `deposit.circom` - Soundness issues, underconstrained signals

@@ -7,7 +7,7 @@ sidebarTitle: "Technical Overview"
 **Last updated:** 2026-06-22
 **Status:** Preliminary - subject to change after Phase 0 benchmarks
 
-> **Superseded values notice:** This document predates several Phase 0/1 decisions and is kept for historical architecture context only. Where it conflicts with `docs/research/circom-circuit-design.md`, `docs/research/interest-rate-model.md`, `docs/research/oracle-design.md`, or the contract source (`contracts/contracts/private-lend/src/`), those are the sources of truth, not this file. Known stale values below have been corrected inline; treat any other specific number in this document as unverified until cross-checked against the docs above.
+> **Superseded values notice:** This document predates several Phase 0/1 decisions and is kept for historical architecture context only. Where it conflicts with `docs/research/circom-circuit-design.md`, `docs/research/interest-rate-model.md`, `docs/research/oracle-design.md`, or the contract source (`contracts/contracts/writz-lend/src/`), those are the sources of truth, not this file. Known stale values below have been corrected inline; treat any other specific number in this document as unverified until cross-checked against the docs above.
 
 ---
 
@@ -59,7 +59,7 @@ Writz Protocol operates across two blockchains: Bitcoin and Stellar. The archite
 │                    │  Verification result                        │
 │                    ▼                                            │
 │  ┌────────────────────────────────────────┐                     │
-│  │     PrivateLend Contract               │                     │
+│  │     Writz Lend Contract               │                     │
 │  │                                        │                     │
 │  │  deposit(spv_proof) → Position         │                     │
 │  │  borrow(position_id, amount) → USDC    │                     │
@@ -183,7 +183,7 @@ User deposits BTC
 SPV contract verifies BTC transaction (public)
     │
     ▼
-PrivateLend creates a position commitment:
+Writz Lend creates a position commitment:
   commitment = hash(amount, user_secret, nonce)
   ZK proof: "I know (amount, secret, nonce) such that
              commitment = hash(amount, secret, nonce)
@@ -199,7 +199,7 @@ Actual amount never revealed
 
 ---
 
-### 4. PrivateLend Contract (Soroban)
+### 4. Writz Lend Contract (Soroban)
 
 The lending logic that sits above the SPV and ZK layers.
 
@@ -209,7 +209,7 @@ The lending logic that sits above the SPV and ZK layers.
 - Liquidation bonus: 10% of debt, paid in USDC from the protocol reserve (funded by 15% of interest), capped at the reserve balance
 - Borrow rate: variable, determined by utilization ratio (similar to Blend/Aave)
 - Supply rate: borrow rate × (1 - protocol fee percentage)
-- Protocol fee: 15% of interest spread (finalized; see `PROTOCOL_FEE_BP` in `contracts/contracts/private-lend/src/rates.rs` and `docs/research/interest-rate-model.md`)
+- Protocol fee: 15% of interest spread (finalized; see `PROTOCOL_FEE_BP` in `contracts/contracts/writz-lend/src/rates.rs` and `docs/research/interest-rate-model.md`)
 
 **Interest rate model:**
 ```
@@ -232,7 +232,7 @@ else:
 
 ### 5. USDC Liquidity Pools (Stellar native)
 
-The supply side of PrivateLend. USDC lenders deposit into pools and earn yield. This is standard Stellar asset mechanics - no novel engineering required.
+The supply side of Writz Lend. USDC lenders deposit into pools and earn yield. This is standard Stellar asset mechanics - no novel engineering required.
 
 - Lenders supply USDC → receive interest-bearing receipt tokens
 - Borrowers draw from these pools against their BTC collateral
@@ -272,7 +272,7 @@ let result = spv.verify_payment(
    a. Writz header service provides block headers + Merkle proof
    b. User (or Writz UI) submits SPV proof to Soroban SPV contract
    c. SPV contract verifies and returns true
-5. PrivateLend contract recognizes the deposit
+5. Writz Lend contract recognizes the deposit
    a. Creates a position commitment (ZK)
    b. User can now borrow up to 66% of BTC value in USDC
 6. User requests USDC loan
@@ -284,7 +284,7 @@ let result = spv.verify_payment(
 
 ```
 1. User repays USDC loan + accrued interest
-2. PrivateLend contract confirms repayment
+2. Writz Lend contract confirms repayment
 3. Protocol generates co-signature for P2WSH spending path A
 4. User broadcasts BTC release transaction on Bitcoin
 5. BTC arrives in user's original wallet

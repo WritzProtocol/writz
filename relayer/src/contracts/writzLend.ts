@@ -33,7 +33,7 @@ if (typeof window !== "undefined") {
 
 
 
-export const PrivateLendError = {
+export const WritzLendError = {
   /**
    * Contract has already been initialized.
    */
@@ -454,7 +454,7 @@ export interface Client {
    * `keeper_heartbeat` in `config.keeper_stale_after_secs`, default 24h),
    * in which case any caller with a genuinely undercollateralized
    * position may liquidate it. This is a liveness/censorship
-   * fallback, not a privacy mechanism - `private-lend` positions are
+   * fallback, not a privacy mechanism - `writz-lend` positions are
    * already plaintext. Safety is unaffected by who calls: the
    * undercollateralization check below is independent of caller identity.
    * 

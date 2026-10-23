@@ -210,7 +210,7 @@ max_tip_age_secs: u64;
  * Ceiling on `PoolState::total_borrowed`, in USDC stroops. A ZK
  * borrower can reclaim their BTC through the timelock exit while still
  * owing USDC, and the protocol cannot seize it, so total exposure is
- * capped the same way as `private-lend` (GHSA-5rxp). Admin-set via
+ * capped the same way as `writz-lend` (GHSA-5rxp). Admin-set via
  * `set_max_total_borrowed`.
  */
 max_total_borrowed: i128;
@@ -229,7 +229,7 @@ paused: boolean;
   /**
  * The protocol's 33-byte compressed Bitcoin co-signing key. Every ZK
  * deposit must pay the Writz P2WSH built from this key, the depositor's
- * own key and a bounded timelock - the same script `private-lend`
+ * own key and a bounded timelock - the same script `writz-lend`
  * checks, so the depositor keeps a unilateral timelock exit and the
  * protocol can only ever co-sign. Immutable per contract; rotating it
  * means a new deployment (#177).

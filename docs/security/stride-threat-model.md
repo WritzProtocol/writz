@@ -2,7 +2,7 @@
 
 **Version:** 0.1 (Draft)
 **Date:** June 2026
-**Scope:** Phase 1 architecture (SPV contract + PrivateLend + P2WSH locking script + relayer)
+**Scope:** Phase 1 architecture (SPV contract + Writz Lend + P2WSH locking script + relayer)
 **Methodology:** Microsoft STRIDE (Spoofing, Tampering, Repudiation, Information Disclosure, Denial of Service, Elevation of Privilege)
 
 ---
@@ -13,7 +13,7 @@
 |---|---|---|
 | Bitcoin P2WSH locking script | Bitcoin on-chain | Trustless - Bitcoin consensus |
 | `bitcoin-spv` Soroban contract | Stellar on-chain | Trustless - Soroban VM |
-| `private-lend` Soroban contract | Stellar on-chain | Trustless - Soroban VM |
+| `writz-lend` Soroban contract | Stellar on-chain | Trustless - Soroban VM |
 | Writz SPV relayer | Off-chain service | Untrusted - convenience only |
 | Pyth / Reflector oracle | Off-chain + on-chain | Partially trusted |
 | Protocol co-signing key (HSM) | Off-chain | Trusted - Writz operator |
@@ -42,7 +42,7 @@
         │
         │ SpvVerificationResult { txid, block_hash, confirmations }
         ▼
-[private-lend contract] ────────────────────────────────────── TRUSTLESS
+[writz-lend contract] ────────────────────────────────────── TRUSTLESS
         │         │         │
         │         │         │ BTC/USD price feed (SEP-40)
         │         │         ▼
@@ -53,7 +53,7 @@
 [User Stellar Wallet]     [Protocol Treasury / USDC Pool]
 
 [Protocol Co-signing Key (HSM)] ─── co-signs P2WSH release on Bitcoin
-[Liquidation Keeper] ─────────── calls liquidate() on PrivateLend
+[Liquidation Keeper] ─────────── calls liquidate() on Writz Lend
 ```
 
 ---
@@ -82,7 +82,7 @@
 **Residual risk:** MEDIUM in Phase 1 (HSM compromise is the primary attack vector on the protocol's Bitcoin-side custody). Mitigated to LOW in Phase 2 with MPC.
 
 #### S3: Oracle price spoofing
-**Threat:** An attacker manipulates the BTC/USD price fed to PrivateLend to artificially trigger liquidations or allow over-borrowing.
+**Threat:** An attacker manipulates the BTC/USD price fed to Writz Lend to artificially trigger liquidations or allow over-borrowing.
 
 **Mitigation:**
 - Pyth uses off-chain institutional price aggregation (30–60 publishers per feed). Cannot be manipulated by on-chain flash loans.

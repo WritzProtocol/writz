@@ -44,7 +44,7 @@ Server-side (relayer), not client-side polling from the browser:
 
 1. Add a `liquidation-watcher` service alongside `repay-watcher`, same
    cursor-store pattern, watching the `liquidate` topic on both `commitment-tree`
-   and `private-lend`.
+   and `writz-lend`.
 2. On a match, record `{ nullifier, keeper, usdc_debt, ledger, txHash }` in a
    small persisted table (SQLite, same as the repay-watcher's cursor store).
 3. Expose it via a relayer endpoint the frontend already knows how to call the

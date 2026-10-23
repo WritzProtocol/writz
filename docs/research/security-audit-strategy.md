@@ -47,7 +47,7 @@ The following firms are officially pre-approved by the SDF for the Soroban Secur
 | **Veridise** | Smart contract + ZK circuit audits, advanced vulnerability detection tooling | ✓ Primary - only approved firm with explicit ZK circuit capability |
 | **OtterSec** | $36B+ TVL secured, 120+ protocols, Soroban track record | ✓ Primary - Soroban smart contract audit |
 | **Zellic** | Blockchain + cryptography security, world-class white-hat team | ✓ Strong option for Soroban contracts |
-| **Certora** | Formal verification via mathematical reasoning of code | Good for PrivateLend financial math formal proofs |
+| **Certora** | Formal verification via mathematical reasoning of code | Good for Writz Lend financial math formal proofs |
 | **Runtime Verification** | Formal methods and runtime verification, deep design review | Good for SPV verification correctness proofs |
 | **Spearbit + Cantina** | Network of top researchers, competitive audit platform | Good for broad coverage |
 | **Oak Security** | 600+ audits with zero exploits, blinded parallel review | Good for unbiased second opinion |
@@ -57,7 +57,7 @@ The following firms are officially pre-approved by the SDF for the Soroban Secur
 
 **Writz's target firms:**
 - **Veridise** - Circom ZK circuit audit (5 circuits: deposit, borrow/repay, liquidation, zero-debt release, Merkle insertion)
-- **OtterSec or Zellic** - Soroban smart contracts (SPV client + PrivateLend + USDC pool)
+- **OtterSec or Zellic** - Soroban smart contracts (SPV client + Writz Lend + USDC pool)
 
 ---
 
@@ -106,7 +106,7 @@ pub struct PoolState {
 
 ### 4. Reentrancy via Cross-Contract Calls (HIGH SEVERITY)
 
-**What it is:** When Writz's PrivateLend contract calls an external contract (USDC token transfer, oracle, etc.), that external contract could call back into Writz before the first call completes - potentially double-spending or corrupting state.
+**What it is:** When Writz's Writz Lend contract calls an external contract (USDC token transfer, oracle, etc.), that external contract could call back into Writz before the first call completes - potentially double-spending or corrupting state.
 
 **Writz mitigation:**
 - Follow checks-effects-interactions pattern: update all state BEFORE making external calls
@@ -150,7 +150,7 @@ pub struct PoolState {
 
 **Unit tests:** Every contract function tested in isolation with both valid and invalid inputs. Minimum 90% function coverage.
 
-**Integration tests:** Cross-contract call flows tested end-to-end (SPV → PrivateLend → USDC pool).
+**Integration tests:** Cross-contract call flows tested end-to-end (SPV → Writz Lend → USDC pool).
 
 **Fuzz testing:** Use `cargo-fuzz` on:
 - Interest rate calculations (extreme utilization, very large/small amounts)

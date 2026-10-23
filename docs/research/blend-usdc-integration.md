@@ -11,7 +11,7 @@ sidebarTitle: "Stellar USDC Liquidity & Blend Ecosystem"
 
 ## Overview
 
-The supply side of PrivateLend - USDC lenders who provide the capital that borrowers draw against - depends on Stellar's existing USDC ecosystem. This document maps the USDC liquidity landscape on Stellar and evaluates how Writz fits into and potentially integrates with existing protocols.
+The supply side of Writz Lend - USDC lenders who provide the capital that borrowers draw against - depends on Stellar's existing USDC ecosystem. This document maps the USDC liquidity landscape on Stellar and evaluates how Writz fits into and potentially integrates with existing protocols.
 
 ---
 

@@ -3,7 +3,7 @@
 import { useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
 
 const EXAMPLE_PRICE = 100_000;
-// private-lend config: 150% minimum collateral, liquidation below 120%.
+// writz-lend config: 150% minimum collateral, liquidation below 120%.
 const MIN_COLLATERAL = 1.5;
 const LIQUIDATION = 1.2;
 

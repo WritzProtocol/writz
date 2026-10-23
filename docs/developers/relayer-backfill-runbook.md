@@ -10,7 +10,7 @@ Until this runbook is rehearsed once against a real testnet outage, treat it as 
 
 The watcher's cursor (`relayer/src/repay-watcher/cursor-store.ts`) is the only thing standing between a normal restart (safe - resumes exactly where it left off) and a silent gap (an outage that outlasts RPC's retention). When the gap exists, `runPollCycle`'s `getEvents({ cursor: persistedCursor })` call will fail or return nothing meaningful for the missing range - the code comment in `poller.ts` names this exact scenario as needing "a documented manual backfill." This is that document.
 
-**What's actually at stake:** every `repay_full` event on `private-lend` that fired during the gap corresponds to a user who fully repaid their USDC debt and is waiting for their BTC release PSBT to be co-signed and published. Missing one means that user's BTC stays locked until either (a) this backfill runs, or (b) the CLTV timelock expires and they use the manual emergency recovery path - a much worse experience for them, and avoidable.
+**What's actually at stake:** every `repay_full` event on `writz-lend` that fired during the gap corresponds to a user who fully repaid their USDC debt and is waiting for their BTC release PSBT to be co-signed and published. Missing one means that user's BTC stays locked until either (a) this backfill runs, or (b) the CLTV timelock expires and they use the manual emergency recovery path - a much worse experience for them, and avoidable.
 
 ## Step 1 - Confirm there's actually a gap
 
@@ -32,7 +32,7 @@ You need: the ledger sequence the watcher was last confirmed healthy at (check l
 RPC itself can't give you this once the cursor is stale - that's the whole problem. Use one of:
 
 - **A second RPC provider or archive node** with a longer retention window, if one is configured or available on short notice.
-- **Hubble / Galexie** (Stellar's deep-history data pipeline - see the `data` skill's coverage of these tools) for a historical query of `private-lend` contract events filtered to topic `repay_full` across the gap's ledger range.
+- **Hubble / Galexie** (Stellar's deep-history data pipeline - see the `data` skill's coverage of these tools) for a historical query of `writz-lend` contract events filtered to topic `repay_full` across the gap's ledger range.
 - **stellar.expert** or a similar explorer, manually, if the gap is small enough to review by hand (this does not scale past a small number of ledgers, but is the fastest option for a short outage).
 
 Whichever source you use, the output you need is a list of txids (internal byte order, matching what `decodeRepayFullEvent` extracts from `event.topic[1]`).
@@ -85,7 +85,7 @@ sqlite3 data/watcher.db "UPDATE watcher_cursor SET cursor = '<fresh cursor from 
 
 ## Step 6 - Verify
 
-For each txid backfilled, confirm `get_release_psbt` on `private-lend` now returns a non-empty PSBT. Spot-check at least one end-to-end by having the affected user (or a test position, on testnet) fetch and broadcast their release transaction successfully.
+For each txid backfilled, confirm `get_release_psbt` on `writz-lend` now returns a non-empty PSBT. Spot-check at least one end-to-end by having the affected user (or a test position, on testnet) fetch and broadcast their release transaction successfully.
 
 ---
 

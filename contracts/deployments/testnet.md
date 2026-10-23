@@ -5,6 +5,24 @@
 
 ---
 
+## `writz-lend` redeploy (2026-10-23)
+
+`writz-lend` deployed alone from `refactor/rename-writz-lend` at `c0722e7` (`cargo build --release --target wasm32v1-none --locked -p writz-lend`), to bring the deposit key signature and the supply index on chain for the app. It replaces `CA3T7T2S7HV27BXO7OLIHSMGAMQ37BMOOUHQLTBGUQVL4B6Y2CDJPHHX` for new positions; the other contracts of the 2026-10-11 deployment are unchanged.
+
+| Field | Value |
+|---|---|
+| **Contract ID** | `CDR3RWSGSA6ADQANZ55S4H6J7SW5O4LCRV3AIU2WQBLGWC3477GE5QXV` |
+| wasm sha256 | `5eb185e80d67243e3bda22e1606c5acca4ce51d3b19878549da6d4c7f707fa40` |
+| Deploy tx | [`fed4e3fd63…`](https://stellar.expert/explorer/testnet/tx/fed4e3fd63286df080454b6c4905a222ac272f4da71c00f8b49171f48614e549) |
+| `admin`, `keeper`, `relayer` | `writz-deployer` |
+| `spv_contract` | `CAHHY4S4WCIFU4LBSKBI3IP6A4QYR2COV6EACDEBXGPJFDWBJWGOMCLP` |
+| `usdc_token` | `CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA` |
+| `oracle` | `CCYOZJCOPG34LLQQ7N24YXBM7LL62R7ONMZ3G6WZAAYPB5OYKOMJRN63` (Reflector, external CEXs & DEXs) |
+| `protocol_pubkey` | `022b9711f185db1d54aa841d949d9ea1e5644dece224dba8f1acbb3275e04e8458` |
+| `max_total_borrowed` | 50,000 USDC (default) |
+| `bitcoin-spv` consumer | [`59c67ba820…`](https://stellar.expert/explorer/testnet/tx/59c67ba820a0ef057c8d828f4d50a6579650804e1b8b3959cd49fb4239bc44b2) |
+| Initial supply | 1,000 test USDC from `writz-deployer` [`d63d43fb10…`](https://stellar.expert/explorer/testnet/tx/d63d43fb10ca7f8f7218097d84c36be603a427b7f4e0c8984360f52c7fa9b3c4) |
+
 ## Current deployment (2026-10-11)
 
 The coordinated redeploy of #177: every security-advisory fix merged in #171-#213, deployed together through `scripts/deploy/deploy_stack.mjs`. Each contract was configured by its `__constructor` inside the deploy transaction, so there was no separate `initialize` call to front-run (GHSA-422m). Built from `main` at `c7eba49` (`cargo build --release --target wasm32v1-none --locked`). The verification keys are the **development** keys in `circuits/keys/`; the production ceremony is still pending.
@@ -14,7 +32,7 @@ The coordinated redeploy of #177: every security-advisory fix merged in #171-#21
 | `zk-verifier` | `CB5XAP6MF2GVVFATFTVCKVEXUODWWRQP4B3QFDMRTM55REP7N2YMXEUD` | `4c2c8529…01333` |
 | `bitcoin-spv` | `CAHHY4S4WCIFU4LBSKBI3IP6A4QYR2COV6EACDEBXGPJFDWBJWGOMCLP` | `bbc23a81…5ba01` |
 | `commitment-tree` | `CAQBLCAPGXXCZTJDAJLY7E4PTJYGR6CY4YWH4JSJKFXYIHW3GANP6RFM` | `a869a6d4…8a06e` |
-| `private-lend` | `CA3T7T2S7HV27BXO7OLIHSMGAMQ37BMOOUHQLTBGUQVL4B6Y2CDJPHHX` | `14910b78…1cbf1` |
+| `writz-lend` | `CA3T7T2S7HV27BXO7OLIHSMGAMQ37BMOOUHQLTBGUQVL4B6Y2CDJPHHX` | `14910b78…1cbf1` |
 
 ### bitcoin-spv
 
@@ -25,7 +43,7 @@ The coordinated redeploy of #177: every security-advisory fix merged in #171-#21
 | `pow_limit_bits` | `0x1e0377ae` (signet) |
 | Checkpoint | signet block 325,554, `0000000fd28d108b1223f665bb714297dc5e637bf4ff69475db2c6285cf4ba41`, bits `0x1d14cbb2`, period start time `1790905711` (block 324,576); hash and fields checked against mempool.space and Blockstream - [`1fa9a34862…`](https://stellar.expert/explorer/testnet/tx/1fa9a3486269b86d444c0ba97800d3792b98db1579e0a16c25aa0a09ce931199) |
 | Submitter | `writz-deployer` only (signet blocks are signature-authenticated, which this contract does not check) - [`991882fd64…`](https://stellar.expert/explorer/testnet/tx/991882fd6469ae1052b1b00eb3a2d996cd7b2ce82c843d904c6511ffe8cb205e) |
-| Consumers | `commitment-tree` [`082f8a54c1…`](https://stellar.expert/explorer/testnet/tx/082f8a54c123a6a4b39c2242e6e67a324fb3c96a10d92bdeaad0881e76021fa1), `private-lend` [`2f274e40fd…`](https://stellar.expert/explorer/testnet/tx/2f274e40fd8d64c18c16a0ca78d0ba098d86b7e129a7d0310e5c51ed20d05411) |
+| Consumers | `commitment-tree` [`082f8a54c1…`](https://stellar.expert/explorer/testnet/tx/082f8a54c123a6a4b39c2242e6e67a324fb3c96a10d92bdeaad0881e76021fa1), `writz-lend` [`2f274e40fd…`](https://stellar.expert/explorer/testnet/tx/2f274e40fd8d64c18c16a0ca78d0ba098d86b7e129a7d0310e5c51ed20d05411) |
 
 ### zk-verifier
 
@@ -47,7 +65,7 @@ The coordinated redeploy of #177: every security-advisory fix merged in #171-#21
 | `protocol_pubkey` | `022b9711f185db1d54aa841d949d9ea1e5644dece224dba8f1acbb3275e04e8458` (the key `/api/cosign` signs with on `testnet.writz.xyz`) |
 | `max_total_borrowed` | 50,000 USDC (default) |
 
-### private-lend
+### writz-lend
 
 | Field | Value |
 |---|---|
@@ -67,10 +85,10 @@ The coordinated redeploy of #177: every security-advisory fix merged in #171-#21
 
 ### Funded and exercised with real signet data (2026-10-11)
 
-- **Pools:** 400 testnet USDC supplied to `commitment-tree` [`97e873c7a0…`](https://stellar.expert/explorer/testnet/tx/97e873c7a08e4210c13db991b4044a7cd73294a21f2eb5d0f3ae0d22791ab7c9) and 100 to `private-lend` [`11bb049602…`](https://stellar.expert/explorer/testnet/tx/11bb0496025f2a4518f362a8bc5a3aba97e68495916c588a119b156c85d50c56), swapped from testnet XLM on the testnet DEX.
+- **Pools:** 400 testnet USDC supplied to `commitment-tree` [`97e873c7a0…`](https://stellar.expert/explorer/testnet/tx/97e873c7a08e4210c13db991b4044a7cd73294a21f2eb5d0f3ae0d22791ab7c9) and 100 to `writz-lend` [`11bb049602…`](https://stellar.expert/explorer/testnet/tx/11bb0496025f2a4518f362a8bc5a3aba97e68495916c588a119b156c85d50c56), swapped from testnet XLM on the testnet DEX.
 - **Header sync:** the relayer at `main` (run locally with this deployment's IDs) synced real signet headers 325,555 → 325,995 into `bitcoin-spv`; every header was proof-of-work and parentage checked on-chain. Blockstream's public API throttled the sync (429 on every pass), so the relayer now defaults to mempool.space's Esplora and backs off on 429.
 - **SPV on a real transaction:** `verify_transaction` accepted signet tx `e80765d8…ee24` (block 325,980, index 1) with a relayer-built Merkle proof, and refused it at 50 confirmations (`InsufficientConfirmations`, #2).
-- **Deposit checks on that real transaction (simulated):** `commitment-tree` passes SPV, the timelock bound, the shared txid registry and the txid binding, then refuses because the transaction pays no Writz script (`VaultOutputNotFound`, #17); a timelock 100 blocks out is refused (`InvalidTimelock`, #21); `private-lend` refuses a non-Writz script (`ScriptPubKeyMismatch`, #21).
+- **Deposit checks on that real transaction (simulated):** `commitment-tree` passes SPV, the timelock bound, the shared txid registry and the txid binding, then refuses because the transaction pays no Writz script (`VaultOutputNotFound`, #17); a timelock 100 blocks out is refused (`InvalidTimelock`, #21); `writz-lend` refuses a non-Writz script (`ScriptPubKeyMismatch`, #21).
 - **Relayer endpoints:** `/notes` and `/merkle-path` reflect the empty tree; `/insert-commitment` refuses a missing or invalid `authTxXdr`; `/spv-proof` refuses a transaction with fewer than the requested 6 confirmations.
 
 Still to do on this deployment: point the hosted relayer and frontend at these IDs, run a real signet deposit through the UI (deposit → borrow → repay → `mark_released` → cosign), and put `writz-deployer` behind the multisig (#177).
@@ -164,7 +182,7 @@ Verification keys set (regenerated from the range-checked circuits - IC lengths 
 
 **Pool seeded:** 500 USDC supplied by `writz-deployer` - [`5241a90817...`](https://stellar.expert/explorer/testnet/tx/5241a908176a0ae32e0b1b8ce108608e51ae30dbe6f87e8c97aa69a95a025f21). `get_pool_state` → `total_supplied: 5,000,000,000` stroops (500 USDC), `total_borrowed: 0`. ✓
 
-### private-lend
+### writz-lend
 
 | Field | Value |
 |---|---|
@@ -229,8 +247,8 @@ on-chain against `zk-verifier` `CBNZU23Q…`. ✓
 ### Follow-ups this redeploy did not do
 
 - **Doc sweep:** done - every non-historical reference to the superseded Contract IDs across `docs/`, `README.md`, `docs.json`, `mint.json`, `relayer/README.md`, and `packages/commitment-tree/README.md` now points at the current deployment; `scripts/check-docs-sync.mjs` reports zero drift. Test counts across all docs were re-synced from `docs/_data/facts.json` (191 contract tests + 60 bitcoin-script + 59 relayer + 29 circuits = 339 total) via `scripts/update-test-counts.mjs`.
-- **Relayer live `.env`:** no relayer instance's real `.env` exists in this checkout (only `.env.example`, which had no hardcoded contract IDs to begin with) - nothing to update. If a deployed relayer instance exists elsewhere, its env needs the new `COMMITMENT_TREE_ID`/`PRIVATE_LEND_ID` by hand.
-- **`docs/developers/contract-reference.md` and a couple of quick-start/milestone-plan snippets** document function signatures and CLI calls (`set_vkey`, `verify_groth16`, commitment-tree/private-lend `initialize` argument lists, a `bitcoin-spv::get_version` call) that don't match the actual current contract interfaces - this predates this redeploy and is a separate, larger doc-accuracy gap (API reference, not contract addresses). Contract IDs and test counts in those files are now correct; the signatures themselves were not rewritten here - flag if a full rewrite is wanted.
+- **Relayer live `.env`:** no relayer instance's real `.env` exists in this checkout (only `.env.example`, which had no hardcoded contract IDs to begin with) - nothing to update. If a deployed relayer instance exists elsewhere, its env needs the new `COMMITMENT_TREE_ID`/`WRITZ_LEND_ID` by hand.
+- **`docs/developers/contract-reference.md` and a couple of quick-start/milestone-plan snippets** document function signatures and CLI calls (`set_vkey`, `verify_groth16`, commitment-tree/writz-lend `initialize` argument lists, a `bitcoin-spv::get_version` call) that don't match the actual current contract interfaces - this predates this redeploy and is a separate, larger doc-accuracy gap (API reference, not contract addresses). Contract IDs and test counts in those files are now correct; the signatures themselves were not rewritten here - flag if a full rewrite is wanted.
 
 ---
 
@@ -347,7 +365,7 @@ stellar contract invoke \
 
 ---
 
-## private-lend (superseded)
+## writz-lend (superseded)
 
 | Field | Value |
 |---|---|

@@ -11,9 +11,9 @@ use soroban_sdk::{
 use spv_types::SpvVerificationResult;
 
 use crate::{
-    error::PrivateLendError,
+    error::WritzLendError,
     types::{Position, PositionStatus},
-    PrivateLendContract, PrivateLendContractClient,
+    WritzLendContract, WritzLendContractClient,
 };
 
 // ── Mock SPV contract ─────────────────────────────────────────────────────────
@@ -245,7 +245,7 @@ struct Setup {
     depositor: Address,
     keeper: Address,
     relayer: Address,
-    client: PrivateLendContractClient<'static>,
+    client: WritzLendContractClient<'static>,
     usdc: Address,
     /// Default mock Reflector oracle's address, kept for any future test
     /// that wants to switch back to it after swapping in a different mock
@@ -282,9 +282,9 @@ fn setup() -> Setup {
     let spv = env.register(MockSpv, ());
     let oracle = env.register(MockReflector, ());
 
-    // Deploy PrivateLend.
-    let pl = env.register(PrivateLendContract, (admin.clone(), spv.clone(), usdc.clone(), oracle.clone(), keeper.clone(), relayer.clone(), fake_protocol_pubkey(&env)));
-    let client = PrivateLendContractClient::new(&env, &pl);
+    // Deploy WritzLend.
+    let pl = env.register(WritzLendContract, (admin.clone(), spv.clone(), usdc.clone(), oracle.clone(), keeper.clone(), relayer.clone(), fake_protocol_pubkey(&env)));
+    let client = WritzLendContractClient::new(&env, &pl);
 
 
     // Pre-build deposit transaction artifacts.
@@ -368,7 +368,7 @@ fn try_deposit_with(
     spk: &Bytes,
     timelock: u32,
     user_pubkey: &BytesN<33>,
-) -> Result<BytesN<32>, PrivateLendError> {
+) -> Result<BytesN<32>, WritzLendError> {
     let raw_tx = Bytes::from_slice(&s.env, &build_deposit_tx(500_000, spk));
     match s.client.try_deposit(
         &s.depositor,
@@ -398,7 +398,7 @@ fn deposit_rejects_output_the_depositor_can_spend_alone() {
 
     assert_eq!(
         try_deposit_with(&s, &spk, TEST_TIMELOCK, &fake_user_pubkey(&s.env)),
-        Err(PrivateLendError::ScriptPubKeyMismatch),
+        Err(WritzLendError::ScriptPubKeyMismatch),
     );
 }
 
@@ -411,7 +411,7 @@ fn deposit_rejects_script_pubkey_not_derived_from_the_arguments() {
 
     assert_eq!(
         try_deposit_with(&s, &other, TEST_TIMELOCK, &fake_user_pubkey(&s.env)),
-        Err(PrivateLendError::ScriptPubKeyMismatch),
+        Err(WritzLendError::ScriptPubKeyMismatch),
     );
 }
 
@@ -424,7 +424,7 @@ fn deposit_rejects_timelock_that_differs_from_the_funded_script() {
 
     assert_eq!(
         try_deposit_with(&s, &funded_for_other_timelock, TEST_TIMELOCK, &fake_user_pubkey(&s.env)),
-        Err(PrivateLendError::ScriptPubKeyMismatch),
+        Err(WritzLendError::ScriptPubKeyMismatch),
     );
 }
 
@@ -438,7 +438,7 @@ fn deposit_rejects_non_p2wsh_script_pubkey() {
 
     assert_eq!(
         try_deposit_with(&s, &taproot, TEST_TIMELOCK, &fake_user_pubkey(&s.env)),
-        Err(PrivateLendError::InvalidScriptPubKey),
+        Err(WritzLendError::InvalidScriptPubKey),
     );
 }
 
@@ -451,7 +451,7 @@ fn deposit_rejects_user_pubkey_that_is_not_compressed() {
 
     assert_eq!(
         try_deposit_with(&s, &s.spk, TEST_TIMELOCK, &uncompressed_prefix),
-        Err(PrivateLendError::InvalidUserPubkey),
+        Err(WritzLendError::InvalidUserPubkey),
     );
 }
 
@@ -474,7 +474,7 @@ fn deposit_enforces_timelock_window() {
         if ok {
             assert!(result.is_ok(), "offset {} must be accepted: {:?}", offset, result);
         } else {
-            assert_eq!(result, Err(PrivateLendError::InvalidTimelock), "offset {}", offset);
+            assert_eq!(result, Err(WritzLendError::InvalidTimelock), "offset {}", offset);
         }
     }
 }
@@ -487,7 +487,7 @@ fn constructor_rejects_protocol_pubkey_that_is_not_compressed() {
     let mut buf = [0x11u8; 33];
     buf[0] = 0x05;
     env.register(
-        PrivateLendContract,
+        WritzLendContract,
         (a.clone(), a.clone(), a.clone(), a.clone(), a.clone(), a.clone(), BytesN::<33>::from_array(&env, &buf)),
     );
 }
@@ -913,7 +913,7 @@ fn borrow_fails_when_oracle_has_no_price() {
     let result = s.client.try_borrow(&s.depositor, &txid, &100_000_000_i128);
     assert_eq!(
         result,
-        Err(Ok(PrivateLendError::OraclePriceUnavailable))
+        Err(Ok(WritzLendError::OraclePriceUnavailable))
     );
 }
 
@@ -940,7 +940,7 @@ fn borrow_fails_when_oracle_price_is_stale() {
         .set_timestamp(crate::oracle::MAX_PRICE_STALENESS_SECS + 1);
 
     let result = s.client.try_borrow(&s.depositor, &txid, &100_000_000_i128);
-    assert_eq!(result, Err(Ok(PrivateLendError::OraclePriceStale)));
+    assert_eq!(result, Err(Ok(WritzLendError::OraclePriceStale)));
 }
 
 #[test]
@@ -1370,7 +1370,7 @@ fn borrow_past_exposure_cap_fails() {
     s.client.set_max_total_borrowed(&s.admin, &400_000_000_i128);
     assert_eq!(
         s.client.try_borrow(&s.depositor, &txid, &500_000_000_i128),
-        Err(Ok(PrivateLendError::ExposureCapExceeded)),
+        Err(Ok(WritzLendError::ExposureCapExceeded)),
     );
     s.client.borrow(&s.depositor, &txid, &400_000_000_i128);
 }
@@ -1381,7 +1381,7 @@ fn set_max_total_borrowed_by_non_admin_fails() {
     let stranger = Address::generate(&s.env);
     assert_eq!(
         s.client.try_set_max_total_borrowed(&stranger, &1_i128),
-        Err(Ok(PrivateLendError::Unauthorized)),
+        Err(Ok(WritzLendError::Unauthorized)),
     );
 }
 
@@ -1421,7 +1421,7 @@ fn sign_deposit(s: &Setup) -> BytesN<65> {
     sign_with(&s.env, &user_signing_key(), &s.client.address, &s.depositor, &mock_txid(&s.env))
 }
 
-fn try_deposit_signed(s: &Setup, key_sig: &BytesN<65>) -> Result<BytesN<32>, PrivateLendError> {
+fn try_deposit_signed(s: &Setup, key_sig: &BytesN<65>) -> Result<BytesN<32>, WritzLendError> {
     match s.client.try_deposit(
         &s.depositor, &fake_block_hash(&s.env), &fake_proof(&s.env), &0u32,
         &s.raw_tx, &s.spk, &TEST_TIMELOCK, &fake_user_pubkey(&s.env), key_sig,
@@ -1444,7 +1444,7 @@ fn deposit_signed_by_another_key_is_rejected() {
     let s = setup();
     let attacker = k256::ecdsa::SigningKey::from_slice(&[0x77u8; 32]).unwrap();
     let sig = sign_with(&s.env, &attacker, &s.client.address, &s.depositor, &mock_txid(&s.env));
-    assert_eq!(try_deposit_signed(&s, &sig), Err(PrivateLendError::InvalidKeyProof));
+    assert_eq!(try_deposit_signed(&s, &sig), Err(WritzLendError::InvalidKeyProof));
 }
 
 #[test]
@@ -1453,7 +1453,7 @@ fn a_key_proof_for_another_depositor_is_rejected() {
     let s = setup();
     let victim = Address::generate(&s.env);
     let sig = sign_with(&s.env, &user_signing_key(), &s.client.address, &victim, &mock_txid(&s.env));
-    assert_eq!(try_deposit_signed(&s, &sig), Err(PrivateLendError::InvalidKeyProof));
+    assert_eq!(try_deposit_signed(&s, &sig), Err(WritzLendError::InvalidKeyProof));
 }
 
 #[test]
@@ -1462,14 +1462,14 @@ fn a_key_proof_for_another_contract_is_rejected() {
     let s = setup();
     let other_contract = Address::generate(&s.env);
     let sig = sign_with(&s.env, &user_signing_key(), &other_contract, &s.depositor, &mock_txid(&s.env));
-    assert_eq!(try_deposit_signed(&s, &sig), Err(PrivateLendError::InvalidKeyProof));
+    assert_eq!(try_deposit_signed(&s, &sig), Err(WritzLendError::InvalidKeyProof));
 }
 
 #[test]
 fn a_key_proof_for_another_txid_is_rejected() {
     let s = setup();
     let sig = sign_with(&s.env, &user_signing_key(), &s.client.address, &s.depositor, &BytesN::from_array(&s.env, &[0x01u8; 32]));
-    assert_eq!(try_deposit_signed(&s, &sig), Err(PrivateLendError::InvalidKeyProof));
+    assert_eq!(try_deposit_signed(&s, &sig), Err(WritzLendError::InvalidKeyProof));
 }
 
 #[test]
@@ -1477,7 +1477,7 @@ fn a_signature_with_an_uncompressed_key_header_is_rejected() {
     let s = setup();
     let mut sig = sign_deposit(&s).to_array();
     sig[0] = 27; // uncompressed-key header
-    assert_eq!(try_deposit_signed(&s, &BytesN::from_array(&s.env, &sig)), Err(PrivateLendError::InvalidKeyProof));
+    assert_eq!(try_deposit_signed(&s, &BytesN::from_array(&s.env, &sig)), Err(WritzLendError::InvalidKeyProof));
 }
 
 // ── Interest is priced per interval (GHSA-c9gg-c476-9vc8, GHSA-frj5-5wmv-wvm3) ──
@@ -1619,7 +1619,7 @@ fn a_supply_that_mints_no_scaled_units_is_rejected() {
     // The index is above 1 now, so one stroop rounds down to zero units.
     assert_eq!(
         s.client.try_supply_usdc(&s.supplier, &1_i128),
-        Err(Ok(PrivateLendError::ZeroShareAmount)),
+        Err(Ok(WritzLendError::ZeroShareAmount)),
     );
 }
 
@@ -1629,7 +1629,7 @@ fn withdrawing_more_than_the_value_is_rejected() {
     let value = s.client.get_supply_balance(&s.supplier);
     assert_eq!(
         s.client.try_withdraw_supply(&s.supplier, &(value + 1)),
-        Err(Ok(PrivateLendError::InsufficientSupply)),
+        Err(Ok(WritzLendError::InsufficientSupply)),
     );
 }
 
@@ -1640,7 +1640,7 @@ fn lenders_cannot_withdraw_what_is_lent_out() {
     s.client.borrow(&s.depositor, &txid, &600_000_000_i128);
     assert_eq!(
         s.client.try_withdraw_supply(&s.supplier, &500_000_000_i128),
-        Err(Ok(PrivateLendError::InsufficientLiquidity)),
+        Err(Ok(WritzLendError::InsufficientLiquidity)),
     );
     s.client.withdraw_supply(&s.supplier, &400_000_000_i128);
 }

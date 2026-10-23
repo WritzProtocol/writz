@@ -18,7 +18,7 @@
 
 ## Products
 
-* [PrivateLend](/products/privatelend)
+* [Writz Lend](/products/writz-lend)
 * [Earn](/products/earn)
 * [Dark Swap](/products/dark-swap)
 * [BTC Savings](/products/btc-savings)

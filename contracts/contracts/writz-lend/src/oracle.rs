@@ -13,7 +13,7 @@
 //! the docs describe as the target - see `docs/security/security-model.md`
 //! for the manipulation-resistance implications of that interim gap.
 
-use crate::error::PrivateLendError;
+use crate::error::WritzLendError;
 use soroban_sdk::{contractclient, contracttype, Address, Env, Symbol};
 
 /// SEP-40 asset identifier. Field/variant shape must match Reflector's own
@@ -69,39 +69,39 @@ const USDC_DECIMALS: u32 = 7;
 /// there is no caching, so a stale or unreachable oracle fails the calling
 /// operation (`borrow`/`liquidate`/`get_health_ratio_bp`) rather than
 /// silently reusing an old price.
-pub fn get_btc_price_stroops(env: &Env, oracle: &Address) -> Result<i128, PrivateLendError> {
+pub fn get_btc_price_stroops(env: &Env, oracle: &Address) -> Result<i128, WritzLendError> {
     let client = ReflectorClient::new(env, oracle);
 
     let price_data = client
         .lastprice(&Asset::Other(Symbol::new(env, "BTC")))
-        .ok_or(PrivateLendError::OraclePriceUnavailable)?;
+        .ok_or(WritzLendError::OraclePriceUnavailable)?;
 
     let age_secs = env.ledger().timestamp().saturating_sub(price_data.timestamp);
     if age_secs > MAX_PRICE_STALENESS_SECS {
-        return Err(PrivateLendError::OraclePriceStale);
+        return Err(WritzLendError::OraclePriceStale);
     }
 
     let decimals = client.decimals();
     let price_stroops = if decimals >= USDC_DECIMALS {
         let divisor = 10i128
             .checked_pow(decimals - USDC_DECIMALS)
-            .ok_or(PrivateLendError::Overflow)?;
+            .ok_or(WritzLendError::Overflow)?;
         price_data
             .price
             .checked_div(divisor)
-            .ok_or(PrivateLendError::Overflow)?
+            .ok_or(WritzLendError::Overflow)?
     } else {
         let multiplier = 10i128
             .checked_pow(USDC_DECIMALS - decimals)
-            .ok_or(PrivateLendError::Overflow)?;
+            .ok_or(WritzLendError::Overflow)?;
         price_data
             .price
             .checked_mul(multiplier)
-            .ok_or(PrivateLendError::Overflow)?
+            .ok_or(WritzLendError::Overflow)?
     };
 
     if price_stroops <= 0 {
-        return Err(PrivateLendError::OraclePriceUnavailable);
+        return Err(WritzLendError::OraclePriceUnavailable);
     }
 
     Ok(price_stroops)

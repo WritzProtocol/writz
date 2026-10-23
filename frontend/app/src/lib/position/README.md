@@ -9,7 +9,7 @@ predate #18 and have no UI caller anymore; `recoverPositions` (see
 `lib/flows/recover.ts`) is the live recovery path, wired to the "Recover
 positions" button in `PositionDashboard`. The one thing recovery does *not*
 restore is Bitcoin release metadata (`btcPubkey`/`timelockHeight`/`vout`) -
-see the caveat in `docs/products/privatelend.md` Step 5.
+see the caveat in `docs/products/writz-lend.md` Step 5.
 
 ## Crypto (`crypto.ts`)
 
