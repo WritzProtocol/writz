@@ -17,7 +17,6 @@ export type Urgent =
   | { kind: "at_risk"; loan: HomeLoan }
   | { kind: "deposit"; status: PositionStatus; deposit: HomeDeposit | null; loan: HomeLoan | null }
   | { kind: "repaid"; loan: HomeLoan }
-  | { kind: "changed"; loan: HomeLoan }
   | { kind: "reclaimable"; loan: HomeLoan };
 
 const DEPOSIT_KINDS: ReadonlySet<PositionStatus["kind"]> = new Set([
@@ -25,22 +24,18 @@ const DEPOSIT_KINDS: ReadonlySet<PositionStatus["kind"]> = new Set([
   "btc_unseen",
   "confirming",
   "ready_to_register",
-  "proving",
   "registering",
-  "register_failed",
 ]);
 
 export const isDepositStatus = (s: PositionStatus) => DEPOSIT_KINDS.has(s.kind);
 
-const CLOSED_KINDS: ReadonlySet<PositionStatus["kind"]> = new Set(["released", "liquidated", "closed_on_chain"]);
+const CLOSED_KINDS: ReadonlySet<PositionStatus["kind"]> = new Set(["released", "liquidated"]);
 
 export const isClosedLoan = (l: HomeLoan) => CLOSED_KINDS.has(l.derived.status.kind);
 
 function rank(s: PositionStatus): number {
   switch (s.kind) {
     case "liquidatable":
-    case "register_failed":
-    case "changed_elsewhere":
       return 0;
     case "at_risk":
       return 1;
@@ -81,8 +76,6 @@ export function pickUrgent(loans: readonly HomeLoan[], deposit: HomeDeposit | nu
   if (reclaimable) return { kind: "reclaimable", loan: reclaimable };
   const repaid = loans.find((l) => l.derived.status.kind === "repaid_locked" && !l.derived.status.neverBorrowed);
   if (repaid) return { kind: "repaid", loan: repaid };
-  const changed = find("changed_elsewhere");
-  if (changed) return { kind: "changed", loan: changed };
   return null;
 }
 

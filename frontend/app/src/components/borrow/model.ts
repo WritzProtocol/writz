@@ -27,14 +27,12 @@ export interface StellarModel {
   fundBusy: boolean;
   fundError: unknown;
   lowAck: boolean;
-  loans: "unsigned" | "signing" | "finding" | "found" | "failed";
+  loans: "finding" | "found" | "failed";
   loansCount: number;
   loansError: unknown;
-  signError: unknown;
   ready: boolean;
   connect(): void;
   useOther(): void;
-  sign(): void;
   retryFind(): void;
   fund(): void;
   recheckFunding(): void;
@@ -99,7 +97,6 @@ export interface DepositModel {
   otherTx: boolean;
   foundOnLoad: boolean;
   secondBlocked: boolean;
-  unlocked: boolean;
   recheck(): void;
   register(): void;
   finish(): void;

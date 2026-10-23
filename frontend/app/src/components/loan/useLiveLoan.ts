@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import { getPoolState } from "@/lib/contracts/commitmentTree";
+import { getPoolState } from "@/lib/contracts/writzLend";
 import { useWallet } from "@/lib/wallet/WalletProvider";
 import { ensureKit } from "@/lib/wallet/kit";
 import { useBitcoinWallet } from "@/lib/bitcoin/useBitcoinWallet";
@@ -15,12 +15,12 @@ import { currentRoute, notifySettled } from "@/lib/toast";
 import { borrow as borrowFlow } from "@/lib/flows/borrow";
 import { repay as repayFlow } from "@/lib/flows/repay";
 import { releaseBtc, releaseFeeEstimate } from "@/lib/flows/release";
-import { reconcileActivity, syncLeafUpdates } from "@/lib/flows/positionTx";
-import { recoverPositions } from "@/lib/flows/recover";
+import { reconcileActivity } from "@/lib/flows/positionTx";
+import { discoverPositions, syncPosition } from "@/lib/flows/discover";
 import { enableTrustline, getAssetBalance, POOL_ASSET } from "@/lib/flows/trustline";
 import { formatUsdc } from "@/lib/borrow/journey";
 import { loanActivity, type LoanTab, type Read, type RecentTx } from "@/lib/loan/model";
-import { EMPTY_POSITIONS, importPositions, positionsSnapshot, subscribePositions, type Position } from "@/lib/position";
+import { EMPTY_POSITIONS, positionsSnapshot, subscribePositions, type Position } from "@/lib/position";
 import { defaultStatusSource, usePositionStatus, useRefreshStatus } from "@/lib/status/provider";
 import type { LocalInputs } from "@/lib/status/types";
 import { useSteadyStatus, type LoanAccess, type LoanModel } from "./model";
@@ -34,7 +34,6 @@ function settledText(tab: LoanTab, done: RecentTx, n: number): string {
 }
 
 const WHAT: Record<LoanTab, string> = { borrow: "Your borrow", repay: "Your repayment", release: "Your release" };
-const LEAF_RETRY_MS = 15_000;
 
 function kitWalletName(): string | undefined {
   try {
@@ -79,7 +78,7 @@ export function useLiveLoan(n: number, requestedPanel: LoanTab | null): LoanMode
     () => (address ? positionsSnapshot(address) : EMPTY_POSITIONS),
     () => EMPTY_POSITIONS,
   );
-  const position = positions.find((p) => p.index === n - 1 && p.status !== "pending") ?? null;
+  const stored = positions.find((p) => p.index === n - 1) ?? null;
   const pendingDeposit = useSyncExternalStore(
     pendingDeposits.subscribe,
     () => (address ? pendingDeposits.snapshot(address) : null),
@@ -90,50 +89,48 @@ export function useLiveLoan(n: number, requestedPanel: LoanTab | null): LoanMode
     () => (address ? (activity.txSnapshot(address) ?? NO_TXS) : NO_TXS),
     () => NO_TXS,
   );
-  const leaves = useSyncExternalStore(
-    activity.subscribe,
-    () => (address ? activity.leafSnapshot(address) : null),
-    () => null,
-  );
 
   useEffect(() => {
     if (!address) return;
-    void reconcileActivity(address)
-      .then(() => syncLeafUpdates(address))
-      .catch(() => {});
+    void reconcileActivity(address).catch(() => {});
   }, [address]);
 
-  // ── Finding the loan ──
-  const [unlocking, setUnlocking] = useState(false);
-  const [unlockError, setUnlockError] = useState<unknown>(null);
-  const [recovered, setRecovered] = useState<{ seed: Uint8Array; done: true } | null>(null);
+  // ── Finding the loan: from the chain when this device doesn't have it yet ──
+  const [found, setFound] = useState<string | null>(null);
   useEffect(() => {
-    const seed = w.seed;
-    if (!address || !seed || position) return;
+    if (!address || stored) return;
     let live = true;
-    recoverPositions({ owner: address, seed })
+    discoverPositions(address)
       .catch(() => {})
-      .finally(() => live && setRecovered({ seed, done: true }));
+      .finally(() => live && setFound(address));
     return () => {
       live = false;
     };
-    // Recover once per seed when the loan isn't on this device yet.
+    // Look once per wallet when the loan isn't on this device yet.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [address, w.seed]);
-  const finding = !position && Boolean(w.seed) && !(recovered?.seed === w.seed && recovered.done);
-  const access: LoanAccess = !address ? "disconnected" : position ? "ready" : !w.seed ? "locked" : finding ? "finding" : "ready";
+  }, [address]);
+  const access: LoanAccess = !address ? "disconnected" : stored || found === address ? "ready" : "finding";
 
   // ── Status ──
   const myPending = useMemo(
-    () => (position ? pendingTxs.filter((t) => t.positionUpdate?.save.index === position.index) : NO_TXS),
-    [pendingTxs, position],
+    () => (stored ? pendingTxs.filter((t) => t.positionUpdate?.save.index === stored.index) : NO_TXS),
+    [pendingTxs, stored],
   );
   const local = useMemo<LocalInputs | null>(
-    () => (position ? { position, pendingDeposit: null, pendingTxs: myPending } : null),
-    [position, myPending],
+    () => (stored ? { position: stored, pendingDeposit: null, pendingTxs: myPending } : null),
+    [stored, myPending],
   );
-  const status = useSteadyStatus(usePositionStatus(local, 20_000), position ? `${address}:${position.index}` : null);
+  const status = useSteadyStatus(usePositionStatus(local, 20_000), stored ? `${address}:${stored.index}` : null);
   const refreshStatus = useRefreshStatus();
+  // The loan as the chain holds it: amounts and debt with interest from the last status read.
+  const onChain = status.onChain;
+  const position = useMemo<Position | null>(
+    () =>
+      stored && onChain
+        ? { ...stored, collateralSats: onChain.collateralSats.toString(), debtStroops: onChain.debtStroops.toString() }
+        : stored,
+    [stored, onChain],
+  );
 
   // ── Reads ──
   const [priceNonce, setPriceNonce] = useState(0);
@@ -149,14 +146,6 @@ export function useLiveLoan(n: number, requestedPanel: LoanTab | null): LoanMode
   const running = isInFlight(flow);
   const [trustBusy, setTrustBusy] = useState(false);
   const otherTx = txLock === "elsewhere" || (txLock === "here" && !running && !trustBusy);
-  const leafPending = Boolean(
-    position?.leafIndex !== undefined && leaves?.some((u) => u.leafIndex === position.leafIndex),
-  );
-  useEffect(() => {
-    if (!address || !leafPending) return;
-    const id = setInterval(() => void syncLeafUpdates(address).catch(() => {}), LEAF_RETRY_MS);
-    return () => clearInterval(id);
-  }, [address, leafPending]);
 
   // ── Actions ──
   const run = useCallback(
@@ -183,50 +172,45 @@ export function useLiveLoan(n: number, requestedPanel: LoanTab | null): LoanMode
     [address, position, emit, refresh, n],
   );
 
-  const seed = w.seed;
   const borrow = useCallback(
     (amountStroops: bigint) => {
-      if (!seed || !address) return;
+      if (!address) return;
       setLastAmount(amountStroops);
       void run("borrow", async (p, e) => {
-        const r = await borrowFlow({ position: p, amountStroops, borrower: address, seed, signTransaction: w.signTransaction, emit: e });
+        const r = await borrowFlow({ position: p, amountStroops, borrower: address, signTransaction: w.signTransaction, emit: e });
         return r.txHash ? { hash: r.txHash, chain: "stellar", label: `Borrowed ${formatUsdc(amountStroops)} USDC`, at: Date.now() } : null;
       });
     },
-    [seed, address, run, w.signTransaction],
+    [address, run, w.signTransaction],
   );
 
   const repay = useCallback(
     (amountStroops: bigint) => {
-      if (!seed || !address) return;
+      if (!address) return;
       setLastAmount(amountStroops);
       void run("repay", async (p, e) => {
-        const r = await repayFlow({ position: p, amountStroops, repayer: address, seed, signTransaction: w.signTransaction, emit: e });
+        const r = await repayFlow({ position: p, amountStroops, repayer: address, signTransaction: w.signTransaction, emit: e });
         return r.txHash ? { hash: r.txHash, chain: "stellar", label: `Repaid ${formatUsdc(amountStroops)} USDC`, at: Date.now() } : null;
       });
     },
-    [seed, address, run, w.signTransaction],
+    [address, run, w.signTransaction],
   );
 
-  const recipient = b.btcAddress;
   const feeSats = fee.kind === "ok" ? fee.value : null;
   const release = useCallback(() => {
-    if (!seed || !recipient || !address) return;
+    if (!b.btcAddress || !address) return;
     setLastAmount(null);
     void run("release", async (p, e) => {
       const { btcTxid } = await releaseBtc({
         position: p,
-        seed,
-        recipient,
         signPsbt: b.signPsbt,
         stellarAddress: address,
         signTransaction: w.signTransaction,
         emit: e,
-        feeSat: feeSats ?? undefined,
       });
       return { hash: btcTxid, chain: "bitcoin", label: "Release sent to Bitcoin", at: Date.now() };
     });
-  }, [seed, recipient, address, run, b.signPsbt, w.signTransaction, feeSats]);
+  }, [b.btcAddress, address, run, b.signPsbt, w.signTransaction]);
 
   const [trustError, setTrustError] = useState<unknown>(null);
   const addUsdc = useCallback(async () => {
@@ -243,26 +227,6 @@ export function useLiveLoan(n: number, requestedPanel: LoanTab | null): LoanMode
     }
   }, [address, w.signTransaction, refresh]);
 
-  const [importState, setImportState] = useState<{ busy: boolean; error: unknown; done: boolean }>({
-    busy: false,
-    error: null,
-    done: false,
-  });
-  const importBackup = useCallback(
-    (file: File) => {
-      setImportState({ busy: true, error: null, done: false });
-      file
-        .text()
-        .then((text) => {
-          const { owner } = importPositions(text);
-          if (owner !== address) throw new Error("This backup belongs to a different Stellar wallet.");
-          setImportState({ busy: false, error: null, done: true });
-        })
-        .catch((error: unknown) => setImportState({ busy: false, error, done: false }));
-    },
-    [address],
-  );
-
   const walletName = w.walletBackend === "privy" ? "Privy" : (kitWalletName() ?? "your wallet");
 
   return {
@@ -272,16 +236,6 @@ export function useLiveLoan(n: number, requestedPanel: LoanTab | null): LoanMode
       walletName,
       connecting: w.connecting,
       connect: () => void w.connect(),
-      keysReady: Boolean(seed),
-      unlocking,
-      unlockError,
-      unlock: () => {
-        setUnlockError(null);
-        setUnlocking(true);
-        w.unlock()
-          .catch((e: unknown) => setUnlockError(e))
-          .finally(() => setUnlocking(false));
-      },
     },
     position,
     depositInProgress: !position && pendingDeposit?.positionIndex === n - 1,
@@ -307,7 +261,7 @@ export function useLiveLoan(n: number, requestedPanel: LoanTab | null): LoanMode
     lastAmount,
     trust: { busy: trustBusy, error: trustError, add: () => void addUsdc() },
     otherTx,
-    catchingUp: status.syncing || leafPending,
+    catchingUp: status.syncing,
     activity: position
       ? loanActivity({
           index: position.index,
@@ -329,10 +283,13 @@ export function useLiveLoan(n: number, requestedPanel: LoanTab | null): LoanMode
     },
     recheckPrice: () => setPriceNonce((x) => x + 1),
     checkAgain: () => {
-      if (address) void reconcileActivity(address).finally(refresh);
+      if (address) {
+        void reconcileActivity(address)
+          .then(() => (stored ? syncPosition(address, stored.txid) : null))
+          .catch(() => {})
+          .finally(refresh);
+      }
       refreshStatus(local);
     },
-    importBackup,
-    importState,
   };
 }

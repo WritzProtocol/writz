@@ -82,7 +82,7 @@ function Skeleton() {
               </p>
               <div className="wz-field wz-sk-field" />
               <p className="wz-hint">
-                <T>About 5,000,000 sats. Minimum 0.00010000 BTC.</T>
+                <T>About 5,000,000 sats. Minimum 0.00100000 BTC.</T>
               </p>
               <dl className="bj-kv">
                 {[

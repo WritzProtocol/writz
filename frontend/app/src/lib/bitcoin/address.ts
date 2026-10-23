@@ -88,40 +88,9 @@ export function deriveP2WSH(
 }
 
 /**
- * Builds a PSBT for the Path A release transaction (co-signed by protocol + user).
- * The PSBT is unsigned - both parties sign before finalization.
- */
-export function buildReleasePsbt(params: {
-  txidHex: string;
-  vout: number;
-  amountSat: number;
-  scriptPubKey: Buffer;
-  redeemScript: Buffer;
-  recipientAddress: string;
-  feeSat: number;
-}): bitcoin.Psbt {
-  const network = getBitcoinNetwork();
-  const psbt = new bitcoin.Psbt({ network });
-
-  psbt.addInput({
-    hash: params.txidHex,
-    index: params.vout,
-    witnessUtxo: { script: params.scriptPubKey, value: params.amountSat },
-    witnessScript: params.redeemScript,
-    sequence: 0xffff_fffe,
-  });
-
-  psbt.addOutput({
-    address: params.recipientAddress,
-    value: params.amountSat - params.feeSat,
-  });
-
-  return psbt;
-}
-
-/**
  * Finalizes a Path A PSBT after both the user (via Xverse) and the protocol
- * (via /api/cosign) have signed. Returns the hex-encoded broadcast-ready tx.
+ * (the relayer, published on `writz-lend`) have signed. Returns the
+ * hex-encoded broadcast-ready tx.
  */
 export function finalizePathA(
   protocolSignedPsbtBase64: string,

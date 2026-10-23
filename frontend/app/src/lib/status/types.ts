@@ -1,11 +1,12 @@
+import type { ChainPosition } from "@/lib/contracts/writzLend";
 import type { PendingDeposit } from "@/lib/flow/pendingDeposit";
 import type { PendingTx } from "@/lib/flow/pendingTx";
 import type { Position } from "@/lib/position/types";
 
 /**
- * Position status: derive(local note, chain reads, relayer
- * index). Local data is a hint, the chain decides, and a missing read yields
- * `checking` rather than a guess.
+ * Position status: derive(local record, chain reads, relayer index). Local
+ * data is a hint, `writz-lend`'s `get_position` decides, and a missing read
+ * yields `checking` rather than a guess.
  */
 
 /** What this device knows. Never sufficient on its own. */
@@ -16,10 +17,6 @@ export interface LocalInputs {
   pendingDeposit: PendingDeposit | null;
   /** Stellar txs from this device touching this position, not yet reconciled. */
   pendingTxs?: PendingTx[];
-  /** This tab is generating the deposit proof. */
-  proving?: boolean;
-  /** The last tree-insert attempt for this deposit failed. */
-  insertFailed?: boolean;
 }
 
 export type BtcTxView = { seen: false } | { seen: true; blockHeight: number | null };
@@ -28,12 +25,10 @@ export type Outspend = { spent: false } | { spent: true; txid: string; confirmed
 
 /** Every field is undefined until read successfully. `null` means read and empty. */
 export interface ChainReads {
-  /** `get_commitment(txid)` as hex. */
-  commitmentForTxid?: string | null;
-  /** `is_commitment_pending(commitment)`. */
-  commitmentPending?: boolean;
-  /** `is_nullifier_spent(nullifier)` for the note's current nullifier. */
-  nullifierSpent?: boolean;
+  /** `get_position(txid)` on `writz-lend`, debt accrued to the latest ledger. */
+  position?: ChainPosition | null;
+  /** `get_release_psbt(txid)` is set: the relayer co-signed the release. Read only for a closed position. */
+  releasePsbtReady?: boolean;
   /** Oracle BTC price in USDC stroops per BTC. */
   oraclePriceStroops?: bigint;
   /** Esplora tip height. */
@@ -59,7 +54,6 @@ export interface RelayerIndex {
   /** Confirmations the relayer has seen for the deposit. */
   confirmations?: number;
   liquidation?: LiquidationLookup;
-  catchingUp?: boolean;
 }
 
 export interface StatusParams {
@@ -77,9 +71,7 @@ export interface StatusInputs {
 
 export type StatusInput =
   | "position"
-  | "commitment"
-  | "commitment_pending"
-  | "nullifier"
+  | "release_psbt"
   | "oracle_price"
   | "btc_tip"
   | "deposit_tx"
@@ -95,19 +87,15 @@ export type PositionStatus =
   | { kind: "btc_unseen" }
   | { kind: "confirming"; n: number; m: number; relayerBehind: boolean }
   | { kind: "ready_to_register" }
-  | { kind: "proving" }
-  | { kind: "registering"; step: 1 | 2 }
-  | { kind: "register_failed" }
+  | { kind: "registering" }
   | { kind: "active"; ratioBp: bigint; band: HealthBand }
   | { kind: "at_risk"; ratioBp: bigint }
   | { kind: "liquidatable"; ratioBp: bigint }
   | { kind: "repaid_locked"; neverBorrowed: boolean; missingBtcDetails: boolean }
   | { kind: "releasing"; btcTxid: string | null }
   | { kind: "released"; btcTxid: string }
-  | { kind: "liquidated"; txHash: string }
-  /** Nullifier spent, no local tx, and the liquidation lookup cannot see far enough back (L20). */
-  | { kind: "closed_on_chain" }
-  | { kind: "changed_elsewhere" };
+  /** `txHash` is null while the liquidation transaction has not been found (older than the RPC event window). */
+  | { kind: "liquidated"; txHash: string | null };
 
 export type PositionStatusKind = PositionStatus["kind"];
 
@@ -122,6 +110,8 @@ export interface DerivedStatus {
   /** Overlay: tip at or past the timelock and the lock output unspent. */
   reclaimable: boolean;
   timelock: Timelock | null;
-  /** Overlay: an action landed and the relayer is catching up. */
+  /** Overlay: the loan is repaid on chain and the relayer has not co-signed its release yet. */
   syncing: boolean;
+  /** The position's amounts as `writz-lend` holds them, debt with interest; null until read. */
+  onChain: { collateralSats: bigint; debtStroops: bigint } | null;
 }

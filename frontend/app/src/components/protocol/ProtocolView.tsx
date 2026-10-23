@@ -110,10 +110,8 @@ function Retention({ cohorts, now }: { cohorts: RetentionCohort[]; now: number }
 const CONTRACTS = [
   ...(LENDING_ENABLED
     ? [
-        { label: "Commitment tree", id: config.contracts.commitmentTree },
         { label: "Writz lend", id: config.contracts.writzLend },
         { label: "Bitcoin SPV", id: config.contracts.bitcoinSpv },
-        { label: "ZK verifier", id: config.contracts.zkVerifier },
         { label: "USDC token", id: config.contracts.usdcToken },
       ]
     : []),

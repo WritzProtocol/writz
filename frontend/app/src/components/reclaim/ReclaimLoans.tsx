@@ -161,7 +161,7 @@ export function ReclaimLoans() {
   const tip = world ? (world.chain.btcTipHeight ?? null) : tipRead.kind === "ok" ? tipRead.value : null;
 
   if (!mounted || !a.walletsKnown) return <LoansSkeleton />;
-  const all = world ? mockLocks(world) : a.positions.filter((p) => p.status !== "pending").map(lockOf);
+  const all = world ? mockLocks(world) : a.positions.map(lockOf);
   const shown = requested !== null ? all.filter((l) => l.n === requested) : all;
 
   if (shown.length === 0) {

@@ -40,31 +40,13 @@ function hasBtcDetails(p: Position): boolean {
   return Boolean(p.txid && p.vout !== undefined && p.btcPubkey && p.timelockHeight);
 }
 
-type Registration = PositionStatus | "registered" | "not_submitted";
-
-function registration(
-  { local, chain }: StatusInputs,
-  { submitted, needsCommitment }: { submitted: boolean; needsCommitment: boolean },
-): Registration {
-  if (needsCommitment) {
-    if (chain.commitmentForTxid === undefined) return checking("commitment");
-    if (chain.commitmentForTxid === null) return submitted ? { kind: "registering", step: 1 } : "not_submitted";
-  }
-  if (chain.commitmentPending === undefined) return checking("commitment_pending");
-  if (!chain.commitmentPending) return "registered";
-  return local.insertFailed ? { kind: "register_failed" } : { kind: "registering", step: 2 };
-}
-
 function depositStatus(inputs: StatusInputs, pd: PendingDeposit): PositionStatus {
-  const { local, chain, relayer, params } = inputs;
-  if (local.proving) return { kind: "proving" };
+  const { chain, relayer, params } = inputs;
 
-  const submitted = Boolean(pd.stellarTxHash) || pd.step === "submitted" || pd.step === "registering";
-  if (submitted || chain.commitmentForTxid) {
-    const r = registration(inputs, { submitted, needsCommitment: true });
-    if (r === "registered") return { kind: "registering", step: 2 };
-    if (r !== "not_submitted") return r;
-  }
+  // On chain already: this device only has to save it (B32), or another device registered it.
+  if (chain.position) return { kind: "registering" };
+  const submitted = Boolean(pd.stellarTxHash) || pd.step === "submitted";
+  if (submitted) return chain.position === undefined ? checking("position") : { kind: "registering" };
 
   const m = relayer?.minConfirmations ?? params.minConfirmations;
   const tx = chain.depositTx;
@@ -88,7 +70,7 @@ function depositStatus(inputs: StatusInputs, pd: PendingDeposit): PositionStatus
   }
   if (n < m) return { kind: "confirming", n, m, relayerBehind: false };
 
-  if (chain.commitmentForTxid === undefined) return checking("commitment");
+  if (chain.position === undefined) return checking("position");
   return { kind: "ready_to_register" };
 }
 
@@ -98,40 +80,20 @@ function releaseFromOutspend(inputs: StatusInputs): PositionStatus | null {
   return o.confirmed ? { kind: "released", btcTxid: o.txid } : { kind: "releasing", btcTxid: o.txid };
 }
 
-function spentNullifierStatus(inputs: StatusInputs, p: Position): PositionStatus {
-  const { local, relayer } = inputs;
-  const explainedLocally = (local.pendingTxs ?? []).some((t) => t.positionUpdate?.removeId === p.id);
-  if (explainedLocally) return checking("local_tx");
-
-  const lookup = relayer?.liquidation;
-  if (!lookup) return checking("liquidation");
-  if (lookup.found) return { kind: "liquidated", txHash: lookup.txHash };
-
-  const released = releaseFromOutspend(inputs);
-  if (released) return released;
-
-  // Release recorded on Stellar from this device, BTC not sent yet: the release can still finish.
-  if (p.releaseMarkedHash && !p.releaseTxid && BigInt(p.debtStroops) === 0n) {
-    return { kind: "repaid_locked", neverBorrowed: p.version === 0, missingBtcDetails: !hasBtcDetails(p) };
-  }
-
-  const complete = lookup.complete && !relayer?.catchingUp;
-  return complete ? { kind: "changed_elsewhere" } : { kind: "closed_on_chain" };
-}
-
 function openStatus(inputs: StatusInputs, p: Position): PositionStatus {
-  const { chain } = inputs;
-
-  if (p.status === "registering") {
-    const r = registration(inputs, { submitted: true, needsCommitment: false });
-    if (r !== "registered" && r !== "not_submitted") return r;
-  }
+  const { chain, relayer } = inputs;
 
   const outspend = chain.lockOutspend;
   if (outspend?.spent && p.releaseTxid && outspend.txid === p.releaseTxid) return releaseFromOutspend(inputs)!;
 
-  if (chain.nullifierSpent === undefined) return checking("nullifier");
-  if (chain.nullifierSpent) return spentNullifierStatus(inputs, p);
+  // Null is a read that found nothing; right after a deposit that is RPC lag, so it stays unknown.
+  const c = chain.position;
+  if (!c) return checking("position");
+
+  if (c.status === "liquidated") {
+    const lookup = relayer?.liquidation;
+    return { kind: "liquidated", txHash: lookup?.found ? lookup.txHash : null };
+  }
 
   const released = releaseFromOutspend(inputs);
   if (released) return released;
@@ -140,20 +102,20 @@ function openStatus(inputs: StatusInputs, p: Position): PositionStatus {
     return outspend === undefined ? checking("outspend") : { kind: "releasing", btcTxid: p.releaseTxid };
   }
 
-  const debt = BigInt(p.debtStroops);
-  if (debt === 0n) {
+  // Closed on chain is repaid in full; an active loan with no debt never borrowed.
+  if (c.status === "closed" || c.debtStroops === 0n) {
     const missingBtcDetails = !hasBtcDetails(p);
     if (!missingBtcDetails && outspend === undefined) return checking("outspend");
-    return { kind: "repaid_locked", neverBorrowed: p.version === 0, missingBtcDetails };
+    return { kind: "repaid_locked", neverBorrowed: c.status === "active", missingBtcDetails };
   }
 
   if (chain.oraclePriceStroops === undefined) return checking("oracle_price");
-  return healthStatus(collateralRatioBp(BigInt(p.collateralSats), debt, chain.oraclePriceStroops)!);
+  return healthStatus(collateralRatioBp(c.collateralSats, c.debtStroops, chain.oraclePriceStroops)!);
 }
 
 function coreStatus(inputs: StatusInputs): PositionStatus {
   const { position: p, pendingDeposit: pd } = inputs.local;
-  if (p && p.status !== "pending") return openStatus(inputs, p);
+  if (p) return openStatus(inputs, p);
   if (pd) return depositStatus(inputs, pd);
   return checking("position");
 }
@@ -175,5 +137,8 @@ export function derivePositionStatus(inputs: StatusInputs): DerivedStatus {
     RECLAIM_OVERLAY.has(status.kind) &&
     timelock?.blocksLeft === 0 &&
     inputs.chain.lockOutspend?.spent === false;
-  return { status, reclaimable, timelock, syncing: inputs.relayer?.catchingUp === true };
+  const c = inputs.chain.position;
+  const syncing = status.kind === "repaid_locked" && c?.status === "closed" && inputs.chain.releasePsbtReady === false;
+  const onChain = c && inputs.local.position ? { collateralSats: c.collateralSats, debtStroops: c.debtStroops } : null;
+  return { status, reclaimable, timelock, syncing, onChain };
 }

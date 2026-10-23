@@ -1,3 +1,4 @@
+import type { ChainPosition } from "@/lib/contracts/writzLend";
 import type { FlowState } from "@/lib/flow/engine";
 import type { PendingDeposit } from "@/lib/flow/pendingDeposit";
 import type { Position } from "@/lib/position/types";
@@ -33,7 +34,6 @@ const COLLATERAL_SATS = 5_000_000n;
 
 export const btcTxid = (n: number) => n.toString(16).padStart(2, "0").repeat(32);
 export const releaseTxid = (n: number) => `${btcTxid(n).slice(0, 62)}ee`;
-export const commitmentHex = (n: number) => (2000 + n).toString(16).padStart(64, "0");
 
 export const ok = <T>(value: T): Reading<T> => ({ state: "ok", value });
 export const loading = <T>(): Reading<T> => ({ state: "loading" });
@@ -65,21 +65,35 @@ export const debtForRatio = (pct: number): bigint => (COLLATERAL_SATS * PRICE * 
 /** Loan n (1-based) as this device stores it. */
 export function note(n: number, now: number, over: Partial<Position> = {}): Position {
   return {
-    id: String(2000 + n),
+    id: btcTxid(n),
     owner: STELLAR_ADDRESS,
     txid: btcTxid(n),
     collateralSats: COLLATERAL_SATS.toString(),
     debtStroops: "0",
     index: n - 1,
-    version: 2,
-    commitment: String(2000 + n),
-    nullifier: String(1000 + n),
     status: "active",
     createdAt: now - 3 * 86_400_000,
     btcPubkey: BTC_PUBKEY,
     timelockHeight: TIMELOCK,
     vout: 0,
-    leafIndex: n - 1,
+    ...over,
+  };
+}
+
+/** Loan n as `writz-lend.get_position` answers it. */
+export function chainPosition(n: number, over: Partial<ChainPosition> = {}): ChainPosition {
+  const debt = over.debtStroops ?? 0n;
+  return {
+    txid: btcTxid(n),
+    status: "active",
+    depositor: STELLAR_ADDRESS,
+    collateralSats: COLLATERAL_SATS,
+    debtStroops: debt,
+    storedDebtStroops: debt,
+    timelockHeight: TIMELOCK,
+    userPubkey: BTC_PUBKEY,
+    scriptPubKey: "0020" + "11".repeat(32),
+    ledger: 1_000,
     ...over,
   };
 }
@@ -101,137 +115,129 @@ export function pendingDeposit(n: number, now: number, over: Partial<PendingDepo
   };
 }
 
-const unspentOpen = { nullifierSpent: false, lockOutspend: { spent: false } } as const;
-const indexed = { liquidation: { found: false, complete: true } } as const;
+const unspent = { lockOutspend: { spent: false } } as const;
 
-function open(n: number, now: number, over: Partial<Position>, expect: MockPosition["expect"]): MockPosition {
-  return { local: { position: note(n, now, over), pendingDeposit: null }, chain: unspentOpen, relayer: {}, expect };
+/** A loan whose local record and chain position agree, at `debt` with `status` on chain. */
+function open(
+  n: number,
+  now: number,
+  chain: Partial<ChainPosition>,
+  expect: MockPosition["expect"],
+  over: Partial<Position> = {},
+): MockPosition {
+  const position = chainPosition(n, chain);
+  return {
+    local: { position: note(n, now, { debtStroops: position.debtStroops.toString(), ...over }), pendingDeposit: null },
+    chain: { position, ...unspent, releasePsbtReady: position.status === "closed" ? true : undefined },
+    relayer: {},
+    expect,
+  };
 }
+
+const owing = (pct: number) => ({ debtStroops: debtForRatio(pct) });
+const closed = { status: "closed" } as const;
 
 /** Position fixtures, one per position status and the variants screens need. */
 export const loans = {
-  healthy: (n: number, now: number) => open(n, now, { debtStroops: debtForRatio(200).toString() }, "active"),
-  belowLimit: (n: number, now: number) => open(n, now, { debtStroops: debtForRatio(140).toString() }, "active"),
-  atRisk: (n: number, now: number) => open(n, now, { debtStroops: debtForRatio(125).toString() }, "at_risk"),
-  liquidatable: (n: number, now: number) => open(n, now, { debtStroops: debtForRatio(115).toString() }, "liquidatable"),
-  repaidLocked: (n: number, now: number) => open(n, now, {}, "repaid_locked"),
-  neverBorrowed: (n: number, now: number) => open(n, now, { version: 0 }, "repaid_locked"),
-  missingBtcDetails: (n: number, now: number): MockPosition => ({
-    ...open(n, now, { btcPubkey: undefined, vout: undefined, timelockHeight: undefined }, "repaid_locked"),
-    chain: { nullifierSpent: false },
-  }),
-  releasing: (n: number, now: number): MockPosition => ({
-    ...open(n, now, { releaseTxid: releaseTxid(n), releaseAddress: BTC_ADDRESS }, "releasing"),
-    chain: { nullifierSpent: false, lockOutspend: { spent: true, txid: releaseTxid(n), confirmed: false } },
-  }),
-  released: (n: number, now: number): MockPosition => ({
-    ...open(n, now, { releaseTxid: releaseTxid(n), releaseAddress: BTC_ADDRESS }, "released"),
-    chain: { nullifierSpent: false, lockOutspend: { spent: true, txid: releaseTxid(n), confirmed: true } },
-  }),
+  healthy: (n: number, now: number) => open(n, now, owing(200), "active"),
+  belowLimit: (n: number, now: number) => open(n, now, owing(140), "active"),
+  atRisk: (n: number, now: number) => open(n, now, owing(125), "at_risk"),
+  liquidatable: (n: number, now: number) => open(n, now, owing(115), "liquidatable"),
+  repaidLocked: (n: number, now: number) => open(n, now, closed, "repaid_locked"),
+  neverBorrowed: (n: number, now: number) => open(n, now, {}, "repaid_locked"),
+  missingBtcDetails: (n: number, now: number): MockPosition => {
+    const m = open(n, now, closed, "repaid_locked", { vout: undefined });
+    return { ...m, chain: { position: m.chain.position, releasePsbtReady: true } };
+  },
+  releasing: (n: number, now: number): MockPosition => {
+    const m = open(n, now, closed, "releasing", { releaseTxid: releaseTxid(n), releaseAddress: BTC_ADDRESS });
+    return { ...m, chain: { ...m.chain, lockOutspend: { spent: true, txid: releaseTxid(n), confirmed: false } } };
+  },
+  released: (n: number, now: number): MockPosition => {
+    const m = open(n, now, closed, "released", { releaseTxid: releaseTxid(n), releaseAddress: BTC_ADDRESS });
+    return { ...m, chain: { ...m.chain, lockOutspend: { spent: true, txid: releaseTxid(n), confirmed: true } } };
+  },
   liquidated: (n: number, now: number): MockPosition => ({
-    ...open(n, now, { debtStroops: debtForRatio(115).toString() }, "liquidated"),
-    chain: { nullifierSpent: true, lockOutspend: { spent: false } },
+    ...open(n, now, { status: "liquidated" }, "liquidated", { debtStroops: debtForRatio(115).toString() }),
     relayer: { liquidation: { found: true, txHash: LIQUIDATION_TX } },
   }),
-  closedOnChain: (n: number, now: number): MockPosition => ({
-    ...open(n, now, { debtStroops: debtForRatio(115).toString(), createdAt: now - 30 * 86_400_000 }, "closed_on_chain"),
-    chain: { nullifierSpent: true, lockOutspend: { spent: false } },
+  /** Liquidated longer ago than the RPC keeps events: the chain says so, the transaction is not found. */
+  liquidatedNoTx: (n: number, now: number): MockPosition => ({
+    ...open(n, now, { status: "liquidated" }, "liquidated", {
+      debtStroops: debtForRatio(115).toString(),
+      createdAt: now - 30 * 86_400_000,
+    }),
     relayer: { liquidation: { found: false, complete: false } },
   }),
-  changedElsewhere: (n: number, now: number): MockPosition => ({
-    ...open(n, now, { debtStroops: debtForRatio(200).toString() }, "changed_elsewhere"),
-    chain: { nullifierSpent: true, lockOutspend: { spent: false } },
-    relayer: indexed,
-  }),
+  /** Repaid from another device: this device last saw debt, the chain has it closed. */
+  repaidElsewhere: (n: number, now: number): MockPosition =>
+    open(n, now, closed, "repaid_locked", { debtStroops: debtForRatio(200).toString() }),
   checking: (n: number, now: number): MockPosition => ({
-    ...open(n, now, { debtStroops: debtForRatio(200).toString() }, "checking"),
+    ...open(n, now, owing(200), "checking"),
     chain: {},
     relayer: null,
   }),
   reclaimable: (n: number, now: number): MockPosition => ({
-    ...open(n, now, { timelockHeight: TIP - 10 }, "repaid_locked"),
+    ...open(n, now, { ...closed, timelockHeight: TIP - 10 }, "repaid_locked", { timelockHeight: TIP - 10 }),
     reclaimable: true,
   }),
-  syncing: (n: number, now: number): MockPosition => ({
-    ...loans.healthy(n, now),
-    relayer: { catchingUp: true },
-    syncing: true,
-  }),
+  /** Repaid on chain; the relayer has not published the co-signed release yet. */
+  syncing: (n: number, now: number): MockPosition => {
+    const m = open(n, now, closed, "repaid_locked");
+    return { ...m, chain: { ...m.chain, releasePsbtReady: false }, syncing: true };
+  },
 };
 
-function deposit(
-  n: number,
-  now: number,
-  over: Partial<PendingDeposit>,
-  rest: Omit<MockPosition, "local"> & { proving?: boolean; insertFailed?: boolean },
-): MockPosition {
-  const { proving, insertFailed, ...fixture } = rest;
-  return {
-    local: { position: null, pendingDeposit: pendingDeposit(n, now, over), proving, insertFailed },
-    ...fixture,
-  };
+function deposit(n: number, now: number, over: Partial<PendingDeposit>, rest: Omit<MockPosition, "local">): MockPosition {
+  return { local: { position: null, pendingDeposit: pendingDeposit(n, now, over) }, ...rest };
 }
 
 export const deposits = {
   sent: (n: number, now: number) =>
     deposit(n, now, { step: "sent", vout: undefined }, {
-      chain: { depositTx: { seen: true, blockHeight: null }, commitmentForTxid: null },
+      chain: { depositTx: { seen: true, blockHeight: null }, position: null },
       relayer: { confirmations: 0 },
       expect: "btc_sent",
     }),
   unseen: (n: number, now: number) =>
     deposit(n, now, { step: "sent", vout: undefined, createdAt: now - 15 * 60_000 }, {
-      chain: { depositTx: { seen: false }, commitmentForTxid: null },
+      chain: { depositTx: { seen: false }, position: null },
       relayer: { confirmations: 0 },
       expect: "btc_unseen",
     }),
   confirming: (n: number, now: number, m = 3, seen = 1) =>
     deposit(n, now, {}, {
-      chain: { depositTx: { seen: true, blockHeight: TIP - seen + 1 }, commitmentForTxid: null },
+      chain: { depositTx: { seen: true, blockHeight: TIP - seen + 1 }, position: null },
       relayer: { confirmations: seen, minConfirmations: m },
       expect: "confirming",
     }),
   relayerBehind: (n: number, now: number) =>
     deposit(n, now, {}, {
-      chain: { depositTx: { seen: true, blockHeight: TIP }, commitmentForTxid: null },
+      chain: { depositTx: { seen: true, blockHeight: TIP }, position: null },
       relayer: { confirmations: 0, minConfirmations: MIN_CONFIRMATIONS },
       expect: "confirming",
     }),
   relayerUnreachable: (n: number, now: number) =>
     deposit(n, now, {}, {
-      chain: { depositTx: { seen: true, blockHeight: null }, commitmentForTxid: null },
+      chain: { depositTx: { seen: true, blockHeight: null }, position: null },
       relayer: null,
       expect: "btc_sent",
     }),
   ready: (n: number, now: number) =>
     deposit(n, now, { step: "ready" }, {
-      chain: { depositTx: { seen: true, blockHeight: TIP }, commitmentForTxid: null },
+      chain: { depositTx: { seen: true, blockHeight: TIP }, position: null },
       relayer: { confirmations: 1, minConfirmations: MIN_CONFIRMATIONS },
       expect: "ready_to_register",
     }),
-  proving: (n: number, now: number) =>
-    deposit(n, now, { step: "ready" }, {
-      chain: { depositTx: { seen: true, blockHeight: TIP }, commitmentForTxid: null },
-      relayer: { confirmations: 1, minConfirmations: MIN_CONFIRMATIONS },
-      expect: "proving",
-      proving: true,
-    }),
-  registering: (n: number, now: number, step: 1 | 2) =>
-    deposit(n, now, { step: step === 1 ? "submitted" : "registering", stellarTxHash: STELLAR_TX, commitment: String(2000 + n) }, {
-      chain: step === 1 ? { commitmentForTxid: null } : { commitmentForTxid: commitmentHex(n), commitmentPending: true },
+  registering: (n: number, now: number, onChain: boolean) =>
+    deposit(n, now, { step: "submitted", stellarTxHash: STELLAR_TX }, {
+      chain: { position: onChain ? chainPosition(n) : null },
       relayer: {},
       expect: "registering",
     }),
-  registerFailed: (n: number, now: number) =>
-    deposit(n, now, { step: "registering", stellarTxHash: STELLAR_TX, commitment: String(2000 + n) }, {
-      chain: { commitmentForTxid: commitmentHex(n), commitmentPending: true },
-      relayer: {},
-      expect: "register_failed",
-      insertFailed: true,
-    }),
   alreadyRegistered: (n: number, now: number) =>
-    deposit(n, now, { step: "ready", commitment: String(2000 + n) }, {
-      chain: { commitmentForTxid: commitmentHex(n), commitmentPending: false },
+    deposit(n, now, { step: "ready" }, {
+      chain: { position: chainPosition(n) },
       relayer: {},
       expect: "registering",
     }),
@@ -245,7 +251,7 @@ export function lifecycleState(id: TxLifecycleId): FlowState {
     case "draft":
       return { phase: "idle" };
     case "preparing":
-      return { phase: "proving" };
+      return { phase: "preparing", step: "building" };
     case "awaiting_signature":
       return { phase: "awaiting_signature", wallet: "stellar" };
     case "signature_cancelled":

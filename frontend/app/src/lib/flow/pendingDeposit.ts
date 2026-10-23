@@ -5,7 +5,7 @@ import { createJsonStore, type JsonStore } from "./storage";
  * moment `sendBtc` returns, keyed by Stellar address, so a reload or a closed
  * tab never orphans locked BTC.
  */
-export type DepositStep = "sent" | "confirming" | "ready" | "submitted" | "registering";
+export type DepositStep = "sent" | "confirming" | "ready" | "submitted";
 
 export interface PendingDeposit {
   /** Bitcoin txid, display (Esplora) byte order. */
@@ -23,9 +23,6 @@ export interface PendingDeposit {
   step: DepositStep;
   confirmations?: number;
   required?: number;
-  /** Set once proven, before the Stellar deposit is signed. */
-  commitment?: string;
-  nullifier?: string;
   stellarTxHash?: string;
   stellarSubmittedAt?: number;
   createdAt: number;
@@ -60,10 +57,8 @@ export const STELLAR_TX_TTL_MS = 360_000;
 
 /** What the chain says about a pending deposit, read on load. */
 export interface DepositChainView {
-  /** `get_commitment(txid)` as hex, or null when the txid was never deposited. */
-  commitmentForTxid: string | null;
-  /** `is_commitment_pending(commitment)`, read only when a commitment exists. */
-  commitmentPending: boolean | null;
+  /** The depositor of `get_position(txid)` on `writz-lend`, or null when the txid was never deposited. */
+  depositorForTxid: string | null;
   /** `getTransaction(stellarTxHash)`, read only when a hash is stored. */
   stellarTx: "SUCCESS" | "FAILED" | "NOT_FOUND" | null;
 }
@@ -72,32 +67,27 @@ export type ResumeAction =
   | { action: "locate_output" }
   | { action: "wait_confirmations" }
   | { action: "await_stellar"; hash: string }
-  | { action: "insert"; commitment: string }
-  | { action: "finalize"; commitment: string }
-  | { action: "conflict"; commitment: string };
+  | { action: "finalize" }
+  | { action: "conflict"; depositor: string };
 
 /**
  * Where a pending deposit resumes, skipping every step the chain shows as
  * done. Never plans a second `deposit()` when the txid already has a
- * commitment on chain.
+ * position on chain.
  */
 export function planResume(
   pd: PendingDeposit,
   chain: DepositChainView,
   now: number,
 ): ResumeAction {
-  const onChain = chain.commitmentForTxid?.toLowerCase() ?? null;
+  const onChain = chain.depositorForTxid;
   if (onChain) {
-    const mine = pd.commitment ? BigInt(pd.commitment).toString(16).padStart(64, "0") : null;
-    if (mine !== onChain) return { action: "conflict", commitment: onChain };
-    return chain.commitmentPending === false
-      ? { action: "finalize", commitment: onChain }
-      : { action: "insert", commitment: onChain };
+    return onChain === pd.stellarAddress ? { action: "finalize" } : { action: "conflict", depositor: onChain };
   }
 
   if (pd.stellarTxHash && chain.stellarTx !== "FAILED") {
     const young = now - (pd.stellarSubmittedAt ?? pd.updatedAt) < STELLAR_TX_TTL_MS;
-    // SUCCESS with no commitment yet is RPC read lag, not a missing deposit.
+    // SUCCESS with no position yet is RPC read lag, not a missing deposit.
     if (chain.stellarTx === "SUCCESS" || young) {
       return { action: "await_stellar", hash: pd.stellarTxHash };
     }

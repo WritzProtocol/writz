@@ -3,7 +3,7 @@ import { LENDING_PATHS, routeFor } from "./routes";
 
 describe("routeFor", () => {
   it("serves everything when lending is enabled", () => {
-    for (const p of ["/", "/borrow/new", "/loans/3", "/lend", "/api/cosign", "/earn"]) {
+    for (const p of ["/", "/borrow/new", "/loans/3", "/lend", "/earn"]) {
       expect(routeFor(p, true)).toEqual({ kind: "next" });
     }
   });
@@ -18,7 +18,6 @@ describe("routeFor", () => {
       expect(routeFor(`${base}/x`, false)).toEqual({ kind: "not-found" });
     }
     expect(routeFor("/loans/12", false)).toEqual({ kind: "not-found" });
-    expect(routeFor("/api/cosign", false)).toEqual({ kind: "not-found" });
   });
 
   it("leaves Earn, Protocol and lookalike paths alone", () => {

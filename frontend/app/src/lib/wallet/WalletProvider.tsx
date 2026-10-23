@@ -15,7 +15,6 @@ import type { WalletWithMetadata } from "@privy-io/react-auth";
 import { usePrivyBridge } from "@/lib/wallet/privy-bridge";
 import { ensureKit } from "@/lib/wallet/kit";
 import { config } from "@/config";
-import { KEY_DERIVATION_MESSAGE, deriveSeed } from "@/lib/position/derive";
 import {
   signMessageWithPrivy,
   signTransactionWithPrivy,
@@ -52,12 +51,6 @@ interface WalletState {
   disconnect: () => void;
   signTransaction: SignTransaction;
   signMessage: SignMessage;
-  /** In-memory master seed (32 bytes) derived from the unlock signature, or null. */
-  seed: Uint8Array | null;
-  /** True once the user has unlocked (signed the derivation message) this session. */
-  unlocked: boolean;
-  /** Sign the canonical message → derive + hold the in-memory seed. */
-  unlock: () => Promise<void>;
   /** Active auth backend, or null when not connected. */
   walletBackend: WalletBackend | null;
   /** A remembered session is still being restored, so whether a wallet is connected isn't known yet. */
@@ -108,8 +101,6 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const [address, setAddress] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Master seed lives only in memory (never persisted); cleared on disconnect/switch.
-  const [seed, setSeed] = useState<Uint8Array | null>(null);
 
   // Guard against duplicate Stellar wallet creation in the Privy flow.
   const creatingPrivyWallet = useRef(false);
@@ -200,7 +191,6 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const connect = useCallback(async () => {
     setError(null);
     setConnecting(true);
-    setSeed(null);
     setBackend("kit");
     try {
       const { address: addr } = await ensureKit().authModal();
@@ -223,7 +213,6 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     setError(null);
-    setSeed(null);
     setBackend("privy");
     if (!privy.authenticated) {
       privy.login();
@@ -242,7 +231,6 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       creatingPrivyWallet.current = false;
     }
     setAddress(null);
-    setSeed(null);
     setBackend(null);
     setError(null);
     localStorage.removeItem(BACKEND_KEY);
@@ -308,10 +296,6 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     [backend, address, privy],
   );
 
-  const unlock = useCallback(async () => {
-    const signature = await signMessage(KEY_DERIVATION_MESSAGE);
-    setSeed(deriveSeed(signature));
-  }, [signMessage]);
 
   const value = useMemo<WalletState>(
     () => ({
@@ -323,9 +307,6 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       disconnect,
       signTransaction,
       signMessage,
-      seed,
-      unlocked: seed !== null,
-      unlock,
       walletBackend: backend,
       restoring: address === null && (backend === "kit" || (backend === "privy" && privy !== null)),
     }),
@@ -338,8 +319,6 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       disconnect,
       signTransaction,
       signMessage,
-      seed,
-      unlock,
       backend,
       privy,
     ],

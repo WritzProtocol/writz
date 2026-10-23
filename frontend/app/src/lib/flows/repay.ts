@@ -1,177 +1,105 @@
-import { Buffer } from "buffer";
-import { Client } from "@/lib/contracts/generated";
-import { config, requireContract } from "@/config";
-import { proveBorrowRepay } from "@/lib/prover";
-import { simulateWithRetry } from "./submit";
-import {
-  FIELD_PRIME,
-  computeCommitment,
-  computeNullifier,
-  positionKeys,
-  seedToField,
-  deriveNonce,
-  deriveViewingKey,
-  sealNote,
-  bytesToHex,
-  recipientLoHi,
-  requireTimelock,
-  type Position,
-} from "@/lib/position";
-import { readBorrowContext } from "./borrowContext";
+import { internalTxid, readPosition, writzLendClient, type ChainPosition } from "@/lib/contracts/writzLend";
+import type { Position } from "@/lib/position";
 import type { SignTransaction } from "@/lib/wallet/WalletProvider";
 import type { Emit } from "@/lib/flow/engine";
+import { simulateWritzLend } from "./submit";
 import { submitPositionTx } from "./positionTx";
-
-const MIN_RATIO_BP = "15000"; // 150% - must match contract's min_collateral_ratio_bp
-
-interface MerklePathResponse {
-  root: string;
-  pathElements: string[];
-  pathIndices: number[];
-  leafIndex: number;
-}
-
-async function fetchMerklePath(commitmentHex: string, leafIndex?: number): Promise<MerklePathResponse> {
-  const relayerUrl = config.services.relayerUrl;
-  if (!relayerUrl) throw new Error("NEXT_PUBLIC_RELAYER_URL is not configured");
-  const qs =
-    leafIndex !== undefined
-      ? `?leafIndex=${leafIndex}&commitment=${commitmentHex}`
-      : `?commitment=${commitmentHex}`;
-  const res = await fetch(`${relayerUrl}/merkle-path${qs}`);
-  if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(`Merkle path unavailable: ${body.error ?? res.status}`);
-  }
-  return res.json() as Promise<MerklePathResponse>;
-}
+import { requireOpenPosition } from "./borrow";
 
 export interface RepayResult {
   txHash?: string;
   updated: Position;
-  /** The relayer leaf store has not accepted the update yet; it is retried on the next load. */
-  syncPending: boolean;
 }
 
 /**
- * Repay USDC debt. Same `borrow_repay` circuit as borrow but `is_borrow = 0` and
- * the repay amount encoded as the BN254 field negation (`p − amount`). Keys are
- * derived from the session seed; the recovery note for the new (lower-debt)
- * state is sealed and emitted on-chain.
+ * Follow-up repayments a full repay may take. Interest accrues every ledger
+ * and `repay` refuses more than the debt, so a full repay is priced at the
+ * latest ledger and can leave the few ledgers of interest it took to land.
+ * That remainder is a handful of stroops, too small to grow between ledgers,
+ * so one more repayment of exactly it closes the loan.
+ */
+const MAX_REMAINDER_REPAYS = 2;
+const READ_ATTEMPTS = 10;
+const READ_RETRY_MS = 2_000;
+
+export interface RepayDeps {
+  read(txid: string): Promise<ChainPosition | null>;
+  sleep(ms: number): Promise<void>;
+}
+
+const defaultDeps: RepayDeps = {
+  read: readPosition,
+  sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
+};
+
+/** What a repay of `amountStroops` should send: the whole debt when it covers it, never more. */
+export function repayPlan(
+  amountStroops: bigint,
+  shownDebtStroops: bigint,
+  chainDebtStroops: bigint,
+): { amount: bigint; full: boolean } {
+  // "Repay all" sends the debt shown when the panel rendered; interest since then belongs to it too.
+  const full = amountStroops >= shownDebtStroops || amountStroops >= chainDebtStroops;
+  return { amount: full ? chainDebtStroops : amountStroops, full };
+}
+
+/** Reads the position until the chain reflects a transaction that landed in `ledger`. */
+async function readAfter(txid: string, ledger: number | undefined, before: bigint, deps: RepayDeps): Promise<ChainPosition | null> {
+  for (let attempt = 0; ; attempt++) {
+    const chain = await deps.read(txid);
+    const caughtUp =
+      !chain || chain.status !== "active" || (ledger !== undefined ? chain.ledger >= ledger : chain.storedDebtStroops < before);
+    if (caughtUp || attempt >= READ_ATTEMPTS) return chain;
+    await deps.sleep(READ_RETRY_MS);
+  }
+}
+
+/**
+ * Repay USDC debt: `writz-lend.repay(repayer, txid, amount)`. Repaying the
+ * whole debt closes the position on chain, which is what lets Writz co-sign
+ * the BTC release.
  */
 export async function repay(params: {
   position: Position;
   amountStroops: bigint;
   repayer: string;
-  seed: Uint8Array;
   signTransaction: SignTransaction;
   emit?: Emit;
+  deps?: RepayDeps;
 }): Promise<RepayResult> {
-  const { position, amountStroops, repayer, seed, signTransaction, emit } = params;
+  const { position, amountStroops, repayer, signTransaction, emit } = params;
+  const deps = params.deps ?? defaultDeps;
 
-  const collateral = BigInt(position.collateralSats);
-  const oldDebt = BigInt(position.debtStroops);
-  const f = seedToField(seed);
-  const { secret, nonce } = positionKeys(seed, position);
-  const newVersion = position.version + 1;
-  const newNonce = deriveNonce(f, position.index, newVersion);
+  emit?.({ type: "preparing", step: "reading" });
+  let chain = await requireOpenPosition(position.txid, repayer, deps.read);
+  const plan = repayPlan(amountStroops, BigInt(position.debtStroops), chain.debtStroops);
 
-  const timelock = requireTimelock(position);
-  const commitment = computeCommitment(collateral, oldDebt, secret, nonce, timelock);
-  const commitmentHex = commitment.toString(16).padStart(64, "0");
-
-  emit?.({ type: "preparing", step: "merkle_path" });
-  const { root, pathElements, pathIndices } = await fetchMerklePath(commitmentHex, position.leafIndex);
-
-  // Repay amount encoded as the BN254 field negation of the delta.
-  const delta = (FIELD_PRIME - amountStroops) % FIELD_PRIME;
-
-  // The circuit requires these signals on every call (shared with borrow),
-  // but `repay()` doesn't check them - it pulls funds FROM `repayer`, so
-  // there's no arbitrary-recipient risk to bind against here.
-  const { lo: recipientLo, hi: recipientHi } = await recipientLoHi(repayer);
-
-  // Repay carries the keeper note too (a partial repay leaves debt); it is
-  // not held to the timelock margin, so a matured position can still repay.
-  const ctx = await readBorrowContext();
-
-  emit?.({ type: "proving" });
-  const { proof, publicSignals } = await proveBorrowRepay({
-    collateral_satoshis: collateral.toString(),
-    old_debt_stroops: oldDebt.toString(),
-    secret: secret.toString(),
-    nonce: nonce.toString(),
-    new_nonce: newNonce.toString(),
-    path_elements: pathElements,
-    path_indices: pathIndices.map(String),
-    old_root: root,
-    delta_stroops: delta.toString(),
-    is_borrow: "0",
-    btc_price_stroops_per_btc: config.btcPriceStroops,
-    min_ratio_bp: MIN_RATIO_BP,
-    recipient_lo: recipientLo,
-    recipient_hi: recipientHi,
-    timelock_height: String(timelock),
-    // The keeper note (#212): the new position's liquidation witness,
-    // encrypted inside the proof to the contract's keeper key.
-    ...ctx.inputs,
-  });
-
-  const newDebt = oldDebt - amountStroops;
-  const encNote = sealNote(
-    {
-      index: position.index,
-      version: newVersion,
-      collateralSats: collateral.toString(),
-      debtStroops: newDebt.toString(),
-      timelockHeight: timelock,
-    },
-    deriveViewingKey(seed).publicKey,
-  );
-
-  const client = new Client({
-    contractId: requireContract(config.contracts.commitmentTree, "commitment-tree"),
-    networkPassphrase: config.networkPassphrase,
-    rpcUrl: config.rpcUrl,
-    allowHttp: config.rpcUrl.startsWith("http://"),
-    publicKey: repayer,
-  });
-
-  const tx = await simulateWithRetry(() =>
-    client.repay({
-      repayer,
-      zk_proof: proof,
-      public_signals: publicSignals,
-      enc_note: Buffer.from(encNote),
-    }),
-  );
-  const newCommitment = computeCommitment(collateral, newDebt, secret, newNonce, timelock);
-  const updated: Position = {
-    ...position,
-    id: newCommitment.toString(),
-    debtStroops: newDebt.toString(),
-    version: newVersion,
-    commitment: newCommitment.toString(),
-    nullifier: computeNullifier(secret, newNonce).toString(),
-    status: newDebt === 0n ? "closed" : "active",
+  const client = writzLendClient(repayer);
+  const send = async (amount: bigint, current: Position, keepOpen: boolean) => {
+    emit?.({ type: "preparing", step: "building" });
+    const tx = await simulateWritzLend(() =>
+      client.repay({ repayer, txid: internalTxid(position.txid), usdc_amount: amount }),
+    );
+    const left = chain.debtStroops > amount ? chain.debtStroops - amount : 0n;
+    const updated: Position = { ...current, debtStroops: left.toString(), status: left === 0n ? "closed" : "active" };
+    const sent = await submitPositionTx({ kind: "repay", tx, position: current, updated, signTransaction, emit, keepOpen });
+    return { ...sent, updated };
   };
 
-  const { hash, syncPending } = await submitPositionTx({
-    kind: "repay",
-    tx,
-    position,
-    updated,
-    leafUpdate:
-      position.leafIndex !== undefined
-        ? {
-            leafIndex: position.leafIndex,
-            newCommitment: newCommitment.toString(16).padStart(64, "0"),
-            encNote: bytesToHex(encNote),
-          }
-        : undefined,
-    signTransaction,
-    emit,
-  });
+  let result = await send(plan.amount, position, plan.full);
+  if (!plan.full) return { txHash: result.hash, updated: result.updated };
 
-  return { txHash: hash, updated, syncPending };
+  for (let i = 0; ; i++) {
+    const after = await readAfter(position.txid, result.ledger, chain.storedDebtStroops, deps);
+    if (!after || after.status !== "active" || after.debtStroops === 0n || i >= MAX_REMAINDER_REPAYS) {
+      const updated: Position =
+        after && after.status === "active"
+          ? { ...result.updated, debtStroops: after.debtStroops.toString(), status: "active" }
+          : { ...result.updated, debtStroops: "0", status: "closed" };
+      emit?.({ type: "settled", hash: result.hash });
+      return { txHash: result.hash, updated };
+    }
+    chain = after;
+    result = await send(after.debtStroops, result.updated, true);
+  }
 }

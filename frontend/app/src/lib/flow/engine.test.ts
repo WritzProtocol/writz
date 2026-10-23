@@ -15,14 +15,14 @@ describe("reduceFlow", () => {
   test("a borrow goes from preparing to settled and keeps its hash", () => {
     const s = run([
       { type: "start" },
-      { type: "preparing", step: "merkle_path" },
+      { type: "preparing", step: "reading" },
       { type: "proving" },
       { type: "awaiting_signature", wallet: "stellar" },
       { type: "submitted", hash: "abc" },
-      { type: "post_processing", step: "update_leaf" },
+      { type: "post_processing", step: "finalize" },
       { type: "settled" },
     ]);
-    expect(s).toEqual({ phase: "settled", hash: "abc", syncPending: undefined });
+    expect(s).toEqual({ phase: "settled", hash: "abc" });
   });
 
   test("a failure after submit still shows the hash", () => {
@@ -69,7 +69,6 @@ describe("reduceFlow", () => {
     expect(reduceFlow(timedOut, { type: "settled" })).toEqual({
       phase: "settled",
       hash: "abc",
-      syncPending: undefined,
     });
     expect(reduceFlow(timedOut, { type: "failed", error: "x" }).phase).toBe("failed");
   });
@@ -103,7 +102,7 @@ describe("isInFlight and guardsUnload", () => {
     expect(at({ phase: "proving" })).toEqual([true, false]);
     expect(at({ phase: "awaiting_signature", wallet: "stellar" })).toEqual([true, true]);
     expect(at({ phase: "submitted", hash: "a" })).toEqual([true, true]);
-    expect(at({ phase: "post_processing", step: "insert" })).toEqual([true, true]);
+    expect(at({ phase: "post_processing", step: "finalize" })).toEqual([true, true]);
     expect(at({ phase: "ready" })).toEqual([false, false]);
     expect(at({ phase: "needs_attention", action: "finish_deposit" })).toEqual([false, false]);
   });
