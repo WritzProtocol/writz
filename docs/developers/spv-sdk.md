@@ -1,45 +1,122 @@
 ---
 title: "Bitcoin SPV SDK"
+description: "Reference for verify_transaction on the Writz bitcoin-spv contract: real signature, return type, errors, the relayer proof route, and what is not available yet."
 ---
 
-> **Accuracy note:** the `outputs: Vec<TxOutput>` field and per-output extraction pattern shown below do not exist in the current `bitcoin-spv` contract - the real return type (`SpvVerificationResult`, defined in the shared `spv-types` crate) only has `txid`, `block_hash`, and `confirmations`. There is no on-chain output-parsing/address-matching helper today; a caller who needs that must parse `raw_tx` themselves. Treat the "Return Type" and "outputs" sections below as an aspirational SDK surface, not the current contract interface, until this is either implemented or removed.
+**Verify Bitcoin transactions from any Stellar smart contract.**
 
-**Verify Bitcoin transactions from any Stellar smart contract - for free.**
+`bitcoin-spv` is a Bitcoin light client that runs as a Soroban contract. It stores Bitcoin block headers that descend from a fixed checkpoint, checks each header's proof-of-work and difficulty, and follows the most-work chain. Any Soroban contract can then ask it whether a Bitcoin transaction is in a block of that chain, with a given number of confirmations. Writz Lend uses it to verify BTC deposits; you can use it for anything that should react to a Bitcoin transaction.
 
-Writz is not just a lending protocol. It is Bitcoin verification infrastructure for the Stellar ecosystem. The Bitcoin SPV SDK is a free, open-source library that lets any Soroban developer verify Bitcoin transactions on Stellar in a single function call.
-
-If you are building anything on Stellar that needs to know whether a specific Bitcoin transaction happened - an exchange, a payment processor, a cross-chain bridge, a Bitcoin-collateral protocol - the Writz SPV SDK gives you that capability without building it yourself.
-
----
-
-## Why Use the SDK Instead of Building Your Own?
-
-Building a Bitcoin SPV verifier on Soroban from scratch requires:
-- Implementing SHA256d (double-SHA256) in Soroban Wasm
-- Implementing Bitcoin's Merkle tree verification
-- Implementing Bitcoin block header parsing and PoW verification
-- Handling edge cases: 80-byte header format, little-endian encoding, target computation
-- Extensive testing against real Bitcoin transactions
-- A security audit of the cryptographic implementation
-
-The Writz SPV contract has done all of this. It has 47 passing tests, is deployed on Stellar testnet, and has been verified against real Bitcoin mainnet transactions. Use it instead.
+There is no separate SDK package today: the "SDK" is the deployed contract, the relayer proof route and the snippets below. For a step-by-step walkthrough with commands that were run against testnet, start with [Build on Writz](/developers/integrate).
 
 ---
 
-## Integration: Cross-Contract Call
+## Deployment
 
-The simplest integration is a cross-contract call from your Soroban contract to the Writz `bitcoin-spv` contract.
+| | Value |
+|---|---|
+| Contract ID (Stellar testnet) | `CAHHY4S4WCIFU4LBSKBI3IP6A4QYR2COV6EACDEBXGPJFDWBJWGOMCLP` |
+| Bitcoin network tracked | Signet |
+| Checkpoint | Signet block 325,554 (only later blocks can be proven) |
+| Header submission | Restricted to one designated Writz account on signet, because signet blocks are authorised by a signature the contract does not verify |
+| Max headers per `submit_headers` call | 16 |
+| Max reorg depth per call | 20 blocks |
 
-### Calling the Deployed Contract
+Source: [`contracts/contracts/bitcoin-spv/src/lib.rs`](https://github.com/WritzProtocol/writz/blob/main/contracts/contracts/bitcoin-spv/src/lib.rs). Deployment record: [`contracts/deployments/testnet.md`](https://github.com/WritzProtocol/writz/blob/main/contracts/deployments/testnet.md).
+
+---
+
+## `verify_transaction`
 
 ```rust
-use soroban_sdk::{contractclient, Address, Bytes, BytesN, Env, Vec};
+pub fn verify_transaction(
+    env: Env,
+    block_hash: BytesN<32>,
+    merkle_proof: Vec<BytesN<32>>,
+    tx_index: u32,
+    raw_tx: Bytes,
+    min_confirmations: u32,
+) -> Result<SpvVerificationResult, SPVError>
+```
+
+| Parameter | Meaning |
+|---|---|
+| `block_hash` | Hash of the block that contains the transaction, **internal byte order** (the reverse of what explorers show). The header must already be stored and on the most-work chain |
+| `merkle_proof` | Sibling hashes from the leaf level up to just below the Merkle root, each in internal byte order. Empty for a block with a single transaction |
+| `tx_index` | 0-based position of the transaction in the block |
+| `raw_tx` | The transaction **without witness data** (legacy serialization). Its SHA256d is the txid. Exactly 64 bytes is rejected |
+| `min_confirmations` | Minimum depth of the block below the light client's tip, where the tip itself counts as 1. Must be at least 1 |
+
+It is a read: it changes no state, needs no authorisation, and can be simulated for free.
+
+### Return type
+
+`SpvVerificationResult`, defined in the shared crate [`spv-types`](https://github.com/WritzProtocol/writz/blob/main/contracts/contracts/spv-types/src/lib.rs):
+
+```rust
+#[contracttype]
+pub struct SpvVerificationResult {
+    pub txid: BytesN<32>,       // SHA256d(raw_tx), internal byte order
+    pub block_hash: BytesN<32>, // internal byte order
+    pub block_height: u32,      // Bitcoin height of that block
+    pub confirmations: u32,     // the block's actual depth below the tip (tip = 1)
+}
+```
+
+That is the complete result. It says nothing about the transaction's outputs: if you need to know what the transaction paid and to whom, parse `raw_tx` yourself (see [Checking outputs](#checking-outputs)).
+
+### Errors
+
+`SPVError` codes are stable. The ones a caller of `verify_transaction` can hit:
+
+| Code | Name | Meaning |
+|---|---|---|
+| 2 | `InsufficientConfirmations` | The block is shallower than `min_confirmations` |
+| 3 | `ZeroMinConfirmations` | `min_confirmations` is 0 |
+| 5 | `MerkleProofInvalid` | The proof does not reproduce the block's Merkle root |
+| 7 | `EmptyTransaction` | `raw_tx` is empty |
+| 10 | `NotInitialized` | The contract has no configuration |
+| 13 | `CheckpointNotSet` | No checkpoint yet |
+| 15 | `AmbiguousTransactionLength` | `raw_tx` is exactly 64 bytes |
+| 22 | `HeaderNotFound` | `block_hash` is not stored |
+| 23 | `NotOnBestChain` | The block is stored but not on the most-work chain |
+| 24 | `BlockNotAfterCheckpoint` | The block is the checkpoint or older |
+
+The full list, including the codes of `submit_headers` and the admin functions, is in [`error.rs`](https://github.com/WritzProtocol/writz/blob/main/contracts/contracts/bitcoin-spv/src/error.rs).
+
+### Other reads
+
+| Function | Returns |
+|---|---|
+| `get_best_tip()` | `Option<BestTip>`: `hash`, `height`, `chainwork` of the most-work chain |
+| `get_header(block_hash)` | `Option<HeaderEntry>`: `prev`, `merkle_root`, `height`, `bits`, `time`, `period_start_time`, `chainwork` |
+| `get_canonical_hash(height)` | `Option<BytesN<32>>`: the most-work chain's block hash at that height |
+| `get_checkpoint()` | `Option<Checkpoint>`: the trust root |
+| `is_deposit_consumed(txid)` | `bool`: whether a Writz lending contract has already used this deposit |
+
+`consume_deposit` and `set_consumer` are for the Writz lending contracts only; registering a consumer is admin-gated. Keep your own record of the txids you accept.
+
+---
+
+## Calling it from a Soroban contract
+
+```rust
+use soroban_sdk::{contractclient, contracttype, Bytes, BytesN, Env, Vec};
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SpvVerificationResult {
+    pub txid: BytesN<32>,
+    pub block_hash: BytesN<32>,
+    pub block_height: u32,
+    pub confirmations: u32,
+}
 
 #[contractclient(name = "BitcoinSpvClient")]
 pub trait BitcoinSpv {
     fn verify_transaction(
         env: Env,
-        headers: Vec<Bytes>,        // Raw 80-byte Bitcoin block headers
+        block_hash: BytesN<32>,
         merkle_proof: Vec<BytesN<32>>,
         tx_index: u32,
         raw_tx: Bytes,
@@ -47,152 +124,111 @@ pub trait BitcoinSpv {
     ) -> SpvVerificationResult;
 }
 
-// In your contract:
-let spv_client = BitcoinSpvClient::new(
-    &env,
-    &Address::from_str(&env, WRITZ_SPV_CONTRACT_ADDRESS),
-);
-
-let result = spv_client.verify_transaction(
-    &env,
-    &headers,
-    &merkle_proof,
-    &tx_index,
-    &raw_tx,
-    &6_u32,  // require 6 confirmations
-);
-
-// result.outputs contains the transaction outputs
-// Check that the expected address received the expected amount
-let deposit_output = result.outputs.iter().find(|o| o.address == expected_address);
-match deposit_output {
-    Some(output) => {
-        let satoshis = output.value;
-        // proceed with deposit logic
-    }
-    None => panic!("expected output not found"),
-}
+// In your contract. `spv` is the bitcoin-spv contract ID, stored at construction.
+// `try_` returns the callee's error as a value instead of aborting your call.
+let proof = match BitcoinSpvClient::new(&env, &spv)
+    .try_verify_transaction(&block_hash, &merkle_proof, &tx_index, &raw_tx, &6)
+{
+    Ok(Ok(result)) => result,
+    _ => return Err(Error::ProofRejected),
+};
 ```
 
-**Testnet contract address:** `CAHHY4S4WCIFU4LBSKBI3IP6A4QYR2COV6EACDEBXGPJFDWBJWGOMCLP`
+The struct is declared locally because `spv-types` is not on crates.io; the call decodes the result by field name, so the names and types must match exactly.
 
-### Return Type
+A complete, tested contract built this way is [`examples/spv-payment-check`](https://github.com/WritzProtocol/writz/tree/main/examples/spv-payment-check).
+
+### Checking outputs
+
+`spv-types` includes the parser Writz Lend uses on chain. Add it as a git dependency pinned to a commit:
+
+```toml
+[dependencies]
+soroban-sdk = "26"
+spv-types = { git = "https://github.com/WritzProtocol/writz", rev = "0a1065991ee0498ad2c54367e0ffa69ca4a59a9a" }
+```
 
 ```rust
-// The current, real return type - see the accuracy note at the top of this
-// document regarding the `outputs` field shown further below.
-pub struct SpvVerificationResult {
-    pub txid: BytesN<32>,
-    pub block_hash: BytesN<32>,
-    pub confirmations: u32,
-}
-
-pub struct TxOutput {
-    pub value: u64,       // satoshis
-    pub address: String,  // Bitcoin address (P2PKH, P2SH, P2WPKH, P2WSH, P2TR)
-}
+// Satoshi value of the first output whose scriptPubKey equals `expected_spk`,
+// or None. Despite the name, it compares raw scriptPubKey bytes, so it works
+// for P2WPKH, P2WSH, P2TR and any other script type.
+let sats = spv_types::btc_parser::find_p2wsh_output(&raw_tx, &expected_spk);
 ```
+
+Pass the scriptPubKey as bytes (for example `0014...` for P2WPKH; mempool.space shows it as `scriptpubkey` for each output).
 
 ---
 
-## Integration: SPV Proof Bundle Assembly
+## Getting the proof: the relayer
 
-Your contract needs the SPV proof data as input. Use the Writz Relayer API to assemble it:
-
-### Writz Relayer API
-
-```bash
-GET https://relayer.writz.xyz/spv-proof/{txid}
+```
+GET https://api.testnet.writz.xyz/spv-proof/:txid?confirmations=6
 ```
 
-**Response:**
+`txid` is in display byte order (as explorers show it). `confirmations` is optional, 1 to 20, default 6. Response (200), shortened:
+
 ```json
 {
-  "txid": "119321009b2f92dac8f25f6bcddb2ed6a3ae778e8748ec52910cce90742e4098",
-  "block_hash": "00000000000000000003...",
-  "confirmations": 12,
+  "txid": "1fef7b54...ccb718b1",
+  "rawTxNoWitness": "0200000001b537...",
+  "blockHash": "9e4d5092...0f000000",
+  "txIndex": 1,
+  "merkleProof": ["f3e0901f...", "..."],
+  "headers": ["...", "..."],
+  "blockHeight": 327600,
+  "confirmations": 6,
   "sorobanArgs": {
-    "headers": ["0100000020...","0100000020...","..."],
-    "merkleProof": ["a1b2c3...","d4e5f6...","..."],
-    "txIndex": 42,
-    "rawTx": "0200000001..."
+    "block_hash": "9e4d5092...0f000000",
+    "merkle_proof": ["f3e0901f...", "..."],
+    "tx_index": 1,
+    "raw_tx": "0200000001b537...",
+    "min_confirmations": 6
   }
 }
 ```
 
-The `sorobanArgs` fields map directly to the `verify_transaction` parameters. Pass them through from your frontend to your contract call.
+`sorobanArgs` maps one to one onto the parameters of `verify_transaction`, already in internal byte order. `confirmations` and `min_confirmations` echo what you asked for; the block's real depth is what the contract returns. `headers` are the raw 80-byte headers from the block onwards, one per requested confirmation, for callers that want to inspect them; `verify_transaction` does not take them.
 
-### Self-Hosted Proof Assembly
+Error responses: `400 invalid_txid`, `400 invalid_confirmations`, `404 unconfirmed`, `409 insufficient_confirmations` (with `requested` and `available`), `502 upstream_error` (for example a txid that is not on signet).
 
-If you prefer not to rely on the Writz relayer, you can assemble proof bundles from any Bitcoin Esplora instance:
+### Building the proof yourself
 
-```typescript
-import { buildSpvProof } from 'writz-sdk';  // npm package - coming Q4 2026
+The relayer only reads public Bitcoin data, so you can do the same from any Esplora API (for example `https://mempool.space/signet/api`):
 
-const proof = await buildSpvProof(
-  txid,
-  { esploraUrl: 'https://blockstream.info/api' },
-  { minConfirmations: 6 }
-);
-```
+1. `GET /tx/:txid` for `status.block_height`, then `GET /block-height/:height` for the block hash.
+2. `GET /tx/:txid/merkle-proof` for `pos` (the `tx_index`) and `merkle` (the siblings).
+3. `GET /tx/:txid/raw`, then strip the witness to get the legacy serialization.
+4. Reverse the block hash and each sibling to internal byte order.
 
-The `writz-sdk` npm package (planned Q4 2026) will wrap this logic for easy integration.
+The reference implementation is `buildSPVProof` in [`relayer/src/bitcoin/spv.ts`](https://github.com/WritzProtocol/writz/blob/main/relayer/src/bitcoin/spv.ts).
 
 ---
 
-## Pricing
+## Use cases
 
-**The Writz SPV SDK is free for all Stellar protocols.**
+- **Bitcoin payment checks.** Release a token, an NFT or access on Stellar once a Bitcoin payment confirms, without a bridge or a custodian.
+- **Bitcoin-collateralised lending.** What Writz Lend does: prove a deposit to a time-locked script before lending against it.
+- **Escrow.** Unlock funds on Stellar when the counterparty's Bitcoin payment is buried under N blocks.
+- **Bitcoin-gated actions.** Votes, mints or roles for anyone who proves a specific Bitcoin payment.
 
-Writz charges a small fee per verification call in Phase 3 (after TVL and adoption milestones), but early integrators and protocols that contribute to the ecosystem will be whitelisted for free access.
+## Security notes for integrators
 
-If you are building on Stellar and want to integrate Bitcoin SPV, [open an issue](https://github.com/WritzProtocol/writz/issues) (`writz.xyz` has no mailbox yet) - we will work with you.
-
----
-
-## Use Cases
-
-**Bitcoin-collateralized lending:** Exactly what Writz does. Any protocol wanting to use BTC as collateral can use the SPV client to verify deposits without running a Bitcoin node.
-
-**Cross-chain payment verification:** A merchant on Stellar can verify that a customer paid in BTC on Bitcoin mainnet before releasing a product or service.
-
-**Bitcoin-gated access:** A Soroban contract can grant permissions (DAO governance votes, NFT mints, access tokens) to anyone who proves they burned BTC or made a specific Bitcoin payment.
-
-**Escrow and atomic swaps:** Build trust-minimized escrow systems that unlock on Stellar when a Bitcoin payment is confirmed, without a bridge or custodian.
-
-**ZK Proof of Reserve:** Verify that a claimed BTC reserve actually exists on Bitcoin, at a specific block, as part of a ZK attestation flow.
+- **Check the outputs.** Inclusion proves the transaction exists, not that it paid you. Parse `raw_tx`.
+- **Replay protection.** `verify_transaction` will verify the same transaction for anyone, any number of times. Store the txids you accept.
+- **Choose confirmations deliberately.** 6 is the usual choice and what Writz Lend uses.
+- **Testnet only.** The deployed light client tracks signet, with header submission restricted to Writz, and none of the contracts are audited.
 
 ---
 
-## What the SDK Does NOT Cover
+## Not yet available
 
-The Writz SPV SDK verifies that a **transaction exists in the Bitcoin blockchain** and extracts its outputs. It does not:
+These appeared in earlier versions of this page and do not exist today:
 
-- Validate that the transaction is "to" a specific P2WSH address (your contract must check `output.address == expected_address`)
-- Validate the internal logic of Bitcoin scripts beyond output parsing
-- Provide real-time Bitcoin price data (use an oracle for this)
-- Track the full UTXO set (stateless - no chain state is maintained)
-
----
-
-## Security Considerations for SDK Users
-
-**6-confirmation default:** The SDK defaults to 6 confirmations. This provides strong protection against reorgs. Do not lower this below 3 for production use cases.
-
-**Verify the output address:** Since `SpvVerificationResult` doesn't parse outputs (see the accuracy note at the top of this document), your contract is responsible for parsing `raw_tx` and checking that the expected output actually paid the expected P2WSH address - the SPV contract only verifies the transaction's inclusion in the blockchain, not what it paid.
-
-**Replay protection:** If your contract grants something of value when a specific Bitcoin transaction is verified, implement your own replay protection (e.g., store verified txids) to prevent the same transaction from being used twice.
+- Output extraction in the result (an `outputs` field or address matching). The result has only the four fields above; use the parser in `spv-types`.
+- A `headers` argument to `verify_transaction`. Headers are submitted separately with `submit_headers`, and the call takes a stored `block_hash`.
+- A published npm package or crates.io crate. Use the deployed contract, the relayer route, `stellar contract bindings typescript`, and the `spv-types` git dependency.
+- A light client tracking Bitcoin mainnet on Stellar, and any per-call fee. Neither exists.
 
 ---
 
-## Roadmap
-
-**Q4 2026:** `writz-sdk` npm package published to npm. TypeScript types, proof assembly utilities, relayer client.
-
-**Q1 2027:** Rust crate published to crates.io. Direct integration without the relayer API.
-
-**Q2 2027:** Formal Soroban interface standard (SEP proposal) for Bitcoin SPV verification on Stellar.
-
----
-
-**Next:** [Contract Reference →](/developers/contract-reference)
+**Next:** [Build on Writz](/developers/integrate) for a runnable walkthrough, or [Contract Reference](/developers/contract-reference) for every function of every contract.
