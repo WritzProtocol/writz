@@ -189,6 +189,10 @@ export default function WhitepaperPage() {
             <p key={p.slice(0, 24)}>{p}</p>
           ))}
           <p className="caption">
+            Since this version, the position privacy described in the paper is planned as a
+            separate, opt-in edition, in progress. Writz v1 positions are public on chain.
+          </p>
+          <p className="caption">
             Writz Protocol is live on Stellar testnet, not mainnet. The paper is informational and is
             not financial advice or an offer of any security.
           </p>

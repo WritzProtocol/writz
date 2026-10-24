@@ -16,7 +16,7 @@ Writz is open source. Contributions - bug reports, code improvements, documentat
 
 **Security research:** See the [Bug Bounty](/security/bug-bounty) page for responsible disclosure guidelines and rewards.
 
-**ZK ceremony participation:** The Groth16 trusted setup ceremony requires independent participants. If you're interested in participating, [open an issue](https://github.com/WritzProtocol/writz/issues) (`writz.xyz` has no mailbox yet). No technical background required - participants just need to run a script and discard their randomness.
+**ZK ceremony participation:** The privacy edition (in progress, not part of v1) will need a Groth16 trusted setup ceremony with independent participants; it has no date yet. If you're interested in participating, [open an issue](https://github.com/WritzProtocol/writz/issues) (`writz.xyz` has no mailbox yet). No technical background required - participants just need to run a script and discard their randomness.
 
 ---
 

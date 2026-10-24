@@ -135,74 +135,30 @@
 
 **Mitigation:** The `liquidate()` call and its result are recorded on Stellar's ledger. The `liquidate` event includes the keeper's address, the position txid, and the debt amount. All on-chain, all immutable.
 
-**Residual risk:** NONE for on-chain record. Note: Phase 1 uses a trusted keeper, so keeper reliability is a concern - mitigated by Phase 2 ZK liquidation where any party can prove and execute.
+**Residual risk:** NONE for on-chain record. Note: `writz-lend` uses a designated keeper, so keeper reliability is a concern - mitigated by the stale-keeper fallback: after 24 hours with no keeper liquidation or heartbeat, any caller may liquidate an undercollateralized position.
 
 ---
 
 ### I - Information Disclosure (unauthorized access to private data)
 
-#### I1: On-chain position amounts visible before ZK privacy
-**Threat:** In Phase 1 (no ZK yet), position amounts, debt sizes, and health ratios are visible on-chain. This exposes users to front-running and competitive analysis.
+#### I1: On-chain position amounts are public
+**Threat:** `writz-lend` positions are plaintext: position amounts, debt sizes, health ratios, the depositor's Stellar address and the Bitcoin deposit are visible on-chain. This exposes users to front-running and competitive analysis, as in any public lending market.
 
-**Mitigation:** Phase 1 is a testnet prototype. Mainnet launch (Phase 3) includes full ZK privacy - positions are stored as Poseidon commitment hashes with no public amounts.
+**Mitigation:** None in v1, by design. Writz v1 has no privacy layer, and this is disclosed in the user documentation. Privacy is being designed as a separate, opt-in edition with its own contracts, pool, audit and trusted-setup ceremony (see `docs/how-it-works/privacy-edition.md`); it is in progress, testnet only, not on the v1 mainnet plan and has no date.
 
-**Residual risk:** HIGH in Phase 1 (testnet). LOW at mainnet launch (Phase 3 with ZK).
-
-**Note:** ZK privacy ships before mainnet. We will not launch on mainnet without ZK privacy in place.
-
-#### I2: Relayer learns which Bitcoin transactions are being deposited
-**Threat:** The Writz-operated relayer can observe which Bitcoin transactions users are submitting for deposit, potentially de-anonymizing users.
-
-**Mitigation:**
-- Users can bypass the relayer entirely and self-serve from Blockstream Esplora or their own Bitcoin node.
-- The stateless SPV design makes the relayer replaceable - it's a convenience service.
-- Phase 2 decentralizes the relayer: multiple independent operators, no single observer.
-
-**Residual risk:** MEDIUM in Phase 1 (Writz operates the relayer). LOW in Phase 2 with decentralization.
-
----
-
-### D - Denial of Service
-
-#### D1: Attacker floods the relayer with fake requests
-**Threat:** An attacker sends thousands of fake txid queries to the relayer, overwhelming the service and preventing real users from getting their proofs.
-
-**Mitigation:**
-- Rate limiting per IP at the relayer layer
-- Users can self-serve from public APIs - the relayer is not a protocol dependency
-- Phase 2 decentralizes the relayer, distributing the attack surface
-
-**Residual risk:** LOW for protocol availability (stateless SPV design means relayer downtime doesn't break the protocol). MEDIUM for relayer-dependent UX.
-
-#### D2: Attacker submits valid-but-rejectable proofs to waste protocol resources
-**Threat:** An attacker submits many SPV proofs with invalid Merkle proofs or insufficient confirmations, consuming Soroban compute resources.
-
-**Mitigation:**
-- Soroban transactions have a compute cost paid by the submitter (XLM fees). An attacker pays real fees for each submission.
-- Invalid proofs fail fast - the contract returns an error at the first failing check.
-
-**Residual risk:** LOW - Soroban's fee model makes spam attacks economically costly.
-
-#### D3: Protocol co-signing key becomes unavailable
-**Threat:** The HSM becomes unavailable (provider outage, key loss), preventing the protocol from co-signing BTC releases.
-
-**Mitigation:** The CLTV timelock is the user-side safety net. If the protocol key is permanently unavailable, users wait for the timelock and recover via spending path B (user key only). No user funds are permanently locked.
-
-**Residual risk:** LOW for user funds (timelock protects them). HIGH for protocol operations (would need key recovery procedure). Phase 2 MPC migration eliminates this risk.
-
----
+**Residual risk:** HIGH for users who need confidential positions; accepted for v1.
 
 ### E - Elevation of Privilege
 
 #### E1: Attacker triggers liquidation on a healthy position
-**Threat:** An attacker calls `liquidate()` on a position that is actually healthy, forcing the position owner to lose their BTC collateral at a discount.
+**Threat:** An attacker calls `liquidate()` on a position that is actually healthy, clearing the owner's position against their will.
 
 **Mitigation:**
 - `liquidate()` performs an on-chain collateral ratio check before proceeding: `health_ratio = collateral_value / debt`. If health ≥ liquidation threshold (120%), the call reverts with `PositionHealthy`.
-- Phase 1: only the authorized keeper address can call `liquidate()`. A rogue actor without the keeper key cannot trigger liquidation.
-- Phase 2 ZK liquidation: any caller can prove a position is undercollateralized ZK, but the proof must be valid - you cannot generate a valid ZK proof for a healthy position.
+- Only the authorized keeper address can call `liquidate()` while the keeper is active. After 24 hours of keeper inactivity anyone may call it, but the on-chain ratio check above still applies to every caller.
+- `liquidate()` never moves BTC: the liquidator pays the USDC debt and receives a USDC bonus from the reserve.
 
-**Residual risk:** LOW in Phase 1 (keeper access control). VERY LOW in Phase 2 (ZK soundness).
+**Residual risk:** LOW (on-chain ratio check, keeper access control while active). The oracle price remains the main input to watch (S3).
 
 #### E2: Attacker uses an undisclosed reentrancy exploit to drain the USDC pool
 **Threat:** A malicious USDC token contract or cross-contract call enables reentrancy, allowing multiple withdrawals from a single repayment.
@@ -238,7 +194,7 @@
 | T3: Proof data in transit | Medium | User self-service | LOW |
 | R1: Protocol repudiation | High | CLTV timelock backstop | LOW |
 | R2: Keeper repudiation | Low | On-chain immutability | NONE |
-| I1: Public position amounts | High | ZK privacy (Tranche #2) | HIGH (P1), LOW (mainnet) |
+| I1: Public position amounts | High | None in v1 (by design); separate privacy edition in progress | HIGH (accepted for v1) |
 | I2: Relayer data collection | Medium | Self-service available | MEDIUM (P1), LOW (P2) |
 | D1: Relayer DoS | Low | Stateless SPV redundancy | LOW |
 | D2: Compute spam | Low | Soroban fee model | LOW |
@@ -251,13 +207,13 @@
 
 ## Security priorities for audit
 
-The audit requested through the Soroban Audit Bank should focus on, in priority order:
+The external audit before mainnet should focus on, in priority order:
 
 1. **SPV verification correctness** - is the SHA256d implementation correct? Does header chain validation correctly prevent header substitution attacks?
 2. **Interest rate model overflow** - are there edge cases in the kinked rate formula that could cause incorrect interest calculation at extreme values?
 3. **Cross-contract call trust** - can a malicious contract be registered as the SPV contract to bypass deposit verification?
 4. **Protocol key security** - HSM configuration, signing policy, and key recovery procedures
-5. **ZK circuit soundness** (Phase 2) - Veridise audit of Circom circuits before mainnet
+5. **ZK circuit soundness** - not part of v1; the privacy edition's circuits get their own audit before that edition launches
 
 ---
 

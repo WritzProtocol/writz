@@ -2,7 +2,7 @@
 title: "Contract Reference"
 ---
 
-The public interface of the four Writz Soroban contracts, as defined on `main`.
+The public interface of the four Soroban contracts in this repository, as defined on `main`. Writz v1 is `bitcoin-spv` and `writz-lend`; `zk-verifier` and `commitment-tree` belong to the separate [privacy edition (in progress)](/how-it-works/privacy-edition), are deployed on testnet only, and are never called by `writz-lend`.
 Every function below is copied from the contract source, with the first
 paragraph of its doc comment; `env: Env` is omitted. The source is the
 authority: `contracts/contracts/<name>/src/lib.rs`, and the generated
@@ -145,6 +145,8 @@ pub fn verify_transaction(block_hash: BytesN<32>, merkle_proof: Vec<BytesN<32>>,
 
 ## zk-verifier
 
+> Privacy edition (in progress), testnet only. Not part of Writz v1.
+
 ### `__constructor`
 
 Runs exactly once, atomically, as part of deployment (`__constructor`). The admin is the only account that can call `set_verification_key`.
@@ -228,6 +230,8 @@ Topic fields are in **bold**.
 ---
 
 ## commitment-tree
+
+> Privacy edition (in progress), testnet only. Not part of Writz v1; `writz-lend` never calls it.
 
 ### `__constructor`
 

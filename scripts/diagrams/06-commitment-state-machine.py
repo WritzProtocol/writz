@@ -13,8 +13,8 @@ g.attr(**base_graph_attr(
     splines="spline",
     size="16,8",
     label=hl(
-        "Writz Protocol - Commitment State Machine",
-        "Each state transition requires a valid Groth16 proof · nonce rotates on every change",
+        "Privacy edition (in progress) - Commitment State Machine",
+        "Not part of Writz v1 · testnet only · each transition requires a valid Groth16 proof",
     ),
 ))
 g.attr("node", **base_node_attr())

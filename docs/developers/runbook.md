@@ -151,7 +151,7 @@ The scripted flow is **not** a faithful mainnet rehearsal. What differs:
 | `min_confirmations` | `6`, against six locally mined headers | The headers are mined at a trivial difficulty, so confirmations cost nothing. |
 | `min_deposit_satoshis` | `10_000` (0.0001 BTC) | Lowered so Signet faucet amounts are usable. **Hardcoded in the constructor** - the deposit circuit binds it into a public signal, so the script's constant must match or deposit fails with `ProtocolParamMismatch`. |
 | Lending pool | Pre-funded by the script | No external suppliers on a local network. |
-| Trusted setup | `pot15` dev ceremony, single contributor | A real multi-party ceremony is a mainnet gate. Never use these keys in production. |
+| Trusted setup | `pot15` dev ceremony, single contributor | Privacy edition only: a real multi-party ceremony gates that edition, not Writz v1 mainnet. Never use these keys in production. |
 | `enc_note` | Empty | The script exercises the interface, not the encryption round trip. |
 
 ---

@@ -10,13 +10,13 @@ No protocol is risk-free. This page explains Writz's security model honestly: wh
 
 ## Security Properties
 
-Writz is designed to provide three security properties to users:
+Writz v1 (Writz Lend on `bitcoin-spv` and `writz-lend`) is designed to provide two security properties to users:
 
 **1. Custody:** Your BTC cannot be taken by Writz, by an attacker, or by anyone - unless your Bitcoin wallet private key is compromised. The P2WSH script enforces this at the Bitcoin Script level.
 
-**2. Privacy (partial):** Your collateral amount and health factor are never stored on-chain in plaintext. They exist only in your local browser storage and are protected by the ZK commitment scheme. The ledger does reveal your Stellar address, the Bitcoin deposit it is linked to, and your loan and repayment amounts, because the contract events and USDC transfers are public. See `docs/how-it-works/zk-privacy-layer.md`.
+**2. Recoverability:** Even if Writz shuts down permanently, you can recover your BTC after the time-lock expires using only your Bitcoin wallet. No dependence on Writz's co-signing service after the lock expires.
 
-**3. Recoverability:** Even if Writz shuts down permanently, you can recover your BTC after the time-lock expires using only your Bitcoin wallet. No dependence on Writz's co-signing service after the lock expires.
+**Not a property of v1: privacy.** Writz Lend positions are plaintext. Your Stellar address, the Bitcoin deposit it is linked to, your collateral, debt and health ratio are all public on chain. Privacy is being designed as a separate, opt-in edition with its own contracts, pool, audit and trusted-setup ceremony, in progress and on testnet only; see `docs/how-it-works/privacy-edition.md`. Sections below that cover `commitment-tree`, `zk-verifier`, the circuits or the ceremony describe that edition, not v1.
 
 ---
 
@@ -28,10 +28,10 @@ Every security system has trust assumptions. Writz's are:
 |---|---|---|
 | Bitcoin Script | Bitcoin's consensus rules are enforced correctly | Catastrophic - but this is foundational Bitcoin security |
 | Soroban contracts | Smart contract code runs as written | Critical - mitigated by audits and open-source code |
-| ZK circuits | Groth16 proofs are sound (no witness forgery) | Critical - mitigated by formal verification and Veridise audit |
-| Trusted setup ceremony | ≥1 participant destroyed their randomness honestly | Critical - mitigated by multi-party ceremony with independent participants |
+| ZK circuits (privacy edition only) | Groth16 proofs are sound (no witness forgery) | Critical for that edition - mitigated by its own audit; not a v1 assumption |
+| Trusted setup ceremony (privacy edition only) | ≥1 participant destroyed their randomness honestly | Critical for that edition - mitigated by a multi-party ceremony; not on the v1 mainnet path |
 | Protocol co-signing key (Phase 1) | Writz's HSM is not compromised | High - mitigated by migration to MPC in Phase 2 |
-| Oracle price feed | BTC/USD price is not manipulated beyond staleness threshold | High - mitigated by multi-oracle median, staleness checks |
+| Oracle price feed | BTC/USD price is not manipulated beyond staleness threshold | High - mitigated by staleness checks today (single Reflector source); a second source for a median is planned |
 | User's private keys | User's Bitcoin and Stellar keys are not compromised | Critical - user responsibility |
 | All of the above | No large-scale quantum computer capable of running Shor's algorithm exists | Catastrophic if it does, but this breaks Bitcoin's ECDSA, Stellar's Ed25519, and Groth16's BN254 pairing curve simultaneously. Not a Writz-specific risk, and not one Writz can mitigate unilaterally |
 
@@ -41,7 +41,7 @@ Every trust assumption above except the ZK circuit's soundness (Groth16 pairing 
 
 ## Component-Level Security Mechanisms
 
-The properties above are enforced by specific mechanisms in `bitcoin-spv`, `writz-lend`, `commitment-tree`, and the surrounding relayer/circuit tooling. This section documents how each one works and what its residual trade-offs are.
+The properties above are enforced by specific mechanisms in `bitcoin-spv`, `writz-lend` and the relayer. Subsections marked `commitment-tree`, ZK or circuit belong to the privacy edition (in progress, testnet only), which `writz-lend` never calls; they are kept here because that edition's contracts are deployed on testnet and in scope for security reports. This section documents how each one works and what its residual trade-offs are.
 
 ### Bitcoin SPV verification
 
@@ -67,7 +67,7 @@ An SPV proof shows a Bitcoin transaction is real and confirmed; it does not show
 
 The timelock must also fall 1,008 to 105,000 blocks (about 7 days to 2 years) above the block that confirmed the deposit, so the CLTV escape hatch is never an instant exit for a freshly-deposited position. The protocol key is fixed for the contract's lifetime; rotating it means deploying a new contract.
 
-### Collateral binding (`commitment-tree`, ZK path)
+### Collateral binding (`commitment-tree`, privacy edition)
 
 A ZK deposit must lock its BTC under the same Writz script `writz-lend` uses: a P2WSH built from the protocol's co-signing key, the depositor's own key and a CLTV timelock. `commitment-tree::deposit` takes `user_pubkey` and `timelock_height`, rebuilds that script on-chain from them and `Config.protocol_pubkey` (`spv-types::script`, shared by both lending contracts), and counts only the output of `raw_tx` that pays it. The timelock must lie 1,008..=105,000 blocks above the block that confirmed the deposit. A transaction that pays anything else - a script the protocol cannot co-sign, or someone else's Writz output claimed with a different key - fails with `VaultOutputNotFound`.
 
@@ -95,7 +95,7 @@ txid:<the deposit txid, display order>
 
 The contract rebuilds that text, recovers the signer with `secp256k1_recover`, and requires it to be `user_pubkey` (`spv-types::key_proof`). Naming the contract and the depositor means a signature cannot be replayed into the other lender, another deployment, or another account. The app asks the connected Bitcoin wallet for this signature right before the deposit transaction.
 
-### Borrow recipient binding (`commitment-tree`)
+### Borrow recipient binding (`commitment-tree`, privacy edition)
 
 `commitment-tree::borrow` authenticates the caller-supplied `borrower` address via `require_auth`, but authentication alone doesn't tie *that specific address* to the ZK proof being redeemed. Before this fix, a party who obtained a pending borrow transaction's proof and public signals (e.g. observing it before it confirms) could resubmit the identical proof with a different address they control and be included first - the contract would pay them, spend the position's nullifier, and the original caller's transaction would then fail.
 
@@ -105,7 +105,7 @@ The contract rebuilds that text, recovers the signer with `secp256k1_recover`, a
 
 Interest used to be charged at the borrow rate in force when a position was next touched, applied to the whole period since its last update. A borrower could supply a large amount right before repaying, crash utilization and the rate, and reprice months of debt at almost nothing, then withdraw (GHSA-c9gg-c476-9vc8, GHSA-frj5-5wmv-wvm3). `writz-lend` now keeps a global borrow index that grows at the rate in force over each interval and is brought up to date before anything changes utilization: supply, withdraw, borrow, repay and liquidate. A position's debt scales with the index since it was last settled, so a past interval is always priced at the rate that applied during it.
 
-### Deposit nullifier reuse (`commitment-tree`)
+### Deposit nullifier reuse (`commitment-tree`, privacy edition)
 
 `deposit` checked that a nullifier had not been spent but never recorded it, so a second deposit could reuse one and leave a leaf that could never be spent (GHSA-frj5-5wmv-wvm3, low: self-harm only). Deposit nullifiers are now recorded and a reuse fails with `DuplicateNullifier`.
 
@@ -155,13 +155,13 @@ When KMS isn't configured, the same function falls back to a WIF-encoded key rea
 
 **Operational monitoring gap:** the mainnet guard is a hard stop, but there is currently no alerting for the WIF fallback being active on testnet/signet - `resolveProtocolSigner` silently uses it whenever `KMS_KEY_ID` is unset, with no log line or metric flagging that a deployment is running with the weaker custody model. Before mainnet, add a startup-time log/alert (not just the mainnet-network refusal) so the team always knows which custody mode a given deployment is running under, rather than discovering it only if the mainnet guard fires.
 
-### Trusted setup ceremony
+### Trusted setup ceremony (privacy edition)
 
-Groth16 requires a per-circuit trusted setup. `circuits/scripts/ceremony/` implements the full production runbook: fetching and checksum-verifying the Hermez Phase-1 ptau (`00_fetch_ptau.sh`, deliberately requiring a human-pinned, PR-reviewed checksum rather than a hardcoded one), the coordinator's per-circuit setup (`01_new_zkey.sh`), interactive participant contribution with no scripted entropy (`02_contribute.sh`), independent transcript verification (`03_verify_transcript.sh`), and final key export plus manifest generation (`04_export.js`). A CI job re-verifies the committed manifest's hashes and IC lengths on every PR touching `circuits/keys/**`, and rejects any transcript containing a dev-labeled participant. Running the actual multi-party ceremony - recruiting independent participants and executing the runbook publicly - is an operational milestone before mainnet, not something further engineering work can complete on its own.
+The ceremony is not on the v1 mainnet path. Groth16 requires a per-circuit trusted setup. `circuits/scripts/ceremony/` implements the full production runbook: fetching and checksum-verifying the Hermez Phase-1 ptau (`00_fetch_ptau.sh`, deliberately requiring a human-pinned, PR-reviewed checksum rather than a hardcoded one), the coordinator's per-circuit setup (`01_new_zkey.sh`), interactive participant contribution with no scripted entropy (`02_contribute.sh`), independent transcript verification (`03_verify_transcript.sh`), and final key export plus manifest generation (`04_export.js`). A CI job re-verifies the committed manifest's hashes and IC lengths on every PR touching `circuits/keys/**`, and rejects any transcript containing a dev-labeled participant. Running the actual multi-party ceremony - recruiting independent participants and executing the runbook publicly - is an operational milestone for the privacy edition before that edition launches, not something further engineering work can complete on its own.
 
-### Liquidation privacy and debt disclosure
+### Liquidation debt disclosure (privacy edition)
 
-For deposit, borrow, and repay, collateral and debt amounts are fully hidden by the ZK commitment scheme. Liquidation is the one operation where this breaks down: a keeper must know how much USDC to repay, so `usdc_debt` is necessarily published on-chain at liquidation time. What the circuit guarantees is that this published amount is *provably correct* - `liquidation.circom` binds it directly to the private commitment (`usdc_debt <== debt_stroops`) as a circuit output, so there is no caller-supplied field a keeper could misdeclare. A future keeper network where amounts are learned through encrypted off-chain channels, or committed-but-not-revealed bidding, only becomes worth building once multiple competing keepers exist for such a scheme to protect against - see the keeper model below.
+In the privacy edition's design, collateral is hidden by the ZK commitment scheme (debt amounts still appear in borrow and repay events and USDC transfers). Liquidation is the one operation where this breaks down: a keeper must know how much USDC to repay, so `usdc_debt` is necessarily published on-chain at liquidation time. What the circuit guarantees is that this published amount is *provably correct* - `liquidation.circom` binds it directly to the private commitment (`usdc_debt <== debt_stroops`) as a circuit output, so there is no caller-supplied field a keeper could misdeclare. A future keeper network where amounts are learned through encrypted off-chain channels, or committed-but-not-revealed bidding, only becomes worth building once multiple competing keepers exist for such a scheme to protect against - see the keeper model below.
 
 ### Cross-chain repayment automation
 
@@ -169,7 +169,7 @@ Repayment isn't atomic across Stellar and Bitcoin: a user repays USDC on Soroban
 
 ### Keeper model and liquidation permissionlessness
 
-`commitment-tree::liquidate` requires only the caller's own authorization and a valid Groth16 proof of undercollateralization - there is no keeper allowlist to bypass, so it is permissionless by construction. Producing that proof takes the position's `liq_key`, which only its owner and the holder of the keeper key can read (#212). `writz-lend::liquidate` (plaintext positions, no ZK privacy at stake) additionally supports a stale-keeper fallback: the designated keeper may always liquidate an undercollateralized position, and after a configurable window (default 24h) with no keeper activity, any caller with a valid proof may do so instead. Liquidation safety never depends on caller identity - only on whether the position is actually undercollateralized - so this fallback improves liveness without weakening the collateralization check itself.
+In the privacy edition, `commitment-tree::liquidate` requires only the caller's own authorization and a valid Groth16 proof of undercollateralization - there is no keeper allowlist to bypass, so it is permissionless by construction. Producing that proof takes the position's `liq_key`, which only its owner and the holder of the keeper key can read (#212). `writz-lend::liquidate` (plaintext positions, no ZK privacy at stake) additionally supports a stale-keeper fallback: the designated keeper may always liquidate an undercollateralized position, and after a configurable window (default 24h) with no keeper activity, any caller may liquidate a position that is actually below the threshold instead. Liquidation safety never depends on caller identity - only on whether the position is actually undercollateralized - so this fallback improves liveness without weakening the collateralization check itself.
 
 **This is a deliberate asymmetry between the two contracts, not an inconsistency to reconcile.** `commitment-tree` doesn't need a keeper-preference mechanism because its positions are private by design - there's no plaintext health-ratio feed a keeper could act on faster than anyone else, so "anyone with a valid proof" is already the natural permission model. `writz-lend`'s positions are plaintext, so a keeper-preference-with-stale-fallback pattern makes sense there: a designated keeper gets first opportunity as an operational convenience (predictable liquidation ops, no race with third parties under normal conditions), while the stale fallback guarantees the position doesn't depend on that keeper's uptime for safety. Neither contract's approach is more "correct" than the other - they fit the privacy model each contract actually has.
 
@@ -185,16 +185,14 @@ The keeper does need position preimages to monitor health ratios in the first pl
 - Refuse to co-sign if a loan is outstanding (keeping BTC locked)
 - Operate the keeper service that monitors for undercollateralized positions
 - Manually pause new deposits/borrows/USDC supply via `set_paused` (admin-gated, both lending contracts) - an emergency brake on new exposure, not a freeze; `repay`/`withdraw_supply`/`liquidate`/BTC release all keep working during a pause so users can always exit. This is distinct from the line below.
-- **Not yet implemented:** automatic pausing of borrowing/liquidation specifically when oracle prices go stale. The oracle is still a hardcoded stub with no staleness check at all - this line describes intended Phase 2 behavior once the real oracle integration lands, not current behavior. Today's `set_paused` is manual and admin-triggered, not automatic.
+- **Not yet implemented:** an automatic pause of borrowing and liquidation when oracle prices go stale. Today `writz-lend` calls Reflector live and a stale or unavailable price makes the calling operation fail (`OraclePriceStale`/`OraclePriceUnavailable`), which blocks it without a global pause. Today's `set_paused` is manual and admin-triggered, not automatic.
 - Update the oracle contract address (admin function, no user impact) - `set_oracle` on both lending contracts
 
 ## What Writz Cannot Do
 
 - Move BTC unilaterally - no valid Bitcoin transaction can be constructed without the user's signature
-- See individual position details - the ZK privacy layer prevents this at the cryptographic level
 - Block the emergency time-lock recovery - Condition B in the P2WSH script requires no Writz involvement
 - Censor a specific user's repayment - any user can call `repay` on the Stellar contract
-- Prevent the ZK verifier from accepting valid proofs
 
 ---
 
@@ -218,7 +216,7 @@ The keeper does need position preimages to monitor health ratios in the first pl
 
 An attacker with the protocol co-signing key cannot:
 - Move BTC from any P2WSH address (user signature still required for Condition A)
-- Access any user position data (ZK commitments on Stellar remain private)
+- Change any position's recorded state on Stellar (positions are plaintext and public, but only `writz-lend`'s own logic can modify them)
 
 An attacker could:
 - Refuse to co-sign repayment releases (effectively locking users out of Condition A) - users fall back to Condition B time-lock
@@ -229,8 +227,7 @@ An attacker could:
 ### "The oracle reports a wrong price"
 
 If the BTC/USD price is manipulated downward:
-- Healthy positions could appear undercollateralized and be liquidated
-- Liquidations at the wrong price transfer BTC to liquidators at below-market value
+- Healthy positions could appear undercollateralized and be liquidated (their debt is cleared in USDC; no BTC moves in a `writz-lend` liquidation)
 
 **Mitigations:**
 - Median of two independent oracles (Pyth + Reflector - corrected 2026-09-16, then re-verified on-chain; RedStone dropped, DIA parked, see `docs/research/oracle-design.md`) - manipulating the median requires moving both
@@ -243,13 +240,13 @@ If the BTC/USD price is manipulated downward:
 
 **Before audit:** The protocol operates on testnet only with no real funds.
 
-**After audit, pre-mainnet:** All findings are remediated before mainnet launch. The Audit Bank engagement covers both the Soroban contracts and the ZK circuits.
+**After audit, pre-mainnet:** All findings are remediated before mainnet launch. The external audit before v1 mainnet covers the Soroban contracts (`bitcoin-spv`, `writz-lend`); the privacy edition's circuits and contracts get their own audit before that edition launches.
 
 **Post-mainnet:** A whitehat bug bounty program is active with up to $50,000 in rewards for critical findings. TVL caps limit damage during early operation. An on-chain insurance fund (seeded from protocol fees) provides backstop coverage.
 
-### "A user loses their position data (ZK secret)"
+### "A user loses their position data (privacy edition only)"
 
-A user's ZK position data (commitment secret, nonce) exists only in their local browser storage. If this data is lost:
+This scenario does not apply to Writz Lend: `writz-lend` positions are recorded on chain and keyed by the Bitcoin txid, so there is nothing local to lose. In the privacy edition, a user's ZK position data (commitment secret, nonce) exists only in their local browser storage. If this data is lost:
 
 - The user cannot generate ZK proofs to borrow, repay, or close their position
 - The Writz team cannot recover the data - it was never stored on-chain
@@ -258,14 +255,14 @@ A user's ZK position data (commitment secret, nonce) exists only in their local 
 
 **Mitigation:** The Writz app will prompt users to export and securely back up their position data. This is analogous to backing up a seed phrase - the user is responsible.
 
-### "A ZK circuit has a soundness bug"
+### "A ZK circuit has a soundness bug" (privacy edition only)
 
-A soundness bug means an attacker can generate a valid-looking proof for a false statement - for example, proving they have a 150% collateral ratio when they don't.
+This does not apply to Writz Lend, which uses no circuits. A soundness bug means an attacker can generate a valid-looking proof for a false statement - for example, proving they have a 150% collateral ratio when they don't.
 
 **Impact:** An attacker could borrow USDC without adequate collateral. If undetected, they could drain the USDC pool.
 
 **Mitigations:**
-- Veridise specializes in ZK circuit audits - they are a target auditor for the circuits
+- A specialist ZK circuit audit before the privacy edition launches
 - Formal verification tools (circom-mutator, custom constraint analysis)
 - TVL caps limit maximum exposure
 - Progressive rollout: low TVL cap raised only after extended clean operation

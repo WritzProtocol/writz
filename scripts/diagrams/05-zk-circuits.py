@@ -13,8 +13,8 @@ g.attr(**base_graph_attr(
     splines="spline",
     size="18,10",
     label=hl(
-        "Writz Protocol - ZK Circuits (Groth16 / BN254)",
-        "All proofs generated in-browser via snarkjs · verified on Soroban via Protocol X-Ray host functions",
+        "Privacy edition (in progress) - ZK Circuits (Groth16 / BN254)",
+        "Not part of Writz v1 · testnet only · proofs generated in-browser via snarkjs, verified by zk-verifier",
     ),
 ))
 g.attr("node", **base_node_attr())

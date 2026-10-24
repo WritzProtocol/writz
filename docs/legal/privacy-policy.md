@@ -12,7 +12,7 @@ Writz does not require an account, an email address, or any form of identity ver
 
 Bitcoin and Stellar are public blockchains. Any transaction you make, including deposits, borrows, repayments, and withdrawals, is recorded on these public ledgers and is visible to anyone, independent of Writz. This is a property of the underlying networks, not something Writz collects or controls.
 
-The zero-knowledge privacy layer is designed to keep specific details private on Stellar: the size of your collateral, the size of your loan, and your liquidation threshold are hidden behind cryptographic commitments. The fact that a deposit, borrow, or liquidation event occurred is still visible on-chain, but the amounts and the identity of the position holder are not derivable from that visibility alone. See docs/how-it-works/zk-privacy-layer.md for the technical detail of what is and is not hidden.
+Writz Lend positions are recorded in plaintext on public blockchains. Your Stellar address, the Bitcoin deposit transaction linked to it, the size of your collateral, the size of your loan and your health ratio are visible on-chain to anyone. Writz does not offer a privacy layer for Writz Lend. A separate, opt-in privacy edition is being designed and is not available; see docs/how-it-works/privacy-edition.md.
 
 ## 3. Website Analytics
 

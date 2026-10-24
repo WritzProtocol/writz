@@ -75,8 +75,8 @@
             "pages": [
               "how-it-works/bitcoin-side",
               "how-it-works/spv-verification",
-              "how-it-works/zk-privacy-layer",
-              "how-it-works/stellar-side"
+              "how-it-works/stellar-side",
+              "how-it-works/privacy-edition"
             ]
           }
         ]
@@ -170,6 +170,10 @@
     {
       "source": "/products/privatelend",
       "destination": "/products/writz-lend"
+    },
+    {
+      "source": "/how-it-works/zk-privacy-layer",
+      "destination": "/how-it-works/privacy-edition"
     }
   ]
 }
