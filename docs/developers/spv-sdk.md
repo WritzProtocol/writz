@@ -7,7 +7,7 @@ description: "Reference for verify_transaction on the Writz bitcoin-spv contract
 
 `bitcoin-spv` is a Bitcoin light client that runs as a Soroban contract. It stores Bitcoin block headers that descend from a fixed checkpoint, checks each header's proof-of-work and difficulty, and follows the most-work chain. Any Soroban contract can then ask it whether a Bitcoin transaction is in a block of that chain, with a given number of confirmations. Writz Lend uses it to verify BTC deposits; you can use it for anything that should react to a Bitcoin transaction.
 
-There is no separate SDK package today: the "SDK" is the deployed contract, the relayer proof route and the snippets below. For a step-by-step walkthrough with commands that were run against testnet, start with [Build on Writz](/developers/integrate).
+The SDK is the deployed contract, the relayer proof route, and two packages whose first release is pending: [`@writz/sdk`](https://github.com/WritzProtocol/writz/tree/main/packages/sdk) for TypeScript and [`writz-spv-client`](https://github.com/WritzProtocol/writz/tree/main/contracts/contracts/writz-spv-client) for Soroban contracts (see [Packages](#packages)). Until they are published, the snippets below need only `soroban-sdk` or `@stellar/stellar-sdk`. For a step-by-step walkthrough with commands that were run against testnet, start with [Build on Writz](/developers/integrate).
 
 ---
 
@@ -98,6 +98,36 @@ The full list, including the codes of `submit_headers` and the admin functions, 
 
 ---
 
+## Packages
+
+| Package | Registry | For | Status |
+|---|---|---|---|
+| [`@writz/sdk`](https://github.com/WritzProtocol/writz/tree/main/packages/sdk) | npm | TypeScript in the browser, Node or Bun: testnet preset, relayer client with typed errors and `Retry-After`, `bitcoin-spv` and `writz-lend` clients, Earn vault routes | Release pending: not on npm yet |
+| [`writz-spv-client`](https://github.com/WritzProtocol/writz/tree/main/contracts/contracts/writz-spv-client) | crates.io | Soroban contracts: `BitcoinSpvClient`, the result and error types, the on-chain output parser `find_output_value` | Release pending: not on crates.io yet |
+
+With `writz-spv-client` the contract below shrinks to the call itself:
+
+```toml
+[dependencies]
+soroban-sdk = "26"
+writz-spv-client = "0.1"
+```
+
+```rust
+use writz_spv_client::{find_output_value, BitcoinSpvClient, SPVError};
+
+let proof = match BitcoinSpvClient::new(&env, &spv)
+    .try_verify_transaction(&block_hash, &merkle_proof, &tx_index, &raw_tx, &6)
+{
+    Ok(Ok(result)) => result,
+    Err(Ok(SPVError::InsufficientConfirmations)) => return Err(Error::TooRecent),
+    _ => return Err(Error::ProofRejected),
+};
+let sats = find_output_value(&raw_tx, &expected_spk).ok_or(Error::NotPaid)?;
+```
+
+Its tests check every type, error code and the parser against the `bitcoin-spv` and `spv-types` source.
+
 ## Calling it from a Soroban contract
 
 ```rust
@@ -134,7 +164,7 @@ let proof = match BitcoinSpvClient::new(&env, &spv)
 };
 ```
 
-The struct is declared locally because `spv-types` is not on crates.io; the call decodes the result by field name, so the names and types must match exactly.
+Without `writz-spv-client`, declare the struct locally as above; the call decodes the result by field name, so the names and types must match exactly.
 
 A complete, tested contract built this way is [`examples/spv-payment-check`](https://github.com/WritzProtocol/writz/tree/main/examples/spv-payment-check).
 
@@ -189,7 +219,7 @@ GET https://api.testnet.writz.xyz/spv-proof/:txid?confirmations=6
 
 `sorobanArgs` maps one to one onto the parameters of `verify_transaction`, already in internal byte order. `confirmations` and `min_confirmations` echo what you asked for; the block's real depth is what the contract returns. `headers` are the raw 80-byte headers from the block onwards, one per requested confirmation, for callers that want to inspect them; `verify_transaction` does not take them.
 
-Error responses: `400 invalid_txid`, `400 invalid_confirmations`, `404 unconfirmed`, `409 insufficient_confirmations` (with `requested` and `available`), `502 upstream_error` (for example a txid that is not on signet).
+Error responses: `400 invalid_txid`, `400 invalid_confirmations`, `404 unconfirmed`, `404 tx_not_found` (a txid that is not on signet), `409 insufficient_confirmations` (with `requested` and `available`), `409 light_client_behind` (the block is not yet in `bitcoin-spv`), `429 rate_limited`, `502 upstream_error`, `503 upstream_unavailable`. The 409, 429 and 503 responses carry `retryAfterSeconds` and a `Retry-After` header.
 
 ### Building the proof yourself
 
@@ -226,7 +256,7 @@ These appeared in earlier versions of this page and do not exist today:
 
 - Output extraction in the result (an `outputs` field or address matching). The result has only the four fields above; use the parser in `spv-types`.
 - A `headers` argument to `verify_transaction`. Headers are submitted separately with `submit_headers`, and the call takes a stored `block_hash`.
-- A published npm package or crates.io crate. Use the deployed contract, the relayer route, `stellar contract bindings typescript`, and the `spv-types` git dependency.
+- A published npm package or crates.io crate, until the first release of `@writz/sdk` and `writz-spv-client` (see [Packages](#packages)). Until then use the deployed contract, the relayer route, `stellar contract bindings typescript`, and the `spv-types` git dependency.
 - A light client tracking Bitcoin mainnet on Stellar, and any per-call fee. Neither exists.
 
 ---

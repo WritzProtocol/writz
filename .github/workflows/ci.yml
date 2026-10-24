@@ -22,6 +22,8 @@ jobs:
       privacy_contracts: ${{ steps.filter.outputs.privacy_contracts }}
       circuits: ${{ steps.filter.outputs.circuits }}
       e2e: ${{ steps.filter.outputs.e2e }}
+      sdk: ${{ steps.filter.outputs.sdk }}
+      examples: ${{ steps.filter.outputs.examples }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -59,6 +61,16 @@ jobs:
               - 'privacy/contracts/**'
               - 'privacy/circuits/**'
               - 'scripts/deploy/**'
+              - '.github/workflows/ci.yml'
+            sdk:
+              - 'packages/sdk/**'
+              - 'contracts/deployments/**'
+              - 'scripts/sync-deployments.mjs'
+              - 'scripts/lib/**'
+              - '.github/workflows/ci.yml'
+            examples:
+              - 'examples/**'
+              - 'contracts/contracts/spv-types/**'
               - '.github/workflows/ci.yml'
 
   # Cheap, dependency-free (only Node builtins), so it always runs rather
@@ -188,6 +200,75 @@ jobs:
           echo "relayer never became healthy" >&2
           docker logs relayer-smoke
           exit 1
+
+  # @writz/sdk: typecheck, unit tests (no network), the ESM build, a browser
+  # bundle, and the npm tarball. The live testnet smoke test runs in
+  # live-smoke.yml, not here, so a testnet outage cannot fail a PR.
+  sdk:
+    name: sdk (bun · typecheck + test + build + pack)
+    permissions:
+      contents: read
+    needs: changes
+    if: needs.changes.outputs.sdk == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/sdk
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+      - name: Network preset matches contracts/deployments/testnet.md
+        run: node ../../scripts/sync-deployments.mjs --check
+      - run: bun install --frozen-lockfile
+      - run: bun run typecheck
+      - run: bun test
+      - run: bun run build
+      - name: Import the build from Node
+        run: node -e 'import("./dist/index.js").then((m) => { if (!m.testnet.contracts.bitcoinSpv) process.exit(1); })'
+      - run: bun run check:browser
+      - run: npm pack --dry-run
+
+  # Both examples must keep compiling. They are run against testnet in
+  # live-smoke.yml.
+  examples:
+    name: examples (verify-bitcoin-tx typecheck · spv-payment-check test + wasm)
+    permissions:
+      contents: read
+    needs: changes
+    if: needs.changes.outputs.examples == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+      - name: verify-bitcoin-tx (install + typecheck)
+        working-directory: examples/verify-bitcoin-tx
+        run: |
+          bun install --frozen-lockfile
+          bun run typecheck
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32v1-none
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: examples/spv-payment-check
+      - name: spv-payment-check (test + wasm build)
+        working-directory: examples/spv-payment-check
+        run: |
+          cargo test --locked
+          cargo build --release --target wasm32v1-none --locked
 
   bitcoin-script:
     name: bitcoin-script (bun · test)
@@ -527,6 +608,8 @@ jobs:
       - circuits
       - circuits-ceremony-verify
       - e2e-local
+      - sdk
+      - examples
     runs-on: ubuntu-latest
     steps:
       - name: Fail if any non-skipped job failed

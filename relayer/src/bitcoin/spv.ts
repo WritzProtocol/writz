@@ -81,6 +81,12 @@ export interface SPVProofBundle {
 
   /** Number of confirmation headers included (equals `headers.length`). */
   confirmations: number;
+
+  /**
+   * Bitcoin tip height (per Esplora) when the proof was built. The route uses
+   * it to decide how long the proof can be cached and does not return it.
+   */
+  bitcoinTipHeight?: number;
 }
 
 /**
@@ -152,6 +158,7 @@ export async function buildSPVProof(
     headers: headerHexes.map((h) => h.trim()),
     blockHeight,
     confirmations,
+    bitcoinTipHeight: tipHeight,
   };
 }
 

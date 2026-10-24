@@ -11,8 +11,9 @@ Machine-readable entry points: [docs.writz.xyz/llms.txt](https://docs.writz.xyz/
 
 ```text
 Integrate Writz on Stellar testnet. Read https://docs.writz.xyz/developers/for-ai-agents.md
-first and use only the contract IDs, signatures and endpoints it lists. There is no Writz
-npm package or crates.io crate. The Bitcoin network is signet. Simulate reads, never sign them.
+first and use only the contract IDs, signatures and endpoints it lists. The packages
+@writz/sdk (npm) and writz-spv-client (crates.io) are release pending: do not install them
+until they are published. The Bitcoin network is signet. Simulate reads, never sign them.
 ```
 
 ---
@@ -32,11 +33,23 @@ SPV_CHECKPOINT_HEIGHT  325554   (signet; only later blocks can be proven)
 SOROBAN_SDK            soroban-sdk = "26"
 ```
 
-Source of truth for IDs: [`contracts/deployments/testnet.md`](https://github.com/WritzProtocol/writz/blob/main/contracts/deployments/testnet.md). The contracts are immutable; a new version gets a new ID there.
+Source of truth for IDs: [`contracts/deployments/testnet.md`](https://github.com/WritzProtocol/writz/blob/main/contracts/deployments/testnet.md), machine-readable in [`contracts/deployments/testnet.json`](https://github.com/WritzProtocol/writz/blob/main/contracts/deployments/testnet.json). The contracts are immutable; a new version gets a new ID there.
+
+## Packages (release pending)
+
+```text
+NPM_PACKAGE     @writz/sdk         source packages/sdk                         NOT YET ON NPM
+CRATE           writz-spv-client   source contracts/contracts/writz-spv-client NOT YET ON CRATES.IO
+```
+
+Until a package is on its registry, `npm install @writz/sdk` and `cargo add writz-spv-client` fail: generate code from the snippets on this page instead. Once published:
+
+- `@writz/sdk`: `createWritzClient()` (testnet preset), `writz.verifyBitcoinTx(txid)`, `writz.relayer.getSpvProof(txid)` (throws `RelayerError` with `code`, `status`, `retryAfterSeconds`; retries 409 `light_client_behind`, 429 and 503 after `Retry-After`), `writz.spv.verifyTransaction(sorobanArgs)` (throws `ContractError` with `code`, `errorName`), `writz.lend.getProtocolState()`, `writz.lend.buildSupplyUsdc(address, stroops)` (unsigned XDR, the SDK never signs).
+- `writz-spv-client`: `BitcoinSpvClient`, `SpvVerificationResult`, `SPVError`, `find_output_value(&raw_tx, &script_pubkey) -> Option<u64>`, `txid(&env, &raw_tx)`.
 
 ## Does not exist (do not generate code for it)
 
-- No npm package (`writz-sdk`, `@writz/...`) and no crates.io crate. Use `@stellar/stellar-sdk`, `stellar contract bindings typescript`, or the git dependency below.
+- No published npm package or crates.io crate yet: `@writz/sdk` and `writz-spv-client` are release pending (above). There is no `writz-sdk` and no other `@writz/...` package. Use `@stellar/stellar-sdk`, `stellar contract bindings typescript`, or the git dependency below.
 - `verify_transaction` has **no** `headers` argument and its result has **no** `outputs` field.
 - No Bitcoin mainnet, testnet3 or testnet4 verification. Signet only.
 - No Writz contract on Stellar mainnet.
@@ -92,11 +105,24 @@ Indexes are scaled by 10^18. Generate a typed client from the deployed ID for an
 GET  /                                  service index (JSON)
 GET  /health                            status
 GET  /spv-proof/:txid?confirmations=N   proof for a confirmed signet tx; txid in DISPLAY order; N in 1..20, default 6
+GET  /faucet/signet                     faucet status: enabled, amountSats, remainingToday, address
+POST /faucet/signet  {"address":"tb1..."}   pays signet test BTC to a tb1q/tb1p address; returns { txid, amountSats, feeSats, explorerUrl }
 ```
 
-`/spv-proof` 200 body: `{ txid, rawTxNoWitness, blockHash, txIndex, merkleProof[], headers[], blockHeight, confirmations, sorobanArgs: { block_hash, merkle_proof[], tx_index, raw_tx, min_confirmations } }`. Hex strings. `sorobanArgs` is already in internal byte order and maps one to one onto `verify_transaction`. Errors: 400 `invalid_txid` or `invalid_confirmations`, 404 `unconfirmed`, 409 `insufficient_confirmations` (`requested`, `available`), 502 `upstream_error` (txid not on signet). CORS is open.
+`/spv-proof` 200 body: `{ txid, rawTxNoWitness, blockHash, txIndex, merkleProof[], headers[], blockHeight, confirmations, sorobanArgs: { block_hash, merkle_proof[], tx_index, raw_tx, min_confirmations } }`. Hex strings. `sorobanArgs` is already in internal byte order and maps one to one onto `verify_transaction`. Errors: 400 `invalid_txid` or `invalid_confirmations`, 404 `unconfirmed`, 404 `tx_not_found` (txid not on signet), 409 `insufficient_confirmations` (`requested`, `available`), 409 `light_client_behind` (block not yet in `bitcoin-spv`; calling the contract now fails with #22 or #2), 429 `rate_limited` (60 per minute per IP), 502 `upstream_error`, 503 `upstream_unavailable`. On 409, 429 and 503, wait `retryAfterSeconds` (body) or `Retry-After` (header) before retrying; never retry in a tight loop. CORS is open.
 
-The other routes the index lists (`/merkle-path`, `/notes`, `/insert-commitment`, `/update-leaf`, `/defindex/*`, `/metrics/*`) serve the Writz app and are not an integration surface.
+`/faucet/signet` is the way to get signet coins without a captcha: a fixed 20,000 sats per claim (one testnet deposit at the testnet minimum, plus fees), one claim per address and per IP every 24 hours, a daily cap across all callers. Only `tb1q...` and `tb1p...` addresses; `bc1` is refused. Errors: 400 `invalid_address`, 429 `address_cooldown`, `ip_cooldown`, `daily_cap_reached` or `rate_limited` (wait `retryAfterSeconds`; do not retry with another address or IP to get around it), 502 `broadcast_rejected`, 503 `faucet_disabled`, `faucet_empty` or `upstream_unavailable` (body lists `publicFaucets`). The payout is unconfirmed when the call returns; wait for confirmations before calling `/spv-proof`.
+
+Earn vault (DeFindex; it holds Blend's test USDC, not `TEST_USDC_SAC`; rate limits 60 reads and 10 builds per minute per IP; errors are `{ error: "<message>" }`):
+
+```text
+GET  /defindex/apy                       { apy }  fraction, 0.0731 = 7.31%
+GET  /defindex/position?address=G...     { dfTokens, underlyingStroops }  decimal strings
+POST /defindex/deposit   { caller, amountStroops }   { xdr }  unsigned; the caller's wallet signs and submits
+POST /defindex/withdraw  { caller, amountStroops }   { xdr }
+```
+
+The other routes the index lists (`/merkle-path`, `/notes`, `/insert-commitment`, `/update-leaf`, `/metrics/*`) serve the Writz app and are not an integration surface.
 
 ---
 

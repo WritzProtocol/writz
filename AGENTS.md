@@ -13,10 +13,11 @@ Use only these values; anything not listed here or in the linked pages does not 
 - Test USDC (SAC): `CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA`
 - Relayer: `https://api.testnet.writz.xyz`, proof route `GET /spv-proof/:txid?confirmations=N`
 - Main primitive: `verify_transaction(block_hash: BytesN<32>, merkle_proof: Vec<BytesN<32>>, tx_index: u32, raw_tx: Bytes, min_confirmations: u32) -> Result<SpvVerificationResult, SPVError>`, where `SpvVerificationResult` is `{ txid, block_hash, block_height, confirmations }`
-- There is no Writz npm package or crates.io crate.
+- Packages `@writz/sdk` (npm, source `packages/sdk`) and `writz-spv-client` (crates.io, source `contracts/contracts/writz-spv-client`) are release pending: not on their registries yet, so do not install them. There is no other Writz package.
+- Machine-readable IDs: `contracts/deployments/testnet.json`, generated from `contracts/deployments/testnet.md` by `node scripts/sync-deployments.mjs`.
 
 Full reference: [`docs/developers/for-ai-agents.md`](docs/developers/for-ai-agents.md) (also at https://docs.writz.xyz/developers/for-ai-agents.md). Walkthrough: [`docs/developers/integrate.md`](docs/developers/integrate.md). Runnable examples: [`examples/`](examples). Contract IDs of record: [`contracts/deployments/testnet.md`](contracts/deployments/testnet.md).
 
 ## Working in this repository
 
-Start with [`docs/developers/quick-start.md`](docs/developers/quick-start.md) and [`docs/developers/contribution-guide.md`](docs/developers/contribution-guide.md). Commits follow Conventional Commits. Before changing a contract address or a test count in any doc, run `node scripts/check-docs-sync.mjs`.
+Start with [`docs/developers/quick-start.md`](docs/developers/quick-start.md) and [`docs/developers/contribution-guide.md`](docs/developers/contribution-guide.md). Commits follow Conventional Commits. After a redeploy, record it in `contracts/deployments/testnet.md` first, then run `node scripts/sync-deployments.mjs` (regenerates `testnet.json` and the `@writz/sdk` preset). Before changing a contract address or a test count in any doc, run `node scripts/check-docs-sync.mjs`; it fails on a superseded `bitcoin-spv` or `writz-lend` ID in `AGENTS.md`, `docs/developers/`, `examples/` or the packages.
