@@ -29,4 +29,4 @@ verify_transaction: {
 
 `txid` and `block_hash` come back in internal byte order, reversed from what explorers show.
 
-Errors are printed as one line, for example `error: relayer 409: insufficient_confirmations ...` for a block that is too recent, or `error: HostError: Error(Contract, #22)` for a block the light client does not have (older than the checkpoint at signet height 325,554). The full error table is in [Build on Writz](https://docs.writz.xyz/developers/integrate#common-errors).
+Errors are printed as one line, for example `error: relayer 409: insufficient_confirmations ...` for a block that is too recent, `error: relayer 409: light_client_behind ...` for a block the light client has not synced yet (retry after about a minute), or `error: HostError: Error(Contract, #22)` for a block older than the light client's checkpoint at signet height 325,554. The full error table is in [Build on Writz](https://docs.writz.xyz/developers/integrate#common-errors).

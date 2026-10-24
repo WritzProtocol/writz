@@ -189,7 +189,7 @@ GET https://api.testnet.writz.xyz/spv-proof/:txid?confirmations=6
 
 `sorobanArgs` maps one to one onto the parameters of `verify_transaction`, already in internal byte order. `confirmations` and `min_confirmations` echo what you asked for; the block's real depth is what the contract returns. `headers` are the raw 80-byte headers from the block onwards, one per requested confirmation, for callers that want to inspect them; `verify_transaction` does not take them.
 
-Error responses: `400 invalid_txid`, `400 invalid_confirmations`, `404 unconfirmed`, `409 insufficient_confirmations` (with `requested` and `available`), `502 upstream_error` (for example a txid that is not on signet).
+Error responses: `400 invalid_txid`, `400 invalid_confirmations`, `404 unconfirmed`, `404 tx_not_found` (a txid that is not on signet), `409 insufficient_confirmations` (with `requested` and `available`), `409 light_client_behind` (the block is not yet in `bitcoin-spv`), `429 rate_limited`, `502 upstream_error`, `503 upstream_unavailable`. The 409, 429 and 503 responses carry `retryAfterSeconds` and a `Retry-After` header.
 
 ### Building the proof yourself
 

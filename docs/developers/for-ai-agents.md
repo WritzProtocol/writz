@@ -94,7 +94,7 @@ GET  /health                            status
 GET  /spv-proof/:txid?confirmations=N   proof for a confirmed signet tx; txid in DISPLAY order; N in 1..20, default 6
 ```
 
-`/spv-proof` 200 body: `{ txid, rawTxNoWitness, blockHash, txIndex, merkleProof[], headers[], blockHeight, confirmations, sorobanArgs: { block_hash, merkle_proof[], tx_index, raw_tx, min_confirmations } }`. Hex strings. `sorobanArgs` is already in internal byte order and maps one to one onto `verify_transaction`. Errors: 400 `invalid_txid` or `invalid_confirmations`, 404 `unconfirmed`, 409 `insufficient_confirmations` (`requested`, `available`), 502 `upstream_error` (txid not on signet). CORS is open.
+`/spv-proof` 200 body: `{ txid, rawTxNoWitness, blockHash, txIndex, merkleProof[], headers[], blockHeight, confirmations, sorobanArgs: { block_hash, merkle_proof[], tx_index, raw_tx, min_confirmations } }`. Hex strings. `sorobanArgs` is already in internal byte order and maps one to one onto `verify_transaction`. Errors: 400 `invalid_txid` or `invalid_confirmations`, 404 `unconfirmed`, 404 `tx_not_found` (txid not on signet), 409 `insufficient_confirmations` (`requested`, `available`), 409 `light_client_behind` (block not yet in `bitcoin-spv`; calling the contract now fails with #22 or #2), 429 `rate_limited` (60 per minute per IP), 502 `upstream_error`, 503 `upstream_unavailable`. On 409, 429 and 503, wait `retryAfterSeconds` (body) or `Retry-After` (header) before retrying; never retry in a tight loop. CORS is open.
 
 The other routes the index lists (`/merkle-path`, `/notes`, `/insert-commitment`, `/update-leaf`, `/defindex/*`, `/metrics/*`) serve the Writz app and are not an integration surface.
 
