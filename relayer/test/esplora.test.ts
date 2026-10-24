@@ -118,3 +118,41 @@ describe('EsploraClient retry and fallback', () => {
     await expect(client.getTipHeight()).resolves.toBe(5);
   });
 });
+
+describe('EsploraClient faucet methods', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test('getAddressUtxos parses the list', async () => {
+    mockFetchOnce(JSON.stringify([{ txid: 'aa'.repeat(32), vout: 1, value: 5000, status: { confirmed: true } }]));
+    const client = new EsploraClient('https://example.invalid');
+    await expect(client.getAddressUtxos('tb1qxyz')).resolves.toEqual([
+      { txid: 'aa'.repeat(32), vout: 1, value: 5000, status: { confirmed: true } },
+    ]);
+    expect((global.fetch as unknown as jest.Mock).mock.calls[0][0]).toBe('https://example.invalid/address/tb1qxyz/utxo');
+  });
+
+  test('getAddressUtxos refuses a non-array body', async () => {
+    mockFetchOnce('{"error":"x"}');
+    await expect(new EsploraClient('https://example.invalid').getAddressUtxos('tb1q')).rejects.toThrow(/expected an array/);
+  });
+
+  test('getFeeEstimates parses the map', async () => {
+    mockFetchOnce('{"1":2.5,"3":1.1}');
+    await expect(new EsploraClient('https://example.invalid').getFeeEstimates()).resolves.toEqual({ '1': 2.5, '3': 1.1 });
+  });
+
+  test('broadcastTx POSTs the hex and returns the txid', async () => {
+    mockFetchOnce('ab'.repeat(32) + '\n');
+    await expect(new EsploraClient('https://example.invalid').broadcastTx('0200')).resolves.toBe('ab'.repeat(32));
+    const [url, init] = (global.fetch as unknown as jest.Mock).mock.calls[0];
+    expect(url).toBe('https://example.invalid/tx');
+    expect(init).toMatchObject({ method: 'POST', body: '0200' });
+  });
+
+  test('broadcastTx surfaces a node rejection as EsploraError 400', async () => {
+    mockFetchOnce('sendrawtransaction RPC error', false, 400);
+    await expect(new EsploraClient('https://example.invalid').broadcastTx('00')).rejects.toMatchObject({ status: 400 });
+  });
+});

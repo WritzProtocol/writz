@@ -1,7 +1,8 @@
 /**
  * Blockstream Esplora API client.
  *
- * All endpoints are stateless GET requests. No API key is required.
+ * Reads are stateless GET requests; `broadcastTx` is the one POST (the
+ * Signet faucet's). No API key is required.
  * Rate limits: ~10 req/s on mainnet, more permissive on testnet.
  *
  * Byte-order note:
@@ -26,6 +27,14 @@ export interface TxInfo {
   status: TxStatus;
 }
 
+/** One output of `/address/:address/utxo`, mempool included. */
+export interface AddressUtxo {
+  txid: string;
+  vout: number;
+  value: number;
+  status: { confirmed: boolean; block_height?: number };
+}
+
 export interface MerkleProofResponse {
   block_height: number;
   merkle: string[]; // sibling hashes in internal byte order, leaf → root
@@ -38,11 +47,11 @@ export interface MerkleProofResponse {
  * whichever form they need (text vs. arrayBuffer). Every client method goes
  * through this one copy of the fetch/timeout/error-handling block.
  */
-async function fetchWithTimeout(url: string, timeoutMs: number): Promise<Response> {
+async function fetchWithTimeout(url: string, timeoutMs: number, init: RequestInit = {}): Promise<Response> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const res = await fetch(url, { signal: controller.signal });
+    const res = await fetch(url, { ...init, signal: controller.signal });
     if (!res.ok) {
       const body = await res.text().catch(() => "");
       throw new EsploraError(res.status, url, body);
@@ -105,14 +114,14 @@ export class EsploraClient {
    * fallback) make this a single plain request, which is what the header
    * sync wants: it already wraps every call in its own backoff.
    */
-  private async request<T>(path: string, read: (res: Response) => Promise<T>): Promise<T> {
+  private async request<T>(path: string, read: (res: Response) => Promise<T>, init?: RequestInit): Promise<T> {
     const { retries = 0, retryBaseDelayMs = 250, fallbackBaseUrl, sleep } = this.options;
     const hosts = fallbackBaseUrl ? [this.baseUrl, fallbackBaseUrl] : [this.baseUrl];
     let lastError: unknown;
     for (const host of hosts) {
       try {
         return await withBackoff(
-          async () => read(await fetchWithTimeout(`${host}${path}`, this.timeoutMs)),
+          async () => read(await fetchWithTimeout(`${host}${path}`, this.timeoutMs, init)),
           isRetryableOnSameHost,
           { retries, baseDelayMs: retryBaseDelayMs, ...(sleep ? { sleep } : {}) },
         );
@@ -187,5 +196,36 @@ export class EsploraClient {
       throw new Error(`getTipHeight: could not parse a block height from response: ${body.slice(0, 200)}`);
     }
     return height;
+  }
+
+  /** Unspent outputs of `address`, confirmed and in the mempool. */
+  async getAddressUtxos(address: string): Promise<AddressUtxo[]> {
+    const body = await this.request(`/address/${encodeURIComponent(address)}/utxo`, (r) => r.text());
+    const parsed = JSON.parse(body) as unknown;
+    if (!Array.isArray(parsed)) throw new Error(`getAddressUtxos: expected an array, got: ${body.slice(0, 200)}`);
+    return parsed as AddressUtxo[];
+  }
+
+  /**
+   * Fee estimates in sat/vbyte, keyed by confirmation target in blocks
+   * (`{ "1": 2.1, "6": 1.0, ... }`).
+   */
+  async getFeeEstimates(): Promise<Record<string, number>> {
+    const body = await this.request(`/fee-estimates`, (r) => r.text());
+    return JSON.parse(body) as Record<string, number>;
+  }
+
+  /**
+   * Broadcasts a raw transaction and returns its txid. Rebroadcasting a
+   * transaction the node already has is harmless, so the fallback host may be
+   * tried after an unavailable primary.
+   */
+  async broadcastTx(txHex: string): Promise<string> {
+    const body = await this.request(`/tx`, (r) => r.text(), {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: txHex,
+    });
+    return body.trim();
   }
 }
