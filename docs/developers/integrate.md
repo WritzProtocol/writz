@@ -24,7 +24,18 @@ Every command and response on this page was run against Stellar testnet and Bitc
 
 Ideas that fit in a weekend: a Soroban contract that releases something (an NFT, access, an escrowed token) once a Bitcoin payment confirms; a Bitcoin payment checker for a store or invoice app; a dashboard of the Writz pool; a bot that watches a Bitcoin address and proves its payments on Stellar.
 
-**Not available yet:** an npm package or crates.io crate (use the snippets and examples below), Bitcoin mainnet or testnet3/testnet4 verification on Stellar (the testnet light client tracks **signet** only), and any Writz contract on Stellar mainnet. See [Bitcoin SPV SDK](/developers/spv-sdk#not-yet-available).
+**Not available yet:** Bitcoin mainnet or testnet3/testnet4 verification on Stellar (the testnet light client tracks **signet** only), and any Writz contract on Stellar mainnet. See [Bitcoin SPV SDK](/developers/spv-sdk#not-yet-available).
+
+---
+
+## Packages
+
+| Package | Registry | For | Status |
+|---|---|---|---|
+| [`@writz/sdk`](https://github.com/WritzProtocol/writz/tree/main/packages/sdk) | npm | TypeScript in the browser, Node or Bun: testnet preset, relayer client with typed errors and `Retry-After`, `bitcoin-spv` and `writz-lend` clients, Earn vault routes | Release pending: not on npm yet |
+| [`writz-spv-client`](https://github.com/WritzProtocol/writz/tree/main/contracts/contracts/writz-spv-client) | crates.io | Soroban contracts: `BitcoinSpvClient`, the result and error types, the on-chain output parser `find_output_value` | Release pending: not on crates.io yet |
+
+Until a package is published, `npm install @writz/sdk` and `cargo add writz-spv-client` fail. Use the snippets on this page, which need only `@stellar/stellar-sdk` or `soroban-sdk`, or depend on the source in this repository. The package code and its tests are in the repository either way.
 
 ---
 
@@ -42,7 +53,7 @@ Ideas that fit in a weekend: a Soroban contract that releases something (an NFT,
 | Test USDC (Stellar Asset Contract for `USDC:GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5`) | `CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA` |
 | BTC price oracle read by `writz-lend` (Reflector) | `CCYOZJCOPG34LLQQ7N24YXBM7LL62R7ONMZ3G6WZAAYPB5OYKOMJRN63` |
 
-The source of truth for every ID, with deploy transactions and wasm hashes, is [`contracts/deployments/testnet.md`](https://github.com/WritzProtocol/writz/blob/main/contracts/deployments/testnet.md). Writz contracts are never upgraded in place: a new version gets a new ID, recorded there.
+The source of truth for every ID, with deploy transactions and wasm hashes, is [`contracts/deployments/testnet.md`](https://github.com/WritzProtocol/writz/blob/main/contracts/deployments/testnet.md). The same values, machine-readable, are in [`contracts/deployments/testnet.json`](https://github.com/WritzProtocol/writz/blob/main/contracts/deployments/testnet.json) and in the `@writz/sdk` network preset, both generated from that file. Writz contracts are never upgraded in place: a new version gets a new ID, recorded there.
 
 The `bitcoin-spv` checkpoint is signet block **325,554**. Only blocks after it can be proven.
 
@@ -114,7 +125,17 @@ Runnable example: [`examples/verify-bitcoin-tx`](https://github.com/WritzProtoco
 cd examples/verify-bitcoin-tx && bun install && bun run start
 ```
 
-The quickest typed client is generated from the deployed contract:
+With `@writz/sdk` (release pending, see [Packages](#packages)) the whole flow is three lines, and relayer errors arrive typed, with the `Retry-After` wait already honoured:
+
+```ts
+import { createWritzClient } from "@writz/sdk";
+
+const writz = createWritzClient(); // testnet preset
+const { result } = await writz.verifyBitcoinTx("1fef7b54a1819ae8cc719dec45ff5122880526fb9b8f89b303bbc260ccb718b1");
+// { txid, txidDisplay, blockHash, blockHeight: 327600, confirmations }
+```
+
+Without it, the quickest typed client is generated from the deployed contract:
 
 ```bash
 stellar contract bindings typescript --network testnet \
@@ -149,7 +170,7 @@ The same command generates a client for `writz-lend` (`--contract-id CDR3RWSGSA6
 
 ## 5. From your Soroban contract
 
-Your contract calls `bitcoin-spv` with a cross-contract client. Declare the result type with these exact field names (they are decoded by name):
+Your contract calls `bitcoin-spv` with a cross-contract client. The crate `writz-spv-client` (release pending, see [Packages](#packages)) contains the client, the types and the output parser, so this becomes `writz-spv-client = "0.1"` in `Cargo.toml` and `use writz_spv_client::{find_output_value, BitcoinSpvClient};`. Until it is on crates.io, declare the result type yourself with these exact field names (they are decoded by name):
 
 ```rust
 use soroban_sdk::{contractclient, contracttype, Bytes, BytesN, Env, Vec};
@@ -219,7 +240,7 @@ stellar contract invoke --id $LEND --network testnet --source-account $READER --
 
 USDC amounts are in stroops (7 decimals: `10000000000` is 1,000 USDC). Rates are annual basis points (`800` is 8%). Indexes are scaled by 10^18. `get_position` and `get_health_ratio_bp` take a deposit txid in internal byte order; `get_health_ratio_bp` returns basis points (`15000` is 150%, liquidation at `12000`). Full interface: [Contract Reference](/developers/contract-reference).
 
-`supply_usdc` and `withdraw_supply` are permissionless writes (the supplier signs), but this guide does not exercise them; borrowing needs a real signet deposit to the Writz script, which is what the [testnet app](https://testnet.writz.xyz) does for you.
+`supply_usdc` and `withdraw_supply` are permissionless writes (the supplier signs). `@writz/sdk` builds them as unsigned transactions for a wallet (`lend.buildSupplyUsdc`, `lend.buildWithdrawSupply`), but this guide does not exercise them; borrowing needs a real signet deposit to the Writz script, which is what the [testnet app](https://testnet.writz.xyz) does for you.
 
 ## 7. Earn yield on USDC
 
