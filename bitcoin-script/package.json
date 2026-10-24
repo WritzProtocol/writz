@@ -1,6 +1,7 @@
 {
   "name": "@writz/bitcoin-script",
   "version": "0.1.0",
+  "private": true,
   "description": "P2WSH locking script construction and transaction signing for Writz Protocol",
   "main": "dist/index.js",
   "types": "src/index.ts",
