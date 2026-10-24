@@ -196,11 +196,11 @@ else:
 
 ### 5. USDC Liquidity Pools (Stellar native)
 
-The supply side of Writz Lend. USDC lenders deposit into pools and earn yield. This is standard Stellar asset mechanics - no novel engineering required.
+The supply side of Writz Lend, and what Earn means on Writz. USDC lenders supply the pool with `supply_usdc` and earn the interest borrowers pay. This is standard Stellar asset mechanics - no novel engineering required.
 
-- Lenders supply USDC → receive interest-bearing receipt tokens
-- Borrowers draw from these pools against their BTC collateral
-- Interest accrues continuously; claimable at any time
+- Lenders supply USDC → the contract records a scaled balance that grows with the supply index (no receipt token)
+- Borrowers draw from the pool against their BTC collateral
+- Interest accrues continuously; `withdraw_supply` returns principal plus interest at any time, up to the USDC not lent out
 
 ---
 

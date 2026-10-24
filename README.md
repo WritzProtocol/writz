@@ -150,7 +150,7 @@ See [`bitcoin-script/`](bitcoin-script/) for the full P2WSH builder, address der
 
 | Product | Description | Status |
 |---|---|---|
-| **Writz Lend** | Deposit BTC as collateral → borrow USDC | Phase 1 - testnet ✓ |
+| **Writz Lend** | Deposit BTC as collateral → borrow USDC. Lend USDC to the pool → earn the interest borrowers pay | Phase 1 - testnet ✓ |
 | **Dark Swap** | Convert BTC to USDC directly · no exchange · no visible order | Phase 3 - planned |
 | **BTC Savings** | BTC collateral + USDC auto-routed to highest-yield Stellar pools | Phase 3 - planned |
 | **ZK Proof of Reserve** | Prove BTC holdings without revealing wallets or amounts · B2B SaaS | Phase 3 - planned |

@@ -42,13 +42,17 @@ Deposit BTC as collateral. Borrow USDC up to 66% of your BTC's value. Interest a
 
 This is a loan against your Bitcoin savings, taken without giving up custody of your Bitcoin.
 
+### Earn *(lender side of Writz Lend, live on testnet)*
+
+Lend USDC to the Writz Lend pool and earn the interest Bitcoin borrowers pay. The rate is variable and follows how much of the pool is borrowed, so it is zero while nothing is borrowed. Withdraw your USDC and its interest at any time, up to what is not lent out at that moment. See [Writz Lend, For USDC Lenders](/products/writz-lend#for-usdc-lenders-earn).
+
 ### Dark Swap *(Phase 3)*
 
 Convert BTC to USDC directly - no exchange account, no KYC, no visible order book. The SPV contract verifies your BTC deposit; USDC is released instantly. The swap size is hidden behind a ZK proof.
 
 ### BTC Savings *(Phase 3)*
 
-Deposit BTC as collateral and receive USDC that automatically routes to the highest-yield pools on Stellar - Blend, AMMs, and beyond. Your BTC stays yours. Your savings generate yield in USDC while Bitcoin does what Bitcoin does.
+Deposit BTC as collateral and receive USDC that automatically routes to yield-bearing positions on Stellar. Your BTC stays yours. Your savings generate yield in USDC while Bitcoin does what Bitcoin does.
 
 ### ZK Proof of Reserve *(Phase 3 - B2B)*
 
