@@ -19,6 +19,20 @@
     "href": "https://writz.xyz"
   },
   "favicon": "/brand/writz-icon.svg",
+  "contextual": {
+    "options": [
+      "assistant",
+      "copy",
+      "view",
+      "claude",
+      "chatgpt",
+      "perplexity",
+      "mcp",
+      "add-mcp",
+      "cursor",
+      "vscode"
+    ]
+  },
   "navigation": {
     "tabs": [
       {
@@ -44,7 +58,6 @@
             "group": "Products",
             "pages": [
               "products/writz-lend",
-              "products/earn",
               "products/dark-swap",
               "products/btc-savings",
               "products/zk-proof-of-reserve"
