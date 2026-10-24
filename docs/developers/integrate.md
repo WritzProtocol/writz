@@ -19,6 +19,7 @@ Every command and response on this page was run against Stellar testnet and Bitc
 | Relayer `GET /spv-proof/:txid` | A ready-made proof for any confirmed signet transaction, already in the argument format `verify_transaction` takes | Live, verified below |
 | `bitcoin-spv` reads (`get_best_tip`, `get_header`, `get_canonical_hash`, `get_checkpoint`) | The light client's view of Bitcoin: tip height, block hashes, header timestamps | Live, verified below |
 | `writz-lend` reads (`get_protocol_state`, rates, `get_position`, `get_supply_balance`) | Pool size, rates and positions of the Writz lending pool | Live on testnet, reads verified below |
+| Earn relayer routes (`/defindex/apy`, `/position`, `/deposit`, `/withdraw`) and `writz-lend` `supply_usdc` / `withdraw_supply` | Yield on USDC without a contract of your own | Live on testnet, see [section 7](#7-earn-yield-on-usdc) |
 | The testnet app, [testnet.writz.xyz](https://testnet.writz.xyz) | Deposit signet BTC, borrow test USDC | Link to it; there is no embed or widget API |
 
 Ideas that fit in a weekend: a Soroban contract that releases something (an NFT, access, an escrowed token) once a Bitcoin payment confirms; a Bitcoin payment checker for a store or invoice app; a dashboard of the Writz pool; a bot that watches a Bitcoin address and proves its payments on Stellar.
@@ -219,6 +220,15 @@ stellar contract invoke --id $LEND --network testnet --source-account $READER --
 USDC amounts are in stroops (7 decimals: `10000000000` is 1,000 USDC). Rates are annual basis points (`800` is 8%). Indexes are scaled by 10^18. `get_position` and `get_health_ratio_bp` take a deposit txid in internal byte order; `get_health_ratio_bp` returns basis points (`15000` is 150%, liquidation at `12000`). Full interface: [Contract Reference](/developers/contract-reference).
 
 `supply_usdc` and `withdraw_supply` are permissionless writes (the supplier signs), but this guide does not exercise them; borrowing needs a real signet deposit to the Writz script, which is what the [testnet app](https://testnet.writz.xyz) does for you.
+
+## 7. Earn yield on USDC
+
+Two surfaces pay yield on testnet, and neither needs a contract of your own:
+
+- **Earn**, the Writz DeFindex vault that lends USDC on Blend, through the relayer: `GET /defindex/apy` (a fraction, variable), `GET /defindex/position?address=G...`, and `POST /defindex/deposit` and `POST /defindex/withdraw` with `{"caller":"G...","amountStroops":"..."}`, which return an unsigned transaction for the user's wallet to sign and your app to submit. The vault holds Blend's test USDC, not Circle's. See [Earn](/products/earn).
+- **The Writz Lend lender side**: `supply_usdc(supplier, amount)` and `withdraw_supply(supplier, amount)`, signed by the supplier, in the same test USDC as the rest of this page. The yield is the interest borrowers pay, so `get_supply_rate_bp` reads zero while nothing is borrowed.
+
+Rates on both are variable and must be read live, never quoted as fixed. Test tokens on testnet have no value. A worked flow (curl, a TypeScript deposit, the CLI calls) and product ideas built on it are in [What to build on Writz](/developers/request-for-startups#no-soroban-needed-build-on-writz-yield).
 
 ---
 
