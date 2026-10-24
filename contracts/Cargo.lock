@@ -1887,6 +1887,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "writz-spv-client"
+version = "0.1.0"
+dependencies = [
+ "bitcoin-spv",
+ "soroban-sdk",
+ "spv-types",
+]
+
+[[package]]
 name = "zerocopy"
 version = "0.8.52"
 source = "registry+https://github.com/rust-lang/crates.io-index"

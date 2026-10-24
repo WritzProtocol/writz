@@ -16,13 +16,19 @@ Returns an SPV proof bundle for the given Bitcoin transaction ID.
 
 **Responses**
 
-| Status | Meaning |
-|---|---|
-| `200` | Proof bundle returned |
-| `400` | Invalid `txid` format or `confirmations` value |
-| `404` | Transaction not yet confirmed |
-| `409` | Not enough confirmations yet (`available` field shows current count) |
-| `502` | Upstream Esplora error |
+| Status | `error` | Meaning |
+|---|---|---|
+| `200` | | Proof bundle returned |
+| `400` | `invalid_txid`, `invalid_confirmations` | Invalid `txid` format or `confirmations` value |
+| `404` | `unconfirmed` | Transaction is known but not in a block yet |
+| `404` | `tx_not_found` | The Esplora indexer does not know this txid (typo, wrong network, or not broadcast yet) |
+| `409` | `insufficient_confirmations` | Not enough Bitcoin confirmations yet (`requested`, `available`) |
+| `409` | `light_client_behind` | The block is on Bitcoin, but `bitcoin-spv` does not hold it yet or not deep enough, so `verify_transaction` would fail with `HeaderNotFound` (#22) or `InsufficientConfirmations`. Body: `requested`, `available` (depth the light client can attest), `blockHeight`, `lightClientTipHeight`, `retryAfterSeconds`; also a `Retry-After` header. Retry after the next header-sync pass |
+| `429` | `rate_limited` | Per-IP budget spent (`SPV_PROOF_RATE_LIMIT` per `SPV_PROOF_RATE_WINDOW_MS`). `retryAfterSeconds` and `Retry-After` say when to retry |
+| `502` | `upstream_error` | Unexpected Esplora answer |
+| `503` | `upstream_unavailable` | Esplora rate limited or unavailable after retries (and after the fallback host, when one is set). `retryAfterSeconds` and `Retry-After` say when to retry |
+
+**Caching.** Proofs are cached in memory per `txid` and `confirmations`. A proof whose block is at least 6 deep below the Bitcoin tip is kept for `SPV_PROOF_CACHE_TTL_MS` (default 1 hour); a shallower proof, and the `unconfirmed`, `tx_not_found` and `insufficient_confirmations` answers, for 15 seconds. Upstream failures are never cached. Identical requests that arrive while a proof is being built share that one build. The light-client check runs on every request, cached or not, against the `bitcoin-spv` tip read at most every 5 seconds; it is skipped when `BITCOIN_SPV_ID` is unset or the read fails.
 
 **200 body**
 
@@ -211,6 +217,59 @@ Returns 30-day retention cohorts for the vault, computed from the indexed events
 | `eligible` | Of those, how many have reached their 30-day mark. Younger depositors are too early to count as retained or churned, so they are left out |
 | `retained` | Of the eligible, how many still held a positive net balance at their 30-day mark |
 
+### `POST /faucet/signet`
+
+Writz's own Bitcoin Signet faucet: pays a fixed amount of Signet test BTC (default 20,000 sats, enough for one deposit at the testnet minimum plus fees and a retry) from a relayer-held P2WPKH wallet. Mounted only on a Signet relayer that is not the mainnet target. Signet coins have no value.
+
+**Request body:** `{ "address": "tb1q..." }`. Native SegWit Signet addresses only: `tb1q...` (P2WPKH, P2WSH) or `tb1p...` (Taproot). Mainnet (`bc1`), regtest (`bcrt1`), legacy and P2SH addresses are refused.
+
+**200 body**
+
+```json
+{ "txid": "9a12...", "address": "tb1q...", "amountSats": 20000, "feeSats": 282, "explorerUrl": "https://mempool.space/signet/tx/9a12..." }
+```
+
+The transaction is unconfirmed when the call returns; Signet blocks come about every 10 minutes.
+
+| Status | `error` | Meaning |
+|---|---|---|
+| `400` | `invalid_address` | Not a Signet native SegWit address |
+| `400` | `faucet_address` | The faucet's own address |
+| `429` | `address_cooldown` | This address already claimed within the cooldown (default 24 h) |
+| `429` | `ip_cooldown` | A claim was already made from this client IP within the cooldown |
+| `429` | `daily_cap_reached` | The faucet paid its daily maximum (default 50 claims); resets 00:00 UTC |
+| `429` | `rate_limited` | Too many attempts from this IP (default 5 per 10 minutes) |
+| `502` | `broadcast_rejected` | The Signet node refused the transaction |
+| `503` | `faucet_disabled` | No faucet key configured, or switched off with `FAUCET_ENABLED=false` |
+| `503` | `faucet_empty` | The faucet wallet cannot cover the amount plus fee |
+| `503` | `upstream_unavailable` | Esplora unavailable (after retries and the fallback host) |
+
+`429` and `503` answers carry `retryAfterSeconds` and a `Retry-After` header when a wait is known. `faucet_disabled`, `faucet_empty` and `upstream_unavailable` also list public Signet faucets in `publicFaucets`.
+
+How it works: one send at a time (coin selection, signing and broadcast are serialized, and the outpoints a send spent are kept out of the next selection, so the faucet never double-spends its own coins); confirmed UTXOs first, largest first, then its own unconfirmed change; fee rate from Esplora's `/fee-estimates` for `FAUCET_FEE_TARGET_BLOCKS`, clamped to `[FAUCET_MIN_FEE_RATE, FAUCET_MAX_FEE_RATE]`; change back to the faucet address; broadcast through Esplora (`ESPLORA_URL`, then `ESPLORA_FALLBACK_URL`). Claims are stored in `data/faucet.db` (address, SHA-256 of the client IP, txid, amount, time), so cooldowns and the daily count survive restarts when `/app/data` is a volume. The client IP is the one `TRUST_PROXY_HOPS` resolves (right-most `X-Forwarded-For` entry on Railway), so a caller cannot pick a new IP bucket by sending the header. A log warning `faucet_low_balance` fires when the balance covers fewer than 20 claims.
+
+### `GET /faucet/signet`
+
+Faucet status, for apps and for whoever refills it.
+
+```json
+{ "enabled": true, "network": "signet", "address": "tb1q...", "amountSats": 20000, "dailyCap": 50, "claimsToday": 3,
+  "remainingToday": 47, "resetsAt": "2026-10-25T00:00:00.000Z", "cooldownHours": 24, "balanceSats": 1250000, "claimsLeftAtBalance": 61 }
+```
+
+`address` is the faucet wallet: send Signet coins there to refill it. `balanceSats` counts confirmed and unconfirmed coins and is `null` when Esplora is unavailable. Without a key the route answers `{ "enabled": false, "reason": "...", "publicFaucets": [...] }`.
+
+#### Setting up the faucet key
+
+The key is a dedicated Signet hot wallet, separate from `PROTOCOL_SIGNING_KEY` (the relayer refuses to start the faucet with the protocol key, refuses `FAUCET_SIGNET_WIF` unless `BITCOIN_NETWORK=signet`, and the mainnet target refuses to boot with it set). Generate it straight into the deployment's secrets so it is never printed or written to disk:
+
+```bash
+cd relayer
+railway variables --service writz --set "FAUCET_SIGNET_WIF=$(bun scripts/faucet-keygen.ts --wif-only)"
+```
+
+After the redeploy, `GET /faucet/signet` shows the address to fund. Signet blocks are signed, so coins cannot be mined: fund the address from the public Signet faucets (claimed by hand, never by a script that defeats their captchas) or by a transfer from another Signet wallet. `bun run faucet:keygen` prints a key and its address instead, for local development.
+
 ### `GET /health`
 
 Returns `{"status":"ok",...}` - used by load balancers.
@@ -223,11 +282,29 @@ Copy `.env.example` to `.env` and adjust as needed.
 |---|---|---|
 | `PORT` | `3000` | TCP port |
 | `BITCOIN_NETWORK` | `mainnet` | `mainnet` or `signet` |
-| `ESPLORA_URL` | Blockstream public endpoint | Override for a self-hosted node |
+| `ESPLORA_URL` | mempool.space for the network | Override for a self-hosted node |
+| `ESPLORA_FALLBACK_URL` | *(unset)* | Second Esplora base URL for `/spv-proof`, used when the primary answers 429/5xx or is unreachable. Must serve the same Esplora API for the same network, e.g. `https://blockstream.info/signet/api` |
+| `ESPLORA_RETRIES` | `2` | Retries per Esplora host on 429, 5xx and network errors for `/spv-proof` (backoff 250 ms, then doubling) |
+| `TRUST_PROXY_HOPS` | `1` | Reverse-proxy hops trusted for the client IP (Express `trust proxy`). `1` matches Railway's edge; `0` disables |
+| `SPV_PROOF_RATE_LIMIT` | `60` | Requests per client IP per window on `/spv-proof` |
+| `SPV_PROOF_RATE_WINDOW_MS` | `60000` | Rate-limit window for `/spv-proof` |
+| `SPV_PROOF_CACHE_MAX_ENTRIES` | `1000` | Proof cache size; least recently used entries are evicted first |
+| `SPV_PROOF_CACHE_TTL_MS` | `3600000` | Lifetime of a cached proof whose block is at least 6 deep |
 | `CORS_ORIGIN` | `*` | Allowed origin(s) - comma-separated or `*` |
 | `DEFAULT_CONFIRMATIONS` | `6` | Used when caller omits the query param |
 | `MAX_CONFIRMATIONS` | `20` | Hard cap on the confirmations param |
 | `REQUEST_TIMEOUT_MS` | `10000` | Esplora request timeout in ms |
+| `FAUCET_SIGNET_WIF` | *(unset)* | WIF of the Signet faucet's hot wallet. Unset: `/faucet/signet` answers `503 faucet_disabled`. Signet only, never the protocol key |
+| `FAUCET_ENABLED` | `true` | `false` switches the faucet off without removing the key |
+| `FAUCET_AMOUNT_SATS` | `20000` | Sats per claim; must be between 1,000 and 50,000 |
+| `FAUCET_DAILY_CAP` | `50` | Claims per UTC day across all callers |
+| `FAUCET_COOLDOWN_HOURS` | `24` | One claim per address and per client IP within this window |
+| `FAUCET_MIN_FEE_RATE` | `2` | Fee floor, sat/vbyte |
+| `FAUCET_MAX_FEE_RATE` | `25` | Fee ceiling, sat/vbyte |
+| `FAUCET_FEE_TARGET_BLOCKS` | `3` | Esplora fee-estimate target |
+| `FAUCET_RATE_LIMIT` | `5` | POST attempts per client IP per window |
+| `FAUCET_RATE_WINDOW_MS` | `600000` | Window for `FAUCET_RATE_LIMIT` |
+| `FAUCET_SQLITE_PATH` | `data/faucet.db` | Claim records (cooldowns, daily count) |
 | `DEFINDEX_API_KEY` | *(none)* | DeFindex API key (`sk_...`) from console.defindex.io |
 | `DEFINDEX_API_URL` | `https://api.defindex.io` | DeFindex API base URL |
 | `DEFINDEX_VAULT_ID` | *(none)* | Writz's own DeFindex vault contract ID - see `contracts/deployments/defindex-vault-testnet.md` |

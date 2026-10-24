@@ -1,0 +1,27 @@
+[package]
+name = "writz-spv-client"
+version = "0.1.0"
+edition = "2021"
+description = "Soroban client for the Writz bitcoin-spv contract: prove a Bitcoin transaction from a Stellar smart contract"
+license = "Apache-2.0"
+repository = "https://github.com/WritzProtocol/writz"
+homepage = "https://docs.writz.xyz/developers/integrate"
+documentation = "https://docs.rs/writz-spv-client"
+readme = "README.md"
+keywords = ["soroban", "stellar", "bitcoin", "spv", "light-client"]
+categories = ["cryptography::cryptocurrencies", "no-std"]
+include = ["src/**/*.rs", "Cargo.toml", "README.md"]
+
+[lib]
+crate-type = ["lib"]
+doctest = false
+
+[dependencies]
+soroban-sdk = { workspace = true }
+
+# Path-only dev-dependencies are dropped by `cargo publish`. They let the tests
+# check this crate's types and error codes against the real contract source.
+[dev-dependencies]
+soroban-sdk = { workspace = true, features = ["testutils"] }
+bitcoin-spv = { path = "../bitcoin-spv" }
+spv-types = { path = "../spv-types" }

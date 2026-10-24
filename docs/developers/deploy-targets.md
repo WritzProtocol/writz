@@ -40,7 +40,7 @@ Leaving the variable unset means `local` and validates nothing. That is delibera
 | `NEXT_PUBLIC_HORIZON_URL` set and not a test network (frontend) | - | yes |
 | `NEXT_PUBLIC_RELAYER_URL` set, https, and not a test deployment (frontend) | - | yes |
 | Earn mock forbidden (frontend) | - | yes |
-| No signing key or lending setting: `KMS_KEY_ID`, `PROTOCOL_SIGNING_KEY`, `ADMIN_SECRET`, `RELAYER_SECRET`, `COMMITMENT_TREE_ID`, `WRITZ_LEND_ID`, `BITCOIN_SPV_ID` all unset (relayer) | - | yes |
+| No signing key or lending setting: `KMS_KEY_ID`, `PROTOCOL_SIGNING_KEY`, `ADMIN_SECRET`, `RELAYER_SECRET`, `COMMITMENT_TREE_ID`, `WRITZ_LEND_ID`, `BITCOIN_SPV_ID`, `FAUCET_SIGNET_WIF` all unset (relayer) | - | yes |
 | `CORS_ORIGIN` must name explicit origins, not `*` (relayer) | - | yes |
 
 Testnet is deliberately looser. It is allowed to run with the Earn mock and with pieces still missing while the epic is being built out; mainnet is allowed to inherit nothing by omission.
@@ -128,7 +128,7 @@ The last three run the repay watcher, which co-signs every release after a full 
 
 #### Persistence: mount a volume, or the metrics history is lost on every deploy
 
-The relayer keeps four SQLite databases on local disk:
+The relayer keeps seven SQLite databases on local disk:
 
 | File | Written by | What is lost without it |
 |---|---|---|
@@ -138,6 +138,7 @@ The relayer keeps four SQLite databases on local disk:
 | `data/vault-watcher.db` | `vault-watcher/cursor-store.ts` | The vault watcher's cursor |
 | `data/tree-watcher.db` | `tree-watcher/cursor-store.ts` | The tree watcher's cursor |
 | `data/tree-events.db` | `tree-watcher/event-archive.ts` | **Every `insert_leaf`, `borrow` and `repay` the commitment tree emitted** |
+| `data/faucet.db` | `faucet/sqlite-store.ts` | Signet faucet claims: cooldowns and the daily count reset (testnet only) |
 
 The container image declares no `VOLUME`, so on a fresh service that directory is ephemeral and every redeploy starts empty.
 
@@ -151,7 +152,7 @@ If `merkle.db` is lost or wrong, `bun run rebuild-tree` in `relayer/` rebuilds t
 
 Stop the relayer before a swap: the command takes the tree lock of its own process only, so a tree watcher running in another process could write back the store it read before the swap.
 
-**Mount a persistent volume at `/app/data`.** All six paths are overridable if the platform mounts elsewhere: `SQLITE_PATH`, `WATCHER_SQLITE_PATH`, `VAULT_EVENTS_SQLITE_PATH`, `VAULT_WATCHER_SQLITE_PATH`, `TREE_WATCHER_SQLITE_PATH`, `TREE_EVENTS_SQLITE_PATH`.
+**Mount a persistent volume at `/app/data`.** All seven paths are overridable if the platform mounts elsewhere: `SQLITE_PATH`, `WATCHER_SQLITE_PATH`, `VAULT_EVENTS_SQLITE_PATH`, `VAULT_WATCHER_SQLITE_PATH`, `TREE_WATCHER_SQLITE_PATH`, `TREE_EVENTS_SQLITE_PATH`, `FAUCET_SQLITE_PATH`.
 
 Both watchers are always-on polling loops started in `src/index.ts`, not request-driven handlers. A platform that suspends the container when idle produces silent gaps in the same data, so scale-to-zero tiers are not suitable regardless of the volume.
 

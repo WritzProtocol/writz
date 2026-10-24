@@ -61,6 +61,23 @@ export function keyPairFromPrivkey(
 }
 
 /**
+ * Loads a key pair from a WIF string, refusing a WIF encoded for another
+ * network (a mainnet WIF on testnet or signet, and the reverse).
+ */
+export function keyPairFromWif(
+  wif: string,
+  network: bitcoin.networks.Network,
+): WritzKeyPair {
+  const pair = ECPair.fromWIF(wif.trim(), network);
+  if (!pair.compressed) throw new Error('WIF must encode a compressed key');
+  return {
+    publicKey: Buffer.from(pair.publicKey),
+    signer: pair,
+    network,
+  };
+}
+
+/**
  * Derives the Bitcoin address (P2WPKH, bech32) for a given public key.
  * Used to generate the user's return address for BTC release.
  */

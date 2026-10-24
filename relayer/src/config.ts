@@ -20,6 +20,22 @@ export interface Config {
   defaultConfirmations: number;
   maxConfirmations: number;
   requestTimeoutMs: number;
+  /** Optional second Esplora base URL for the proof route, tried when the
+   * primary answers 429/5xx or is unreachable. Must serve the same API for
+   * the same network. Unset: no fallback. */
+  esploraFallbackUrl: string | undefined;
+  /** Retries per Esplora host on 429/5xx/network errors (proof route only;
+   * the header sync keeps its own backoff). */
+  esploraRetries: number;
+  /** Reverse-proxy hops Express trusts for the client IP (`trust proxy`).
+   * 1 on Railway: its edge is the one hop in front of the service. */
+  trustProxyHops: number;
+  /** Per-IP request budget for GET /spv-proof per window. */
+  spvProofRateLimit: number;
+  spvProofRateWindowMs: number;
+  /** Proof cache size (entries) and lifetime for deeply confirmed proofs. */
+  spvProofCacheMaxEntries: number;
+  spvProofCacheTtlMs: number;
   // Stellar / Soroban
   stellarRpcUrl: string;
   networkPassphrase: string;
@@ -72,6 +88,24 @@ export interface Config {
   btcPriceStroops: bigint;
   /** Must equal commitment-tree's liquidation_threshold_bp. */
   liquidationThresholdBp: bigint;
+  /** Signet faucet (`/faucet/signet`). Off unless `wif` is set; signet only. */
+  faucet: FaucetConfig;
+}
+
+export interface FaucetConfig {
+  /** WIF of the faucet's own P2WPKH hot wallet (FAUCET_SIGNET_WIF). Never the protocol key. */
+  wif: string | undefined;
+  /** FAUCET_ENABLED=false switches the faucet off without removing the key. */
+  enabled: boolean;
+  amountSat: number;
+  dailyCap: number;
+  cooldownHours: number;
+  minFeeRate: number;
+  maxFeeRate: number;
+  feeTargetBlocks: number;
+  /** Per-IP POST attempts per window. */
+  rateLimit: number;
+  rateWindowMs: number;
 }
 
 // mempool.space rather than Blockstream: Blockstream's public API now
@@ -118,8 +152,14 @@ function loadConfig(): Config {
       BITCOIN_SPV_ID: process.env["BITCOIN_SPV_ID"],
       KEEPER_SECRET: process.env["KEEPER_SECRET"],
       KEEPER_BABYJUB_SECRET: process.env["KEEPER_BABYJUB_SECRET"],
+      FAUCET_SIGNET_WIF: process.env["FAUCET_SIGNET_WIF"],
     },
   });
+
+  const faucetWif = process.env["FAUCET_SIGNET_WIF"]?.trim() || undefined;
+  if (faucetWif && network !== "signet") {
+    throw new Error("FAUCET_SIGNET_WIF is set but BITCOIN_NETWORK is not signet. The faucet pays Signet coins only.");
+  }
 
   return {
     target,
@@ -130,6 +170,13 @@ function loadConfig(): Config {
     defaultConfirmations: parseInt(getEnv("DEFAULT_CONFIRMATIONS", "6"), 10),
     maxConfirmations: parseInt(getEnv("MAX_CONFIRMATIONS", "20"), 10),
     requestTimeoutMs: parseInt(getEnv("REQUEST_TIMEOUT_MS", "10000"), 10),
+    esploraFallbackUrl: process.env["ESPLORA_FALLBACK_URL"] || undefined,
+    esploraRetries: parseInt(getEnv("ESPLORA_RETRIES", "2"), 10),
+    trustProxyHops: parseInt(getEnv("TRUST_PROXY_HOPS", "1"), 10),
+    spvProofRateLimit: parseInt(getEnv("SPV_PROOF_RATE_LIMIT", "60"), 10),
+    spvProofRateWindowMs: parseInt(getEnv("SPV_PROOF_RATE_WINDOW_MS", "60000"), 10),
+    spvProofCacheMaxEntries: parseInt(getEnv("SPV_PROOF_CACHE_MAX_ENTRIES", "1000"), 10),
+    spvProofCacheTtlMs: parseInt(getEnv("SPV_PROOF_CACHE_TTL_MS", "3600000"), 10),
     stellarRpcUrl,
     networkPassphrase,
     commitmentTreeId: getEnv("COMMITMENT_TREE_ID", ""),
@@ -153,6 +200,18 @@ function loadConfig(): Config {
     keeperPollIntervalMs: parseInt(getEnv("KEEPER_POLL_INTERVAL_MS", "60000"), 10),
     btcPriceStroops: BigInt(getEnv("BTC_PRICE_STROOPS", "600000000000")),
     liquidationThresholdBp: BigInt(getEnv("LIQUIDATION_THRESHOLD_BP", "12000")),
+    faucet: {
+      wif: faucetWif,
+      enabled: getEnv("FAUCET_ENABLED", "true").trim().toLowerCase() !== "false",
+      amountSat: parseInt(getEnv("FAUCET_AMOUNT_SATS", "20000"), 10),
+      dailyCap: parseInt(getEnv("FAUCET_DAILY_CAP", "50"), 10),
+      cooldownHours: parseFloat(getEnv("FAUCET_COOLDOWN_HOURS", "24")),
+      minFeeRate: parseFloat(getEnv("FAUCET_MIN_FEE_RATE", "2")),
+      maxFeeRate: parseFloat(getEnv("FAUCET_MAX_FEE_RATE", "25")),
+      feeTargetBlocks: parseInt(getEnv("FAUCET_FEE_TARGET_BLOCKS", "3"), 10),
+      rateLimit: parseInt(getEnv("FAUCET_RATE_LIMIT", "5"), 10),
+      rateWindowMs: parseInt(getEnv("FAUCET_RATE_WINDOW_MS", "600000"), 10),
+    },
   };
 }
 

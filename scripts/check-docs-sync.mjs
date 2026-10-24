@@ -1,11 +1,16 @@
 #!/usr/bin/env node
-// Scans every markdown file in the repo for two things that tend to drift
+// Scans the repo for things that tend to drift
 // after a redeploy or a test-suite change:
 //
 //   1. Soroban contract addresses (`C...` StrKeys) that don't match the
 //      canonical addresses recorded in contracts/deployments/testnet.md.
 //   2. "N tests" / "N/N tests" mentions whose number isn't any of the real,
 //      just-measured counts in docs/_data/facts.json.
+//   3. A superseded bitcoin-spv or writz-lend ID in an integration surface
+//      (AGENTS.md, docs/developers, examples, packages/sdk, writz-spv-client),
+//      where only the current ID is acceptable.
+//   4. contracts/deployments/testnet.json or the @writz/sdk network preset
+//      out of date with testnet.md (scripts/sync-deployments.mjs).
 //
 // It does NOT try to figure out which contract or module a stray number
 // "should" belong to - that's a human judgment call. It only tells you
@@ -19,6 +24,7 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { generatedFiles, parseTestnetDeployments } from "./lib/deployments.mjs";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -163,6 +169,71 @@ for (const file of walk(repoRoot)) {
       }
     }
   });
+}
+
+// --- 3. Integration surfaces must name the CURRENT contract IDs ---
+//
+// The scan above accepts any address ever recorded in testnet.md, because
+// history pages legitimately cite superseded deployments. The pages and code
+// an integrator copies from must not: a superseded writz-lend or bitcoin-spv
+// ID there sends their transactions to a contract that is no longer in use.
+// "Current" is what scripts/lib/deployments.mjs reads from testnet.md, the
+// same value the @writz/sdk network preset is generated from.
+
+const deployments = parseTestnetDeployments(testnetMd);
+const currentIds = {
+  "bitcoin-spv": deployments.contracts.bitcoinSpv,
+  "writz-lend": deployments.contracts.writzLend,
+};
+const staleIds = new Map(); // address -> contract name
+for (const [name, current] of Object.entries(currentIds)) {
+  for (const id of deployments.history[name]) {
+    if (id !== current) staleIds.set(id, name);
+  }
+}
+
+const INTEGRATION_EXTS = new Set([".md", ".ts", ".rs", ".toml", ".json", ".mjs"]);
+function walkAll(dir, out = []) {
+  for (const entry of readdirSync(dir)) {
+    if (EXCLUDED_DIRS.has(entry) || entry === "bun.lock" || entry === "Cargo.lock") continue;
+    const full = path.join(dir, entry);
+    if (statSync(full).isDirectory()) walkAll(full, out);
+    else if (INTEGRATION_EXTS.has(path.extname(entry))) out.push(full);
+  }
+  return out;
+}
+const integrationFiles = [
+  path.join(repoRoot, "AGENTS.md"),
+  ...walkAll(path.join(repoRoot, "docs/developers")),
+  ...walkAll(path.join(repoRoot, "examples")),
+  ...walkAll(path.join(repoRoot, "packages/sdk")),
+  ...walkAll(path.join(repoRoot, "contracts/contracts/writz-spv-client")),
+];
+for (const file of integrationFiles) {
+  const rel = path.relative(repoRoot, file);
+  readFileSync(file, "utf8").split("\n").forEach((line, i) => {
+    for (const match of line.matchAll(ADDRESS_RE)) {
+      const name = staleIds.get(match[0]);
+      if (name) {
+        console.error(`${rel}:${i + 1}: superseded ${name} ID ${match[0]}; current is ${currentIds[name]}`);
+        errors++;
+      }
+    }
+  });
+}
+
+// --- 4. Generated copies of testnet.md are up to date ---
+
+for (const [rel, content] of Object.entries(generatedFiles(deployments))) {
+  const file = path.join(repoRoot, rel);
+  let onDisk = null;
+  try {
+    onDisk = readFileSync(file, "utf8");
+  } catch {}
+  if (onDisk !== content) {
+    console.error(`${rel} is out of date with contracts/deployments/testnet.md; run node scripts/sync-deployments.mjs`);
+    errors++;
+  }
 }
 
 console.log("\nCanonical contract addresses (from contracts/deployments/testnet.md):");

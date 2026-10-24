@@ -1,6 +1,9 @@
 # Writz Protocol - Testnet Deployments
 
 **Network:** Soroban Testnet (`Test SDF Network ; September 2015`)
+**Soroban RPC:** `https://soroban-testnet.stellar.org`
+**Relayer:** `https://api.testnet.writz.xyz`
+**Machine-readable:** `testnet.json` and the `@writz/sdk` network preset are generated from this file by `scripts/sync-deployments.mjs`; record a redeploy here first.
 **Deployer:** `writz-deployer`
 
 ---
