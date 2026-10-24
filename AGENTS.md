@@ -9,7 +9,7 @@ Use only these values; anything not listed here or in the linked pages does not 
 - Stellar network: testnet, passphrase `Test SDF Network ; September 2015`, RPC `https://soroban-testnet.stellar.org`
 - Bitcoin network: signet (no mainnet, testnet3 or testnet4 verification)
 - `bitcoin-spv`: `CAHHY4S4WCIFU4LBSKBI3IP6A4QYR2COV6EACDEBXGPJFDWBJWGOMCLP`
-- `writz-lend`: `CAVAD3NGIJPDTFLBLJQ5FMLT6UNFE3UFOI3RTQVOVS5RWAD5EDVI5EX4`
+- `writz-lend`: `CCMSOCBVX2S645MQFFXJRHVHRWH2NY62KLOJXNDYFOJRYHIC47EO6ZZK`
 - Test USDC (SAC): `CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA`
 - Relayer: `https://api.testnet.writz.xyz`, proof route `GET /spv-proof/:txid?confirmations=N`
 - Main primitive: `verify_transaction(block_hash: BytesN<32>, merkle_proof: Vec<BytesN<32>>, tx_index: u32, raw_tx: Bytes, min_confirmations: u32) -> Result<SpvVerificationResult, SPVError>`, where `SpvVerificationResult` is `{ txid, block_hash, block_height, confirmations }`

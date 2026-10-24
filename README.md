@@ -43,7 +43,7 @@ But a few months ago, it was a whitepaper. Version 1.0 (July 2026) is at [writz.
 | Contract | Address | WASM | Tests |
 |---|---|---|---|
 | `bitcoin-spv` | `CAHHY4S4WCIFU4LBSKBI3IP6A4QYR2COV6EACDEBXGPJFDWBJWGOMCLP` | 12.0 KB | 49 |
-| `writz-lend` | `CAVAD3NGIJPDTFLBLJQ5FMLT6UNFE3UFOI3RTQVOVS5RWAD5EDVI5EX4` | 78.8 KB | 118 |
+| `writz-lend` | `CCMSOCBVX2S645MQFFXJRHVHRWH2NY62KLOJXNDYFOJRYHIC47EO6ZZK` | 78.8 KB | 118 |
 
 The privacy edition's contracts are also deployed on testnet, separately from the protocol (see [Privacy edition](#privacy-edition-in-progress)):
 

@@ -49,7 +49,7 @@ Until a package is published, `npm install @writz/sdk` and `cargo add writz-spv-
 | Bitcoin network | Signet |
 | Writz relayer | `https://api.testnet.writz.xyz` |
 | `bitcoin-spv` | `CAHHY4S4WCIFU4LBSKBI3IP6A4QYR2COV6EACDEBXGPJFDWBJWGOMCLP` |
-| `writz-lend` | `CAVAD3NGIJPDTFLBLJQ5FMLT6UNFE3UFOI3RTQVOVS5RWAD5EDVI5EX4` |
+| `writz-lend` | `CCMSOCBVX2S645MQFFXJRHVHRWH2NY62KLOJXNDYFOJRYHIC47EO6ZZK` |
 | Test USDC (Stellar Asset Contract for `USDC:GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5`) | `CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA` |
 | BTC price oracle read by `writz-lend` (Reflector) | `CCYOZJCOPG34LLQQ7N24YXBM7LL62R7ONMZ3G6WZAAYPB5OYKOMJRN63` |
 
@@ -166,7 +166,7 @@ console.log(result.isOk() ? result.unwrap() : result.unwrapErr());
 // { block_hash: <Buffer 9e 4d ...>, block_height: 327600, confirmations: 71, txid: <Buffer b1 18 ...> }
 ```
 
-The same command generates a client for `writz-lend` (`--contract-id CAVAD3NGIJPDTFLBLJQ5FMLT6UNFE3UFOI3RTQVOVS5RWAD5EDVI5EX4`). Generate bindings from the deployed contract ID, not from the source on `main`: the source can be ahead of what is deployed.
+The same command generates a client for `writz-lend` (`--contract-id CCMSOCBVX2S645MQFFXJRHVHRWH2NY62KLOJXNDYFOJRYHIC47EO6ZZK`). Generate bindings from the deployed contract ID, not from the source on `main`: the source can be ahead of what is deployed.
 
 ## 5. From your Soroban contract
 
@@ -226,7 +226,7 @@ The complete contract, with tests, is [`examples/spv-payment-check`](https://git
 ## 6. Read the Writz lending pool
 
 ```bash
-LEND=CAVAD3NGIJPDTFLBLJQ5FMLT6UNFE3UFOI3RTQVOVS5RWAD5EDVI5EX4
+LEND=CCMSOCBVX2S645MQFFXJRHVHRWH2NY62KLOJXNDYFOJRYHIC47EO6ZZK
 stellar contract invoke --id $LEND --network testnet --source-account $READER --send=no -- get_protocol_state
 stellar contract invoke --id $LEND --network testnet --source-account $READER --send=no -- get_borrow_rate_bp
 stellar contract invoke --id $LEND --network testnet --source-account $READER --send=no -- get_supply_balance --lender $READER

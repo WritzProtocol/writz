@@ -67,7 +67,7 @@ pub fn get_release_psbt(txid: BytesN<32>) -> Option<Bytes>
 
 **Events emitted** (topic strings, matching `contracts/contracts/writz-lend/src/events.rs` exactly): `deposit`, `borrow`, `repay`, `repay_full` (emitted instead of `repay` when a repayment fully closes the debt), `liquidate`, `supply`, `withdraw`, `paused_set`, `oracle_set`.
 
-**Deployed:** `CAVAD3NGIJPDTFLBLJQ5FMLT6UNFE3UFOI3RTQVOVS5RWAD5EDVI5EX4`
+**Deployed:** `CCMSOCBVX2S645MQFFXJRHVHRWH2NY62KLOJXNDYFOJRYHIC47EO6ZZK`
 
 ---
 
