@@ -240,7 +240,13 @@ From the relayer (`GET /spv-proof/:txid`):
 | 400 | `invalid_confirmations` | `confirmations` not between 1 and 20 |
 | 404 | `unconfirmed` | The transaction is in the mempool, not in a block yet |
 | 409 | `insufficient_confirmations` | Fewer confirmations than requested; the body has `requested` and `available`. Signet mines a block about every 10 minutes |
-| 502 | `upstream_error` | Usually "Transaction not found": the txid is not a signet transaction (mainnet and testnet3/4 txids are not found) |
+| 404 | `tx_not_found` | The signet indexer does not know this txid. Mainnet and testnet3/4 txids are not found |
+| 409 | `light_client_behind` | The block is not yet in `bitcoin-spv`, or not deep enough there. Calling the contract now would fail with `#22` or `#2`. Wait `retryAfterSeconds` (about 60 s, one header-sync cycle) |
+| 429 | `rate_limited` | More than 60 requests per minute from your IP. Wait `retryAfterSeconds` |
+| 502 | `upstream_error` | An unexpected answer from the Bitcoin indexer |
+| 503 | `upstream_unavailable` | The Bitcoin indexer and its fallback are both failing. Wait `retryAfterSeconds` |
+
+Every 409, 429 and 503 carries `retryAfterSeconds` in the body and a `Retry-After` header. Honour it instead of retrying in a loop. Proofs for deeply confirmed transactions are cached, so asking again for the same txid is cheap.
 
 From `bitcoin-spv` (simulation fails with `Error(Contract, #N)`):
 

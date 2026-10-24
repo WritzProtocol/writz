@@ -12,6 +12,8 @@
  *   in INTERNAL byte order (suitable for direct use in SHA256d computation).
  */
 
+import { withBackoff } from "./header-sync.js";
+
 export interface TxStatus {
   confirmed: boolean;
   block_height: number | null;
@@ -33,10 +35,8 @@ export interface MerkleProofResponse {
 /**
  * Fetches `url` with a timeout, throwing `EsploraError` on a non-2xx
  * response. Returns the raw `Response` so callers can read the body in
- * whichever form they need (text vs. arrayBuffer) - `get()` and
- * `getRawTx()` used to each carry their own copy of this exact
- * fetch/timeout/AbortController/error-handling block, able to drift
- * independently; this is the one copy both build on now.
+ * whichever form they need (text vs. arrayBuffer). Every client method goes
+ * through this one copy of the fetch/timeout/error-handling block.
  */
 async function fetchWithTimeout(url: string, timeoutMs: number): Promise<Response> {
   const controller = new AbortController();
@@ -53,12 +53,6 @@ async function fetchWithTimeout(url: string, timeoutMs: number): Promise<Respons
   }
 }
 
-/** Thin wrapper that adds timeout and basic error normalisation. */
-async function get(url: string, timeoutMs: number): Promise<string> {
-  const res = await fetchWithTimeout(url, timeoutMs);
-  return res.text();
-}
-
 export class EsploraError extends Error {
   constructor(
     public readonly status: number,
@@ -70,15 +64,69 @@ export class EsploraError extends Error {
   }
 }
 
+/**
+ * True for a failure that says the upstream is unavailable rather than that
+ * the request was wrong: a 429 or 5xx answer, a network error, or a timeout.
+ * Retrying (or asking another Esplora instance) can fix these; a 404 or a
+ * malformed body cannot.
+ */
+export function isUpstreamUnavailable(e: unknown): boolean {
+  if (e instanceof EsploraError) return e.status === 429 || e.status >= 500;
+  return e instanceof Error && (e.name === "AbortError" || e.name === "TypeError");
+}
+
+/** Same as `isUpstreamUnavailable`, minus timeouts: retrying a request that
+ * already waited the full timeout on the same host only multiplies latency. */
+function isRetryableOnSameHost(e: unknown): boolean {
+  return isUpstreamUnavailable(e) && !(e instanceof Error && e.name === "AbortError");
+}
+
+export interface EsploraClientOptions {
+  /** Retries per host on 429, 5xx and network errors (default 0: no retry). */
+  retries?: number;
+  /** First backoff delay; doubles on each retry (default 250 ms). */
+  retryBaseDelayMs?: number;
+  /** A second Esplora instance tried once the primary is unavailable. It
+   * must serve the same Esplora REST API for the same network. */
+  fallbackBaseUrl?: string;
+  sleep?: (ms: number) => Promise<void>;
+}
+
 export class EsploraClient {
   constructor(
     private readonly baseUrl: string,
-    private readonly timeoutMs: number = 10_000
+    private readonly timeoutMs: number = 10_000,
+    private readonly options: EsploraClientOptions = {}
   ) {}
+
+  /**
+   * Runs one request against the primary host with backoff, then against the
+   * fallback host if the primary is unavailable. Defaults (no retry, no
+   * fallback) make this a single plain request, which is what the header
+   * sync wants: it already wraps every call in its own backoff.
+   */
+  private async request<T>(path: string, read: (res: Response) => Promise<T>): Promise<T> {
+    const { retries = 0, retryBaseDelayMs = 250, fallbackBaseUrl, sleep } = this.options;
+    const hosts = fallbackBaseUrl ? [this.baseUrl, fallbackBaseUrl] : [this.baseUrl];
+    let lastError: unknown;
+    for (const host of hosts) {
+      try {
+        return await withBackoff(
+          async () => read(await fetchWithTimeout(`${host}${path}`, this.timeoutMs)),
+          isRetryableOnSameHost,
+          { retries, baseDelayMs: retryBaseDelayMs, ...(sleep ? { sleep } : {}) },
+        );
+      } catch (e) {
+        if (!isUpstreamUnavailable(e)) throw e;
+        lastError = e;
+      }
+    }
+    throw lastError;
+  }
 
   /** Fetches transaction metadata including confirmation status. */
   async getTxInfo(txid: string): Promise<TxInfo> {
-    const body = await get(`${this.baseUrl}/tx/${txid}`, this.timeoutMs);
+    const body = await this.request(`/tx/${txid}`, (r) => r.text());
     const parsed = JSON.parse(body) as { txid: string; status: TxStatus };
     return { txid: parsed.txid, status: parsed.status };
   }
@@ -90,8 +138,7 @@ export class EsploraClient {
    * `stripWitness()` from `./tx` before computing the txid.
    */
   async getRawTx(txid: string): Promise<string> {
-    const res = await fetchWithTimeout(`${this.baseUrl}/tx/${txid}/raw`, this.timeoutMs);
-    const arrayBuf = await res.arrayBuffer();
+    const arrayBuf = await this.request(`/tx/${txid}/raw`, (r) => r.arrayBuffer());
     return Buffer.from(arrayBuf).toString("hex");
   }
 
@@ -102,7 +149,7 @@ export class EsploraClient {
    * index of the transaction in its block.
    */
   async getMerkleProof(txid: string): Promise<MerkleProofResponse> {
-    const body = await get(`${this.baseUrl}/tx/${txid}/merkle-proof`, this.timeoutMs);
+    const body = await this.request(`/tx/${txid}/merkle-proof`, (r) => r.text());
     return JSON.parse(body) as MerkleProofResponse;
   }
 
@@ -110,7 +157,7 @@ export class EsploraClient {
    * Returns the block hash (display/reversed hex) at the given block height.
    */
   async getBlockHashAtHeight(height: number): Promise<string> {
-    return get(`${this.baseUrl}/block-height/${height}`, this.timeoutMs);
+    return this.request(`/block-height/${height}`, (r) => r.text());
   }
 
   /**
@@ -125,12 +172,12 @@ export class EsploraClient {
    *   bytes 76–79: nonce          (LE u32)
    */
   async getBlockHeader(blockHash: string): Promise<string> {
-    return get(`${this.baseUrl}/block/${blockHash}/header`, this.timeoutMs);
+    return this.request(`/block/${blockHash}/header`, (r) => r.text());
   }
 
   /** Returns the current tip block height. */
   async getTipHeight(): Promise<number> {
-    const body = await get(`${this.baseUrl}/blocks/tip/height`, this.timeoutMs);
+    const body = await this.request(`/blocks/tip/height`, (r) => r.text());
     const height = parseInt(body.trim(), 10);
     if (Number.isNaN(height)) {
       // A malformed response (e.g. an HTML error page from a misconfigured

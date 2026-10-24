@@ -18,6 +18,12 @@ const app = express();
 // is enabled - not on mainnet, which is Earn-only (#122).
 const LENDING = lendingEnabled(config.target);
 
+// Railway's edge is the one proxy in front of this service. Trusting exactly
+// that many hops makes `req.ip` the address the edge saw, the right-most
+// X-Forwarded-For entry, so a caller cannot pick its own rate-limit bucket by
+// sending the header itself. TRUST_PROXY_HOPS=0 turns this off.
+app.set("trust proxy", config.trustProxyHops);
+
 app.use(express.json());
 
 // CORS - allow configured origins (or all origins when CORS_ORIGIN="*").

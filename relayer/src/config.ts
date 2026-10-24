@@ -20,6 +20,22 @@ export interface Config {
   defaultConfirmations: number;
   maxConfirmations: number;
   requestTimeoutMs: number;
+  /** Optional second Esplora base URL for the proof route, tried when the
+   * primary answers 429/5xx or is unreachable. Must serve the same API for
+   * the same network. Unset: no fallback. */
+  esploraFallbackUrl: string | undefined;
+  /** Retries per Esplora host on 429/5xx/network errors (proof route only;
+   * the header sync keeps its own backoff). */
+  esploraRetries: number;
+  /** Reverse-proxy hops Express trusts for the client IP (`trust proxy`).
+   * 1 on Railway: its edge is the one hop in front of the service. */
+  trustProxyHops: number;
+  /** Per-IP request budget for GET /spv-proof per window. */
+  spvProofRateLimit: number;
+  spvProofRateWindowMs: number;
+  /** Proof cache size (entries) and lifetime for deeply confirmed proofs. */
+  spvProofCacheMaxEntries: number;
+  spvProofCacheTtlMs: number;
   // Stellar / Soroban
   stellarRpcUrl: string;
   networkPassphrase: string;
@@ -130,6 +146,13 @@ function loadConfig(): Config {
     defaultConfirmations: parseInt(getEnv("DEFAULT_CONFIRMATIONS", "6"), 10),
     maxConfirmations: parseInt(getEnv("MAX_CONFIRMATIONS", "20"), 10),
     requestTimeoutMs: parseInt(getEnv("REQUEST_TIMEOUT_MS", "10000"), 10),
+    esploraFallbackUrl: process.env["ESPLORA_FALLBACK_URL"] || undefined,
+    esploraRetries: parseInt(getEnv("ESPLORA_RETRIES", "2"), 10),
+    trustProxyHops: parseInt(getEnv("TRUST_PROXY_HOPS", "1"), 10),
+    spvProofRateLimit: parseInt(getEnv("SPV_PROOF_RATE_LIMIT", "60"), 10),
+    spvProofRateWindowMs: parseInt(getEnv("SPV_PROOF_RATE_WINDOW_MS", "60000"), 10),
+    spvProofCacheMaxEntries: parseInt(getEnv("SPV_PROOF_CACHE_MAX_ENTRIES", "1000"), 10),
+    spvProofCacheTtlMs: parseInt(getEnv("SPV_PROOF_CACHE_TTL_MS", "3600000"), 10),
     stellarRpcUrl,
     networkPassphrase,
     commitmentTreeId: getEnv("COMMITMENT_TREE_ID", ""),
