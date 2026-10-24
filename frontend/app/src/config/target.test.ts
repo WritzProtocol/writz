@@ -140,6 +140,16 @@ describe("findTargetConflicts - mainnet", () => {
     expect(problems.join("\n")).toMatch(/NEXT_PUBLIC_PROTOCOL_BTC_PUBKEY is set/);
   });
 
+  it("refuses testnet-only settings such as the Pollar login key", () => {
+    const problems = findTargetConflicts({
+      ...validMainnet,
+      testnetOnly: { NEXT_PUBLIC_POLLAR_API_KEY: "pub_testnet_abc" },
+    });
+    expect(problems).toEqual([expect.stringMatching(/NEXT_PUBLIC_POLLAR_API_KEY is set/)]);
+    expect(findTargetConflicts({ ...validMainnet, testnetOnly: { NEXT_PUBLIC_POLLAR_API_KEY: "" } })).toEqual([]);
+    expect(findTargetConflicts({ target: "testnet", testnetOnly: { NEXT_PUBLIC_POLLAR_API_KEY: "pub_testnet_abc" } })).toEqual([]);
+  });
+
   it("requires a mainnet Horizon", () => {
     expect(findTargetConflicts({ ...validMainnet, horizonUrl: undefined })[0]).toMatch(/NEXT_PUBLIC_HORIZON_URL is not set/);
     expect(

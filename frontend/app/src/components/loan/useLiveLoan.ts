@@ -227,7 +227,7 @@ export function useLiveLoan(n: number, requestedPanel: LoanTab | null): LoanMode
     }
   }, [address, w.signTransaction, refresh]);
 
-  const walletName = w.walletBackend === "privy" ? "Privy" : (kitWalletName() ?? "your wallet");
+  const walletName = w.walletBackend === "pollar" ? "Pollar" : (kitWalletName() ?? "your wallet");
 
   return {
     n,

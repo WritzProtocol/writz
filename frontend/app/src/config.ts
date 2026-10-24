@@ -47,6 +47,9 @@ const deployTarget = assertDeployTarget({
     NEXT_PUBLIC_PROTOCOL_BTC_PUBKEY: process.env.NEXT_PUBLIC_PROTOCOL_BTC_PUBKEY,
     NEXT_PUBLIC_BTC_ORACLE_ID: process.env.NEXT_PUBLIC_BTC_ORACLE_ID,
   },
+  testnetOnly: {
+    NEXT_PUBLIC_POLLAR_API_KEY: process.env.NEXT_PUBLIC_POLLAR_API_KEY,
+  },
 });
 
 /** False on mainnet: lending routes, links and the co-signing API are off there (#122). */
@@ -157,11 +160,11 @@ export const config = {
     avgBlockMinutes: 10,
   },
   /**
-   * Privy app ID for embedded wallet support (email / social login).
-   * When unset, the Privy connect option is disabled and the Stellar Wallets Kit
-   * remains the only auth path.
+   * Pollar publishable key for email, Google and GitHub sign-in. Pollar holds
+   * the key of the wallet it creates, so it is a testnet-only path: the
+   * mainnet target refuses to build with it set. Empty disables it.
    */
-  privyAppId: process.env.NEXT_PUBLIC_PRIVY_APP_ID ?? "",
+  pollarApiKey: process.env.NEXT_PUBLIC_POLLAR_API_KEY ?? "",
   /**
    * Umami website ID for pageview analytics. When unset, the tracking
    * script is not injected (e.g. local dev without an env file).

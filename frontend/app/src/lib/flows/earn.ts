@@ -13,8 +13,8 @@ import { asRejection } from "@/lib/wallet/rejection";
  * Three parties, and the split matters:
  *   1. The relayer builds the unsigned transaction (it holds the DeFindex API
  *      key; the browser must never see it).
- *   2. The connected wallet signs it - Privy embedded or Stellar Wallets Kit,
- *      the `signTransaction` from `WalletProvider` covers both.
+ *   2. The connected wallet signs it - Pollar or Stellar Wallets Kit, the
+ *      `signTransaction` from `WalletProvider` covers both.
  *   3. The browser submits to Soroban RPC and waits for the ledger.
  *
  * Nothing here is custodial: the relayer cannot move the user's USDC, and the

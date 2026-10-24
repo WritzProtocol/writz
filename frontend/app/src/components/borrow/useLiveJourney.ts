@@ -163,7 +163,7 @@ export function useLiveJourney(): JourneyModel {
   const net = network?.key === address ? network : null;
   const wrongNetwork =
     net?.passphrase && net.passphrase !== config.networkPassphrase ? networkName(net.passphrase) : null;
-  const walletName = w.walletBackend === "privy" ? "Privy" : (net?.walletName ?? "your wallet");
+  const walletName = w.walletBackend === "pollar" ? "Pollar" : (net?.walletName ?? "your wallet");
 
   const [fundingRead, setFundingRead] = useState<Keyed<Funding>>(null);
   const [fundNonce, setFundNonce] = useState(0);
@@ -203,7 +203,7 @@ export function useLiveJourney(): JourneyModel {
 
   const fundingOk =
     funding.kind === "failed" ||
-    (funding.kind === "ok" && (funding.value.kind === "ok" || (funding.value.kind === "low" && lowAckFor === address)));
+    (funding.kind === "ok" && (funding.value.kind === "ok" || (funding.value.kind === "low" && (lowAckFor === address || w.walletBackend === "pollar"))));
   const stellarReady = Boolean(address) && !wrongNetwork && fundingOk && loans === "found";
 
   // ── Price: the oracle writz-lend prices collateral with ──
@@ -393,7 +393,7 @@ export function useLiveJourney(): JourneyModel {
       funding,
       fundBusy,
       fundError,
-      lowAck: lowAckFor === address,
+      lowAck: lowAckFor === address || w.walletBackend === "pollar",
       loans,
       loansCount: findState?.count ?? 0,
       loansError: findState?.error ?? null,
