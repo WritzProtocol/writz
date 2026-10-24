@@ -20,7 +20,7 @@ const HEADER_FETCH_GAP_MS = 250;
 const isRateLimited = (e: unknown) => e instanceof EsploraError && e.status === 429;
 
 export function startHeaderSync(): { stop: () => void } {
-  if (!config.bitcoinSpvId || !config.spvSyncFromHeight || !config.relayerSecret) {
+  if (!headerSyncEnabled()) {
     console.warn("[spv-sync] BITCOIN_SPV_ID, SPV_SYNC_FROM_HEIGHT and RELAYER_SECRET are required - header sync disabled");
     return { stop: () => {} };
   }
@@ -34,7 +34,7 @@ export function startHeaderSync(): { stop: () => void } {
       const tip = await esplora.getTipHeight();
       // Resume near the contract's own tip; restarting from the configured
       // height every pass would resubmit the whole chain since the checkpoint.
-      const from = syncStartHeight(config.spvSyncFromHeight!, await readContractTipHeight());
+      const from = syncStartHeight(config.spvSyncFromHeight!, await readLightClientTipHeight());
       const result = await syncHeaders(from, tip, MAX_HEADERS_PER_SUBMIT, {
         getHeaderHex: async (h) => {
           await new Promise((r) => setTimeout(r, HEADER_FETCH_GAP_MS));
@@ -56,8 +56,12 @@ export function startHeaderSync(): { stop: () => void } {
   return { stop: () => clearInterval(timer) };
 }
 
+/** Whether this relayer feeds bitcoin-spv headers (see `startHeaderSync`). */
+export const headerSyncEnabled = (): boolean =>
+  Boolean(config.bitcoinSpvId && config.spvSyncFromHeight && config.relayerSecret);
+
 /** bitcoin-spv's best-tip height, or undefined when it has none or the read fails. */
-async function readContractTipHeight(): Promise<number | undefined> {
+export async function readLightClientTipHeight(): Promise<number | undefined> {
   // eslint-disable-next-line @typescript-eslint/no-require-imports -- see top-of-file comment.
   const sdk = require("@stellar/stellar-sdk") as typeof import("@stellar/stellar-sdk");
   const { Keypair, Contract, TransactionBuilder, scValToNative, rpc } = sdk;

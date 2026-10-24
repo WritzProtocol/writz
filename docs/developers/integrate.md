@@ -240,6 +240,7 @@ From the relayer (`GET /spv-proof/:txid`):
 | 400 | `invalid_confirmations` | `confirmations` not between 1 and 20 |
 | 404 | `unconfirmed` | The transaction is in the mempool, not in a block yet |
 | 409 | `insufficient_confirmations` | Fewer confirmations than requested; the body has `requested` and `available`. Signet mines a block about every 10 minutes |
+| 409 | `light_client_behind` | Bitcoin has the confirmations but `bitcoin-spv` does not have the headers yet, so `verify_transaction` would fail with `HeaderNotFound`; same body. The relayer's header sync catches up within a minute or two |
 | 502 | `upstream_error` | Usually "Transaction not found": the txid is not a signet transaction (mainnet and testnet3/4 txids are not found) |
 
 From `bitcoin-spv` (simulation fails with `Error(Contract, #N)`):

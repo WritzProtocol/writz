@@ -94,7 +94,7 @@ GET  /health                            status
 GET  /spv-proof/:txid?confirmations=N   proof for a confirmed signet tx; txid in DISPLAY order; N in 1..20, default 6
 ```
 
-`/spv-proof` 200 body: `{ txid, rawTxNoWitness, blockHash, txIndex, merkleProof[], headers[], blockHeight, confirmations, sorobanArgs: { block_hash, merkle_proof[], tx_index, raw_tx, min_confirmations } }`. Hex strings. `sorobanArgs` is already in internal byte order and maps one to one onto `verify_transaction`. Errors: 400 `invalid_txid` or `invalid_confirmations`, 404 `unconfirmed`, 409 `insufficient_confirmations` (`requested`, `available`), 502 `upstream_error` (txid not on signet). CORS is open.
+`/spv-proof` 200 body: `{ txid, rawTxNoWitness, blockHash, txIndex, merkleProof[], headers[], blockHeight, confirmations, sorobanArgs: { block_hash, merkle_proof[], tx_index, raw_tx, min_confirmations } }`. Hex strings. `sorobanArgs` is already in internal byte order and maps one to one onto `verify_transaction`. Errors: 400 `invalid_txid` or `invalid_confirmations`, 404 `unconfirmed`, 409 `insufficient_confirmations` or `light_client_behind` (`requested`, `available`; retry either), 502 `upstream_error` (txid not on signet). CORS is open.
 
 The other routes the index lists (`/merkle-path`, `/notes`, `/insert-commitment`, `/update-leaf`, `/defindex/*`, `/metrics/*`) serve the Writz app and are not an integration surface.
 

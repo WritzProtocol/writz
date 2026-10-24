@@ -5,6 +5,7 @@ import {
   UnconfirmedTxError,
   InsufficientConfirmationsError,
 } from "../bitcoin/spv.js";
+import { headerSyncEnabled, readLightClientTipHeight } from "../bitcoin/spv-submit.js";
 import { config } from "../config.js";
 
 const TXID_RE = /^[0-9a-f]{64}$/i;
@@ -74,6 +75,24 @@ proofRouter.get("/:txid", async (req: Request, res: Response): Promise<void> => 
 
   try {
     const bundle = await buildSPVProof(txid, confirmations, esplora);
+
+    // Esplora can see a block before this relayer has submitted its header
+    // to bitcoin-spv; a deposit sent then fails with HeaderNotFound (#22).
+    // Report the confirmations the light client can prove instead, so a
+    // caller keeps waiting. A failed tip read serves the bundle as before.
+    if (headerSyncEnabled()) {
+      const tip = await readLightClientTipHeight();
+      const proven = tip === undefined ? confirmations : tip - bundle.blockHeight + 1;
+      if (proven < confirmations) {
+        res.status(409).json({
+          error: "light_client_behind",
+          message: `bitcoin-spv has ${Math.max(0, proven)} of the ${confirmations} confirmations for ${txid}; its header sync is catching up`,
+          requested: confirmations,
+          available: Math.max(0, proven),
+        });
+        return;
+      }
+    }
 
     res.json({
       ...bundle,

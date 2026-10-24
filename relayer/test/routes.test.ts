@@ -12,6 +12,13 @@ jest.mock('../src/bitcoin/spv.js', () => {
   return { ...actual, buildSPVProof: jest.fn() };
 });
 
+const mockTip = jest.fn();
+let mockSyncEnabled = false;
+jest.mock('../src/bitcoin/spv-submit.js', () => ({
+  headerSyncEnabled: () => mockSyncEnabled,
+  readLightClientTipHeight: () => mockTip(),
+}));
+
 import express from 'express';
 import request from 'supertest';
 import { proofRouter } from '../src/routes/proof.js';
@@ -171,6 +178,55 @@ describe('GET /spv-proof/:txid - error propagation', () => {
     expect(res.status).toBe(502);
     expect(res.body.error).toBe('upstream_error');
     expect(res.body.message).toContain('connection refused');
+  });
+});
+
+// ── Light client lag ──────────────────────────────────────────────────────
+
+describe('GET /spv-proof/:txid - bitcoin-spv header sync', () => {
+  beforeEach(() => {
+    mockBuildSPVProof.mockResolvedValue(FAKE_BUNDLE);
+    mockSyncEnabled = true;
+  });
+  afterEach(() => {
+    mockSyncEnabled = false;
+    mockTip.mockReset();
+  });
+
+  test('409 light_client_behind while bitcoin-spv lacks the confirming headers', async () => {
+    mockTip.mockResolvedValue(FAKE_BUNDLE.blockHeight + FAKE_BUNDLE.confirmations - 2);
+
+    const res = await request(app).get(`/spv-proof/${VALID_TXID}?confirmations=${FAKE_BUNDLE.confirmations}`);
+
+    expect(res.status).toBe(409);
+    expect(res.body.error).toBe('light_client_behind');
+    expect(res.body.requested).toBe(FAKE_BUNDLE.confirmations);
+    expect(res.body.available).toBe(FAKE_BUNDLE.confirmations - 1);
+  });
+
+  test('409 with 0 available while bitcoin-spv has not reached the block', async () => {
+    mockTip.mockResolvedValue(FAKE_BUNDLE.blockHeight - 3);
+
+    const res = await request(app).get(`/spv-proof/${VALID_TXID}?confirmations=${FAKE_BUNDLE.confirmations}`);
+
+    expect(res.status).toBe(409);
+    expect(res.body.available).toBe(0);
+  });
+
+  test('200 once bitcoin-spv holds every confirming header', async () => {
+    mockTip.mockResolvedValue(FAKE_BUNDLE.blockHeight + FAKE_BUNDLE.confirmations - 1);
+
+    const res = await request(app).get(`/spv-proof/${VALID_TXID}?confirmations=${FAKE_BUNDLE.confirmations}`);
+
+    expect(res.status).toBe(200);
+  });
+
+  test('200 when the light client tip cannot be read', async () => {
+    mockTip.mockResolvedValue(undefined);
+
+    const res = await request(app).get(`/spv-proof/${VALID_TXID}?confirmations=${FAKE_BUNDLE.confirmations}`);
+
+    expect(res.status).toBe(200);
   });
 });
 
