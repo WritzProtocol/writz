@@ -82,6 +82,33 @@ describe("findTargetConflicts - testnet", () => {
     expect(problems[0]).toMatch(/NEXT_PUBLIC_NETWORK_PASSPHRASE/);
   });
 
+  it("accepts well-formed lending values", () => {
+    expect(
+      findTargetConflicts({
+        target: "testnet",
+        lendingOnly: {
+          NEXT_PUBLIC_WRITZ_LEND_ID: "CCMSOCBVX2S645MQFFXJRHVHRWH2NY62KLOJXNDYFOJRYHIC47EO6ZZK",
+          NEXT_PUBLIC_PROTOCOL_BTC_PUBKEY: "03d2f0699b167138988bf8d14a4655a8708066473b4c59ef40ee4ac500564fb70d",
+          NEXT_PUBLIC_BITCOIN_SPV_ID: "",
+        },
+      }),
+    ).toEqual([]);
+  });
+
+  it("refuses a protocol public key that is not a compressed key", () => {
+    for (const bad of ["02ab", "04" + "11".repeat(32), "03d2f0699b16 ", "0x03" + "11".repeat(32)]) {
+      const problems = findTargetConflicts({ target: "testnet", lendingOnly: { NEXT_PUBLIC_PROTOCOL_BTC_PUBKEY: bad } });
+      expect(problems).toEqual([expect.stringMatching(/NEXT_PUBLIC_PROTOCOL_BTC_PUBKEY must be a 33-byte compressed public key/)]);
+    }
+  });
+
+  it("refuses a lending contract id that is not a contract id", () => {
+    const problems = findTargetConflicts({
+      target: "testnet",
+      lendingOnly: { NEXT_PUBLIC_WRITZ_LEND_ID: "GB2BSYQS3FRJ5LZSSIDF3ZCSG5MKWJT5SZ3OZO4QRCAMCR357YAVPTWT" },
+    });
+    expect(problems).toEqual([expect.stringMatching(/NEXT_PUBLIC_WRITZ_LEND_ID must be a Stellar contract ID/)]);
+  });
 });
 
 describe("findTargetConflicts - mainnet", () => {
