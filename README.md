@@ -195,9 +195,8 @@ writz/
 ├── frontend/                # Next.js web app (React 19 · TypeScript · Tailwind)
 │   └── src/
 │       ├── components/      # DepositFlow · PositionDashboard · LenderPanel
-│       ├── lib/flows/       # deposit · borrow · repay · recover · lend
-│       ├── lib/position/    # Privacy edition: commitment derivation · note encryption
-│       └── lib/prover/      # Privacy edition: in-browser ZK proving (snarkjs)
+│       ├── lib/flows/       # deposit · borrow · repay · release · lend
+│       └── lib/position/    # Local cache of positions read from writz-lend
 │
 ├── packages/
 │   └── commitment-tree/     # Generated TypeScript bindings for commitment-tree
