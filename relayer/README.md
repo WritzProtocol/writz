@@ -236,9 +236,9 @@ The transaction is unconfirmed when the call returns; Signet blocks come about e
 | `400` | `invalid_address` | Not a Signet native SegWit address |
 | `400` | `faucet_address` | The faucet's own address |
 | `429` | `address_cooldown` | This address already claimed within the cooldown (default 24 h) |
-| `429` | `ip_cooldown` | A claim was already made from this client IP within the cooldown |
-| `429` | `daily_cap_reached` | The faucet paid its daily maximum (default 50 claims); resets 00:00 UTC |
-| `429` | `rate_limited` | Too many attempts from this IP (default 5 per 10 minutes) |
+| `429` | `ip_cooldown` | This client IP used its allowance (default 20 claims per hour, sliding window); `retryAfterSeconds` is the time until its oldest claim leaves the window |
+| `429` | `daily_cap_reached` | The faucet paid its daily maximum (default 300 claims); resets 00:00 UTC |
+| `429` | `rate_limited` | Too many attempts from this IP (default 30 per 10 minutes) |
 | `502` | `broadcast_rejected` | The Signet node refused the transaction |
 | `503` | `faucet_disabled` | No faucet key configured, or switched off with `FAUCET_ENABLED=false` |
 | `503` | `faucet_empty` | The faucet wallet cannot cover the amount plus fee |
@@ -246,15 +246,16 @@ The transaction is unconfirmed when the call returns; Signet blocks come about e
 
 `429` and `503` answers carry `retryAfterSeconds` and a `Retry-After` header when a wait is known. `faucet_disabled`, `faucet_empty` and `upstream_unavailable` also list public Signet faucets in `publicFaucets`.
 
-How it works: one send at a time (coin selection, signing and broadcast are serialized, and the outpoints a send spent are kept out of the next selection, so the faucet never double-spends its own coins); confirmed UTXOs first, largest first, then its own unconfirmed change; fee rate from Esplora's `/fee-estimates` for `FAUCET_FEE_TARGET_BLOCKS`, clamped to `[FAUCET_MIN_FEE_RATE, FAUCET_MAX_FEE_RATE]`; change back to the faucet address; broadcast through Esplora (`ESPLORA_URL`, then `ESPLORA_FALLBACK_URL`). Claims are stored in `data/faucet.db` (address, SHA-256 of the client IP, txid, amount, time), so cooldowns and the daily count survive restarts when `/app/data` is a volume. The client IP is the one `TRUST_PROXY_HOPS` resolves (right-most `X-Forwarded-For` entry on Railway), so a caller cannot pick a new IP bucket by sending the header. A log warning `faucet_low_balance` fires when the balance covers fewer than 20 claims.
+How it works: one send at a time (coin selection, signing and broadcast are serialized, and the outpoints a send spent are kept out of the next selection, so the faucet never double-spends its own coins); confirmed UTXOs first, largest first, then its own unconfirmed change; fee rate from Esplora's `/fee-estimates` for `FAUCET_FEE_TARGET_BLOCKS`, clamped to `[FAUCET_MIN_FEE_RATE, FAUCET_MAX_FEE_RATE]`; change back to the faucet address; broadcast through Esplora (`ESPLORA_URL`, then `ESPLORA_FALLBACK_URL`). Claims are stored in `data/faucet.db` (address, SHA-256 of the client IP, txid, amount, time), so the cooldown, the per-IP allowance and the daily count survive restarts when `/app/data` is a volume. The client IP is the one `TRUST_PROXY_HOPS` resolves (right-most `X-Forwarded-For` entry on Railway), so a caller cannot pick a new IP bucket by sending the header. The per-IP allowance is a count per window rather than one claim per day so that many people behind one IP (an event venue, a classroom) can be onboarded in one session; each of their addresses is still held to the 24 hour cooldown, and the daily cap bounds the total. A log warning `faucet_low_balance` fires when the balance covers fewer than 20 claims.
 
 ### `GET /faucet/signet`
 
 Faucet status, for apps and for whoever refills it.
 
 ```json
-{ "enabled": true, "network": "signet", "address": "tb1q...", "amountSats": 20000, "dailyCap": 50, "claimsToday": 3,
-  "remainingToday": 47, "resetsAt": "2026-10-25T00:00:00.000Z", "cooldownHours": 24, "balanceSats": 1250000, "claimsLeftAtBalance": 61 }
+{ "enabled": true, "network": "signet", "address": "tb1q...", "amountSats": 20000, "dailyCap": 300, "claimsToday": 3,
+  "remainingToday": 297, "resetsAt": "2026-10-25T00:00:00.000Z", "cooldownHours": 24, "ipClaimsPerWindow": 20,
+  "ipWindowHours": 1, "balanceSats": 1250000, "claimsLeftAtBalance": 61 }
 ```
 
 `address` is the faucet wallet: send Signet coins there to refill it. `balanceSats` counts confirmed and unconfirmed coins and is `null` when Esplora is unavailable. Without a key the route answers `{ "enabled": false, "reason": "...", "publicFaucets": [...] }`.
@@ -297,14 +298,16 @@ Copy `.env.example` to `.env` and adjust as needed.
 | `FAUCET_SIGNET_WIF` | *(unset)* | WIF of the Signet faucet's hot wallet. Unset: `/faucet/signet` answers `503 faucet_disabled`. Signet only, never the protocol key |
 | `FAUCET_ENABLED` | `true` | `false` switches the faucet off without removing the key |
 | `FAUCET_AMOUNT_SATS` | `20000` | Sats per claim; must be between 1,000 and 50,000 |
-| `FAUCET_DAILY_CAP` | `50` | Claims per UTC day across all callers |
-| `FAUCET_COOLDOWN_HOURS` | `24` | One claim per address and per client IP within this window |
+| `FAUCET_DAILY_CAP` | `300` | Claims per UTC day across all callers |
+| `FAUCET_COOLDOWN_HOURS` | `24` | One claim per recipient address within this many hours |
+| `FAUCET_IP_CLAIMS_PER_WINDOW` | `20` | Claims per client IP within `FAUCET_IP_WINDOW_HOURS` (sliding window) |
+| `FAUCET_IP_WINDOW_HOURS` | `1` | Window for `FAUCET_IP_CLAIMS_PER_WINDOW` |
 | `FAUCET_MIN_FEE_RATE` | `2` | Fee floor, sat/vbyte |
 | `FAUCET_MAX_FEE_RATE` | `25` | Fee ceiling, sat/vbyte |
 | `FAUCET_FEE_TARGET_BLOCKS` | `3` | Esplora fee-estimate target |
-| `FAUCET_RATE_LIMIT` | `5` | POST attempts per client IP per window |
+| `FAUCET_RATE_LIMIT` | `30` | POST attempts per client IP per window, successful or not |
 | `FAUCET_RATE_WINDOW_MS` | `600000` | Window for `FAUCET_RATE_LIMIT` |
-| `FAUCET_SQLITE_PATH` | `data/faucet.db` | Claim records (cooldowns, daily count) |
+| `FAUCET_SQLITE_PATH` | `data/faucet.db` | Claim records (address cooldown, per-IP allowance, daily count) |
 | `DEFINDEX_API_KEY` | *(none)* | DeFindex API key (`sk_...`) from console.defindex.io |
 | `DEFINDEX_API_URL` | `https://api.defindex.io` | DeFindex API base URL |
 | `DEFINDEX_VAULT_ID` | *(none)* | Writz's own DeFindex vault contract ID - see `contracts/deployments/defindex-vault-testnet.md` |

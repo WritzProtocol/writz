@@ -14,13 +14,13 @@ export interface FaucetRouterDeps {
 }
 
 /**
- * GET  /faucet/signet  status: enabled, amount, daily cap left, faucet address, balance
+ * GET  /faucet/signet  status: enabled, amount, daily cap left, per-IP allowance, faucet address, balance
  * POST /faucet/signet  { address }  pays the configured amount to a Signet address
  */
 export function createFaucetRouter(deps: FaucetRouterDeps): Router {
   const router = Router();
 
-  // A burst limit on attempts, on top of the per-claim cooldowns: invalid or
+  // A burst limit on attempts, on top of the per-claim limits: invalid or
   // refused requests are cheap, but each valid one costs Esplora calls.
   const attempts = rateLimit({
     name: "faucet",

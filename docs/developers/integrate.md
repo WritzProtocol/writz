@@ -312,7 +312,7 @@ Other frequent mistakes:
   # {"txid":"...","address":"tb1q...","amountSats":20000,"feeSats":282,"explorerUrl":"https://mempool.space/signet/tx/..."}
   ```
 
-  It pays a fixed 20,000 sats, enough for one deposit at the testnet minimum plus fees. One claim per address and per IP every 24 hours, and a daily cap across everyone. `GET /faucet/signet` shows whether it is on, the amount and the claims left today. If it answers `faucet_empty` or `faucet_disabled`, use a public faucet such as [signetfaucet.com](https://signetfaucet.com) (captcha and per-address limit). The coins are unconfirmed when the call returns; wait for a block (about 10 minutes) before building a proof.
+  It pays a fixed 20,000 sats, enough for one deposit at the testnet minimum plus fees. One claim per address every 24 hours, up to 20 claims per IP per hour (so a workshop or a classroom on one network can onboard everyone in one session), and a daily cap of 300 claims across everyone. `GET /faucet/signet` shows whether it is on, the amount, the per-IP allowance and the claims left today. If it answers `faucet_empty` or `faucet_disabled`, use a public faucet such as [signetfaucet.com](https://signetfaucet.com) (captcha and per-address limit). The coins are unconfirmed when the call returns; wait for a block (about 10 minutes) before building a proof.
 - **Explorers:** [mempool.space/signet](https://mempool.space/signet) for Bitcoin, [stellar.expert/explorer/testnet](https://stellar.expert/explorer/testnet) for Stellar.
 
 ## Limits to know

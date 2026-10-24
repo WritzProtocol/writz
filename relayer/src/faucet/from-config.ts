@@ -51,6 +51,8 @@ export function faucetFromConfig(): FaucetSetup {
       amountSat: f.amountSat,
       dailyCap: f.dailyCap,
       cooldownMs: f.cooldownHours * 3_600_000,
+      ipClaimsPerWindow: f.ipClaimsPerWindow,
+      ipWindowMs: f.ipWindowHours * 3_600_000,
       minFeeRate: f.minFeeRate,
       maxFeeRate: f.maxFeeRate,
       feeTargetBlocks: f.feeTargetBlocks,

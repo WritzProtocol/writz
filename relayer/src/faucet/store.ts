@@ -1,6 +1,6 @@
 /**
- * Claim records for the Signet faucet: what the cooldowns and the daily cap
- * are computed from. The relayer uses the sqlite store (`sqlite-store.ts`) so
+ * Claim records for the Signet faucet: what the address cooldown, the per-IP
+ * allowance and the daily cap are computed from. The relayer uses the sqlite store (`sqlite-store.ts`) so
  * the limits survive a restart; tests use the in-memory one below.
  */
 
@@ -18,8 +18,12 @@ export interface ClaimRecord {
 export interface ClaimStore {
   /** Time of the latest claim to `address`, or undefined. */
   lastClaimForAddress(address: string): number | undefined;
-  /** Time of the latest claim from `ipHash`, or undefined. */
-  lastClaimForIp(ipHash: string): number | undefined;
+  /**
+   * Times (Unix ms, oldest first) of the claims from `ipHash` at or after
+   * `since`: their count is the per-IP allowance used, and the oldest ones
+   * tell when the window frees a slot.
+   */
+  ipClaimsSince(ipHash: string, since: number): number[];
   /** Number of claims at or after `since` (Unix ms). */
   countSince(since: number): number;
   record(claim: ClaimRecord): void;
@@ -38,8 +42,11 @@ export class MemoryClaimStore implements ClaimStore {
     return this.latest((c) => c.address === address);
   }
 
-  lastClaimForIp(ipHash: string): number | undefined {
-    return this.latest((c) => c.ipHash === ipHash);
+  ipClaimsSince(ipHash: string, since: number): number[] {
+    return this.claims
+      .filter((c) => c.ipHash === ipHash && c.createdAt >= since)
+      .map((c) => c.createdAt)
+      .sort((a, b) => a - b);
   }
 
   countSince(since: number): number {

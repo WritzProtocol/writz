@@ -10,6 +10,26 @@ function getEnv(key: string, fallback?: string): string {
   return val;
 }
 
+/** A faucet limit that must be a whole number of at least 1; refuses to boot otherwise. */
+function positiveIntEnv(key: string, fallback: string): number {
+  const raw = getEnv(key, fallback).trim();
+  const n = Number(raw);
+  if (!/^\d+$/.test(raw) || !Number.isSafeInteger(n) || n < 1) {
+    throw new Error(`${key} must be a positive integer, got: ${raw}`);
+  }
+  return n;
+}
+
+/** A faucet limit that must be a number greater than 0; refuses to boot otherwise. */
+function positiveNumberEnv(key: string, fallback: string): number {
+  const raw = getEnv(key, fallback).trim();
+  const n = Number(raw);
+  if (raw === "" || !Number.isFinite(n) || n <= 0) {
+    throw new Error(`${key} must be a positive number, got: ${raw}`);
+  }
+  return n;
+}
+
 export interface Config {
   /** Validated deploy target ("local" | "testnet" | "mainnet"), from WRITZ_ENV. */
   target: DeployTarget;
@@ -98,8 +118,13 @@ export interface FaucetConfig {
   /** FAUCET_ENABLED=false switches the faucet off without removing the key. */
   enabled: boolean;
   amountSat: number;
+  /** Claims per UTC day across all callers. */
   dailyCap: number;
+  /** One claim per recipient address within this many hours. */
   cooldownHours: number;
+  /** Claims per client IP within any `ipWindowHours` (sliding window). */
+  ipClaimsPerWindow: number;
+  ipWindowHours: number;
   minFeeRate: number;
   maxFeeRate: number;
   feeTargetBlocks: number;
@@ -161,6 +186,29 @@ function loadConfig(): Config {
     throw new Error("FAUCET_SIGNET_WIF is set but BITCOIN_NETWORK is not signet. The faucet pays Signet coins only.");
   }
 
+  // Defaults sized for onboarding: a venue or a classroom shares one IP, so the
+  // per-IP allowance is a count per hour, not one claim per day.
+  const faucetMinFeeRate = positiveNumberEnv("FAUCET_MIN_FEE_RATE", "2");
+  const faucetMaxFeeRate = positiveNumberEnv("FAUCET_MAX_FEE_RATE", "25");
+  if (faucetMaxFeeRate < faucetMinFeeRate) {
+    throw new Error(`FAUCET_MAX_FEE_RATE (${faucetMaxFeeRate}) must not be below FAUCET_MIN_FEE_RATE (${faucetMinFeeRate})`);
+  }
+  const faucet: FaucetConfig = {
+    wif: faucetWif,
+    enabled: getEnv("FAUCET_ENABLED", "true").trim().toLowerCase() !== "false",
+    // The 1,000 to 50,000 sat range is enforced by the faucet itself.
+    amountSat: positiveIntEnv("FAUCET_AMOUNT_SATS", "20000"),
+    dailyCap: positiveIntEnv("FAUCET_DAILY_CAP", "300"),
+    cooldownHours: positiveNumberEnv("FAUCET_COOLDOWN_HOURS", "24"),
+    ipClaimsPerWindow: positiveIntEnv("FAUCET_IP_CLAIMS_PER_WINDOW", "20"),
+    ipWindowHours: positiveNumberEnv("FAUCET_IP_WINDOW_HOURS", "1"),
+    minFeeRate: faucetMinFeeRate,
+    maxFeeRate: faucetMaxFeeRate,
+    feeTargetBlocks: positiveIntEnv("FAUCET_FEE_TARGET_BLOCKS", "3"),
+    rateLimit: positiveIntEnv("FAUCET_RATE_LIMIT", "30"),
+    rateWindowMs: positiveIntEnv("FAUCET_RATE_WINDOW_MS", "600000"),
+  };
+
   return {
     target,
     port: parseInt(getEnv("PORT", "3000"), 10),
@@ -200,18 +248,7 @@ function loadConfig(): Config {
     keeperPollIntervalMs: parseInt(getEnv("KEEPER_POLL_INTERVAL_MS", "60000"), 10),
     btcPriceStroops: BigInt(getEnv("BTC_PRICE_STROOPS", "600000000000")),
     liquidationThresholdBp: BigInt(getEnv("LIQUIDATION_THRESHOLD_BP", "12000")),
-    faucet: {
-      wif: faucetWif,
-      enabled: getEnv("FAUCET_ENABLED", "true").trim().toLowerCase() !== "false",
-      amountSat: parseInt(getEnv("FAUCET_AMOUNT_SATS", "20000"), 10),
-      dailyCap: parseInt(getEnv("FAUCET_DAILY_CAP", "50"), 10),
-      cooldownHours: parseFloat(getEnv("FAUCET_COOLDOWN_HOURS", "24")),
-      minFeeRate: parseFloat(getEnv("FAUCET_MIN_FEE_RATE", "2")),
-      maxFeeRate: parseFloat(getEnv("FAUCET_MAX_FEE_RATE", "25")),
-      feeTargetBlocks: parseInt(getEnv("FAUCET_FEE_TARGET_BLOCKS", "3"), 10),
-      rateLimit: parseInt(getEnv("FAUCET_RATE_LIMIT", "5"), 10),
-      rateWindowMs: parseInt(getEnv("FAUCET_RATE_WINDOW_MS", "600000"), 10),
-    },
+    faucet,
   };
 }
 

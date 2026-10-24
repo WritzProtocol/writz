@@ -5,8 +5,10 @@
  *
  * The coins have no value; the realistic harm is a drained faucet that stops
  * working for the next person. Hence, per claim: a fixed amount, one claim
- * per recipient address and per client IP per cooldown, a global cap per UTC
- * day, and a balance check that fails closed with `faucet_empty`.
+ * per recipient address per cooldown, a number of claims per client IP per
+ * sliding window (sized so a venue or a classroom behind one IP can onboard
+ * its people in one session), a global cap per UTC day, and a balance check
+ * that fails closed with `faucet_empty`.
  *
  * Sends are serialized: coin selection, signing and broadcast run one at a
  * time, and the outpoints a broadcast spent are kept out of selection until
@@ -56,7 +58,11 @@ export interface FaucetEsplora {
 export interface FaucetSettings {
   amountSat: number;
   dailyCap: number;
+  /** One claim per recipient address within this time. */
   cooldownMs: number;
+  /** Claims allowed per client IP within any `ipWindowMs` (sliding window). */
+  ipClaimsPerWindow: number;
+  ipWindowMs: number;
   /** Fee floor and ceiling in sat/vbyte, applied to the Esplora estimate. */
   minFeeRate: number;
   maxFeeRate: number;
@@ -124,6 +130,9 @@ export interface FaucetStatus {
   remainingToday: number;
   resetsAt: string;
   cooldownHours: number;
+  /** Claims allowed per client IP within `ipWindowHours`. */
+  ipClaimsPerWindow: number;
+  ipWindowHours: number;
   /** Spendable balance (confirmed and unconfirmed), null if Esplora is unavailable. */
   balanceSats: number | null;
   /** Claims the balance still covers at the current amount, null if unknown. */
@@ -192,6 +201,13 @@ export class SignetFaucet {
         `FAUCET_AMOUNT_SATS must be an integer between ${MIN_FAUCET_AMOUNT_SAT} and ${MAX_FAUCET_AMOUNT_SAT}, got ${amountSat}`,
       );
     }
+    const { ipClaimsPerWindow, ipWindowMs } = opts.settings;
+    if (!Number.isSafeInteger(ipClaimsPerWindow) || ipClaimsPerWindow < 1) {
+      throw new Error(`FAUCET_IP_CLAIMS_PER_WINDOW must be a positive integer, got ${ipClaimsPerWindow}`);
+    }
+    if (!Number.isFinite(ipWindowMs) || ipWindowMs <= 0) {
+      throw new Error(`FAUCET_IP_WINDOW_HOURS must be a positive number, got ${ipWindowMs / 3_600_000}`);
+    }
     this.address = pubkeyToP2WPKHAddress(opts.wallet.publicKey, btc.networks.testnet);
     this.now = opts.now ?? Date.now;
     this.log = opts.log ?? ((line) => console.log(line));
@@ -241,7 +257,7 @@ export class SignetFaucet {
 
   private checkLimits(address: string, ipHash: string): void {
     const t = this.now();
-    const { cooldownMs, dailyCap } = this.opts.settings;
+    const { cooldownMs, ipClaimsPerWindow, ipWindowMs, dailyCap } = this.opts.settings;
     const lastAddr = this.opts.store.lastClaimForAddress(address);
     if (lastAddr !== undefined && t - lastAddr < cooldownMs) {
       throw new FaucetError(
@@ -250,12 +266,17 @@ export class SignetFaucet {
         Math.ceil((lastAddr + cooldownMs - t) / 1000),
       );
     }
-    const lastIp = this.opts.store.lastClaimForIp(ipHash);
-    if (lastIp !== undefined && t - lastIp < cooldownMs) {
+    // Claims strictly inside the window (t - ipWindowMs, t]: one made exactly
+    // ipWindowMs ago has left it, the same boundary as the address cooldown.
+    const ipClaims = this.opts.store.ipClaimsSince(ipHash, t - ipWindowMs + 1);
+    if (ipClaims.length >= ipClaimsPerWindow) {
+      // A slot frees when enough of the oldest claims leave the window to bring
+      // the count below the allowance (normally just the oldest one).
+      const freesAt = ipClaims[ipClaims.length - ipClaimsPerWindow] + ipWindowMs;
       throw new FaucetError(
         "ip_cooldown",
-        "a claim was already made from this network recently",
-        Math.ceil((lastIp + cooldownMs - t) / 1000),
+        `this network has used its ${ipClaimsPerWindow} faucet claims for now; try again later`,
+        Math.max(1, Math.ceil((freesAt - t) / 1000)),
       );
     }
     const dayStart = startOfUtcDay(t);
@@ -368,7 +389,7 @@ export class SignetFaucet {
 
   async status(): Promise<FaucetStatus> {
     const t = this.now();
-    const { amountSat, dailyCap, cooldownMs, minFeeRate } = this.opts.settings;
+    const { amountSat, dailyCap, cooldownMs, ipClaimsPerWindow, ipWindowMs, minFeeRate } = this.opts.settings;
     const dayStart = startOfUtcDay(t);
     const claimsToday = this.opts.store.countSince(dayStart);
 
@@ -396,6 +417,8 @@ export class SignetFaucet {
       remainingToday: Math.max(0, dailyCap - claimsToday),
       resetsAt: new Date(dayStart + 86_400_000).toISOString(),
       cooldownHours: cooldownMs / 3_600_000,
+      ipClaimsPerWindow,
+      ipWindowHours: ipWindowMs / 3_600_000,
       balanceSats,
       claimsLeftAtBalance: balanceSats === null ? null : Math.floor(balanceSats / perClaim),
     };
