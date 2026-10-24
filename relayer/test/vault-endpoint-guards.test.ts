@@ -29,6 +29,7 @@ const VALID_ADDRESS = 'GB2BSYQS3FRJ5LZSSIDF3ZCSG5MKWJT5SZ3OZO4QRCAMCR357YAVPTWT'
 
 function buildApp() {
   const app = express();
+  app.set('trust proxy', 1);
   app.use(express.json());
   app.use('/defindex', defindexRouter);
   return app;
@@ -55,6 +56,8 @@ afterEach(() => {
 describe('rateLimit middleware', () => {
   function appWith(limiter: ReturnType<typeof rateLimit>) {
     const app = express();
+    // One trusted hop, as index.ts sets for Railway's edge.
+    app.set('trust proxy', 1);
     app.get('/x', limiter, (_req, res) => {
       res.json({ ok: true });
     });
@@ -73,12 +76,34 @@ describe('rateLimit middleware', () => {
     expect(blocked.headers['retry-after']).toBe('60');
   });
 
-  test('buckets by the first X-Forwarded-For hop', async () => {
+  test('buckets by the X-Forwarded-For hop the trusted proxy wrote (right-most)', async () => {
     const app = appWith(rateLimit({ name: 't', limit: 1, windowMs: 60_000 }));
 
-    expect((await request(app).get('/x').set('X-Forwarded-For', '1.1.1.1, 10.0.0.1')).status).toBe(200);
-    expect((await request(app).get('/x').set('X-Forwarded-For', '2.2.2.2, 10.0.0.1')).status).toBe(200);
-    expect((await request(app).get('/x').set('X-Forwarded-For', '1.1.1.1, 10.0.0.2')).status).toBe(429);
+    expect((await request(app).get('/x').set('X-Forwarded-For', '9.9.9.9, 1.1.1.1')).status).toBe(200);
+    expect((await request(app).get('/x').set('X-Forwarded-For', '9.9.9.9, 2.2.2.2')).status).toBe(200);
+    expect((await request(app).get('/x').set('X-Forwarded-For', '8.8.8.8, 1.1.1.1')).status).toBe(429);
+  });
+
+  test('a caller cannot pick a fresh bucket by sending its own X-Forwarded-For', async () => {
+    const app = appWith(rateLimit({ name: 't', limit: 1, windowMs: 60_000 }));
+
+    // The edge appends the real address; only the left-most entry varies.
+    expect((await request(app).get('/x').set('X-Forwarded-For', '5.5.5.5, 1.1.1.1')).status).toBe(200);
+    expect((await request(app).get('/x').set('X-Forwarded-For', '6.6.6.6, 1.1.1.1')).status).toBe(429);
+  });
+
+  test('a custom body shapes the 429 response', async () => {
+    const t = 0;
+    const app = appWith(rateLimit({
+      name: 't', limit: 1, windowMs: 30_000, now: () => t,
+      body: (retryAfterSeconds) => ({ error: 'rate_limited', retryAfterSeconds }),
+    }));
+
+    await request(app).get('/x');
+    const blocked = await request(app).get('/x');
+    expect(blocked.status).toBe(429);
+    expect(blocked.body).toEqual({ error: 'rate_limited', retryAfterSeconds: 30 });
+    expect(blocked.headers['retry-after']).toBe('30');
   });
 
   test('a new window opens once the old one expires', async () => {

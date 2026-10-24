@@ -18,6 +18,8 @@ export interface RateLimitOptions {
   limit: number;
   windowMs: number;
   now?: () => number;
+  /** JSON body of the 429 response; defaults to a plain `{ error }`. */
+  body?: (retryAfterSeconds: number) => object;
 }
 
 export interface RateLimiter extends RequestHandler {
@@ -25,20 +27,18 @@ export interface RateLimiter extends RequestHandler {
 }
 
 /**
- * First hop of X-Forwarded-For, as set by Railway's edge. Falls back to a
- * constant so a missing header degrades to one shared bucket rather than no
- * limit at all.
+ * The client address as Express resolves it under the app's `trust proxy`
+ * setting (TRUST_PROXY_HOPS, applied in index.ts). With one trusted hop it is
+ * the right-most X-Forwarded-For entry, the one Railway's edge writes; the
+ * left-most entry is whatever the caller sent and cannot key a limiter.
+ * Falls back to a constant so a missing address degrades to one shared
+ * bucket rather than no limit at all.
  */
 export function clientKey(req: Request): string {
-  const forwarded = req.headers["x-forwarded-for"];
-  const first = (Array.isArray(forwarded) ? forwarded[0] : forwarded)?.split(",")[0]?.trim();
-  if (first) return first;
-  const realIp = req.headers["x-real-ip"];
-  if (typeof realIp === "string" && realIp.trim()) return realIp.trim();
-  return "unknown";
+  return req.ip || req.socket?.remoteAddress || "unknown";
 }
 
-export function rateLimit({ name, limit, windowMs, now = Date.now }: RateLimitOptions): RateLimiter {
+export function rateLimit({ name, limit, windowMs, now = Date.now, body }: RateLimitOptions): RateLimiter {
   const windows = new Map<string, Window>();
 
   const handler = ((req: Request, res: Response, next: NextFunction) => {
@@ -56,8 +56,9 @@ export function rateLimit({ name, limit, windowMs, now = Date.now }: RateLimitOp
     }
 
     if (existing.count >= limit) {
-      res.setHeader("Retry-After", String(Math.ceil((existing.resetAt - t) / 1000)));
-      res.status(429).json({ error: "Too many requests - slow down and try again shortly" });
+      const retryAfterSeconds = Math.max(1, Math.ceil((existing.resetAt - t) / 1000));
+      res.setHeader("Retry-After", String(retryAfterSeconds));
+      res.status(429).json(body ? body(retryAfterSeconds) : { error: "Too many requests - slow down and try again shortly" });
       console.warn(JSON.stringify({ evt: "rate_limited", limiter: name, path: req.originalUrl.split("?")[0] }));
       return;
     }

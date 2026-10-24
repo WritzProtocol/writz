@@ -14,7 +14,7 @@ jest.mock('../src/bitcoin/spv.js', () => {
 
 import express from 'express';
 import request from 'supertest';
-import { proofRouter } from '../src/routes/proof.js';
+import { createProofRouter } from '../src/routes/proof.js';
 import {
   buildSPVProof,
   UnconfirmedTxError,
@@ -39,7 +39,8 @@ const FAKE_BUNDLE = {
 function buildApp() {
   const app = express();
   app.use(express.json());
-  app.use('/spv-proof', proofRouter);
+  // A fresh router per test: the proof cache and rate limiter are per router.
+  app.use('/spv-proof', createProofRouter());
   return app;
 }
 
