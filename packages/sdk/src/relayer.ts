@@ -31,8 +31,8 @@ export interface GetSpvProofOptions {
 }
 
 /**
- * Client for the Writz relayer: proofs for `bitcoin-spv` and the Earn vault
- * routes. Works in browsers, Node and Bun (CORS is open).
+ * Client for the Writz relayer: SPV proofs for `bitcoin-spv`, ready to pass
+ * to `verify_transaction`. Works in browsers, Node and Bun (CORS is open).
  */
 export class RelayerClient {
   readonly baseUrl: string;

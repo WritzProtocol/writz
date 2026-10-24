@@ -1,21 +1,28 @@
 {
   "name": "@writz/sdk",
   "version": "0.1.0",
-  "description": "Prove Bitcoin transactions on Stellar and read the Writz lending pool: network presets, relayer client, bitcoin-spv and writz-lend clients",
+  "description": "Verify Bitcoin transactions on Stellar and lend in the Writz pool: network presets, relayer SPV proofs, bitcoin-spv and writz-lend clients",
   "license": "Apache-2.0",
+  "author": {
+    "name": "Writz Protocol",
+    "url": "https://writz.xyz"
+  },
   "homepage": "https://docs.writz.xyz/developers/integrate",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/WritzProtocol/writz.git",
     "directory": "packages/sdk"
   },
-  "bugs": "https://github.com/WritzProtocol/writz/issues",
+  "bugs": {
+    "url": "https://github.com/WritzProtocol/writz/issues"
+  },
   "keywords": [
     "stellar",
     "soroban",
     "bitcoin",
     "spv",
     "light-client",
+    "lending",
     "writz"
   ],
   "type": "module",
@@ -25,14 +32,16 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
     },
     "./package.json": "./package.json"
   },
   "files": [
     "dist",
     "src",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "engines": {
     "node": ">=20"
@@ -42,7 +51,8 @@
     "typecheck": "tsc --noEmit",
     "test": "bun test",
     "test:live": "WRITZ_LIVE=1 bun test test/live.test.ts",
-    "check:browser": "bun build src/index.ts --target browser --outdir .browser-check"
+    "check:browser": "bun build src/index.ts --target browser --outdir .browser-check",
+    "prepack": "npm run build"
   },
   "dependencies": {
     "@stellar/stellar-sdk": "^16.3.1"
