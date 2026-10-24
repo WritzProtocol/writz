@@ -1,10 +1,14 @@
 ---
-title: "Earn"
+title: "USDC Vault"
+description: "Technical reference for the USDC vault behind the testnet app's Earn tab. Yield on Writz is the lender side of Writz Lend."
+noindex: true
 ---
 
 **Deposit USDC. Earn yield. The vault shares stay in your wallet.**
 
-Earn is a USDC savings vault. You deposit USDC, it is lent out through an audited lending market, and the yield accrues to your position automatically. There is no lock-up: withdraw part or all of it at any time. Earn is live on Stellar testnet at [testnet.writz.xyz](https://testnet.writz.xyz).
+This page documents the USDC vault behind the testnet app's **Earn** tab. Yield on Writz is the lender side of Writz Lend, where Bitcoin borrowers pay the interest: see [Writz Lend, For USDC Lenders](/products/writz-lend#for-usdc-lenders-earn).
+
+The vault is a USDC savings vault. You deposit USDC, it is lent out through an audited lending market, and the yield accrues to your position automatically. There is no lock-up: withdraw part or all of it at any time. The vault is live on Stellar testnet at [testnet.writz.xyz](https://testnet.writz.xyz).
 
 ---
 

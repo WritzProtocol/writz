@@ -19,7 +19,7 @@ Every command and response on this page was run against Stellar testnet and Bitc
 | Relayer `GET /spv-proof/:txid` | A ready-made proof for any confirmed signet transaction, already in the argument format `verify_transaction` takes | Live, verified below |
 | `bitcoin-spv` reads (`get_best_tip`, `get_header`, `get_canonical_hash`, `get_checkpoint`) | The light client's view of Bitcoin: tip height, block hashes, header timestamps | Live, verified below |
 | `writz-lend` reads (`get_protocol_state`, rates, `get_position`, `get_supply_balance`) | Pool size, rates and positions of the Writz lending pool | Live on testnet, reads verified below |
-| Earn relayer routes (`/defindex/apy`, `/position`, `/deposit`, `/withdraw`) and `writz-lend` `supply_usdc` / `withdraw_supply` | Yield on USDC without a contract of your own | Live on testnet, see [section 7](#7-earn-yield-on-usdc) |
+| `writz-lend` lender side (`supply_usdc`, `withdraw_supply`, `get_supply_balance`, `get_supply_rate_bp`) | Yield on USDC from the interest Bitcoin borrowers pay, without a contract of your own | Live on testnet, see [section 7](#7-earn-yield-on-usdc-as-a-lender) |
 | The testnet app, [testnet.writz.xyz](https://testnet.writz.xyz) | Deposit signet BTC, borrow test USDC | Link to it; there is no embed or widget API |
 
 Ideas that fit in a weekend: a Soroban contract that releases something (an NFT, access, an escrowed token) once a Bitcoin payment confirms; a Bitcoin payment checker for a store or invoice app; a dashboard of the Writz pool; a bot that watches a Bitcoin address and proves its payments on Stellar.
@@ -32,7 +32,7 @@ Ideas that fit in a weekend: a Soroban contract that releases something (an NFT,
 
 | Package | Registry | For | Status |
 |---|---|---|---|
-| [`@writz/sdk`](https://github.com/WritzProtocol/writz/tree/main/packages/sdk) | npm | TypeScript in the browser, Node or Bun: testnet preset, relayer client with typed errors and `Retry-After`, `bitcoin-spv` and `writz-lend` clients, Earn vault routes | Release pending: not on npm yet |
+| [`@writz/sdk`](https://github.com/WritzProtocol/writz/tree/main/packages/sdk) | npm | TypeScript in the browser, Node or Bun: testnet preset, relayer client with typed errors and `Retry-After`, `bitcoin-spv` and `writz-lend` clients | Release pending: not on npm yet |
 | [`writz-spv-client`](https://github.com/WritzProtocol/writz/tree/main/contracts/contracts/writz-spv-client) | crates.io | Soroban contracts: `BitcoinSpvClient`, the result and error types, the on-chain output parser `find_output_value` | Release pending: not on crates.io yet |
 
 Until a package is published, `npm install @writz/sdk` and `cargo add writz-spv-client` fail. Use the snippets on this page, which need only `@stellar/stellar-sdk` or `soroban-sdk`, or depend on the source in this repository. The package code and its tests are in the repository either way.
@@ -240,18 +240,25 @@ stellar contract invoke --id $LEND --network testnet --source-account $READER --
 
 USDC amounts are in stroops (7 decimals: `10000000000` is 1,000 USDC). Rates are annual basis points (`800` is 8%). Indexes are scaled by 10^18. `get_position` and `get_health_ratio_bp` take a deposit txid in internal byte order; `get_health_ratio_bp` returns basis points (`15000` is 150%, liquidation at `12000`). Full interface: [Contract Reference](/developers/contract-reference).
 
-`supply_usdc` and `withdraw_supply` are permissionless writes (the supplier signs). `@writz/sdk` builds them as unsigned transactions for a wallet (`lend.buildSupplyUsdc`, `lend.buildWithdrawSupply`), but this guide does not exercise them; borrowing needs a real signet deposit to the Writz script, which is what the [testnet app](https://testnet.writz.xyz) does for you.
+`supply_usdc` and `withdraw_supply` are permissionless writes signed by the supplier; [section 7](#7-earn-yield-on-usdc-as-a-lender) covers them. Borrowing needs a real signet deposit to the Writz script, which is what the [testnet app](https://testnet.writz.xyz) does for you.
 
-## 7. Earn yield on USDC
+## 7. Earn yield on USDC as a lender
 
-Two surfaces pay yield on testnet, and neither needs a contract of your own:
+Yield on Writz is the lender side of `writz-lend`. Lenders supply USDC to the pool that Bitcoin borrowers draw from, and the interest those borrowers pay is the lenders' yield. You need no contract of your own: the user's wallet signs `supply_usdc` and `withdraw_supply`, and your app reads the balance and the rate by simulation. The asset is the same test USDC as the rest of this page (`USDC:GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5`), and the user's account needs a trustline to it.
 
-- **Earn**, the Writz DeFindex vault that lends USDC on Blend, through the relayer: `GET /defindex/apy` (a fraction, variable), `GET /defindex/position?address=G...`, and `POST /defindex/deposit` and `POST /defindex/withdraw` with `{"caller":"G...","amountStroops":"..."}`, which return an unsigned transaction for the user's wallet to sign and your app to submit. The vault holds Blend's test USDC, not Circle's. See [Earn](/products/earn).
-- **The Writz Lend lender side**: `supply_usdc(supplier, amount)` and `withdraw_supply(supplier, amount)`, signed by the supplier, in the same test USDC as the rest of this page. The yield is the interest borrowers pay, so `get_supply_rate_bp` reads zero while nothing is borrowed.
+```bash
+LEND=CCMSOCBVX2S645MQFFXJRHVHRWH2NY62KLOJXNDYFOJRYHIC47EO6ZZK
+stellar contract invoke --id $LEND --network testnet --source-account me --send=no -- get_supply_rate_bp
+stellar contract invoke --id $LEND --network testnet --source-account me -- supply_usdc --supplier $(stellar keys address me) --amount 100000000
+stellar contract invoke --id $LEND --network testnet --source-account me --send=no -- get_supply_balance --lender $(stellar keys address me)
+stellar contract invoke --id $LEND --network testnet --source-account me -- withdraw_supply --supplier $(stellar keys address me) --amount 100000000
+```
 
-With `@writz/sdk` (release pending, see [Packages](#packages)) these are `relayer.getEarnApy`, `relayer.getEarnPosition`, `relayer.buildEarnDeposit` and `relayer.buildEarnWithdraw`, and `lend.getSupplyRateBp`, `lend.getSupplyBalance`, `lend.buildSupplyUsdc` and `lend.buildWithdrawSupply`; all of them return unsigned transactions or reads, never sign.
+`100000000` is 10 USDC. `get_supply_balance` includes the interest earned so far. `withdraw_supply` fails with `#13` (`InsufficientSupply`) above the lender's balance and with `#11` (`InsufficientLiquidity`) above the USDC that is not lent out at that moment.
 
-Rates on both are variable and must be read live, never quoted as fixed. Test tokens on testnet have no value. A worked flow (curl, a TypeScript deposit, the CLI calls) and product ideas built on it are in [What to build on Writz](/developers/request-for-startups#no-soroban-needed-build-on-writz-yield).
+The supply rate is variable and is zero while nothing is borrowed; with very little borrowed it still reads `0`, because it is counted in whole basis points (`500` is 5% a year). Read it live and label it as variable. Never show a fixed APY.
+
+With `@writz/sdk` (release pending, see [Packages](#packages)) these are `lend.getSupplyRateBp`, `lend.getSupplyBalance`, `lend.buildSupplyUsdc` and `lend.buildWithdrawSupply`; the builders return unsigned transactions for the wallet and never sign. A browser flow with `@stellar/stellar-sdk` and product ideas built on it are in [What to build on Writz](/developers/request-for-startups#no-soroban-needed-build-on-writz-yield).
 
 ---
 

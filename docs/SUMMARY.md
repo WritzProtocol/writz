@@ -19,7 +19,6 @@
 ## Products
 
 * [Writz Lend](/products/writz-lend)
-* [Earn](/products/earn)
 * [Dark Swap](/products/dark-swap)
 * [BTC Savings](/products/btc-savings)
 * [ZK Proof of Reserve](/products/zk-proof-of-reserve)

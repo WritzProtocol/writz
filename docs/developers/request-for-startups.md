@@ -11,7 +11,7 @@ This page lists products we would like to see built on top of that. Each idea is
 Building at the Pura Vida Ideathon (23 to 26 October 2026)? Any idea on this page, or your own, is eligible for the Writz integration bounties. The event page has the rules and the deadline.
 </Tip>
 
-Not a Soroban developer? Start with [No Soroban needed: build on Writz yield](#no-soroban-needed-build-on-writz-yield). Those ideas only put USDC in, let it earn and take it out, from a web page or a bot.
+Not a Soroban developer? Start with [No Soroban needed: build on Writz yield](#no-soroban-needed-build-on-writz-yield). Those ideas lend USDC to Writz Lend, let it earn the interest Bitcoin borrowers pay and take it out, from a web page or a bot, with no contract of your own.
 
 ---
 
@@ -24,7 +24,6 @@ Not a Soroban developer? Start with [No Soroban needed: build on Writz yield](#n
 | **BTC-collateralized USDC credit** (Writz Lend, `writz-lend`) | A borrower locks BTC in a P2WSH script on Bitcoin, registers it with `deposit`, borrows USDC up to 66.7% of its value (`borrow`), repays (`repay`) and takes the BTC back. Lenders `supply_usdc` and `withdraw_supply`. Read functions: `get_position`, `get_health_ratio_bp`, `get_borrow_rate_bp`, `get_supply_rate_bp`, `get_protocol_state` | [Writz Lend](/products/writz-lend); current contract ID in the deployment record above |
 | **Bitcoin lock script** (`@writz/bitcoin-script`) | TypeScript: builds the deposit redeem script and address, and the release and emergency (timelock) spends | [`bitcoin-script/`](https://github.com/WritzProtocol/writz/tree/main/bitcoin-script) in the repo (not published to npm; install from the repo) |
 | **Bitcoin transaction parsing** (`spv-types`) | Rust, `no_std`: `btc_parser::find_p2wsh_output` returns the satoshi value of the first output whose scriptPubKey equals the one you expect (any output type, despite the name); `key_proof` checks a BIP-137 signature from a Bitcoin key | [`contracts/contracts/spv-types/`](https://github.com/WritzProtocol/writz/tree/main/contracts/contracts/spv-types) (depend on it by git path) |
-| **USDC yield** (Earn) | A Writz DeFindex vault that supplies USDC to Blend. `POST /defindex/deposit` and `/withdraw` return an unsigned transaction for the user's wallet to sign; `GET /defindex/apy` and `/position` read it | [Earn](/products/earn) |
 | **USDC yield** (Writz Lend, lender side) | Lenders `supply_usdc` to the Writz Lend pool and `withdraw_supply` with interest. `get_supply_balance` returns a lender's balance including interest, `get_supply_rate_bp` the current annual rate. The interest comes from borrowers, so the rate is zero while nothing is borrowed | [Writz Lend](/products/writz-lend); current contract ID in the deployment record above |
 
 Things to know before you start:
@@ -33,73 +32,36 @@ Things to know before you start:
 - **Confirmations take time.** Six Signet confirmations take about an hour, sometimes longer. Make your Bitcoin transactions on day one, not an hour before the deadline. For a demo you can ask for fewer confirmations; say so in your pitch.
 - **`verify_transaction` does not remember.** It proves a transaction is in the chain; it does not mark it as used. If your contract pays out against a Bitcoin payment, store the `txid` and refuse it the second time. It also does not read outputs: parse `raw_tx` to check the amount and the recipient (use `spv-types` from Rust).
 - **A Writz Lend deposit is a real Bitcoin transaction.** It needs Signet BTC sent to the address `@writz/bitcoin-script` derives, the confirmations the deployment requires (1 on testnet), the proof from the SPV proof API, and a BIP-137 signature from the depositor's Bitcoin key over the message the contract rebuilds (reference implementation: `signDeposit` in [`scripts/deploy/e2e_local.mjs`](https://github.com/WritzProtocol/writz/blob/main/scripts/deploy/e2e_local.mjs)). The minimum deposit is 5,000 sats on testnet and 100,000 sats (0.001 BTC) on mainnet.
-- **Testnet USDC.** Writz Lend uses Circle's testnet USDC (issuer `GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5`). Add the trustline in your wallet and swap testnet XLM for it, or use Circle's faucet. The testnet Earn vault holds a Blend test token instead.
+- **Testnet USDC.** Writz Lend uses Circle's testnet USDC (issuer `GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5`). Add the trustline in your wallet and swap testnet XLM for it, or use Circle's faucet.
 - **Testnet only.** Nothing here is audited, and Writz lending is not on mainnet (target: Q2 to Q3 2027). Do not put real funds through it.
 
 ---
 
 ## No Soroban needed: build on Writz yield
 
-These ideas need a designer and a front-end developer more than a smart contract developer. The integration is the same in all of them: the user puts USDC in, it earns interest, and the user takes it out when they want. Your product is everything around that: who saves, why, how often, and what they see.
+These ideas need a designer and a front-end developer more than a smart contract developer. The integration is the same in all of them: the user lends USDC to the Writz Lend pool, it earns the interest Bitcoin borrowers pay, and the user takes it out when they want. Your product is everything around that: who saves, why, how often, and what they see.
 
-Two Writz surfaces pay yield on testnet:
+| What the user does | Contract call | What the user signs |
+|---|---|---|
+| Save | `supply_usdc(supplier, amount)` | One Stellar transaction, built by your page, signed in the user's own wallet |
+| Take money out | `withdraw_supply(supplier, amount)` | One Stellar transaction, the same way |
+| See the balance | `get_supply_balance(lender)`, principal plus interest | Nothing: a simulated read |
+| See the rate | `get_supply_rate_bp()`, annual basis points | Nothing: a simulated read |
 
-| Surface | Where the yield comes from | How you call it | What the user signs |
-|---|---|---|---|
-| **Earn** | A Writz DeFindex vault that lends the USDC on Blend | Plain HTTP to the relayer: `GET /defindex/apy`, `GET /defindex/position?address=G...`, `POST /defindex/deposit`, `POST /defindex/withdraw` | One Stellar transaction per deposit or withdrawal, built by the relayer, signed in the user's own wallet, submitted by your page |
-| **Writz Lend, lender side** | Interest paid by borrowers who lock BTC and borrow USDC | Contract calls with the Stellar SDK or the `stellar` CLI: `supply_usdc(supplier, amount)`, `withdraw_supply(supplier, amount)`, reads `get_supply_balance(lender)` and `get_supply_rate_bp()` | One Stellar transaction per supply or withdrawal, signed by the supplier |
+The yield is not a subsidy. It is the interest that people who lock BTC and borrow USDC pay to the pool, minus the 15% protocol fee; see [Writz Lend, For USDC Lenders](/products/writz-lend#for-usdc-lenders-earn).
 
-Earn is the easier start: four HTTP routes, no contract bindings. Writz Lend is the better fit when your users already hold Circle testnet USDC (see below), and it is the surface where Bitcoin borrowers pay your savers.
+Before you design around it:
 
-Before you design around them:
-
-- **Test money, not real money.** On testnet both surfaces use test tokens with no value. Earn holds Blend's test USDC (`USDC` issued by `GATALTGTWIOT6BUDBCZM3Q4OQ4BO2COLOAZ7IYSKPLC2PMSOPPGF5V56`, free from the faucet at [testnet.blend.capital](https://testnet.blend.capital)); Writz Lend holds Circle's testnet USDC (issuer `GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5`, swap testnet XLM for it on the DEX). Same code, different issuers, so on testnet they are two unrelated assets: pick one surface and fund your demo accounts in its asset. The user's account needs a trustline to that asset first. The DEX has almost no liquidity for Blend's test USDC, so use the Blend faucet for it.
-- **No promised rate.** Both rates are variable. Read them live and label them as variable: Earn's APY from `GET /defindex/apy` (a fraction: `0.06` is 6%), the lender rate from `get_supply_rate_bp` (annual basis points: `500` is 5%). While we tested on 2026-10-24, the Earn APY read 6.02% and 12.56% within the same hour, and the Writz Lend supply rate read 0, because nothing was borrowed at that moment. Do not put a fixed APY in your pitch or your UI.
-- **The user keeps the keys.** The relayer builds transactions; it never signs or submits them, and it cannot move anyone's funds. Keep it that way in your product: let users sign in their own wallet ([Stellar Wallets Kit](https://stellarwalletskit.dev) covers Freighter, xBull, Lobstr and others). If your app collects users' USDC into an account you control, you have become a custodian, and you should say so in your pitch.
-- **One position per Stellar account.** Earn and Writz Lend both track one balance per account. Goals, sub-accounts and "money for the trip" versus "money for school" live in your app's own database, not on chain.
-- **Rate limits.** The relayer allows 60 read calls and 10 transaction builds per minute per IP address. A bot or a backend that serves many users from one server shares that budget: cache the APY, and do not poll every user's position every few seconds.
+- **Test money, not real money.** Writz Lend holds Circle's testnet USDC (issuer `GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5`), which has no value. The user's account needs a trustline to it first; swap testnet XLM for it on the DEX or use Circle's faucet.
+- **No promised rate.** The rate is variable and comes only from borrowers. While nothing is borrowed it is zero, and with very little borrowed `get_supply_rate_bp` still reads `0` (it counts whole basis points: `500` is 5% a year). On 2026-10-25 it read `0` with 2 USDC borrowed from a 1,000 USDC pool. Read it live, label it as variable, and design the screen for the zero case. Do not put a fixed APY in your pitch or your UI.
+- **Withdrawals depend on free liquidity.** A lender can always withdraw up to their balance, as long as that USDC is not lent out at that moment. When borrowers hold most of the pool, a large withdrawal fails with `InsufficientLiquidity` (#11) until they repay or new lenders supply. Show that state instead of a generic error.
+- **The user keeps the keys.** Your page builds the transaction; the user's wallet signs it. Let users sign in their own wallet ([Stellar Wallets Kit](https://stellarwalletskit.dev) covers Freighter, xBull, Lobstr and others). If your app collects users' USDC into an account you control, you have become a custodian, and you should say so in your pitch.
+- **One balance per Stellar account.** Writz Lend tracks one supply balance per account. Goals, sub-accounts and "money for the trip" versus "money for school" live in your app's own database, not on chain.
+- **Use your own RPC budget wisely.** Reads are simulations against Soroban RPC, not relayer calls. A bot or a backend that serves many users should cache the rate and avoid polling every user's balance every few seconds.
 
 ### Integrate yield in 15 minutes
 
-Read the vault (no account, no key):
-
-```bash
-curl https://api.testnet.writz.xyz/defindex/apy
-# {"apy":0.1256}   fraction, variable: 0.1256 is 12.56%
-
-curl "https://api.testnet.writz.xyz/defindex/position?address=G..."
-# {"dfTokens":"0","underlyingStroops":"0"}   vault shares, and their value in USDC stroops (7 decimals)
-```
-
-Deposit from a web page. The relayer returns the transaction ready to sign; the user's wallet signs it, and your page submits it:
-
-```ts
-import { TransactionBuilder, Networks, rpc } from "@stellar/stellar-sdk";
-
-const RELAYER = "https://api.testnet.writz.xyz";
-const server = new rpc.Server("https://soroban-testnet.stellar.org");
-
-async function save(address: string, usdc: number) {
-  const amountStroops = String(Math.round(usdc * 1e7)); // 7 decimals
-  const res = await fetch(`${RELAYER}/defindex/deposit`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ caller: address, amountStroops }),
-  });
-  const { xdr, error } = await res.json();
-  if (error) throw new Error(error); // e.g. TokenErrors.MissingTrustline
-
-  const signedXdr = await signWithWallet(xdr); // your wallet integration
-  const tx = TransactionBuilder.fromXDR(signedXdr, Networks.TESTNET);
-  const sent = await server.sendTransaction(tx);
-  if (sent.status === "ERROR" || sent.status === "TRY_AGAIN_LATER") throw new Error(sent.status);
-  return server.pollTransaction(sent.hash, { attempts: 30 });
-}
-```
-
-Withdrawing is the same call to `POST /defindex/withdraw`, where `amountStroops` is the USDC amount to take out; send the `underlyingStroops` from `/position` to withdraw everything. Ask for a fresh transaction if the user waits long before signing: a built transaction carries the account's sequence number and goes stale. Errors come back as `{"error": "..."}` with the vault's error name, for example `TokenErrors.MissingTrustline` when the account has no trustline to the vault's asset, or `VaultErrors.InsufficientBalance` when it withdraws more than it holds. The full route reference is in the [relayer README](https://github.com/WritzProtocol/writz/blob/main/relayer/README.md), and the app's own browser flow is [`frontend/app/src/lib/flows/earn.ts`](https://github.com/WritzProtocol/writz/blob/main/frontend/app/src/lib/flows/earn.ts).
-
-Writz Lend from the command line, with `LEND` set to the current `writz-lend` ID from [`contracts/deployments/testnet.md`](https://github.com/WritzProtocol/writz/blob/main/contracts/deployments/testnet.md) and an account that holds Circle testnet USDC (amounts in stroops, `100000000` is 10 USDC):
+From the command line, with `LEND` set to the current `writz-lend` ID from [`contracts/deployments/testnet.md`](https://github.com/WritzProtocol/writz/blob/main/contracts/deployments/testnet.md) and an account that holds Circle testnet USDC (amounts in stroops, `100000000` is 10 USDC):
 
 ```bash
 stellar contract invoke --id $LEND --network testnet --source-account me --send=no -- get_supply_rate_bp
@@ -108,9 +70,51 @@ stellar contract invoke --id $LEND --network testnet --source-account me --send=
 stellar contract invoke --id $LEND --network testnet --source-account me -- withdraw_supply --supplier $(stellar keys address me) --amount 100000000
 ```
 
-For a web page, `stellar contract bindings typescript` generates a typed client for the contract, and the user's wallet signs the transaction as above.
+From a web page, with `@stellar/stellar-sdk` 16.x. Reads are simulated and need no signature; a save or a withdrawal is prepared by your page, signed in the user's wallet and submitted by your page:
 
-Checked on 2026-10-24 against Stellar testnet: the read calls above returned the values shown; a deposit built by `POST /defindex/deposit` and signed passed simulation on Soroban RPC; `supply_usdc` passed simulation against the live `writz-lend` contract. They were simulated, not submitted, so these checks left no deposits behind.
+```ts
+import { Address, BASE_FEE, Contract, Networks, TransactionBuilder, nativeToScVal, rpc, scValToNative } from "@stellar/stellar-sdk";
+
+const LEND = "CCMSOCBVX2S645MQFFXJRHVHRWH2NY62KLOJXNDYFOJRYHIC47EO6ZZK"; // writz-lend, contracts/deployments/testnet.md
+const server = new rpc.Server("https://soroban-testnet.stellar.org");
+const lend = new Contract(LEND);
+
+async function build(address: string, method: string, ...args: any[]) {
+  const account = await server.getAccount(address);
+  return new TransactionBuilder(account, { fee: BASE_FEE, networkPassphrase: Networks.TESTNET })
+    .addOperation(lend.call(method, ...args))
+    .setTimeout(300)
+    .build();
+}
+
+async function read(address: string, method: string, ...args: any[]) {
+  const sim = await server.simulateTransaction(await build(address, method, ...args));
+  if (rpc.Api.isSimulationError(sim)) throw new Error(sim.error);
+  return scValToNative(sim.result!.retval);
+}
+
+export const rateBp = (address: string) => read(address, "get_supply_rate_bp").then(Number); // 500 is 5% a year; 0 while nothing is borrowed
+export const balanceStroops = (address: string) =>
+  read(address, "get_supply_balance", new Address(address).toScVal()) as Promise<bigint>; // 7 decimals, interest included
+
+async function send(address: string, method: "supply_usdc" | "withdraw_supply", usdc: number) {
+  const amount = nativeToScVal(BigInt(Math.round(usdc * 1e7)), { type: "i128" });
+  const tx = await server.prepareTransaction(await build(address, method, new Address(address).toScVal(), amount));
+  const signedXdr = await signWithWallet(tx.toXDR()); // your wallet integration
+  const sent = await server.sendTransaction(TransactionBuilder.fromXDR(signedXdr, Networks.TESTNET));
+  if (sent.status === "ERROR" || sent.status === "TRY_AGAIN_LATER") throw new Error(sent.status);
+  return server.pollTransaction(sent.hash, { attempts: 30 });
+}
+
+export const save = (address: string, usdc: number) => send(address, "supply_usdc", usdc);
+export const takeOut = (address: string, usdc: number) => send(address, "withdraw_supply", usdc);
+```
+
+`prepareTransaction` simulates first, so a call that would fail throws before the wallet opens: `Error(Contract, #13)` on `withdraw_supply` means more than the balance, `#11` more than the free liquidity, `#17` that the pool is paused. An account without a trustline to the test USDC fails inside the token contract on `supply_usdc`. To withdraw everything, pass the exact balance from `get_supply_balance`. Prepare a fresh transaction if the user waits long before signing: a built transaction carries the account's sequence number and goes stale. `stellar contract bindings typescript` generates a typed client instead of these helpers.
+
+With `@writz/sdk` (release pending: not on npm yet, see [Build on Writz](/developers/integrate#packages)) the same calls are `lend.getSupplyRateBp()`, `lend.getSupplyBalance(address)`, `lend.buildSupplyUsdc(address, stroops)` and `lend.buildWithdrawSupply(address, stroops)`, which return the unsigned transaction for the wallet.
+
+Checked on 2026-10-25 against Stellar testnet and the live `writz-lend` contract, with the TypeScript above: `get_supply_rate_bp` returned `0` and `get_supply_balance` the supplier's 1,000 USDC; `supply_usdc` and `withdraw_supply` of 10 USDC were prepared by simulation for an account that holds the test USDC, a `withdraw_supply` above its balance failed with `#13`, and `supply_usdc` from an account without a trustline failed inside the token contract. Nothing was submitted, so these checks left no deposits behind.
 
 ### A. Dollar savings with goals
 
@@ -118,9 +122,9 @@ Checked on 2026-10-24 against Stellar testnet: the read calls above returned the
 
 **Who pays.** Free for savers; the business is a small share of the yield, or a cooperative, bank or university that offers it to its members under its own name.
 
-**Writz surface.** Earn.
+**Writz surface.** Writz Lend, lender side.
 
-**48h scope.** A digital alcancía, mobile first: create a goal (name, target, date), connect a wallet, save with `POST /defindex/deposit` (the saver signs one transaction), and a progress bar from `GET /defindex/position` against the target. Show the live APY from `GET /defindex/apy`, marked as variable, and a withdraw button. Goals live in your own database; the vault sees one position per account.
+**48h scope.** A digital alcancía, mobile first: create a goal (name, target, date), connect a wallet, save with `supply_usdc` (the saver signs one transaction), and a progress bar from `get_supply_balance` against the target. Show the live rate from `get_supply_rate_bp`, marked as variable, with a clear screen for when it is zero, and a withdraw button. Goals live in your own database; the pool sees one balance per account.
 
 **Stretch.** Round-ups and saving streaks, a goal shared with family, sign-in by email with an embedded wallet, cash in and out in colones through a SEP-24 anchor.
 
@@ -130,7 +134,7 @@ Checked on 2026-10-24 against Stellar testnet: the read calls above returned the
 
 **Who pays.** Remittance apps and wallets, as a feature that keeps money and users on their platform; a share of the yield on what is saved.
 
-**Writz surface.** Writz Lend, lender side, because remittances on Stellar arrive in Circle USDC, the asset the lending pool holds on testnet. Earn works too if you fund the demo in its test asset.
+**Writz surface.** Writz Lend, lender side. Remittances on Stellar arrive in Circle USDC, the asset the lending pool holds, so the saved slice goes straight in without a swap.
 
 **48h scope.** A receiver app that watches the account for incoming USDC payments (Horizon's payments stream), and on each one proposes "save 10%", built as a `supply_usdc` transaction the receiver signs. A history screen of received versus saved, and the saved balance with interest from `get_supply_balance`. Show the live rate from `get_supply_rate_bp`, and what the screen says when it is zero.
 
@@ -142,9 +146,9 @@ Checked on 2026-10-24 against Stellar testnet: the read calls above returned the
 
 **Who pays.** Small businesses, a monthly plan; accountants and point-of-sale platforms that offer it to their merchants.
 
-**Writz surface.** Earn, or Writz Lend's lender side.
+**Writz surface.** Writz Lend, lender side.
 
-**48h scope.** A dashboard with one rule: keep X USDC in the wallet for expenses, park the rest. A button that builds the deposit or withdrawal to get back to the rule, signed by the owner. Interest earned since the first deposit, computed as the position's current value minus net deposits (which your app records).
+**48h scope.** A dashboard with one rule: keep X USDC in the wallet for expenses, lend the rest to the pool. A button that builds the `supply_usdc` or `withdraw_supply` to get back to the rule, signed by the owner. Interest earned since the first deposit, computed as `get_supply_balance` minus net deposits (which your app records). Handle the case where the pool's free liquidity is lower than the withdrawal the rule asks for.
 
 **Stretch.** A business account that needs two signatures (Stellar multisig), withdrawals timed for scheduled supplier payments, an export for the accountant.
 
@@ -154,11 +158,11 @@ Checked on 2026-10-24 against Stellar testnet: the read calls above returned the
 
 **Who pays.** NGOs and foundations, a platform fee; donors, per campaign.
 
-**Writz surface.** Earn.
+**Writz surface.** Writz Lend, lender side.
 
-**48h scope.** Donors send USDC to the fund's own Stellar account (a plain payment; if donors deposited into the vault themselves, the shares would be theirs, not the fund's). The fund deposits the donations into Earn. A public page shows the principal (the sum of donations, recorded by your app), the current value from `GET /defindex/position`, and "available to spend": value minus principal. The treasurer withdraws exactly that amount with `POST /defindex/withdraw` and pays a beneficiary, with every transaction linked.
+**48h scope.** Donors send USDC to the fund's own Stellar account (a plain payment; if donors supplied to the pool themselves, the balance would be theirs, not the fund's). The fund lends the donations to Writz Lend with `supply_usdc`. A public page shows the principal (the sum of donations, recorded by your app), the current value from `get_supply_balance`, and "available to spend": value minus principal. The treasurer withdraws exactly that amount with `withdraw_supply` and pays a beneficiary, with every transaction linked. Be honest on the page that "available to spend" stays at zero while nothing is borrowed.
 
-**Stretch.** A Soroban contract that holds the vault shares and enforces on chain that the principal never leaves, donor receipts, members voting on where the yield goes.
+**Stretch.** A Soroban contract that is itself the supplier and enforces on chain that the principal never leaves, donor receipts, members voting on where the yield goes.
 
 ### E. A savings bot in the chat app people already use
 
@@ -166,21 +170,21 @@ Checked on 2026-10-24 against Stellar testnet: the read calls above returned the
 
 **Who pays.** Cooperatives, communities and fintechs that want a chat channel to their members; a share of the yield.
 
-**Writz surface.** Earn.
+**Writz surface.** Writz Lend, lender side.
 
-**48h scope.** A Telegram bot (its Bot API is free and quick to start with; WhatsApp's business API needs approval, so leave it for later) with `/rate`, `/balance` and `/save 10`. The bot reads the relayer and, for a deposit, replies with a link to a small page where the user signs in their own wallet. The bot never holds a key. A weekly message with what the user saved. Mind the relayer rate limits above: one bot is one IP address.
+**48h scope.** A Telegram bot (its Bot API is free and quick to start with; WhatsApp's business API needs approval, so leave it for later) with `/rate`, `/balance` and `/save 10`. The bot reads `get_supply_rate_bp` and `get_supply_balance` by simulation and, for a deposit, replies with a link to a small page where the user signs the `supply_usdc` in their own wallet. The bot never holds a key. A weekly message with what the user saved. Cache the rate: one bot serving many users should not simulate on every message.
 
 **Stretch.** Group savings challenges, reminders on payday, and the [savings circle](#8-savings-circles-that-earn-while-they-wait) from idea 8 run inside a group chat.
 
 | Idea | Writz surface | Stellar fit | Weekend | Business |
 |---|---|---|---|---|
-| [A. Dollar savings with goals](#a-dollar-savings-with-goals) | Earn | Medium | High | Medium |
+| [A. Dollar savings with goals](#a-dollar-savings-with-goals) | Writz Lend, lender side | Medium | High | Medium |
 | [B. Remittance that saves](#b-a-remittance-that-saves-a-slice-on-arrival) | Writz Lend, lender side | High | High | High |
-| [C. Business treasury](#c-a-treasury-for-small-businesses) | Earn or Writz Lend | High | High | Medium |
-| [D. Endowment](#d-an-endowment-that-spends-only-the-yield) | Earn | Medium | High | Medium |
-| [E. Savings bot](#e-a-savings-bot-in-the-chat-app-people-already-use) | Earn | Medium | High | Medium |
+| [C. Business treasury](#c-a-treasury-for-small-businesses) | Writz Lend, lender side | High | High | Medium |
+| [D. Endowment](#d-an-endowment-that-spends-only-the-yield) | Writz Lend, lender side | Medium | High | Medium |
+| [E. Savings bot](#e-a-savings-bot-in-the-chat-app-people-already-use) | Writz Lend, lender side | Medium | High | Medium |
 
-Scores use the same questions as the table below. Stellar fit is Medium where the same app could run on another chain's lending market; it rises when you add Stellar-specific pieces such as a SEP-24 anchor for cash in and out.
+Scores use the same questions as the table below. Stellar fit is Medium where the same savings app could run on another chain's lending market; it rises when you add Stellar-specific pieces such as a SEP-24 anchor for cash in and out.
 
 ---
 
@@ -203,7 +207,7 @@ High means it clearly passes; Medium means it passes with a caveat named in the 
 | 5 | [Position guardian](#5-position-guardian) | USDC credit (read) | High | High | Medium |
 | 6 | [A Bitcoin-backed credit line for AI agents](#6-a-bitcoin-backed-credit-line-for-ai-agents) | USDC credit | High | Medium | Medium |
 | 7 | [Bitcoin payment checks as a tool for agents](#7-bitcoin-payment-checks-as-a-tool-for-agents) | Payment verification | Medium | High | Medium |
-| 8 | [Savings circles that earn while they wait](#8-savings-circles-that-earn-while-they-wait) | Earn | High | High | Medium |
+| 8 | [Savings circles that earn while they wait](#8-savings-circles-that-earn-while-they-wait) | USDC lending | High | High | Medium |
 
 ---
 
@@ -299,9 +303,9 @@ High means it clearly passes; Medium means it passes with a caveat named in the 
 
 **Who pays.** Groups, a small share of the yield; cooperatives and community organizations that run many circles.
 
-**Writz primitive.** Earn. Between payouts, the group's USDC sits in the Writz Earn vault and earns lending yield; the relayer builds the deposit and withdrawal transactions for the group's wallet to sign.
+**Writz primitive.** USDC lending, the Writz Lend lender side. Between payouts, the group's USDC is lent to the Writz Lend pool and earns the interest Bitcoin borrowers pay.
 
-**48h scope.** A Soroban contract for one circle (members, contribution, rotation order, payout) that deposits contributions into Earn and withdraws the pot for the member whose turn it is, plus a simple page for members. Use the Earn endpoints on testnet.
+**48h scope.** A Soroban contract for one circle (members, contribution, rotation order, payout) that is itself the supplier: it calls `supply_usdc` with each contribution and `withdraw_supply` for the pot when a member's turn comes, plus a simple page for members. A payout can fail if the pool's free liquidity is below the pot at that moment, so the contract needs a retry or a partial payout rule.
 
 **Stretch.** Penalties for late payments, invitations by phone number, a group whose members hold Bitcoin and contribute by borrowing against it on Writz Lend.
 

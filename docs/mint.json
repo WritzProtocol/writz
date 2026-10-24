@@ -76,7 +76,6 @@
       "group": "Products",
       "pages": [
         "products/writz-lend",
-        "products/earn",
         "products/dark-swap",
         "products/btc-savings",
         "products/zk-proof-of-reserve"

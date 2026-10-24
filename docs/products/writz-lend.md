@@ -168,9 +168,34 @@ The liquidator pays the full outstanding USDC debt and receives a 10% USDC bonus
 
 ---
 
-## For USDC Lenders
+## For USDC Lenders: Earn
 
-Writz Lend is also a yield opportunity for USDC holders. You supply USDC to the pool with `supply_usdc` and earn the supply rate, which follows utilization (see the interest rate model above). Withdraw at any time with `withdraw_supply`, subject to pool liquidity. There is no lockup. See [Earn](/products/earn).
+Earn on Writz means lending USDC to the Writz Lend pool. The USDC lenders supply is what Bitcoin borrowers draw against, and the interest those borrowers pay is the lenders' yield. Nothing else is in between: no vault, no strategy, no second protocol. On testnet, use the **Lend** tab at [testnet.writz.xyz](https://testnet.writz.xyz), or call the contract directly.
+
+**How the yield works**
+
+- You supply USDC with `supply_usdc(supplier, amount)`. The pool records your deposit as scaled units, so your balance grows as the supply index grows with every interest payment. `get_supply_balance(lender)` returns your balance with the interest included.
+- The supply rate follows utilization: `supply rate = borrow rate x utilization x 0.85` (see the interest rate model above). The 15% that is not passed to lenders is the protocol reserve, which pays liquidation bonuses.
+- The rate is variable and can be zero. With nothing borrowed, nobody pays interest and lenders earn nothing; with very little borrowed, `get_supply_rate_bp()` still reads `0` because the rate is counted in whole basis points. Read it live. Writz never promises an APY.
+
+**Withdrawing**
+
+- `withdraw_supply(supplier, amount)` returns up to your balance, principal plus interest. There is no lockup and no fee on deposits or withdrawals.
+- You can only withdraw USDC that is not lent out at that moment. If borrowers hold most of the pool, a withdrawal above the free liquidity fails (`InsufficientLiquidity`) until borrowers repay or new lenders supply. High utilization raises the borrow rate steeply above 75%, which is what pulls that liquidity back.
+
+**What you are exposed to**
+
+- Your USDC funds loans backed by BTC at a 150% minimum collateral ratio, eligible for liquidation below 120%. A liquidation repays the full debt to the pool in USDC; the liquidator is paid from the protocol reserve, not with BTC (see Liquidation above). A position that nobody liquidates stays borrowed, and the pool's total exposure is bounded by the 50,000 USDC borrow cap.
+- Collateral is priced by a single oracle today (Reflector BTC/USD), and the contracts are not audited yet. Writz lending is on testnet only, with test USDC that has no value.
+
+| Lender call | What it does | Signed by |
+|---|---|---|
+| `supply_usdc(supplier, amount)` | Moves `amount` USDC stroops from the supplier into the pool | The supplier |
+| `withdraw_supply(supplier, amount)` | Returns `amount` USDC stroops, up to the balance and the free liquidity | The supplier |
+| `get_supply_balance(lender)` | The lender's balance with interest, in stroops (7 decimals) | Read only |
+| `get_supply_rate_bp()` | The current annual supply rate in basis points (`500` is 5%) | Read only |
+
+Code for a web page, a bot or the CLI is in [Build on Writz](/developers/integrate#7-earn-yield-on-usdc-as-a-lender).
 
 ---
 
