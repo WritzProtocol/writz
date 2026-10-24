@@ -197,6 +197,8 @@ jobs:
   # live-smoke.yml, not here, so a testnet outage cannot fail a PR.
   sdk:
     name: sdk (bun · typecheck + test + build + pack)
+    permissions:
+      contents: read
     needs: changes
     if: needs.changes.outputs.sdk == 'true'
     runs-on: ubuntu-latest
@@ -232,6 +234,8 @@ jobs:
   # live-smoke.yml.
   examples:
     name: examples (verify-bitcoin-tx typecheck · spv-payment-check test + wasm)
+    permissions:
+      contents: read
     needs: changes
     if: needs.changes.outputs.examples == 'true'
     runs-on: ubuntu-latest

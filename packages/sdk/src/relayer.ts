@@ -44,7 +44,9 @@ export class RelayerClient {
   constructor(opts: RelayerClientOptions = {}) {
     const url = opts.relayerUrl ?? opts.network?.relayerUrl;
     if (!url) throw new TypeError("RelayerClient needs a network preset or a relayerUrl");
-    this.baseUrl = url.replace(/\/+$/, "");
+    let base = url;
+    while (base.endsWith("/")) base = base.slice(0, -1);
+    this.baseUrl = base;
     this.fetchImpl = opts.fetch ?? ((url, init) => globalThis.fetch(url, init));
     this.maxRetries = opts.maxRetries ?? 2;
     this.maxRetryWaitSeconds = opts.maxRetryWaitSeconds ?? 120;
