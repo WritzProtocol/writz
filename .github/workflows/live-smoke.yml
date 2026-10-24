@@ -1,0 +1,33 @@
+name: Live smoke (testnet)
+
+# Read-only checks against Stellar testnet and the public relayer: the
+# @writz/sdk live test and the verify-bitcoin-tx example. Kept out of ci.yml so
+# a testnet or relayer outage never fails a pull request; a red run here means
+# an integrator following the docs would fail today.
+on:
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  live:
+    name: sdk live test + verify-bitcoin-tx
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+      - name: "@writz/sdk live test"
+        working-directory: packages/sdk
+        run: |
+          bun install --frozen-lockfile
+          bun run test:live
+      - name: verify-bitcoin-tx example
+        working-directory: examples/verify-bitcoin-tx
+        run: |
+          bun install --frozen-lockfile
+          bun run start

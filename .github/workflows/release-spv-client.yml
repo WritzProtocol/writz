@@ -1,0 +1,55 @@
+name: Release writz-spv-client
+
+# Push a tag `writz-spv-client-v<version>` matching
+# contracts/contracts/writz-spv-client/Cargo.toml to publish the crate to
+# crates.io and create the GitHub Release. Needs the CARGO_REGISTRY_TOKEN secret.
+on:
+  push:
+    tags:
+      - "writz-spv-client-v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-spv-client
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: publish to crates.io
+    runs-on: ubuntu-latest
+    environment: crates-io
+    defaults:
+      run:
+        working-directory: contracts
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32v1-none
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: contracts
+      - name: Tag matches Cargo.toml version
+        run: |
+          version=$(cargo metadata --no-deps --format-version 1 \
+            | python3 -c 'import json,sys; print(next(p["version"] for p in json.load(sys.stdin)["packages"] if p["name"]=="writz-spv-client"))')
+          if [ "writz-spv-client-v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "tag $GITHUB_REF_NAME does not match Cargo.toml version $version" >&2
+            exit 1
+          fi
+      - run: cargo test -p writz-spv-client --locked
+      - run: cargo build -p writz-spv-client --release --target wasm32v1-none --locked
+      - name: Publish
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: cargo publish -p writz-spv-client --locked
+      - name: GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "writz-spv-client ${GITHUB_REF_NAME#writz-spv-client-v}" \
+            --notes "Published to crates.io: https://crates.io/crates/writz-spv-client/${GITHUB_REF_NAME#writz-spv-client-v}" \
+            --generate-notes

@@ -1,6 +1,6 @@
 # Examples
 
-Small, runnable integrations against the Writz contracts on Stellar testnet. Each one was run against testnet before it was committed. Neither is built by CI; their READMEs say how to run them.
+Small, runnable integrations against the Writz contracts on Stellar testnet. Each one was run against testnet before it was committed. CI typechecks `verify-bitcoin-tx` and tests and builds `spv-payment-check` on every change; a daily workflow runs `verify-bitcoin-tx` against testnet. Their READMEs say how to run them.
 
 | Example | Stack | What it shows |
 |---|---|---|
