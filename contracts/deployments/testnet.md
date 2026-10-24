@@ -8,9 +8,52 @@
 
 ---
 
-## `writz-lend` redeploy (2026-10-23)
+## `writz-lend` redeploy (2026-10-24, second)
 
-`writz-lend` deployed alone from `refactor/rename-writz-lend` at `c0722e7` (`cargo build --release --target wasm32v1-none --locked -p writz-lend`), to bring the deposit key signature and the supply index on chain for the app. It replaces `CA3T7T2S7HV27BXO7OLIHSMGAMQ37BMOOUHQLTBGUQVL4B6Y2CDJPHHX` for new positions; the other contracts of the 2026-10-11 deployment are unchanged.
+The same build as the instance below (`c1fdae0`, wasm sha256 `b917558060268cf1665937726b99e4145ffab72b33ec01f8e3355cd173a34b4c`), deployed again later the same day with a rotated protocol co-signing key and a relayer account of its own, separate from the admin. `bitcoin-spv`'s header submitter moved to the same relayer account. It replaces `CAVAD3NGIJPDTFLBLJQ5FMLT6UNFE3UFOI3RTQVOVS5RWAD5EDVI5EX4`; that instance's 1,000 USDC of supply moved here and it is no longer a `bitcoin-spv` consumer.
+
+| Field | Value |
+|---|---|
+| **Contract ID** | `CCMSOCBVX2S645MQFFXJRHVHRWH2NY62KLOJXNDYFOJRYHIC47EO6ZZK` |
+| wasm sha256 | `b917558060268cf1665937726b99e4145ffab72b33ec01f8e3355cd173a34b4c` |
+| Deploy tx | [`ce4a65fa1f…`](https://stellar.expert/explorer/testnet/tx/ce4a65fa1f0af04627dee9fab8a26530c36d84d8d8c75ae22e2ff8a95b5b1aa3) |
+| `admin`, `keeper` | `writz-deployer` |
+| `relayer` | `GCNBKRZO5T24SF7EPLVUABSFO76TFWXJBIHKL4TH6ZAX7IJOFRQ5GWN4` (also `bitcoin-spv`'s header submitter, [`8b8751c23c…`](https://stellar.expert/explorer/testnet/tx/8b8751c23c873e58f85e929b95a9597a8cf6535abb8a2d0759bd51b438bde0fc)) |
+| `spv_contract` | `CAHHY4S4WCIFU4LBSKBI3IP6A4QYR2COV6EACDEBXGPJFDWBJWGOMCLP` |
+| `usdc_token` | `CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA` |
+| `oracle` | `CCYOZJCOPG34LLQQ7N24YXBM7LL62R7ONMZ3G6WZAAYPB5OYKOMJRN63` (Reflector, external CEXs & DEXs) |
+| `protocol_pubkey` | `03d2f0699b167138988bf8d14a4655a8708066473b4c59ef40ee4ac500564fb70d` |
+| `min_confirmations` | `1` (testnet) |
+| `min_deposit_satoshis` | `5,000` (testnet; 100,000 on mainnet) |
+| `max_total_borrowed` | 50,000 USDC (default) |
+| `bitcoin-spv` consumer | [`7dcae0b3fb…`](https://stellar.expert/explorer/testnet/tx/7dcae0b3fb96d7545ee2b9a5a5b69d499617180f071ed5604e099dcb3c93874b); `CAVAD3NG…` removed in [`543c16081d…`](https://stellar.expert/explorer/testnet/tx/543c16081dd2c253e8e10c2b0b1227b252189172dd68ad3f4ef100e62e5555a6) |
+| Supply moved | Withdrawn from `CAVAD3NG…` [`2fd055a2cc…`](https://stellar.expert/explorer/testnet/tx/2fd055a2cc64bc71ddb8b7b01363e95c4768568eec818e9dbeb004f661b5dc89), 1,000 USDC supplied here [`eb577b6191…`](https://stellar.expert/explorer/testnet/tx/eb577b6191134b6474d6024b354009cafe785e57b7778bcce678239e3208f141) |
+
+The app's `NEXT_PUBLIC_PROTOCOL_BTC_PUBKEY` is `03d2f0699b167138988bf8d14a4655a8708066473b4c59ef40ee4ac500564fb70d` from this deployment on.
+
+## `writz-lend` redeploy (2026-10-24, first, superseded)
+
+`writz-lend` deployed alone from `feat/writz-lend-deposit-params` at `c1fdae0` (`cargo build --release --target wasm32v1-none --locked -p writz-lend`). The constructor now takes `min_confirmations` and `min_deposit_satoshis`. The 2026-10-23 instance had the mainnet values built in (6 confirmations, 100,000 sats), so a testnet deposit needed six Signet blocks while the app waited for one, and more BTC than a Signet faucet pays out. This instance runs 1 confirmation and 5,000 sats, which one faucet payout covers with room for the fee. It replaces `CDR3RWSGSA6ADQANZ55S4H6J7SW5O4LCRV3AIU2WQBLGWC3477GE5QXV`, which held no positions; its 1,000 USDC of supply moved here and `bitcoin-spv` no longer accepts it as a consumer.
+
+| Field | Value |
+|---|---|
+| **Contract ID** | `CAVAD3NGIJPDTFLBLJQ5FMLT6UNFE3UFOI3RTQVOVS5RWAD5EDVI5EX4` |
+| wasm sha256 | `b917558060268cf1665937726b99e4145ffab72b33ec01f8e3355cd173a34b4c` |
+| Deploy tx | [`fdf4a0e162…`](https://stellar.expert/explorer/testnet/tx/fdf4a0e162e7288ed6249ca93656fa6d8be213743f81fbdc7a77195913539980) |
+| `admin`, `keeper`, `relayer` | `writz-deployer` |
+| `spv_contract` | `CAHHY4S4WCIFU4LBSKBI3IP6A4QYR2COV6EACDEBXGPJFDWBJWGOMCLP` |
+| `usdc_token` | `CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA` |
+| `oracle` | `CCYOZJCOPG34LLQQ7N24YXBM7LL62R7ONMZ3G6WZAAYPB5OYKOMJRN63` (Reflector, external CEXs & DEXs) |
+| `protocol_pubkey` | `022b9711f185db1d54aa841d949d9ea1e5644dece224dba8f1acbb3275e04e8458` |
+| `min_confirmations` | `1` (testnet) |
+| `min_deposit_satoshis` | `5,000` (testnet; 100,000 on mainnet) |
+| `max_total_borrowed` | 50,000 USDC (default) |
+| `bitcoin-spv` consumer | [`969285d9de…`](https://stellar.expert/explorer/testnet/tx/969285d9de40f00a030a5594d1bd18e88c665f0df1f994a20d58a18b2ccad11a); `CDR3RWSG…` removed in [`e8ee8faa32…`](https://stellar.expert/explorer/testnet/tx/e8ee8faa32396a0b3abb5cf76af894eff0980a6f8482f4f2d825eddbc0d747ba) |
+| Supply moved | Withdrawn from `CDR3RWSG…` [`ceabc2d49b…`](https://stellar.expert/explorer/testnet/tx/ceabc2d49bfd39a0ec3c80036f1e4926636f1c28c9d6530000908959908e51ba), 1,000 USDC supplied here [`a42b4d9c26…`](https://stellar.expert/explorer/testnet/tx/a42b4d9c26b885ec787336dd947a3e20e0c89f61074d53871412f1f710f68ba5) |
+
+## `writz-lend` redeploy (2026-10-23, superseded)
+
+`writz-lend` deployed alone from `refactor/rename-writz-lend` at `c0722e7` (`cargo build --release --target wasm32v1-none --locked -p writz-lend`), to bring the deposit key signature and the supply index on chain for the app. Superseded on 2026-10-24 (above). It replaced `CA3T7T2S7HV27BXO7OLIHSMGAMQ37BMOOUHQLTBGUQVL4B6Y2CDJPHHX` for new positions; the other contracts of the 2026-10-11 deployment are unchanged.
 
 | Field | Value |
 |---|---|

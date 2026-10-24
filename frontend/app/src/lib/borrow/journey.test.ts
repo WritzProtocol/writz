@@ -50,7 +50,7 @@ describe("amounts", () => {
     expect(parseBtcAmount("1e3")).toMatchObject({ ok: false });
     expect(parseBtcAmount("0.000000001")).toEqual({ ok: false, error: "BTC has at most 8 decimals." });
     expect(parseBtcAmount("0")).toEqual({ ok: false, error: "Enter an amount above 0." });
-    expect(parseBtcAmount("0.0001")).toEqual({ ok: false, error: "Minimum 0.00100000 BTC." });
+    expect(parseBtcAmount("0.00004")).toEqual({ ok: false, error: "Minimum 0.00005000 BTC." });
   });
 
   test("borrow limit is two thirds of the collateral value, liquidation at 80% of the price", () => {
