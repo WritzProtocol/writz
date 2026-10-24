@@ -116,6 +116,22 @@ export function findTargetConflicts(env: RawTargetEnv): string[] {
     );
   }
 
+  // A malformed lending value builds fine and only fails once a user is
+  // mid-flow (a deposit address derived from a bad key, a call to a
+  // contract that does not exist), so refuse it here. Mainnet refuses any
+  // lending value below, well-formed or not.
+  for (const [name, value] of target === "mainnet" ? [] : Object.entries(env.lendingOnly ?? {})) {
+    const v = value?.trim();
+    if (!v) continue;
+    if (name === "NEXT_PUBLIC_PROTOCOL_BTC_PUBKEY") {
+      if (!/^0[23][0-9a-fA-F]{64}$/.test(v)) {
+        problems.push(`${name} must be a 33-byte compressed public key in hex (66 characters, starting 02 or 03), got: "${v}"`);
+      }
+    } else if (name.endsWith("_ID") && !/^C[A-Z2-7]{55}$/.test(v)) {
+      problems.push(`${name} must be a Stellar contract ID (C followed by 55 characters), got: "${v}"`);
+    }
+  }
+
   // Beyond this point the rules are mainnet-only. Testnet is allowed to run
   // with pieces missing while the epic is still being built out; mainnet is
   // not allowed to inherit anything by omission.
