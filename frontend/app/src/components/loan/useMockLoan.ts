@@ -19,7 +19,7 @@ export function useMockLoan(world: MockWorld, n: number): LoanModel {
   const [now] = useState(() => Date.now());
   const sw = world.wallets.stellar;
   const bw = world.wallets.bitcoin;
-  const access: LoanAccess = !sw ? "disconnected" : sw.loans === "unsigned" ? "locked" : sw.loans === "finding" ? "finding" : "ready";
+  const access: LoanAccess = !sw ? "disconnected" : sw.loans === "finding" ? "finding" : "ready";
 
   const hit = world.positions.find((p) => p.local.position && p.local.position.index === n - 1);
   const position = access === "ready" ? (hit?.local.position ?? null) : null;
@@ -38,10 +38,6 @@ export function useMockLoan(world: MockWorld, n: number): LoanModel {
       walletName: "Freighter",
       connecting: false,
       connect: noop,
-      keysReady: true,
-      unlocking: false,
-      unlockError: null,
-      unlock: noop,
     },
     position,
     depositInProgress: Boolean(world.positions.find((p) => p.local.pendingDeposit?.positionIndex === n - 1)),
@@ -85,7 +81,5 @@ export function useMockLoan(world: MockWorld, n: number): LoanModel {
     dismiss: noop,
     recheckPrice: noop,
     checkAgain: noop,
-    importBackup: noop,
-    importState: { busy: false, error: null, done: false },
   };
 }

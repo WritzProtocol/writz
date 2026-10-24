@@ -60,7 +60,7 @@ describe("clientRelayerSource", () => {
   });
 
   const source = (get = routes({}), srv = server()) =>
-    clientRelayerSource({ relayerUrl: RELAYER, get, server: () => srv, contractId: () => "CTREE" });
+    clientRelayerSource({ relayerUrl: RELAYER, get, server: () => srv, contractId: () => "CLEND" });
 
   test("confirmations come from the SPV-proof endpoint: 404 is 0, 409 carries n and m", async () => {
     const get = routes({
@@ -73,19 +73,10 @@ describe("clientRelayerSource", () => {
     expect(await source(get).confirmations("cc")).toEqual({ confirmations: 7 });
   });
 
-  test("catching up maps a merkle-path 409", async () => {
-    const get = routes({
-      [`${RELAYER}/merkle-path?commitment=aa&leafIndex=3`]: res(409, { error: "out of sync" }),
-      [`${RELAYER}/merkle-path?commitment=bb&leafIndex=4`]: res(200, { root: "1" }),
-    });
-    expect(await source(get).catchingUp("aa", 3)).toBe(true);
-    expect(await source(get).catchingUp("bb", 4)).toBe(false);
-  });
-
   test("liquidation found in RPC events returns its tx hash, filtered by topic", async () => {
     const getEvents = mock(async () => ({ events: [{ txHash: "e1" }], oldestLedgerCloseTime: "1700000000" }));
-    const nullifier = "0a".repeat(32);
-    expect(await source(undefined, server({ getEvents })).liquidation(nullifier, 0)).toEqual({
+    const txid = "0a".repeat(31) + "0b";
+    expect(await source(undefined, server({ getEvents })).liquidation(txid, 0)).toEqual({
       found: true,
       txHash: "e1",
     });
@@ -94,15 +85,16 @@ describe("clientRelayerSource", () => {
     expect(request.filters[0].topics).toEqual([
       [
         xdr.ScVal.scvSymbol("liquidate").toXDR("base64"),
-        xdr.ScVal.scvBytes(Buffer.from(nullifier, "hex")).toXDR("base64"),
+        // The contract emits the txid in internal byte order, the reverse of the explorer's.
+        xdr.ScVal.scvBytes(Buffer.from(txid, "hex").reverse()).toXDR("base64"),
       ],
     ]);
   });
 
   test("no event is only complete when the RPC window reaches the position's creation", async () => {
     const oldest = 1_700_000_000_000;
-    expect(await source().liquidation("aa", oldest + 1)).toEqual({ found: false, complete: true });
-    expect(await source().liquidation("aa", oldest - 1)).toEqual({ found: false, complete: false });
+    expect(await source().liquidation("aa".repeat(32), oldest + 1)).toEqual({ found: false, complete: true });
+    expect(await source().liquidation("aa".repeat(32), oldest - 1)).toEqual({ found: false, complete: false });
   });
 
   test("an unconfigured relayer rejects instead of answering", async () => {

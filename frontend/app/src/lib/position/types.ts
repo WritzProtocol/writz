@@ -1,50 +1,37 @@
 /**
- * A private lending position. Amounts live on the device; `secret`/`nonce` are
- * NOT persisted - they are derived on demand from the wallet-derived session seed
- * plus `index`/`version` (see lib/position/derive). BigInt fields are decimal
+ * A loan as this device remembers it. The chain is the truth: `writz-lend`
+ * keeps every position in plaintext, keyed by its Bitcoin deposit txid, and
+ * screens derive status from `get_position`. This record holds what the
+ * chain does not answer directly (the loan's number on this wallet, the
+ * deposit output index, the release this device sent) and the last amounts
+ * read, so a loan can render before its reads land. BigInt fields are decimal
  * strings for JSON-safe persistence.
  */
-export type PositionStatus =
-  | "pending"
-  | "registering"
-  | "active"
-  | "closed"
-  | "released"
-  | "liquidated";
+export type PositionStatus = "active" | "closed" | "released" | "liquidated";
 
 export interface Position {
-  /** Stable local id - the current commitment (decimal string). */
+  /** Stable local id: the Bitcoin deposit txid, display order. */
   id: string;
-  /** Stellar address this position belongs to. */
+  /** Stellar address this position belongs to (its `depositor` on chain). */
   owner: string;
-  /** Bitcoin txid of the collateral deposit (hex), once known. */
-  txid: string | null;
+  /** Bitcoin txid of the collateral deposit (hex, display order). Same as `id`. */
+  txid: string;
   /** Collateral locked, in satoshis. */
   collateralSats: string;
-  /** Current USDC debt, in stroops. */
+  /** USDC debt in stroops at the last read. A hint: the chain decides. */
   debtStroops: string;
-  /** Derivation index - which position for this wallet. secret = derive(seed, index). */
+  /** Which loan this is for the wallet: "Loan n" is `index + 1`. */
   index: number;
-  /** Nonce rotation counter - incremented on every borrow/repay. nonce = derive(seed, index, version). */
-  version: number;
-  /** Current commitment (decimal string). */
-  commitment: string;
-  /** Current nullifier (decimal string) - spent when the position next changes. */
-  nullifier: string;
+  /** Local hint of the chain status, refreshed on every read. */
   status: PositionStatus;
   /** Unix ms when created (stamped by the caller). */
   createdAt: number;
-  /** User's Bitcoin compressed pubkey hex (33 bytes). Needed to reconstruct the P2WSH for release. */
+  /** User's Bitcoin compressed pubkey hex (33 bytes), from the chain. */
   btcPubkey?: string;
-  /** CLTV block height used in the P2WSH redeem script. Needed to reconstruct it for release. */
+  /** CLTV block height in the P2WSH redeem script, from the chain. */
   timelockHeight?: number;
   /** Vout of the collateral UTXO within the deposit transaction. */
   vout?: number;
-  /** Leaf index in the on-chain Merkle tree, assigned at deposit. Needed to compute the
-   *  correct Merkle path after subsequent borrows/repays rotate the commitment. */
-  leafIndex?: number;
-  /** Stellar tx that recorded the release on-chain (`mark_released`), before the BTC moves. */
-  releaseMarkedHash?: string;
   /** Bitcoin txid of the release transaction, once broadcast. */
   releaseTxid?: string;
   /** Bitcoin address the collateral was released to. */

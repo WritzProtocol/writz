@@ -23,7 +23,7 @@ const BORROW_LIMIT_BP = 15_000n;
 const LIQUIDATION_BP = 12_000n;
 
 /** Must match the contract's `min_deposit_satoshis`. */
-export const MIN_DEPOSIT_SATS = 10_000n;
+export const MIN_DEPOSIT_SATS = 100_000n;
 /** Below this a new deposit's own reclaim path would open almost immediately. */
 export const TIMELOCK_MIN_BLOCKS_LEFT = 4_320;
 /** "Keep at least 2 XLM for fees and the USDC deposit." */
@@ -142,12 +142,7 @@ const REGISTER_PHASES: ReadonlySet<FlowState["phase"]> = new Set([
   "needs_attention",
   "timed_out",
 ]);
-const REGISTER_STATUS: ReadonlySet<PositionStatusKind> = new Set([
-  "ready_to_register",
-  "proving",
-  "registering",
-  "register_failed",
-]);
+const REGISTER_STATUS: ReadonlySet<PositionStatusKind> = new Set(["ready_to_register", "registering"]);
 
 /** Whether a deposit that already sent BTC is still waiting for Bitcoin or ready for its Stellar signature. */
 export function depositStage(

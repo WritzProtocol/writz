@@ -10,7 +10,7 @@ export type Wallet = "stellar" | "bitcoin";
 
 export type PrepareStep =
   | "locating_output"
-  | "merkle_path"
+  | "reading"
   | "building"
   | "cosign"
   | "broadcasting";
@@ -30,8 +30,8 @@ export type FlowState =
   | { phase: "proving" }
   | { phase: "awaiting_signature"; wallet: Wallet; hash?: string }
   | { phase: "submitted"; hash: string }
-  | { phase: "post_processing"; step: "insert" | "update_leaf"; hash?: string }
-  | { phase: "settled"; hash?: string; syncPending?: boolean }
+  | { phase: "post_processing"; step: "finalize"; hash?: string }
+  | { phase: "settled"; hash?: string }
   | { phase: "signature_cancelled"; wallet: Wallet; walletName?: string; hash?: string }
   | { phase: "timed_out"; hash: string }
   | { phase: "failed"; error: unknown; hash?: string }
@@ -50,8 +50,8 @@ export type FlowEvent =
   | { type: "awaiting_signature"; wallet: Wallet }
   | { type: "signature_cancelled"; walletName?: string }
   | { type: "submitted"; hash: string }
-  | { type: "post_processing"; step: "insert" | "update_leaf" }
-  | { type: "settled"; hash?: string; syncPending?: boolean }
+  | { type: "post_processing"; step: "finalize" }
+  | { type: "settled"; hash?: string }
   | { type: "timed_out"; hash: string }
   | { type: "failed"; error: unknown }
   | { type: "needs_attention"; action: AttentionAction; error?: unknown; hash?: string };
@@ -130,7 +130,7 @@ export function reduceFlow(state: FlowState, event: FlowEvent): FlowState {
     case "post_processing":
       return { phase: "post_processing", step: event.step, hash };
     case "settled":
-      return { phase: "settled", hash: event.hash ?? hash, syncPending: event.syncPending };
+      return { phase: "settled", hash: event.hash ?? hash };
     case "timed_out":
       return { phase: "timed_out", hash: event.hash };
     case "failed":

@@ -67,7 +67,7 @@ Steps 1 and 2 are dashboard and registrar actions - they cannot be done from thi
 
    plus the contract addresses from [`frontend/app/.env.example`](https://github.com/WritzProtocol/writz/blob/main/frontend/app/.env.example), which tracks the current testnet deployment. Never copy these into the mainnet project.
 
-   The co-signing route (`/api/cosign`) runs in this project, so its server-only variables belong here too: `KMS_KEY_ID` with the AWS credentials, or the `PROTOCOL_SIGNING_KEY` fallback on testnet, plus `BITCOIN_NETWORK`. `NEXT_PUBLIC_PRIVY_APP_ID` enables Privy login; add `https://testnet.writz.xyz` to the allowed origins in the Privy dashboard, or login fails on this domain.
+   The co-signing route (`/api/cosign`) runs in this project, so its server-only variables belong here too: `KMS_KEY_ID` with the AWS credentials, or the `PROTOCOL_SIGNING_KEY` fallback on testnet, plus `BITCOIN_NETWORK`. `NEXT_PUBLIC_POLLAR_API_KEY` enables email, Google and GitHub sign-in through Pollar; add `https://testnet.writz.xyz` to the app's allowed domains in the Pollar dashboard, or login fails on this domain.
 
 4. Set the production branch to `main`. Pushes to `main` then deploy to `testnet.writz.xyz`; pull requests get preview URLs, which build with the same `testnet` target.
 
@@ -231,10 +231,9 @@ NEXT_PUBLIC_RELAYER_URL=https://api.app.writz.xyz
 NEXT_PUBLIC_EARN_ASSET_CODE=USDC
 NEXT_PUBLIC_EARN_ASSET_ISSUER=GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN
 NEXT_PUBLIC_EARN_VAULT_ID=CDODNWQY54F4WS7AZ5Z3AAIWRLKBFUMXHNOFEM4H3UNCTMFK4RF2A6GU
-NEXT_PUBLIC_PRIVY_APP_ID=<if Privy login is offered; add https://app.writz.xyz to its allowed origins>
 ```
 
-No lending contract ids, no `NEXT_PUBLIC_PROTOCOL_BTC_PUBKEY`, no `PROTOCOL_SIGNING_KEY` or `KMS_KEY_ID`, no `NEXT_PUBLIC_EARN_FAUCET_URL`. The vault and asset come from [`defindex-vault-mainnet.md`](https://github.com/WritzProtocol/writz/blob/main/contracts/deployments/defindex-vault-mainnet.md).
+No lending contract ids, no `NEXT_PUBLIC_POLLAR_API_KEY` (the build refuses it: Pollar holds the key of the wallets it creates), no `NEXT_PUBLIC_PROTOCOL_BTC_PUBKEY`, no `PROTOCOL_SIGNING_KEY` or `KMS_KEY_ID`, no `NEXT_PUBLIC_EARN_FAUCET_URL`. The vault and asset come from [`defindex-vault-mainnet.md`](https://github.com/WritzProtocol/writz/blob/main/contracts/deployments/defindex-vault-mainnet.md).
 
 ### Relayer (Railway, new service)
 

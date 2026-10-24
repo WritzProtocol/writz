@@ -1,23 +1,29 @@
 import { Buffer } from "buffer";
-import { Client } from "@/lib/contracts/generated";
-import { config, requireContract } from "@/config";
+import * as bitcoin from "bitcoinjs-lib";
+import { config } from "@/config";
 import {
-  buildReleasePsbt,
   deriveP2WSH,
   estimateReleaseFee,
   finalizePathA,
+  getBitcoinNetwork,
   isAddressForNetwork,
 } from "@/lib/bitcoin/address";
+import {
+  getReleasePsbt,
+  internalTxid,
+  readPosition,
+  writzLendClient,
+  type ChainPosition,
+} from "@/lib/contracts/writzLend";
 import type { Emit } from "@/lib/flow/engine";
-import { positionKeys, savePosition, type Position } from "@/lib/position";
-import { isNullifierSpent } from "@/lib/contracts/commitmentTree";
-import { proveZeroDebt, type ContractProof, type ZeroDebtInput } from "@/lib/prover";
+import { savePosition, type Position } from "@/lib/position";
 import type { SignTransaction } from "@/lib/wallet/WalletProvider";
-import { simulateWithRetry } from "./submit";
+import { simulateWritzLend } from "./submit";
+import { submitTrackedTx } from "./positionTx";
 
 export type ReleaseBlocker = "missing_details" | "no_wallet" | "wrong_account" | "wrong_network";
 
-/** Why this position can't be released to the connected Bitcoin wallet, or null when it can. */
+/** Why this position can't be released with the connected Bitcoin wallet, or null when it can. */
 export function releaseBlocker(
   position: Pick<Position, "btcPubkey" | "timelockHeight" | "txid">,
   wallet: { address: string | null; pubkey: string | null },
@@ -30,158 +36,171 @@ export function releaseBlocker(
   return null;
 }
 
+/**
+ * Where a release pays: the native SegWit address of the deposit's own
+ * Bitcoin key. The relayer builds the release to this address from the key
+ * stored on chain, so the BTC can only go back to the key that locked it.
+ */
+export function releaseAddressOf(btcPubkeyHex: string, network: bitcoin.networks.Network = getBitcoinNetwork()): string {
+  const { address } = bitcoin.payments.p2wpkh({ pubkey: Buffer.from(btcPubkeyHex, "hex"), network });
+  if (!address) throw new Error("Could not derive the release address.");
+  return address;
+}
+
 export const releaseFeeEstimate = () => estimateReleaseFee(config.bitcoin.apiUrl);
 
-/**
- * Releases a repaid position's BTC to `recipient`: builds the cooperative
- * PSBT, proves zero debt, gets the protocol co-signature, has the user sign
- * in their Bitcoin wallet and broadcasts. The recipient must be the
- * connected wallet that made the deposit (see `releaseBlocker`).
- */
-export async function releaseBtc(params: {
-  position: Position;
-  seed: Uint8Array;
+export interface ReleaseQuote {
+  /** The deposit output the release spends. */
+  vout: number;
+  amountSat: number;
+  feeSat: number;
   recipient: string;
-  signPsbt: (psbtBase64: string) => Promise<string>;
-  /** The Stellar account that records the release on-chain before BTC moves. */
-  stellarAddress: string;
-  signTransaction: SignTransaction;
-  emit: Emit;
-  /** The fee shown at review; estimated again when absent. */
-  feeSat?: number;
-}): Promise<{ btcTxid: string }> {
-  const { seed, recipient, signPsbt, emit } = params;
-  let { position } = params;
-  const { btcPubkey, timelockHeight, txid: depositTxid } = position;
-  if (!btcPubkey || !timelockHeight || !depositTxid) {
-    throw new Error("Position is missing Bitcoin metadata needed for release.");
-  }
-
-  emit({ type: "preparing", step: "building" });
-  const protocolPubkey = config.bitcoin.protocolPubkey;
-  if (!protocolPubkey) throw new Error("NEXT_PUBLIC_PROTOCOL_BTC_PUBKEY not configured");
-
-  const relayerUrl = config.services.relayerUrl;
-  if (!relayerUrl) throw new Error("NEXT_PUBLIC_RELAYER_URL not configured");
-
-  const p2wsh = deriveP2WSH(protocolPubkey, btcPubkey, timelockHeight);
-  const feeSat = params.feeSat ?? (await estimateReleaseFee(config.bitcoin.apiUrl));
-
-  const psbt = buildReleasePsbt({
-    txidHex: depositTxid,
-    vout: position.vout ?? 0,
-    amountSat: Number(BigInt(position.collateralSats)),
-    scriptPubKey: p2wsh.scriptPubKey,
-    redeemScript: p2wsh.redeemScript,
-    recipientAddress: recipient,
-    feeSat,
-  });
-
-  emit({ type: "preparing", step: "merkle_path" });
-  const commitmentHex = BigInt(position.commitment).toString(16).padStart(64, "0");
-  const qs =
-    position.leafIndex !== undefined
-      ? `?leafIndex=${position.leafIndex}&commitment=${commitmentHex}`
-      : `?commitment=${commitmentHex}`;
-  const pathRes = await fetch(`${relayerUrl}/merkle-path${qs}`);
-  if (!pathRes.ok) {
-    const pb = (await pathRes.json().catch(() => ({}))) as { error?: string };
-    throw new Error(`Merkle path fetch failed: ${pb.error ?? pathRes.status}`);
-  }
-  const { pathElements, pathIndices, root: merkleRoot } = (await pathRes.json()) as {
-    pathElements: string[];
-    pathIndices: number[];
-    root: string;
-  };
-
-  emit({ type: "proving" });
-  const { secret, nonce } = positionKeys(seed, position);
-  const zeroDebtInput: ZeroDebtInput = {
-    collateral_satoshis: position.collateralSats,
-    secret: secret.toString(),
-    nonce: nonce.toString(),
-    timelock_height: String(timelockHeight),
-    path_elements: pathElements,
-    path_indices: pathIndices,
-    merkle_root: merkleRoot,
-  };
-  const { raw: zkRaw, proof: zkProof, publicSignals: zkSignals } = await proveZeroDebt(zeroDebtInput);
-
-  // A retry after a failed co-sign or a rejected Xverse prompt finds the
-  // nullifier already spent; marking it again would fail with #6.
-  const nullifierHex = zkSignals[1].toString("hex");
-  if (!(await isNullifierSpent(nullifierHex))) {
-    emit({ type: "awaiting_signature", wallet: "stellar" });
-    const { txHash } = await markReleased({
-      proof: zkProof,
-      publicSignals: zkSignals,
-      sender: params.stellarAddress,
-      signTransaction: params.signTransaction,
-    });
-    position = { ...position, releaseMarkedHash: txHash ?? "unknown" };
-    savePosition(position);
-  }
-
-  emit({ type: "preparing", step: "cosign" });
-  const cosignRes = await fetch("/api/cosign", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      psbt: psbt.toBase64(),
-      commitment: commitmentHex,
-      zkProof: { proof: zkRaw.proof, publicSignals: zkRaw.publicSignals },
-    }),
-  });
-  if (!cosignRes.ok) {
-    const cbody = (await cosignRes.json().catch(() => ({}))) as { error?: string };
-    throw new Error(`Co-sign failed: ${cbody.error ?? cosignRes.status}`);
-  }
-  const { signedPsbt: protocolSignedPsbt } = (await cosignRes.json()) as { signedPsbt: string };
-
-  emit({ type: "awaiting_signature", wallet: "bitcoin" });
-  const userSignedPsbt = await signPsbt(psbt.toBase64());
-
-  emit({ type: "preparing", step: "broadcasting" });
-  const txHex = finalizePathA(protocolSignedPsbt, userSignedPsbt, protocolPubkey, btcPubkey);
-  const broadcastRes = await fetch(`${config.bitcoin.apiUrl}/tx`, { method: "POST", body: txHex });
-  if (!broadcastRes.ok) {
-    const errText = await broadcastRes.text().catch(() => String(broadcastRes.status));
-    throw new Error(`Broadcast failed: ${errText}`);
-  }
-  const btcTxid = await broadcastRes.text();
-
-  savePosition({ ...position, status: "released", releaseTxid: btcTxid, releaseAddress: recipient });
-  emit({ type: "settled" });
-  return { btcTxid };
 }
 
 /**
- * Records a position's BTC release on-chain before the protocol co-signs it,
- * by spending the zero-debt leaf's nullifier (GHSA-w4rp-v54x-2cv3,
- * GHSA-hcjf-8vjc-2hfv). Anyone can submit it: the proof needs the position's
- * secret and nonce, so only the owner can produce one.
+ * Checks the relayer's half-signed release before the user signs it: one
+ * input spending this deposit's Writz output, one output paying the deposit
+ * key's own address, and the protocol's signature on the input. Anything else
+ * is refused, so a wrong or tampered PSBT never reaches the wallet.
  */
-export async function markReleased(params: {
-  proof: ContractProof;
-  publicSignals: Buffer[];
-  sender: string;
-  signTransaction: SignTransaction;
-  /** Defaults to the configured commitment-tree; tests pass one explicitly. */
-  contractId?: string;
-}): Promise<{ txHash?: string }> {
-  const { proof, publicSignals, sender, signTransaction } = params;
-  const contractId =
-    params.contractId ?? requireContract(config.contracts.commitmentTree, "commitment-tree");
-  const client = new Client({
-    contractId,
-    networkPassphrase: config.networkPassphrase,
-    rpcUrl: config.rpcUrl,
-    allowHttp: config.rpcUrl.startsWith("http://"),
-    publicKey: sender,
+export function checkReleasePsbt(
+  psbt: bitcoin.Psbt,
+  expected: { txid: string; protocolPubkey: string; userPubkey: string; timelockHeight: number; network?: bitcoin.networks.Network },
+): ReleaseQuote {
+  const network = expected.network ?? getBitcoinNetwork();
+  const lock = deriveP2WSH(expected.protocolPubkey, expected.userPubkey, expected.timelockHeight);
+  const recipient = releaseAddressOf(expected.userPubkey, network);
+  if (psbt.txInputs.length !== 1 || psbt.txOutputs.length !== 1) throw new Error("ReleaseMismatch: shape");
+
+  const input = psbt.txInputs[0];
+  const data = psbt.data.inputs[0];
+  if (Buffer.from(input.hash).reverse().toString("hex") !== expected.txid.toLowerCase()) {
+    throw new Error("ReleaseMismatch: input");
+  }
+  if (!data.witnessUtxo || !Buffer.from(data.witnessUtxo.script).equals(lock.scriptPubKey)) {
+    throw new Error("ReleaseMismatch: lock");
+  }
+  if (!data.witnessScript || !Buffer.from(data.witnessScript).equals(lock.redeemScript)) {
+    throw new Error("ReleaseMismatch: script");
+  }
+  const protocolKey = Buffer.from(expected.protocolPubkey, "hex");
+  if (!data.partialSig?.some((s) => Buffer.from(s.pubkey).equals(protocolKey))) {
+    throw new Error("ReleaseMismatch: protocol signature");
+  }
+
+  const out = psbt.txOutputs[0];
+  if (!Buffer.from(out.script).equals(bitcoin.address.toOutputScript(recipient, network))) {
+    throw new Error("ReleaseMismatch: recipient");
+  }
+  const amountSat = Number(data.witnessUtxo.value);
+  const feeSat = amountSat - Number(out.value);
+  if (feeSat < 0) throw new Error("ReleaseMismatch: amount");
+  return { vout: input.index, amountSat, feeSat, recipient };
+}
+
+export interface ReleaseDeps {
+  read(txid: string): Promise<ChainPosition | null>;
+  getReleasePsbt(txid: string): Promise<Buffer | null>;
+  /** Closes a position that was never borrowed against, so the relayer co-signs its release. */
+  close(input: { txid: string; owner: string; signTransaction: SignTransaction; emit: Emit }): Promise<void>;
+  broadcast(txHex: string): Promise<string>;
+  sleep(ms: number): Promise<void>;
+}
+
+async function closeUnborrowed({ txid, owner, signTransaction, emit }: Parameters<ReleaseDeps["close"]>[0]) {
+  const client = writzLendClient(owner);
+  const tx = await simulateWritzLend(() => client.repay({ repayer: owner, txid: internalTxid(txid), usdc_amount: 0n }));
+  // `submitTrackedTx` settles the flow; the release carries on past it.
+  await submitTrackedTx({
+    kind: "repay",
+    owner,
+    tx,
+    signTransaction,
+    emit: (e) => {
+      if (e.type !== "settled") emit(e);
+    },
   });
-  const tx = await simulateWithRetry(() =>
-    client.mark_released({ zk_proof: proof, public_signals: publicSignals }),
-  );
-  const sent = await tx.signAndSend({ signTransaction });
-  return { txHash: sent.sendTransactionResponse?.hash };
+}
+
+export const releaseDeps: ReleaseDeps = {
+  read: readPosition,
+  getReleasePsbt,
+  close: closeUnborrowed,
+  async broadcast(txHex) {
+    const res = await fetch(`${config.bitcoin.apiUrl}/tx`, { method: "POST", body: txHex });
+    if (!res.ok) {
+      const errText = await res.text().catch(() => String(res.status));
+      throw new Error(`Broadcast failed: ${errText}`);
+    }
+    return (await res.text()).trim();
+  },
+  sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
+};
+
+/** How long the release waits for the relayer to co-sign: it does so within a poll or two of the repay. */
+const COSIGN_POLL_MS = 5_000;
+const COSIGN_POLLS = 36;
+
+/**
+ * Releases a repaid position's BTC. Repaying in full closes the position on
+ * `writz-lend`; the relayer's repay watcher then builds the cooperative
+ * release, co-signs it with the protocol key and publishes it on chain
+ * (`publish_release_psbt`). This reads it back with `get_release_psbt`,
+ * checks it, has the user sign in their Bitcoin wallet and broadcasts. A
+ * position that never borrowed is closed first with a zero repayment.
+ */
+export async function releaseBtc(params: {
+  position: Position;
+  signPsbt: (psbtBase64: string) => Promise<string>;
+  /** The Stellar account that owns the position; it signs the closing transaction when one is needed. */
+  stellarAddress: string;
+  signTransaction: SignTransaction;
+  emit: Emit;
+  deps?: ReleaseDeps;
+}): Promise<{ btcTxid: string; recipient: string }> {
+  const { position, signPsbt, stellarAddress, signTransaction, emit } = params;
+  const deps = params.deps ?? releaseDeps;
+  const protocolPubkey = config.bitcoin.protocolPubkey;
+  if (!protocolPubkey) throw new Error("NEXT_PUBLIC_PROTOCOL_BTC_PUBKEY not configured");
+
+  emit({ type: "preparing", step: "reading" });
+  const chain = await deps.read(position.txid);
+  if (!chain) throw new Error("PositionNotFound");
+  if (chain.depositor !== stellarAddress) throw new Error("Unauthorized");
+  if (chain.status === "liquidated") throw new Error("PositionNotActive");
+  if (chain.status === "active") {
+    if (chain.debtStroops > 0n) throw new Error("LoanNotRepaid");
+    await deps.close({ txid: position.txid, owner: stellarAddress, signTransaction, emit });
+  }
+
+  emit({ type: "preparing", step: "cosign" });
+  let raw: Buffer | null = null;
+  for (let i = 0; !raw; i++) {
+    raw = await deps.getReleasePsbt(position.txid);
+    if (raw) break;
+    if (i >= COSIGN_POLLS) throw new Error("ReleaseNotCosigned");
+    await deps.sleep(COSIGN_POLL_MS);
+  }
+
+  const network = getBitcoinNetwork();
+  const psbt = bitcoin.Psbt.fromBuffer(raw, { network });
+  const quote = checkReleasePsbt(psbt, {
+    txid: position.txid,
+    protocolPubkey,
+    userPubkey: chain.userPubkey,
+    timelockHeight: chain.timelockHeight,
+    network,
+  });
+
+  emit({ type: "awaiting_signature", wallet: "bitcoin" });
+  const protocolSigned = psbt.toBase64();
+  const userSigned = await signPsbt(protocolSigned);
+
+  emit({ type: "preparing", step: "broadcasting" });
+  const txHex = finalizePathA(protocolSigned, userSigned, protocolPubkey, chain.userPubkey);
+  const btcTxid = await deps.broadcast(txHex);
+
+  savePosition({ ...position, status: "released", vout: quote.vout, releaseTxid: btcTxid, releaseAddress: quote.recipient });
+  emit({ type: "settled" });
+  return { btcTxid, recipient: quote.recipient };
 }

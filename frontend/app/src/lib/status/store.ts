@@ -7,6 +7,7 @@ export const CHECKING: DerivedStatus = {
   reclaimable: false,
   timelock: null,
   syncing: false,
+  onChain: null,
 };
 
 /** Changes whenever the local inputs that drive the status change. */
@@ -19,8 +20,6 @@ export function statusKey(local: LocalInputs): string | null {
     local.position?.releaseTxid,
     local.pendingDeposit?.step,
     local.pendingDeposit?.stellarTxHash,
-    local.proving ? "proving" : "",
-    local.insertFailed ? "insert_failed" : "",
     (local.pendingTxs ?? []).map((t) => t.hash).join(","),
   ].join("|");
 }

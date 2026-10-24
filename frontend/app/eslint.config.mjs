@@ -15,6 +15,7 @@ const eslintConfig = defineConfig([
     // Generated contract bindings (vendored, not hand-written).
     "packages/**",
     "src/lib/contracts/generated.ts",
+    "src/lib/contracts/writzLendGenerated.ts",
   ]),
 ]);
 

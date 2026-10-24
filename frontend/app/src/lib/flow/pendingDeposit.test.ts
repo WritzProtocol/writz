@@ -10,8 +10,6 @@ import { createJsonStore } from "./storage";
 import { memoryStorage } from "./testStorage";
 
 const NOW = 1_800_000_000_000;
-const COMMITMENT = 123456789n;
-const COMMITMENT_HEX = COMMITMENT.toString(16).padStart(64, "0");
 
 const base: PendingDeposit = {
   btcTxid: "ab".repeat(32),
@@ -28,8 +26,7 @@ const base: PendingDeposit = {
 };
 const pd = (over: Partial<PendingDeposit>): PendingDeposit => ({ ...base, ...over });
 const chain = (over: Partial<DepositChainView> = {}): DepositChainView => ({
-  commitmentForTxid: null,
-  commitmentPending: null,
+  depositorForTxid: null,
   stellarTx: null,
   ...over,
 });
@@ -46,24 +43,17 @@ describe("planResume", () => {
     expect(planResume(pd({ step: "ready" }), chain(), NOW)).toEqual({ action: "wait_confirmations" });
   });
 
-  test("deposited on Stellar and still pending: insert only, never deposit again", () => {
-    const s = pd({ step: "submitted", commitment: COMMITMENT.toString(), stellarTxHash: "h" });
-    expect(
-      planResume(s, chain({ commitmentForTxid: COMMITMENT_HEX, commitmentPending: true }), NOW),
-    ).toEqual({ action: "insert", commitment: COMMITMENT_HEX });
+  test("already deposited on Stellar by this wallet: finalize locally, never deposit again", () => {
+    const s = pd({ step: "submitted", stellarTxHash: "h" });
+    expect(planResume(s, chain({ depositorForTxid: "GOWNER" }), NOW)).toEqual({ action: "finalize" });
+    expect(planResume(pd({ step: "ready" }), chain({ depositorForTxid: "GOWNER" }), NOW)).toEqual({ action: "finalize" });
   });
 
-  test("already inserted by an earlier run: just finalize locally", () => {
-    const s = pd({ step: "registering", commitment: COMMITMENT.toString() });
-    expect(
-      planResume(s, chain({ commitmentForTxid: COMMITMENT_HEX, commitmentPending: false }), NOW),
-    ).toEqual({ action: "finalize", commitment: COMMITMENT_HEX });
-  });
-
-  test("the txid is registered with a commitment this device did not make", () => {
-    expect(
-      planResume(pd({}), chain({ commitmentForTxid: COMMITMENT_HEX, commitmentPending: true }), NOW),
-    ).toEqual({ action: "conflict", commitment: COMMITMENT_HEX });
+  test("the txid is registered on Stellar by another account", () => {
+    expect(planResume(pd({}), chain({ depositorForTxid: "GOTHER" }), NOW)).toEqual({
+      action: "conflict",
+      depositor: "GOTHER",
+    });
   });
 
   test("a submitted Stellar deposit that may still land is waited for, not resubmitted", () => {
@@ -72,7 +62,7 @@ describe("planResume", () => {
       action: "await_stellar",
       hash: "h",
     });
-    // Landed but the RPC view has not caught up with the commitment yet.
+    // Landed but the RPC view has not caught up with the position yet.
     expect(planResume(s, chain({ stellarTx: "SUCCESS" }), NOW + STELLAR_TX_TTL_MS * 2)).toEqual({
       action: "await_stellar",
       hash: "h",

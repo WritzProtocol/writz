@@ -31,6 +31,7 @@ const derived = (status: PositionStatus, over: Partial<DerivedStatus> = {}): Der
   reclaimable: false,
   timelock: null,
   syncing: false,
+  onChain: null,
   ...over,
 });
 
@@ -161,7 +162,7 @@ describe("tabs", () => {
   });
 
   test("checking disables everything", () => {
-    const t = loanTabs(facts({ kind: "checking", missing: ["nullifier"] }));
+    const t = loanTabs(facts({ kind: "checking", missing: ["position"] }));
     expect(disabledReasons(t)).toEqual([REASONS.checking]);
   });
 
@@ -232,9 +233,10 @@ describe("routing", () => {
 
 describe("release steps", () => {
   test("maps the release flow to its visible step", () => {
-    expect(releaseStepOf({ phase: "preparing", step: "building" })).toBe(0);
-    expect(releaseStepOf({ phase: "preparing", step: "merkle_path" })).toBe(0);
-    expect(releaseStepOf({ phase: "proving" })).toBe(1);
+    expect(releaseStepOf({ phase: "preparing", step: "reading" })).toBe(0);
+    expect(releaseStepOf({ phase: "preparing", step: "building" })).toBe(1);
+    expect(releaseStepOf({ phase: "awaiting_signature", wallet: "stellar" })).toBe(1);
+    expect(releaseStepOf({ phase: "submitted", hash: "h" })).toBe(1);
     expect(releaseStepOf({ phase: "preparing", step: "cosign" })).toBe(2);
     expect(releaseStepOf({ phase: "awaiting_signature", wallet: "bitcoin" })).toBe(3);
     expect(releaseStepOf({ phase: "preparing", step: "broadcasting" })).toBe(4);

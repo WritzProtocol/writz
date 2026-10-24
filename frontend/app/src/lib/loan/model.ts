@@ -131,9 +131,7 @@ export function isClosed(status: PositionStatus): boolean {
   return (
     status.kind === "releasing" ||
     status.kind === "released" ||
-    status.kind === "liquidated" ||
-    status.kind === "closed_on_chain" ||
-    status.kind === "changed_elsewhere"
+    status.kind === "liquidated"
   );
 }
 
@@ -157,7 +155,7 @@ export const REASONS = {
   checking: "Checking this loan.",
   busy: "Waiting for your transaction.",
   otherTx: "Waiting for your other transaction (in another tab).",
-  catchingUp: "Writz is catching up with the chain. Your funds are safe. Try again in a minute.",
+  catchingUp: "Writz is co-signing your release. Your BTC is safe. Try again in a minute.",
   priceUnavailable: "BTC price unavailable. Try again in a minute.",
   priceChecking: "Checking the BTC price.",
   belowLimit: "Can't borrow more: the ratio is below 150%. Repay some USDC to raise it.",
@@ -238,8 +236,8 @@ export const loanHref = (index: number, panel?: LoanTab) => `/loans/${index + 1}
 
 export const RELEASE_STEPS = [
   "Checking your loan on Stellar",
-  "Confirming the loan is repaid (about 30 seconds)",
-  "Getting Writz's signature",
+  "Confirming the loan is repaid",
+  "Getting Writz's signature (about a minute)",
   "Confirm in Xverse",
   "Sending to Bitcoin",
 ] as const;
@@ -250,11 +248,13 @@ export function releaseStepOf(flow: FlowState): number | null {
     case "preparing":
       if (flow.step === "cosign") return 2;
       if (flow.step === "broadcasting") return 4;
+      // Building the transaction that closes a loan with no debt.
+      if (flow.step === "building") return 1;
       return 0;
-    case "proving":
+    case "submitted":
       return 1;
     case "awaiting_signature":
-      return 3;
+      return flow.wallet === "stellar" ? 1 : 3;
     default:
       return null;
   }

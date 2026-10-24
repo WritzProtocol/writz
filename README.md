@@ -219,7 +219,7 @@ writz/
 | Bitcoin scripting | P2WSH (Phase 1) → Taproot (Phase 3) | `bitcoinjs-lib` · `ecpair` |
 | Bitcoin wallets | Xverse · sats-connect | PSBT standard |
 | Frontend | Next.js 16 · React 19 · TypeScript | App Router · Tailwind CSS 4 |
-| Stellar wallets | Stellar Wallets Kit · Privy | Freighter · Lobstr · email login |
+| Stellar wallets | Stellar Wallets Kit · Pollar | Freighter · Lobstr · email and social login on testnet |
 | Relayer runtime | Bun · Express.js | Alpine Docker · Esplora-backed |
 | Privacy edition (in progress) | Circom 2.2.3 · snarkjs · Groth16 · Poseidon | BN254 via Protocol 26 host functions; not part of v1 |
 | CI | GitHub Actions | 4 parallel jobs · all tests must pass |

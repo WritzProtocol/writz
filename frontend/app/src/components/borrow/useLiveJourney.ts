@@ -16,16 +16,10 @@ import { recentActivity } from "@/lib/tray";
 import { currentRoute, notifySettled } from "@/lib/toast";
 import { loanHref } from "@/lib/loan/model";
 import { clearDraftAmount, readDraftAmount } from "@/lib/borrow/draft";
-import {
-  depositDeps,
-  finishDeposit,
-  registerDeposit,
-  startDepositBySending,
-  startDepositFromTxid,
-  trackDeposit,
-} from "@/lib/flows/deposit";
-import { recoverPositions } from "@/lib/flows/recover";
-import { positionsSnapshot, type Position } from "@/lib/position";
+import { getBtcPriceStroops } from "@/lib/contracts/oracle";
+import { depositDeps, registerDeposit, startDepositBySending, startDepositFromTxid, trackDeposit } from "@/lib/flows/deposit";
+import { discoverPositions } from "@/lib/flows/discover";
+import { positionsSnapshot } from "@/lib/position";
 import { esploraReads } from "@/lib/status/client";
 import { usePositionStatus, useRefreshStatus } from "@/lib/status/provider";
 import type { LocalInputs } from "@/lib/status/types";
@@ -96,26 +90,18 @@ export function useLiveJourney(): JourneyModel {
   const pendingTxid = pending?.btcTxid ?? null;
   const txLock = useTxLockState(address);
 
-  const [action, setAction] = useState<"send" | "register" | "finish" | "txid" | null>(null);
+  const [action, setAction] = useState<"send" | "register" | "txid" | null>(null);
   const [createdHere, setCreatedHere] = useState<string | null>(null);
   const [doneSats, setDoneSats] = useState<bigint | null>(null);
   const [doneIndex, setDoneIndex] = useState<number | null>(null);
   const [drivenElsewhere, setDrivenElsewhere] = useState(false);
-  const [registering, setRegistering] = useState<Position | null>(null);
   const [runKey, setRunKey] = useState(0);
 
   // ── Status of the deposit in progress ──
   const local = useMemo<LocalInputs | null>(
     () =>
-      pending
-        ? {
-            position: null,
-            pendingDeposit: pending,
-            proving: flow.phase === "proving",
-            insertFailed: flow.phase === "needs_attention" && Boolean(flow.error),
-          }
-        : null,
-    [pending, flow],
+      pending ? { position: null, pendingDeposit: pending } : null,
+    [pending],
   );
   const status = usePositionStatus(local, 15_000);
   const refreshStatus = useRefreshStatus();
@@ -140,10 +126,7 @@ export function useLiveJourney(): JourneyModel {
         if (controller.signal.aborted) return;
         setDrivenElsewhere(false);
         const result = await trackDeposit(address, { emit, signal: controller.signal });
-        if (result.status === "registering") {
-          setRegistering(result.position);
-          emit({ type: "needs_attention", action: "finish_deposit", hash: result.position.stellarTxHash });
-        } else if (result.status === "active") {
+        if (result.status === "active") {
           setDoneSats(BigInt(result.position.collateralSats));
           setDoneIndex(result.position.index);
           emit({ type: "settled", hash: result.position.stellarTxHash });
@@ -180,7 +163,7 @@ export function useLiveJourney(): JourneyModel {
   const net = network?.key === address ? network : null;
   const wrongNetwork =
     net?.passphrase && net.passphrase !== config.networkPassphrase ? networkName(net.passphrase) : null;
-  const walletName = w.walletBackend === "privy" ? "Privy" : (net?.walletName ?? "your wallet");
+  const walletName = w.walletBackend === "pollar" ? "Pollar" : (net?.walletName ?? "your wallet");
 
   const [fundingRead, setFundingRead] = useState<Keyed<Funding>>(null);
   const [fundNonce, setFundNonce] = useState(0);
@@ -200,34 +183,40 @@ export function useLiveJourney(): JourneyModel {
   const [fundBusy, setFundBusy] = useState(false);
   const [fundError, setFundError] = useState<unknown>(null);
 
-  const [signing, setSigning] = useState(false);
-  const [signError, setSignError] = useState<unknown>(null);
-  const [find, setFind] = useState<{ seed: Uint8Array; state: "finding" | "found" | "failed"; count: number; error?: unknown } | null>(null);
+  // Loans are public on chain: finding them needs no signature, only the connected address.
+  const [find, setFind] = useState<{ key: string; state: "found" | "failed"; count: number; error?: unknown } | null>(null);
   const [findNonce, setFindNonce] = useState(0);
+  const findKey = address ? `${address}:${findNonce}` : null;
   useEffect(() => {
-    const seed = w.seed;
-    if (!address || !seed) return;
+    if (!address) return;
     let live = true;
-    void (async () => {
-      setFind({ seed, state: "finding", count: 0 });
-      try {
-        await recoverPositions({ owner: address, seed });
-        if (live) setFind({ seed, state: "found", count: positionsSnapshot(address).length });
-      } catch (error) {
-        if (live) setFind({ seed, state: "failed", count: 0, error });
-      }
-    })();
+    const key = `${address}:${findNonce}`;
+    discoverPositions(address)
+      .then(({ found }) => live && setFind({ key, state: "found", count: found }))
+      .catch((error: unknown) => live && setFind({ key, state: "failed", count: 0, error }));
     return () => {
       live = false;
     };
-  }, [address, w.seed, findNonce]);
-  const findState = w.seed && find?.seed === w.seed ? find : null;
-  const loans = !w.seed ? (signing ? "signing" : "unsigned") : (findState?.state ?? "finding");
+  }, [address, findNonce]);
+  const findState = find?.key === findKey ? find : null;
+  const loans = findState?.state ?? "finding";
 
   const fundingOk =
     funding.kind === "failed" ||
-    (funding.kind === "ok" && (funding.value.kind === "ok" || (funding.value.kind === "low" && lowAckFor === address)));
+    (funding.kind === "ok" && (funding.value.kind === "ok" || (funding.value.kind === "low" && (lowAckFor === address || w.walletBackend === "pollar"))));
   const stellarReady = Boolean(address) && !wrongNetwork && fundingOk && loans === "found";
+
+  // ── Price: the oracle writz-lend prices collateral with ──
+  const [price, setPrice] = useState<bigint | null>(null);
+  useEffect(() => {
+    let live = true;
+    getBtcPriceStroops()
+      .then((p) => live && setPrice(p))
+      .catch(() => live && setPrice(null));
+    return () => {
+      live = false;
+    };
+  }, []);
 
   // ── Bitcoin: balance, lock address ──
   const [balanceRead, setBalanceRead] = useState<Keyed<bigint>>(null);
@@ -275,7 +264,7 @@ export function useLiveJourney(): JourneyModel {
   const blocksLeft = chainCtx?.tip != null && timelockHeight !== null ? timelockHeight - chainCtx.tip : null;
 
   // ── Actions ──
-  const unavailable = !config.bitcoin.protocolPubkey || !config.services.relayerUrl || !config.contracts.commitmentTree;
+  const unavailable = !config.bitcoin.protocolPubkey || !config.services.relayerUrl || !config.contracts.writzLend;
 
   const send = useCallback(async () => {
     if (!address || !b.btcPubkey || !lock || !sats || pending) return;
@@ -300,7 +289,7 @@ export function useLiveJourney(): JourneyModel {
   }, [address, b.btcPubkey, b.sendBtc, lock, sats, pending, emit, ui]);
 
   const register = useCallback(async () => {
-    if (!address || !w.seed || !pending) return;
+    if (!address || !pending) return;
     setAction("register");
     setDoneSats(BigInt(pending.sats));
     setDoneIndex(pending.positionIndex);
@@ -316,7 +305,6 @@ export function useLiveJourney(): JourneyModel {
       await locks().withTxLock(address, () =>
         registerDeposit({
           owner: address,
-          seed: w.seed!,
           signTransaction: w.signTransaction,
           signKeyProof: b.signMessage,
           emit,
@@ -327,32 +315,13 @@ export function useLiveJourney(): JourneyModel {
       emit({ type: "failed", error: e });
       notifySettled(origin, { href: origin, label: "Open deposit" }, { ok: false, error: e, what: "Registering your deposit" });
     }
-  }, [address, w.seed, w.signTransaction, b.btcPubkey, b.signMessage, pending, emit]);
+  }, [address, w.signTransaction, b.btcPubkey, b.signMessage, pending, emit]);
 
-  const finish = useCallback(async () => {
-    if (!address || !w.seed) return;
-    const position =
-      registering ??
-      positionsSnapshot(address).find((p) => p.status === "registering" && p.txid === pendingTxid);
-    if (!position) {
-      setRunKey((k) => k + 1);
-      return;
-    }
-    setAction("finish");
-    setDoneSats(BigInt(position.collateralSats));
-    setDoneIndex(position.index);
-    emit({ type: "start" });
-    const origin = currentRoute();
-    try {
-      await locks().withTxLock(address, () =>
-        finishDeposit({ position, seed: w.seed!, signTransaction: w.signTransaction, emit }),
-      );
-      notifyRegistered(origin, position.index);
-    } catch (e) {
-      emit({ type: "failed", error: e });
-      notifySettled(origin, { href: origin, label: "Open deposit" }, { ok: false, error: e, what: "Finishing your deposit" });
-    }
-  }, [address, w.seed, w.signTransaction, registering, pendingTxid, emit]);
+  /** Saves a deposit that is on chain but not yet on this device (B31): it only reads, never deposits again. */
+  const finish = useCallback(() => {
+    setAction("register");
+    setRunKey((k) => k + 1);
+  }, []);
 
   const checkTxid = useCallback(async () => {
     const txid = ui.txid.trim().toLowerCase();
@@ -405,7 +374,7 @@ export function useLiveJourney(): JourneyModel {
   return {
     ...r,
     unavailable,
-    busy: isInFlight(flow) || signing || w.connecting || b.connecting,
+    busy: isInFlight(flow) || w.connecting || b.connecting,
     amount: {
       value: ui.amount,
       error: ui.amountError,
@@ -414,7 +383,7 @@ export function useLiveJourney(): JourneyModel {
       submit: ui.submitAmount,
     },
     sats,
-    priceStroops: BigInt(config.btcPriceStroops),
+    priceStroops: price,
     stellar: {
       address,
       walletName,
@@ -424,23 +393,15 @@ export function useLiveJourney(): JourneyModel {
       funding,
       fundBusy,
       fundError,
-      lowAck: lowAckFor === address,
+      lowAck: lowAckFor === address || w.walletBackend === "pollar",
       loans,
       loansCount: findState?.count ?? 0,
       loansError: findState?.error ?? null,
-      signError,
       ready: stellarReady,
       connect: () => void w.connect(),
       useOther: () => {
         w.disconnect();
         void w.connect();
-      },
-      sign: () => {
-        setSignError(null);
-        setSigning(true);
-        w.unlock()
-          .catch((e: unknown) => setSignError(e))
-          .finally(() => setSigning(false));
       },
       retryFind: () => setFindNonce((n) => n + 1),
       fund: () => {
@@ -505,7 +466,6 @@ export function useLiveJourney(): JourneyModel {
       otherTx,
       foundOnLoad,
       secondBlocked: foundOnLoad && ui.amountConfirmed,
-      unlocked: w.unlocked,
       recheck: () => {
         refreshStatus(local);
         if (!isInFlight(flow)) setRunKey((k) => k + 1);
@@ -521,7 +481,6 @@ export function useLiveJourney(): JourneyModel {
         setAction(null);
         setDoneSats(null);
         setDoneIndex(null);
-        setRegistering(null);
         ui.reset();
       },
     },

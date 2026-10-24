@@ -6,6 +6,7 @@ import { config } from "@/config";
 describe("isTransientSimulationError", () => {
   it("retries state lag and throttling", () => {
     expect(isTransientSimulationError("HostError: Error(Contract, #5)")).toBe(true);
+    expect(isTransientSimulationError("HostError: Error(Contract, #5)", "writz-lend")).toBe(false);
     expect(isTransientSimulationError("TRY_AGAIN_LATER")).toBe(true);
     expect(isTransientSimulationError("txBadSeq")).toBe(true);
   });
