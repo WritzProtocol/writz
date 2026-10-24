@@ -1,12 +1,12 @@
 ---
-title: "The ZK Privacy Layer"
+title: "Privacy edition (in progress)"
 ---
 
-**How your position stays hidden - even from the protocol.**
+> **Status: design in progress, testnet only, not part of Writz v1.** Writz v1 (Writz Lend on `bitcoin-spv` and `writz-lend`) has no privacy layer: positions, amounts and collateral are public on chain. Nothing on this page protects a Writz Lend position today.
 
-Zero-knowledge proofs are the electric fence around the Writz house. They allow the protocol to verify facts about your position - that your loan is adequately collateralized, that you actually made the deposit you claim, that your repayment amount is correct - without ever learning the underlying numbers.
+Privacy is not part of the Writz protocol. It is being designed as a separate, opt-in edition: its own contracts (today `commitment-tree`, `zk-verifier` and the Circom circuits in `circuits/`), its own lending pool, its own audit and its own trusted-setup ceremony. It is planned for after v1 is live on mainnet, on its own subdomain, and has no date; it is not on the v1 mainnet plan. Users who do not want privacy never interact with it, and `writz-lend` never calls these contracts.
 
-This page explains how the ZK layer works, what it hides, and what the cryptographic guarantees are.
+The rest of this page records the current design of that edition, as built and deployed on testnet. Zero-knowledge proofs would let the edition's contracts verify facts about a position (that the loan is adequately collateralized, that the deposit is real, that a repayment is correct) without learning the underlying numbers.
 
 ---
 
@@ -16,7 +16,7 @@ A zero-knowledge proof lets you prove something is true without revealing anythi
 
 The classic analogy: imagine you want to prove to someone that you know the solution to a Sudoku puzzle, without revealing the solution. A ZK proof is a mathematical protocol that makes this possible - you can demonstrate you know the answer, and the verifier becomes convinced, without ever seeing the answer.
 
-In Writz, the "fact" being proved is: *"I have a deposit commitment in this Merkle tree, my loan amount is X% or less of my collateral value, and I have the secret that unlocks this commitment."*
+In the privacy edition, the "fact" being proved is: *"I have a deposit commitment in this Merkle tree, my loan amount is X% or less of my collateral value, and I have the secret that unlocks this commitment."*
 
 The ZK proof convinces the Soroban contract that all of this is true - without the contract ever learning the deposit amount, the loan amount, or anything else about the position.
 
@@ -85,7 +85,7 @@ This is the same technique used by Tornado Cash, Aztec Network, and other ZK pri
 
 ## The ZK Circuits
 
-Writz uses five Circom circuits (deposit, borrow/repay, liquidation, zero-debt release and Merkle insertion), each compiled to a Groth16 proof system over the BN254 curve. The constraint counts below are measured with `circom --O2`.
+The privacy edition uses five Circom circuits (deposit, borrow/repay, liquidation, zero-debt release and Merkle insertion), each compiled to a Groth16 proof system over the BN254 curve. The constraint counts below are measured with `circom --O2`.
 
 ### 1. Deposit Circuit
 
@@ -214,14 +214,14 @@ The tree root is stored on-chain. When a new commitment is inserted, the root is
 Groth16 requires a one-time **trusted setup ceremony** - a multi-party computation event that generates the proving and verification keys for each circuit.
 
 The ceremony has two phases:
-1. **Powers of Tau (Phase 1):** A universal setup shared across all circuits. Writz will use the Hermez ceremony artifact (the same trusted setup used by Stellar's own Private Payments reference implementation).
-2. **Phase 2 (circuit-specific):** A separate ceremony for each of Writz's five circuits, incorporating the circuit-specific parameters.
+1. **Powers of Tau (Phase 1):** A universal setup shared across all circuits. The edition is planned to use the Hermez ceremony artifact (the same trusted setup used by Stellar's own Private Payments reference implementation).
+2. **Phase 2 (circuit-specific):** A separate ceremony for each of the edition's five circuits, incorporating the circuit-specific parameters.
 
 The ceremony requires multiple independent participants. The security guarantee is: as long as at least one participant honestly discards their randomness, the setup is sound. A ceremony with 5+ parties from different organizations and jurisdictions provides strong security.
 
 The ceremony transcript is published publicly. Anyone can verify it was executed correctly.
 
-**When:** The trusted setup ceremony is planned for Q1 to Q2 2027, before mainnet launch. The current development keys (`pot15` from snarkjs) are used for testing only - they are NOT suitable for production.
+**When:** The ceremony belongs to the privacy edition and has no date. It is not on the Writz v1 mainnet path. The current development keys (`pot15` from snarkjs) are used for testing only - they are NOT suitable for production.
 
 **Rotating the on-chain key once the real ceremony completes:** `zk-verifier.set_verification_key` (admin-only) replaces a circuit's key immediately - there is no grace period during which the previous key is also accepted. That's a deliberate choice: accepting proofs against a stale key is a strictly weaker security posture than requiring the current one. What the contract does provide is an audit trail - every call emits a `vk_rotated` event carrying a fingerprint of the old and new key, so there's an on-chain record of exactly when the dev key was replaced by the real ceremony's output, even though storage itself only ever holds the current key.
 
@@ -238,8 +238,8 @@ The ZK layer is designed to minimize on-chain storage while preventing double-sp
 | Merkle root | Instance persistent | 180-day window (refreshable) |
 | Verification keys | Instance persistent | Permanent |
 
-**TTL management:** Soroban's storage has a time-to-live (TTL) system. Entries that are not accessed expire. Writz provides permissionless `refresh_*` functions that any keeper can call to extend the TTL of critical entries - ensuring user positions never expire unexpectedly.
+**TTL management:** Soroban's storage has a time-to-live (TTL) system. Entries that are not accessed expire. The edition's contracts provide permissionless `refresh_*` functions that any keeper can call to extend the TTL of critical entries - ensuring user positions never expire unexpectedly.
 
 ---
 
-**Next:** [The Stellar Side →](/how-it-works/stellar-side)
+**Back to v1:** [The Stellar Side →](/how-it-works/stellar-side)

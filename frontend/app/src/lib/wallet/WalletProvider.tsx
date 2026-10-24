@@ -10,16 +10,10 @@ import {
   useState,
 } from "react";
 import { Horizon, NotFoundError } from "@stellar/stellar-sdk";
-import type { User } from "@privy-io/react-auth";
-import type { WalletWithMetadata } from "@privy-io/react-auth";
-import { usePrivyBridge } from "@/lib/wallet/privy-bridge";
 import { ensureKit } from "@/lib/wallet/kit";
 import { config } from "@/config";
-import { KEY_DERIVATION_MESSAGE, deriveSeed } from "@/lib/position/derive";
-import {
-  signMessageWithPrivy,
-  signTransactionWithPrivy,
-} from "@/lib/wallet/privy-stellar";
+import { pollarClient, signMessageWithPollar, signTransactionWithPollar } from "@/lib/wallet/pollar";
+import { usePollarSession, type PollarSession } from "@/lib/wallet/pollarSession";
 import { withRejection } from "@/lib/wallet/rejection";
 import { preflightSign, type AccountSnapshot } from "@/lib/wallet/precheck";
 
@@ -36,7 +30,16 @@ export type SignTransaction = (
 export type SignMessage = (message: string) => Promise<string>;
 
 /** Which auth backend is powering the current session. */
-export type WalletBackend = "kit" | "privy";
+export type WalletBackend = "kit" | "pollar";
+
+/** Email, Google or GitHub sign-in through Pollar, which gives the user a custodial testnet wallet. */
+export interface PollarLogin {
+  session: PollarSession;
+  login: (provider: "google" | "github") => void;
+  loginWithEmail: (email: string) => void;
+  verifyCode: (code: string) => void;
+  cancel: () => void;
+}
 
 interface WalletState {
   address: string | null;
@@ -44,20 +47,11 @@ interface WalletState {
   error: string | null;
   /** Connect via Stellar Wallets Kit (Freighter, xBull, Lobstr, Albedo, Rabet). */
   connect: () => Promise<void>;
-  /**
-   * Connect via Privy embedded wallet (email / social login).
-   * No-op with an error message when `NEXT_PUBLIC_PRIVY_APP_ID` is not set.
-   */
-  connectWithPrivy: () => void;
+  /** Null when `NEXT_PUBLIC_POLLAR_API_KEY` is not set. */
+  pollar: PollarLogin | null;
   disconnect: () => void;
   signTransaction: SignTransaction;
   signMessage: SignMessage;
-  /** In-memory master seed (32 bytes) derived from the unlock signature, or null. */
-  seed: Uint8Array | null;
-  /** True once the user has unlocked (signed the derivation message) this session. */
-  unlocked: boolean;
-  /** Sign the canonical message → derive + hold the in-memory seed. */
-  unlock: () => Promise<void>;
   /** Active auth backend, or null when not connected. */
   walletBackend: WalletBackend | null;
   /** A remembered session is still being restored, so whether a wallet is connected isn't known yet. */
@@ -65,6 +59,7 @@ interface WalletState {
 }
 
 const BACKEND_KEY = "writz.walletBackend";
+const POLLAR_SETTLED = new Set<string>(["idle", "authenticated", "error"]);
 
 function kitWalletName(): string | undefined {
   try {
@@ -83,36 +78,37 @@ async function loadAccountSnapshot(address: string): Promise<AccountSnapshot | n
   }
 }
 
-function getStellarAddress(user: User | null): string | null {
-  if (!user) return null;
-  for (const account of user.linkedAccounts) {
-    if (account.type === "wallet") {
-      const w = account as WalletWithMetadata;
-      if (w.chainType === "stellar") return w.address;
-    }
+function assertPollarWalletReady(session: PollarSession): string {
+  if (!session.address) throw new Error("No Pollar wallet connected");
+  if (session.provisioning === "CREATING") {
+    throw new Error("Your account is still being created on Stellar. Try again in a few seconds.");
   }
-  return null;
+  if (session.provisioning === "FAILED") {
+    throw new Error("Your account could not be created on Stellar. Sign out and sign in again.");
+  }
+  return session.address;
 }
 
 const WalletContext = createContext<WalletState | null>(null);
 
 export function WalletProvider({ children }: { children: React.ReactNode }) {
-  // Privy state comes via bridge context (null when privyAppId is not set).
-  const privy = usePrivyBridge();
+  const pollarSession = usePollarSession();
+  const pollarEnabled = Boolean(config.pollarApiKey);
 
   // ── Local state ──
   const [backend, setBackend] = useState<WalletBackend | null>(() => {
     if (typeof window === "undefined") return null;
     return (localStorage.getItem(BACKEND_KEY) as WalletBackend | null) ?? null;
   });
-  const [address, setAddress] = useState<string | null>(null);
+  const [kitAddress, setKitAddress] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Master seed lives only in memory (never persisted); cleared on disconnect/switch.
-  const [seed, setSeed] = useState<Uint8Array | null>(null);
 
-  // Guard against duplicate Stellar wallet creation in the Privy flow.
-  const creatingPrivyWallet = useRef(false);
+  // A login started here; until it settles, an idle Pollar state is not a signed-out one.
+  const pollarLoggingIn = useRef(false);
+  const creatingPollarWallet = useRef(false);
+
+  const address = backend === "pollar" ? pollarSession.address : kitAddress;
 
   // ── Kit session restore on mount ──
   useEffect(() => {
@@ -121,7 +117,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       .getAddress()
       .then(({ address: addr }) => {
         if (addr) {
-          setAddress(addr);
+          setKitAddress(addr);
         } else {
           setBackend(null);
           localStorage.removeItem(BACKEND_KEY);
@@ -135,76 +131,49 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Privy session sync ──
-  // Handles: initial login, page-reload session restore, session expiry.
-  // `backend === 'privy'` gates this so the kit path is unaffected.
+  // ── Pollar session sync: login, reload restore, expiry, first wallet ──
   useEffect(() => {
-    if (!privy || !privy.ready || backend !== "privy") return;
+    if (backend !== "pollar" || !pollarSession.ready) return;
+    const { auth } = pollarSession;
+    const client = pollarClient();
 
-    if (!privy.authenticated) {
-      // Session expired or the login modal was dismissed before auth completed.
-      // Only clear state when no address was ever set (avoids wiping on SSR
-      // where privy.authenticated might briefly lag behind).
-      void Promise.resolve().then(() => {
-        if (!address) {
-          setBackend(null);
-          localStorage.removeItem(BACKEND_KEY);
-        }
-        setConnecting(false);
-      });
+    if (auth.step === "authenticated") {
+      pollarLoggingIn.current = false;
+      localStorage.setItem(BACKEND_KEY, "pollar");
+      if (!pollarSession.address && client && !client.hasWallet() && !creatingPollarWallet.current) {
+        creatingPollarWallet.current = true;
+        client
+          .createWallet()
+          .catch((e: unknown) => setError(e instanceof Error ? e.message : "Failed to create Stellar wallet"))
+          .finally(() => {
+            creatingPollarWallet.current = false;
+          });
+      }
       return;
     }
-
-    const stellarAddress = getStellarAddress(privy.user);
-
-    if (stellarAddress) {
+    if (auth.step === "error") {
+      pollarLoggingIn.current = false;
       void Promise.resolve().then(() => {
-        if (address !== stellarAddress) setAddress(stellarAddress);
-        setConnecting(false);
-        localStorage.setItem(BACKEND_KEY, "privy");
+        setError(auth.message);
+        setBackend(null);
       });
-    } else if (!creatingPrivyWallet.current) {
-      // First login - create the user's Stellar embedded wallet.
-      creatingPrivyWallet.current = true;
-      void Promise.resolve().then(() => setConnecting(true));
-      privy
-        .createWallet({ chainType: "stellar" })
-        .then(({ wallet }) => {
-          setAddress(wallet.address);
-          setConnecting(false);
-          creatingPrivyWallet.current = false;
-          localStorage.setItem(BACKEND_KEY, "privy");
-        })
-        .catch((e) => {
-          // Wallet might have been created in a race - check once more.
-          const existing = getStellarAddress(privy.user);
-          if (existing) {
-            setAddress(existing);
-            setConnecting(false);
-          } else {
-            setError(
-              e instanceof Error
-                ? e.message
-                : "Failed to create Stellar wallet",
-            );
-            setBackend(null);
-            setConnecting(false);
-            localStorage.removeItem(BACKEND_KEY);
-          }
-          creatingPrivyWallet.current = false;
-        });
+      localStorage.removeItem(BACKEND_KEY);
+      return;
     }
-  }, [privy, backend, address]);
+    if (auth.step === "idle" && !pollarLoggingIn.current) {
+      void Promise.resolve().then(() => setBackend(null));
+      localStorage.removeItem(BACKEND_KEY);
+    }
+  }, [backend, pollarSession]);
 
   // ── Kit connect ──
   const connect = useCallback(async () => {
     setError(null);
     setConnecting(true);
-    setSeed(null);
     setBackend("kit");
     try {
       const { address: addr } = await ensureKit().authModal();
-      setAddress(addr);
+      setKitAddress(addr);
       localStorage.setItem(BACKEND_KEY, "kit");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to connect wallet");
@@ -214,22 +183,32 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // ── Privy connect ──
-  const connectWithPrivy = useCallback(() => {
-    if (!privy) {
-      setError(
-        "Privy is not configured. Set NEXT_PUBLIC_PRIVY_APP_ID in your environment.",
-      );
+  // ── Pollar connect ──
+  const startPollar = useCallback((start: (client: NonNullable<ReturnType<typeof pollarClient>>) => void) => {
+    const client = pollarClient();
+    if (!client) {
+      setError("Email and social login are not configured. Set NEXT_PUBLIC_POLLAR_API_KEY in your environment.");
       return;
     }
     setError(null);
-    setSeed(null);
-    setBackend("privy");
-    if (!privy.authenticated) {
-      privy.login();
-    }
-    // Auth state changes are handled reactively by the Privy effect above.
-  }, [privy]);
+    pollarLoggingIn.current = true;
+    setBackend("pollar");
+    start(client);
+  }, []);
+
+  const pollar = useMemo<PollarLogin | null>(() => {
+    if (!pollarEnabled) return null;
+    return {
+      session: pollarSession,
+      login: (provider) => startPollar((c) => c.login({ provider })),
+      loginWithEmail: (email) => startPollar((c) => c.login({ provider: "email", email })),
+      verifyCode: (code) => pollarClient()?.verifyEmailCode(code),
+      cancel: () => {
+        pollarLoggingIn.current = false;
+        pollarClient()?.cancelLogin();
+      },
+    };
+  }, [pollarEnabled, pollarSession, startPollar]);
 
   // ── Disconnect ──
   const disconnect = useCallback(() => {
@@ -237,32 +216,34 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       ensureKit()
         .disconnect()
         .catch(() => {});
-    } else if (backend === "privy" && privy) {
-      privy.logout().catch(() => {});
-      creatingPrivyWallet.current = false;
+    } else if (backend === "pollar") {
+      pollarLoggingIn.current = false;
+      pollarClient()?.logout().catch(() => {});
     }
-    setAddress(null);
-    setSeed(null);
+    setKitAddress(null);
     setBackend(null);
     setError(null);
     localStorage.removeItem(BACKEND_KEY);
-  }, [backend, privy]);
+  }, [backend]);
 
   // ── Signing - dispatches to the active backend ──
   const signTransaction = useCallback<SignTransaction>(
     async (xdr) => {
-      if (backend === "privy") {
-        if (!address || !privy)
-          throw new Error("No Privy wallet connected");
-        await preflightSign({
-          xdr,
-          expectedPassphrase: config.networkPassphrase,
-          getWalletPassphrase: async () => null,
-          loadAccount: () => loadAccountSnapshot(address),
-        });
-        return withRejection("stellar", "Privy", () =>
-          signTransactionWithPrivy(xdr, address, privy.signRawHash),
-        );
+      if (backend === "pollar") {
+        const client = pollarClient();
+        if (!client) throw new Error("No Pollar wallet connected");
+        const signer = assertPollarWalletReady(pollarSession);
+        const result = await withRejection("stellar", "Pollar", () => signTransactionWithPollar(client, xdr, signer));
+        // A sponsored envelope needs no XLM; one Pollar would not sponsor is paid by the user.
+        if (!result.sponsored) {
+          await preflightSign({
+            xdr,
+            expectedPassphrase: config.networkPassphrase,
+            getWalletPassphrase: async () => null,
+            loadAccount: () => loadAccountSnapshot(signer),
+          });
+        }
+        return { signedTxXdr: result.signedTxXdr, signerAddress: result.signerAddress };
       }
       const kit = ensureKit();
       const walletName = kitWalletName();
@@ -282,17 +263,16 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       );
       return { signedTxXdr, signerAddress: signer ?? signerAddress };
     },
-    [backend, address, privy],
+    [backend, pollarSession],
   );
 
   const signMessage = useCallback<SignMessage>(
     async (message) => {
-      if (backend === "privy") {
-        if (!address || !privy)
-          throw new Error("No Privy wallet connected");
-        return withRejection("stellar", "Privy", () =>
-          signMessageWithPrivy(message, address, privy.signRawHash),
-        );
+      if (backend === "pollar") {
+        const client = pollarClient();
+        if (!client) throw new Error("No Pollar wallet connected");
+        assertPollarWalletReady(pollarSession);
+        return withRejection("stellar", "Pollar", () => signMessageWithPollar(client, message));
       }
       const kit = ensureKit();
       const walletName = kitWalletName();
@@ -305,43 +285,39 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       );
       return signedMessage;
     },
-    [backend, address, privy],
+    [backend, pollarSession],
   );
 
-  const unlock = useCallback(async () => {
-    const signature = await signMessage(KEY_DERIVATION_MESSAGE);
-    setSeed(deriveSeed(signature));
-  }, [signMessage]);
+  const pollarConnecting = backend === "pollar" && !POLLAR_SETTLED.has(pollarSession.auth.step);
 
   const value = useMemo<WalletState>(
     () => ({
       address,
-      connecting,
+      connecting: connecting || pollarConnecting,
       error,
       connect,
-      connectWithPrivy,
+      pollar,
       disconnect,
       signTransaction,
       signMessage,
-      seed,
-      unlocked: seed !== null,
-      unlock,
       walletBackend: backend,
-      restoring: address === null && (backend === "kit" || (backend === "privy" && privy !== null)),
+      restoring:
+        address === null &&
+        (backend === "kit" || (backend === "pollar" && pollarEnabled && !pollarSession.ready)),
     }),
     [
       address,
       connecting,
+      pollarConnecting,
       error,
       connect,
-      connectWithPrivy,
+      pollar,
       disconnect,
       signTransaction,
       signMessage,
-      seed,
-      unlock,
       backend,
-      privy,
+      pollarEnabled,
+      pollarSession.ready,
     ],
   );
 

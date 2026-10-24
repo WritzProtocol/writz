@@ -28,8 +28,8 @@
 
 * [The Bitcoin Side](/how-it-works/bitcoin-side)
 * [SPV Verification](/how-it-works/spv-verification)
-* [The ZK Privacy Layer](/how-it-works/zk-privacy-layer)
 * [The Stellar Side](/how-it-works/stellar-side)
+* [Privacy edition (in progress)](/how-it-works/privacy-edition)
 
 ## Developers
 

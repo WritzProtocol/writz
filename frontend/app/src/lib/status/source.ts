@@ -1,3 +1,4 @@
+import type { ChainPosition } from "@/lib/contracts/writzLend";
 import type {
   BtcTxView,
   ChainReads,
@@ -16,24 +17,22 @@ import type {
  */
 export interface RelayerSource {
   confirmations(btcTxid: string): Promise<{ confirmations: number; minConfirmations?: number }>;
-  /** `since` is the position's creation time, to tell whether the lookup reaches back far enough. */
-  liquidation(nullifierHex: string, since: number): Promise<LiquidationLookup>;
-  catchingUp(commitmentHex: string, leafIndex?: number): Promise<boolean>;
+  /** The transaction that liquidated a position; `since` is its creation time, to tell whether the lookup reaches back far enough. */
+  liquidation(btcTxid: string, since: number): Promise<LiquidationLookup>;
 }
 
 /** Every network read the status needs. Implementations reject when a read fails. */
 export interface StatusSource {
-  getCommitmentForTxid(btcTxid: string): Promise<string | null>;
-  isCommitmentPending(commitmentHex: string): Promise<boolean>;
-  isNullifierSpent(nullifierHex: string): Promise<boolean>;
+  /** `writz-lend.get_position(txid)`, debt accrued to the latest ledger; null when there is none. */
+  getPosition(btcTxid: string): Promise<ChainPosition | null>;
+  /** True once the relayer has published the co-signed release for `btcTxid`. */
+  hasReleasePsbt(btcTxid: string): Promise<boolean>;
   getOraclePrice(): Promise<bigint>;
   getBtcTipHeight(): Promise<number>;
   getBtcTx(txid: string): Promise<BtcTxView>;
   getOutspend(txid: string, vout: number): Promise<Outspend>;
   relayer: RelayerSource;
 }
-
-export const toHex32 = (decimal: string): string => BigInt(decimal).toString(16).padStart(64, "0");
 
 const settle = <T>(p: Promise<T>): Promise<T | undefined> => p.then((v) => v, () => undefined);
 
@@ -46,42 +45,34 @@ export async function readStatusInputs(
   source: StatusSource,
   params: StatusParams,
 ): Promise<StatusInputs> {
-  const p = local.position && local.position.status !== "pending" ? local.position : null;
+  const p = local.position;
   const pd = p ? null : local.pendingDeposit;
   const chain: ChainReads = {};
   const relayer: RelayerIndex = {};
 
   if (pd) {
-    const [tx, tip, commitment, conf] = await Promise.all([
+    const [tx, tip, position, conf] = await Promise.all([
       settle(source.getBtcTx(pd.btcTxid)),
       settle(source.getBtcTipHeight()),
-      settle(source.getCommitmentForTxid(pd.btcTxid)),
+      settle(source.getPosition(pd.btcTxid)),
       settle(source.relayer.confirmations(pd.btcTxid)),
     ]);
-    Object.assign(chain, { depositTx: tx, btcTipHeight: tip, commitmentForTxid: commitment });
+    Object.assign(chain, { depositTx: tx, btcTipHeight: tip, position });
     Object.assign(relayer, { confirmations: conf?.confirmations, minConfirmations: conf?.minConfirmations });
-    if (commitment) chain.commitmentPending = await settle(source.isCommitmentPending(commitment));
   }
 
   if (p) {
-    const commitmentHex = toHex32(p.commitment);
-    const [spent, price, tip, outspend, pending, catchingUp] = await Promise.all([
-      settle(source.isNullifierSpent(toHex32(p.nullifier))),
-      BigInt(p.debtStroops) > 0n ? settle(source.getOraclePrice()) : undefined,
+    const [position, tip, outspend] = await Promise.all([
+      settle(source.getPosition(p.txid)),
       settle(source.getBtcTipHeight()),
-      p.txid && p.vout !== undefined ? settle(source.getOutspend(p.txid, p.vout)) : undefined,
-      p.status === "registering" ? settle(source.isCommitmentPending(commitmentHex)) : undefined,
-      p.leafIndex !== undefined ? settle(source.relayer.catchingUp(commitmentHex, p.leafIndex)) : undefined,
+      p.vout !== undefined ? settle(source.getOutspend(p.txid, p.vout)) : undefined,
     ]);
-    Object.assign(chain, {
-      nullifierSpent: spent,
-      oraclePriceStroops: price,
-      btcTipHeight: tip,
-      lockOutspend: outspend,
-      commitmentPending: pending,
-    });
-    relayer.catchingUp = catchingUp;
-    if (spent) relayer.liquidation = await settle(source.relayer.liquidation(toHex32(p.nullifier), p.createdAt));
+    Object.assign(chain, { position, btcTipHeight: tip, lockOutspend: outspend });
+    if (position?.status === "active" && position.debtStroops > 0n) {
+      chain.oraclePriceStroops = await settle(source.getOraclePrice());
+    }
+    if (position?.status === "closed") chain.releasePsbtReady = await settle(source.hasReleasePsbt(p.txid));
+    if (position?.status === "liquidated") relayer.liquidation = await settle(source.relayer.liquidation(p.txid, p.createdAt));
   }
 
   return { local, chain: defined(chain), relayer: defined(relayer), params };

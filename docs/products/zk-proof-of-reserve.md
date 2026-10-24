@@ -82,7 +82,7 @@ All plans include the on-premise PoR client, public verification tooling, and do
 
 ## Technical Foundation
 
-ZK Proof of Reserve uses the same Groth16 BN254 circuit infrastructure as Writz Lend's ZK layer. The ZK circuit is purpose-built for reserve attestation:
+ZK Proof of Reserve would use the same Groth16 BN254 circuit infrastructure as the Writz privacy edition (in progress), not Writz Lend, which has no ZK layer. The ZK circuit is purpose-built for reserve attestation:
 
 - Input: UTXO set (private), block hash at attestation time (public), threshold (public)
 - Constraint: sum of UTXO values ≥ threshold
@@ -96,7 +96,7 @@ The circuit is compiled, the trusted setup ceremony is run publicly, and the ver
 
 ZK Proof of Reserve is planned for Phase 3 (Q3 2027), after Writz Lend is live on mainnet and the ZK infrastructure has been audited.
 
-The circuit design is complete. The required ZK infrastructure (zk-verifier contract, Groth16 BN254 pairing) is already deployed on Stellar testnet as part of the Writz Lend stack.
+The circuit design is complete. The required ZK infrastructure (zk-verifier contract, Groth16 BN254 pairing) is already deployed on Stellar testnet as part of the privacy edition (in progress).
 
 ---
 

@@ -1142,6 +1142,7 @@ html:has(.landing) body {
 }
 
 .home .ptile.facts2 {
+  grid-column: span 3;
   gap: 12px;
   background: var(--deep);
 }
@@ -1226,6 +1227,10 @@ html:has(.landing) body {
 
   .home .board {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .home .ptile.facts2 {
+    grid-column: auto;
   }
 
   .home .tiles {

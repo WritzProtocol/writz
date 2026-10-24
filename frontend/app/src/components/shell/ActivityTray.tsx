@@ -36,9 +36,10 @@ function time(at: number | null): string | null {
 
 function ActionNeeded({ a, onNavigate }: { a: ShellAccount; onNavigate: () => void }) {
   const urgent = pickUrgent(a.loanStatuses, null);
-  const needsSign = a.stellar.address && (a.loans.state === "unsigned" || a.loans.state === "signing");
   const lines: { key: string; text: string; href?: string; action?: () => void; label: string }[] = [];
-  if (needsSign) lines.push({ key: "sign", text: "Find your loans on this device.", action: a.loans.sign, label: "Sign to find my loans" });
+  if (a.stellar.address && a.loans.state === "failed") {
+    lines.push({ key: "find", text: "Your loans couldn't be loaded.", action: a.loans.retry, label: "Find my loans" });
+  }
   if (urgent?.kind === "liquidatable" || urgent?.kind === "at_risk") {
     const n = urgent.loan.position.index;
     const text = urgent.kind === "liquidatable" ? `Loan ${n + 1} can be liquidated now.` : `Loan ${n + 1} is close to liquidation.`;
@@ -101,9 +102,9 @@ function Item({ item, onNavigate, checkAgain }: { item: TrayItem; onNavigate: ()
           </ExternalLink>
         ) : null}
       </p>
-      {item.action === "resume" || item.action === "finish_deposit" ? (
+      {item.action === "resume" ? (
         <Link href="/borrow/new" className="wz-btn wz-btn-line wz-btn-sm" onClick={onNavigate}>
-          {item.action === "finish_deposit" ? "Finish deposit" : "Resume"}
+          Resume
         </Link>
       ) : item.action === "check_again" ? (
         <button type="button" className="wz-btn wz-btn-line wz-btn-sm" onClick={checkAgain}>

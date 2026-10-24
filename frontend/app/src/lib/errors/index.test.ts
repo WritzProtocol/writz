@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { CommitmentTreeError } from "@/lib/contracts/generated";
+import { WritzLendError } from "@/lib/contracts/writzLendGenerated";
 import { SignatureRejectedError } from "@/lib/wallet/rejection";
 import { AccountUnfundedError, LowXlmError, WrongNetworkError } from "@/lib/wallet/precheck";
 import { XverseError } from "@/lib/bitcoin/xverse";
@@ -13,7 +14,8 @@ function text(e: FriendlyError): string {
 }
 
 const SAMPLES: [unknown, ErrorContext?][] = [
-  ...Object.keys(CommitmentTreeError).map((n) => [code(Number(n)), { flow: "borrow" }] as [unknown, ErrorContext]),
+  ...Object.keys(WritzLendError).map((n) => [code(Number(n)), { flow: "borrow" }] as [unknown, ErrorContext]),
+  ...Object.keys(CommitmentTreeError).map((n) => [code(Number(n)), { flow: "lend" }] as [unknown, ErrorContext]),
   ...Object.values(BitcoinSpvError).map(({ message }) => [new Error(message), { flow: "deposit" }] as [unknown, ErrorContext]),
   [new SignatureRejectedError("stellar", "Freighter")],
   [new WrongNetworkError("Public Global Stellar Network ; September 2015", "Freighter")],
@@ -22,15 +24,12 @@ const SAMPLES: [unknown, ErrorContext?][] = [
   [new XverseError("Internal error"), { flow: "release" }],
   [new Error("NEXT_PUBLIC_RELAYER_URL not configured"), { flow: "release" }],
   [new Error("Relayer unreachable"), { flow: "earn-deposit" }],
-  [new Error("Merkle path unavailable: Leaf store is out of sync")],
-  [new Error("Merkle path fetch failed: 500")],
-  [new Error("Merkle insertion failed: boom")],
-  [new Error("Failed to fetch notes: 500")],
   [new Error("Relayer error 502")],
-  [new Error("Co-sign failed: 500")],
+  [new Error("ReleaseNotCosigned"), { flow: "release" }],
+  [new Error("ReleaseMismatch: recipient"), { flow: "release" }],
+  [new Error("LoanNotRepaid"), { flow: "release" }],
+  [new Error("PositionNotFound"), { flow: "borrow" }],
   [new Error("Broadcast failed: bad-txns")],
-  [new Error("Commitment mismatch - circuit output does not match local computation.")],
-  [new Error("ProverUnavailable: fetch failed")],
   [new Error("TxLockBusy")],
   [new Error("SubmissionThrottled")],
   [new Error("ConfirmationTimedOut")],
@@ -58,14 +57,20 @@ describe("every message follows the copy rules", () => {
 });
 
 describe("contract codes route through the deployed variant", () => {
-  it("maps #15 to the withdraw-limit message with the caller's balance", () => {
+  it("reads a bare code as writz-lend on borrower flows", () => {
+    const e = describeError(code(10), { flow: "borrow" });
+    expect(e.contract).toEqual({ contract: "writz-lend", code: 10, variant: "ExceedsCollateralRatio" });
+    expect(e.headline).toContain("150% borrow limit");
+  });
+
+  it("maps #15 to the withdraw-limit message with the caller's balance on the Lend tab", () => {
     const e = describeError(code(15), { flow: "withdraw", ownBalanceUsdc: "250" });
     expect(e.contract).toEqual({ contract: "commitment-tree", code: 15, variant: "WithdrawExceedsBalance" });
     expect(text(e)).toBe("You supplied 250 USDC. No USDC moved. Enter that or less.");
   });
 
   it("words InsufficientLiquidity for borrowing and for withdrawing", () => {
-    expect(describeError(code(9), { flow: "borrow", availableUsdc: "40" }).headline).toBe(
+    expect(describeError(code(11), { flow: "borrow", availableUsdc: "40" }).headline).toBe(
       "The pool has 40 USDC available right now.",
     );
     expect(describeError(code(9), { flow: "withdraw", availableUsdc: "40" }).headline).toContain(
@@ -73,22 +78,14 @@ describe("contract codes route through the deployed variant", () => {
     );
   });
 
-  it("does not promise a retry fixes PriceMismatch, since the price is fixed at build time", () => {
-    const e = describeError(code(12), { flow: "borrow" });
-    expect(text(e)).not.toMatch(/latest price|new price/i);
-    expect(e.action).toBe("Trying again won't help until the app is updated.");
-    expect(e.report).toBe("always");
+  it("tells a repay that overshot the debt to refresh, not to enter less", () => {
+    const e = describeError(code(12), { flow: "repay" });
+    expect(e.contract?.variant).toBe("RepayExceedsDebt");
+    expect(e.action).toContain("Refresh");
   });
 
-  it("does not send NullifierAlreadySpent to a page refresh", () => {
-    const e = describeError(code(6), { flow: "repay" });
-    expect(text(e)).not.toMatch(/refresh/i);
-    expect(e.action).toContain("Recover positions");
-  });
-
-  it("names the action Stellar refused for InvalidZkProof", () => {
-    expect(describeError(code(4), { flow: "repay" }).headline).toBe("Stellar didn't accept this repay.");
-    expect(describeError(code(4), { flow: "deposit" }).safety).toContain("Your BTC is safe in its lock.");
+  it("names a stale oracle price as a price problem", () => {
+    expect(describeError(code(19), { flow: "borrow" }).headline).toBe("The BTC price is unavailable right now.");
   });
 
   it("falls back for a code the deployed table doesn't have, keeping the code for support", () => {
@@ -97,13 +94,14 @@ describe("contract codes route through the deployed variant", () => {
     expect(e.contract?.code).toBe(99);
   });
 
-  it("names #16 Paused even though the generated binding stops at 15", () => {
-    const e = describeError(code(16), { flow: "borrow" });
-    expect(e.headline).toBe("Writz is paused for maintenance.");
-    expect(e.contract?.variant).toBe("Paused");
+  it("names Paused on both contracts", () => {
+    expect(describeError(code(17), { flow: "borrow" }).headline).toBe("Writz is paused for maintenance.");
+    const lend = describeError(code(16), { flow: "lend" });
+    expect(lend.headline).toBe("Writz is paused for maintenance.");
+    expect(lend.contract?.variant).toBe("Paused");
   });
 
-  it("does not read vault failures with the commitment-tree table", () => {
+  it("does not read vault failures with a lending table", () => {
     const e = describeError(code(15), { flow: "earn-withdraw" });
     expect(e.contract).toBeUndefined();
   });
@@ -137,10 +135,10 @@ describe("wallet and account messages", () => {
 
 describe("support route", () => {
   it("adds the GitHub link to the plain-text form", () => {
-    expect(humanizeError(code(12), { flow: "borrow" })).toContain(
+    expect(humanizeError(new Error("ReleaseMismatch: recipient"), { flow: "release" })).toContain(
       "Report it on GitHub: https://github.com/WritzProtocol/writz/issues.",
     );
-    expect(humanizeError(new Error("Co-sign failed: 500"))).toContain("If it keeps happening, report it on GitHub");
+    expect(humanizeError(new Error("ReleaseNotCosigned"))).toContain("If it keeps happening, report it on GitHub");
   });
 
   it("uses read wording for failed page loads", () => {

@@ -69,7 +69,6 @@ export function HomeView({ data }: { data: HomeData }) {
   const supplied = data.lend?.kind === "ok" && data.lend.value > 0n ? data.lend.value : null;
   const hasLoans = a.loanStatuses.length > 0 || Boolean(a.deposit);
   const connected = Boolean(a.stellar.address);
-  const unsigned = connected && (a.loans.state === "unsigned" || a.loans.state === "signing");
   const finding = connected && a.loans.state === "finding" && !hasLoans;
   const only = open.length === 1 ? open[0].derived.status : null;
 
@@ -109,21 +108,7 @@ export function HomeView({ data }: { data: HomeData }) {
       </header>
 
       {urgent ? (
-        <UrgentCard u={urgent} price={data.price} m={m} onCheckAgain={checkDeposit} findLoans={a.loans.retry} />
-      ) : null}
-
-      {unsigned ? (
-        <Notice
-          tone="info"
-          label="Find your loans"
-          actions={
-            <button type="button" className="wz-btn wz-btn-gold" disabled={a.loans.state === "signing"} onClick={a.loans.sign}>
-              {a.loans.state === "signing" ? `Confirm in ${a.stellar.walletName}` : "Sign to find my loans"}
-            </button>
-          }
-        >
-          <p>Sign to find loans made with this wallet. Free, no transaction.</p>
-        </Notice>
+        <UrgentCard u={urgent} price={data.price} m={m} onCheckAgain={checkDeposit} />
       ) : null}
 
       {finding ? (
@@ -144,7 +129,6 @@ export function HomeView({ data }: { data: HomeData }) {
               key={l.position.id}
               loan={l}
               price={data.price}
-              findLoans={a.loans.retry}
               compact={open.length > 1}
               primary={urgentLoanId !== l.position.id}
               enter
@@ -158,7 +142,7 @@ export function HomeView({ data }: { data: HomeData }) {
           <summary>Closed loans ({closed.length})</summary>
           <div className="hm-loans" data-count={closed.length}>
             {closed.map((l) => (
-              <LoanSummaryCard key={l.position.id} loan={l} price={data.price} findLoans={a.loans.retry} compact primary={false} />
+              <LoanSummaryCard key={l.position.id} loan={l} price={data.price} compact primary={false} />
             ))}
           </div>
         </details>

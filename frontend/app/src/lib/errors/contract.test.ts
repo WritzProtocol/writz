@@ -1,10 +1,12 @@
 import { describe, expect, it } from "bun:test";
 import { CommitmentTreeError } from "@/lib/contracts/generated";
+import { WritzLendError } from "@/lib/contracts/writzLendGenerated";
 import { BitcoinSpvError, resolveContractError } from "./contract";
 
 const TREE = "CDQCTFO3FK3M47QS47O2A4WLNPSQAQBSXBFPJ6RZEHFO5D7RY34FSBBP";
 const SPV = "CB2BD6QCSZVNZN5NLI7C5NF356WXVJDSXT6LVAQFWHHS4SZ4NCKKNIVA";
-const IDS = { commitmentTree: TREE, bitcoinSpv: SPV };
+const LEND = "CA3T7T2S7HV27BXO7OLIHSMGAMQ37BMOOUHQLTBGUQVL4B6Y2CDJPHHX";
+const IDS = { writzLend: LEND, commitmentTree: TREE, bitcoinSpv: SPV };
 
 // Captured from a testnet simulation of withdraw_supply over the caller's balance.
 const WITHDRAW_OVER_BALANCE = `Transaction simulation failed: "HostError: Error(Contract, #15)
@@ -31,10 +33,22 @@ describe("resolveContractError", () => {
     });
   });
 
-  it("uses the generated table for every commitment-tree code", () => {
-    for (const [code, { message }] of Object.entries(CommitmentTreeError)) {
+  it("reads a bare code with the table of the contract the flow calls", () => {
+    for (const [code, { message }] of Object.entries(WritzLendError)) {
       expect(resolveContractError(`HostError: Error(Contract, #${code})`, IDS)?.variant).toBe(message);
     }
+    for (const [code, { message }] of Object.entries(CommitmentTreeError)) {
+      expect(resolveContractError(`HostError: Error(Contract, #${code})`, IDS, "commitment-tree")?.variant).toBe(message);
+    }
+  });
+
+  it("attributes a writz-lend failure from its event log", () => {
+    const msg = `HostError: Error(Contract, #10)\n   0: [Diagnostic Event] contract:${LEND}, topics:[error, Error(Contract, #10)], data:""`;
+    expect(resolveContractError(msg, IDS, "commitment-tree")).toEqual({
+      contract: "writz-lend",
+      code: 10,
+      variant: "ExceedsCollateralRatio",
+    });
   });
 
   it("attributes a failure escalated from bitcoin-spv to the contract that raised it", () => {
@@ -48,7 +62,7 @@ describe("resolveContractError", () => {
 
   it("leaves a code the deployed table doesn't know without a variant", () => {
     expect(resolveContractError("HostError: Error(Contract, #99)", IDS)).toEqual({
-      contract: "commitment-tree",
+      contract: "writz-lend",
       code: 99,
       variant: undefined,
     });

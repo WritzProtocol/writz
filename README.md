@@ -9,9 +9,9 @@
 
 **[Live App](https://writz.xyz)** · **[Docs](https://docs.writz.xyz)** · **[Relayer API](https://api.testnet.writz.xyz)**
 
-**Writz** is a Bitcoin lending protocol on Stellar where the collateral never leaves Bitcoin. Lock real BTC directly from your Bitcoin wallet, borrow USDC on Stellar, and keep every position private.
+**Writz** is a Bitcoin lending protocol on Stellar where the collateral never leaves Bitcoin. Lock real BTC directly from your Bitcoin wallet, borrow USDC on Stellar, and take it back alone if Writz ever disappears.
 
-No bridge. No custodian. No wrapped tokens. No public balance sheet.
+No bridge. No custodian. No wrapped tokens.
 
 ---
 
@@ -20,7 +20,6 @@ No bridge. No custodian. No wrapped tokens. No public balance sheet.
 | | Writz | Every other lending protocol |
 |---|---|---|
 | **Custodian** | Bitcoin Script is the custodian | A company holds your BTC |
-| **Privacy** | Private by default · ZK proofs | Your position is a public billboard |
 | **BTC** | Native on-chain BTC | Wrapped token (WBTC, tBTC…) |
 | **Emergency exit** | CLTV timelock → reclaim alone | Depends on protocol availability |
 
@@ -28,15 +27,13 @@ No bridge. No custodian. No wrapped tokens. No public balance sheet.
 
 ## This Is Not a Whitepaper
 
-As of August 2026, four contracts are live on Stellar testnet, 623 tests pass, and real Bitcoin transactions have been verified on-chain.
+As of August 2026, the protocol's two contracts (`bitcoin-spv` and `writz-lend`) are live on Stellar testnet, 623 tests pass, and real Bitcoin transactions have been verified on-chain.
 
 | What | Status |
 |---|---|
 | Bitcoin SPV verification on Soroban | ✓ Live on testnet |
-| ZK-private positions (Groth16 BN254) | ✓ Verified on-chain |
+| `writz-lend` deposit, borrow, repay and release PSBT | ✓ Live on testnet |
 | P2WSH locking + co-signed BTC release | ✓ Broadcast on Bitcoin Signet |
-| Poseidon Merkle commitment tree | ✓ Root updated on-chain |
-| Full deposit → borrow → repay ZK flow | ✓ 6 sequential testnet transactions |
 | 623 tests across all modules | ✓ All passing |
 
 But a few months ago, it was a whitepaper. Version 1.0 (July 2026) is at [writz.xyz/whitepaper](https://writz.xyz/whitepaper) and archived on Zenodo with the DOI [10.5281/zenodo.23148520](https://doi.org/10.5281/zenodo.23148520).
@@ -46,9 +43,14 @@ But a few months ago, it was a whitepaper. Version 1.0 (July 2026) is at [writz.
 | Contract | Address | WASM | Tests |
 |---|---|---|---|
 | `bitcoin-spv` | `CAHHY4S4WCIFU4LBSKBI3IP6A4QYR2COV6EACDEBXGPJFDWBJWGOMCLP` | 12.0 KB | 49 |
+| `writz-lend` | `CA3T7T2S7HV27BXO7OLIHSMGAMQ37BMOOUHQLTBGUQVL4B6Y2CDJPHHX` | 36.0 KB | 85 |
+
+The privacy edition's contracts are also deployed on testnet, separately from the protocol (see [Privacy edition](#privacy-edition-in-progress)):
+
+| Contract | Address | WASM | Tests |
+|---|---|---|---|
 | `zk-verifier` | `CB5XAP6MF2GVVFATFTVCKVEXUODWWRQP4B3QFDMRTM55REP7N2YMXEUD` | 14.5 KB | 25 |
 | `commitment-tree` | `CAQBLCAPGXXCZTJDAJLY7E4PTJYGR6CY4YWH4JSJKFXYIHW3GANP6RFM` | 31.7 KB | 32 |
-| `writz-lend` | `CA3T7T2S7HV27BXO7OLIHSMGAMQ37BMOOUHQLTBGUQVL4B6Y2CDJPHHX` | 36.0 KB | 85 |
 
 Full deployment log, init transactions, and verified calls: [`contracts/deployments/testnet.md`](contracts/deployments/testnet.md)
 
@@ -58,14 +60,16 @@ Full deployment log, init transactions, and verified calls: [`contracts/deployme
 
 ![System Architecture](docs/diagrams/output/01-system-architecture.png)
 
-The protocol operates across two blockchains. Bitcoin is the custody layer - BTC never leaves the Bitcoin network. Stellar is the execution layer - loan logic, privacy, and USDC flows all run on Soroban.
+The protocol operates across two blockchains. Bitcoin is the custody layer - BTC never leaves the Bitcoin network. Stellar is the execution layer - SPV verification, loan logic, and USDC flows run on Soroban.
 
 **Four layers, each with a clear boundary:**
 
 1. **Bitcoin Network** - user's BTC wallet locks funds into a P2WSH script. The script enforces two spending conditions; no third party can move the funds.
-2. **Backend Services** - a stateless SPV Relayer watches Bitcoin blocks and assembles proof bundles for Soroban. A ZK Prover runs in the browser (no server-side proving).
-3. **Soroban Contracts** - four contracts verify Bitcoin transactions cryptographically, verify ZK proofs, manage the Poseidon Merkle tree, and issue/repay USDC loans.
-4. **Browser** - all secrets stay on the user's device. ZK proofs are generated locally. The Stellar wallet signs Soroban transactions.
+2. **Backend Services** - a stateless SPV Relayer watches Bitcoin blocks and assembles proof bundles for Soroban, and a repay watcher co-signs the release PSBT once a loan is fully repaid.
+3. **Soroban Contracts** - `bitcoin-spv` verifies Bitcoin transactions cryptographically; `writz-lend` registers deposits and issues, accrues and settles USDC loans.
+4. **Browser** - keys stay on the user's device. The Bitcoin wallet signs the key-control proof and the release transaction; the Stellar wallet signs Soroban transactions.
+
+Positions, amounts and collateral are public on chain, like any other lending market.
 
 ---
 
@@ -79,51 +83,27 @@ The protocol operates across two blockchains. Bitcoin is the custody layer - BTC
 2. The frontend derives a unique P2WSH address for this deposit (user public key + protocol public key + timelock).
 3. User sends BTC to that address on Bitcoin. The script is now live on-chain.
 4. After 6 confirmations, the SPV Relayer assembles a proof bundle: raw transaction, block headers, and Merkle inclusion path.
-5. The `bitcoin-spv` Soroban contract verifies the bundle cryptographically - no oracle, no trust.
-6. The browser generates a Groth16 ZK proof (deposit circuit): proves BTC was locked and a valid commitment exists, without revealing the amount.
-7. The `commitment-tree` contract verifies the ZK proof on-chain and inserts the commitment into the Poseidon Merkle tree.
-8. The user can now borrow up to 66% of BTC value in USDC from the `writz-lend` pool.
+5. The user signs a key-control message with the Bitcoin key in the script, and calls `writz-lend.deposit` with the proof bundle and the signature.
+6. `writz-lend` rebuilds the expected P2WSH script, asks `bitcoin-spv` to verify the transaction's inclusion and confirmations cryptographically - no oracle, no trust - and records the position.
+7. The user can now borrow up to 66% of BTC value in USDC from the `writz-lend` pool.
 
 ### 2 - Borrow & Repay
 
 ![Borrow / Repay Flow](docs/diagrams/output/03-borrow-repay-flow.png)
 
-Borrowing requires a ZK proof that the position's collateral ratio is above the minimum threshold. The proof reveals nothing about the actual amounts - only that the invariant holds. Repayment rotates the nullifier so the position cannot be double-spent.
+`writz-lend.borrow` checks the post-borrow collateral ratio against the BTC/USD oracle price and refuses anything below 150%. Interest accrues on a utilization-based curve. `repay` accepts partial or full repayment; a full repayment closes the position and emits a `repay_full` event.
 
 ### 3 - BTC Release
 
 ![BTC Release](docs/diagrams/output/04-btc-release-flow.png)
 
-When the loan is fully repaid, the protocol co-signs a PSBT (Partially Signed Bitcoin Transaction) using its signing key. The user countersigns with their Bitcoin wallet and broadcasts. BTC arrives back in their wallet. The protocol never held custody at any point.
+When the loan is fully repaid, the relayer's repay watcher builds the release PSBT (Partially Signed Bitcoin Transaction), co-signs it with the protocol key, and publishes it on `writz-lend` with `publish_release_psbt`, so it can be fetched even if the rest of the Writz stack is down. The user countersigns with their Bitcoin wallet and broadcasts. BTC arrives back in their wallet. The protocol never held custody at any point.
 
 ---
 
-## ZK Privacy Layer
+## Privacy edition (in progress)
 
-Every position is private from the moment of deposit. The Soroban contracts verify loan validity without ever learning the amounts involved.
-
-### What Is Hidden
-
-| Hidden | Visible |
-|---|---|
-| Collateral amount (BTC) | Total protocol TVL (aggregate) |
-| Loan amount (USDC) | Total USDC outstanding (aggregate) |
-| Health ratio | That a liquidation occurred (not who/how much) |
-| User identity | Merkle tree root |
-
-### Three Groth16 Circuits
-
-![ZK Circuits](docs/diagrams/output/05-zk-circuits.png)
-
-- **`deposit.circom`** - Proves BTC was locked and a valid commitment exists. Public output: the commitment hash and the SPV verification result.
-- **`borrow_repay.circom`** - Proves the position is sufficiently collateralized for the requested borrow amount, and correctly computes repayment with interest.
-- **`liquidation.circom`** - Proves a position's health ratio fell below the liquidation threshold (120%). Anyone can trigger liquidation by providing this proof.
-
-Circuits use Groth16 over BN254. Verification runs on Soroban via Protocol 26 host functions (`bn254.g1_msm`, `bn254.pairing_check`).
-
-### Position Lifecycle
-
-![Commitment State Machine](docs/diagrams/output/06-commitment-state-machine.png)
+Writz v1 has no privacy layer: positions, amounts and collateral are public on chain. Privacy is not part of the protocol. It is being designed as a separate, opt-in edition with its own contracts (today `commitment-tree`, `zk-verifier` and the Circom circuits in [`circuits/`](circuits/), on testnet only), its own pool, its own audit and its own trusted-setup ceremony. It is planned for after v1 is live on mainnet, on its own subdomain, and has no date. Users who do not want privacy never interact with it. Design notes: [Privacy edition (in progress)](docs/how-it-works/privacy-edition.md).
 
 ---
 
@@ -133,14 +113,12 @@ Circuits use Groth16 over BN254. Verification runs on Soroban via Protocol 26 ho
 
 | Contract | Purpose | Depends on |
 |---|---|---|
-| `bitcoin-spv` | SHA256d, PoW validation, checkpoint-anchored difficulty check, Merkle inclusion, block header chain | - |
-| `zk-verifier` | Stores Groth16 verification keys; verifies deposit/borrow_repay/liquidation proofs | - |
-| `commitment-tree` | Poseidon Merkle tree; core deposit/borrow/repay/liquidate logic, ZK-private | `bitcoin-spv` + `zk-verifier` |
-| `writz-lend` | USDC lending pool; supply, withdraw, interest rate model, plaintext (non-ZK) positions | `bitcoin-spv` |
+| `bitcoin-spv` | SHA256d, PoW validation, checkpoint-anchored difficulty check, Merkle inclusion, block header chain, deposit txid registry | - |
+| `writz-lend` | Deposit registration, USDC lending pool (supply, withdraw, borrow, repay), interest rate model, keeper liquidation, release PSBT publication; plaintext positions | `bitcoin-spv`, USDC, Reflector oracle |
 
 **Interest rate model** - kinked curve: base rate + linear slope up to 75% utilization, then a steep slope to discourage over-borrowing. Protocol captures the spread between borrow and supply rates.
 
-**Note on `writz-lend` vs. `commitment-tree`:** these are independent, parallel lending implementations against the shared `bitcoin-spv`/`zk-verifier` primitives, not a layered dependency - `writz-lend` is the Phase 1 non-private MVP; `commitment-tree` is the ZK-private product described above, built as a standalone contract for cleaner separation of concerns rather than embedding ZK logic into `writz-lend`. Each independently rejects a reused Bitcoin txid before creating a position/commitment - see `docs/security/security-model.md` for how this closes the Merkle duplicate-leaf ambiguity (CVE-2012-2459-class) at the deposit layer.
+The privacy edition's `commitment-tree` and `zk-verifier` contracts are not called by `writz-lend` and are not part of the v1 protocol. Both lending contracts consume a deposit txid in the shared `bitcoin-spv` registry, so the same Bitcoin output cannot back two positions; see `docs/security/security-model.md` for how this also closes the Merkle duplicate-leaf ambiguity (CVE-2012-2459-class) at the deposit layer.
 
 ---
 
@@ -172,7 +150,7 @@ See [`bitcoin-script/`](bitcoin-script/) for the full P2WSH builder, address der
 
 | Product | Description | Status |
 |---|---|---|
-| **Writz Lend** | Deposit BTC as collateral → borrow USDC privately | Phase 1 - testnet ✓ |
+| **Writz Lend** | Deposit BTC as collateral → borrow USDC | Phase 1 - testnet ✓ |
 | **Dark Swap** | Convert BTC to USDC directly · no exchange · no visible order | Phase 3 - planned |
 | **BTC Savings** | BTC collateral + USDC auto-routed to highest-yield Stellar pools | Phase 3 - planned |
 | **ZK Proof of Reserve** | Prove BTC holdings without revealing wallets or amounts · B2B SaaS | Phase 3 - planned |
@@ -188,13 +166,13 @@ writz/
 ├── contracts/               # Soroban smart contracts (Rust)
 │   ├── contracts/
 │   │   ├── bitcoin-spv/     # SHA256d · PoW · Merkle inclusion · block headers
-│   │   ├── zk-verifier/     # Groth16 BN254 · verification key store
-│   │   ├── commitment-tree/ # Poseidon Merkle tree · ZK lending logic
-│   │   └── writz-lend/    # USDC pool · interest model · orchestration
+│   │   ├── writz-lend/      # Deposits · USDC pool · interest model · liquidation
+│   │   ├── zk-verifier/     # Privacy edition (in progress) · Groth16 BN254
+│   │   └── commitment-tree/ # Privacy edition (in progress) · Poseidon Merkle tree
 │   └── deployments/
 │       └── testnet.md       # Live addresses · tx hashes · verified calls
 │
-├── circuits/                # ZK circuits (Circom 2.2.3 + snarkjs)
+├── circuits/                # Privacy edition circuits (Circom 2.2.3 + snarkjs)
 │   ├── src/
 │   │   ├── deposit.circom
 │   │   ├── borrow_repay.circom
@@ -217,9 +195,8 @@ writz/
 ├── frontend/                # Next.js web app (React 19 · TypeScript · Tailwind)
 │   └── src/
 │       ├── components/      # DepositFlow · PositionDashboard · LenderPanel
-│       ├── lib/flows/       # deposit · borrow · repay · recover · lend
-│       ├── lib/position/    # Commitment derivation · note encryption
-│       └── lib/prover/      # In-browser ZK proof generation (snarkjs)
+│       ├── lib/flows/       # deposit · borrow · repay · release · lend
+│       └── lib/position/    # Local cache of positions read from writz-lend
 │
 ├── packages/
 │   └── commitment-tree/     # Generated TypeScript bindings for commitment-tree
@@ -238,14 +215,12 @@ writz/
 | Layer | Technology | Notes |
 |---|---|---|
 | Smart contracts | Soroban · Rust | Protocol 26 · `soroban-sdk = "26"` |
-| ZK proofs | Circom 2.2.3 · snarkjs · Groth16 | BN254 curve · in-browser proving |
-| ZK on-chain | Protocol 26 host functions | `bn254.g1_msm` · `bn254.pairing_check` |
 | Bitcoin scripting | P2WSH (Phase 1) → Taproot (Phase 3) | `bitcoinjs-lib` · `ecpair` |
 | Bitcoin wallets | Xverse · sats-connect | PSBT standard |
 | Frontend | Next.js 16 · React 19 · TypeScript | App Router · Tailwind CSS 4 |
-| Stellar wallets | Stellar Wallets Kit · Privy | Freighter · Lobstr · email login |
+| Stellar wallets | Stellar Wallets Kit · Pollar | Freighter · Lobstr · email and social login on testnet |
 | Relayer runtime | Bun · Express.js | Alpine Docker · Esplora-backed |
-| Merkle hashing | Poseidon (poseidon-lite) | Same in circuits + contracts + JS |
+| Privacy edition (in progress) | Circom 2.2.3 · snarkjs · Groth16 · Poseidon | BN254 via Protocol 26 host functions; not part of v1 |
 | CI | GitHub Actions | 4 parallel jobs · all tests must pass |
 
 ---
@@ -263,7 +238,7 @@ cargo install stellar-cli --locked --version 27  # or later
 node --version  # >= 20
 bun --version   # >= 1.1
 
-# For ZK circuit compilation only.
+# For the privacy edition's ZK circuits only.
 # circom 2.x is a Rust binary - do NOT `npm install -g circom`, which installs
 # the legacy 1.x package and cannot compile `pragma circom 2.0.0`. Grab the
 # release binary (CI pins v2.2.3) or build it with cargo:
@@ -295,15 +270,15 @@ cd ../packages/commitment-tree && bun install
 cd ../../bitcoin-script && bun run build
 cd ../relayer && bun install && bun run test
 
-# 4. ZK circuits - 52 tests (npm + Jest; needs circom on PATH)
+# 4. Privacy edition ZK circuits - 52 tests (npm + Jest; needs circom on PATH)
 cd ../circuits && npm install && npm test
 ```
 
 All 623 tests pass. If anything fails, [open an issue](https://github.com/WritzProtocol/writz/issues).
 
-### Full ZK End-to-End on a Local Stellar Network
+### Local End-to-End (Privacy Edition Contracts)
 
-Deploys all four contracts on a local network and runs deposit → borrow → repay → release with real Groth16 proofs, plus the closed attacks:
+Deploys all four contracts on a local network and runs deposit → borrow → repay → release through the privacy edition's `commitment-tree` with real Groth16 proofs, plus the closed attacks (including the cross-pool duplicate-deposit check against `writz-lend`):
 
 ```bash
 docker run -d --rm --name writz-local-stellar -p 8000:8000 \
@@ -377,18 +352,17 @@ python3 scripts/diagrams/render-all.py
 | Protocol key compromise | MPC / HSM co-signing key; key rotation roadmap |
 | SPV contract exploit | External audit; stateless approach minimizes attack surface |
 | Oracle manipulation | Median of multiple price feeds (Pyth + DIA) |
-| ZK proof soundness | Battle-tested Groth16; production ceremony required before mainnet |
 | Mass liquidation (BTC crash) | Conservative 150% collateral ratio; open liquidation keeps keepers competitive |
 
 ### Audit Roadmap
 
-| Auditor | Scope | Timing |
-|---|---|---|
-| Veridise | ZK circuits (Circom + proving keys) | After SCF Tranche #1 |
-| OtterSec / Zellic | Soroban contracts | After SCF Tranche #2 |
-| Internal | Bitcoin P2WSH scripting | Ongoing |
+| Scope | Timing |
+|---|---|
+| Soroban contracts (`bitcoin-spv`, `writz-lend`) | Before mainnet |
+| Bitcoin P2WSH scripting | Internal, ongoing; external review before mainnet |
+| Privacy edition circuits and contracts | Its own audit, before that edition launches |
 
-Mainnet launch is gated on zero critical/high findings from both audits.
+Mainnet launch is gated on zero open critical/high findings from the external contract audit.
 
 To report a security issue: open a private [GitHub Security Advisory](https://github.com/WritzProtocol/writz/security/advisories/new). Full policy, response targets, and safe harbour in [`SECURITY.md`](SECURITY.md); rewards and severity bands in [`docs/security/bug-bounty.md`](docs/security/bug-bounty.md).
 
@@ -399,7 +373,7 @@ To report a security issue: open a private [GitHub Security Advisory](https://gi
 Full documentation lives in [`docs/`](docs/) and is published at **[docs.writz.xyz](https://docs.writz.xyz)**:
 
 **Start here:**
-- [Whitepaper](https://writz.xyz/whitepaper) - The technical paper: stateless SPV, Groth16 position privacy and the lending market. DOI [10.5281/zenodo.23148520](https://doi.org/10.5281/zenodo.23148520).
+- [Whitepaper](https://writz.xyz/whitepaper) - The technical paper (v1.0, July 2026): stateless SPV and the lending market. The Groth16 position privacy it describes is now planned as a separate edition, in progress. DOI [10.5281/zenodo.23148520](https://doi.org/10.5281/zenodo.23148520).
 - [What is Writz?](docs/introduction/what-is-writz.md) - Plain English. No jargon. 5 minutes.
 - [The Problem](docs/introduction/the-problem.md) - Why public DeFi breaks BTC holders.
 - [How Writz Works](docs/introduction/how-writz-works.md) - Full flow for any reader.
@@ -412,8 +386,8 @@ Full documentation lives in [`docs/`](docs/) and is published at **[docs.writz.x
 **How it works (technical):**
 - [Bitcoin Side](docs/how-it-works/bitcoin-side.md) - P2WSH locking, spending paths, CLTV.
 - [SPV Verification](docs/how-it-works/spv-verification.md) - Trustless Bitcoin tx verification on Soroban.
-- [ZK Privacy Layer](docs/how-it-works/zk-privacy-layer.md) - Groth16, Poseidon commitments, what's hidden.
 - [Stellar Side](docs/how-it-works/stellar-side.md) - Contracts, interest model, USDC pool.
+- [Privacy edition (in progress)](docs/how-it-works/privacy-edition.md) - Design of the separate, opt-in privacy edition. Not part of v1.
 
 **Developers:**
 - [Build on Writz](docs/developers/integrate.md) - Prove a Bitcoin transaction from your contract or app, on testnet.
@@ -446,7 +420,7 @@ See [`docs/developers/contribution-guide.md`](docs/developers/contribution-guide
 
 | You are | Start here |
 |---|---|
-| **BTC holder** who wants to borrow USDC privately | [Writz Lend →](docs/products/writz-lend.md) |
+| **BTC holder** who wants to borrow USDC against BTC | [Writz Lend →](docs/products/writz-lend.md) |
 | **Developer** who wants to build on the protocol | [Build on Writz →](docs/developers/integrate.md) |
 | **Stellar protocol** that needs Bitcoin verification | [SPV SDK →](docs/developers/spv-sdk.md) |
 | **Institution** exploring ZK Proof of Reserve | [ZK PoR →](docs/products/zk-proof-of-reserve.md) |

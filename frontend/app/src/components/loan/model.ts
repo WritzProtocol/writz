@@ -6,7 +6,7 @@ import type { ActivityItem, LoanTab, Read } from "@/lib/loan/model";
 import type { Position } from "@/lib/position/types";
 import type { DerivedStatus } from "@/lib/status/types";
 
-export type LoanAccess = "disconnected" | "locked" | "finding" | "ready";
+export type LoanAccess = "disconnected" | "finding" | "ready";
 
 export interface LoanBitcoin {
   address: string | null;
@@ -25,11 +25,6 @@ export interface LoanModel {
     walletName: string;
     connecting: boolean;
     connect(): void;
-    /** The loan keys are derived for this session (needed to sign loan actions). */
-    keysReady: boolean;
-    unlocking: boolean;
-    unlockError: unknown;
-    unlock(): void;
   };
   position: Position | null;
   /** A deposit for this loan number is still on its way. */
@@ -57,12 +52,10 @@ export interface LoanModel {
   dismiss(): void;
   recheckPrice(): void;
   checkAgain(): void;
-  importBackup(file: File): void;
-  importState: { busy: boolean; error: unknown; done: boolean };
 }
 
 /**
- * A changed position (new commitment after a borrow or repay) starts its
+ * A loan whose local record changed (after a borrow or repay) starts its
  * status read from scratch; keep showing the last answer for the same loan
  * meanwhile so the page doesn't flash back to "Checking...".
  */

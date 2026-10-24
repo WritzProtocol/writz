@@ -79,9 +79,9 @@ After Bitcoin block 913,968, the user can spend the locked BTC alone.
 
 When a user repays their USDC loan, the following happens:
 
-1. The Stellar `commitment-tree` contract records the repayment and emits a `repay_full` event.
-2. The Writz co-signing service (a backend service monitoring this event) sees the event and generates a Schnorr/ECDSA signature over the release transaction using the protocol key.
-3. The Writz UI assembles a PSBT (Partially Signed Bitcoin Transaction) with both the protocol signature and the user signature.
+1. The Stellar `writz-lend` contract records the full repayment, closes the position and emits a `repay_full` event.
+2. The relayer's repay watcher sees the event, builds the release PSBT (Partially Signed Bitcoin Transaction) paying the user's own key, signs it with the protocol key, and publishes the half-signed PSBT on `writz-lend` with `publish_release_psbt`.
+3. The Writz UI fetches it with `get_release_psbt` and the user's Bitcoin wallet adds the user signature.
 4. The PSBT is finalized and broadcast to the Bitcoin network.
 5. The BTC arrives in the user's wallet after 1–6 confirmations.
 

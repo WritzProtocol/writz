@@ -87,10 +87,10 @@
       "pages": [
         "how-it-works/bitcoin-side",
         "how-it-works/spv-verification",
-        "how-it-works/zk-privacy-layer",
         "how-it-works/manual-proof-submission",
         "how-it-works/manual-emergency-recovery",
-        "how-it-works/stellar-side"
+        "how-it-works/stellar-side",
+        "how-it-works/privacy-edition"
       ]
     },
     {

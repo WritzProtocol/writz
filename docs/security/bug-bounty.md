@@ -25,10 +25,10 @@ before it becomes a problem.
 The following are in-scope for the bug bounty program:
 
 **Soroban contracts (high priority):**
-- `commitment-tree` - ZK lending logic, nullifier set, Merkle tree
-- `zk-verifier` - Groth16 verification, verification key management
 - `bitcoin-spv` - SPV verification, SHA256d implementation, Merkle proofs
 - `writz-lend` - Lending mechanics, interest accrual, liquidation
+- `commitment-tree` - privacy edition (in progress, testnet only): ZK lending logic, nullifier set, Merkle tree
+- `zk-verifier` - privacy edition (in progress, testnet only): Groth16 verification, verification key management
 
 **ZK circuits:**
 - `deposit.circom` - Soundness issues, underconstrained signals
@@ -60,7 +60,7 @@ these are payable during the testnet phase**; see the notice at the top.
 | Severity | Description | Reward |
 |---|---|---|
 | **Critical** | Theft of user funds, ZK circuit soundness bypass, unauthorized BTC access | Up to $50,000 |
-| **High** | Significant fund loss risk, privacy leak of user positions, oracle manipulation | Up to $15,000 |
+| **High** | Significant fund loss risk, privacy leak of positions in the privacy edition contracts, oracle manipulation | Up to $15,000 |
 | **Medium** | Denial of service for a specific user, minor fund loss risk, incorrect calculations | Up to $5,000 |
 | **Low** | Minor issues, incorrect error handling, non-exploitable edge cases | Up to $1,000 |
 | **Informational** | Best-practice improvements, documentation issues | Recognition only |

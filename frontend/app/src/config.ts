@@ -45,6 +45,10 @@ const deployTarget = assertDeployTarget({
     NEXT_PUBLIC_ZK_VERIFIER_ID: process.env.NEXT_PUBLIC_ZK_VERIFIER_ID,
     NEXT_PUBLIC_WRITZ_LEND_ID: process.env.NEXT_PUBLIC_WRITZ_LEND_ID ?? process.env.NEXT_PUBLIC_PRIVATE_LEND_ID,
     NEXT_PUBLIC_PROTOCOL_BTC_PUBKEY: process.env.NEXT_PUBLIC_PROTOCOL_BTC_PUBKEY,
+    NEXT_PUBLIC_BTC_ORACLE_ID: process.env.NEXT_PUBLIC_BTC_ORACLE_ID,
+  },
+  testnetOnly: {
+    NEXT_PUBLIC_POLLAR_API_KEY: process.env.NEXT_PUBLIC_POLLAR_API_KEY,
   },
 });
 
@@ -52,6 +56,12 @@ const deployTarget = assertDeployTarget({
 export const LENDING_ENABLED = lendingEnabled(deployTarget);
 
 /** The vault testnet has served from since #132; mainnet must name its own. */
+/**
+ * Reflector's external-prices BTC/USD oracle on Stellar testnet, the one
+ * `writz-lend` is deployed with (contracts/deployments/testnet.md). The
+ * contract has no getter for its oracle, so the app names it here.
+ */
+const TESTNET_BTC_ORACLE = "CCYOZJCOPG34LLQQ7N24YXBM7LL62R7ONMZ3G6WZAAYPB5OYKOMJRN63";
 const TESTNET_EARN_VAULT = "CBMHGL7GGGHODEDDJ5H2LKJEFHJWBRSQUKOXMC4FKOFDZK5HBKW6PI2S";
 
 export const config = {
@@ -75,6 +85,9 @@ export const config = {
     // NEXT_PUBLIC_PRIVATE_LEND_ID is the name the contract had before it was renamed to writz-lend.
     writzLend: process.env.NEXT_PUBLIC_WRITZ_LEND_ID ?? process.env.NEXT_PUBLIC_PRIVATE_LEND_ID ?? "",
     usdcToken: process.env.NEXT_PUBLIC_USDC_TOKEN_ID ?? "",
+    /** The BTC/USD price oracle `writz-lend` reads; must be the address the contract was deployed with. */
+    btcOracle:
+      process.env.NEXT_PUBLIC_BTC_ORACLE_ID ?? (deployTarget === "mainnet" ? "" : TESTNET_BTC_ORACLE),
   },
   services: {
     relayerUrl: process.env.NEXT_PUBLIC_RELAYER_URL ?? "",
@@ -147,18 +160,11 @@ export const config = {
     avgBlockMinutes: 10,
   },
   /**
-   * BTC/USD oracle price in USDC stroops per BTC (7 decimals).
-   * Must match the value returned by the on-chain oracle at the time of
-   * borrow/repay - the contract validates the proof's price signal against it.
-   * Override via NEXT_PUBLIC_BTC_PRICE_STROOPS when the oracle price changes.
+   * Pollar publishable key for email, Google and GitHub sign-in. Pollar holds
+   * the key of the wallet it creates, so it is a testnet-only path: the
+   * mainnet target refuses to build with it set. Empty disables it.
    */
-  btcPriceStroops: process.env.NEXT_PUBLIC_BTC_PRICE_STROOPS ?? "600000000000",
-  /**
-   * Privy app ID for embedded wallet support (email / social login).
-   * When unset, the Privy connect option is disabled and the Stellar Wallets Kit
-   * remains the only auth path.
-   */
-  privyAppId: process.env.NEXT_PUBLIC_PRIVY_APP_ID ?? "",
+  pollarApiKey: process.env.NEXT_PUBLIC_POLLAR_API_KEY ?? "",
   /**
    * Umami website ID for pageview analytics. When unset, the tracking
    * script is not injected (e.g. local dev without an env file).

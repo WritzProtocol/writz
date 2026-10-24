@@ -33,12 +33,12 @@ describe("StatusProvider with mock scenarios", () => {
   test("renders the derived status of every position in a scenario", async () => {
     expect(await renderScenario("H15")).toBe("<ul><li>active</li><li>liquidated</li></ul>");
     expect(await renderScenario("H6")).toBe("<ul><li>confirming</li></ul>");
-    expect(await renderScenario("L20")).toBe("<ul><li>closed_on_chain</li></ul>");
+    expect(await renderScenario("L20")).toBe("<ul><li>liquidated</li></ul>");
   });
 
   test("renders the overlays", async () => {
     expect(await renderScenario("H16")).toBe("<ul><li>repaid_locked reclaimable</li></ul>");
-    expect(await renderScenario("L12")).toBe("<ul><li>active syncing</li></ul>");
+    expect(await renderScenario("L12")).toBe("<ul><li>repaid_locked syncing</li></ul>");
   });
 
   test("a position not yet read renders as checking", () => {

@@ -15,7 +15,7 @@ export interface MockStellarWallet {
   xlmStroops: bigint | null;
   /** Previous address when the account was switched in the extension (G3). */
   switchedFrom?: string;
-  loans: "unsigned" | "finding" | "found";
+  loans: "finding" | "found" | "failed";
 }
 
 export interface MockBitcoinWallet {

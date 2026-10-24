@@ -30,9 +30,7 @@ const STATUS_ROWS = [
   "btc_unseen",
   "confirming",
   "ready_to_register",
-  "proving",
   "registering",
-  "register_failed",
   "active",
   "at_risk",
   "liquidatable",
@@ -40,7 +38,6 @@ const STATUS_ROWS = [
   "releasing",
   "released",
   "liquidated",
-  "changed_elsewhere",
   "reclaimable",
   "syncing",
 ];
@@ -102,7 +99,7 @@ describe("mock scenarios", () => {
 
   test("an unreachable Stellar RPC turns an open loan into checking, never a stale status", async () => {
     const [d] = await derived(getScenario("G4")!.build(NOW));
-    expect(d.status).toEqual({ kind: "checking", missing: ["nullifier"] });
+    expect(d.status).toEqual({ kind: "checking", missing: ["position"] });
   });
 });
 

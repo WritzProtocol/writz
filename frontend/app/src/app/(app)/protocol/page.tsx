@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getPoolState } from "@/lib/contracts/commitmentTree";
+import { getPoolState } from "@/lib/contracts/writzLend";
 import { LENDING_ENABLED } from "@/config";
 import { earnApi } from "@/lib/earn/api";
 import { getRetentionCohorts, getTvlMetrics } from "@/lib/metrics/api";

@@ -162,4 +162,4 @@ The SPV contract has been tested against:
 
 ---
 
-**Next:** [The ZK Privacy Layer →](/how-it-works/zk-privacy-layer)
+**Next:** [The Stellar Side →](/how-it-works/stellar-side)

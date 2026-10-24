@@ -22,7 +22,7 @@ export function createRecentStore(store: JsonStore<RecentTx[]> = createJsonStore
 
 export const recentActivity = createRecentStore();
 
-export type TrayAction = "resume" | "check_again" | "finish_deposit" | null;
+export type TrayAction = "resume" | "check_again" | null;
 
 export interface TrayItem {
   key: string;
@@ -62,8 +62,6 @@ function depositItem(pd: PendingDeposit, status: PositionStatus | null): TrayIte
       return { ...base, state: "needs_attention", stateLabel: "Not seen on Bitcoin yet", action: "check_again" };
     case "ready_to_register":
       return { ...base, state: "needs_attention", stateLabel: "One signature left", action: "resume" };
-    case "register_failed":
-      return { ...base, state: "needs_attention", stateLabel: "Finish deposit", action: "finish_deposit" };
     case "confirming":
       return { ...base, state: "in_progress", stateLabel: `${status.n} of ${status.m} confirmations`, action: "resume" };
     default:

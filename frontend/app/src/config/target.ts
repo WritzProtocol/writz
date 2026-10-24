@@ -66,6 +66,8 @@ export interface RawTargetEnv {
   required?: Record<string, string | undefined> | undefined;
   /** Settings only lending uses, by variable name. Must be unset on mainnet. */
   lendingOnly?: Record<string, string | undefined> | undefined;
+  /** Settings for paths that are never offered on mainnet, by variable name. Must be unset on mainnet. */
+  testnetOnly?: Record<string, string | undefined> | undefined;
 }
 
 /**
@@ -158,6 +160,12 @@ export function findTargetConflicts(env: RawTargetEnv): string[] {
       problems.push(
         `${name} is set. Lending is not enabled on the mainnet target (Earn only), so it must be unset.`,
       );
+    }
+  }
+
+  for (const [name, value] of Object.entries(env.testnetOnly ?? {})) {
+    if (value?.trim()) {
+      problems.push(`${name} is set. It enables a testnet-only path, so it must be unset on the mainnet target.`);
     }
   }
 

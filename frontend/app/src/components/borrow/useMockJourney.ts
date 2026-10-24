@@ -58,7 +58,8 @@ export function useMockJourney(world: MockWorld): JourneyModel {
   const pending = depositPos?.local.pendingDeposit ?? null;
   const status = usePositionStatus(depositPos?.local ?? null);
 
-  const alreadyRegistered = Boolean(depositPos?.chain.commitmentForTxid && depositPos.chain.commitmentPending === false);
+  // Found on chain on resume, with no submission from this device: nothing left to sign (B32).
+  const alreadyRegistered = Boolean(depositPos?.chain.position && !pending?.stellarTxHash);
   const done = Boolean(d.done) || alreadyRegistered;
   const loan = world.positions.find((p) => p.local.position)?.local.position;
   const loanSats = loan?.collateralSats;
@@ -66,7 +67,7 @@ export function useMockJourney(world: MockWorld): JourneyModel {
 
   const wrongNetwork = sw?.network === "PUBLIC" ? "Stellar mainnet" : null;
   const funding = sw ? mockFunding(sw.xlmStroops) : null;
-  const loans = sw ? (sw.loans === "unsigned" ? "unsigned" : sw.loans) : "unsigned";
+  const loans = sw?.loans ?? "finding";
   const lowAck = ui.lowAck;
   const fundingOk = funding !== null && (funding.kind === "ok" || (funding.kind === "low" && lowAck));
   const stellarReady = Boolean(sw) && !wrongNetwork && fundingOk && loans === "found";
@@ -110,12 +111,10 @@ export function useMockJourney(world: MockWorld): JourneyModel {
       lowAck,
       loans,
       loansCount: world.positions.filter((p) => p.local.position).length,
-      loansError: null,
-      signError: null,
+      loansError: sw?.loans === "failed" ? new Error("Horizon error 503") : null,
       ready: stellarReady,
       connect: noop,
       useOther: noop,
-      sign: noop,
       retryFind: noop,
       fund: noop,
       recheckFunding: noop,
@@ -167,7 +166,6 @@ export function useMockJourney(world: MockWorld): JourneyModel {
       otherTx: Boolean(world.globals.otherTabTx),
       foundOnLoad: Boolean(pending) && !world.flow,
       secondBlocked: Boolean(d.secondBlocked),
-      unlocked: sw?.loans === "found",
       recheck: noop,
       register: noop,
       finish: noop,

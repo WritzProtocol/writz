@@ -1,178 +1,55 @@
-import { Buffer } from "buffer";
-import { Client } from "@/lib/contracts/generated";
-import { config, requireContract } from "@/config";
-import { proveBorrowRepay } from "@/lib/prover";
-import { simulateWithRetry } from "./submit";
-import {
-  computeCommitment,
-  computeNullifier,
-  positionKeys,
-  seedToField,
-  deriveNonce,
-  deriveViewingKey,
-  sealNote,
-  bytesToHex,
-  recipientLoHi,
-  requireTimelock,
-  type Position,
-} from "@/lib/position";
-import { readBorrowContext } from "./borrowContext";
+import { internalTxid, readPosition, writzLendClient, type ChainPosition } from "@/lib/contracts/writzLend";
+import type { Position } from "@/lib/position";
 import type { SignTransaction } from "@/lib/wallet/WalletProvider";
 import type { Emit } from "@/lib/flow/engine";
+import { simulateWritzLend } from "./submit";
 import { submitPositionTx } from "./positionTx";
 
-const MIN_RATIO_BP = "15000"; // 150% - must match contract's min_collateral_ratio_bp
-
-interface MerklePathResponse {
-  root: string;
-  pathElements: string[];
-  pathIndices: number[];
-  leafIndex: number;
-}
-
-async function fetchMerklePath(commitmentHex: string, leafIndex?: number): Promise<MerklePathResponse> {
-  const relayerUrl = config.services.relayerUrl;
-  if (!relayerUrl) throw new Error("NEXT_PUBLIC_RELAYER_URL is not configured");
-  const qs =
-    leafIndex !== undefined
-      ? `?leafIndex=${leafIndex}&commitment=${commitmentHex}`
-      : `?commitment=${commitmentHex}`;
-  const res = await fetch(`${relayerUrl}/merkle-path${qs}`);
-  if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(`Merkle path unavailable: ${body.error ?? res.status}`);
-  }
-  return res.json() as Promise<MerklePathResponse>;
+/** The open position `owner` can act on, read fresh from `writz-lend`. Throws the contract's own error names. */
+export async function requireOpenPosition(
+  txid: string,
+  owner: string,
+  read: (txid: string) => Promise<ChainPosition | null> = readPosition,
+): Promise<ChainPosition> {
+  const chain = await read(txid);
+  if (!chain) throw new Error("PositionNotFound");
+  if (chain.depositor !== owner) throw new Error("Unauthorized");
+  if (chain.status !== "active") throw new Error("PositionNotActive");
+  return chain;
 }
 
 export interface BorrowResult {
   txHash?: string;
   updated: Position;
-  /** The relayer leaf store has not accepted the update yet; it is retried on the next load. */
-  syncPending: boolean;
 }
 
 /**
- * Borrow USDC against a position. Keys are derived from the session `seed`
- * (secret fixed per index; nonce rotated by bumping `version`). The recovery
- * note for the new state is sealed to the viewing key and emitted on-chain.
+ * Borrow USDC against a position: `writz-lend.borrow(borrower, txid, amount)`.
+ * The contract checks the 150% limit against the live oracle price and the
+ * debt with interest, and pays the USDC to `borrower`.
  */
 export async function borrow(params: {
   position: Position;
   amountStroops: bigint;
   borrower: string;
-  seed: Uint8Array;
   signTransaction: SignTransaction;
   emit?: Emit;
 }): Promise<BorrowResult> {
-  const { position, amountStroops, borrower, seed, signTransaction, emit } = params;
+  const { position, amountStroops, borrower, signTransaction, emit } = params;
 
-  const collateral = BigInt(position.collateralSats);
-  const oldDebt = BigInt(position.debtStroops);
-  const f = seedToField(seed);
-  const { secret, nonce } = positionKeys(seed, position);
-  const newVersion = position.version + 1;
-  const newNonce = deriveNonce(f, position.index, newVersion);
+  emit?.({ type: "preparing", step: "reading" });
+  const chain = await requireOpenPosition(position.txid, borrower);
 
-  const timelock = requireTimelock(position);
-  const commitment = computeCommitment(collateral, oldDebt, secret, nonce, timelock);
-  const commitmentHex = commitment.toString(16).padStart(64, "0");
-
-  // Real Merkle path from the relayer; leafIndex looks up by position (the
-  // commitment rotates each borrow, so value-based lookup fails after the first).
-  emit?.({ type: "preparing", step: "merkle_path" });
-  const { root, pathElements, pathIndices } = await fetchMerklePath(commitmentHex, position.leafIndex);
-
-  // Binds this proof to `borrower` so it can't be copied from the mempool
-  // and resubmitted with a different recipient (GHSA-xxqv-6vhx-hhrx,
-  // GHSA-mhp9-jmvc-x9mw).
-  const { lo: recipientLo, hi: recipientHi } = await recipientLoHi(borrower);
-
-  // A borrow must leave the contract's margin before the owner can reclaim
-  // the BTC alone (#212); refuse before proving rather than after.
-  const ctx = await readBorrowContext();
-  if (timelock < ctx.minTimelockHeight) throw new Error("TimelockTooSoon");
-
-  emit?.({ type: "proving" });
-  const { proof, publicSignals } = await proveBorrowRepay({
-    collateral_satoshis: collateral.toString(),
-    old_debt_stroops: oldDebt.toString(),
-    secret: secret.toString(),
-    nonce: nonce.toString(),
-    new_nonce: newNonce.toString(),
-    path_elements: pathElements,
-    path_indices: pathIndices.map(String),
-    old_root: root,
-    delta_stroops: amountStroops.toString(),
-    is_borrow: "1",
-    // Must match the on-chain oracle (env NEXT_PUBLIC_BTC_PRICE_STROOPS) or the
-    // contract rejects with PriceMismatch (#12).
-    btc_price_stroops_per_btc: config.btcPriceStroops,
-    min_ratio_bp: MIN_RATIO_BP,
-    recipient_lo: recipientLo,
-    recipient_hi: recipientHi,
-    timelock_height: String(timelock),
-    // The keeper note (#212): the new position's liquidation witness,
-    // encrypted inside the proof to the contract's keeper key.
-    ...ctx.inputs,
-  });
-
-  const newDebt = oldDebt + amountStroops;
-  // Seal the recovery note for the NEW (higher-debt) state to the viewing key.
-  const encNote = sealNote(
-    {
-      index: position.index,
-      version: newVersion,
-      collateralSats: collateral.toString(),
-      debtStroops: newDebt.toString(),
-      timelockHeight: timelock,
-    },
-    deriveViewingKey(seed).publicKey,
+  emit?.({ type: "preparing", step: "building" });
+  const client = writzLendClient(borrower);
+  const tx = await simulateWritzLend(() =>
+    client.borrow({ borrower, txid: internalTxid(position.txid), usdc_amount: amountStroops }),
   );
-
-  const client = new Client({
-    contractId: requireContract(config.contracts.commitmentTree, "commitment-tree"),
-    networkPassphrase: config.networkPassphrase,
-    rpcUrl: config.rpcUrl,
-    allowHttp: config.rpcUrl.startsWith("http://"),
-    publicKey: borrower,
-  });
-
-  const tx = await simulateWithRetry(() =>
-    client.borrow({
-      borrower,
-      zk_proof: proof,
-      public_signals: publicSignals,
-      enc_note: Buffer.from(encNote),
-    }),
-  );
-  const newCommitment = computeCommitment(collateral, newDebt, secret, newNonce, timelock);
   const updated: Position = {
     ...position,
-    id: newCommitment.toString(),
-    debtStroops: newDebt.toString(),
-    version: newVersion,
-    commitment: newCommitment.toString(),
-    nullifier: computeNullifier(secret, newNonce).toString(),
+    debtStroops: (chain.debtStroops + amountStroops).toString(),
     status: "active",
   };
-
-  const { hash, syncPending } = await submitPositionTx({
-    kind: "borrow",
-    tx,
-    position,
-    updated,
-    leafUpdate:
-      position.leafIndex !== undefined
-        ? {
-            leafIndex: position.leafIndex,
-            newCommitment: newCommitment.toString(16).padStart(64, "0"),
-            encNote: bytesToHex(encNote),
-          }
-        : undefined,
-    signTransaction,
-    emit,
-  });
-
-  return { txHash: hash, updated, syncPending };
+  const { hash } = await submitPositionTx({ kind: "borrow", tx, position, updated, signTransaction, emit });
+  return { txHash: hash, updated };
 }

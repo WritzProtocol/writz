@@ -34,9 +34,14 @@ bun run start    # serve the production build
 bun run lint     # eslint
 ```
 
-The home page reads `get_merkle_root` and `get_pool_state` from the
-`commitment-tree` contract on testnet, which verifies the app is correctly wired
-to Soroban.
+Borrowing runs on the `writz-lend` contract: deposit, borrow, repay and
+release are plain contract calls, with no proving in the browser. Positions are
+public on chain and keyed by their Bitcoin deposit txid; the app finds a
+wallet's loans from its own `deposit` calls in Horizon's history (see
+`src/lib/position/README.md`). A full repay closes the position, and the
+relayer's repay watcher publishes the co-signed release PSBT on chain
+(`get_release_psbt`), which the user signs in Xverse and broadcasts. The Lend tab
+still reads and writes the `commitment-tree` pool.
 
 ## Configuration
 
@@ -56,6 +61,18 @@ stellar contract bindings typescript \
   --rpc-url https://soroban-testnet.stellar.org \
   --network-passphrase "Test SDF Network ; September 2015" \
   --output-dir packages/<name> --overwrite
+```
+
+The `writz-lend` client (`src/lib/contracts/writzLendGenerated.ts`) is
+generated from the contract built in this repository, so it matches the code
+rather than a deployment:
+
+```bash
+(cd ../../contracts && cargo build --release --target wasm32v1-none --locked -p writz-lend)
+stellar contract bindings typescript \
+  --wasm ../../contracts/target/wasm32v1-none/release/writz_lend.wasm \
+  --output-dir /tmp/writz-lend --overwrite
+cp /tmp/writz-lend/src/index.ts src/lib/contracts/writzLendGenerated.ts
 ```
 
 The app consumes them as `file:` dependencies (e.g. `commitment-tree`). Next
@@ -106,7 +123,7 @@ src/
   components/shell/    # sidebar, bottom tabs, Activity tray, account sheet
   components/ui/       # shared primitives and hooks
   config.ts            # environment-driven configuration
-  lib/contracts/       # typed wrappers over the generated bindings
+  lib/contracts/       # typed wrappers over the generated bindings (writz-lend, oracle, commitment-tree)
   lib/mock/            # UI mock harness fixtures (dev only)
 packages/
   commitment-tree/     # generated TypeScript bindings (vendored)

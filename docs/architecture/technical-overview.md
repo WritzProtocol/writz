@@ -13,7 +13,7 @@ sidebarTitle: "Technical Overview"
 
 ## System Architecture
 
-Writz Protocol operates across two blockchains: Bitcoin and Stellar. The architecture is designed to be trustless on the verification layer while using Stellar's ZK infrastructure to make positions private.
+Writz Protocol operates across two blockchains: Bitcoin and Stellar. The architecture is designed to be trustless on the verification layer. Positions are plaintext: amounts, collateral and addresses are public on chain. Privacy is not part of the protocol; it is being designed as a separate, opt-in edition, in progress (see `docs/how-it-works/privacy-edition.md`).
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -61,15 +61,13 @@ Writz Protocol operates across two blockchains: Bitcoin and Stellar. The archite
 │  ┌────────────────────────────────────────┐                     │
 │  │     Writz Lend Contract               │                     │
 │  │                                        │                     │
-│  │  deposit(spv_proof) → Position         │                     │
-│  │  borrow(position_id, amount) → USDC    │                     │
-│  │  repay(position_id, usdc_amount)       │                     │
-│  │  liquidate(zk_proof_undercollateral)   │                     │
+│  │  deposit(spv_proof, key_sig) → txid    │                     │
+│  │  borrow(txid, amount) → USDC           │                     │
+│  │  repay(txid, usdc_amount)              │                     │
+│  │  liquidate(txid)   (keeper)            │                     │
+│  │  publish_release_psbt(txid, psbt)      │                     │
 │  │                                        │                     │
-│  │  ZK Privacy Layer (Protocol X-Ray):    │                     │
-│  │  • Collateral amounts hidden           │                     │
-│  │  • Loan amounts hidden                 │                     │
-│  │  • Position health hidden              │                     │
+│  │  Plaintext positions keyed by txid     │                     │
 │  └─────────────────┬──────────────────────┘                     │
 │                    │                                            │
 │                    ▼                                            │
@@ -159,56 +157,22 @@ pub fn extract_output(
 
 ---
 
-### 3. ZK Privacy Layer (Soroban + Protocol X-Ray)
+### 3. Privacy (not part of the protocol)
 
-Writz uses Stellar's Protocol X-Ray to implement zero-knowledge proofs that hide position details.
-
-**What is hidden:**
-- The collateral amount (how much BTC a user deposited)
-- The loan amount (how much USDC was borrowed)
-- The health ratio (how close a position is to liquidation)
-- The user's identity (positions are identified by ZK proof, not public key)
-
-**What remains visible:**
-- Total protocol TVL (aggregate, not individual)
-- Total USDC outstanding (aggregate)
-- Liquidation events (that a liquidation occurred, but not who or how much)
-
-**ZK proof flow for deposits:**
-
-```
-User deposits BTC
-    │
-    ▼
-SPV contract verifies BTC transaction (public)
-    │
-    ▼
-Writz Lend creates a position commitment:
-  commitment = hash(amount, user_secret, nonce)
-  ZK proof: "I know (amount, secret, nonce) such that
-             commitment = hash(amount, secret, nonce)
-             AND amount >= MIN_COLLATERAL"
-    │
-    ▼
-Commitment stored on-chain (public)
-ZK proof verified on-chain (public)
-Actual amount never revealed
-```
-
-**Technology:** Circom circuit, verified via Groth16 inside Soroban using Protocol X-Ray's ZK verifier. (Corrected - this section originally specified Noir; the adopted circuit language is Circom, see `docs/research/circom-circuit-design.md`.)
+Writz v1 has no privacy layer. Positions, amounts and collateral are public on chain. An opt-in privacy edition with its own contracts (`commitment-tree`, `zk-verifier`, Circom circuits verified with Groth16 on Soroban), its own pool, audit and trusted-setup ceremony is in progress on testnet and planned for after v1 is live on mainnet, with no date. See `docs/how-it-works/privacy-edition.md`.
 
 ---
 
 ### 4. Writz Lend Contract (Soroban)
 
-The lending logic that sits above the SPV and ZK layers.
+The lending logic that sits above the SPV layer.
 
 **Key parameters (to be finalized in Phase 0):**
 - Collateralization ratio: 150% minimum (BTC value must be 1.5x the USDC borrowed)
 - Liquidation threshold: 120% (position liquidated if BTC/USDC ratio drops below this)
 - Liquidation bonus: 10% of debt, paid in USDC from the protocol reserve (funded by 15% of interest), capped at the reserve balance
 - Borrow rate: variable, determined by utilization ratio (similar to Blend/Aave)
-- Supply rate: borrow rate × (1 - protocol fee percentage)
+- Supply rate: borrow rate × utilization × (1 - protocol fee percentage)
 - Protocol fee: 15% of interest spread (finalized; see `PROTOCOL_FEE_BP` in `contracts/contracts/writz-lend/src/rates.rs` and `docs/research/interest-rate-model.md`)
 
 **Interest rate model:**
@@ -222,10 +186,10 @@ else:
 ```
 (Corrected - this section originally showed 80% optimal utilization; the finalized value is 75%, see `docs/research/interest-rate-model.md`.)
 
-**Liquidation flow (private):**
-- A keeper bot continuously monitors positions (it has access to private position data via operator key)
-- When a position drops below 120% collateralization, the keeper submits a ZK proof that the position is liquidatable - without revealing the specific amounts
-- Anyone can liquidate by providing the proof
+**Liquidation flow:**
+- A designated keeper monitors positions, which are public on chain
+- When a position drops below 120% collateralization at the oracle price, the keeper calls `liquidate`; the contract re-checks the ratio itself
+- If the keeper has been inactive for 24 hours (no liquidation and no heartbeat), any caller may liquidate an undercollateralized position
 - Liquidator pays USDC and receives a USDC bonus from the protocol reserve; no BTC is released (GHSA-5rxp-7f9g-r66x)
 
 ---
@@ -273,10 +237,11 @@ let result = spv.verify_payment(
    b. User (or Writz UI) submits SPV proof to Soroban SPV contract
    c. SPV contract verifies and returns true
 5. Writz Lend contract recognizes the deposit
-   a. Creates a position commitment (ZK)
-   b. User can now borrow up to 66% of BTC value in USDC
+   a. Rebuilds the Writz P2WSH, checks the user's key-control signature, consumes the txid
+   b. Creates a plaintext position keyed by the Bitcoin txid
+   c. User can now borrow up to 66% of BTC value in USDC
 6. User requests USDC loan
-   a. ZK proof generated for loan amount (stays private)
+   a. Contract checks the 150% collateral ratio at the oracle price
    b. USDC transferred to user's Stellar wallet
 ```
 
@@ -285,19 +250,18 @@ let result = spv.verify_payment(
 ```
 1. User repays USDC loan + accrued interest
 2. Writz Lend contract confirms repayment
-3. Protocol generates co-signature for P2WSH spending path A
-4. User broadcasts BTC release transaction on Bitcoin
+3. Relayer co-signs the P2WSH spending path A PSBT and publishes it on writz-lend
+4. User signs and broadcasts the BTC release transaction on Bitcoin
 5. BTC arrives in user's original wallet
 ```
 
 ### Liquidation
 
 ```
-1. Keeper detects undercollateralized position (via private operator key)
-2. Keeper generates ZK proof: "this position's health ratio < 120%"
-3. ZK proof verified on-chain (no amounts revealed)
-4. Liquidator pays USDC to cover the loan
-5. Contract pays the liquidator a USDC bonus from the reserve (capped at its balance) and records the liquidation. The protocol never moves BTC.
+1. Keeper detects an undercollateralized position from public chain state
+2. Keeper calls liquidate(txid); the contract recomputes the health ratio from the oracle price
+3. Liquidator pays USDC to cover the loan
+4. Contract pays the liquidator a USDC bonus from the reserve (capped at its balance) and records the liquidation. The protocol never moves BTC.
 ```
 
 ---
@@ -317,7 +281,6 @@ let result = spv.verify_payment(
 | Risk | Mitigation |
 |---|---|
 | SPV contract bug | External audit; stateless approach limits attack surface |
-| ZK proof soundness failure | Use battle-tested Groth16; rely on Stellar's Protocol X-Ray rather than custom circuits |
 | Oracle/price feed manipulation | Use median of multiple price oracles (Pyth primary, Reflector secondary) - see `docs/research/oracle-design.md` |
 | Interest rate model edge cases | Stress-test model against historical volatility; cap max borrow rate |
 
@@ -327,7 +290,7 @@ let result = spv.verify_payment(
 |---|---|
 | BTC price crash → mass liquidations | Conservative 150% collateral ratio; liquidation discount creates keeper incentive |
 | USDC supply drought | No minimum borrow guarantee; utilization-based rates auto-adjust |
-| Keeper failure (no liquidations) | Open liquidation - anyone with USDC can liquidate an eligible position |
+| Keeper failure (no liquidations) | Stale-keeper fallback: after 24 hours of keeper inactivity, anyone with USDC can liquidate an eligible position |
 
 ---
 
@@ -336,7 +299,6 @@ let result = spv.verify_payment(
 | Component | Technology |
 |---|---|
 | Stellar smart contracts | Soroban (Rust) |
-| ZK proofs | Circom circuits + Groth16 via Protocol X-Ray |
 | Bitcoin SPV library | summa-tx/bitcoin-spv (Rust) - adapted |
 | Bitcoin scripting | P2WSH (Phase 1) → Taproot (Phase 3) |
 | Frontend | React/Next.js |

@@ -5,7 +5,6 @@ import { useEffect, useRef, type RefObject } from "react";
 import { BTC_NETWORK_LABEL, config } from "@/config";
 import { btcTxUrl, stellarTxUrl } from "@/lib/explorer";
 import { hashOf } from "@/lib/flow/engine";
-import { isSignatureRejected } from "@/lib/wallet/rejection";
 import {
   formatBtc,
   formatUsd,
@@ -107,7 +106,7 @@ export function AmountStep({ m }: { m: JourneyModel }) {
       ) : (
         <p id="amount-hint" className="wz-hint">
           {sats ? <span className="mono">= {sats.toLocaleString("en-US")} sats. </span> : null}
-          Minimum 0.00010000 BTC.
+          Minimum 0.00100000 BTC.
           {amount.balanceSats !== null ? (
             <>
               {" "}
@@ -153,7 +152,7 @@ export function AmountStep({ m }: { m: JourneyModel }) {
 
 export function StellarStep({ m }: { m: JourneyModel }) {
   const s = m.stellar;
-  const slow = useElapsed(s.connecting || s.loans === "signing", 10_000);
+  const slow = useElapsed(s.connecting, 10_000);
   const editing = s.ready;
 
   return (
@@ -183,7 +182,7 @@ export function StellarStep({ m }: { m: JourneyModel }) {
       ) : (
         <>
           <WalletCard icon="S" name={s.walletName === "your wallet" ? "Stellar wallet" : s.walletName} detail={<span className="mono">{shortAddress(s.address, 6, 6)}</span>} />
-          <StellarReadiness m={m} slow={slow} />
+          <StellarReadiness m={m} />
           {editing && (
             <div className="wz-actions">
               <button type="button" className="wz-btn wz-btn-gold" onClick={m.finishEdit}>
@@ -201,7 +200,7 @@ export function StellarStep({ m }: { m: JourneyModel }) {
 }
 
 /** Only the first failing check shows, with its one action. */
-function StellarReadiness({ m, slow }: { m: JourneyModel; slow: boolean }) {
+function StellarReadiness({ m }: { m: JourneyModel }) {
   const s = m.stellar;
   if (s.wrongNetwork) {
     return (
@@ -271,31 +270,6 @@ function StellarReadiness({ m, slow }: { m: JourneyModel; slow: boolean }) {
   }
 
   switch (s.loans) {
-    case "unsigned":
-    case "signing":
-      return (
-        <>
-          {s.signError ? (
-            isSignatureRejected(s.signError) ? (
-              <Notice tone="neutral">You declined in {s.walletName}. Nothing was sent.</Notice>
-            ) : (
-              <ErrorBox error={s.signError} context={{ flow: "recover" }} />
-            )
-          ) : null}
-          <Notice tone="info">
-            {s.walletName === "your wallet" ? "Your wallet" : s.walletName} will ask you to sign a message. It is free
-            and sends no transaction. It lets this app find loans made with this wallet.
-          </Notice>
-          {s.loans === "signing" ? (
-            <>
-              <Status>Confirm in {s.walletName}</Status>
-              {slow && <p className="wz-hint">Didn&apos;t see it? Open {s.walletName} from your browser toolbar.</p>}
-            </>
-          ) : (
-            <Primary onClick={s.sign}>Sign to find my loans</Primary>
-          )}
-        </>
-      );
     case "finding":
       return <Status>Finding your loans</Status>;
     case "failed":
@@ -724,41 +698,36 @@ export function WaitStep({ m }: { m: JourneyModel }) {
 // ── 6 Register on Stellar ────────────────────────────────────────────────
 
 type RegisterView =
-  | { kind: "sign_first" }
   | { kind: "ready" }
-  | { kind: "progress"; active: 0 | 1 | 2 | 3 }
+  | { kind: "progress"; active: 0 | 1 | 2 | 3 | 4 }
   | { kind: "cancelled" }
   | { kind: "attention"; failed: boolean }
   | { kind: "timed_out" }
   | { kind: "failed"; error: unknown };
 
 function registerView(m: JourneyModel): RegisterView {
-  const { flow, status, unlocked } = m.deposit;
+  const { flow, status } = m.deposit;
   const s = status.status;
   switch (flow.phase) {
-    case "proving":
-      return { kind: "progress", active: 0 };
     case "preparing":
-      return { kind: "progress", active: 0 };
+      return { kind: "progress", active: flow.step === "building" ? 1 : 0 };
     case "awaiting_signature":
-      return { kind: "progress", active: 1 };
+      return { kind: "progress", active: flow.wallet === "bitcoin" ? 0 : 2 };
     case "submitted":
-      return { kind: "progress", active: 2 };
-    case "post_processing":
       return { kind: "progress", active: 3 };
+    case "post_processing":
+      return { kind: "progress", active: 4 };
     case "signature_cancelled":
       return { kind: "cancelled" };
     case "needs_attention":
-      return { kind: "attention", failed: Boolean(flow.error) || s.kind === "register_failed" };
+      return { kind: "attention", failed: Boolean(flow.error) };
     case "timed_out":
       return { kind: "timed_out" };
     case "failed":
       return { kind: "failed", error: flow.error };
   }
-  if (s.kind === "register_failed") return { kind: "attention", failed: true };
-  if (s.kind === "proving") return { kind: "progress", active: 0 };
-  if (s.kind === "registering") return { kind: "progress", active: s.step === 1 ? 2 : 3 };
-  return unlocked ? { kind: "ready" } : { kind: "sign_first" };
+  if (s.kind === "registering") return { kind: "progress", active: 3 };
+  return { kind: "ready" };
 }
 
 export function registerQuestion(m: JourneyModel): string {
@@ -773,14 +742,15 @@ export function RegisterStep({ m }: { m: JourneyModel }) {
   const v = registerView(m);
   const wallet = m.stellar.walletName;
   const hash = hashOf(d.flow) ?? d.pending?.stellarTxHash;
-  const slow = useElapsed(v.kind === "progress" && v.active === 1, 10_000);
+  const slow = useElapsed(v.kind === "progress" && (v.active === 0 || v.active === 2), 10_000);
   const blocked = d.otherTx ? "Waiting for your other transaction (in another tab)." : null;
 
   const lines = [
-    "Preparing your deposit in this browser. About 10 seconds. Keep this tab open.",
+    "Confirm in Xverse. It signs a free message that proves this Bitcoin key is yours.",
+    "Preparing your deposit",
     `Confirm in ${wallet}. Fee about 0.01 XLM.`,
-    "Recording your deposit on Stellar (step 1 of 2)",
-    "Adding your loan (step 2 of 2)",
+    "Recording your deposit on Stellar",
+    "Saving your loan",
   ];
 
   return (
@@ -792,19 +762,10 @@ export function RegisterStep({ m }: { m: JourneyModel }) {
       )}
       {d.drivenElsewhere && <Notice tone="info">This deposit is running in another tab.</Notice>}
 
-      {v.kind === "sign_first" && (
-        <>
-          <Notice tone="positive" label="BTC locked">
-            Your BTC is locked. Before the last step, sign the free message so this app can load this deposit&apos;s keys.
-          </Notice>
-          {m.stellar.loans === "signing" ? <Status>Confirm in {wallet}</Status> : <Primary onClick={m.stellar.sign}>Sign to find my loans</Primary>}
-        </>
-      )}
-
       {v.kind === "ready" && (
         <>
           <Notice tone="positive" label="BTC locked">
-            Your BTC is locked. One signature left. Writz never signs for you.
+            Your BTC is locked. One signature on Stellar left, after a free message from Xverse. Writz never signs for you.
           </Notice>
           <Primary onClick={d.register} disabled={Boolean(blocked)} aria-describedby={blocked ? "register-blocked" : undefined}>
             Register on Stellar
@@ -824,7 +785,7 @@ export function RegisterStep({ m }: { m: JourneyModel }) {
               <li key={i} data-state={i < v.active ? "done" : i === v.active ? "now" : "next"}>
                 {i === v.active ? <Spinner /> : <i aria-hidden="true" />}
                 <span>{text}</span>
-                {i === 2 && i <= v.active && hash ? <TxHash hash={hash} chain="stellar" /> : null}
+                {i === 3 && i <= v.active && hash ? <TxHash hash={hash} chain="stellar" /> : null}
               </li>
             ))}
           </ol>
@@ -848,7 +809,7 @@ export function RegisterStep({ m }: { m: JourneyModel }) {
       {v.kind === "attention" && (
         <Notice
           tone={v.failed ? "warning" : "info"}
-          label={v.failed ? "Last step failed" : undefined}
+          label={v.failed ? "Not saved yet" : undefined}
           actions={
             <button type="button" className="wz-btn wz-btn-gold" onClick={d.finish} disabled={Boolean(blocked)}>
               Finish deposit
@@ -856,8 +817,8 @@ export function RegisterStep({ m }: { m: JourneyModel }) {
           }
         >
           {v.failed
-            ? "Your deposit is recorded on Stellar, but the last step failed. Your BTC is still locked and safe."
-            : "Your deposit is recorded on Stellar. One more step adds your loan."}
+            ? "Your deposit is recorded on Stellar, but this device couldn't read it back yet. Your BTC is still locked and safe."
+            : "Your deposit is recorded on Stellar. One more read adds your loan here."}
           {hash ? (
             <>
               {" "}

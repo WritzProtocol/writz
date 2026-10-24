@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, u
 import { Horizon, NotFoundError } from "@stellar/stellar-sdk";
 import { config } from "@/config";
 import { MAINNET_PASSPHRASE } from "@/config/target";
-import { useWallet } from "@/lib/wallet/WalletProvider";
+import { useWallet, type PollarLogin } from "@/lib/wallet/WalletProvider";
 import { ensureKit } from "@/lib/wallet/kit";
 import { networkName } from "@/lib/wallet/precheck";
 import { useBitcoinWallet } from "@/lib/bitcoin/useBitcoinWallet";
@@ -13,8 +13,8 @@ import { pendingDeposits, type PendingDeposit } from "@/lib/flow/pendingDeposit"
 import { useTxLockState } from "@/lib/flow/useFlow";
 import { activity, type PendingTx } from "@/lib/flow/pendingTx";
 import { getAssetBalance, POOL_ASSET } from "@/lib/flows/trustline";
-import { recoverPositions } from "@/lib/flows/recover";
-import { reconcileActivity, syncLeafUpdates } from "@/lib/flows/positionTx";
+import { discoverPositions } from "@/lib/flows/discover";
+import { reconcileActivity } from "@/lib/flows/positionTx";
 import { btcBalanceOf, fundingOf, type Funding } from "@/lib/borrow/journey";
 import type { Read, RecentTx } from "@/lib/loan/model";
 import { EMPTY_POSITIONS, exportPositions, positionsSnapshot, subscribePositions, type Position } from "@/lib/position";
@@ -25,7 +25,7 @@ import type { LocalInputs } from "@/lib/status/types";
 import type { HomeDeposit, HomeLoan } from "@/lib/home/model";
 import { useMounted, useRead, useMockWorld } from "@/components/ui/hooks";
 
-export type LoansState = "disconnected" | "unsigned" | "signing" | "finding" | "found" | "failed";
+export type LoansState = "disconnected" | "finding" | "found" | "failed";
 
 export interface ShellAccount {
   mock: boolean;
@@ -38,8 +38,11 @@ export interface ShellAccount {
     fundBusy: boolean;
     usdcAdded: Read<boolean>;
     switchedFrom: string | null;
+    /** Pollar pays the network fees of the wallet it created, so low XLM is not a problem. */
+    feesSponsored: boolean;
     connect(): void;
-    connectWithPrivy: (() => void) | null;
+    /** Email, Google and GitHub sign-in, or null when it is not offered. */
+    pollar: PollarLogin | null;
     disconnect(): void;
     fund(): void;
   };
@@ -50,7 +53,7 @@ export interface ShellAccount {
     connect(): void;
     disconnect(): void;
   };
-  loans: { state: LoansState; error: unknown; sign(): void; retry(): void };
+  loans: { state: LoansState; error: unknown; retry(): void };
   positions: readonly Position[];
   loanStatuses: readonly HomeLoan[];
   pendingDeposit: PendingDeposit | null;
@@ -144,12 +147,10 @@ function useLiveAccount(): BaseAccount {
     () => NO_RECENT,
   );
 
-  // Transactions a closed tab left in flight, and relayer leaf updates it never delivered.
+  // Transactions a closed tab left in flight.
   useEffect(() => {
     if (!address) return;
-    void reconcileActivity(address)
-      .then(() => syncLeafUpdates(address))
-      .catch(() => {});
+    void reconcileActivity(address).catch(() => {});
   }, [address]);
 
   const [network, setNetwork] = useState<{ key: string; passphrase: string | null; name?: string } | null>(null);
@@ -170,10 +171,12 @@ function useLiveAccount(): BaseAccount {
   }, [address, w.walletBackend]);
   const net = network?.key === address ? network : null;
   const wrongNetwork = net?.passphrase && net.passphrase !== config.networkPassphrase ? networkName(net.passphrase) : null;
-  const walletName = w.walletBackend === "privy" ? "Privy" : (net?.name ?? "your wallet");
+  const walletName = w.walletBackend === "pollar" ? "Pollar" : (net?.name ?? "your wallet");
 
   const [nonce, setNonce] = useState(0);
-  const funding = useRead(address ? `fund:${address}:${nonce}` : null, () => loadFunding(address!));
+  // A Pollar account lands on the ledger after sign-in; read it again once it does.
+  const provisioning = w.walletBackend === "pollar" ? w.pollar?.session.provisioning : null;
+  const funding = useRead(address ? `fund:${address}:${nonce}:${provisioning}` : null, () => loadFunding(address!));
   const trust = useRead(address ? `usdc:${address}:${nonce}` : null, () => getAssetBalance(address!, POOL_ASSET));
   const usdcAdded: Read<boolean> = trust.kind === "ok" ? { kind: "ok", value: trust.value !== null } : trust;
   const btcAddress = b.btcAddress;
@@ -195,36 +198,23 @@ function useLiveAccount(): BaseAccount {
       });
   }, [address]);
 
-  const [signing, setSigning] = useState(false);
-  const [signError, setSignError] = useState<unknown>(null);
-  const [find, setFind] = useState<{ seed: Uint8Array; nonce: number; state: "found" | "failed"; error?: unknown } | null>(null);
+  // Loans are public on chain: finding them needs only the connected address, no signature.
+  const [find, setFind] = useState<{ key: string; state: "found" | "failed"; error?: unknown } | null>(null);
   const [findNonce, setFindNonce] = useState(0);
+  const findKey = address ? `${address}:${findNonce}` : null;
   useEffect(() => {
-    const seed = w.seed;
-    if (!address || !seed) return;
+    if (!address) return;
     let live = true;
-    recoverPositions({ owner: address, seed })
-      .then(() => live && setFind({ seed, nonce: findNonce, state: "found" }))
-      .catch((error: unknown) => live && setFind({ seed, nonce: findNonce, state: "failed", error }));
+    const key = `${address}:${findNonce}`;
+    discoverPositions(address)
+      .then(() => live && setFind({ key, state: "found" }))
+      .catch((error: unknown) => live && setFind({ key, state: "failed", error }));
     return () => {
       live = false;
     };
-  }, [address, w.seed, findNonce]);
-  const findState = w.seed && find?.seed === w.seed && find.nonce === findNonce ? find : null;
-  const loansState: LoansState = !address
-    ? "disconnected"
-    : !w.seed
-      ? signing
-        ? "signing"
-        : "unsigned"
-      : (findState?.state ?? "finding");
-  const sign = useCallback(() => {
-    setSigning(true);
-    setSignError(null);
-    w.unlock()
-      .catch((e: unknown) => setSignError(e))
-      .finally(() => setSigning(false));
-  }, [w]);
+  }, [address, findNonce]);
+  const findState = find?.key === findKey ? find : null;
+  const loansState: LoansState = !address ? "disconnected" : (findState?.state ?? "finding");
 
   return {
     mock: false,
@@ -237,8 +227,9 @@ function useLiveAccount(): BaseAccount {
       fundBusy,
       usdcAdded,
       switchedFrom: seen.address === address ? seen.switchedFrom : null,
+      feesSponsored: w.walletBackend === "pollar",
       connect: () => void w.connect(),
-      connectWithPrivy: config.privyAppId ? w.connectWithPrivy : null,
+      pollar: w.pollar,
       disconnect: w.disconnect,
       fund,
     },
@@ -251,8 +242,7 @@ function useLiveAccount(): BaseAccount {
     },
     loans: {
       state: loansState,
-      error: findState?.state === "failed" ? findState.error : signError,
-      sign,
+      error: findState?.state === "failed" ? findState.error : null,
       retry: () => setFindNonce((n) => n + 1),
     },
     positions,
@@ -280,7 +270,7 @@ function mockAccount(world: MockWorld): BaseAccount {
   const positions = world.positions.flatMap((p) => (p.local.position ? [p.local.position] : []));
   const depositLocal = world.positions.find((p) => p.local.pendingDeposit && !p.local.position)?.local ?? null;
   const pendingDeposit = depositLocal?.pendingDeposit ?? null;
-  const loans: LoansState = !sw ? "disconnected" : sw.loans === "unsigned" ? "unsigned" : sw.loans === "finding" ? "finding" : "found";
+  const loans: LoansState = !sw ? "disconnected" : sw.loans;
   return {
     mock: true,
     stellar: {
@@ -292,8 +282,9 @@ function mockAccount(world: MockWorld): BaseAccount {
       fundBusy: false,
       usdcAdded: fromReading(world.loan?.trustline ?? world.earn?.trustline ?? world.lend?.trustline, { kind: "ok", value: true }),
       switchedFrom: sw?.switchedFrom ?? null,
+      feesSponsored: false,
       connect: noop,
-      connectWithPrivy: null,
+      pollar: null,
       disconnect: noop,
       fund: noop,
     },
@@ -304,7 +295,7 @@ function mockAccount(world: MockWorld): BaseAccount {
       connect: noop,
       disconnect: noop,
     },
-    loans: { state: loans, error: null, sign: noop, retry: noop },
+    loans: { state: loans, error: sw?.loans === "failed" ? new Error("Horizon error 503") : null, retry: noop },
     positions,
     pendingDeposit,
     depositLocal,
@@ -323,7 +314,7 @@ function mockAccount(world: MockWorld): BaseAccount {
 
 function useWithStatuses(base: BaseAccount): ShellAccount {
   const { positions, pendingTxs, depositLocal } = base;
-  const open = useMemo(() => positions.filter((p) => p.status !== "pending"), [positions]);
+  const open = positions;
   const locals = useMemo<LocalInputs[]>(() => {
     const list: LocalInputs[] = open.map((position) => ({
       position,
