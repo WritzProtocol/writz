@@ -5,6 +5,24 @@
 
 ---
 
+## `writz-lend` redeploy (2026-10-23)
+
+`writz-lend` deployed alone from `refactor/rename-writz-lend` at `c0722e7` (`cargo build --release --target wasm32v1-none --locked -p writz-lend`), to bring the deposit key signature and the supply index on chain for the app. It replaces `CA3T7T2S7HV27BXO7OLIHSMGAMQ37BMOOUHQLTBGUQVL4B6Y2CDJPHHX` for new positions; the other contracts of the 2026-10-11 deployment are unchanged.
+
+| Field | Value |
+|---|---|
+| **Contract ID** | `CDR3RWSGSA6ADQANZ55S4H6J7SW5O4LCRV3AIU2WQBLGWC3477GE5QXV` |
+| wasm sha256 | `5eb185e80d67243e3bda22e1606c5acca4ce51d3b19878549da6d4c7f707fa40` |
+| Deploy tx | [`fed4e3fd63…`](https://stellar.expert/explorer/testnet/tx/fed4e3fd63286df080454b6c4905a222ac272f4da71c00f8b49171f48614e549) |
+| `admin`, `keeper`, `relayer` | `writz-deployer` |
+| `spv_contract` | `CAHHY4S4WCIFU4LBSKBI3IP6A4QYR2COV6EACDEBXGPJFDWBJWGOMCLP` |
+| `usdc_token` | `CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA` |
+| `oracle` | `CCYOZJCOPG34LLQQ7N24YXBM7LL62R7ONMZ3G6WZAAYPB5OYKOMJRN63` (Reflector, external CEXs & DEXs) |
+| `protocol_pubkey` | `022b9711f185db1d54aa841d949d9ea1e5644dece224dba8f1acbb3275e04e8458` |
+| `max_total_borrowed` | 50,000 USDC (default) |
+| `bitcoin-spv` consumer | [`59c67ba820…`](https://stellar.expert/explorer/testnet/tx/59c67ba820a0ef057c8d828f4d50a6579650804e1b8b3959cd49fb4239bc44b2) |
+| Initial supply | 1,000 test USDC from `writz-deployer` [`d63d43fb10…`](https://stellar.expert/explorer/testnet/tx/d63d43fb10ca7f8f7218097d84c36be603a427b7f4e0c8984360f52c7fa9b3c4) |
+
 ## Current deployment (2026-10-11)
 
 The coordinated redeploy of #177: every security-advisory fix merged in #171-#213, deployed together through `scripts/deploy/deploy_stack.mjs`. Each contract was configured by its `__constructor` inside the deploy transaction, so there was no separate `initialize` call to front-run (GHSA-422m). Built from `main` at `c7eba49` (`cargo build --release --target wasm32v1-none --locked`). The verification keys are the **development** keys in `circuits/keys/`; the production ceremony is still pending.
