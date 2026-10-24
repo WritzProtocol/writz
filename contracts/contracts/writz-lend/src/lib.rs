@@ -25,6 +25,12 @@ use storage::{get_config, get_position, get_protocol, get_release_psbt, get_supp
                set_config, set_position, set_protocol, set_release_psbt, set_supply_balance};
 use types::{Config, Position, PositionStatus, ProtocolState};
 
+/// Highest `min_confirmations` the constructor accepts (the relayer serves
+/// SPV proofs for 1 to 20 confirmations).
+pub const MAX_MIN_CONFIRMATIONS: u32 = 20;
+/// Lowest `min_deposit_satoshis` the constructor accepts.
+pub const MIN_DEPOSIT_FLOOR_SATS: u64 = 1_000;
+
 #[contract]
 pub struct WritzLendContract;
 
@@ -49,6 +55,12 @@ impl WritzLendContract {
     /// - `protocol_pubkey`- The protocol's 33-byte compressed Bitcoin
     ///                       co-signing key; every deposit must be locked
     ///                       under a script that contains it.
+    /// - `min_confirmations` - Bitcoin confirmations a deposit needs before
+    ///                       `bitcoin-spv` accepts it (6 on mainnet).
+    ///                       1..=`MAX_MIN_CONFIRMATIONS`.
+    /// - `min_deposit_satoshis` - Smallest deposit output accepted (100,000
+    ///                       on mainnet). At least `MIN_DEPOSIT_FLOOR_SATS`,
+    ///                       so a release fee cannot consume the deposit.
     pub fn __constructor(
         env: Env,
         admin: Address,
@@ -58,9 +70,17 @@ impl WritzLendContract {
         keeper: Address,
         relayer: Address,
         protocol_pubkey: BytesN<33>,
+        min_confirmations: u32,
+        min_deposit_satoshis: u64,
     ) {
         if !script::is_compressed_pubkey(&protocol_pubkey) {
             panic_with_error!(&env, WritzLendError::InvalidProtocolPubkey);
+        }
+        if min_confirmations == 0
+            || min_confirmations > MAX_MIN_CONFIRMATIONS
+            || min_deposit_satoshis < MIN_DEPOSIT_FLOOR_SATS
+        {
+            panic_with_error!(&env, WritzLendError::InvalidDepositParams);
         }
         set_config(
             &env,
@@ -72,11 +92,11 @@ impl WritzLendContract {
                 keeper,
                 relayer,
                 protocol_pubkey,
-                min_deposit_satoshis: 100_000,       // 0.001 BTC
+                min_deposit_satoshis,
                 min_collateral_ratio_bp: 15_000,      // 150%
                 liquidation_threshold_bp: 12_000,     // 120%
                 liquidation_bonus_bp: 1_000,          // 10%
-                min_confirmations: 6,
+                min_confirmations,
                 keeper_stale_after_secs: 86_400,      // 24h stale-keeper liveness window
                 paused: false,
                 max_total_borrowed: 500_000_000_000, // 50,000 USDC - the launch cap in docs/research/tokenomics-fee-model.md

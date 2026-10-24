@@ -28,8 +28,8 @@ These are the values set by the `writz-lend` constructor today.
 | Maximum LTV | 66.7% (you can borrow up to 2/3 of your BTC's value) |
 | Liquidation threshold | 120% (position is eligible for liquidation below this ratio) |
 | Liquidation bonus | 10% of the debt, paid to the liquidator in USDC from the protocol reserve |
-| Minimum deposit | 0.001 BTC (100,000 sats) |
-| Minimum confirmations | 6 Bitcoin blocks (~60 minutes) |
+| Minimum deposit | 0.001 BTC (100,000 sats); 0.00005 BTC (5,000 sats) on testnet |
+| Minimum confirmations | 6 Bitcoin blocks (~60 minutes); 1 on testnet |
 | Timelock window | 1,008 to 105,000 blocks above the deposit block (about 7 days to 2 years) |
 | Total borrow cap | 50,000 USDC across the pool (admin-set) |
 | Protocol fee | 15% of interest, kept as the protocol reserve |
@@ -67,7 +67,7 @@ The model is designed to keep utilization near 75% - the point where lenders ear
 
 - A Bitcoin wallet (Xverse recommended)
 - A Stellar wallet (Freighter, Lobstr, or any wallet compatible with Stellar Wallets Kit)
-- BTC to deposit (minimum 0.001 BTC)
+- BTC to deposit (minimum 0.001 BTC; 0.00005 BTC on testnet, which one Signet faucet payout covers)
 - A small amount of XLM for Stellar transaction fees (~1 XLM)
 
 You don't need to understand SPV or Merkle proofs to use Writz Lend. The steps below tell you what to click and what to expect; each step also has an optional "How this works" note for anyone who wants the technical detail.
@@ -91,11 +91,11 @@ The generated address is a P2WSH (Pay-to-Witness-Script-Hash) address. Its scrip
 
 Send the BTC to the generated address from your Bitcoin wallet. Double-check the address before sending - this is a standard Bitcoin transaction.
 
-Wait for 6 confirmations (~60 minutes). The Writz app shows a live confirmation count while you wait.
+Wait for 6 confirmations (~60 minutes; 1 on testnet). The Writz app shows a live confirmation count while you wait.
 
 ### Step 4 - Register the Deposit
 
-Once your transaction has 6 confirmations, the app asks your Bitcoin wallet to sign a short message and your Stellar wallet to approve one transaction. That transaction registers the deposit with `writz-lend`, and your position appears in the app.
+Once your transaction has the confirmations it needs, the app asks your Bitcoin wallet to sign a short message and your Stellar wallet to approve one transaction. That transaction registers the deposit with `writz-lend`, and your position appears in the app.
 
 <details>
 <summary>How this works technically</summary>

@@ -156,6 +156,15 @@ export const config = {
         (deployTarget === "mainnet" ? "6" : "1"),
       10,
     ),
+    /**
+     * Smallest deposit `writz-lend` accepts, in sats. Must match this
+     * deployment's `min_deposit_satoshis`: 100,000 on mainnet, 5,000 on
+     * testnet so a single Signet faucet payout covers a deposit and its fee
+     * (contracts/deployments/testnet.md).
+     */
+    minDepositSats: BigInt(
+      process.env.NEXT_PUBLIC_MIN_DEPOSIT_SATS ?? (deployTarget === "mainnet" ? "100000" : "5000"),
+    ),
     /** Average Bitcoin block time, minutes - used only for the ETA estimate shown while waiting for confirmations. */
     avgBlockMinutes: 10,
   },

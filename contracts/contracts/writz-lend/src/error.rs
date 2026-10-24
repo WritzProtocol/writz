@@ -65,4 +65,8 @@ pub enum WritzLendError {
     /// The amount is too small to mint or burn a single scaled unit at the
     /// current supply index, or is not positive.
     ZeroShareAmount = 26,
+    /// A constructor `min_confirmations` is 0 or above
+    /// `MAX_MIN_CONFIRMATIONS`, or `min_deposit_satoshis` is below
+    /// `MIN_DEPOSIT_FLOOR_SATS`.
+    InvalidDepositParams = 27,
 }
