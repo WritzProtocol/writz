@@ -12,6 +12,7 @@ Use only these values; anything not listed here or in the linked pages does not 
 - `writz-lend`: `CCMSOCBVX2S645MQFFXJRHVHRWH2NY62KLOJXNDYFOJRYHIC47EO6ZZK`
 - Test USDC (SAC): `CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA`
 - Relayer: `https://api.testnet.writz.xyz`, proof route `GET /spv-proof/:txid?confirmations=N`
+- Yield on USDC: the `writz-lend` lender side, `supply_usdc(supplier, amount)` and `withdraw_supply(supplier, amount)` signed by the supplier, read with `get_supply_balance(lender)` and `get_supply_rate_bp()`. The rate is variable and zero while nothing is borrowed: read it live, never hard-code an APY
 - Main primitive: `verify_transaction(block_hash: BytesN<32>, merkle_proof: Vec<BytesN<32>>, tx_index: u32, raw_tx: Bytes, min_confirmations: u32) -> Result<SpvVerificationResult, SPVError>`, where `SpvVerificationResult` is `{ txid, block_hash, block_height, confirmations }`
 - Packages `@writz/sdk` (npm, source `packages/sdk`) and `writz-spv-client` (crates.io, source `contracts/contracts/writz-spv-client`) are release pending: not on their registries yet, so do not install them. There is no other Writz package.
 - Machine-readable IDs: `contracts/deployments/testnet.json`, generated from `contracts/deployments/testnet.md` by `node scripts/sync-deployments.mjs`.

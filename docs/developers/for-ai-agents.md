@@ -44,7 +44,7 @@ CRATE           writz-spv-client   source contracts/contracts/writz-spv-client N
 
 Until a package is on its registry, `npm install @writz/sdk` and `cargo add writz-spv-client` fail: generate code from the snippets on this page instead. Once published:
 
-- `@writz/sdk`: `createWritzClient()` (testnet preset), `writz.verifyBitcoinTx(txid)`, `writz.relayer.getSpvProof(txid)` (throws `RelayerError` with `code`, `status`, `retryAfterSeconds`; retries 409 `light_client_behind`, 429 and 503 after `Retry-After`), `writz.spv.verifyTransaction(sorobanArgs)` (throws `ContractError` with `code`, `errorName`), `writz.lend.getProtocolState()`, `writz.lend.buildSupplyUsdc(address, stroops)` (unsigned XDR, the SDK never signs).
+- `@writz/sdk`: `createWritzClient()` (testnet preset), `writz.verifyBitcoinTx(txid)`, `writz.relayer.getSpvProof(txid)` (throws `RelayerError` with `code`, `status`, `retryAfterSeconds`; retries 409 `light_client_behind`, 429 and 503 after `Retry-After`), `writz.spv.verifyTransaction(sorobanArgs)` (throws `ContractError` with `code`, `errorName`), `writz.lend.getProtocolState()`, `writz.lend.getSupplyRateBp()`, `writz.lend.getSupplyBalance(address)`, `writz.lend.buildSupplyUsdc(address, stroops)` and `writz.lend.buildWithdrawSupply(address, stroops)` (unsigned XDR, the SDK never signs).
 - `writz-spv-client`: `BitcoinSpvClient`, `SpvVerificationResult`, `SPVError`, `find_output_value(&raw_tx, &script_pubkey) -> Option<u64>`, `txid(&env, &raw_tx)`.
 
 ## Does not exist (do not generate code for it)
@@ -53,7 +53,7 @@ Until a package is on its registry, `npm install @writz/sdk` and `cargo add writ
 - `verify_transaction` has **no** `headers` argument and its result has **no** `outputs` field.
 - No Bitcoin mainnet, testnet3 or testnet4 verification. Signet only.
 - No Writz contract on Stellar mainnet.
-- No relayer route other than those listed below; no API keys; no webhooks.
+- No relayer integration route other than those listed below (the rest serve the Writz app); no API keys; no webhooks.
 - External contracts cannot call `bitcoin-spv.consume_deposit` (admin-registered consumers only).
 
 ---
@@ -84,7 +84,7 @@ Rules: `block_hash` and every `merkle_proof` item in internal byte order (revers
 
 Errors (`Error(Contract, #N)`): 2 InsufficientConfirmations, 3 ZeroMinConfirmations, 5 MerkleProofInvalid, 7 EmptyTransaction, 15 AmbiguousTransactionLength, 22 HeaderNotFound, 23 NotOnBestChain, 24 BlockNotAfterCheckpoint.
 
-## `writz-lend` reads
+## `writz-lend` reads and the lender side
 
 ```rust
 fn get_protocol_state() -> ProtocolState;
@@ -97,7 +97,13 @@ fn get_position(txid: BytesN<32>) -> Option<Position>;   // txid of the BTC depo
 fn get_health_ratio_bp(txid: BytesN<32>) -> Result<i128, WritzLendError>; // 15000 = 150%, liquidation at 12000
 ```
 
-Indexes are scaled by 10^18. Generate a typed client from the deployed ID for anything else; the full list is in [Contract Reference](/developers/contract-reference).
+```rust
+// Lender side: permissionless writes, the supplier signs. Amounts in TEST_USDC_SAC stroops.
+fn supply_usdc(supplier: Address, amount: i128) -> Result<(), WritzLendError>;
+fn withdraw_supply(supplier: Address, amount: i128) -> Result<(), WritzLendError>;
+```
+
+Indexes are scaled by 10^18. Lender yield is the interest Bitcoin borrowers pay: `get_supply_rate_bp` is variable and reads `0` while nothing, or very little, is borrowed, so read it live and never present a fixed APY. `get_supply_balance` includes accrued interest. `withdraw_supply` fails with #13 InsufficientSupply above the lender's balance and #11 InsufficientLiquidity above what is not lent out; `supply_usdc` fails with #17 Paused while the pool is paused, and the supplier needs a trustline to the test USDC (without one, simulation fails inside the token contract). Generate a typed client from the deployed ID for anything else; the full list is in [Contract Reference](/developers/contract-reference).
 
 ## Relayer
 
@@ -113,16 +119,7 @@ POST /faucet/signet  {"address":"tb1..."}   pays signet test BTC to a tb1q/tb1p 
 
 `/faucet/signet` is the way to get signet coins without a captcha: a fixed 20,000 sats per claim (one testnet deposit at the testnet minimum, plus fees), one claim per address every 24 hours, 20 claims per IP per hour (sliding window), a daily cap of 300 claims across all callers, and 30 attempts per IP per 10 minutes. Only `tb1q...` and `tb1p...` addresses; `bc1` is refused. Errors: 400 `invalid_address`, 429 `address_cooldown`, `ip_cooldown`, `daily_cap_reached` or `rate_limited` (wait `retryAfterSeconds`; do not retry with another address or IP to get around it), 502 `broadcast_rejected`, 503 `faucet_disabled`, `faucet_empty` or `upstream_unavailable` (body lists `publicFaucets`). The payout is unconfirmed when the call returns; wait for confirmations before calling `/spv-proof`.
 
-Earn vault (DeFindex; it holds Blend's test USDC, not `TEST_USDC_SAC`; rate limits 60 reads and 10 builds per minute per IP; errors are `{ error: "<message>" }`):
-
-```text
-GET  /defindex/apy                       { apy }  fraction, 0.0731 = 7.31%
-GET  /defindex/position?address=G...     { dfTokens, underlyingStroops }  decimal strings
-POST /defindex/deposit   { caller, amountStroops }   { xdr }  unsigned; the caller's wallet signs and submits
-POST /defindex/withdraw  { caller, amountStroops }   { xdr }
-```
-
-The other routes the index lists (`/merkle-path`, `/notes`, `/insert-commitment`, `/update-leaf`, `/metrics/*`) serve the Writz app and are not an integration surface.
+The other routes the index lists (`/merkle-path`, `/notes`, `/insert-commitment`, `/update-leaf`, `/metrics/*`) serve the Writz app and are not an integration surface. Yield on USDC is the `writz-lend` lender side, called on the contract directly (above), not through the relayer.
 
 ---
 
