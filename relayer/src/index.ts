@@ -11,12 +11,17 @@ import { startHeaderSync } from "./bitcoin/spv-submit.js";
 import { lendingEnabled } from "./deploy-target.js";
 import { startTreeWatcher, treeSyncStatus } from "./tree-watcher/poller.js";
 import { startZkKeeper } from "./zk-keeper/runner.js";
+import { createFaucetRouter } from "./routes/faucet.js";
+import { faucetFromConfig } from "./faucet/from-config.js";
 
 const app = express();
 // Earn routes and the vault watcher run everywhere; the lending surface (SPV
 // proofs, the commitment tree, header sync, auto-cosign) only where lending
 // is enabled - not on mainnet, which is Earn-only (#122).
 const LENDING = lendingEnabled(config.target);
+// The Signet faucet exists only where the Bitcoin side is Signet, never on
+// the mainnet target. Without FAUCET_SIGNET_WIF it answers 503 faucet_disabled.
+const FAUCET = LENDING && config.bitcoinNetwork === "signet";
 
 // Railway's edge is the one proxy in front of this service. Trusting exactly
 // that many hops makes `req.ip` the address the edge saw, the right-most
@@ -85,6 +90,7 @@ app.get("/", (_req, res) => {
             updateLeaf: "POST /update-leaf",
           }
         : {}),
+      ...(FAUCET ? { signetFaucet: "GET /faucet/signet", signetFaucetClaim: "POST /faucet/signet" } : {}),
       defindexApy: "GET /defindex/apy",
       defindexPosition: "GET /defindex/position?address=G...",
       defindexDeposit: "POST /defindex/deposit",
@@ -117,6 +123,19 @@ if (LENDING) {
 }
 app.use("/defindex", defindexRouter);
 app.use("/metrics", metricsRouter);
+if (FAUCET) {
+  const { faucet, disabledReason } = faucetFromConfig();
+  app.use(
+    "/faucet",
+    createFaucetRouter({
+      faucet,
+      disabledReason,
+      rateLimit: config.faucet.rateLimit,
+      rateWindowMs: config.faucet.rateWindowMs,
+    }),
+  );
+  console.log(faucet ? `Signet faucet: ${faucet.address}` : `Signet faucet off: ${disabledReason}`);
+}
 
 // 404 fallback.
 app.use((_req, res) => {

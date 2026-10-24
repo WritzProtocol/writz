@@ -88,6 +88,24 @@ export interface Config {
   btcPriceStroops: bigint;
   /** Must equal commitment-tree's liquidation_threshold_bp. */
   liquidationThresholdBp: bigint;
+  /** Signet faucet (`/faucet/signet`). Off unless `wif` is set; signet only. */
+  faucet: FaucetConfig;
+}
+
+export interface FaucetConfig {
+  /** WIF of the faucet's own P2WPKH hot wallet (FAUCET_SIGNET_WIF). Never the protocol key. */
+  wif: string | undefined;
+  /** FAUCET_ENABLED=false switches the faucet off without removing the key. */
+  enabled: boolean;
+  amountSat: number;
+  dailyCap: number;
+  cooldownHours: number;
+  minFeeRate: number;
+  maxFeeRate: number;
+  feeTargetBlocks: number;
+  /** Per-IP POST attempts per window. */
+  rateLimit: number;
+  rateWindowMs: number;
 }
 
 // mempool.space rather than Blockstream: Blockstream's public API now
@@ -134,8 +152,14 @@ function loadConfig(): Config {
       BITCOIN_SPV_ID: process.env["BITCOIN_SPV_ID"],
       KEEPER_SECRET: process.env["KEEPER_SECRET"],
       KEEPER_BABYJUB_SECRET: process.env["KEEPER_BABYJUB_SECRET"],
+      FAUCET_SIGNET_WIF: process.env["FAUCET_SIGNET_WIF"],
     },
   });
+
+  const faucetWif = process.env["FAUCET_SIGNET_WIF"]?.trim() || undefined;
+  if (faucetWif && network !== "signet") {
+    throw new Error("FAUCET_SIGNET_WIF is set but BITCOIN_NETWORK is not signet. The faucet pays Signet coins only.");
+  }
 
   return {
     target,
@@ -176,6 +200,18 @@ function loadConfig(): Config {
     keeperPollIntervalMs: parseInt(getEnv("KEEPER_POLL_INTERVAL_MS", "60000"), 10),
     btcPriceStroops: BigInt(getEnv("BTC_PRICE_STROOPS", "600000000000")),
     liquidationThresholdBp: BigInt(getEnv("LIQUIDATION_THRESHOLD_BP", "12000")),
+    faucet: {
+      wif: faucetWif,
+      enabled: getEnv("FAUCET_ENABLED", "true").trim().toLowerCase() !== "false",
+      amountSat: parseInt(getEnv("FAUCET_AMOUNT_SATS", "20000"), 10),
+      dailyCap: parseInt(getEnv("FAUCET_DAILY_CAP", "50"), 10),
+      cooldownHours: parseFloat(getEnv("FAUCET_COOLDOWN_HOURS", "24")),
+      minFeeRate: parseFloat(getEnv("FAUCET_MIN_FEE_RATE", "2")),
+      maxFeeRate: parseFloat(getEnv("FAUCET_MAX_FEE_RATE", "25")),
+      feeTargetBlocks: parseInt(getEnv("FAUCET_FEE_TARGET_BLOCKS", "3"), 10),
+      rateLimit: parseInt(getEnv("FAUCET_RATE_LIMIT", "5"), 10),
+      rateWindowMs: parseInt(getEnv("FAUCET_RATE_WINDOW_MS", "600000"), 10),
+    },
   };
 }
 

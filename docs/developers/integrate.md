@@ -271,7 +271,15 @@ Other frequent mistakes:
 
 - **Stellar testnet XLM:** `stellar keys generate me --network testnet --fund`, or Friendbot in [Stellar Lab](https://lab.stellar.org) or in the Freighter wallet on testnet.
 - **Test USDC:** add a trustline to `USDC:GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5`, then swap testnet XLM for it in Freighter, or use [faucet.circle.com](https://faucet.circle.com) (Stellar Testnet). This is the USDC the Writz pool uses.
-- **Bitcoin signet coins:** a signet wallet (Xverse and Sparrow support signet), then [signetfaucet.com](https://signetfaucet.com). Each faucet has a captcha and a per-address limit.
+- **Bitcoin signet coins:** a signet wallet (Xverse and Sparrow support signet) and its `tb1q...` or `tb1p...` address, then the Writz faucet, no captcha:
+
+  ```bash
+  curl -X POST https://api.testnet.writz.xyz/faucet/signet \
+    -H 'Content-Type: application/json' -d '{"address":"tb1q..."}'
+  # {"txid":"...","address":"tb1q...","amountSats":20000,"feeSats":282,"explorerUrl":"https://mempool.space/signet/tx/..."}
+  ```
+
+  It pays a fixed 20,000 sats, enough for one deposit at the testnet minimum plus fees. One claim per address and per IP every 24 hours, and a daily cap across everyone. `GET /faucet/signet` shows whether it is on, the amount and the claims left today. If it answers `faucet_empty` or `faucet_disabled`, use a public faucet such as [signetfaucet.com](https://signetfaucet.com) (captcha and per-address limit). The coins are unconfirmed when the call returns; wait for a block (about 10 minutes) before building a proof.
 - **Explorers:** [mempool.space/signet](https://mempool.space/signet) for Bitcoin, [stellar.expert/explorer/testnet](https://stellar.expert/explorer/testnet) for Stellar.
 
 ## Limits to know
