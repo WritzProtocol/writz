@@ -4,7 +4,7 @@
  * relayer's data directory (mount a volume at /app/data, see
  * docs/developers/deploy-targets.md). Same bun:sqlite + WAL pattern as
  * `../leaf-store.ts`. Without a volume the file is lost on redeploy, which
- * resets the cooldowns and the daily count, nothing else.
+ * resets the cooldown, the per-IP allowance and the daily count, nothing else.
  */
 import { Database } from "bun:sqlite";
 import path from "path";
@@ -36,8 +36,9 @@ export function openSqliteClaimStore(
   const byAddress = db.query<{ t: number | null }, [string]>(
     "SELECT MAX(created_at) AS t FROM faucet_claims WHERE address = ?",
   );
-  const byIp = db.query<{ t: number | null }, [string]>(
-    "SELECT MAX(created_at) AS t FROM faucet_claims WHERE ip_hash = ?",
+  // Served by faucet_claims_ip (ip_hash, created_at): a range scan, already in order.
+  const byIpSince = db.query<{ t: number }, [string, number]>(
+    "SELECT created_at AS t FROM faucet_claims WHERE ip_hash = ? AND created_at >= ? ORDER BY created_at ASC",
   );
   const since = db.query<{ n: number }, [number]>(
     "SELECT COUNT(*) AS n FROM faucet_claims WHERE created_at >= ?",
@@ -48,7 +49,7 @@ export function openSqliteClaimStore(
 
   return {
     lastClaimForAddress: (address) => byAddress.get(address)?.t ?? undefined,
-    lastClaimForIp: (ipHash) => byIp.get(ipHash)?.t ?? undefined,
+    ipClaimsSince: (ipHash, t) => byIpSince.all(ipHash, t).map((r) => r.t),
     countSince: (t) => since.get(t)?.n ?? 0,
     record: (c: ClaimRecord) => {
       insert.run(c.address, c.ipHash, c.txid, c.amountSat, c.createdAt);

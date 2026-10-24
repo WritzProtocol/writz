@@ -1,6 +1,6 @@
 /**
- * Signet faucet: address validation, payment construction, cooldowns, the
- * daily cap, the balance check, serialized sends and the HTTP surface.
+ * Signet faucet: address validation, payment construction, the address
+ * cooldown, the per-IP allowance, the daily cap, the balance check, serialized sends and the HTTP surface.
  * Esplora is a mock; signing is real (@writz/bitcoin-script), so every paid
  * transaction is decoded and checked.
  */
@@ -32,6 +32,8 @@ const SETTINGS: FaucetSettings = {
   amountSat: 20_000,
   dailyCap: 3,
   cooldownMs: 24 * 3_600_000,
+  ipClaimsPerWindow: 20,
+  ipWindowMs: 3_600_000,
   minFeeRate: 2,
   maxFeeRate: 25,
   feeTargetBlocks: 3,
@@ -158,10 +160,57 @@ describe('SignetFaucet.claim', () => {
     await expect(faucet.claim(USER, '2.2.2.2')).resolves.toMatchObject({ amountSats: 20_000 });
   });
 
-  test('one claim per IP per cooldown, to any address', async () => {
-    const { faucet } = setup();
+  test('N claims per IP per window to different addresses; claim N+1 waits for the oldest to leave', async () => {
+    const { faucet } = setup([500_000], { dailyCap: 100, ipClaimsPerWindow: 3 });
+    for (let i = 0; i < 3; i++) {
+      await expect(faucet.claim(userAddr(60 + i), '1.1.1.1')).resolves.toBeDefined();
+      t += 10 * 60_000;
+    }
+    // 30 minutes in: the first claim leaves the window 60 minutes after it was made.
+    await expect(faucet.claim(userAddr(63), '1.1.1.1')).rejects.toMatchObject({
+      code: 'ip_cooldown', httpStatus: 429, retryAfterSeconds: 30 * 60,
+    });
+    // Another IP is not affected.
+    await expect(faucet.claim(userAddr(64), '2.2.2.2')).resolves.toBeDefined();
+  });
+
+  test('the per-IP window slides: each slot frees one window after its claim', async () => {
+    const { faucet } = setup([500_000], { dailyCap: 100, ipClaimsPerWindow: 3 });
+    const start = t;
+    for (let i = 0; i < 3; i++) {
+      await faucet.claim(userAddr(70 + i), '1.1.1.1');
+      t += 10 * 60_000;
+    }
+    t = start + 3_600_000 - 1;
+    await expect(faucet.claim(userAddr(73), '1.1.1.1')).rejects.toMatchObject({ code: 'ip_cooldown', retryAfterSeconds: 1 });
+    t = start + 3_600_000;
+    await expect(faucet.claim(userAddr(73), '1.1.1.1')).resolves.toBeDefined();
+    // The window is full again; the next slot is the claim made at start + 10 min.
+    await expect(faucet.claim(userAddr(74), '1.1.1.1')).rejects.toMatchObject({ code: 'ip_cooldown', retryAfterSeconds: 10 * 60 });
+    t = start + 3_600_000 + 10 * 60_000;
+    await expect(faucet.claim(userAddr(74), '1.1.1.1')).resolves.toBeDefined();
+  });
+
+  test('a refused claim does not use the per-IP allowance', async () => {
+    const { faucet } = setup([500_000], { dailyCap: 100, ipClaimsPerWindow: 2 });
     await faucet.claim(USER, '1.1.1.1');
-    await expect(faucet.claim(USER_2, '1.1.1.1')).rejects.toMatchObject({ code: 'ip_cooldown' });
+    await expect(faucet.claim(USER, '1.1.1.1')).rejects.toMatchObject({ code: 'address_cooldown' });
+    await expect(faucet.claim('nope', '1.1.1.1')).rejects.toMatchObject({ code: 'invalid_address' });
+    await expect(faucet.claim(USER_2, '1.1.1.1')).resolves.toBeDefined();
+  });
+
+  test('the address cooldown is independent of the per-IP window', async () => {
+    const { faucet } = setup([500_000], { dailyCap: 100, ipClaimsPerWindow: 2 });
+    await faucet.claim(USER, '1.1.1.1');
+    // Two hours later the IP window is empty, but the address still waits out its 24 hours.
+    t += 2 * 3_600_000;
+    await expect(faucet.claim(USER, '1.1.1.1')).rejects.toMatchObject({ code: 'address_cooldown', retryAfterSeconds: 22 * 3600 });
+    await expect(faucet.claim(USER, '3.3.3.3')).rejects.toMatchObject({ code: 'address_cooldown' });
+    // And an IP that used its allowance does not hold back an address from elsewhere.
+    await faucet.claim(userAddr(80), '4.4.4.4');
+    await faucet.claim(userAddr(81), '4.4.4.4');
+    await expect(faucet.claim(userAddr(82), '4.4.4.4')).rejects.toMatchObject({ code: 'ip_cooldown' });
+    await expect(faucet.claim(userAddr(82), '5.5.5.5')).resolves.toBeDefined();
   });
 
   test('global daily cap, reset at 00:00 UTC', async () => {
@@ -228,6 +277,12 @@ describe('SignetFaucet.claim', () => {
   test('refuses an amount above the 50,000 sat ceiling', () => {
     expect(() => setup([100_000], { amountSat: 60_000 })).toThrow(/FAUCET_AMOUNT_SATS/);
   });
+
+  test('refuses a per-IP allowance or window that is not positive', () => {
+    expect(() => setup([100_000], { ipClaimsPerWindow: 0 })).toThrow(/FAUCET_IP_CLAIMS_PER_WINDOW/);
+    expect(() => setup([100_000], { ipClaimsPerWindow: 1.5 })).toThrow(/FAUCET_IP_CLAIMS_PER_WINDOW/);
+    expect(() => setup([100_000], { ipWindowMs: 0 })).toThrow(/FAUCET_IP_WINDOW_HOURS/);
+  });
 });
 
 describe('HTTP routes', () => {
@@ -247,15 +302,16 @@ describe('HTTP routes', () => {
     expect(res.body.error).toBe('invalid_address');
   });
 
-  test('429 with Retry-After on a cooldown; the IP comes from the trusted hop, not a spoofed header', async () => {
-    const { faucet } = setup();
+  test('429 with Retry-After on the per-IP allowance; the IP comes from the trusted hop, not a spoofed header', async () => {
+    const { faucet } = setup([100_000], { ipClaimsPerWindow: 1 });
     const app = appFor(faucet);
     await request(app).post('/faucet/signet').set('X-Forwarded-For', '5.5.5.5').send({ address: USER });
     // A different left-most entry does not give the caller a new IP bucket.
     const res = await request(app).post('/faucet/signet').set('X-Forwarded-For', '6.6.6.6, 5.5.5.5').send({ address: USER_2 });
     expect(res.status).toBe(429);
     expect(res.body.error).toBe('ip_cooldown');
-    expect(res.headers['retry-after']).toBe('86400');
+    expect(res.headers['retry-after']).toBe('3600');
+    expect(res.body.retryAfterSeconds).toBe(3600);
   });
 
   test('burst limit on attempts', async () => {
@@ -286,7 +342,7 @@ describe('HTTP routes', () => {
     expect(get.body).toMatchObject({ enabled: false, reason: 'no faucet key is configured' });
   });
 
-  test('GET /faucet/signet reports amount, daily cap left, address and balance', async () => {
+  test('GET /faucet/signet reports amount, daily cap left, per-IP allowance, address and balance', async () => {
     const { faucet } = setup([100_000, 50_000]);
     const app = appFor(faucet);
     await request(app).post('/faucet/signet').send({ address: USER });
@@ -301,6 +357,8 @@ describe('HTTP routes', () => {
       claimsToday: 1,
       remainingToday: 2,
       cooldownHours: 24,
+      ipClaimsPerWindow: 20,
+      ipWindowHours: 1,
       resetsAt: '2026-10-25T00:00:00.000Z',
     });
     expect(res.body.balanceSats).toBeGreaterThan(100_000);
