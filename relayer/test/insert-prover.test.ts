@@ -9,7 +9,7 @@ import { computeRoot } from '../src/merkle';
 
 // The insert circuit's committed verification key - the one registered on
 // zk-verifier as CircuitId::Insert.
-const VKEY_PATH = path.resolve(__dirname, '../../circuits/keys/insert_vkey.json');
+const VKEY_PATH = path.resolve(__dirname, '../../privacy/circuits/keys/insert_vkey.json');
 const vkey = JSON.parse(readFileSync(VKEY_PATH, 'utf8'));
 
 describe('buildInsertInput', () => {

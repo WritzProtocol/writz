@@ -13,14 +13,14 @@
  *   final.zkey: path to the verified final zkey (see 03_verify_transcript.sh)
  *
  * Writes:
- *   circuits/keys/<circuit>_vkey.json         - source-of-truth verification key JSON
- *   circuits/ceremony/<circuit>/vkey.contract.json - {alpha_g1, beta_g2, gamma_g2,
+ *   privacy/circuits/keys/<circuit>_vkey.json         - source-of-truth verification key JSON
+ *   privacy/circuits/ceremony/<circuit>/vkey.contract.json - {alpha_g1, beta_g2, gamma_g2,
  *                                                      delta_g2, ic} hex-string shape,
  *                                                      ready for a `set_verification_key`
  *                                                      Soroban call
- *   circuits/keys/CEREMONY_MANIFEST.json      - updated with this circuit's entry
+ *   privacy/circuits/keys/CEREMONY_MANIFEST.json      - updated with this circuit's entry
  *
- * Does NOT copy the final .zkey into `circuits/keys/` or `frontend/app/public/circuits/`
+ * Does NOT copy the final .zkey into `privacy/circuits/keys/` or `frontend/app/public/circuits/`
  * - those are large binaries intentionally excluded from git (see the ceremony
  * README's "why .zkey files aren't committed" note). Publish the .zkey as a
  * GitHub Release asset and record its URL + hash in the manifest by hand, or
@@ -38,7 +38,7 @@ const MANIFEST_PATH = path.join(KEYS_DIR, 'CEREMONY_MANIFEST.json');
 
 // Expected public-signal counts, per circuit - must match the IC length in
 // the exported vkey. Mirrors the values already verified against the dev
-// keys (circuits/keys/*_vkey.json) and contracts/contracts/zk-verifier/src/
+// keys (privacy/circuits/keys/*_vkey.json) and privacy/contracts/zk-verifier/src/
 // test_vectors.rs. Kept here (not imported from a shared source) since this
 // is the one place a mismatch must hard-fail loudly, rather than silently
 // inherit whatever the dev keys happened to have.
@@ -92,7 +92,7 @@ function main() {
       `ERROR: ${circuit}'s exported vkey has IC.length=${vkey.IC.length}, expected ${expectedLen}. ` +
         'This usually means the wrong .zkey/circuit pairing was passed, or the circuit\'s ' +
         'public-signal count changed without updating EXPECTED_IC_LENGTH here AND ' +
-        'contracts/contracts/zk-verifier/src/test_vectors.rs. Refusing to export.',
+        'privacy/contracts/zk-verifier/src/test_vectors.rs. Refusing to export.',
     );
     process.exit(1);
   }

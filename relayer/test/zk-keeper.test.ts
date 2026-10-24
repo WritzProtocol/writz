@@ -1,7 +1,7 @@
 /**
  * ZK keeper (#212): opening keeper notes, the health test, and one pass of
  * the liquidation loop. The note vector is the fixture borrow proof from
- * circuits/scripts/gen_commitment_tree_test_vectors.js (commitment-tree's
+ * privacy/circuits/scripts/gen_commitment_tree_test_vectors.js (commitment-tree's
  * integration vectors), so these tests open exactly what the circuit wrote.
  */
 import fs from 'fs';
@@ -178,7 +178,7 @@ describe('runKeeperCycle', () => {
       {},
       { singleThread: true },
     );
-    const vkey = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../../circuits/keys/liquidation_vkey.json'), 'utf8'));
+    const vkey = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../../privacy/circuits/keys/liquidation_vkey.json'), 'utf8'));
     expect(await groth16.verify(vkey, publicSignals, proof)).toBe(true);
     // [nullifier, usdc_debt, merkle_root, price, threshold]
     expect(BigInt(publicSignals[1]!)).toBe(p.debtStroops);

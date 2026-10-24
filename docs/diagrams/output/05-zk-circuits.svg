@@ -13,20 +13,20 @@
 <g id="clust1" class="cluster">
 <title>cluster_deposit</title>
 <path fill="none" stroke="#ea580c" stroke-width="2.5" d="M71.75,-426C71.75,-426 1045.37,-426 1045.37,-426 1051.37,-426 1057.37,-432 1057.37,-438 1057.37,-438 1057.37,-615 1057.37,-615 1057.37,-621 1051.37,-627 1045.37,-627 1045.37,-627 71.75,-627 71.75,-627 65.75,-627 59.75,-621 59.75,-615 59.75,-615 59.75,-438 59.75,-438 59.75,-432 65.75,-426 71.75,-426"/>
-<text xml:space="preserve" text-anchor="start" x="70.38" y="-612.6" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="12.00" fill="#ea580c">Deposit Circuit</text>
-<text xml:space="preserve" text-anchor="start" x="67.75" y="-603.45" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#57534e">circuits/deposit.circom</text>
+<text xml:space="preserve" text-anchor="start" x="93.25" y="-612.6" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="12.00" fill="#ea580c">Deposit Circuit</text>
+<text xml:space="preserve" text-anchor="start" x="67.75" y="-603.45" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#57534e">privacy/circuits/src/deposit.circom</text>
 </g>
 <g id="clust2" class="cluster">
 <title>cluster_br</title>
 <path fill="none" stroke="#2563eb" stroke-width="2.5" d="M20,-217C20,-217 1063.75,-217 1063.75,-217 1069.75,-217 1075.75,-223 1075.75,-229 1075.75,-229 1075.75,-406 1075.75,-406 1075.75,-412 1069.75,-418 1063.75,-418 1063.75,-418 20,-418 20,-418 14,-418 8,-412 8,-406 8,-406 8,-229 8,-229 8,-223 14,-217 20,-217"/>
-<text xml:space="preserve" text-anchor="start" x="16" y="-403.6" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="12.00" fill="#2563eb">Borrow / Repay Circuit</text>
-<text xml:space="preserve" text-anchor="start" x="21.62" y="-394.45" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#57534e">circuits/borrow_repay.circom</text>
+<text xml:space="preserve" text-anchor="start" x="33.25" y="-403.6" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="12.00" fill="#2563eb">Borrow / Repay Circuit</text>
+<text xml:space="preserve" text-anchor="start" x="16" y="-394.45" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#57534e">privacy/circuits/src/borrow_repay.circom</text>
 </g>
 <g id="clust3" class="cluster">
 <title>cluster_liq</title>
 <path fill="none" stroke="#dc2626" stroke-width="2.5" d="M37.25,-8C37.25,-8 1076.5,-8 1076.5,-8 1082.5,-8 1088.5,-14 1088.5,-20 1088.5,-20 1088.5,-197 1088.5,-197 1088.5,-203 1082.5,-209 1076.5,-209 1076.5,-209 37.25,-209 37.25,-209 31.25,-209 25.25,-203 25.25,-197 25.25,-197 25.25,-20 25.25,-20 25.25,-14 31.25,-8 37.25,-8"/>
-<text xml:space="preserve" text-anchor="start" x="33.25" y="-194.6" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="12.00" fill="#dc2626">Liquidation Circuit</text>
-<text xml:space="preserve" text-anchor="start" x="34.38" y="-185.45" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#57534e">circuits/liquidation.circom</text>
+<text xml:space="preserve" text-anchor="start" x="55" y="-194.6" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="12.00" fill="#dc2626">Liquidation Circuit</text>
+<text xml:space="preserve" text-anchor="start" x="33.25" y="-185.45" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#57534e">privacy/circuits/src/liquidation.circom</text>
 </g>
 <!-- dep_priv -->
 <g id="node1" class="node">

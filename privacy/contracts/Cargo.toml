@@ -1,0 +1,27 @@
+# The privacy edition's contracts, a separate workspace from the v1 protocol
+# in contracts/ so v1 builds, tests and deploys without them. They share
+# spv-types with v1 through a path dependency.
+[workspace]
+resolver = "2"
+members = [
+  "commitment-tree",
+  "zk-verifier",
+]
+
+[workspace.dependencies]
+soroban-sdk = "26"
+
+[profile.release]
+opt-level = "z"
+overflow-checks = true
+debug = 0
+strip = "symbols"
+debug-assertions = false
+panic = "abort"
+codegen-units = 1
+lto = true
+
+# For more information about this profile see https://developers.stellar.org/docs/build/smart-contracts/example-contracts/logging#cargotoml-profile
+[profile.release-with-logs]
+inherits = "release"
+debug-assertions = true

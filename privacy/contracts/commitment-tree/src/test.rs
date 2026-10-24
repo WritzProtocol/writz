@@ -462,7 +462,7 @@ fn i128_from_be32_low_accepts_max_i128() {
 // Before this section existed, `deposit`/`borrow`/`repay`/`liquidate` - the
 // four ZK-gated state transitions that are this contract's actual purpose -
 // had zero test coverage. Everything below exercises them with real Groth16
-// proofs (`circuits/scripts/gen_commitment_tree_test_vectors.js`) verified
+// proofs (`privacy/circuits/scripts/gen_commitment_tree_test_vectors.js`) verified
 // through a real deployed `zk-verifier` instance, not a mock verifier.
 //
 // A note on `liquidate`'s test: this contract has no interest-accrual
@@ -686,7 +686,7 @@ fn borrow_signals(env: &Env) -> Vec<BytesN<32>> {
 }
 
 /// Must stay byte-identical to `RECIPIENT_STRKEY` in
-/// circuits/scripts/gen_commitment_tree_test_vectors.js - the fixture
+/// privacy/circuits/scripts/gen_commitment_tree_test_vectors.js - the fixture
 /// proof's recipient_lo/hi signals are sha256 of this exact string
 /// (GHSA-xxqv-6vhx-hhrx, GHSA-mhp9-jmvc-x9mw).
 const BORROW_RECIPIENT: &str = "CAIRCEIRCEIRCEIRCEIRCEIRCEIRCEIRCEIRCEIRCEIRCEIRCEIRDB3V";

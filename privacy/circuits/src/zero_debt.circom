@@ -48,7 +48,7 @@ include "./position.circom";
  *   - Merkle proof (depth 20, MerkleTreeChecker): ~5,200
  *
  * Build:
- *   cd circuits && ./scripts/build_zero_debt.sh
+ *   cd privacy/circuits && ./scripts/build_zero_debt.sh
  * Then copy the output artifacts to frontend/app/public/circuits/ and
  * frontend/app/src/circuits/zero_debt_vkey.json (see script for details).
  */

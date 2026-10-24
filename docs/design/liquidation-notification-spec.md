@@ -16,7 +16,7 @@ nothing currently sets that status. This spec closes that gap.
 
 ## What already exists to build on
 
-`commitment-tree` emits a `LiquidateEvent` (`contracts/contracts/commitment-tree/src/events.rs`):
+`commitment-tree` emits a `LiquidateEvent` (`privacy/contracts/commitment-tree/src/events.rs`):
 
 ```rust
 #[contractevent(topics = ["liquidate"])]

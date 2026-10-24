@@ -18,10 +18,15 @@
  *   6. set_consumer on bitcoin-spv for both lenders
  *   7. set_max_total_borrowed on both lenders, when MAX_TOTAL_BORROWED is set
  *
+ * zk-verifier, commitment-tree and the verification keys belong to the
+ * privacy edition (privacy/, in progress, testnet only). --v1-only deploys
+ * Writz v1 alone: bitcoin-spv and writz-lend, with no privacy contracts, keys
+ * or KEEPER_BABYJUB_PUBKEY.
+ *
  * Without --execute it only validates the inputs and prints the plan; nothing
  * is sent. Do not run it with --execute without the project owner's explicit
  * sign-off for that network. Mainnet also needs CONFIRM_MAINNET=I_HAVE_SIGN_OFF
- * and a production ceremony manifest (circuits/keys/CEREMONY_MANIFEST.json).
+ * and a production ceremony manifest (privacy/circuits/keys/CEREMONY_MANIFEST.json).
  *
  * The admin is the deployer account (ADMIN_SECRET). Move it behind the 2-of-3
  * multisig (docs/security/security-model.md) right after the run - the
@@ -30,12 +35,13 @@
  *
  * Usage:
  *   (cd contracts && cargo build --release --target wasm32v1-none --locked)
+ *   (cd privacy/contracts && cargo build --release --target wasm32v1-none --locked)  # not with --v1-only
  *   STELLAR_NETWORK=testnet BITCOIN_NETWORK=signet ADMIN_SECRET=S... \
  *   RELAYER_ADDRESS=G... KEEPER_ADDRESS=G... USDC_TOKEN=C... ORACLE=C... \
  *   PROTOCOL_PUBKEY=02... KEEPER_BABYJUB_PUBKEY=<x||y hex, keeper_keygen.mjs> \
  *   CHECKPOINT_HEIGHT=... CHECKPOINT_HASH=... \
  *   CHECKPOINT_BITS=0x... CHECKPOINT_TIME=... CHECKPOINT_PERIOD_START_TIME=... \
- *     node deploy_stack.mjs [--execute]
+ *     node deploy_stack.mjs [--v1-only] [--execute]
  *
  * Optional: MIN_CONFIRMATIONS (default 6), MIN_DEPOSIT_SATS (writz-lend,
  * default 100000; testnet runs 1 and 5000), MAX_TOTAL_BORROWED.
@@ -52,10 +58,14 @@ const { Keypair, Networks, Address, Contract, StrKey, TransactionBuilder, xdr, n
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '../..');
+// v1 and the privacy edition are separate Cargo workspaces, so their WASM
+// lands in separate target directories.
 const WASM_DIR = path.join(ROOT, 'contracts/target/wasm32v1-none/release');
-const KEYS_DIR = path.join(ROOT, 'circuits/keys');
+const PRIVACY_WASM_DIR = path.join(ROOT, 'privacy/contracts/target/wasm32v1-none/release');
+const KEYS_DIR = path.join(ROOT, 'privacy/circuits/keys');
 
 const EXECUTE = process.argv.includes('--execute');
+const V1_ONLY = process.argv.includes('--v1-only');
 
 // ── inputs ───────────────────────────────────────────────────────────────────
 const STELLAR = {
@@ -94,8 +104,9 @@ const protocolPubkey = env('PROTOCOL_PUBKEY', (v) => /^0[23][0-9a-f]{64}$/i.test
   'compressed 33-byte hex key matching the relayer KMS key or PROTOCOL_SIGNING_KEY');
 // The ZK keeper's BabyJubJub key (#212), from keeper_keygen.mjs: 32-byte x
 // then 32-byte y, big-endian. Every borrow/repay note is encrypted to it.
-const babyjub = await buildBabyjub();
-const keeperBabyjub = env('KEEPER_BABYJUB_PUBKEY', (v) => {
+// Privacy edition only.
+const babyjub = V1_ONLY ? undefined : await buildBabyjub();
+const keeperBabyjub = V1_ONLY ? undefined : env('KEEPER_BABYJUB_PUBKEY', (v) => {
   if (!/^[0-9a-f]{128}$/i.test(v) || /^0{64}/.test(v)) return false;
   const point = [babyjub.F.e(BigInt('0x' + v.slice(0, 64))), babyjub.F.e(BigInt('0x' + v.slice(64)))];
   return babyjub.inCurve(point) && babyjub.inSubgroup(point);
@@ -118,21 +129,24 @@ if (stellarNetwork === 'mainnet') {
   if (process.env.CONFIRM_MAINNET !== 'I_HAVE_SIGN_OFF') {
     errors.push('mainnet needs CONFIRM_MAINNET=I_HAVE_SIGN_OFF (the project owner\'s explicit sign-off)');
   }
-  if (!fs.existsSync(path.join(KEYS_DIR, 'CEREMONY_MANIFEST.json'))) {
-    errors.push('mainnet needs the production ceremony keys (circuits/keys/CEREMONY_MANIFEST.json is missing)');
+  if (!V1_ONLY && !fs.existsSync(path.join(KEYS_DIR, 'CEREMONY_MANIFEST.json'))) {
+    errors.push('mainnet needs the production ceremony keys (privacy/circuits/keys/CEREMONY_MANIFEST.json is missing)');
   }
   if (minConfirmations < 6) errors.push('mainnet needs MIN_CONFIRMATIONS >= 6');
   if (minDepositSats < 100_000n) errors.push('mainnet needs MIN_DEPOSIT_SATS >= 100000');
 }
 
-const WASMS = ['zk_verifier', 'bitcoin_spv', 'commitment_tree', 'writz_lend'];
+const WASM_DIRS = V1_ONLY
+  ? { bitcoin_spv: WASM_DIR, writz_lend: WASM_DIR }
+  : { zk_verifier: PRIVACY_WASM_DIR, bitcoin_spv: WASM_DIR, commitment_tree: PRIVACY_WASM_DIR, writz_lend: WASM_DIR };
+const WASMS = Object.keys(WASM_DIRS);
 const wasm = {};
 for (const name of WASMS) {
-  const file = path.join(WASM_DIR, `${name}.wasm`);
+  const file = path.join(WASM_DIRS[name], `${name}.wasm`);
   if (!fs.existsSync(file)) { errors.push(`${file} not built`); continue; }
   wasm[name] = fs.readFileSync(file);
 }
-const CIRCUITS = [
+const CIRCUITS = V1_ONLY ? [] : [
   ['Deposit', 'deposit'], ['BorrowRepay', 'borrow_repay'], ['Liquidation', 'liquidation'],
   ['ZeroDebt', 'zero_debt'], ['Insert', 'insert'],
 ];
@@ -154,7 +168,7 @@ const powLimitBits = POW_LIMIT_BITS[bitcoinNetwork];
 const sha256 = (b) => crypto.createHash('sha256').update(b).digest('hex');
 
 // ── plan ─────────────────────────────────────────────────────────────────────
-console.log(`Writz coordinated redeploy - ${stellarNetwork} (Bitcoin ${bitcoinNetwork})`);
+console.log(`Writz coordinated redeploy - ${stellarNetwork} (Bitcoin ${bitcoinNetwork})${V1_ONLY ? ', v1 only' : ''}`);
 console.log(`  rpc               ${rpcUrl}`);
 console.log(`  admin / deployer  ${admin.publicKey()}`);
 console.log(`  relayer           ${relayer}  (writz-lend relayer${bitcoinNetwork === 'signet' ? ', bitcoin-spv submitter' : ''})`);
@@ -162,7 +176,7 @@ console.log(`  keeper            ${keeper}`);
 console.log(`  usdc              ${usdc}`);
 console.log(`  oracle            ${oracle}`);
 console.log(`  protocol pubkey   ${protocolPubkey}`);
-console.log(`  keeper babyjub    ${keeperBabyjub ? `${keeperBabyjub.slice(0, 16)}…` : keeperBabyjub}`);
+if (!V1_ONLY) console.log(`  keeper babyjub    ${keeperBabyjub.slice(0, 16)}…`);
 console.log(`  pow limit bits    0x${powLimitBits.toString(16)}`);
 console.log(`  checkpoint        height ${checkpoint.height}, ${checkpoint.hash}, bits 0x${checkpoint.bits.toString(16)}`);
 console.log(`  min confirmations ${minConfirmations}`);
@@ -170,8 +184,10 @@ console.log(`  min deposit       ${minDepositSats} sats (writz-lend)`);
 console.log(`  exposure cap      ${maxTotalBorrowed === undefined ? 'contract default (50,000 USDC per lender)' : `${maxTotalBorrowed} stroops per lender`}`);
 console.log('  wasm sha256');
 for (const name of WASMS) console.log(`    ${name.padEnd(16)} ${sha256(wasm[name])}`);
-console.log('  verification keys');
-for (const [circuit] of CIRCUITS) console.log(`    ${circuit.padEnd(16)} ${vkeys[circuit].IC.length} IC points`);
+if (!V1_ONLY) {
+  console.log('  verification keys');
+  for (const [circuit] of CIRCUITS) console.log(`    ${circuit.padEnd(16)} ${vkeys[circuit].IC.length} IC points`);
+}
 
 if (!EXECUTE) {
   console.log('\nDry run: inputs are valid, nothing was sent. Re-run with --execute once deploying is signed off.');
@@ -229,11 +245,13 @@ const vkeyVal = (vk) => xdr.ScVal.scvMap([
 const deployer = { server, networkPassphrase: passphrase, keypair: admin };
 const out = { network: stellarNetwork, bitcoinNetwork, admin: admin.publicKey(), txs: {} };
 
-console.log('\n1. zk-verifier');
-out.zkVerifier = await deployWithConstructor({ ...deployer, wasm: wasm.zk_verifier, constructorArgs: [addr(admin.publicKey())] });
-console.log(`   ${out.zkVerifier}`);
+if (!V1_ONLY) {
+  console.log('\n1. zk-verifier');
+  out.zkVerifier = await deployWithConstructor({ ...deployer, wasm: wasm.zk_verifier, constructorArgs: [addr(admin.publicKey())] });
+  console.log(`   ${out.zkVerifier}`);
+}
 
-console.log('2. bitcoin-spv');
+console.log(`${V1_ONLY ? '\n' : ''}2. bitcoin-spv`);
 out.bitcoinSpv = await deployWithConstructor({
   ...deployer, wasm: wasm.bitcoin_spv, constructorArgs: [addr(admin.publicKey()), u32(powLimitBits)],
 });
@@ -252,16 +270,18 @@ if (bitcoinNetwork === 'signet') {
 }
 
 const protocolKey = Buffer.from(protocolPubkey, 'hex');
-console.log('3. commitment-tree');
-out.commitmentTree = await deployWithConstructor({
-  ...deployer, wasm: wasm.commitment_tree,
-  constructorArgs: [
-    addr(admin.publicKey()), addr(out.bitcoinSpv), addr(out.zkVerifier), addr(usdc), addr(oracle),
-    u32(minConfirmations), bytes(protocolKey),
-    bytes(Buffer.from(keeperBabyjub.slice(0, 64), 'hex')), bytes(Buffer.from(keeperBabyjub.slice(64), 'hex')),
-  ],
-});
-console.log(`   ${out.commitmentTree}`);
+if (!V1_ONLY) {
+  console.log('3. commitment-tree');
+  out.commitmentTree = await deployWithConstructor({
+    ...deployer, wasm: wasm.commitment_tree,
+    constructorArgs: [
+      addr(admin.publicKey()), addr(out.bitcoinSpv), addr(out.zkVerifier), addr(usdc), addr(oracle),
+      u32(minConfirmations), bytes(protocolKey),
+      bytes(Buffer.from(keeperBabyjub.slice(0, 64), 'hex')), bytes(Buffer.from(keeperBabyjub.slice(64), 'hex')),
+    ],
+  });
+  console.log(`   ${out.commitmentTree}`);
+}
 
 console.log('4. writz-lend');
 out.writzLend = await deployWithConstructor({
@@ -273,7 +293,7 @@ out.writzLend = await deployWithConstructor({
 });
 console.log(`   ${out.writzLend}`);
 
-console.log('5. verification keys');
+if (!V1_ONLY) console.log('5. verification keys');
 for (const [circuit] of CIRCUITS) {
   out.txs[`vkey${circuit}`] = await invoke(out.zkVerifier, 'set_verification_key', [
     addr(admin.publicKey()), xdr.ScVal.scvVec([xdr.ScVal.scvSymbol(circuit)]), vkeyVal(vkeys[circuit]),
@@ -281,8 +301,11 @@ for (const [circuit] of CIRCUITS) {
   console.log(`   ${circuit}`);
 }
 
-console.log('6. register both lenders with the shared txid registry');
-for (const [name, id] of [['commitment-tree', out.commitmentTree], ['writz-lend', out.writzLend]]) {
+const lenders = V1_ONLY
+  ? [['writz-lend', out.writzLend]]
+  : [['commitment-tree', out.commitmentTree], ['writz-lend', out.writzLend]];
+console.log(`6. register ${V1_ONLY ? 'the lender' : 'both lenders'} with the shared txid registry`);
+for (const [name, id] of lenders) {
   out.txs[`consumer_${name}`] = await invoke(out.bitcoinSpv, 'set_consumer', [
     addr(admin.publicKey()), addr(id), nativeToScVal(true),
   ]);
@@ -293,7 +316,7 @@ if (maxTotalBorrowed !== undefined) {
   // A borrower can reclaim BTC through the timelock exit while still owing
   // USDC, so each lender's total exposure is capped (GHSA-5rxp).
   console.log('7. exposure cap');
-  for (const [name, id] of [['commitment-tree', out.commitmentTree], ['writz-lend', out.writzLend]]) {
+  for (const [name, id] of lenders) {
     out.txs[`maxTotalBorrowed_${name}`] = await invoke(id, 'set_max_total_borrowed', [
       addr(admin.publicKey()), nativeToScVal(maxTotalBorrowed, { type: 'i128' }),
     ]);
@@ -307,12 +330,12 @@ fs.writeFileSync(record, JSON.stringify(out, null, 2) + '\n');
 
 console.log(`\nDeployed. Record written to ${path.relative(ROOT, record)}.`);
 console.log('\nfrontend/app/.env');
-console.log(`NEXT_PUBLIC_ZK_VERIFIER_ID=${out.zkVerifier}`);
+if (!V1_ONLY) console.log(`NEXT_PUBLIC_ZK_VERIFIER_ID=${out.zkVerifier}`);
 console.log(`NEXT_PUBLIC_BITCOIN_SPV_ID=${out.bitcoinSpv}`);
-console.log(`NEXT_PUBLIC_COMMITMENT_TREE_ID=${out.commitmentTree}`);
+if (!V1_ONLY) console.log(`NEXT_PUBLIC_COMMITMENT_TREE_ID=${out.commitmentTree}`);
 console.log(`NEXT_PUBLIC_WRITZ_LEND_ID=${out.writzLend}`);
 console.log('\nrelayer/.env');
-console.log(`COMMITMENT_TREE_ID=${out.commitmentTree}`);
+if (!V1_ONLY) console.log(`COMMITMENT_TREE_ID=${out.commitmentTree}`);
 console.log(`WRITZ_LEND_ID=${out.writzLend}`);
 console.log(`BITCOIN_SPV_ID=${out.bitcoinSpv}`);
 console.log(`SPV_SYNC_FROM_HEIGHT=${checkpoint.height}`);

@@ -391,7 +391,7 @@ deliberately, by a person, not on every push.
 
 ## Docker
 
-Build from the **repo root** (the image needs `packages/commitment-tree/`
+Build from the **repo root** (the image needs `privacy/packages/commitment-tree/`
 and `bitcoin-script/`, which live outside `relayer/`):
 
 ```bash

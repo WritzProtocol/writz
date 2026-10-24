@@ -3,7 +3,7 @@ import { config, requireContract } from "@/config";
 
 /**
  * Read helpers for the `commitment-tree` contract, built on the generated
- * bindings (see `packages/commitment-tree`). Only the Lend tab's pool reads
+ * bindings (see `privacy/packages/commitment-tree`). Only the Lend tab's pool reads
  * remain here: borrowing runs on `writz-lend` (see `writzLend.ts`).
  */
 
