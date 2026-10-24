@@ -1,8 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import { Account, Keypair, TransactionBuilder, nativeToScVal, scValToNative, xdr, type Transaction } from "@stellar/stellar-sdk";
+import { readFileSync } from "node:fs";
 import {
   BitcoinSpvClient,
   ContractError,
+  SPV_ERRORS,
+  WRITZ_LEND_ERRORS,
   WritzLendClient,
   contractErrorCode,
   hexToBytes,
@@ -225,3 +228,28 @@ describe("helpers", () => {
   });
 });
 
+
+/** `Name = N,` pairs of a `#[contracterror]` enum in a contract's error.rs. */
+function rustErrorCodes(contract: string): Record<number, string> {
+  const src = readFileSync(new URL(`../../../contracts/contracts/${contract}/src/error.rs`, import.meta.url), "utf8");
+  const codes: Record<number, string> = {};
+  for (const m of src.matchAll(/^\s*([A-Z][A-Za-z0-9]*)\s*=\s*(\d+),/gm)) codes[Number(m[2])] = m[1]!;
+  return codes;
+}
+
+describe("error tables", () => {
+  test("SPV_ERRORS matches the bitcoin-spv error enum", () => {
+    expect({ ...SPV_ERRORS }).toEqual(rustErrorCodes("bitcoin-spv"));
+  });
+
+  test("WRITZ_LEND_ERRORS matches the writz-lend error enum", () => {
+    expect({ ...WRITZ_LEND_ERRORS }).toEqual(rustErrorCodes("writz-lend"));
+    expect(WRITZ_LEND_ERRORS[27]).toBe("InvalidDepositParams");
+  });
+
+  test("a constructor rejection names InvalidDepositParams", () => {
+    expect(new ContractError("writz-lend", "__constructor", 27, "").message).toBe(
+      "writz-lend.__constructor failed with #27 InvalidDepositParams",
+    );
+  });
+});

@@ -101,6 +101,7 @@ export const WRITZ_LEND_ERRORS: Readonly<Record<number, string>> = {
   24: "ExposureCapExceeded",
   25: "InvalidKeyProof",
   26: "ZeroShareAmount",
+  27: "InvalidDepositParams",
 };
 
 export type ContractName = "bitcoin-spv" | "writz-lend";
