@@ -77,7 +77,7 @@ describe('EsploraClient retry and fallback', () => {
 
   test('falls back to the second host once the primary keeps failing', async () => {
     const fetchMock = jest.fn((url: string) =>
-      Promise.resolve(url.startsWith(PRIMARY) ? respond(429) : respond(200, '327734')),
+      Promise.resolve(url.startsWith(`${PRIMARY}/`) ? respond(429) : respond(200, '327734')),
     );
     (global.fetch as unknown as jest.Mock) = fetchMock;
     const client = new EsploraClient(PRIMARY, 1_000, { retries: 1, fallbackBaseUrl: FALLBACK, sleep: noSleep });
@@ -92,7 +92,7 @@ describe('EsploraClient retry and fallback', () => {
 
   test('throws the fallback error when both hosts are unavailable', async () => {
     (global.fetch as unknown as jest.Mock) = jest.fn((url: string) =>
-      Promise.resolve(respond(url.startsWith(PRIMARY) ? 429 : 502)),
+      Promise.resolve(respond(url.startsWith(`${PRIMARY}/`) ? 429 : 502)),
     );
     const client = new EsploraClient(PRIMARY, 1_000, { fallbackBaseUrl: FALLBACK, sleep: noSleep });
 
