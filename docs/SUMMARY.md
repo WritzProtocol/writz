@@ -33,6 +33,8 @@
 
 ## Developers
 
+* [Build on Writz](/developers/integrate)
+* [For AI Agents](/developers/for-ai-agents)
 * [Quick Start](/developers/quick-start)
 * [Bitcoin SPV SDK](/developers/spv-sdk)
 * [Contract Reference](/developers/contract-reference)

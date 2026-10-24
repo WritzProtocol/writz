@@ -87,10 +87,12 @@
           {
             "group": "Developers",
             "pages": [
+              "developers/integrate",
+              "developers/for-ai-agents",
+              "developers/request-for-startups",
+              "developers/spv-sdk",
               "developers/quick-start",
               "developers/runbook",
-              "developers/spv-sdk",
-              "developers/request-for-startups",
               "developers/contract-reference",
               "developers/contribution-guide"
             ]

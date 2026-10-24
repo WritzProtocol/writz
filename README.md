@@ -390,6 +390,8 @@ Full documentation lives in [`docs/`](docs/) and is published at **[docs.writz.x
 - [Privacy edition (in progress)](docs/how-it-works/privacy-edition.md) - Design of the separate, opt-in privacy edition. Not part of v1.
 
 **Developers:**
+- [Build on Writz](docs/developers/integrate.md) - Prove a Bitcoin transaction from your contract or app, on testnet.
+- [For AI Agents](docs/developers/for-ai-agents.md) - Exact IDs, signatures and verified examples for coding agents.
 - [Quick Start](docs/developers/quick-start.md) - Clone, build, test, deploy.
 - [SPV SDK](docs/developers/spv-sdk.md) - Free Bitcoin verification for any Stellar protocol.
 - [Contract Reference](docs/developers/contract-reference.md) - All public interfaces.
@@ -419,7 +421,7 @@ See [`docs/developers/contribution-guide.md`](docs/developers/contribution-guide
 | You are | Start here |
 |---|---|
 | **BTC holder** who wants to borrow USDC against BTC | [Writz Lend →](docs/products/writz-lend.md) |
-| **Developer** who wants to build on the protocol | [Quick Start →](docs/developers/quick-start.md) |
+| **Developer** who wants to build on the protocol | [Build on Writz →](docs/developers/integrate.md) |
 | **Stellar protocol** that needs Bitcoin verification | [SPV SDK →](docs/developers/spv-sdk.md) |
 | **Institution** exploring ZK Proof of Reserve | [ZK PoR →](docs/products/zk-proof-of-reserve.md) |
 
