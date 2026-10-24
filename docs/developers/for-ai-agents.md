@@ -113,7 +113,7 @@ POST /faucet/signet  {"address":"tb1..."}   pays signet test BTC to a tb1q/tb1p 
 
 `/faucet/signet` is the way to get signet coins without a captcha: a fixed 20,000 sats per claim (one testnet deposit at the testnet minimum, plus fees), one claim per address and per IP every 24 hours, a daily cap across all callers. Only `tb1q...` and `tb1p...` addresses; `bc1` is refused. Errors: 400 `invalid_address`, 429 `address_cooldown`, `ip_cooldown`, `daily_cap_reached` or `rate_limited` (wait `retryAfterSeconds`; do not retry with another address or IP to get around it), 502 `broadcast_rejected`, 503 `faucet_disabled`, `faucet_empty` or `upstream_unavailable` (body lists `publicFaucets`). The payout is unconfirmed when the call returns; wait for confirmations before calling `/spv-proof`.
 
-Earn vault (DeFindex, USDC, rate limits 60 reads and 10 builds per minute per IP; errors are `{ error: "<message>" }`):
+Earn vault (DeFindex; it holds Blend's test USDC, not `TEST_USDC_SAC`; rate limits 60 reads and 10 builds per minute per IP; errors are `{ error: "<message>" }`):
 
 ```text
 GET  /defindex/apy                       { apy }  fraction, 0.0731 = 7.31%

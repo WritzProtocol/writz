@@ -249,6 +249,8 @@ Two surfaces pay yield on testnet, and neither needs a contract of your own:
 - **Earn**, the Writz DeFindex vault that lends USDC on Blend, through the relayer: `GET /defindex/apy` (a fraction, variable), `GET /defindex/position?address=G...`, and `POST /defindex/deposit` and `POST /defindex/withdraw` with `{"caller":"G...","amountStroops":"..."}`, which return an unsigned transaction for the user's wallet to sign and your app to submit. The vault holds Blend's test USDC, not Circle's. See [Earn](/products/earn).
 - **The Writz Lend lender side**: `supply_usdc(supplier, amount)` and `withdraw_supply(supplier, amount)`, signed by the supplier, in the same test USDC as the rest of this page. The yield is the interest borrowers pay, so `get_supply_rate_bp` reads zero while nothing is borrowed.
 
+With `@writz/sdk` (release pending, see [Packages](#packages)) these are `relayer.getEarnApy`, `relayer.getEarnPosition`, `relayer.buildEarnDeposit` and `relayer.buildEarnWithdraw`, and `lend.getSupplyRateBp`, `lend.getSupplyBalance`, `lend.buildSupplyUsdc` and `lend.buildWithdrawSupply`; all of them return unsigned transactions or reads, never sign.
+
 Rates on both are variable and must be read live, never quoted as fixed. Test tokens on testnet have no value. A worked flow (curl, a TypeScript deposit, the CLI calls) and product ideas built on it are in [What to build on Writz](/developers/request-for-startups#no-soroban-needed-build-on-writz-yield).
 
 ---
