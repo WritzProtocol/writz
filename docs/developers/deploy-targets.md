@@ -67,7 +67,7 @@ Steps 1 and 2 are dashboard and registrar actions - they cannot be done from thi
 
    plus the contract addresses from [`frontend/app/.env.example`](https://github.com/WritzProtocol/writz/blob/main/frontend/app/.env.example), which tracks the current testnet deployment. Never copy these into the mainnet project.
 
-   The co-signing route (`/api/cosign`) runs in this project, so its server-only variables belong here too: `KMS_KEY_ID` with the AWS credentials, or the `PROTOCOL_SIGNING_KEY` fallback on testnet, plus `BITCOIN_NETWORK`. `NEXT_PUBLIC_POLLAR_API_KEY` enables email, Google and GitHub sign-in through Pollar; add `https://testnet.writz.xyz` to the app's allowed domains in the Pollar dashboard, or login fails on this domain.
+   The app holds no signing key: the protocol's co-signature on a release comes from the relayer (section 3). `NEXT_PUBLIC_POLLAR_API_KEY` enables email, Google and GitHub sign-in through Pollar; add `https://testnet.writz.xyz` to the app's allowed domains in the Pollar dashboard, or login fails on this domain.
 
 4. Set the production branch to `main`. Pushes to `main` then deploy to `testnet.writz.xyz`; pull requests get preview URLs, which build with the same `testnet` target.
 
@@ -117,7 +117,12 @@ STELLAR_RPC_URL=https://soroban-testnet.stellar.org
 CORS_ORIGIN=https://testnet.writz.xyz
 DEFINDEX_VAULT_ID=<the testnet vault, from contracts/deployments/defindex-vault-testnet.md>
 DEFINDEX_API_KEY=<from console.defindex.io>
+WRITZ_LEND_ID=<the current writz-lend, from contracts/deployments/testnet.md>
+RELAYER_SECRET=<the account writz-lend names as its relayer>
+KMS_KEY_ID=<the protocol co-signing key> plus AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and AWS_REGION
 ```
+
+The last three run the repay watcher, which co-signs every release after a full repayment and publishes it on `writz-lend`. Without them the relayer logs `auto-cosign watcher disabled` at startup and no testnet position can release its BTC. On testnet `PROTOCOL_SIGNING_KEY` (a WIF) can stand in for `KMS_KEY_ID`; the mainnet target refuses both while it serves Earn only. The key must be the one whose public key `writz-lend` was deployed with. The watcher starts from the latest ledger the first time it runs, so a position repaid before it was configured needs a manual backfill (`relayer-backfill-runbook.md`).
 
 `DEFINDEX_VAULT_ID` is the piece this issue is really about: it is per-network, has no safe default, and a relayer without it serves errors from every `/defindex` route. The testnet vault address lives in [`contracts/deployments/defindex-vault-testnet.md`](https://github.com/WritzProtocol/writz/blob/main/contracts/deployments/defindex-vault-testnet.md) rather than being repeated here, so there is one place to change when it is redeployed.
 

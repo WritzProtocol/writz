@@ -8,6 +8,7 @@ import { hashOf } from "@/lib/flow/engine";
 import {
   formatBtc,
   formatUsd,
+  MIN_DEPOSIT_SATS,
   formatUsdc,
   liquidationPriceStroops,
   maxBorrowStroops,
@@ -106,7 +107,7 @@ export function AmountStep({ m }: { m: JourneyModel }) {
       ) : (
         <p id="amount-hint" className="wz-hint">
           {sats ? <span className="mono">= {sats.toLocaleString("en-US")} sats. </span> : null}
-          Minimum 0.00100000 BTC.
+          Minimum {formatBtc(MIN_DEPOSIT_SATS)} BTC.
           {amount.balanceSats !== null ? (
             <>
               {" "}

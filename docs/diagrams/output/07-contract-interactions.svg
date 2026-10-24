@@ -17,9 +17,9 @@
 </g>
 <g id="clust2" class="cluster">
 <title>cluster_v1</title>
-<path fill="none" stroke="#2563eb" stroke-width="2.5" d="M231,-8C231,-8 775,-8 775,-8 781,-8 787,-14 787,-20 787,-20 787,-244.94 787,-244.94 787,-250.94 781,-256.94 775,-256.94 775,-256.94 231,-256.94 231,-256.94 225,-256.94 219,-250.94 219,-244.94 219,-244.94 219,-20 219,-20 219,-14 225,-8 231,-8"/>
-<text xml:space="preserve" text-anchor="start" x="241.62" y="-242.54" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="12.00" fill="#2563eb">Writz v1</text>
-<text xml:space="preserve" text-anchor="start" x="227" y="-233.39" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#57534e">Plaintext positions</text>
+<path fill="none" stroke="#2563eb" stroke-width="2.5" d="M225,-8C225,-8 769,-8 769,-8 775,-8 781,-14 781,-20 781,-20 781,-244.94 781,-244.94 781,-250.94 775,-256.94 769,-256.94 769,-256.94 225,-256.94 225,-256.94 219,-256.94 213,-250.94 213,-244.94 213,-244.94 213,-20 213,-20 213,-14 219,-8 225,-8"/>
+<text xml:space="preserve" text-anchor="start" x="235.62" y="-242.54" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="12.00" fill="#2563eb">Writz v1</text>
+<text xml:space="preserve" text-anchor="start" x="221" y="-233.39" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#57534e">Plaintext positions</text>
 </g>
 <g id="clust3" class="cluster">
 <title>cluster_privacy</title>
@@ -38,16 +38,16 @@
 <!-- writz_lend -->
 <g id="node5" class="node">
 <title>writz_lend</title>
-<path fill="#eff6ff" stroke="#2563eb" stroke-width="2.2" d="M594.59,-209.94C594.59,-209.94 249.41,-209.94 249.41,-209.94 243.41,-209.94 237.41,-203.94 237.41,-197.94 237.41,-197.94 237.41,-174.22 237.41,-174.22 237.41,-168.22 243.41,-162.22 249.41,-162.22 249.41,-162.22 594.59,-162.22 594.59,-162.22 600.59,-162.22 606.59,-168.22 606.59,-174.22 606.59,-174.22 606.59,-197.94 606.59,-197.94 606.59,-203.94 600.59,-209.94 594.59,-209.94"/>
-<text xml:space="preserve" text-anchor="start" x="396.5" y="-191.13" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="11.00" fill="#1c1917">writz&#45;lend</text>
-<text xml:space="preserve" text-anchor="start" x="253.25" y="-182.03" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#57534e">CA3T7T2S7HV27BXO… · deposit · supply_usdc · withdraw_supply · borrow · repay</text>
-<text xml:space="preserve" text-anchor="start" x="317.75" y="-173.03" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#a8a29e">liquidate · publish_release_psbt · get_release_psbt</text>
+<path fill="#eff6ff" stroke="#2563eb" stroke-width="2.2" d="M595.34,-209.94C595.34,-209.94 242.66,-209.94 242.66,-209.94 236.66,-209.94 230.66,-203.94 230.66,-197.94 230.66,-197.94 230.66,-174.22 230.66,-174.22 230.66,-168.22 236.66,-162.22 242.66,-162.22 242.66,-162.22 595.34,-162.22 595.34,-162.22 601.34,-162.22 607.34,-168.22 607.34,-174.22 607.34,-174.22 607.34,-197.94 607.34,-197.94 607.34,-203.94 601.34,-209.94 595.34,-209.94"/>
+<text xml:space="preserve" text-anchor="start" x="393.5" y="-191.13" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="11.00" fill="#1c1917">writz&#45;lend</text>
+<text xml:space="preserve" text-anchor="start" x="246.5" y="-182.03" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#57534e">CCMSOCBVX2S645MQ… · deposit · supply_usdc · withdraw_supply · borrow · repay</text>
+<text xml:space="preserve" text-anchor="start" x="314.75" y="-173.03" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#a8a29e">liquidate · publish_release_psbt · get_release_psbt</text>
 </g>
 <!-- borrower&#45;&gt;writz_lend -->
 <g id="edge1" class="edge">
 <title>borrower&#45;&gt;writz_lend</title>
-<path fill="none" stroke="#2563eb" stroke-width="2" d="M457.59,-308.45C426.74,-293.39 392.51,-276.6 392.25,-276.19 381.65,-259.18 388.08,-237.97 397.64,-220.51"/>
-<polygon fill="#2563eb" stroke="#2563eb" stroke-width="2" points="400.13,-222.13 401.96,-213.31 395.03,-219.07 400.13,-222.13"/>
+<path fill="none" stroke="#2563eb" stroke-width="2" d="M457.59,-308.45C426.74,-293.39 392.51,-276.6 392.25,-276.19 381.75,-259.34 387.5,-238.14 396.31,-220.64"/>
+<polygon fill="#2563eb" stroke="#2563eb" stroke-width="2" points="398.76,-222.35 400.28,-213.47 393.56,-219.46 398.76,-222.35"/>
 <text xml:space="preserve" text-anchor="middle" x="452.62" y="-266.69" font-family="Helvetica,sans-Serif" font-size="10.00" fill="#2563eb">deposit() · borrow() · repay()</text>
 </g>
 <!-- lender -->
@@ -61,8 +61,8 @@
 <!-- lender&#45;&gt;writz_lend -->
 <g id="edge2" class="edge">
 <title>lender&#45;&gt;writz_lend</title>
-<path fill="none" stroke="#2563eb" stroke-width="1.4" d="M123.77,-308.61C135.82,-294.19 152.89,-276.33 171.5,-264.94 208.46,-242.31 252.55,-225.75 293.37,-213.86"/>
-<polygon fill="#2563eb" stroke="#2563eb" stroke-width="1.4" points="293.99,-216.78 301.35,-211.6 292.36,-211.06 293.99,-216.78"/>
+<path fill="none" stroke="#2563eb" stroke-width="1.4" d="M123.79,-308.64C135.84,-294.22 152.91,-276.36 171.5,-264.94 208.28,-242.33 252.21,-225.74 292.79,-213.82"/>
+<polygon fill="#2563eb" stroke="#2563eb" stroke-width="1.4" points="293.36,-216.75 300.71,-211.56 291.72,-211.03 293.36,-216.75"/>
 <text xml:space="preserve" text-anchor="middle" x="245.75" y="-266.69" font-family="Helvetica,sans-Serif" font-size="10.00" fill="#2563eb">supply_usdc() · withdraw_supply()</text>
 </g>
 <!-- keeper -->
@@ -76,8 +76,8 @@
 <!-- keeper&#45;&gt;writz_lend -->
 <g id="edge3" class="edge">
 <title>keeper&#45;&gt;writz_lend</title>
-<path fill="none" stroke="#dc2626" stroke-width="1.4" d="M318.51,-308.68C321.87,-295.14 327.39,-278.21 336,-264.94 347.68,-246.96 364.51,-230.47 380.2,-217.34"/>
-<polygon fill="#dc2626" stroke="#dc2626" stroke-width="1.4" points="381.89,-219.8 386.61,-212.13 378.14,-215.18 381.89,-219.8"/>
+<path fill="none" stroke="#dc2626" stroke-width="1.4" d="M318.68,-308.42C322.07,-294.96 327.57,-278.18 336,-264.94 347.3,-247.2 363.55,-230.75 378.68,-217.59"/>
+<polygon fill="#dc2626" stroke="#dc2626" stroke-width="1.4" points="380.27,-220.14 384.84,-212.38 376.43,-215.6 380.27,-220.14"/>
 <text xml:space="preserve" text-anchor="middle" x="357" y="-266.69" font-family="Helvetica,sans-Serif" font-size="10.00" fill="#dc2626">liquidate()</text>
 </g>
 <!-- relayer -->
@@ -91,69 +91,69 @@
 <!-- relayer&#45;&gt;writz_lend -->
 <g id="edge4" class="edge">
 <title>relayer&#45;&gt;writz_lend</title>
-<path fill="none" stroke="#7c3aed" stroke-width="1.4" stroke-dasharray="5,2" d="M660.58,-308.44C610.73,-283.08 531.52,-242.79 478.19,-215.66"/>
-<polygon fill="#7c3aed" stroke="#7c3aed" stroke-width="1.4" points="479.69,-213.09 470.77,-211.89 476.99,-218.39 479.69,-213.09"/>
-<text xml:space="preserve" text-anchor="middle" x="638.78" y="-266.69" font-family="Helvetica,sans-Serif" font-size="10.00" fill="#7c3aed">publish_release_psbt()</text>
+<path fill="none" stroke="#7c3aed" stroke-width="1.4" stroke-dasharray="5,2" d="M660.09,-308.44C609.72,-283.08 529.68,-242.79 475.78,-215.66"/>
+<polygon fill="#7c3aed" stroke="#7c3aed" stroke-width="1.4" points="477.19,-213.04 468.26,-211.88 474.52,-218.36 477.19,-213.04"/>
+<text xml:space="preserve" text-anchor="middle" x="637.55" y="-266.69" font-family="Helvetica,sans-Serif" font-size="10.00" fill="#7c3aed">publish_release_psbt()</text>
 </g>
 <!-- bitcoin_spv -->
 <g id="node6" class="node">
 <title>bitcoin_spv</title>
-<path fill="#fff7ed" stroke="#ea580c" stroke-width="1.6" d="M756.59,-73.72C756.59,-73.72 597.41,-73.72 597.41,-73.72 591.41,-73.72 585.41,-67.72 585.41,-61.72 585.41,-61.72 585.41,-38 585.41,-38 585.41,-32 591.41,-26 597.41,-26 597.41,-26 756.59,-26 756.59,-26 762.59,-26 768.59,-32 768.59,-38 768.59,-38 768.59,-61.72 768.59,-61.72 768.59,-67.72 762.59,-73.72 756.59,-73.72"/>
-<text xml:space="preserve" text-anchor="start" x="647.75" y="-54.91" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="11.00" fill="#1c1917">bitcoin&#45;spv</text>
-<text xml:space="preserve" text-anchor="start" x="625.25" y="-45.81" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#57534e">CAHHY4S4WCIFU4LB…</text>
-<text xml:space="preserve" text-anchor="start" x="601.25" y="-36.81" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#a8a29e">verify_transaction · consume_deposit</text>
+<path fill="#fff7ed" stroke="#ea580c" stroke-width="1.6" d="M750.59,-73.72C750.59,-73.72 591.41,-73.72 591.41,-73.72 585.41,-73.72 579.41,-67.72 579.41,-61.72 579.41,-61.72 579.41,-38 579.41,-38 579.41,-32 585.41,-26 591.41,-26 591.41,-26 750.59,-26 750.59,-26 756.59,-26 762.59,-32 762.59,-38 762.59,-38 762.59,-61.72 762.59,-61.72 762.59,-67.72 756.59,-73.72 750.59,-73.72"/>
+<text xml:space="preserve" text-anchor="start" x="641.75" y="-54.91" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="11.00" fill="#1c1917">bitcoin&#45;spv</text>
+<text xml:space="preserve" text-anchor="start" x="619.25" y="-45.81" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#57534e">CAHHY4S4WCIFU4LB…</text>
+<text xml:space="preserve" text-anchor="start" x="595.25" y="-36.81" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#a8a29e">verify_transaction · consume_deposit</text>
 </g>
 <!-- relayer&#45;&gt;bitcoin_spv -->
 <g id="edge5" class="edge">
 <title>relayer&#45;&gt;bitcoin_spv</title>
-<path fill="none" stroke="#7c3aed" stroke-width="1.4" stroke-dasharray="5,2" d="M733.8,-308.47C747.14,-294.91 761.91,-276.67 769,-256.94 783.24,-217.32 783.25,-201.83 769,-162.22 757.66,-130.69 733.1,-101.75 712.21,-81.27"/>
-<polygon fill="#7c3aed" stroke="#7c3aed" stroke-width="1.4" points="714.45,-79.29 706.24,-75.58 710.34,-83.6 714.45,-79.29"/>
-<text xml:space="preserve" text-anchor="middle" x="813.06" y="-182.2" font-family="Helvetica,sans-Serif" font-size="10.00" fill="#7c3aed">submit headers</text>
+<path fill="none" stroke="#7c3aed" stroke-width="1.4" stroke-dasharray="5,2" d="M733.8,-308.47C747.14,-294.91 761.91,-276.67 769,-256.94 783.24,-217.32 783.86,-201.61 769,-162.22 756.88,-130.1 730.82,-101.24 708.61,-80.95"/>
+<polygon fill="#7c3aed" stroke="#7c3aed" stroke-width="1.4" points="710.86,-78.97 702.53,-75.55 706.91,-83.42 710.86,-78.97"/>
+<text xml:space="preserve" text-anchor="middle" x="813.29" y="-182.2" font-family="Helvetica,sans-Serif" font-size="10.00" fill="#7c3aed">submit headers</text>
 </g>
 <!-- writz_lend&#45;&gt;bitcoin_spv -->
 <g id="edge6" class="edge">
 <title>writz_lend&#45;&gt;bitcoin_spv</title>
-<path fill="none" stroke="#ea580c" stroke-width="2" d="M467.3,-161.24C510.54,-138.48 575.77,-104.14 621.99,-79.82"/>
-<polygon fill="#ea580c" stroke="#ea580c" stroke-width="2" points="623.31,-82.48 629.45,-75.89 620.54,-77.22 623.31,-82.48"/>
-<text xml:space="preserve" text-anchor="middle" x="606.39" y="-119.72" font-family="Helvetica,sans-Serif" font-size="10.00" fill="#ea580c">verify_transaction()</text>
-<text xml:space="preserve" text-anchor="middle" x="606.39" y="-108.47" font-family="Helvetica,sans-Serif" font-size="10.00" fill="#ea580c">consume_deposit()</text>
+<path fill="none" stroke="#ea580c" stroke-width="2" d="M463.76,-161.24C506.5,-138.48 570.97,-104.14 616.63,-79.82"/>
+<polygon fill="#ea580c" stroke="#ea580c" stroke-width="2" points="617.88,-82.52 623.98,-75.9 615.08,-77.27 617.88,-82.52"/>
+<text xml:space="preserve" text-anchor="middle" x="601.71" y="-119.72" font-family="Helvetica,sans-Serif" font-size="10.00" fill="#ea580c">verify_transaction()</text>
+<text xml:space="preserve" text-anchor="middle" x="601.71" y="-108.47" font-family="Helvetica,sans-Serif" font-size="10.00" fill="#ea580c">consume_deposit()</text>
 </g>
 <!-- usdc_token -->
 <g id="node7" class="node">
 <title>usdc_token</title>
-<path fill="#fafaf9" stroke="#78716c" stroke-width="1.6" d="M533.22,-73.72C533.22,-73.72 404.78,-73.72 404.78,-73.72 398.78,-73.72 392.78,-67.72 392.78,-61.72 392.78,-61.72 392.78,-38 392.78,-38 392.78,-32 398.78,-26 404.78,-26 404.78,-26 533.22,-26 533.22,-26 539.22,-26 545.22,-32 545.22,-38 545.22,-38 545.22,-61.72 545.22,-61.72 545.22,-67.72 539.22,-73.72 533.22,-73.72"/>
-<text xml:space="preserve" text-anchor="start" x="418.75" y="-54.91" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="11.00" fill="#1c1917">USDC Token (SAC)</text>
-<text xml:space="preserve" text-anchor="start" x="425.12" y="-45.81" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#57534e">Stellar Asset Contract</text>
-<text xml:space="preserve" text-anchor="start" x="408.62" y="-36.81" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#a8a29e">SEP&#45;41 · 7 decimals (stroops)</text>
+<path fill="#fafaf9" stroke="#78716c" stroke-width="1.6" d="M527.22,-73.72C527.22,-73.72 398.78,-73.72 398.78,-73.72 392.78,-73.72 386.78,-67.72 386.78,-61.72 386.78,-61.72 386.78,-38 386.78,-38 386.78,-32 392.78,-26 398.78,-26 398.78,-26 527.22,-26 527.22,-26 533.22,-26 539.22,-32 539.22,-38 539.22,-38 539.22,-61.72 539.22,-61.72 539.22,-67.72 533.22,-73.72 527.22,-73.72"/>
+<text xml:space="preserve" text-anchor="start" x="412.75" y="-54.91" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="11.00" fill="#1c1917">USDC Token (SAC)</text>
+<text xml:space="preserve" text-anchor="start" x="419.12" y="-45.81" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#57534e">Stellar Asset Contract</text>
+<text xml:space="preserve" text-anchor="start" x="402.62" y="-36.81" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#a8a29e">SEP&#45;41 · 7 decimals (stroops)</text>
 </g>
 <!-- writz_lend&#45;&gt;usdc_token -->
 <g id="edge8" class="edge">
 <title>writz_lend&#45;&gt;usdc_token</title>
-<path fill="none" stroke="#78716c" stroke-width="1.4" d="M430.29,-161.39C437.81,-139.93 448.97,-108.07 457.37,-84.06"/>
-<polygon fill="#78716c" stroke="#78716c" stroke-width="1.4" points="460.09,-85.32 460.09,-76.31 454.47,-83.35 460.09,-85.32"/>
-<text xml:space="preserve" text-anchor="middle" x="467.81" y="-114.09" font-family="Helvetica,sans-Serif" font-size="10.00" fill="#57534e">transfer()</text>
+<path fill="none" stroke="#78716c" stroke-width="1.4" d="M426.77,-161.39C433.77,-140.02 444.15,-108.35 452.01,-84.39"/>
+<polygon fill="#78716c" stroke="#78716c" stroke-width="1.4" points="454.83,-85.33 454.65,-76.32 449.18,-83.47 454.83,-85.33"/>
+<text xml:space="preserve" text-anchor="middle" x="463.13" y="-114.09" font-family="Helvetica,sans-Serif" font-size="10.00" fill="#57534e">transfer()</text>
 </g>
 <!-- oracle -->
 <g id="node8" class="node">
 <title>oracle</title>
-<path fill="#fafaf9" stroke="#78716c" stroke-width="1.6" d="M341.21,-73.72C341.21,-73.72 248.78,-73.72 248.78,-73.72 242.78,-73.72 236.78,-67.72 236.78,-61.72 236.78,-61.72 236.78,-38 236.78,-38 236.78,-32 242.78,-26 248.78,-26 248.78,-26 341.21,-26 341.21,-26 347.21,-26 353.21,-32 353.21,-38 353.21,-38 353.21,-61.72 353.21,-61.72 353.21,-67.72 347.21,-73.72 341.21,-73.72"/>
-<text xml:space="preserve" text-anchor="start" x="252.62" y="-54.91" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="11.00" fill="#1c1917">Reflector Oracle</text>
-<text xml:space="preserve" text-anchor="start" x="256" y="-45.81" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#57534e">SEP&#45;40 · BTC/USD</text>
-<text xml:space="preserve" text-anchor="start" x="256" y="-36.81" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#a8a29e">lastprice · decimals</text>
+<path fill="#fafaf9" stroke="#78716c" stroke-width="1.6" d="M335.21,-73.72C335.21,-73.72 242.78,-73.72 242.78,-73.72 236.78,-73.72 230.78,-67.72 230.78,-61.72 230.78,-61.72 230.78,-38 230.78,-38 230.78,-32 236.78,-26 242.78,-26 242.78,-26 335.21,-26 335.21,-26 341.21,-26 347.21,-32 347.21,-38 347.21,-38 347.21,-61.72 347.21,-61.72 347.21,-67.72 341.21,-73.72 335.21,-73.72"/>
+<text xml:space="preserve" text-anchor="start" x="246.62" y="-54.91" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="11.00" fill="#1c1917">Reflector Oracle</text>
+<text xml:space="preserve" text-anchor="start" x="250" y="-45.81" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#57534e">SEP&#45;40 · BTC/USD</text>
+<text xml:space="preserve" text-anchor="start" x="250" y="-36.81" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#a8a29e">lastprice · decimals</text>
 </g>
 <!-- writz_lend&#45;&gt;oracle -->
 <g id="edge7" class="edge">
 <title>writz_lend&#45;&gt;oracle</title>
-<path fill="none" stroke="#78716c" stroke-width="1.4" d="M399.59,-161.39C378.64,-139.26 347.24,-106.07 324.31,-81.84"/>
-<polygon fill="#78716c" stroke="#78716c" stroke-width="1.4" points="326.65,-79.98 318.65,-75.85 322.33,-84.07 326.65,-79.98"/>
-<text xml:space="preserve" text-anchor="middle" x="387.48" y="-114.09" font-family="Helvetica,sans-Serif" font-size="10.00" fill="#57534e">lastprice()</text>
+<path fill="none" stroke="#78716c" stroke-width="1.4" d="M396.06,-161.39C374.62,-139.26 342.47,-106.07 319,-81.84"/>
+<polygon fill="#78716c" stroke="#78716c" stroke-width="1.4" points="321.24,-79.87 313.19,-75.83 316.96,-84.01 321.24,-79.87"/>
+<text xml:space="preserve" text-anchor="middle" x="383.16" y="-114.09" font-family="Helvetica,sans-Serif" font-size="10.00" fill="#57534e">lastprice()</text>
 </g>
 <!-- usdc_token&#45;&gt;borrower -->
 <g id="edge9" class="edge">
 <title>usdc_token&#45;&gt;borrower</title>
-<path fill="none" stroke="#16a34a" stroke-width="1.4" stroke-dasharray="5,2" d="M545.76,-69.02C594.87,-81.4 650.71,-97.22 658,-106.72 706.32,-169.71 665.48,-271.92 662,-276.19 641.07,-301.86 620.33,-280.46 589,-291.19 578.75,-294.7 568.14,-299.2 558.07,-303.92"/>
+<path fill="none" stroke="#16a34a" stroke-width="1.4" stroke-dasharray="5,2" d="M539.81,-69C589.2,-81.41 645.51,-97.28 653,-106.72 701.89,-168.32 665.58,-271.8 662,-276.19 641.07,-301.86 620.33,-280.46 589,-291.19 578.75,-294.7 568.14,-299.2 558.07,-303.92"/>
 <polygon fill="#16a34a" stroke="#16a34a" stroke-width="1.4" points="556.88,-301.19 550.52,-307.56 559.47,-306.55 556.88,-301.19"/>
-<text xml:space="preserve" text-anchor="middle" x="717.43" y="-182.2" font-family="Helvetica,sans-Serif" font-size="10.00" fill="#16a34a">borrowed USDC</text>
+<text xml:space="preserve" text-anchor="middle" x="714.32" y="-182.2" font-family="Helvetica,sans-Serif" font-size="10.00" fill="#16a34a">borrowed USDC</text>
 </g>
 <!-- commitment_tree -->
 <g id="node9" class="node">
@@ -166,8 +166,8 @@
 <!-- commitment_tree&#45;&gt;bitcoin_spv -->
 <g id="edge11" class="edge">
 <title>commitment_tree&#45;&gt;bitcoin_spv</title>
-<path fill="none" stroke="#a8a29e" stroke-width="1.4" stroke-dasharray="1,5" d="M967.49,-161.48C948.13,-151.59 925.44,-139.93 905,-129.22 886.24,-119.39 882.57,-114.81 863,-106.72 836.22,-95.66 806.45,-85.72 778.73,-77.41"/>
-<polygon fill="#a8a29e" stroke="#a8a29e" stroke-width="1.4" points="779.64,-74.58 770.65,-75.02 777.96,-80.29 779.64,-74.58"/>
+<path fill="none" stroke="#a8a29e" stroke-width="1.4" stroke-dasharray="1,5" d="M967.49,-161.48C948.13,-151.59 925.44,-139.93 905,-129.22 886.24,-119.39 882.61,-114.72 863,-106.72 834.41,-95.05 802.51,-84.75 773.05,-76.27"/>
+<polygon fill="#a8a29e" stroke="#a8a29e" stroke-width="1.4" points="774.19,-73.5 765.2,-74.05 772.57,-79.23 774.19,-73.5"/>
 <text xml:space="preserve" text-anchor="middle" x="954.5" y="-114.09" font-family="Helvetica,sans-Serif" font-size="10.00" fill="#57534e">shared deposit registry</text>
 </g>
 <!-- zk_verifier -->

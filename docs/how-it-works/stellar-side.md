@@ -67,7 +67,7 @@ pub fn get_release_psbt(txid: BytesN<32>) -> Option<Bytes>
 
 **Events emitted** (topic strings, matching `contracts/contracts/writz-lend/src/events.rs` exactly): `deposit`, `borrow`, `repay`, `repay_full` (emitted instead of `repay` when a repayment fully closes the debt), `liquidate`, `supply`, `withdraw`, `paused_set`, `oracle_set`.
 
-**Deployed:** `CA3T7T2S7HV27BXO7OLIHSMGAMQ37BMOOUHQLTBGUQVL4B6Y2CDJPHHX`
+**Deployed:** `CCMSOCBVX2S645MQFFXJRHVHRWH2NY62KLOJXNDYFOJRYHIC47EO6ZZK`
 
 ---
 
@@ -201,7 +201,7 @@ writz-lend.deposit(spv_proof, p2wsh_script_pubkey, timelock_height, user_pubkey,
     ├── check: timelock_height within 1,008..=105,000 blocks above block_height
     ├── check: key_sig is user_pubkey's signature over (contract, depositor, txid)
     ├──► bitcoin-spv.consume_deposit(writz-lend, txid)   (shared registry: one position per output)
-    ├── read: amount paid to the P2WSH output in raw_tx; require >= 100,000 sats
+    ├── read: amount paid to the P2WSH output in raw_tx; require >= min_deposit_satoshis
     │
     ├── store: position[txid] = { depositor, btc_satoshis, user_pubkey, timelock_height, debt: 0 }
     └── emit: DepositEvent { txid, btc_satoshis, timelock_height }

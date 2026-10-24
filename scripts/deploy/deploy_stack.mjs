@@ -11,8 +11,9 @@
  *   3. commitment-tree  __constructor(admin, spv, zk_verifier, usdc, oracle,
  *                                     min_confirmations, protocol_pubkey,
  *                                     keeper_pub_x, keeper_pub_y)
- *   4. writz-lend     __constructor(admin, spv, usdc, oracle, keeper,
- *                                     relayer, protocol_pubkey)
+ *   4. writz-lend       __constructor(admin, spv, usdc, oracle, keeper,
+ *                                     relayer, protocol_pubkey,
+ *                                     min_confirmations, min_deposit_satoshis)
  *   5. verification keys for Deposit, BorrowRepay, Liquidation, ZeroDebt, Insert
  *   6. set_consumer on bitcoin-spv for both lenders
  *   7. set_max_total_borrowed on both lenders, when MAX_TOTAL_BORROWED is set
@@ -41,6 +42,9 @@
  *   CHECKPOINT_HEIGHT=... CHECKPOINT_HASH=... \
  *   CHECKPOINT_BITS=0x... CHECKPOINT_TIME=... CHECKPOINT_PERIOD_START_TIME=... \
  *     node deploy_stack.mjs [--v1-only] [--execute]
+ *
+ * Optional: MIN_CONFIRMATIONS (default 6), MIN_DEPOSIT_SATS (writz-lend,
+ * default 100000; testnet runs 1 and 5000), MAX_TOTAL_BORROWED.
  */
 import * as StellarSdk from '@stellar/stellar-sdk';
 import crypto from 'crypto';
@@ -115,6 +119,8 @@ const checkpoint = {
   periodStartTime: toUint(env('CHECKPOINT_PERIOD_START_TIME', isUint)),
 };
 const minConfirmations = toUint(process.env.MIN_CONFIRMATIONS ?? '6');
+// writz-lend's smallest deposit. Signet runs lower so one faucet payout covers a deposit.
+const minDepositSats = BigInt(process.env.MIN_DEPOSIT_SATS ?? '100000');
 const maxTotalBorrowed = process.env.MAX_TOTAL_BORROWED ? BigInt(process.env.MAX_TOTAL_BORROWED) : undefined;
 const rpcUrl = process.env.RPC_URL ?? (stellarNetwork ? STELLAR[stellarNetwork].rpc : undefined);
 if (stellarNetwork && !rpcUrl) errors.push('RPC_URL is not set (a mainnet Soroban RPC provider endpoint)');
@@ -127,6 +133,7 @@ if (stellarNetwork === 'mainnet') {
     errors.push('mainnet needs the production ceremony keys (privacy/circuits/keys/CEREMONY_MANIFEST.json is missing)');
   }
   if (minConfirmations < 6) errors.push('mainnet needs MIN_CONFIRMATIONS >= 6');
+  if (minDepositSats < 100_000n) errors.push('mainnet needs MIN_DEPOSIT_SATS >= 100000');
 }
 
 const WASM_DIRS = V1_ONLY
@@ -173,6 +180,7 @@ if (!V1_ONLY) console.log(`  keeper babyjub    ${keeperBabyjub.slice(0, 16)}…`
 console.log(`  pow limit bits    0x${powLimitBits.toString(16)}`);
 console.log(`  checkpoint        height ${checkpoint.height}, ${checkpoint.hash}, bits 0x${checkpoint.bits.toString(16)}`);
 console.log(`  min confirmations ${minConfirmations}`);
+console.log(`  min deposit       ${minDepositSats} sats (writz-lend)`);
 console.log(`  exposure cap      ${maxTotalBorrowed === undefined ? 'contract default (50,000 USDC per lender)' : `${maxTotalBorrowed} stroops per lender`}`);
 console.log('  wasm sha256');
 for (const name of WASMS) console.log(`    ${name.padEnd(16)} ${sha256(wasm[name])}`);
@@ -218,6 +226,7 @@ async function invoke(contractId, method, args) {
 
 const addr = (a) => Address.fromString(a).toScVal();
 const u32 = (n) => nativeToScVal(n, { type: 'u32' });
+const u64 = (n) => nativeToScVal(n, { type: 'u64' });
 const bytes = (buf) => xdr.ScVal.scvBytes(Buffer.from(buf));
 const hex32 = (n) => BigInt(n).toString(16).padStart(64, '0');
 const point = (hex) => xdr.ScVal.scvMap([
@@ -279,7 +288,7 @@ out.writzLend = await deployWithConstructor({
   ...deployer, wasm: wasm.writz_lend,
   constructorArgs: [
     addr(admin.publicKey()), addr(out.bitcoinSpv), addr(usdc), addr(oracle), addr(keeper), addr(relayer),
-    bytes(protocolKey),
+    bytes(protocolKey), u32(minConfirmations), u64(minDepositSats),
   ],
 });
 console.log(`   ${out.writzLend}`);

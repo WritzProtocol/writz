@@ -1,3 +1,4 @@
+import { config } from "@/config";
 import type { FlowState } from "@/lib/flow/engine";
 import type { PendingDeposit } from "@/lib/flow/pendingDeposit";
 import type { PositionStatusKind } from "@/lib/status/types";
@@ -22,8 +23,8 @@ const STROOPS_PER_UNIT = 10_000_000n;
 const BORROW_LIMIT_BP = 15_000n;
 const LIQUIDATION_BP = 12_000n;
 
-/** Must match the contract's `min_deposit_satoshis`. */
-export const MIN_DEPOSIT_SATS = 100_000n;
+/** The contract's `min_deposit_satoshis` for this deployment (see `config.bitcoin.minDepositSats`). */
+export const MIN_DEPOSIT_SATS = config.bitcoin.minDepositSats;
 /** Below this a new deposit's own reclaim path would open almost immediately. */
 export const TIMELOCK_MIN_BLOCKS_LEFT = 4_320;
 /** "Keep at least 2 XLM for fees and the USDC deposit." */

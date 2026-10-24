@@ -116,7 +116,7 @@ pub struct Config {
     /// the expected scriptPubKey from it, so it is fixed for the contract's
     /// lifetime; rotating it means deploying a new contract.
     pub protocol_pubkey: BytesN<33>,
-    /// Minimum BTC deposit in satoshis (default: 100_000 = 0.001 BTC).
+    /// Minimum BTC deposit in satoshis, set at deployment (100_000 = 0.001 BTC on mainnet).
     pub min_deposit_satoshis: u64,
     /// Minimum collateral ratio in basis points (15_000 = 150%).
     pub min_collateral_ratio_bp: u32,
@@ -124,7 +124,7 @@ pub struct Config {
     pub liquidation_threshold_bp: u32,
     /// Bonus the liquidator earns expressed as additional BTC % (1_000 = 10%).
     pub liquidation_bonus_bp: u32,
-    /// Minimum SPV confirmation depth before a deposit is accepted (default: 6).
+    /// Minimum SPV confirmation depth before a deposit is accepted, set at deployment (6 on mainnet).
     pub min_confirmations: u32,
     /// Seconds of keeper inactivity after which liquidation opens to any
     /// caller, not just `keeper` (default: 86_400 = 24h). This is a

@@ -5,6 +5,7 @@ import { useMounted, useMockWorld } from "@/components/ui/hooks";
 import { FocusJourney } from "./FocusJourney";
 import { useShellAccount } from "@/components/shell/account";
 import { SkBtn, T } from "@/components/ui/skeleton";
+import { formatBtc, MIN_DEPOSIT_SATS } from "@/lib/borrow/journey";
 import { useLiveJourney } from "./useLiveJourney";
 import { useMockJourney } from "./useMockJourney";
 
@@ -82,7 +83,7 @@ function Skeleton() {
               </p>
               <div className="wz-field wz-sk-field" />
               <p className="wz-hint">
-                <T>About 5,000,000 sats. Minimum 0.00100000 BTC.</T>
+                <T>About 5,000,000 sats. Minimum {formatBtc(MIN_DEPOSIT_SATS)} BTC.</T>
               </p>
               <dl className="bj-kv">
                 {[

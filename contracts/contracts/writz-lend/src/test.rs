@@ -5,7 +5,7 @@ extern crate std;
 use soroban_sdk::{
     contract, contractimpl, testutils::{Address as _, Ledger},
     token::{Client as TokenClient, StellarAssetClient},
-    Address, Bytes, BytesN, Env, Vec,
+    symbol_short, Address, Bytes, BytesN, Env, Vec,
 };
 
 use spv_types::SpvVerificationResult;
@@ -31,14 +31,20 @@ impl MockSpv {
         _merkle_proof: Vec<BytesN<32>>,
         _tx_index: u32,
         _raw_tx: Bytes,
-        _min_confirmations: u32,
+        min_confirmations: u32,
     ) -> SpvVerificationResult {
+        env.storage().instance().set(&symbol_short!("min_conf"), &min_confirmations);
         SpvVerificationResult {
             txid: BytesN::from_array(&env, &[0xdeu8; 32]),
             block_hash: BytesN::from_array(&env, &[0xadu8; 32]),
             block_height: 2_900_000,
             confirmations: 6,
         }
+    }
+
+    /// The `min_confirmations` the last `verify_transaction` call asked for.
+    pub fn last_min_confirmations(env: Env) -> u32 {
+        env.storage().instance().get(&symbol_short!("min_conf")).unwrap_or(0)
     }
 
     /// The shared registry is tested in bitcoin-spv; this mock only accepts the call.
@@ -252,13 +258,23 @@ struct Setup {
     /// via `set_oracle` - none of the current tests read it back.
     #[allow(dead_code)]
     oracle: Address,
+    /// The mock `bitcoin-spv` this pool calls.
+    spv: Address,
     /// The 34-byte P2WSH scriptPubKey used in test deposit transactions.
     spk: Bytes,
     /// Raw transaction bytes matching `spk` with 500_000 sats deposited.
     raw_tx: Bytes,
 }
 
+/// Mainnet deposit parameters, the ones every test runs under unless it says otherwise.
+const MAINNET_MIN_CONFIRMATIONS: u32 = 6;
+const MAINNET_MIN_DEPOSIT_SATS: u64 = 100_000;
+
 fn setup() -> Setup {
+    setup_with(MAINNET_MIN_CONFIRMATIONS, MAINNET_MIN_DEPOSIT_SATS)
+}
+
+fn setup_with(min_confirmations: u32, min_deposit_satoshis: u64) -> Setup {
     let env = Env::default();
     env.mock_all_auths();
     env.ledger().set_sequence_number(1_000);
@@ -283,7 +299,20 @@ fn setup() -> Setup {
     let oracle = env.register(MockReflector, ());
 
     // Deploy WritzLend.
-    let pl = env.register(WritzLendContract, (admin.clone(), spv.clone(), usdc.clone(), oracle.clone(), keeper.clone(), relayer.clone(), fake_protocol_pubkey(&env)));
+    let pl = env.register(
+        WritzLendContract,
+        (
+            admin.clone(),
+            spv.clone(),
+            usdc.clone(),
+            oracle.clone(),
+            keeper.clone(),
+            relayer.clone(),
+            fake_protocol_pubkey(&env),
+            min_confirmations,
+            min_deposit_satoshis,
+        ),
+    );
     let client = WritzLendContractClient::new(&env, &pl);
 
 
@@ -303,6 +332,7 @@ fn setup() -> Setup {
         client,
         usdc,
         oracle,
+        spv,
         spk,
         raw_tx,
     }
@@ -488,8 +518,41 @@ fn constructor_rejects_protocol_pubkey_that_is_not_compressed() {
     buf[0] = 0x05;
     env.register(
         WritzLendContract,
-        (a.clone(), a.clone(), a.clone(), a.clone(), a.clone(), a.clone(), BytesN::<33>::from_array(&env, &buf)),
+        (a.clone(), a.clone(), a.clone(), a.clone(), a.clone(), a.clone(), BytesN::<33>::from_array(&env, &buf), 6u32, 100_000u64),
     );
+}
+
+fn register_with_deposit_params(min_confirmations: u32, min_deposit_satoshis: u64) {
+    let env = Env::default();
+    let a = Address::generate(&env);
+    env.register(
+        WritzLendContract,
+        (a.clone(), a.clone(), a.clone(), a.clone(), a.clone(), a.clone(), fake_protocol_pubkey(&env), min_confirmations, min_deposit_satoshis),
+    );
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #27)")]
+fn constructor_rejects_zero_confirmations() {
+    register_with_deposit_params(0, 100_000);
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #27)")]
+fn constructor_rejects_confirmations_above_the_maximum() {
+    register_with_deposit_params(crate::MAX_MIN_CONFIRMATIONS + 1, 100_000);
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #27)")]
+fn constructor_rejects_a_minimum_deposit_below_the_floor() {
+    register_with_deposit_params(6, crate::MIN_DEPOSIT_FLOOR_SATS - 1);
+}
+
+#[test]
+fn constructor_accepts_the_bounds() {
+    register_with_deposit_params(1, crate::MIN_DEPOSIT_FLOOR_SATS);
+    register_with_deposit_params(crate::MAX_MIN_CONFIRMATIONS, 100_000);
 }
 
 fn hex(env: &Env, s: &str) -> Bytes {
@@ -567,6 +630,48 @@ fn deposit_too_small_panics() {
         &fake_user_pubkey(&s.env),
         &sign_deposit(&s),
     );
+}
+
+/// Deposits `sats` into a fresh setup with the given parameters.
+fn deposit_sats(s: &Setup, sats: u64) -> Result<BytesN<32>, Result<WritzLendError, soroban_sdk::InvokeError>> {
+    let raw_tx = Bytes::from_slice(&s.env, &build_deposit_tx(sats, &s.spk));
+    s.client
+        .try_deposit(
+            &s.depositor,
+            &fake_block_hash(&s.env),
+            &fake_proof(&s.env),
+            &0u32,
+            &raw_tx,
+            &s.spk,
+            &TEST_TIMELOCK,
+            &fake_user_pubkey(&s.env),
+            &sign_deposit(s),
+        )
+        .map(|r| r.unwrap())
+}
+
+#[test]
+fn deposit_minimum_comes_from_the_constructor() {
+    let s = setup_with(1, 5_000);
+    assert_eq!(deposit_sats(&s, 4_999), Err(Ok(WritzLendError::DepositTooSmall)));
+    let s = setup_with(1, 5_000);
+    let txid = deposit_sats(&s, 5_000).unwrap();
+    assert_eq!(s.client.get_position(&txid).unwrap().btc_satoshis, 5_000);
+}
+
+#[test]
+fn deposit_rejects_below_the_mainnet_minimum() {
+    let s = setup();
+    assert_eq!(deposit_sats(&s, 99_999), Err(Ok(WritzLendError::DepositTooSmall)));
+}
+
+#[test]
+fn deposit_asks_spv_for_the_configured_confirmations() {
+    for confirmations in [1u32, 6] {
+        let s = setup_with(confirmations, MAINNET_MIN_DEPOSIT_SATS);
+        do_deposit(&s);
+        assert_eq!(MockSpvClient::new(&s.env, &s.spv).last_min_confirmations(), confirmations);
+    }
 }
 
 #[test]

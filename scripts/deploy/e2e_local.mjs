@@ -356,6 +356,7 @@ async function main() {
     constructorArgs: [
       addr(admin.publicKey()), addr(spvId), addr(nativeSac), addr(admin.publicKey()),
       addr(admin.publicKey()), addr(admin.publicKey()), bytes(PROTOCOL_PUBKEY),
+      u32(6), nativeToScVal(100_000n, { type: 'u64' }),
     ],
   });
   ok(`writz-lend  ${plId}`);
