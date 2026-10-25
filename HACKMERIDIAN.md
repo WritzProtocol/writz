@@ -19,7 +19,7 @@ Writz lets a holder borrow against Bitcoin that stays in a script built from the
 Submitted with the Scale application on 21 October, word for word. A goal is ticked only when it is merged and shown on testnet, with its transactions.
 
 - [ ] **1. A new borrow screen where the user sees their Bitcoin deposit verified and the Bitcoin price at which the position would be liquidated.**
-  Status: in progress ([#308](https://github.com/WritzProtocol/writz/issues/308), [#315](https://github.com/WritzProtocol/writz/issues/315), [#311](https://github.com/WritzProtocol/writz/issues/311)).
+  Status: the relayer's deposit status endpoint is merged in [#326](https://github.com/WritzProtocol/writz/pull/326); the deposit card is in progress ([#315](https://github.com/WritzProtocol/writz/issues/315), [#311](https://github.com/WritzProtocol/writz/issues/311)).
 - [ ] **2. Receiving the loan as at least one other Stellar asset (EURC or XLM) instead of USDC.**
   Status: the swap is merged in [#320](https://github.com/WritzProtocol/writz/pull/320) and the second step in [#321](https://github.com/WritzProtocol/writz/pull/321); the selector on the borrow screen is in progress ([#316](https://github.com/WritzProtocol/writz/issues/316)). XLM, because Circle's EURC has no usable testnet liquidity.
 - [ ] **3. Receiving the loan as native USDC on at least one other blockchain.**
@@ -162,6 +162,7 @@ Event work, in merge order:
 | [#320](https://github.com/WritzProtocol/writz/pull/320) | Receive the loan as XLM through Soroswap or as USDC on Base Sepolia through CCTP |
 | [#321](https://github.com/WritzProtocol/writz/pull/321) | Second borrow step to convert or send, with recovery |
 | [#324](https://github.com/WritzProtocol/writz/pull/324) | Step-by-step user guides for the testnet app, with screenshots: wallets, test funds, borrow, repay and release, lend, troubleshooting |
+| [#326](https://github.com/WritzProtocol/writz/pull/326) | Relayer endpoint `GET /deposit-status/:txid`: confirmations, proof and verification on Stellar for one deposit |
 
 ## What comes next
 
