@@ -12,8 +12,7 @@ Machine-readable entry points: [docs.writz.xyz/llms.txt](https://docs.writz.xyz/
 ```text
 Integrate Writz on Stellar testnet. Read https://docs.writz.xyz/developers/for-ai-agents.md
 first and use only the contract IDs, signatures and endpoints it lists. Use @writz/sdk
-from npm for TypeScript. writz-spv-client (crates.io) is release pending: do not install it
-until it is published. The Bitcoin network is signet. Simulate reads, never sign them.
+from npm for TypeScript and writz-spv-client from crates.io for Soroban contracts. The Bitcoin network is signet. Simulate reads, never sign them.
 ```
 
 ---
@@ -38,18 +37,18 @@ Source of truth for IDs: [`contracts/deployments/testnet.md`](https://github.com
 ## Packages
 
 ```text
-NPM_PACKAGE     @writz/sdk         source packages/sdk                         PUBLISHED 0.1.0, npm install @writz/sdk
-CRATE           writz-spv-client   source contracts/contracts/writz-spv-client NOT YET ON CRATES.IO
+NPM_PACKAGE     @writz/sdk         source packages/sdk                         PUBLISHED 0.1.1, npm install @writz/sdk
+CRATE           writz-spv-client   source contracts/contracts/writz-spv-client PUBLISHED 0.1.0, cargo add writz-spv-client
 ```
 
-`npm install @writz/sdk` works. Until the crate is on crates.io, `cargo add writz-spv-client` fails: generate Rust from the snippets on this page instead. The surface:
+`npm install @writz/sdk` and `cargo add writz-spv-client` both work. The surface:
 
 - `@writz/sdk`: `createWritzClient()` (testnet preset), `writz.verifyBitcoinTx(txid)`, `writz.relayer.getSpvProof(txid)` (throws `RelayerError` with `code`, `status`, `retryAfterSeconds`; retries 409 `light_client_behind`, 429 and 503 after `Retry-After`), `writz.spv.verifyTransaction(sorobanArgs)` (throws `ContractError` with `code`, `errorName`), `writz.lend.getProtocolState()`, `writz.lend.getSupplyRateBp()`, `writz.lend.getSupplyBalance(address)`, `writz.lend.buildSupplyUsdc(address, stroops)` and `writz.lend.buildWithdrawSupply(address, stroops)` (unsigned XDR, the SDK never signs).
 - `writz-spv-client`: `BitcoinSpvClient`, `SpvVerificationResult`, `SPVError`, `find_output_value(&raw_tx, &script_pubkey) -> Option<u64>`, `txid(&env, &raw_tx)`.
 
 ## Does not exist (do not generate code for it)
 
-- No crates.io crate yet: `writz-spv-client` is release pending (above); use the git dependency below. On npm, `@writz/sdk` is the only Writz package: there is no `writz-sdk` and no other `@writz/...` package.
+- Writz publishes exactly two packages: `@writz/sdk` on npm and `writz-spv-client` on crates.io. There is no `writz-sdk` and no other `@writz/...` package.
 - `verify_transaction` has **no** `headers` argument and its result has **no** `outputs` field.
 - No Bitcoin mainnet, testnet3 or testnet4 verification. Signet only.
 - No Writz contract on Stellar mainnet.

@@ -14,7 +14,7 @@ Use only these values; anything not listed here or in the linked pages does not 
 - Relayer: `https://api.testnet.writz.xyz`, proof route `GET /spv-proof/:txid?confirmations=N`
 - Yield on USDC: the `writz-lend` lender side, `supply_usdc(supplier, amount)` and `withdraw_supply(supplier, amount)` signed by the supplier, read with `get_supply_balance(lender)` and `get_supply_rate_bp()`. The rate is variable and zero while nothing is borrowed: read it live, never hard-code an APY
 - Main primitive: `verify_transaction(block_hash: BytesN<32>, merkle_proof: Vec<BytesN<32>>, tx_index: u32, raw_tx: Bytes, min_confirmations: u32) -> Result<SpvVerificationResult, SPVError>`, where `SpvVerificationResult` is `{ txid, block_hash, block_height, confirmations }`
-- Packages: `@writz/sdk` is published on npm (source `packages/sdk`). `writz-spv-client` (crates.io, source `contracts/contracts/writz-spv-client`) is release pending: not on crates.io yet, so do not install it. There is no other Writz package.
+- Packages: `@writz/sdk` is published on npm (source `packages/sdk`). `writz-spv-client` is published on crates.io (source `contracts/contracts/writz-spv-client`). There is no other Writz package.
 - Machine-readable IDs: `contracts/deployments/testnet.json`, generated from `contracts/deployments/testnet.md` by `node scripts/sync-deployments.mjs`.
 
 Full reference: [`docs/developers/for-ai-agents.md`](docs/developers/for-ai-agents.md) (also at https://docs.writz.xyz/developers/for-ai-agents.md). Walkthrough: [`docs/developers/integrate.md`](docs/developers/integrate.md). Runnable examples: [`examples/`](examples). Contract IDs of record: [`contracts/deployments/testnet.md`](contracts/deployments/testnet.md).
