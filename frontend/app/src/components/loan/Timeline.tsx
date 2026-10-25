@@ -6,7 +6,7 @@ import { shortAddress } from "@/lib/borrow/journey";
 import { networkName } from "@/lib/wallet/precheck";
 import { baseSepoliaTxUrl, btcTxUrl, stellarTxUrl } from "@/lib/explorer";
 import { clientTimeline, receiveLog } from "@/lib/receive/clientTimeline";
-import { TIMELINE_LABEL, timelineRows, type TimelineEvent } from "@/lib/receive/timeline";
+import { TIMELINE_LABEL, timelineRows, type TimelineEvent, type TimelineKind } from "@/lib/receive/timeline";
 import { shortDate } from "@/lib/loan/model";
 import type { Position } from "@/lib/position/types";
 import { ExternalLink } from "@/components/ui";
@@ -56,9 +56,15 @@ function useTimelineEvents(m: LoanModel, position: Position): TimelineEvent[] {
 
 /** Bitcoin lock, verified on Stellar, borrowed, received, repaid, BTC released: each step with its transaction. */
 export function LoanTimeline({ m, position }: { m: LoanModel; position: Position }) {
-  const rows = timelineRows(useTimelineEvents(m, position));
-  // Debt on chain means a borrow happened, even when its transaction isn't known here.
-  const borrowedElsewhere = BigInt(position.debtStroops) > 0n;
+  const all = timelineRows(useTimelineEvents(m, position));
+  // The chain says which steps happened even when their transactions aren't on this device.
+  const s = m.status.status;
+  const repaid =
+    (s.kind === "repaid_locked" && !s.neverBorrowed) || s.kind === "releasing" || s.kind === "released";
+  const happened = (k: TimelineKind) =>
+    (k === "borrowed" && (BigInt(position.debtStroops) > 0n || repaid)) || (k === "repaid" && repaid);
+  // Without a swap or transfer of its own, a borrow is received as USDC with the borrow itself.
+  const rows = all.filter((r) => r.event || r.kind !== "received" || !(happened("borrowed") || r.passed));
   return (
     <section className="ln-tl" aria-labelledby="ln-tl-h">
       <h2 id="ln-tl-h" className="ln-h2">
@@ -68,10 +74,7 @@ export function LoanTimeline({ m, position }: { m: LoanModel; position: Position
         {rows.map((r, i) => {
           const e = r.event;
           return (
-            <li
-              key={e ? `${e.kind}:${e.hash}` : `${r.kind}:${i}`}
-              data-state={e || (r.kind === "borrowed" && borrowedElsewhere) ? "done" : "next"}
-            >
+            <li key={e ? `${e.kind}:${e.hash}` : `${r.kind}:${i}`} data-state={e || happened(r.kind) ? "done" : "next"}>
               <i aria-hidden="true" />
               <div>
                 <b>
@@ -88,8 +91,10 @@ export function LoanTimeline({ m, position }: { m: LoanModel; position: Position
                       {e.at ? `, ${shortDate(e.at)}` : ""}
                     </span>
                   </span>
-                ) : r.kind === "borrowed" && borrowedElsewhere ? (
+                ) : happened(r.kind) ? (
                   <span className="ln-tl-meta">Done. The transaction isn&apos;t on this device.</span>
+                ) : r.passed ? (
+                  <span className="ln-tl-meta">No transaction on this device</span>
                 ) : (
                   <span className="ln-tl-meta">Not yet</span>
                 )}

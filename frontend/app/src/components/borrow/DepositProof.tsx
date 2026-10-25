@@ -32,7 +32,7 @@ export function DepositProof({
   return (
     <section className="wz-proof" aria-label="Deposit status">
       {verified ? (
-        <p className="wz-proof-seal" data-moment={moment} role="status">
+        <p className="wz-proof-seal" data-moment={moment} role={moment ? "status" : undefined}>
           <i aria-hidden="true" />
           Verified on Stellar
         </p>

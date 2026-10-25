@@ -296,6 +296,7 @@ export function useLiveJourney(): JourneyModel {
     setAction("register");
     setDoneSats(BigInt(pending.sats));
     setDoneIndex(pending.positionIndex);
+    setDoneTxid(pending.btcTxid);
     emit({ type: "start" });
     const origin = currentRoute();
     const index = pending.positionIndex;

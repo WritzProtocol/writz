@@ -62,22 +62,31 @@ export function orderTimeline(events: readonly TimelineEvent[]): TimelineEvent[]
     .map(({ e }) => e);
 }
 
-export type TimelineRow = { kind: TimelineKind; event: TimelineEvent | null };
+export type TimelineRow = {
+  kind: TimelineKind;
+  event: TimelineEvent | null;
+  /** No transaction here, but a later step has one, so this one is not "not yet". */
+  passed: boolean;
+};
 
 /**
- * The ordered events, then the steps of the cycle not reached yet, without a
- * transaction. A borrow taken as USDC on Stellar is received with the borrow
- * itself, so once something was borrowed "received" is never a pending step.
+ * Every step of the cycle in order: the known events, and a row without a
+ * transaction for each step that has none. A borrow taken as USDC on Stellar
+ * is received with the borrow itself, so once something was borrowed
+ * "received" is never a row of its own.
  */
 export function timelineRows(events: readonly TimelineEvent[]): TimelineRow[] {
   const ordered = orderTimeline(events);
-  const rows: TimelineRow[] = ordered.map((event) => ({ kind: event.kind, event }));
   const has = (k: TimelineKind) => ordered.some((e) => e.kind === k);
-  const last = ordered.reduce((m, e) => Math.max(m, RANK[e.kind]), -1);
+  const rows: TimelineRow[] = ordered.map((event) => ({ kind: event.kind, event, passed: false }));
   for (const kind of Object.keys(RANK) as TimelineKind[]) {
-    if (has(kind) || RANK[kind] < last) continue;
+    if (has(kind)) continue;
     if (kind === "received" && has("borrowed")) continue;
-    rows.push({ kind, event: null });
+    // Before the first row of a later step, so the cycle keeps its order.
+    const at = rows.findIndex((r) => RANK[r.kind] > RANK[kind]);
+    const row = { kind, event: null, passed: at !== -1 };
+    if (at === -1) rows.push(row);
+    else rows.splice(at, 0, row);
   }
   return rows;
 }

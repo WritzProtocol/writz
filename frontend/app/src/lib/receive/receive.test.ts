@@ -150,6 +150,7 @@ describe("orderTimeline", () => {
 describe("timelineRows", () => {
   test("adds the steps not reached yet, without transactions", () => {
     const rows = timelineRows([ev("btc_lock", "l", null, "bitcoin"), ev("verified", "v", 1)]);
+    expect(rows.every((r) => !r.passed)).toBe(true);
     expect(rows.map((r) => [r.kind, r.event?.hash ?? null])).toEqual([
       ["btc_lock", "l"],
       ["verified", "v"],
@@ -163,6 +164,18 @@ describe("timelineRows", () => {
   test("a USDC borrow needs no separate receive step", () => {
     const rows = timelineRows([ev("btc_lock", "l", null, "bitcoin"), ev("verified", "v", 1), ev("borrowed", "b", 2)]);
     expect(rows.map((r) => r.kind)).toEqual(["btc_lock", "verified", "borrowed", "repaid", "released"]);
+  });
+
+  test("steps without a transaction before a later one are marked passed, in cycle order", () => {
+    const rows = timelineRows([ev("btc_lock", "l", null, "bitcoin"), ev("verified", "v", 1), ev("released", "z", null, "bitcoin")]);
+    expect(rows.map((r) => [r.kind, r.passed])).toEqual([
+      ["btc_lock", false],
+      ["verified", false],
+      ["borrowed", true],
+      ["received", true],
+      ["repaid", true],
+      ["released", false],
+    ]);
   });
 
   test("a full cycle has no placeholders", () => {
