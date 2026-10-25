@@ -365,7 +365,7 @@ export function LoanView({ m }: { m: LoanModel }) {
                 </p>
               </Notice>
             )}
-            {!checking && tab && (tabs[tab].enabled || (stepTwoOpen && tab === "borrow")) && (
+            {(!checking || stepTwoOpen) && tab && (tabs[tab].enabled || (stepTwoOpen && tab === "borrow")) && (
               <div
                 className="ln-panel ln-act-panel wz-enter"
                 id="loan-panel"
