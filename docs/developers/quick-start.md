@@ -130,7 +130,7 @@ All four contracts are live on Stellar testnet. You can call them directly witho
 ```bash
 # Check the SPV contract is alive
 stellar contract invoke \
-  --id NEWSPVID \
+  --id CBX23YKCCJMAMBMSCNP6YVKEXUIYK2CTKSR4TQ3RVBPAFYZFVCW7W4EO \
   --network testnet \
   -- get_version
 

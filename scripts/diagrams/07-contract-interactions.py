@@ -2,7 +2,7 @@
 Writz Protocol - 07 Contract Interactions
 Writz v1 contracts (bitcoin-spv + writz-lend) and how they call each other.
 The privacy edition (in progress) is a separate group with no edge into writz-lend.
-Contract IDs: contracts/deployments/testnet.md (NEWDEPLOYDATE redeploy).
+Contract IDs: contracts/deployments/testnet.md (2026-10-25 redeploy).
 """
 import sys, os
 sys.path.insert(0, os.path.dirname(__file__))
@@ -38,11 +38,11 @@ with g.subgraph(name="cluster_actors") as a:
 with g.subgraph(name="cluster_v1") as v:
     v.attr(**cluster_attr("Writz v1", B_STELLAR, "Plaintext positions"))
     v.node("writz_lend",
-           hl("writz-lend", "NEWLENDIDSHORT… · deposit · supply_usdc · withdraw_supply · borrow · repay",
+           hl("writz-lend", "CABF7VK7F25ZGDLV… · deposit · supply_usdc · withdraw_supply · borrow · repay",
               "liquidate · publish_release_psbt · get_release_psbt"),
            fillcolor=F_STELLAR, color=B_STELLAR, penwidth="2.2")
     v.node("bitcoin_spv",
-           hl("bitcoin-spv", "NEWSPVIDSHORT…", "verify_transaction · consume_deposit"),
+           hl("bitcoin-spv", "CBX23YKCCJMAMBMS…", "verify_transaction · consume_deposit"),
            fillcolor=F_BITCOIN, color=B_BITCOIN)
     v.node("usdc_token",
            hl("USDC Token (SAC)", "Stellar Asset Contract", "SEP-41 · 7 decimals (stroops)"),

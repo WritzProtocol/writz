@@ -4,7 +4,7 @@ import { describe, expect, test } from "bun:test";
 import { RelayerError, createWritzClient } from "../src/index.js";
 
 const live = process.env.WRITZ_LIVE === "1";
-const TXID = "NEWEXAMPLETXID";
+const TXID = "eac0f95c531b4bd5307597f74bedd7379928539056b9a1467ea6d1159507e269";
 
 describe.skipIf(!live)("testnet (live)", () => {
   const w = createWritzClient();
@@ -19,7 +19,7 @@ describe.skipIf(!live)("testnet (live)", () => {
   test("proves a signet transaction end to end", async () => {
     const { result } = await w.verifyBitcoinTx(TXID);
     expect(result.txidDisplay).toBe(TXID);
-    expect(result.blockHeight).toBe(NEWEXAMPLEBLOCK);
+    expect(result.blockHeight).toBe(327928);
     expect(result.confirmations).toBeGreaterThanOrEqual(6);
   }, 60_000);
 

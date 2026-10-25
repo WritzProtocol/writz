@@ -26,7 +26,7 @@ const writz = createWritzClient(); // Stellar testnet, Bitcoin signet
 
 // A signet txid as explorers show it. Read-only: no keys, no fees.
 const { proof, result } = await writz.verifyBitcoinTx(
-  "NEWEXAMPLETXID",
+  "eac0f95c531b4bd5307597f74bedd7379928539056b9a1467ea6d1159507e269",
 );
 console.log(result.blockHeight, result.confirmations);
 ```

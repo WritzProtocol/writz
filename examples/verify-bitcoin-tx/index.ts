@@ -24,11 +24,11 @@ const RPC_URL = "https://soroban-testnet.stellar.org";
 const NETWORK_PASSPHRASE = "Test SDF Network ; September 2015";
 const RELAYER_URL = "https://api.testnet.writz.xyz";
 const BITCOIN_SPV_ID =
-  "NEWSPVID";
+  "CBX23YKCCJMAMBMSCNP6YVKEXUIYK2CTKSR4TQ3RVBPAFYZFVCW7W4EO";
 
 // A confirmed signet transaction, used when no txid is given.
 const DEFAULT_TXID =
-  "NEWEXAMPLETXID";
+  "eac0f95c531b4bd5307597f74bedd7379928539056b9a1467ea6d1159507e269";
 
 const txid = (process.argv[2] ?? DEFAULT_TXID).toLowerCase();
 const confirmations = Number(process.argv[3] ?? 6);

@@ -158,7 +158,7 @@ The SPV contract has been tested against:
 - Multi-transaction blocks with varying Merkle proof sizes
 - Edge cases: single-transaction blocks, maximum-size transactions
 
-68/68 tests pass. The contract is deployed on Stellar testnet at `NEWSPVID`.
+68/68 tests pass. The contract is deployed on Stellar testnet at `CBX23YKCCJMAMBMSCNP6YVKEXUIYK2CTKSR4TQ3RVBPAFYZFVCW7W4EO`.
 
 ---
 
