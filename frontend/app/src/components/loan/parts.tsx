@@ -28,6 +28,10 @@ import { useElapsed } from "@/components/ui/hooks";
 import { Enter } from "@/components/ui/entrance";
 import { ErrorBox, ExternalLink, Notice, SlideToConfirm, Spinner, type Tone } from "@/components/ui";
 import type { LoanModel } from "./model";
+import type { ReceiveIntent } from "@/lib/receive/intent";
+import { ReceiveStep } from "./ReceiveStep";
+
+const RECEIVE_USDC: ReceiveIntent = { kind: "usdc" };
 
 const STELLAR = networkName(config.networkPassphrase);
 
@@ -501,14 +505,18 @@ export function BorrowPanel({
   available,
   price,
   onPreview,
+  receiveAs = RECEIVE_USDC,
 }: {
   m: LoanModel;
   position: Position;
   available: Available | null;
   price: bigint | null;
   onPreview?: (bp: bigint | null) => void;
+  /** How the borrower wants the money; anything but USDC adds a second step after the borrow. */
+  receiveAs?: ReceiveIntent;
 }) {
   const [value, setValue] = useState("");
+  const [keptHash, setKeptHash] = useState<string | null>(null);
   const id = useId();
   const mine = m.action === "borrow";
   const running = mine && isInFlight(m.flow);
@@ -533,6 +541,8 @@ export function BorrowPanel({
   const trustChecking = m.trustline.kind === "checking";
   const newDebt = amount !== null && !error && amount > 0n ? debt + amount : null;
   usePreview(onPreview, previewOf(collateral, newDebt, price));
+  const borrowedHash = mine && m.flow.phase === "settled" ? (m.flow.hash ?? "settled") : null;
+  const stepTwo = borrowedHash !== null && receiveAs.kind !== "usdc" && m.lastAmount !== null && keptHash !== borrowedHash ? receiveAs : null;
   const hint = available?.limitedByPool ? (
     <>The pool has {usdcAmount(max)} USDC available right now.</>
   ) : (
@@ -593,12 +603,21 @@ export function BorrowPanel({
           onCheckAgain={m.checkAgain}
           success={
             <>
+              {stepTwo ? "Step 1 of 2 done. " : null}
               Borrowed{m.lastAmount !== null ? <> {usdcAmount(m.lastAmount)} USDC</> : null}. It&apos;s in your Stellar wallet.
             </>
           }
         />
       )}
-      {running ? (
+      {stepTwo && m.lastAmount !== null ? (
+        <ReceiveStep
+          key={borrowedHash}
+          intent={stepTwo}
+          amount={m.lastAmount}
+          walletName={m.stellar.walletName}
+          onKeep={() => setKeptHash(borrowedHash)}
+        />
+      ) : running ? (
         <TxRunning flow={m.flow} walletName={m.stellar.walletName} />
       ) : mine && m.flow.phase === "timed_out" ? null : (
         <div className="wz-stack" style={{ gap: 8 }}>

@@ -50,6 +50,8 @@ export interface SwapResult {
   hash: string;
   quotedOut: bigint;
   minOut: bigint;
+  /** XLM stroops the router paid, from the transaction result. */
+  received: bigint | null;
 }
 
 /**
@@ -84,7 +86,9 @@ export async function swapUsdcToXlm(params: {
       nativeToScVal(swapDeadline(now()), { type: "u64" }),
     ],
   });
-  const { hash } = await signAndSubmit(tx, { signTransaction, emit });
+  const { hash, sent } = await signAndSubmit(tx, { signTransaction, emit });
   emit?.({ type: "settled", hash });
-  return { hash, quotedOut, minOut: floor };
+  const amounts = sent.result;
+  const out = Array.isArray(amounts) ? amounts[amounts.length - 1] : undefined;
+  return { hash, quotedOut, minOut: floor, received: out === undefined ? null : BigInt(out) };
 }
