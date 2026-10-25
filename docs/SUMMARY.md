@@ -35,6 +35,7 @@
 * [Dark Swap](/products/dark-swap)
 * [BTC Savings](/products/btc-savings)
 * [ZK Proof of Reserve](/products/zk-proof-of-reserve)
+* [USDC Vault](/products/earn)
 
 ## How It Works
 
