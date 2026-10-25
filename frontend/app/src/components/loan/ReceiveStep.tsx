@@ -6,6 +6,7 @@ import { formatUsdc, shortAddress } from "@/lib/borrow/journey";
 import { stellarTxUrl } from "@/lib/explorer";
 import type { FlowState } from "@/lib/flow/engine";
 import { destinationTxUrl } from "@/lib/receive/cctp";
+import { deliveryOf, startDelivery } from "@/lib/receive/relay";
 import { receivePhase, type ReceiveIntent, type ReceivePhase } from "@/lib/receive/intent";
 import { minOut, type SwapResult } from "@/lib/receive/swap";
 import { useReceive, useXlmQuote, type ChainLeg, type XlmQuote } from "@/lib/receive/useReceive";
@@ -189,6 +190,32 @@ export function ReceiveStepView(p: ReceiveStepProps) {
   );
 }
 
+const RELAY_POLL_MS = 5_000;
+
+/** The mint on Base Sepolia from the Writz relay: asked once after the burn, then read until it arrives or fails. */
+function useRelayedMint(burnHash: string | null, given: string | null): string | null {
+  const [mint, setMint] = useState<{ burn: string; hash: string } | null>(null);
+  const done = given !== null || (mint !== null && mint.burn === burnHash);
+  useEffect(() => {
+    if (!burnHash || done) return;
+    let live = true;
+    // Only ever called from a resolved promise, after `every` exists.
+    const settle = (d: { kind: string; mintHash?: string | null }) => {
+      if (!live) return;
+      if (d.kind === "arrived" && d.mintHash) setMint({ burn: burnHash, hash: d.mintHash });
+      if (d.kind === "arrived" || d.kind === "failed") clearInterval(every);
+    };
+    // The relay keeps working on the transfer on its own; a failed read is asked again on the next tick.
+    const every = setInterval(() => void deliveryOf(burnHash).then(settle, () => {}), RELAY_POLL_MS);
+    startDelivery(burnHash).then(settle, () => {});
+    return () => {
+      live = false;
+      clearInterval(every);
+    };
+  }, [burnHash, done]);
+  return mint && mint.burn === burnHash ? mint.hash : null;
+}
+
 /** A settled step 2 transaction, reported so the loan's timeline can show it. */
 export interface ReceivedLeg {
   hash: string;
@@ -201,7 +228,7 @@ export function ReceiveStep({
   intent,
   amount,
   walletName,
-  mintHash = null,
+  mintHash: givenMint = null,
   onKeep,
   onReceived,
 }: {
@@ -213,6 +240,8 @@ export function ReceiveStep({
   onReceived?: (leg: ReceivedLeg) => void;
 }) {
   const r = useReceive();
+  const relayedMint = useRelayedMint(r.leg.kind === "idle" ? null : r.leg.send.burnHash, givenMint);
+  const mintHash = givenMint ?? relayedMint;
   const swapHash = r.swap?.hash ?? null;
   const burnHash = r.leg.kind === "idle" ? null : r.leg.send.burnHash;
   useEffect(() => {

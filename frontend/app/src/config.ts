@@ -107,6 +107,8 @@ export const config = {
       irisUrl:
         process.env.NEXT_PUBLIC_CCTP_IRIS_URL ??
         (deployTarget === "mainnet" ? "https://iris-api.circle.com" : "https://iris-api-sandbox.circle.com"),
+      /** The Writz relay that completes the mint on the destination; the relayer unless overridden for local runs. */
+      relayUrl: process.env.NEXT_PUBLIC_CCTP_RELAY_URL ?? process.env.NEXT_PUBLIC_RELAYER_URL ?? "",
       destination: {
         name: deployTarget === "mainnet" ? "Base" : "Base Sepolia",
         domain: 6,
