@@ -11,6 +11,10 @@ import type { TimelineApi } from "@/lib/receive/timeline";
 export type LoanAccess = "disconnected" | "finding" | "ready";
 
 export interface LoanBitcoin {
+  /** "Xverse" or "Signet test key". */
+  walletName: string;
+  /** The browser-held Signet test key signs, with no extension prompt. */
+  embedded: boolean;
   address: string | null;
   pubkey: string | null;
   connecting: boolean;
@@ -43,6 +47,13 @@ export interface LoanModel {
   /** The amount the running or last borrow or repay was for. */
   lastAmount: bigint | null;
   trust: { busy: boolean; error: unknown; add(): void };
+  /** A social sign-in on the guided loop: panels start from suggested amounts. */
+  guided: boolean;
+  /**
+   * Buys the USDC a full repayment is missing (interest since the borrow)
+   * with XLM through Soroswap. Null where no router is configured.
+   */
+  topUp: { busy: boolean; error: unknown; done: boolean; buy(stroops: bigint): void } | null;
   otherTx: boolean;
   catchingUp: boolean;
   activity: ActivityItem[];

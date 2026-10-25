@@ -47,6 +47,8 @@ export function useMockLoan(world: MockWorld, n: number): LoanModel {
     trustline: read(page?.trustline),
     walletUsdc: read(page?.walletUsdcStroops),
     bitcoin: {
+      walletName: world.onboarding ? "Signet test key" : "Xverse",
+      embedded: Boolean(world.onboarding),
       address: bw?.address ?? null,
       pubkey: bw?.pubkey ?? null,
       connecting: false,
@@ -59,6 +61,8 @@ export function useMockLoan(world: MockWorld, n: number): LoanModel {
     action,
     lastAmount: null,
     trust: { busy: false, error: null, add: noop },
+    guided: Boolean(world.onboarding),
+    topUp: null,
     otherTx: Boolean(world.globals.otherTabTx),
     catchingUp: status.syncing || Boolean(world.globals.relayerCatchingUp),
     activity: position

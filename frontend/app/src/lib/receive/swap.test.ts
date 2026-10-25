@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { minOut, swapDeadline } from "./swap";
+import { maxIn, minOut, swapDeadline } from "./swap";
 
 describe("minOut", () => {
   it("takes the slippage off the quote and rounds down", () => {
@@ -18,5 +18,17 @@ describe("minOut", () => {
 describe("swapDeadline", () => {
   it("is five minutes of unix seconds after now", () => {
     expect(swapDeadline(1_761_400_000_999)).toBe(1_761_400_300n);
+  });
+});
+
+describe("maxIn", () => {
+  it("adds the slippage to the quote and rounds up", () => {
+    expect(maxIn(10_000n, 50)).toBe(10_050n);
+    expect(maxIn(999n, 50)).toBe(1_004n);
+    expect(maxIn(1_000n, 0)).toBe(1_000n);
+  });
+
+  it("refuses slippage outside 0 to 5%", () => {
+    expect(() => maxIn(1_000n, 501)).toThrow();
   });
 });

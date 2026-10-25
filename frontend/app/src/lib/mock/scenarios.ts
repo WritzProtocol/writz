@@ -26,6 +26,7 @@ import type {
   MockEarn,
   MockLend,
   MockLoanPage,
+  MockOnboarding,
   MockPosition,
   MockProtocol,
   MockWorld,
@@ -39,6 +40,7 @@ import type {
  *
  *   G1-G8     global states            /  (any client route)
  *   H1-H23    home                     /
+ *   O1-O9     guided first loan        /  (social sign-in with a Signet test key)
  *   B1-B37    deposit journey          /borrow/new
  *   L1-L28    loan detail              /loans/1
  *   E1-E11    earn                     /earn
@@ -53,6 +55,7 @@ import type {
 const AREAS: Record<string, MockArea> = {
   G: "global",
   H: "home",
+  O: "onboarding",
   B: "deposit",
   L: "loan",
   E: "earn",
@@ -182,6 +185,47 @@ const HOME: Scenario[] = [
     home({ positions: [loans.healthy(1, now), loans.belowLimit(2, now)] }),
   ),
   define("H23", "Open loan with no debt", (now) => home({ positions: [loans.neverBorrowed(1, now)] })),
+];
+
+const TEST_KEY = { stellar: stellarWallet(), bitcoin: bitcoinWallet({ balanceSats: 20_000n }) };
+const FAUCET_TX = "f0".repeat(32);
+const PAYOUT = { txid: FAUCET_TX, explorerUrl: `https://mempool.space/signet/tx/${FAUCET_TX}`, amountSats: 20_000 };
+const refused = (code: string, title: string, message: string, retryable: boolean) => ({
+  kind: "failed" as const,
+  failure: { code, title, message, retryable, publicFaucets: ["https://bitcoinsignetfaucet.com/", "https://signet.dcorral.com/"] },
+});
+const guided = (claim: MockOnboarding["claim"], over: Partial<MockWorld> = {}, milestones: MockOnboarding["milestones"] = {}) =>
+  home({ wallets: TEST_KEY, onboarding: { claim, milestones }, ...over });
+
+const ONBOARDING: Scenario[] = [
+  define("O1", "Signed in, sending test BTC", () => guided({ kind: "claiming" }, { wallets: { ...TEST_KEY, bitcoin: bitcoinWallet({ balanceSats: 0n }) } })),
+  define("O2", "Test BTC sent, confirming", () => guided({ kind: "sent", ...PAYOUT })),
+  define("O3", "Faucet empty, public faucets offered", () =>
+    guided(
+      refused("faucet_empty", "Faucet empty", "The Writz faucet is out of test BTC. Get some from a public Signet faucet.", true),
+      { wallets: { ...TEST_KEY, bitcoin: bitcoinWallet({ balanceSats: 0n }) } },
+    ),
+  ),
+  define("O4", "Account already funded once", () =>
+    guided(
+      refused(
+        "account_already_claimed",
+        "Already funded once",
+        "This account already received its test BTC. The faucet pays each account once. Use a public Signet faucet for more.",
+        false,
+      ),
+      { wallets: { ...TEST_KEY, bitcoin: bitcoinWallet({ balanceSats: 0n }) } },
+    ),
+  ),
+  define("O5", "Deposit confirming", (now) => guided({ kind: "confirmed", ...PAYOUT }, { positions: [deposits.confirming(1, now)] })),
+  define("O6", "Loan registered, borrow next", (now) => guided({ kind: "funded", sats: 0 }, { positions: [loans.neverBorrowed(1, now)] })),
+  define("O7", "Borrowed, repay next", (now) => guided({ kind: "funded", sats: 0 }, { positions: [loans.healthy(1, now)] }, { borrow: 1 })),
+  define("O8", "Repaid, release next", (now) =>
+    guided({ kind: "funded", sats: 0 }, { positions: [loans.repaidLocked(1, now)] }, { borrow: 1, repay: 1 }),
+  ),
+  define("O9", "Whole loop done", (now) =>
+    guided({ kind: "funded", sats: 19_700 }, { positions: [loans.released(1, now)] }, { borrow: 1, repay: 1, release: 1 }),
+  ),
 ];
 
 const DEPOSIT: Scenario[] = [
@@ -449,6 +493,7 @@ const STATUS: Scenario[] = [
 export const SCENARIOS: readonly Scenario[] = [
   ...GLOBAL,
   ...HOME,
+  ...ONBOARDING,
   ...DEPOSIT,
   ...LOAN,
   ...EARN,

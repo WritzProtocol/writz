@@ -9,6 +9,8 @@ import { btcAddressUrl, stellarAccountUrl } from "@/lib/explorer";
 import { BTC_FAUCETS, DOCS_URL, GITHUB_ISSUES_URL, GITHUB_SECURITY_URL } from "@/lib/links";
 import { CopyButton, ErrorBox, ExternalLink, Notice } from "@/components/ui";
 import type { PollarLogin } from "@/lib/wallet/WalletProvider";
+import { TestKeyPanel } from "@/components/onboarding/TestKeyPanel";
+import { useBitcoinWallet } from "@/lib/bitcoin/useBitcoinWallet";
 import { useShellAccount, type ShellAccount } from "./account";
 
 type Chain = "stellar" | "bitcoin";
@@ -209,7 +211,8 @@ function PollarSignIn({ pollar }: { pollar: PollarLogin }) {
   return (
     <>
       <p className="wz-hint">
-        No wallet? Sign in to get a test account with fees paid. Pollar holds its key, so use it for testing only.
+        No wallet? Sign in to get a test account with fees paid and free test BTC. Pollar holds the Stellar key and your Signet test key
+        stays in this browser, so use it for testing only.
       </p>
       {auth.step === "error" ? <p className="wz-error">{auth.message}</p> : null}
       <div className="wz-actions">
@@ -231,6 +234,8 @@ export function AccountSheetBody() {
   const a = useShellAccount();
   const s = a.stellar;
   const b = a.bitcoin;
+  const btcWallet = useBitcoinWallet();
+  const testKey = !a.mock && btcWallet.kind === "embedded";
   const usdc = s.usdcAdded.kind === "checking" ? "Checking..." : s.usdcAdded.kind === "failed" ? "Couldn't check" : s.usdcAdded.value ? "Yes" : "Not yet";
 
   return (
@@ -272,7 +277,7 @@ export function AccountSheetBody() {
       <section className="sh-section" aria-labelledby="sh-bitcoin">
         <h3 id="sh-bitcoin" className="sh-h">
           <i className="wz-dot" data-on={Boolean(b.address)} aria-hidden="true" />
-          Bitcoin wallet
+          {testKey ? "Signet test key" : "Bitcoin wallet"}
         </h3>
         <p className="wz-hint">Holds the BTC you lock. Its key builds your lock address.</p>
         {b.address ? (
@@ -291,8 +296,9 @@ export function AccountSheetBody() {
               <ExternalLink href={btcAddressUrl(b.address)} className="wz-btn wz-btn-line wz-btn-sm">
                 View on mempool
               </ExternalLink>
-              <Disconnect chain="bitcoin" a={a} />
+              {testKey ? null : <Disconnect chain="bitcoin" a={a} />}
             </div>
+            {!a.mock ? <TestKeyPanel /> : null}
           </>
         ) : (
           <div className="wz-actions">

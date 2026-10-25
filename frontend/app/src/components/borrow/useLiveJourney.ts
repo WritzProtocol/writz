@@ -34,6 +34,8 @@ import {
   TIMELOCK_MIN_BLOCKS_LEFT,
   type Funding,
 } from "@/lib/borrow/journey";
+import { useOnboarding } from "@/lib/onboarding/OnboardingProvider";
+import { suggestDepositSats, satsToBtcInput } from "@/lib/onboarding/defaults";
 import { confirmedSats, route, useJourneyUi, type BitcoinError, type JourneyModel, type Reading } from "./model";
 
 const ON_TESTNET = config.target !== "mainnet";
@@ -82,6 +84,8 @@ export function useLiveJourney(): JourneyModel {
   const ui = useJourneyUi({ amount: draft && parseBtcAmount(draft).ok ? draft : undefined });
   const [flow, emit] = useFlow();
   const address = w.address;
+  const onboarding = useOnboarding();
+  const report = onboarding.report;
 
   const pending = useSyncExternalStore(
     pendingDeposits.subscribe,
@@ -129,6 +133,7 @@ export function useLiveJourney(): JourneyModel {
         setDrivenElsewhere(false);
         const result = await trackDeposit(address, { emit, signal: controller.signal });
         if (result.status === "active") {
+          report("deposit", result.position.txid);
           setDoneSats(BigInt(result.position.collateralSats));
           setDoneIndex(result.position.index);
           setDoneTxid(result.position.txid);
@@ -144,7 +149,7 @@ export function useLiveJourney(): JourneyModel {
       release?.();
       setDrivenElsewhere(false);
     };
-  }, [address, pendingTxid, runKey, emit]);
+  }, [address, pendingTxid, runKey, emit, report]);
 
   // ── Stellar: network, funding, loans ──
   const [network, setNetwork] = useState<{ key: string; passphrase: string | null; walletName?: string } | null>(null);
@@ -239,6 +244,15 @@ export function useLiveJourney(): JourneyModel {
   }, [btcAddress, balanceNonce]);
   const balance = forKey(balanceRead, btcAddress ? `${btcAddress}:${balanceNonce}` : null);
 
+  // The guided loop starts with most of the test key's balance in the field.
+  const suggested =
+    b.kind === "embedded" && balance?.kind === "ok" ? suggestDepositSats(balance.value, config.bitcoin.minDepositSats) : null;
+  const [prefilled, setPrefilled] = useState(false);
+  if (suggested !== null && !prefilled && !ui.amount && !ui.amountConfirmed && !pending) {
+    setPrefilled(true);
+    ui.setAmount(satsToBtcInput(suggested));
+  }
+
   const depositLock = useDepositLock(b.btcPubkey);
   const lock = depositLock.kind === "ready" ? depositLock.lock : null;
   const p2wsh = lock?.p2wsh ?? null;
@@ -314,12 +328,13 @@ export function useLiveJourney(): JourneyModel {
           emit,
         }),
       );
+      report("deposit", pending.btcTxid);
       notifyRegistered(origin, index);
     } catch (e) {
       emit({ type: "failed", error: e });
       notifySettled(origin, { href: origin, label: "Open deposit" }, { ok: false, error: e, what: "Registering your deposit" });
     }
-  }, [address, w.signTransaction, b.btcPubkey, b.signMessage, pending, emit]);
+  }, [address, w.signTransaction, b.btcPubkey, b.signMessage, pending, emit, report]);
 
   /** Saves a deposit that is on chain but not yet on this device (B31): it only reads, never deposits again. */
   const finish = useCallback(() => {
@@ -426,6 +441,8 @@ export function useLiveJourney(): JourneyModel {
       ackLow: () => setLowAckFor(address),
     },
     bitcoin: {
+      walletName: b.walletName,
+      embedded: b.kind === "embedded",
       address: btcAddress,
       connecting: b.connecting,
       error: bitcoinError(b.error),

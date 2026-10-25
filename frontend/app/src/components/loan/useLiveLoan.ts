@@ -23,6 +23,9 @@ import { loanActivity, type LoanTab, type Read, type RecentTx } from "@/lib/loan
 import { EMPTY_POSITIONS, positionsSnapshot, subscribePositions, type Position } from "@/lib/position";
 import { defaultStatusSource, usePositionStatus, useRefreshStatus } from "@/lib/status/provider";
 import type { LocalInputs } from "@/lib/status/types";
+import { useOnboarding } from "@/lib/onboarding/OnboardingProvider";
+import { buyUsdcWithXlm } from "@/lib/receive/swap";
+import { config } from "@/config";
 import { useSteadyStatus, type LoanAccess, type LoanModel } from "./model";
 
 const NO_TXS: never[] = [];
@@ -65,6 +68,8 @@ export function useLiveLoan(n: number, requestedPanel: LoanTab | null): LoanMode
   const w = useWallet();
   const b = useBitcoinWallet();
   const address = w.address;
+  const onboarding = useOnboarding();
+  const report = onboarding.report;
   const [flow, emit] = useFlow();
   const [action, setAction] = useState<LoanTab | null>(null);
   const [lastAmount, setLastAmount] = useState<bigint | null>(null);
@@ -157,6 +162,7 @@ export function useLiveLoan(n: number, requestedPanel: LoanTab | null): LoanMode
       const link = { href: origin, label: `Open Loan ${n}` };
       try {
         const done = await locks().withTxLock(address, () => fn(position, emit));
+        if (done) report(tab, position.txid);
         if (done) {
           setRecent((r) => [done, ...r]);
           recentActivity.add(address, done);
@@ -169,7 +175,7 @@ export function useLiveLoan(n: number, requestedPanel: LoanTab | null): LoanMode
         refresh();
       }
     },
-    [address, position, emit, refresh, n],
+    [address, position, emit, refresh, n, report],
   );
 
   const borrow = useCallback(
@@ -229,6 +235,24 @@ export function useLiveLoan(n: number, requestedPanel: LoanTab | null): LoanMode
 
   const walletName = w.walletBackend === "pollar" ? "Pollar" : (kitWalletName() ?? "your wallet");
 
+  // ── Top up for a full repayment: interest leaves a borrower who holds only the loan a few cents short ──
+  const [topUpState, setTopUpState] = useState<{ busy: boolean; error: unknown; done: boolean }>({ busy: false, error: null, done: false });
+  const canTopUp = Boolean(config.receive.soroswapRouter && config.receive.xlmToken && config.contracts.usdcToken);
+  const buyUsdc = useCallback(
+    async (stroops: bigint) => {
+      if (!address) return;
+      setTopUpState({ busy: true, error: null, done: false });
+      try {
+        await locks().withTxLock(address, () => buyUsdcWithXlm({ owner: address, amountOut: stroops, signTransaction: w.signTransaction }));
+        setTopUpState({ busy: false, error: null, done: true });
+        refresh();
+      } catch (e) {
+        setTopUpState({ busy: false, error: e, done: false });
+      }
+    },
+    [address, w.signTransaction, refresh],
+  );
+
   return {
     n,
     access,
@@ -245,6 +269,8 @@ export function useLiveLoan(n: number, requestedPanel: LoanTab | null): LoanMode
     trustline,
     walletUsdc,
     bitcoin: {
+      walletName: b.walletName,
+      embedded: b.kind === "embedded",
       address: b.btcAddress,
       pubkey: b.btcPubkey,
       connecting: b.connecting,
@@ -260,6 +286,8 @@ export function useLiveLoan(n: number, requestedPanel: LoanTab | null): LoanMode
     action,
     lastAmount,
     trust: { busy: trustBusy, error: trustError, add: () => void addUsdc() },
+    guided: onboarding.guided,
+    topUp: canTopUp ? { ...topUpState, buy: (stroops: bigint) => void buyUsdc(stroops) } : null,
     otherTx,
     catchingUp: status.syncing,
     activity: position

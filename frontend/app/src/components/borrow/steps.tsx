@@ -112,7 +112,7 @@ export function AmountStep({ m }: { m: JourneyModel }) {
           {amount.balanceSats !== null ? (
             <>
               {" "}
-              You have <span className="mono">{formatBtc(amount.balanceSats)}</span> BTC in Xverse.
+              You have <span className="mono">{formatBtc(amount.balanceSats)}</span> BTC in {m.bitcoin.embedded ? "your test key" : "Xverse"}.
             </>
           ) : null}
         </p>
@@ -307,7 +307,11 @@ export function BitcoinStep({ m }: { m: JourneyModel }) {
 
   return (
     <div className="wz-stack">
-      <p className="bj-lead">Xverse holds the BTC you lock. Its key builds your lock address, so only you and Writz together can move it.</p>
+      <p className="bj-lead">
+        {b.embedded
+          ? "Your Signet test key holds the BTC you lock. It lives only in this browser. Test coins only."
+          : "Xverse holds the BTC you lock. Its key builds your lock address, so only you and Writz together can move it."}
+      </p>
       {m.stellar.loansCount > 0 && !b.address && (
         <Notice tone="info">
           You have {m.stellar.loansCount} {m.stellar.loansCount === 1 ? "loan" : "loans"}. This adds a new one.
@@ -335,7 +339,11 @@ export function BitcoinStep({ m }: { m: JourneyModel }) {
         </>
       ) : (
         <>
-          <WalletCard icon="X" name="Xverse" detail={<span className="mono">{shortAddress(b.address, 8, 6)}</span>} />
+          <WalletCard
+            icon={b.embedded ? "T" : "X"}
+            name={b.walletName}
+            detail={<span className="mono">{shortAddress(b.address, 8, 6)}</span>}
+          />
           {b.balance?.kind === "checking" && <Status>Checking your balance</Status>}
           {short && b.balance?.kind === "ok" && (
             <Notice
@@ -354,9 +362,11 @@ export function BitcoinStep({ m }: { m: JourneyModel }) {
             >
               <p>
                 You have <span className="mono">{formatBtc(b.balance.value)}</span> BTC on {BTC_NETWORK_LABEL}.
-                {ON_TESTNET
-                  ? ` Need test BTC? Get free ${BTC_NETWORK_LABEL} BTC into your Xverse wallet, then select Check balance again.`
-                  : " Add BTC to Xverse, then select Check balance again."}
+                {b.embedded
+                  ? " Your test BTC is on its way from the Writz faucet, or get some from a public faucet into this address. Then select Check balance again."
+                  : ON_TESTNET
+                    ? ` Need test BTC? Get free ${BTC_NETWORK_LABEL} BTC into your Xverse wallet, then select Check balance again.`
+                    : " Add BTC to Xverse, then select Check balance again."}
               </p>
               {ON_TESTNET && (
                 <p className="wz-actions" style={{ marginTop: 8 }}>
@@ -398,7 +408,7 @@ export function ReviewStep({ m }: { m: JourneyModel }) {
   const flow = deposit.flow;
   const sats = m.sats ?? 0n;
   const btc = formatBtc(sats);
-  const fee = r.feeSats ? `of about ${r.feeSats.toLocaleString("en-US")} sats` : "set in Xverse";
+  const fee = r.feeSats ? `of about ${r.feeSats.toLocaleString("en-US")} sats` : m.bitcoin.embedded ? "set by the network" : "set in Xverse";
   const height = r.timelockHeight?.toLocaleString("en-US") ?? "Checking...";
 
   if (r.tooClose) {
@@ -430,7 +440,9 @@ export function ReviewStep({ m }: { m: JourneyModel }) {
                 </button>
               </span>
             ) : (
-              <span className="mono bj-addr">{r.lockAddress ?? (m.bitcoin.address ? "Checking..." : "Connect Xverse first")}</span>
+              <span className="mono bj-addr">
+                {r.lockAddress ?? (m.bitcoin.address ? "Checking..." : `Connect ${m.bitcoin.walletName} first`)}
+              </span>
             )}
             <div className="bj-tools">
               {r.lockAddress && (
@@ -481,7 +493,15 @@ export function ReviewStep({ m }: { m: JourneyModel }) {
         <NewDevicePanel m={m} />
       ) : flow.phase === "awaiting_signature" && flow.wallet === "bitcoin" ? (
         <Status>
-          Confirm in Xverse. It will ask you to send <span className="mono">{btc}</span> BTC plus a network fee {fee}.
+          {m.bitcoin.embedded ? (
+            <>
+              Sending <span className="mono">{btc}</span> BTC from your test key.
+            </>
+          ) : (
+            <>
+              Confirm in Xverse. It will ask you to send <span className="mono">{btc}</span> BTC plus a network fee {fee}.
+            </>
+          )}
         </Status>
       ) : flow.phase === "preparing" ? (
         <Status>Getting your deposit ready</Status>
@@ -493,7 +513,11 @@ export function ReviewStep({ m }: { m: JourneyModel }) {
           {flow.phase === "failed" && <ErrorBox error={flow.error} context={{ flow: "deposit" }} />}
           <p className="bj-key">
             <i aria-hidden="true" />
-            <span>Writz cannot recover your Bitcoin key. Keep its recovery phrase.</span>
+            <span>
+              {m.bitcoin.embedded
+                ? "Your test key lives only in this browser. Back it up from your account if you might switch devices."
+                : "Writz cannot recover your Bitcoin key. Keep its recovery phrase."}
+            </span>
           </p>
           <label className="wz-check">
             <input type="checkbox" checked={r.ack} onChange={(e) => r.setAck(e.target.checked)} />
@@ -503,7 +527,7 @@ export function ReviewStep({ m }: { m: JourneyModel }) {
             key={r.slideKey}
             label={`Slide to send ${btc} BTC`}
             armedLabel={`Press Enter again to send ${btc} BTC`}
-            doneLabel="Confirm in Xverse…"
+            doneLabel={m.bitcoin.embedded ? "Sending…" : "Confirm in Xverse…"}
             disabled={!r.ack || !r.lockAddress}
             describedBy="review-summary"
             onConfirm={r.send}
@@ -749,7 +773,9 @@ export function RegisterStep({ m }: { m: JourneyModel }) {
   const blocked = d.otherTx ? "Waiting for your other transaction (in another tab)." : null;
 
   const lines = [
-    "Confirm in Xverse. It signs a free message that proves this Bitcoin key is yours.",
+    m.bitcoin.embedded
+      ? "Your test key signs a free message that proves it is yours."
+      : "Confirm in Xverse. It signs a free message that proves this Bitcoin key is yours.",
     "Preparing your deposit",
     `Confirm in ${wallet}. Fee about 0.01 XLM.`,
     "Recording your deposit on Stellar",
@@ -768,7 +794,9 @@ export function RegisterStep({ m }: { m: JourneyModel }) {
       {v.kind === "ready" && (
         <>
           <Notice tone="positive" label="BTC locked">
-            Your BTC is locked. One signature on Stellar left, after a free message from Xverse. Writz never signs for you.
+            {m.bitcoin.embedded
+              ? "Your BTC is locked. One click registers it on Stellar. Fees are paid for you."
+              : "Your BTC is locked. One signature on Stellar left, after a free message from Xverse. Writz never signs for you."}
           </Notice>
           <Primary onClick={d.register} disabled={Boolean(blocked)} aria-describedby={blocked ? "register-blocked" : undefined}>
             Register on Stellar
