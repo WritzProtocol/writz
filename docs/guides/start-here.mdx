@@ -1,0 +1,47 @@
+---
+title: "Start here"
+description: "What you can do in the Writz testnet app, what you need for each part, and the order to set things up."
+---
+
+These guides walk you through the Writz app at [testnet.writz.xyz](https://testnet.writz.xyz), click by click. Everything runs on test networks: Stellar testnet and Bitcoin signet. The coins are free test coins with no value, so you can try every step without risk.
+
+<Warning>
+Writz is on testnet only. The contracts are not audited yet. Never send real BTC, real USDC or a wallet that holds real funds to the testnet app.
+</Warning>
+
+## What you can do
+
+| You want to | What you need | Guide |
+|---|---|---|
+| Borrow USDC against your Bitcoin | A Stellar wallet and Xverse, test XLM and test BTC | [Borrow USDC against BTC](/guides/borrow) |
+| Pay back a loan and get your BTC back | The same two wallets, plus test USDC for the interest | [Repay and release your BTC](/guides/repay-and-release) |
+| Earn interest by lending USDC | A Stellar wallet and test USDC | [Lend USDC](/guides/lend) |
+
+## Set up in this order
+
+<Steps>
+  <Step title="Get a Stellar account">
+    Either install [Freighter](/guides/set-up-freighter), a browser wallet, or [sign in with Google, GitHub or email](/guides/sign-in-with-email) to get a test account with no wallet to install. Both work for every part of the app.
+  </Step>
+  <Step title="Install Xverse on Bitcoin signet">
+    Only needed to borrow. Follow [Set up Xverse](/guides/set-up-xverse).
+  </Step>
+  <Step title="Get test funds">
+    Test XLM for Stellar fees, test BTC to lock and test USDC to lend or to repay interest. All free: [Get test funds](/guides/get-test-funds).
+  </Step>
+  <Step title="Connect your wallets in the app">
+    See [Connect your wallets](/guides/connect-your-wallets).
+  </Step>
+</Steps>
+
+## Before you start
+
+- **Use a desktop browser.** Freighter and Xverse are browser extensions. Chrome, Brave and Edge work.
+- **Use test wallets.** Create new wallets for testnet, or at least a separate account, and never type a recovery phrase that protects real funds into anything you are testing.
+- **Plan for the Bitcoin wait.** A loan starts with a real Bitcoin signet transaction, and signet blocks arrive about every 10 minutes, sometimes slower. The app shows how many confirmations it is waiting for, and you can close the page and come back.
+
+## About the screenshots
+
+The screenshots come from the app itself. Some show example amounts, addresses and prices, so your numbers will differ. Button names and messages are exactly what the app shows. If something on your screen does not match a guide, see [Troubleshooting](/guides/troubleshooting) or [report it on GitHub](https://github.com/WritzProtocol/writz/issues).
+
+*Last checked against the app on 2026-10-25.*

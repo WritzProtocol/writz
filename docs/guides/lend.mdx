@@ -1,0 +1,64 @@
+---
+title: "Lend USDC"
+description: "Supply test USDC to the Writz Lend pool that Bitcoin borrowers draw from, and withdraw it with interest."
+---
+
+Lenders supply the USDC that Bitcoin borrowers borrow. The interest borrowers pay goes to the lenders, so your supplied balance grows while USDC is borrowed. Nothing else sits in between: no vault and no second protocol.
+
+**You need:** a Stellar account ([Freighter](/guides/set-up-freighter) or a [Google, GitHub or email sign-in](/guides/sign-in-with-email)) and [test USDC](/guides/get-test-funds#test-usdc-on-stellar-testnet). No Bitcoin wallet.
+
+<Note>
+The rate is variable and can be zero. Lenders earn only while borrowers are borrowing, so with little or nothing borrowed you earn little or nothing. Writz never promises a fixed APY.
+</Note>
+
+## Supply
+
+<Steps>
+  <Step title="Open Lend">
+    Go to [testnet.writz.xyz](https://testnet.writz.xyz), select **Lend** in the menu and connect your Stellar wallet. The page shows **You supplied**, **Available in pool** and **You can withdraw now**.
+  </Step>
+  <Step title="Add USDC, once">
+    If your account can't hold USDC yet, the page shows **Add USDC to your Stellar wallet.** Select **Add USDC** and confirm in your wallet. Your wallet sets aside 0.5 XLM for it.
+
+    <Frame caption="Only shown if USDC is not added to your account yet.">
+      <img src="/images/guides/lend-add-usdc.png" alt="Lend page with the Add USDC button" />
+    </Frame>
+  </Step>
+  <Step title="Get test USDC">
+    If **Wallet:** shows **0.00 USDC**, get some from [Circle's faucet](/guides/get-test-funds#test-usdc-on-stellar-testnet). Do not use the **Blend test USDC** link: it is a different token.
+  </Step>
+  <Step title="Supply">
+    On the **Supply** tab, under **Supply USDC**, enter an amount or select **Max**, then select **Supply** and confirm in your wallet.
+
+    <Frame caption="The Supply tab. Example balances.">
+      <img src="/images/guides/lend-supply.png" alt="Lend page on the Supply tab with the USDC amount field, Max and the Supply button" />
+    </Frame>
+  </Step>
+</Steps>
+
+Your supply appears under **You supplied** once the transaction confirms, usually within seconds.
+
+## Withdraw
+
+<Steps>
+  <Step title="Open the Withdraw tab">
+    On the Lend page, select the **Withdraw** tab. It shows **Withdraw USDC** and how much you supplied.
+  </Step>
+  <Step title="Withdraw">
+    Enter an amount, up to **You can withdraw now**, or select **Max**. Select **Withdraw** and confirm in your wallet. The USDC, with the interest it earned, returns to your Stellar wallet.
+  </Step>
+</Steps>
+
+<Frame caption="The Withdraw tab. Example balances.">
+  <img src="/images/guides/lend-withdraw.png" alt="Lend page on the Withdraw tab" />
+</Frame>
+
+## When you can't withdraw everything
+
+You can only withdraw USDC that is not lent out at that moment. If borrowers are using most of the pool, **You can withdraw now** is lower than **You supplied**, and the Withdraw tab says so, for example *You can withdraw 800.00 USDC now. Borrowers are using the rest of the pool.* The rest becomes available as borrowers repay or other lenders supply, and a high share borrowed raises the borrow rate, which encourages exactly that.
+
+## The risk you take
+
+Your USDC funds loans backed by BTC at a 150% minimum collateral ratio, which can be liquidated below 120%. The BTC price comes from one oracle today, and the contracts are not audited yet. On testnet none of this costs real money, which is the point of trying it here first. The details are in [Writz Lend, For USDC Lenders](/products/writz-lend#for-usdc-lenders-earn).
+
+*Last checked against the app on 2026-10-25.*

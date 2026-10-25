@@ -1,14 +1,19 @@
 /**
- * Claim records for the Signet faucet: what the address cooldown, the per-IP
- * allowance and the daily cap are computed from. The relayer uses the sqlite store (`sqlite-store.ts`) so
- * the limits survive a restart; tests use the in-memory one below.
+ * Claim records for the Signet faucet: what the one-claim rules, the per-IP
+ * allowance and the daily cap are computed from. The relayer uses the sqlite
+ * store (`sqlite-store.ts`) so the limits survive a restart; tests use the
+ * in-memory one below.
  */
 
 export interface ClaimRecord {
-  /** Recipient address, lowercase. */
+  /** Recipient Signet address, lowercase. */
   address: string;
-  /** SHA-256 of the client IP, so the address itself is never stored. */
+  /** SHA-256 of the client IP, so the IP itself is never stored. */
   ipHash: string;
+  /** SHA-256 of the Pollar user id the claim was verified for (`userKeyFor`), never the id or profile. */
+  userKey: string;
+  /** The Stellar address of the Pollar wallet that claimed. */
+  stellarAddress: string;
   txid: string;
   amountSat: number;
   /** Unix milliseconds. */
@@ -16,8 +21,12 @@ export interface ClaimRecord {
 }
 
 export interface ClaimStore {
-  /** Time of the latest claim to `address`, or undefined. */
-  lastClaimForAddress(address: string): number | undefined;
+  /** True if `address` ever received coins, including payouts recorded before claims needed a login. */
+  hasClaimForAddress(address: string): boolean;
+  /** True if this Pollar account (by `userKey`) ever claimed. */
+  hasClaimForUser(userKey: string): boolean;
+  /** True if this Stellar address ever claimed. */
+  hasClaimForStellarAddress(stellarAddress: string): boolean;
   /**
    * Times (Unix ms, oldest first) of the claims from `ipHash` at or after
    * `since`: their count is the per-IP allowance used, and the oldest ones
@@ -26,20 +35,23 @@ export interface ClaimStore {
   ipClaimsSince(ipHash: string, since: number): number[];
   /** Number of claims at or after `since` (Unix ms). */
   countSince(since: number): number;
+  /** Throws if the account, the Stellar address or the Signet address already claimed. */
   record(claim: ClaimRecord): void;
 }
 
 export class MemoryClaimStore implements ClaimStore {
   readonly claims: ClaimRecord[] = [];
 
-  private latest(match: (c: ClaimRecord) => boolean): number | undefined {
-    let t: number | undefined;
-    for (const c of this.claims) if (match(c) && (t === undefined || c.createdAt > t)) t = c.createdAt;
-    return t;
+  hasClaimForAddress(address: string): boolean {
+    return this.claims.some((c) => c.address === address);
   }
 
-  lastClaimForAddress(address: string): number | undefined {
-    return this.latest((c) => c.address === address);
+  hasClaimForUser(userKey: string): boolean {
+    return this.claims.some((c) => c.userKey === userKey);
+  }
+
+  hasClaimForStellarAddress(stellarAddress: string): boolean {
+    return this.claims.some((c) => c.stellarAddress === stellarAddress);
   }
 
   ipClaimsSince(ipHash: string, since: number): number[] {
@@ -54,6 +66,13 @@ export class MemoryClaimStore implements ClaimStore {
   }
 
   record(claim: ClaimRecord): void {
+    if (
+      this.hasClaimForUser(claim.userKey) ||
+      this.hasClaimForStellarAddress(claim.stellarAddress) ||
+      this.hasClaimForAddress(claim.address)
+    ) {
+      throw new Error("UNIQUE constraint failed: faucet_claims");
+    }
     this.claims.push(claim);
   }
 }

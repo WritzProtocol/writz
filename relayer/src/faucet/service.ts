@@ -1,14 +1,22 @@
 /**
  * Writz Signet faucet: pays a fixed amount of Signet test BTC from a
- * relayer-held P2WPKH hot wallet, so builders and testnet users do not need
- * a third-party faucet.
+ * relayer-held P2WPKH hot wallet to accounts created through the Writz
+ * testnet app's social login, and to nobody else. It is not a public faucet:
+ * builders use the public Signet faucets (`PUBLIC_SIGNET_FAUCETS`).
+ *
+ * A claim carries the Pollar access token of the user's session, their
+ * Stellar address, their Signet address and public key, and a BIP-137
+ * signature by that key over a relayer-issued, single-use nonce bound to both
+ * addresses. The relayer checks the signature and that the Signet address is
+ * the key's P2WPKH, then asks Pollar whether the token is a live testnet
+ * social login of the Writz app whose wallet is that Stellar address.
  *
  * The coins have no value; the realistic harm is a drained faucet that stops
- * working for the next person. Hence, per claim: a fixed amount, one claim
- * per recipient address per cooldown, a number of claims per client IP per
- * sliding window (sized so a venue or a classroom behind one IP can onboard
- * its people in one session), a global cap per UTC day, and a balance check
- * that fails closed with `faucet_empty`.
+ * working for the next person. Hence: a fixed amount; one claim ever per
+ * Pollar account, per Stellar address and per Signet address; a number of
+ * claims per client IP per sliding window (sized so a venue or a classroom
+ * behind one IP can onboard its people in one session); a global cap per UTC
+ * day; and a balance check that fails closed with `faucet_empty`.
  *
  * Sends are serialized: coin selection, signing and broadcast run one at a
  * time, and the outpoints a broadcast spent are kept out of selection until
@@ -25,9 +33,12 @@ import {
   pubkeyToP2WPKHAddress,
   type P2wpkhUtxo,
   type WritzKeyPair,
+  verifyBitcoinMessage,
 } from "@writz/bitcoin-script";
 import { EsploraError, isUpstreamUnavailable, type AddressUtxo } from "../bitcoin/esplora.js";
 import type { ClaimStore } from "./store.js";
+import type { LoginVerifier } from "./pollar.js";
+import { faucetClaimMessage, NonceBook, type IssuedNonce } from "./nonce.js";
 
 /** Hard ceiling on the per-claim amount, whatever the environment says. */
 export const MAX_FAUCET_AMOUNT_SAT = 50_000;
@@ -58,8 +69,6 @@ export interface FaucetEsplora {
 export interface FaucetSettings {
   amountSat: number;
   dailyCap: number;
-  /** One claim per recipient address within this time. */
-  cooldownMs: number;
   /** Claims allowed per client IP within any `ipWindowMs` (sliding window). */
   ipClaimsPerWindow: number;
   ipWindowMs: number;
@@ -75,14 +84,31 @@ export interface FaucetOptions {
   esplora: FaucetEsplora;
   store: ClaimStore;
   settings: FaucetSettings;
+  /** Checks the Pollar login a claim presents (`pollar.ts`). */
+  verifier: LoginVerifier;
+  nonces?: NonceBook;
   now?: () => number;
   log?: (line: string) => void;
 }
 
 export type FaucetErrorCode =
+  | "invalid_request"
   | "invalid_address"
   | "faucet_address"
-  | "address_cooldown"
+  | "nonce_invalid"
+  | "address_key_mismatch"
+  | "bad_signature"
+  | "login_expired"
+  | "login_invalid"
+  | "login_wrong_app"
+  | "login_wrong_network"
+  | "login_not_social"
+  | "login_address_mismatch"
+  | "login_provider_not_allowed"
+  | "login_check_unavailable"
+  | "account_already_claimed"
+  | "stellar_address_already_claimed"
+  | "signet_address_already_claimed"
   | "ip_cooldown"
   | "daily_cap_reached"
   | "faucet_empty"
@@ -90,9 +116,23 @@ export type FaucetErrorCode =
   | "broadcast_rejected";
 
 const HTTP_STATUS: Record<FaucetErrorCode, number> = {
+  invalid_request: 400,
   invalid_address: 400,
   faucet_address: 400,
-  address_cooldown: 429,
+  nonce_invalid: 400,
+  address_key_mismatch: 400,
+  bad_signature: 400,
+  login_expired: 401,
+  login_invalid: 401,
+  login_wrong_app: 403,
+  login_wrong_network: 403,
+  login_not_social: 403,
+  login_address_mismatch: 403,
+  login_provider_not_allowed: 403,
+  login_check_unavailable: 503,
+  account_already_claimed: 409,
+  stellar_address_already_claimed: 409,
+  signet_address_already_claimed: 409,
   ip_cooldown: 429,
   daily_cap_reached: 429,
   faucet_empty: 503,
@@ -113,6 +153,22 @@ export class FaucetError extends Error {
   }
 }
 
+/** The body of POST /faucet/signet. */
+export interface ClaimRequest {
+  /** The SDK access token of the user's Pollar session. */
+  pollarAccessToken: string;
+  /** The G-address of the user's Pollar wallet. */
+  stellarAddress: string;
+  /** The P2WPKH Signet address of `signetPubkey` (tb1q...). */
+  signetAddress: string;
+  /** 33-byte compressed public key, hex. */
+  signetPubkey: string;
+  /** From GET /faucet/signet/nonce. */
+  nonce: string;
+  /** Base64 BIP-137 signature by `signetPubkey` over `faucetClaimMessage(nonce, stellarAddress, signetAddress)`. */
+  keySig: string;
+}
+
 export interface ClaimResult {
   txid: string;
   address: string;
@@ -123,21 +179,23 @@ export interface ClaimResult {
 export interface FaucetStatus {
   enabled: true;
   network: "signet";
+  /** Who can claim: accounts created through the Writz testnet app's social login. */
+  access: "testnet_app_social_login";
+  message: string;
+  /** The faucet's own address, public on chain (donations welcome). */
   address: string;
   amountSats: number;
   dailyCap: number;
-  claimsToday: number;
   remainingToday: number;
   resetsAt: string;
-  cooldownHours: number;
-  /** Claims allowed per client IP within `ipWindowHours`. */
-  ipClaimsPerWindow: number;
-  ipWindowHours: number;
-  /** Spendable balance (confirmed and unconfirmed), null if Esplora is unavailable. */
-  balanceSats: number | null;
-  /** Claims the balance still covers at the current amount, null if unknown. */
-  claimsLeftAtBalance: number | null;
+  /** False when the balance does not cover one more claim, null if Esplora is unavailable. */
+  funded: boolean | null;
+  publicFaucets: string[];
 }
+
+export const SOCIAL_LOGIN_ONLY_MESSAGE =
+  "The Writz Signet faucet only funds accounts created through the Writz testnet app's social login, " +
+  "once per account. Builders: use a public Signet faucet.";
 
 const BECH32_CHARS = /^tb1[02-9ac-hj-np-z]{8,87}$/;
 
@@ -183,6 +241,43 @@ function startOfUtcDay(t: number): number {
 
 const outpoint = (u: { txid: string; vout: number }) => `${u.txid}:${u.vout}`;
 
+/** Who a claim pays: the Signet address, the Stellar address, and the hashed Pollar account once verified. */
+interface Claimant {
+  address: string;
+  stellarAddress: string;
+  userKey?: string;
+}
+
+const STELLAR_ACCOUNT = /^G[A-Z2-7]{55}$/;
+const NONCE_FORMAT = /^[0-9a-f]{32}$/;
+const PUBKEY_HEX = /^0[23][0-9a-fA-F]{64}$/;
+const BASE64 = /^[A-Za-z0-9+/]{86}[A-Za-z0-9+/=]{2}$/;
+/** Pollar access tokens are JWTs well under this; anything longer is not one. */
+const MAX_TOKEN_LENGTH = 8_192;
+
+/** Validates the shape of a POST /faucet/signet body; the checks that need keys or Pollar come after. */
+export function parseClaimRequest(body: unknown): ClaimRequest {
+  const b = (body ?? {}) as Record<string, unknown>;
+  const bad = (message: string) => new FaucetError("invalid_request", message);
+  const str = (k: keyof ClaimRequest): string => {
+    const v = b[k];
+    if (typeof v !== "string" || v.trim() === "") throw bad(`${k} is required`);
+    return v.trim();
+  };
+  const pollarAccessToken = str("pollarAccessToken");
+  if (pollarAccessToken.length > MAX_TOKEN_LENGTH) throw bad("pollarAccessToken is too long");
+  const stellarAddress = str("stellarAddress");
+  if (!STELLAR_ACCOUNT.test(stellarAddress)) throw bad("stellarAddress must be a Stellar account address (G...)");
+  const signetAddress = str("signetAddress");
+  const signetPubkey = str("signetPubkey");
+  if (!PUBKEY_HEX.test(signetPubkey)) throw bad("signetPubkey must be a 33-byte compressed public key in hex");
+  const nonce = str("nonce");
+  if (!NONCE_FORMAT.test(nonce)) throw bad("nonce must come from GET /faucet/signet/nonce");
+  const keySig = str("keySig");
+  if (!BASE64.test(keySig)) throw bad("keySig must be a base64 BIP-137 signature (65 bytes)");
+  return { pollarAccessToken, stellarAddress, signetAddress, signetPubkey: signetPubkey.toLowerCase(), nonce, keySig };
+}
+
 export class SignetFaucet {
   readonly address: string;
   private readonly now: () => number;
@@ -193,6 +288,7 @@ export class SignetFaucet {
   /** Change outputs of our own broadcasts, usable before Esplora lists them. */
   private pendingChange: (P2wpkhUtxo & { expiresAt: number })[] = [];
   private balanceCache: { at: number; sats: number } | undefined;
+  private readonly nonces: NonceBook;
 
   constructor(private readonly opts: FaucetOptions) {
     const { amountSat } = opts.settings;
@@ -211,6 +307,7 @@ export class SignetFaucet {
     this.address = pubkeyToP2WPKHAddress(opts.wallet.publicKey, btc.networks.testnet);
     this.now = opts.now ?? Date.now;
     this.log = opts.log ?? ((line) => console.log(line));
+    this.nonces = opts.nonces ?? new NonceBook(this.now);
   }
 
   private withLock<T>(task: () => Promise<T>): Promise<T> {
@@ -255,20 +352,23 @@ export class SignetFaucet {
     return Math.min(maxFeeRate, Math.max(minFeeRate, estimate));
   }
 
-  private checkLimits(address: string, ipHash: string): void {
+  /** Refuses an account, a Stellar address or a Signet address that already claimed, then the IP and daily limits. */
+  private checkLimits(claimant: Claimant, ipHash: string): void {
     const t = this.now();
-    const { cooldownMs, ipClaimsPerWindow, ipWindowMs, dailyCap } = this.opts.settings;
-    const lastAddr = this.opts.store.lastClaimForAddress(address);
-    if (lastAddr !== undefined && t - lastAddr < cooldownMs) {
-      throw new FaucetError(
-        "address_cooldown",
-        "this address already received coins from the faucet recently",
-        Math.ceil((lastAddr + cooldownMs - t) / 1000),
-      );
+    const { ipClaimsPerWindow, ipWindowMs, dailyCap } = this.opts.settings;
+    const { store } = this.opts;
+    if (claimant.userKey !== undefined && store.hasClaimForUser(claimant.userKey)) {
+      throw new FaucetError("account_already_claimed", "this account has already received its Signet coins");
+    }
+    if (store.hasClaimForStellarAddress(claimant.stellarAddress)) {
+      throw new FaucetError("stellar_address_already_claimed", "this Stellar address has already received Signet coins");
+    }
+    if (store.hasClaimForAddress(claimant.address)) {
+      throw new FaucetError("signet_address_already_claimed", "this Signet address has already received coins from the faucet");
     }
     // Claims strictly inside the window (t - ipWindowMs, t]: one made exactly
-    // ipWindowMs ago has left it, the same boundary as the address cooldown.
-    const ipClaims = this.opts.store.ipClaimsSince(ipHash, t - ipWindowMs + 1);
+    // ipWindowMs ago has left it.
+    const ipClaims = store.ipClaimsSince(ipHash, t - ipWindowMs + 1);
     if (ipClaims.length >= ipClaimsPerWindow) {
       // A slot frees when enough of the oldest claims leave the window to bring
       // the count below the allowance (normally just the oldest one).
@@ -280,7 +380,7 @@ export class SignetFaucet {
       );
     }
     const dayStart = startOfUtcDay(t);
-    if (this.opts.store.countSince(dayStart) >= dailyCap) {
+    if (store.countSince(dayStart) >= dailyCap) {
       throw new FaucetError(
         "daily_cap_reached",
         "the faucet has paid its daily maximum; it resets at 00:00 UTC",
@@ -289,21 +389,58 @@ export class SignetFaucet {
     }
   }
 
-  /** Pays the configured amount to `rawAddress`. `ip` is the caller's address as Express resolved it. */
-  async claim(rawAddress: unknown, ip: string): Promise<ClaimResult> {
-    const address = normalizeSignetAddress(rawAddress);
+  /** A single-use challenge for the next claim (GET /faucet/signet/nonce). */
+  issueNonce(): IssuedNonce {
+    return this.nonces.issue();
+  }
+
+  /**
+   * Pays the configured amount to the Signet address of a social-login
+   * account, once. `body` is the untrusted request body (`ClaimRequest`);
+   * `ip` is the caller's address as Express resolved it.
+   *
+   * Order: shape, nonce (spent here whatever happens next), key control,
+   * then the cheap one-claim and limit checks, and only then the Pollar
+   * call, so a refused or replayed request costs no Server API request.
+   */
+  async claim(body: unknown, ip: string): Promise<ClaimResult> {
+    const req = parseClaimRequest(body);
+    if (!this.nonces.consume(req.nonce)) {
+      throw new FaucetError("nonce_invalid", "the claim challenge is unknown, expired or already used; request a new one");
+    }
+
+    const address = normalizeSignetAddress(req.signetAddress);
     if (address === this.address) throw new FaucetError("faucet_address", "that is the faucet's own address");
+    const pubkey = Buffer.from(req.signetPubkey, "hex");
+    let derived: string;
+    try {
+      derived = pubkeyToP2WPKHAddress(pubkey, btc.networks.testnet);
+    } catch {
+      throw new FaucetError("address_key_mismatch", "signetPubkey is not a valid compressed public key");
+    }
+    if (derived !== address) {
+      throw new FaucetError("address_key_mismatch", "signetAddress is not the P2WPKH address of signetPubkey");
+    }
+    if (!verifyBitcoinMessage(faucetClaimMessage(req.nonce, req.stellarAddress, address), req.keySig, pubkey)) {
+      throw new FaucetError("bad_signature", "keySig is not a signature by signetPubkey over this claim");
+    }
+
     const ipHash = hashIp(ip);
-    // Checked before queueing so a refused caller never waits behind a send...
-    this.checkLimits(address, ipHash);
+    // Checked before the Pollar call and before queueing, so a refused caller
+    // costs nothing and never waits behind a send...
+    this.checkLimits({ address, stellarAddress: req.stellarAddress }, ipHash);
+    const login = await this.opts.verifier.verify(req.pollarAccessToken, req.stellarAddress);
+    const claimant: Claimant = { address, stellarAddress: login.stellarAddress, userKey: login.userKey };
+    this.checkLimits(claimant, ipHash);
     return this.withLock(async () => {
       // ...and again inside the lock, where two concurrent claims are ordered.
-      this.checkLimits(address, ipHash);
-      return this.send(address, ipHash);
+      this.checkLimits(claimant, ipHash);
+      return this.send(claimant as Required<Claimant>, ipHash);
     });
   }
 
-  private async send(address: string, ipHash: string): Promise<ClaimResult> {
+  private async send(claimant: Required<Claimant>, ipHash: string): Promise<ClaimResult> {
+    const { address } = claimant;
     const { amountSat } = this.opts.settings;
     let utxos: P2wpkhUtxo[];
     let feeRate: number;
@@ -358,7 +495,15 @@ export class SignetFaucet {
 
     const createdAt = this.now();
     try {
-      this.opts.store.record({ address, ipHash, txid, amountSat, createdAt });
+      this.opts.store.record({
+        address,
+        ipHash,
+        userKey: claimant.userKey,
+        stellarAddress: claimant.stellarAddress,
+        txid,
+        amountSat,
+        createdAt,
+      });
     } catch (e) {
       // The coins are sent; failing the response now would only invite a retry.
       this.log(JSON.stringify({ evt: "faucet_record_failed", txid, message: (e as Error).message }));
@@ -389,7 +534,7 @@ export class SignetFaucet {
 
   async status(): Promise<FaucetStatus> {
     const t = this.now();
-    const { amountSat, dailyCap, cooldownMs, ipClaimsPerWindow, ipWindowMs, minFeeRate } = this.opts.settings;
+    const { amountSat, dailyCap, minFeeRate } = this.opts.settings;
     const dayStart = startOfUtcDay(t);
     const claimsToday = this.opts.store.countSince(dayStart);
 
@@ -410,17 +555,15 @@ export class SignetFaucet {
     return {
       enabled: true,
       network: "signet",
+      access: "testnet_app_social_login",
+      message: SOCIAL_LOGIN_ONLY_MESSAGE,
       address: this.address,
       amountSats: amountSat,
       dailyCap,
-      claimsToday,
       remainingToday: Math.max(0, dailyCap - claimsToday),
       resetsAt: new Date(dayStart + 86_400_000).toISOString(),
-      cooldownHours: cooldownMs / 3_600_000,
-      ipClaimsPerWindow,
-      ipWindowHours: ipWindowMs / 3_600_000,
-      balanceSats,
-      claimsLeftAtBalance: balanceSats === null ? null : Math.floor(balanceSats / perClaim),
+      funded: balanceSats === null ? null : balanceSats >= perClaim,
+      publicFaucets: PUBLIC_SIGNET_FAUCETS,
     };
   }
 }

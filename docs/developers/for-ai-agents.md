@@ -11,9 +11,9 @@ Machine-readable entry points: [docs.writz.xyz/llms.txt](https://docs.writz.xyz/
 
 ```text
 Integrate Writz on Stellar testnet. Read https://docs.writz.xyz/developers/for-ai-agents.md
-first and use only the contract IDs, signatures and endpoints it lists. The packages
-@writz/sdk (npm) and writz-spv-client (crates.io) are release pending: do not install them
-until they are published. The Bitcoin network is signet. Simulate reads, never sign them.
+first and use only the contract IDs, signatures and endpoints it lists. Use @writz/sdk
+from npm for TypeScript. writz-spv-client (crates.io) is release pending: do not install it
+until it is published. The Bitcoin network is signet. Simulate reads, never sign them.
 ```
 
 ---
@@ -35,21 +35,21 @@ SOROBAN_SDK            soroban-sdk = "26"
 
 Source of truth for IDs: [`contracts/deployments/testnet.md`](https://github.com/WritzProtocol/writz/blob/main/contracts/deployments/testnet.md), machine-readable in [`contracts/deployments/testnet.json`](https://github.com/WritzProtocol/writz/blob/main/contracts/deployments/testnet.json). The contracts are immutable; a new version gets a new ID there.
 
-## Packages (release pending)
+## Packages
 
 ```text
-NPM_PACKAGE     @writz/sdk         source packages/sdk                         NOT YET ON NPM
+NPM_PACKAGE     @writz/sdk         source packages/sdk                         PUBLISHED 0.1.0, npm install @writz/sdk
 CRATE           writz-spv-client   source contracts/contracts/writz-spv-client NOT YET ON CRATES.IO
 ```
 
-Until a package is on its registry, `npm install @writz/sdk` and `cargo add writz-spv-client` fail: generate code from the snippets on this page instead. Once published:
+`npm install @writz/sdk` works. Until the crate is on crates.io, `cargo add writz-spv-client` fails: generate Rust from the snippets on this page instead. The surface:
 
 - `@writz/sdk`: `createWritzClient()` (testnet preset), `writz.verifyBitcoinTx(txid)`, `writz.relayer.getSpvProof(txid)` (throws `RelayerError` with `code`, `status`, `retryAfterSeconds`; retries 409 `light_client_behind`, 429 and 503 after `Retry-After`), `writz.spv.verifyTransaction(sorobanArgs)` (throws `ContractError` with `code`, `errorName`), `writz.lend.getProtocolState()`, `writz.lend.getSupplyRateBp()`, `writz.lend.getSupplyBalance(address)`, `writz.lend.buildSupplyUsdc(address, stroops)` and `writz.lend.buildWithdrawSupply(address, stroops)` (unsigned XDR, the SDK never signs).
 - `writz-spv-client`: `BitcoinSpvClient`, `SpvVerificationResult`, `SPVError`, `find_output_value(&raw_tx, &script_pubkey) -> Option<u64>`, `txid(&env, &raw_tx)`.
 
 ## Does not exist (do not generate code for it)
 
-- No published npm package or crates.io crate yet: `@writz/sdk` and `writz-spv-client` are release pending (above). There is no `writz-sdk` and no other `@writz/...` package. Use `@stellar/stellar-sdk`, `stellar contract bindings typescript`, or the git dependency below.
+- No crates.io crate yet: `writz-spv-client` is release pending (above); use the git dependency below. On npm, `@writz/sdk` is the only Writz package: there is no `writz-sdk` and no other `@writz/...` package.
 - `verify_transaction` has **no** `headers` argument and its result has **no** `outputs` field.
 - No Bitcoin mainnet, testnet3 or testnet4 verification. Signet only.
 - No Writz contract on Stellar mainnet.
@@ -111,13 +111,20 @@ Indexes are scaled by 10^18. Lender yield is the interest Bitcoin borrowers pay:
 GET  /                                  service index (JSON)
 GET  /health                            status
 GET  /spv-proof/:txid?confirmations=N   proof for a confirmed signet tx; txid in DISPLAY order; N in 1..20, default 6
-GET  /faucet/signet                     faucet status: enabled, amountSats, remainingToday, ipClaimsPerWindow, ipWindowHours, address
-POST /faucet/signet  {"address":"tb1..."}   pays signet test BTC to a tb1q/tb1p address; returns { txid, amountSats, feeSats, explorerUrl }
+GET  /deposit-status/:txid              writz-lend deposit progress: stage (unseen|mempool|confirming|ready|verified), confirmations, required, stellarTxHash
+     ?stellarTx=<hash>                  the app's deposit submission: adds stages submitted|failed and `submission` {status, reason}; 400 stellar_tx_mismatch if it is not this deposit
+GET  /timeline/:btcTxid                 full loan cycle: { btcTxid, positionId, owner, status, complete, gaps[], events[] }, each event { kind, chain, hash, at, detail?, url }
+POST /cctp/relay  {"burnHash":"<64 hex>"}   mints on Base Sepolia a USDC burn sent from Stellar with CCTP V2; returns { kind, ... }
+GET  /cctp/relay/:burnHash              transfer status: kind (sent|confirming|confirmed|arrived|failed), mintHash, explorerUrl, reason, retrying, nextRetryAt
 ```
 
 `/spv-proof` 200 body: `{ txid, rawTxNoWitness, blockHash, txIndex, merkleProof[], headers[], blockHeight, confirmations, sorobanArgs: { block_hash, merkle_proof[], tx_index, raw_tx, min_confirmations } }`. Hex strings. `sorobanArgs` is already in internal byte order and maps one to one onto `verify_transaction`. Errors: 400 `invalid_txid` or `invalid_confirmations`, 404 `unconfirmed`, 404 `tx_not_found` (txid not on signet), 409 `insufficient_confirmations` (`requested`, `available`), 409 `light_client_behind` (block not yet in `bitcoin-spv`; calling the contract now fails with #22 or #2), 429 `rate_limited` (60 per minute per IP), 502 `upstream_error`, 503 `upstream_unavailable`. On 409, 429 and 503, wait `retryAfterSeconds` (body) or `Retry-After` (header) before retrying; never retry in a tight loop. CORS is open.
 
-`/faucet/signet` is the way to get signet coins without a captcha: a fixed 20,000 sats per claim (one testnet deposit at the testnet minimum, plus fees), one claim per address every 24 hours, 20 claims per IP per hour (sliding window), a daily cap of 300 claims across all callers, and 30 attempts per IP per 10 minutes. Only `tb1q...` and `tb1p...` addresses; `bc1` is refused. Errors: 400 `invalid_address`, 429 `address_cooldown`, `ip_cooldown`, `daily_cap_reached` or `rate_limited` (wait `retryAfterSeconds`; do not retry with another address or IP to get around it), 502 `broadcast_rejected`, 503 `faucet_disabled`, `faucet_empty` or `upstream_unavailable` (body lists `publicFaucets`). The payout is unconfirmed when the call returns; wait for confirmations before calling `/spv-proof`.
+Signet coins for an integration come from a public Signet faucet (for example [signetfaucet.com](https://signetfaucet.com) or [bitcoinsignetfaucet.com](https://bitcoinsignetfaucet.com)); claim them by hand and never automate around a faucet's captcha. The relayer's `/faucet/signet` route is not for agents or builders: it only funds accounts created through the Writz testnet app's social login, needs that login's session token, and refuses every other request.
+
+`/timeline` lists one event per transaction of a writz-lend position, in chain order: `btc_lock` and `released` on `bitcoin`, `verified`, `borrowed`, `received` and `repaid` on `stellar`, and a `received` mint on `base-sepolia`. `at` is Unix ms or null; `url` is the mempool.space, stellar.expert or Basescan page. A `received` event (a swap to XLM or a CCTP burn) is linked to the loan by a rule, not by the chain: it belongs to the owner's most recent borrow before it, with no borrow or repay by the owner in between. `complete: false` with `gaps` means a source could not be read in full; the events listed are still real. Errors: 400 `invalid_txid`, 404 `position_not_found` (use `/deposit-status` before the deposit is verified), 429 `rate_limited` (60 per minute per IP), 503 `stellar_unavailable` or `lending_not_configured`.
+
+`/cctp/relay` completes a Stellar to Base Sepolia CCTP V2 transfer so the recipient needs no wallet or gas on Base Sepolia: call `POST` once with the Stellar hash of the `deposit_for_burn`, then poll `GET /cctp/relay/:burnHash` every few seconds until `kind` is `arrived` (`mintHash` is the Base Sepolia transaction, `null` only while it is still being looked up) or `failed` (`reason`). Transient failures (an RPC outage, an empty gas account, the daily cap, Circle slow to confirm) are retried by the relay itself: the status then stays `confirming` or `confirmed` with `retrying: true`, `reason` and `nextRetryAt`; `failed` is final (a refused or invalid message, or 24 hours of retrying). Asking again never mints twice. Only burns from Stellar (domain 27) to Base Sepolia (domain 6) through Circle's TokenMessengerV2, with no destination caller and no hook, are relayed. Errors: 400 `invalid_burn_hash`, 404 `not_found` (on GET, before any POST), 429 `rate_limited` (30 per IP per 10 minutes), 503 `cctp_relay_disabled` or `relay_busy`.
 
 The other routes the index lists (`/merkle-path`, `/notes`, `/insert-commitment`, `/update-leaf`, `/metrics/*`) serve the Writz app and are not an integration surface. Yield on USDC is the `writz-lend` lender side, called on the contract directly (above), not through the relayer.
 

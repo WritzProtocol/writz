@@ -32,10 +32,10 @@ Ideas that fit in a weekend: a Soroban contract that releases something (an NFT,
 
 | Package | Registry | For | Status |
 |---|---|---|---|
-| [`@writz/sdk`](https://github.com/WritzProtocol/writz/tree/main/packages/sdk) | npm | TypeScript in the browser, Node or Bun: testnet preset, relayer client with typed errors and `Retry-After`, `bitcoin-spv` and `writz-lend` clients | Release pending: not on npm yet |
+| [`@writz/sdk`](https://github.com/WritzProtocol/writz/tree/main/packages/sdk) | npm | TypeScript in the browser, Node or Bun: testnet preset, relayer client with typed errors and `Retry-After`, `bitcoin-spv` and `writz-lend` clients | Published: [`npm install @writz/sdk`](https://www.npmjs.com/package/@writz/sdk) |
 | [`writz-spv-client`](https://github.com/WritzProtocol/writz/tree/main/contracts/contracts/writz-spv-client) | crates.io | Soroban contracts: `BitcoinSpvClient`, the result and error types, the on-chain output parser `find_output_value` | Release pending: not on crates.io yet |
 
-Until a package is published, `npm install @writz/sdk` and `cargo add writz-spv-client` fail. Use the snippets on this page, which need only `@stellar/stellar-sdk` or `soroban-sdk`, or depend on the source in this repository. The package code and its tests are in the repository either way.
+`npm install @writz/sdk` works today. Until `writz-spv-client` is on crates.io, `cargo add writz-spv-client` fails: use the snippets on this page, which need only `soroban-sdk`, or depend on the source in this repository. The package code and its tests are in the repository either way.
 
 ---
 
@@ -125,7 +125,7 @@ Runnable example: [`examples/verify-bitcoin-tx`](https://github.com/WritzProtoco
 cd examples/verify-bitcoin-tx && bun install && bun run start
 ```
 
-With `@writz/sdk` (release pending, see [Packages](#packages)) the whole flow is three lines, and relayer errors arrive typed, with the `Retry-After` wait already honoured:
+With `@writz/sdk` (`npm install @writz/sdk`) the whole flow is three lines, and relayer errors arrive typed, with the `Retry-After` wait already honoured:
 
 ```ts
 import { createWritzClient } from "@writz/sdk";
@@ -258,7 +258,7 @@ stellar contract invoke --id $LEND --network testnet --source-account me -- with
 
 The supply rate is variable and is zero while nothing is borrowed; with very little borrowed it still reads `0`, because it is counted in whole basis points (`500` is 5% a year). Read it live and label it as variable. Never show a fixed APY.
 
-With `@writz/sdk` (release pending, see [Packages](#packages)) these are `lend.getSupplyRateBp`, `lend.getSupplyBalance`, `lend.buildSupplyUsdc` and `lend.buildWithdrawSupply`; the builders return unsigned transactions for the wallet and never sign. A browser flow with `@stellar/stellar-sdk` and product ideas built on it are in [What to build on Writz](/developers/request-for-startups#no-soroban-needed-build-on-writz-yield).
+With `@writz/sdk` these are `lend.getSupplyRateBp`, `lend.getSupplyBalance`, `lend.buildSupplyUsdc` and `lend.buildWithdrawSupply`; the builders return unsigned transactions for the wallet and never sign. A browser flow with `@stellar/stellar-sdk` and product ideas built on it are in [What to build on Writz](/developers/request-for-startups#no-soroban-needed-build-on-writz-yield).
 
 ---
 
@@ -311,15 +311,7 @@ Other frequent mistakes:
 
 - **Stellar testnet XLM:** `stellar keys generate me --network testnet --fund`, or Friendbot in [Stellar Lab](https://lab.stellar.org) or in the Freighter wallet on testnet.
 - **Test USDC:** add a trustline to `USDC:GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5`, then swap testnet XLM for it in Freighter, or use [faucet.circle.com](https://faucet.circle.com) (Stellar Testnet). This is the USDC the Writz pool uses.
-- **Bitcoin signet coins:** a signet wallet (Xverse and Sparrow support signet) and its `tb1q...` or `tb1p...` address, then the Writz faucet, no captcha:
-
-  ```bash
-  curl -X POST https://api.testnet.writz.xyz/faucet/signet \
-    -H 'Content-Type: application/json' -d '{"address":"tb1q..."}'
-  # {"txid":"...","address":"tb1q...","amountSats":20000,"feeSats":282,"explorerUrl":"https://mempool.space/signet/tx/..."}
-  ```
-
-  It pays a fixed 20,000 sats, enough for one deposit at the testnet minimum plus fees. One claim per address every 24 hours, up to 20 claims per IP per hour (so a workshop or a classroom on one network can onboard everyone in one session), and a daily cap of 300 claims across everyone. `GET /faucet/signet` shows whether it is on, the amount, the per-IP allowance and the claims left today. If it answers `faucet_empty` or `faucet_disabled`, use a public faucet such as [signetfaucet.com](https://signetfaucet.com) (captcha and per-address limit). The coins are unconfirmed when the call returns; wait for a block (about 10 minutes) before building a proof.
+- **Bitcoin signet coins:** a signet wallet (Xverse and Sparrow support signet) and its `tb1q...` or `tb1p...` address, then a public Signet faucet such as [signetfaucet.com](https://signetfaucet.com), [bitcoinsignetfaucet.com](https://bitcoinsignetfaucet.com) or [signet.dcorral.com](https://signet.dcorral.com). Their amounts, captchas and limits are set by their operators. The relayer's `/faucet/signet` route is not a builder faucet: it only funds accounts created through the Writz testnet app's social login, once each, and refuses any other request. Coins from a faucet are unconfirmed at first; wait for a block (about 10 minutes) before building a proof.
 - **Explorers:** [mempool.space/signet](https://mempool.space/signet) for Bitcoin, [stellar.expert/explorer/testnet](https://stellar.expert/explorer/testnet) for Stellar.
 
 ## Limits to know

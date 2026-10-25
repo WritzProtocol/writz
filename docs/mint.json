@@ -78,7 +78,8 @@
         "products/writz-lend",
         "products/dark-swap",
         "products/btc-savings",
-        "products/zk-proof-of-reserve"
+        "products/zk-proof-of-reserve",
+        "products/earn"
       ]
     },
     {

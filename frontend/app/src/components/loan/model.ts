@@ -5,6 +5,8 @@ import type { FlowState } from "@/lib/flow/engine";
 import type { ActivityItem, LoanTab, Read } from "@/lib/loan/model";
 import type { Position } from "@/lib/position/types";
 import type { DerivedStatus } from "@/lib/status/types";
+import type { ReceiveChoiceDraft } from "@/lib/receive/options";
+import type { TimelineApi } from "@/lib/receive/timeline";
 
 export type LoanAccess = "disconnected" | "finding" | "ready";
 
@@ -46,6 +48,12 @@ export interface LoanModel {
   activity: ActivityItem[];
   requestedPanel: LoanTab | null;
   now: number;
+  /** The Stellar address that signs; null while disconnected. */
+  owner: string | null;
+  /** The loan's full-cycle timeline from the relayer; null builds it from this device. */
+  timeline: TimelineApi | null;
+  /** Harness only: the "Receive as" choice the borrow panel opens with. */
+  receiveDraft?: ReceiveChoiceDraft;
   borrow(stroops: bigint): void;
   repay(stroops: bigint): void;
   release(): void;

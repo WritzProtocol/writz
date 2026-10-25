@@ -186,6 +186,9 @@ writz/
 ├── relayer/                 # SPV Relayer service (TypeScript · Express · Bun)
 │   └── src/
 │       ├── routes/proof.ts  # GET /spv-proof/:txid
+│       ├── routes/deposit-status.ts  # GET /deposit-status/:txid
+│       ├── routes/timeline.ts  # GET /timeline/:btcTxid
+│       ├── routes/cctp.ts  # POST /cctp/relay, GET /cctp/relay/:burnHash
 │       └── bitcoin/         # Esplora client · header fetching · proof assembly
 │
 ├── bitcoin-script/          # Bitcoin locking script toolkit (TypeScript)

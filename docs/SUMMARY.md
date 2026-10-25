@@ -16,12 +16,26 @@
 * [How Writz Works](/introduction/how-writz-works)
 * [Why Stellar, Why Now](/introduction/why-stellar-why-now)
 
+## Guides
+
+* [Start here](/guides/start-here)
+* [Sign in with Google, GitHub or email](/guides/sign-in-with-email)
+* [Set up Freighter](/guides/set-up-freighter)
+* [Set up Xverse on Bitcoin signet](/guides/set-up-xverse)
+* [Get test funds](/guides/get-test-funds)
+* [Connect your wallets](/guides/connect-your-wallets)
+* [Borrow USDC against BTC](/guides/borrow)
+* [Repay and release your BTC](/guides/repay-and-release)
+* [Lend USDC](/guides/lend)
+* [Troubleshooting](/guides/troubleshooting)
+
 ## Products
 
 * [Writz Lend](/products/writz-lend)
 * [Dark Swap](/products/dark-swap)
 * [BTC Savings](/products/btc-savings)
 * [ZK Proof of Reserve](/products/zk-proof-of-reserve)
+* [USDC Vault](/products/earn)
 
 ## How It Works
 

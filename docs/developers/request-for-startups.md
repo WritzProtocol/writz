@@ -28,6 +28,7 @@ Not a Soroban developer? Start with [No Soroban needed: build on Writz yield](#n
 
 Things to know before you start:
 
+- **Try the app first.** The [Guides](/guides/start-here) walk through wallet setup, test funds and a full loan in the testnet app, click by click, so you see the flow you are building on.
 - **The Bitcoin side is Signet.** On testnet, `bitcoin-spv` follows Bitcoin Signet, and the Writz relayer keeps it in sync with the Signet tip. Get Signet coins from any public Signet faucet. A transaction that is not on Signet will not verify.
 - **Confirmations take time.** Six Signet confirmations take about an hour, sometimes longer. Make your Bitcoin transactions on day one, not an hour before the deadline. For a demo you can ask for fewer confirmations; say so in your pitch.
 - **`verify_transaction` does not remember.** It proves a transaction is in the chain; it does not mark it as used. If your contract pays out against a Bitcoin payment, store the `txid` and refuse it the second time. It also does not read outputs: parse `raw_tx` to check the amount and the recipient (use `spv-types` from Rust).
@@ -112,7 +113,7 @@ export const takeOut = (address: string, usdc: number) => send(address, "withdra
 
 `prepareTransaction` simulates first, so a call that would fail throws before the wallet opens: `Error(Contract, #13)` on `withdraw_supply` means more than the balance, `#11` more than the free liquidity, `#17` that the pool is paused. An account without a trustline to the test USDC fails inside the token contract on `supply_usdc`. To withdraw everything, pass the exact balance from `get_supply_balance`. Prepare a fresh transaction if the user waits long before signing: a built transaction carries the account's sequence number and goes stale. `stellar contract bindings typescript` generates a typed client instead of these helpers.
 
-With `@writz/sdk` (release pending: not on npm yet, see [Build on Writz](/developers/integrate#packages)) the same calls are `lend.getSupplyRateBp()`, `lend.getSupplyBalance(address)`, `lend.buildSupplyUsdc(address, stroops)` and `lend.buildWithdrawSupply(address, stroops)`, which return the unsigned transaction for the wallet.
+With `@writz/sdk` (`npm install @writz/sdk`, see [Build on Writz](/developers/integrate#packages)) the same calls are `lend.getSupplyRateBp()`, `lend.getSupplyBalance(address)`, `lend.buildSupplyUsdc(address, stroops)` and `lend.buildWithdrawSupply(address, stroops)`, which return the unsigned transaction for the wallet.
 
 Checked on 2026-10-25 against Stellar testnet and the live `writz-lend` contract, with the TypeScript above: `get_supply_rate_bp` returned `0` and `get_supply_balance` the supplier's 1,000 USDC; `supply_usdc` and `withdraw_supply` of 10 USDC were prepared by simulation for an account that holds the test USDC, a `withdraw_supply` above its balance failed with `#13`, and `supply_usdc` from an account without a trustline failed inside the token contract. Nothing was submitted, so these checks left no deposits behind.
 

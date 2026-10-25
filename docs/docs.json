@@ -21,7 +21,6 @@
   "favicon": "/brand/writz-icon.svg",
   "contextual": {
     "options": [
-      "assistant",
       "copy",
       "view",
       "claude",
@@ -60,7 +59,8 @@
               "products/writz-lend",
               "products/dark-swap",
               "products/btc-savings",
-              "products/zk-proof-of-reserve"
+              "products/zk-proof-of-reserve",
+              "products/earn"
             ]
           },
           {
@@ -76,6 +76,36 @@
             "group": "Roadmap",
             "pages": [
               "roadmap/vision"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Guides",
+        "groups": [
+          {
+            "group": "Get started",
+            "pages": [
+              "guides/start-here",
+              "guides/sign-in-with-email",
+              "guides/set-up-freighter",
+              "guides/set-up-xverse",
+              "guides/get-test-funds",
+              "guides/connect-your-wallets"
+            ]
+          },
+          {
+            "group": "Use the app",
+            "pages": [
+              "guides/borrow",
+              "guides/repay-and-release",
+              "guides/lend"
+            ]
+          },
+          {
+            "group": "Help",
+            "pages": [
+              "guides/troubleshooting"
             ]
           }
         ]

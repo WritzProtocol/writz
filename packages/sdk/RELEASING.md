@@ -16,7 +16,7 @@ Each workflow checks that the tag matches the package version, runs the tests, p
 1. The `writz` organization exists on npmjs.com and the publishing account is a member with publish rights.
 2. Create a granular access token on npmjs.com (Access Tokens > Generate New Token > Granular Access Token): permission **Read and write** on packages, scoped to `@writz`, with **Bypass two-factor authentication** enabled so CI can publish. Note its expiry date.
 3. In GitHub (Settings > Environments) create the environment `npm` if it does not exist yet, and add the token as the secret `NPM_TOKEN`, either on that environment or on the repository.
-4. After the first publish, optionally switch to trusted publishing: on npmjs.com, package `@writz/sdk` > Settings > Trusted Publisher > GitHub Actions, with organization `WritzProtocol`, repository `writz`, workflow `release-sdk.yml` and environment `npm`. From then on npm authenticates the workflow with OIDC and `NPM_TOKEN` can be deleted. Trusted publishing cannot do the first publish, because npm only attaches a trusted publisher to a package that exists.
+4. After the first publish, switch to trusted publishing (configured for `@writz/sdk` since 0.1.1): on npmjs.com, package `@writz/sdk` > Settings > Trusted Publisher > GitHub Actions, with organization `WritzProtocol`, repository `writz`, workflow `release-sdk.yml` and environment `npm`. From then on npm authenticates the workflow with OIDC and `NPM_TOKEN` can be deleted. Trusted publishing cannot do the first publish, because npm only attaches a trusted publisher to a package that exists.
 
 Every publish carries npm provenance, which links the tarball to the workflow run and the commit it was built from.
 

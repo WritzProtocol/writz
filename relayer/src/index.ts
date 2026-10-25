@@ -1,6 +1,8 @@
 import express from "express";
 import { config } from "./config.js";
 import { proofRouter } from "./routes/proof.js";
+import { createDepositStatusRouter } from "./routes/deposit-status.js";
+import { createTimelineRouter, mintFromRelayView } from "./routes/timeline.js";
 import { merkleRouter } from "./routes/merkle.js";
 import { defindexRouter } from "./routes/defindex.js";
 import { metricsRouter } from "./routes/metrics.js";
@@ -13,6 +15,8 @@ import { startTreeWatcher, treeSyncStatus } from "./tree-watcher/poller.js";
 import { startZkKeeper } from "./zk-keeper/runner.js";
 import { createFaucetRouter } from "./routes/faucet.js";
 import { faucetFromConfig } from "./faucet/from-config.js";
+import { createCctpRouter } from "./routes/cctp.js";
+import { cctpRelayFromConfig } from "./cctp/from-config.js";
 
 const app = express();
 // Earn routes and the vault watcher run everywhere; the lending surface (SPV
@@ -20,8 +24,13 @@ const app = express();
 // is enabled - not on mainnet, which is Earn-only (#122).
 const LENDING = lendingEnabled(config.target);
 // The Signet faucet exists only where the Bitcoin side is Signet, never on
-// the mainnet target. Without FAUCET_SIGNET_WIF it answers 503 faucet_disabled.
+// the mainnet target, and it pays only accounts created through the testnet
+// app's social login. Without FAUCET_SIGNET_WIF, POLLAR_SECRET_KEY and
+// POLLAR_APPLICATION_ID it answers 503 faucet_disabled.
 const FAUCET = LENDING && config.bitcoinNetwork === "signet";
+// The CCTP relay mints on Base Sepolia, a test network, so it belongs with the
+// testnet lending surface. Without CCTP_RELAY_EVM_KEY it answers 503 cctp_relay_disabled.
+const CCTP_RELAY = LENDING;
 
 // Railway's edge is the one proxy in front of this service. Trusting exactly
 // that many hops makes `req.ip` the address the edge saw, the right-most
@@ -84,13 +93,28 @@ app.get("/", (_req, res) => {
       ...(LENDING
         ? {
             spvProof: "GET /spv-proof/:txid",
+            depositStatus: "GET /deposit-status/:txid",
+            timeline: "GET /timeline/:btcTxid",
             merklePath: "GET /merkle-path",
             notes: "GET /notes",
             insertCommitment: "POST /insert-commitment",
             updateLeaf: "POST /update-leaf",
           }
         : {}),
-      ...(FAUCET ? { signetFaucet: "GET /faucet/signet", signetFaucetClaim: "POST /faucet/signet" } : {}),
+      ...(FAUCET
+        ? {
+            signetFaucet: "GET /faucet/signet",
+            signetFaucetNonce: "GET /faucet/signet/nonce",
+            signetFaucetClaim: "POST /faucet/signet (Writz testnet app social login only)",
+          }
+        : {}),
+      ...(CCTP_RELAY
+        ? {
+            cctpRelay: "GET /cctp/relay",
+            cctpRelayStart: "POST /cctp/relay",
+            cctpRelayTransfer: "GET /cctp/relay/:burnHash",
+          }
+        : {}),
       defindexApy: "GET /defindex/apy",
       defindexPosition: "GET /defindex/position?address=G...",
       defindexDeposit: "POST /defindex/deposit",
@@ -117,8 +141,21 @@ app.get("/health", (_req, res) => {
   });
 });
 
+// Built before the routes so the timeline can read the mints the relay recorded.
+const cctp = CCTP_RELAY ? cctpRelayFromConfig() : undefined;
+
 if (LENDING) {
   app.use("/spv-proof", proofRouter);
+  const depositStatus = createDepositStatusRouter();
+  app.use("/deposit-status", depositStatus);
+  // Shares the deposit-status event index, so one warm-up covers both.
+  void depositStatus.warm();
+  app.use(
+    "/timeline",
+    createTimelineRouter({
+      mint: (burnHash) => mintFromRelayView(cctp?.relay?.lookup(burnHash)),
+    }),
+  );
   app.use("/", merkleRouter);
 }
 app.use("/defindex", defindexRouter);
@@ -135,6 +172,28 @@ if (FAUCET) {
     }),
   );
   console.log(faucet ? `Signet faucet: ${faucet.address}` : `Signet faucet off: ${disabledReason}`);
+}
+if (cctp) {
+  const { relay, disabledReason } = cctp;
+  app.use(
+    "/cctp",
+    createCctpRouter({
+      relay,
+      disabledReason,
+      rateLimit: config.cctpRelay.rateLimit,
+      rateWindowMs: config.cctpRelay.rateWindowMs,
+    }),
+  );
+  if (relay) {
+    // Transfers a previous process left in flight carry on without waiting for the app to ask again.
+    const resumed = relay.resume();
+    // Transient failures are retried on their own schedule, so an app that
+    // asked once is never left waiting on a transfer nobody drives.
+    relay.startRetrySweep();
+    console.log(`CCTP relay: ${relay.address} (Base Sepolia), ${resumed} transfer(s) resumed`);
+  } else {
+    console.log(`CCTP relay off: ${disabledReason}`);
+  }
 }
 
 // 404 fallback.

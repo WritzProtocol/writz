@@ -1,4 +1,4 @@
-import { contract, rpc } from "@stellar/stellar-sdk";
+import { contract, rpc, TransactionBuilder, xdr, type Transaction } from "@stellar/stellar-sdk";
 import { config } from "@/config";
 import { asRejection } from "@/lib/wallet/rejection";
 import type { SignTransaction } from "@/lib/wallet/WalletProvider";
@@ -10,6 +10,35 @@ export class TxTimedOutError extends Error {
     super("ConfirmationTimedOut");
     this.name = "TxTimedOutError";
   }
+}
+
+/**
+ * Leaves only the inclusion fee on `tx.built`, so `sign()` adds the resource
+ * fee once. In @stellar/stellar-sdk 16, `AssembledTransaction.sign()` rebuilds
+ * the transaction with `fee: built.fee`, which already includes the simulated
+ * resource fee, and the builder then adds the resource fee again. The bid
+ * becomes inclusion + 2 x resource fee: the account needs twice the XLM, and
+ * past ~214.7 XLM of resource fee the total no longer fits the uint32 fee
+ * field, so `sign()` throws before the wallet is asked. A writz-lend deposit
+ * declared ~352 XLM on testnet on 2026-10-25. Upstream fixed this in 17.3.0
+ * (stellar/js-stellar-sdk#1808); remove this when the app moves to it.
+ *
+ * `sign()` takes the resource fee from the simulation, not from `built`, so the
+ * Soroban data is dropped here too, which also makes a second call a no-op.
+ */
+export function bidInclusionFeeOnly<T>(tx: contract.AssembledTransaction<T>): void {
+  const built = tx.built;
+  if (!built) return;
+  const envelope = xdr.TransactionEnvelope.fromXDR(built.toXDR(), "base64");
+  if (envelope.switch() !== xdr.EnvelopeType.envelopeTypeTx()) return;
+  const inner = envelope.v1().tx();
+  if (inner.ext().switch() !== 1) return;
+  const resourceFee = inner.ext().sorobanData().resourceFee().toBigInt();
+  const inclusionFee = BigInt(inner.fee()) - resourceFee;
+  if (inclusionFee <= 0n) return;
+  inner.fee(Number(inclusionFee));
+  inner.ext(new xdr.TransactionExt(0));
+  tx.built = TransactionBuilder.fromXDR(envelope, built.networkPassphrase) as Transaction;
 }
 
 /**
@@ -30,6 +59,7 @@ export async function signAndSubmit<T>(
   const { signTransaction, emit, onSigned, onDropped } = opts;
   emit?.({ type: "awaiting_signature", wallet: "stellar" });
   try {
+    bidInclusionFeeOnly(tx);
     await tx.sign({ signTransaction });
   } catch (e) {
     const rejected = asRejection(e, "stellar");

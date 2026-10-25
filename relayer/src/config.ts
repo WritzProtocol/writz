@@ -10,7 +10,7 @@ function getEnv(key: string, fallback?: string): string {
   return val;
 }
 
-/** A faucet limit that must be a whole number of at least 1; refuses to boot otherwise. */
+/** A faucet or relay limit that must be a whole number of at least 1; refuses to boot otherwise. */
 function positiveIntEnv(key: string, fallback: string): number {
   const raw = getEnv(key, fallback).trim();
   const n = Number(raw);
@@ -20,7 +20,7 @@ function positiveIntEnv(key: string, fallback: string): number {
   return n;
 }
 
-/** A faucet limit that must be a number greater than 0; refuses to boot otherwise. */
+/** A faucet or relay limit that must be a number greater than 0; refuses to boot otherwise. */
 function positiveNumberEnv(key: string, fallback: string): number {
   const raw = getEnv(key, fallback).trim();
   const n = Number(raw);
@@ -56,6 +56,18 @@ export interface Config {
   /** Proof cache size (entries) and lifetime for deeply confirmed proofs. */
   spvProofCacheMaxEntries: number;
   spvProofCacheTtlMs: number;
+  /** Per-IP request budget for GET /deposit-status per window. */
+  depositStatusRateLimit: number;
+  depositStatusRateWindowMs: number;
+  /** Per-IP requests to GET /timeline per window. */
+  timelineRateLimit: number;
+  timelineRateWindowMs: number;
+  /** Horizon, for the borrower's own operations (how a loan was received). */
+  horizonUrl: string;
+  /** Soroswap router a borrow is swapped through to XLM. */
+  soroswapRouterId: string;
+  /** Circle CCTP TokenMessengerMinter on Stellar, where a borrow is burned for Base Sepolia. */
+  cctpTokenMessengerMinterId: string;
   // Stellar / Soroban
   stellarRpcUrl: string;
   networkPassphrase: string;
@@ -110,6 +122,30 @@ export interface Config {
   liquidationThresholdBp: bigint;
   /** Signet faucet (`/faucet/signet`). Off unless `wif` is set; signet only. */
   faucet: FaucetConfig;
+  /** CCTP relay to Base Sepolia (`/cctp/relay`). Off unless `evmKey` is set; never on mainnet. */
+  cctpRelay: CctpRelayConfig;
+}
+
+export interface CctpRelayConfig {
+  /** 0x-prefixed hex private key of the relay's own Base Sepolia account (CCTP_RELAY_EVM_KEY). */
+  evmKey: `0x${string}` | undefined;
+  /** CCTP_RELAY_ENABLED=false switches the relay off without removing the key. */
+  enabled: boolean;
+  rpcUrl: string;
+  irisUrl: string;
+  /** Give up on a burn Circle has not confirmed within this many minutes. */
+  confirmTimeoutMinutes: number;
+  /** Mints the relay broadcasts per UTC day. */
+  dailyCap: number;
+  /** Transfers in flight at once. */
+  maxOpen: number;
+  /** How far back `MessageReceived` logs are searched for a mint someone else sent. */
+  mintLookbackBlocks: number;
+  /** Etherscan-compatible indexer API searched when the RPC window misses the mint; empty: none. */
+  mintIndexerUrl: string;
+  /** Per-IP POST attempts per window. */
+  rateLimit: number;
+  rateWindowMs: number;
 }
 
 export interface FaucetConfig {
@@ -120,8 +156,6 @@ export interface FaucetConfig {
   amountSat: number;
   /** Claims per UTC day across all callers. */
   dailyCap: number;
-  /** One claim per recipient address within this many hours. */
-  cooldownHours: number;
   /** Claims per client IP within any `ipWindowHours` (sliding window). */
   ipClaimsPerWindow: number;
   ipWindowHours: number;
@@ -131,6 +165,18 @@ export interface FaucetConfig {
   /** Per-IP POST attempts per window. */
   rateLimit: number;
   rateWindowMs: number;
+  /**
+   * Pollar Server API secret key (POLLAR_SECRET_KEY, a sec_testnet_ key).
+   * Claims need it to check the user's social login; without it, or without
+   * `pollarApplicationId`, the faucet stays off.
+   */
+  pollarSecretKey: string | undefined;
+  /** The Writz testnet app's id in Pollar (POLLAR_APPLICATION_ID). */
+  pollarApplicationId: string | undefined;
+  /** Pollar Server API base URL (POLLAR_API_URL). */
+  pollarApiUrl: string;
+  /** FAUCET_ALLOW_EMAIL=true lets email one-time-code logins claim too. */
+  allowEmail: boolean;
 }
 
 // mempool.space rather than Blockstream: Blockstream's public API now
@@ -143,6 +189,10 @@ const ESPLORA_URLS: Record<BitcoinNetwork, string> = {
 };
 
 const TESTNET_RPC = "https://soroban-testnet.stellar.org";
+const TESTNET_HORIZON = "https://horizon-testnet.stellar.org";
+// The same testnet deployments the app sends receive legs to (frontend/app/src/config.ts).
+const TESTNET_SOROSWAP_ROUTER = "CCJUD55AG6W5HAI5LRVNKAE5WDP5XGZBUDS5WNTIVDU7O264UZZE7BRD";
+const TESTNET_CCTP_TMM = "CDNG7HXAPBWICI2E3AUBP3YZWZELJLYSB6F5CC7WLDTLTHVM74SLRTHP";
 const TESTNET_PASSPHRASE = "Test SDF Network ; September 2015";
 
 function loadConfig(): Config {
@@ -178,12 +228,21 @@ function loadConfig(): Config {
       KEEPER_SECRET: process.env["KEEPER_SECRET"],
       KEEPER_BABYJUB_SECRET: process.env["KEEPER_BABYJUB_SECRET"],
       FAUCET_SIGNET_WIF: process.env["FAUCET_SIGNET_WIF"],
+      CCTP_RELAY_EVM_KEY: process.env["CCTP_RELAY_EVM_KEY"],
+      POLLAR_SECRET_KEY: process.env["POLLAR_SECRET_KEY"],
     },
   });
 
   const faucetWif = process.env["FAUCET_SIGNET_WIF"]?.trim() || undefined;
   if (faucetWif && network !== "signet") {
     throw new Error("FAUCET_SIGNET_WIF is set but BITCOIN_NETWORK is not signet. The faucet pays Signet coins only.");
+  }
+
+  // The faucet checks testnet social logins only: a mainnet Pollar key has no
+  // business on this relayer, whatever the deploy target says.
+  const pollarSecretKey = process.env["POLLAR_SECRET_KEY"]?.trim() || undefined;
+  if (pollarSecretKey && !pollarSecretKey.startsWith("sec_testnet_")) {
+    throw new Error("POLLAR_SECRET_KEY must be a Pollar testnet secret key (sec_testnet_...). The faucet serves testnet logins only.");
   }
 
   // Defaults sized for onboarding: a venue or a classroom shares one IP, so the
@@ -199,7 +258,6 @@ function loadConfig(): Config {
     // The 1,000 to 50,000 sat range is enforced by the faucet itself.
     amountSat: positiveIntEnv("FAUCET_AMOUNT_SATS", "20000"),
     dailyCap: positiveIntEnv("FAUCET_DAILY_CAP", "300"),
-    cooldownHours: positiveNumberEnv("FAUCET_COOLDOWN_HOURS", "24"),
     ipClaimsPerWindow: positiveIntEnv("FAUCET_IP_CLAIMS_PER_WINDOW", "20"),
     ipWindowHours: positiveNumberEnv("FAUCET_IP_WINDOW_HOURS", "1"),
     minFeeRate: faucetMinFeeRate,
@@ -207,6 +265,29 @@ function loadConfig(): Config {
     feeTargetBlocks: positiveIntEnv("FAUCET_FEE_TARGET_BLOCKS", "3"),
     rateLimit: positiveIntEnv("FAUCET_RATE_LIMIT", "30"),
     rateWindowMs: positiveIntEnv("FAUCET_RATE_WINDOW_MS", "600000"),
+    pollarSecretKey,
+    pollarApplicationId: process.env["POLLAR_APPLICATION_ID"]?.trim() || undefined,
+    pollarApiUrl: getEnv("POLLAR_API_URL", "https://server.api.pollar.xyz/v3").trim(),
+    allowEmail: getEnv("FAUCET_ALLOW_EMAIL", "false").trim().toLowerCase() === "true",
+  };
+
+  const cctpRelayKey = process.env["CCTP_RELAY_EVM_KEY"]?.trim() || undefined;
+  if (cctpRelayKey && !/^0x[0-9a-fA-F]{64}$/.test(cctpRelayKey)) {
+    // The value itself is never echoed: it is a private key.
+    throw new Error("CCTP_RELAY_EVM_KEY must be a 0x-prefixed 32-byte hex private key");
+  }
+  const cctpRelay: CctpRelayConfig = {
+    evmKey: cctpRelayKey as `0x${string}` | undefined,
+    enabled: getEnv("CCTP_RELAY_ENABLED", "true").trim().toLowerCase() !== "false",
+    rpcUrl: getEnv("CCTP_RELAY_RPC_URL", "https://sepolia.base.org"),
+    irisUrl: getEnv("CCTP_IRIS_URL", "https://iris-api-sandbox.circle.com"),
+    confirmTimeoutMinutes: positiveNumberEnv("CCTP_RELAY_CONFIRM_TIMEOUT_MINUTES", "30"),
+    dailyCap: positiveIntEnv("CCTP_RELAY_DAILY_CAP", "200"),
+    maxOpen: positiveIntEnv("CCTP_RELAY_MAX_IN_FLIGHT", "50"),
+    mintLookbackBlocks: positiveIntEnv("CCTP_RELAY_MINT_LOOKBACK_BLOCKS", "10000"),
+    mintIndexerUrl: getEnv("CCTP_RELAY_MINT_INDEXER_URL", "https://base-sepolia.blockscout.com/api").trim(),
+    rateLimit: positiveIntEnv("CCTP_RELAY_RATE_LIMIT", "30"),
+    rateWindowMs: positiveIntEnv("CCTP_RELAY_RATE_WINDOW_MS", "600000"),
   };
 
   return {
@@ -225,6 +306,18 @@ function loadConfig(): Config {
     spvProofRateWindowMs: parseInt(getEnv("SPV_PROOF_RATE_WINDOW_MS", "60000"), 10),
     spvProofCacheMaxEntries: parseInt(getEnv("SPV_PROOF_CACHE_MAX_ENTRIES", "1000"), 10),
     spvProofCacheTtlMs: parseInt(getEnv("SPV_PROOF_CACHE_TTL_MS", "3600000"), 10),
+    // A deposit card polls every 15 s; 120 a minute leaves room for several
+    // cards behind one address (a venue, a classroom) without letting a loop
+    // hammer Esplora and Stellar RPC.
+    depositStatusRateLimit: parseInt(getEnv("DEPOSIT_STATUS_RATE_LIMIT", "120"), 10),
+    depositStatusRateWindowMs: parseInt(getEnv("DEPOSIT_STATUS_RATE_WINDOW_MS", "60000"), 10),
+    // A timeline is read when a loan is opened, not polled every few seconds.
+    timelineRateLimit: parseInt(getEnv("TIMELINE_RATE_LIMIT", "60"), 10),
+    timelineRateWindowMs: parseInt(getEnv("TIMELINE_RATE_WINDOW_MS", "60000"), 10),
+    // Empty counts as unset, so a copied .env.example keeps the defaults.
+    horizonUrl: process.env["HORIZON_URL"]?.trim() || TESTNET_HORIZON,
+    soroswapRouterId: process.env["SOROSWAP_ROUTER_ID"]?.trim() || TESTNET_SOROSWAP_ROUTER,
+    cctpTokenMessengerMinterId: process.env["CCTP_TOKEN_MESSENGER_MINTER_ID"]?.trim() || TESTNET_CCTP_TMM,
     stellarRpcUrl,
     networkPassphrase,
     commitmentTreeId: getEnv("COMMITMENT_TREE_ID", ""),
@@ -249,6 +342,7 @@ function loadConfig(): Config {
     btcPriceStroops: BigInt(getEnv("BTC_PRICE_STROOPS", "600000000000")),
     liquidationThresholdBp: BigInt(getEnv("LIQUIDATION_THRESHOLD_BP", "12000")),
     faucet,
+    cctpRelay,
   };
 }
 

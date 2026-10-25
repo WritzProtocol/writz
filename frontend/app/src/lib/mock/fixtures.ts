@@ -76,6 +76,7 @@ export function note(n: number, now: number, over: Partial<Position> = {}): Posi
     btcPubkey: BTC_PUBKEY,
     timelockHeight: TIMELOCK,
     vout: 0,
+    stellarTxHash: STELLAR_TX,
     ...over,
   };
 }
