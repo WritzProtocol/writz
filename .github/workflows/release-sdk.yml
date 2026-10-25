@@ -3,14 +3,13 @@ name: Release @writz/sdk
 # Push a tag `sdk-v<version>` matching packages/sdk/package.json to publish to
 # npm with provenance and create the GitHub Release. Steps: packages/sdk/RELEASING.md.
 #
-# Authentication: npm trusted publishing (OIDC) when it is configured for this
-# repository, this workflow and the `npm` environment on npmjs.com; otherwise
-# the NPM_TOKEN secret. The first publish of a package needs NPM_TOKEN: npm
-# can only attach a trusted publisher to a package that already exists.
+# Authentication: npm trusted publishing (OIDC) only. npmjs.com trusts this
+# repository, this workflow and the `npm` environment; there is no npm token,
+# and the package refuses token publishes.
 #
 # Run it by hand (Actions > Release @writz/sdk > Run workflow) with dry_run
-# checked to run every step with `--dry-run`, check NPM_TOKEN with
-# `npm whoami`, and skip the GitHub Release. Nothing is published.
+# checked to run every step with `--dry-run` and skip the GitHub Release.
+# Nothing is published.
 on:
   push:
     tags:
@@ -18,7 +17,7 @@ on:
   workflow_dispatch:
     inputs:
       dry_run:
-        description: "Dry run: build, test, pack and check the token, publish nothing"
+        description: "Dry run: build, test and pack, publish nothing"
         type: boolean
         default: true
 
@@ -65,21 +64,9 @@ jobs:
       - run: bun run typecheck
       - run: bun test
       - run: bun run build
-      - name: Check NPM_TOKEN
-        if: env.DRY_RUN == 'true'
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: |
-          if [ -z "$NODE_AUTH_TOKEN" ]; then
-            echo "NPM_TOKEN is not set: a real publish needs trusted publishing configured on npmjs.com" >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "NPM_TOKEN authenticates as $(npm whoami)" >> "$GITHUB_STEP_SUMMARY"
-          fi
-      # With trusted publishing configured, npm authenticates with OIDC first
-      # and does not use the token, so an empty NPM_TOKEN is fine then.
+      # npm exchanges the workflow's OIDC token for a short-lived publish
+      # credential (trusted publishing, npm 11.5.1 or later).
       - name: Publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           if [ "$DRY_RUN" = "true" ]; then
             npm publish --provenance --access public --dry-run
