@@ -21,7 +21,6 @@
   "favicon": "/brand/writz-icon.svg",
   "contextual": {
     "options": [
-      "assistant",
       "copy",
       "view",
       "claude",
@@ -60,7 +59,8 @@
               "products/writz-lend",
               "products/dark-swap",
               "products/btc-savings",
-              "products/zk-proof-of-reserve"
+              "products/zk-proof-of-reserve",
+              "products/earn"
             ]
           },
           {
