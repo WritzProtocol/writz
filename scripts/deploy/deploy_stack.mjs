@@ -60,6 +60,10 @@
  *   SPV_CONSUMED_TTL_LEDGERS bitcoin-spv consumed-deposit markers. Default
  *                            1555200 (90 days); testnet runs 120960.
  * Mainnet refuses anything shorter than the defaults.
+ *
+ * MAX_RESOURCE_FEE_XLM caps the resource fee any one transaction may declare;
+ * the run refuses to sign above it. Required on mainnet, unlimited elsewhere
+ * when unset (a testnet wasm upload declares several thousand XLM).
  */
 import * as StellarSdk from '@stellar/stellar-sdk';
 import crypto from 'crypto';
@@ -67,7 +71,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { buildBabyjub } from 'circomlibjs';
-import { buildSigned, deployWithConstructor } from './constructor_deploy.mjs';
+import { buildSigned, deployWithConstructor, sendAndConfirm } from './constructor_deploy.mjs';
 
 const { Keypair, Networks, Address, Contract, StrKey, TransactionBuilder, xdr, nativeToScVal, rpc: SorobanRpc } = StellarSdk;
 
@@ -160,6 +164,7 @@ if (stellarNetwork === 'mainnet') {
   }
   if (minConfirmations < 6) errors.push('mainnet needs MIN_CONFIRMATIONS >= 6');
   if (minDepositSats < 100_000n) errors.push('mainnet needs MIN_DEPOSIT_SATS >= 100000');
+  if (!process.env.MAX_RESOURCE_FEE_XLM?.trim()) errors.push('mainnet needs MAX_RESOURCE_FEE_XLM (the most resource fee, in XLM, to sign for)');
 }
 
 const WASM_DIRS = V1_ONLY
@@ -235,18 +240,13 @@ async function invoke(contractId, method, args) {
     } catch (e) {
       throw new Error(`${method}: ${e.message}`);
     }
-    const sent = await server.sendTransaction(prepared);
-    if (sent.status === 'ERROR') {
-      if (JSON.stringify(sent).includes('txBadSeq') && attempt < 5) { await new Promise((r) => setTimeout(r, 2500)); continue; }
-      throw new Error(`${method} submit failed: ${JSON.stringify(sent.errorResult)}`);
+    try {
+      await sendAndConfirm(server, prepared);
+      return prepared.hash().toString('hex');
+    } catch (e) {
+      if (e.message.includes('txBadSeq') && attempt < 5) { await new Promise((r) => setTimeout(r, 2500)); continue; }
+      throw new Error(`${method}: ${e.message}`);
     }
-    for (let i = 0; i < 60; i++) {
-      const res = await server.getTransaction(sent.hash);
-      if (res.status === 'SUCCESS') return sent.hash;
-      if (res.status === 'FAILED') throw new Error(`${method} failed: tx ${sent.hash}`);
-      await new Promise((r) => setTimeout(r, 1500));
-    }
-    throw new Error(`${method} timed out: tx ${sent.hash}`);
   }
   throw new Error(`${method}: exhausted retries`);
 }
