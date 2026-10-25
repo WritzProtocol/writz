@@ -1633,3 +1633,51 @@ fn refresh_ttl_extends_the_singletons_and_the_tip_header() {
     assert_eq!(spv_ttl(&env, &id, &crate::storage::DataKey::BestTip), config_window);
     assert_eq!(spv_ttl(&env, &id, &crate::storage::DataKey::Header(tip)), TESTNET_TTL);
 }
+
+#[test]
+fn set_ttls_is_admin_only_and_bounded() {
+    let env = Env::default();
+    let (client, admin) = register_with_ttls(&env, MAINNET_TTL, MAINNET_TTL);
+    let stranger = Address::generate(&env);
+    assert_eq!(client.try_set_ttls(&stranger, &TESTNET_TTL, &TESTNET_TTL), Err(Ok(SPVError::Unauthorized)));
+    for (h, c) in [
+        (crate::MIN_ENTRY_TTL_LEDGERS - 1, TESTNET_TTL),
+        (TESTNET_TTL, crate::MIN_ENTRY_TTL_LEDGERS - 1),
+        (crate::MAX_ENTRY_TTL_LEDGERS + 1, TESTNET_TTL),
+        (TESTNET_TTL, crate::MAX_ENTRY_TTL_LEDGERS + 1),
+    ] {
+        assert_eq!(client.try_set_ttls(&admin, &h, &c), Err(Ok(SPVError::InvalidEntryTtl)));
+    }
+    client.set_ttls(&admin, &crate::MIN_ENTRY_TTL_LEDGERS, &crate::MAX_ENTRY_TTL_LEDGERS);
+}
+
+#[test]
+#[should_panic(expected = "Error(Auth, InvalidAction)")]
+fn set_ttls_requires_the_admins_signature() {
+    let env = Env::default();
+    let (client, admin) = register_with_ttls(&env, MAINNET_TTL, MAINNET_TTL);
+    env.set_auths(&[]);
+    client.set_ttls(&admin, &TESTNET_TTL, &TESTNET_TTL);
+}
+
+#[test]
+fn set_ttls_applies_to_the_next_header_and_marker() {
+    let env = Env::default();
+    let light = new_light(&env);
+    let id = light.client.address.clone();
+    let first = submit_single_block(&env, &light, [1u8; 32]);
+    let window = 14 * crate::LEDGERS_PER_DAY;
+    light.client.set_ttls(&light.admin, &window, &window);
+    // The header stored before the change keeps its TTL.
+    assert_eq!(spv_ttl(&env, &id, &crate::storage::DataKey::Header(first.clone())), MAINNET_TTL);
+    // The next header and consumed marker get the new windows.
+    let next = mine_chain(&env, &first.to_array(), &[[2u8; 32]], T0 + 2);
+    light.client.submit_headers(&to_sdk_headers(&env, &next));
+    let next_hash = hash_header(&env, &next[0]);
+    assert_eq!(spv_ttl(&env, &id, &crate::storage::DataKey::Header(next_hash)), window);
+    let lend = Address::generate(&env);
+    light.client.set_consumer(&light.admin, &lend, &true);
+    let txid = BytesN::<32>::from_array(&env, &[9u8; 32]);
+    light.client.consume_deposit(&lend, &txid);
+    assert_eq!(spv_ttl(&env, &id, &crate::storage::DataKey::Consumed(txid)), window);
+}

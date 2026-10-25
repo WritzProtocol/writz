@@ -12,7 +12,7 @@ mod test;
 
 use error::WritzLendError;
 use events::{
-    BorrowEvent, DepositEvent, LiquidateEvent, OracleSetEvent, PausedSetEvent, RepayEvent,
+    BorrowEvent, DepositEvent, EntryTtlSetEvent, LiquidateEvent, OracleSetEvent, PausedSetEvent, RepayEvent,
     RepayFullEvent, SupplyEvent, WithdrawEvent,
 };
 use oracle::{collateral_value_stroops, get_btc_price_stroops, health_ratio_bp};
@@ -709,6 +709,34 @@ impl WritzLendContract {
         config.oracle = new_oracle.clone();
         set_config(&env, &config);
         OracleSetEvent { admin: caller, new_oracle }.publish(&env);
+        Ok(())
+    }
+
+    /// Sets how long per-user entries (positions, supply balances, release
+    /// PSBTs) are kept live, in ledgers. Admin only. Same bounds as the
+    /// constructor's `entry_ttl_ledgers`.
+    ///
+    /// Rent is priced at the ledger that creates or extends an entry, and on
+    /// a network whose live state is above its target size that price moves
+    /// by the hour; this lets the window follow it without a redeploy. It
+    /// applies to entries written or touched after the change only: an
+    /// existing entry keeps its TTL until a call tops it up or refreshes it.
+    pub fn set_entry_ttl(
+        env: Env,
+        caller: Address,
+        entry_ttl_ledgers: u32,
+    ) -> Result<(), WritzLendError> {
+        caller.require_auth();
+        let mut config = get_config(&env).ok_or(WritzLendError::NotInitialized)?;
+        if caller != config.admin {
+            return Err(WritzLendError::Unauthorized);
+        }
+        if !(MIN_ENTRY_TTL_LEDGERS..=MAX_ENTRY_TTL_LEDGERS).contains(&entry_ttl_ledgers) {
+            return Err(WritzLendError::InvalidEntryTtl);
+        }
+        config.entry_ttl_ledgers = entry_ttl_ledgers;
+        set_config(&env, &config);
+        EntryTtlSetEvent { admin: caller, entry_ttl_ledgers }.publish(&env);
         Ok(())
     }
 

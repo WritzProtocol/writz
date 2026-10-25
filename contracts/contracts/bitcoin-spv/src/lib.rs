@@ -15,7 +15,9 @@ pub use error::SPVError;
 pub use spv_types::SpvVerificationResult;
 pub use types::{BestTip, Checkpoint, Config, HeaderEntry};
 
-use soroban_sdk::{contract, contractimpl, panic_with_error, Address, Bytes, BytesN, Env, Vec, U256};
+use soroban_sdk::{
+    contract, contractevent, contractimpl, panic_with_error, Address, Bytes, BytesN, Env, Vec, U256,
+};
 
 use crate::crypto::sha256d;
 use crate::difficulty::{
@@ -28,6 +30,16 @@ use crate::storage::{
     set_best_tip, set_canonical, set_checkpoint, set_config, set_header,
 };
 pub use crate::storage::{LEDGERS_PER_DAY, MAX_ENTRY_TTL_LEDGERS, MIN_ENTRY_TTL_LEDGERS};
+
+/// Emitted when the admin changes the header or consumed-marker window. It
+/// applies to entries written or touched after the change - see `set_ttls`.
+#[contractevent(topics = ["ttls_set"])]
+pub struct TtlsSetEvent {
+    #[topic]
+    pub admin: Address,
+    pub header_ttl_ledgers: u32,
+    pub consumed_ttl_ledgers: u32,
+}
 
 /// Most headers one `submit_headers` call accepts. Keeps the call inside
 /// Soroban's per-transaction ledger-entry write limit.
@@ -228,6 +240,36 @@ impl BitcoinSpvContract {
         }
         config.submitter = submitter;
         set_config(&env, &config);
+        Ok(())
+    }
+
+    /// Sets how long stored headers (with their height index) and consumed
+    /// deposit markers are kept live, in ledgers. Admin-gated, same bounds as
+    /// the constructor.
+    ///
+    /// Rent is priced at the ledger that creates or extends an entry, and on
+    /// a network whose live state is above its target size that price moves
+    /// by the hour; this lets the windows follow it without a redeploy. They
+    /// apply to entries written or touched after the change only.
+    pub fn set_ttls(
+        env: Env,
+        caller: Address,
+        header_ttl_ledgers: u32,
+        consumed_ttl_ledgers: u32,
+    ) -> Result<(), SPVError> {
+        caller.require_auth();
+        let mut config = get_config(&env).ok_or(SPVError::NotInitialized)?;
+        if caller != config.admin {
+            return Err(SPVError::Unauthorized);
+        }
+        let ttl_bounds = MIN_ENTRY_TTL_LEDGERS..=MAX_ENTRY_TTL_LEDGERS;
+        if !ttl_bounds.contains(&header_ttl_ledgers) || !ttl_bounds.contains(&consumed_ttl_ledgers) {
+            return Err(SPVError::InvalidEntryTtl);
+        }
+        config.header_ttl_ledgers = header_ttl_ledgers;
+        config.consumed_ttl_ledgers = consumed_ttl_ledgers;
+        set_config(&env, &config);
+        TtlsSetEvent { admin: caller, header_ttl_ledgers, consumed_ttl_ledgers }.publish(&env);
         Ok(())
     }
 

@@ -69,7 +69,7 @@ pub enum WritzLendError {
     /// `MAX_MIN_CONFIRMATIONS`, or `min_deposit_satoshis` is below
     /// `MIN_DEPOSIT_FLOOR_SATS`.
     InvalidDepositParams = 27,
-    /// A constructor `entry_ttl_ledgers` is outside
+    /// A constructor or `set_entry_ttl` `entry_ttl_ledgers` is outside
     /// `MIN_ENTRY_TTL_LEDGERS..=MAX_ENTRY_TTL_LEDGERS`.
     InvalidEntryTtl = 28,
 }

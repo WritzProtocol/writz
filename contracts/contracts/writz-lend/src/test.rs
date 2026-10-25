@@ -2082,3 +2082,60 @@ fn an_archived_supply_balance_is_withdrawn_in_full() {
     s.client.withdraw_supply(&s.supplier, &value);
     assert_eq!(s.client.get_supply_balance(&s.supplier), 0);
 }
+
+#[test]
+fn testnet_40_day_window_extends_a_new_position_to_40_days() {
+    // 691,200 ledgers is above the network minimum, so creating a position
+    // extends it to the full window.
+    let s = setup_full(1, 5_000, 40 * crate::LEDGERS_PER_DAY);
+    s.env.ledger().with_mut(|li| {
+        li.min_persistent_entry_ttl = TESTNET_MIN_PERSISTENT_TTL;
+        li.max_entry_ttl = TESTNET_MAX_ENTRY_TTL;
+    });
+    let txid = do_deposit(&s);
+    assert_eq!(position_ttl(&s, &txid), 691_200);
+    // A touch in the first two thirds pays nothing; refresh tops it up.
+    advance(&s, 100_000);
+    assert_eq!(position_ttl(&s, &txid), 591_200);
+    assert!(s.client.refresh_position_ttl(&txid));
+    assert_eq!(position_ttl(&s, &txid), 691_200);
+}
+
+#[test]
+fn set_entry_ttl_is_admin_only_and_bounded() {
+    let s = setup();
+    let stranger = Address::generate(&s.env);
+    assert_eq!(s.client.try_set_entry_ttl(&stranger, &TESTNET_ENTRY_TTL), Err(Ok(WritzLendError::Unauthorized)));
+    assert_eq!(
+        s.client.try_set_entry_ttl(&s.admin, &(crate::MIN_ENTRY_TTL_LEDGERS - 1)),
+        Err(Ok(WritzLendError::InvalidEntryTtl)),
+    );
+    assert_eq!(
+        s.client.try_set_entry_ttl(&s.admin, &(crate::MAX_ENTRY_TTL_LEDGERS + 1)),
+        Err(Ok(WritzLendError::InvalidEntryTtl)),
+    );
+    s.client.set_entry_ttl(&s.admin, &crate::MIN_ENTRY_TTL_LEDGERS);
+    s.client.set_entry_ttl(&s.admin, &crate::MAX_ENTRY_TTL_LEDGERS);
+}
+
+#[test]
+#[should_panic(expected = "Error(Auth, InvalidAction)")]
+fn set_entry_ttl_requires_the_admins_signature() {
+    let s = setup();
+    s.env.set_auths(&[]);
+    s.client.set_entry_ttl(&s.admin, &TESTNET_ENTRY_TTL);
+}
+
+#[test]
+fn set_entry_ttl_applies_to_the_next_entry_written() {
+    let s = setup();
+    s.client.supply_usdc(&s.supplier, &1_000_i128);
+    let window = 40 * crate::LEDGERS_PER_DAY;
+    s.client.set_entry_ttl(&s.admin, &window);
+    // An entry written before the change keeps its TTL.
+    let bal_key = crate::storage::DataKey::SupplyBalance(s.supplier.clone());
+    assert_eq!(ttl_of(&s, &bal_key), MAINNET_ENTRY_TTL);
+    // The next one created gets the new window.
+    let txid = do_deposit(&s);
+    assert_eq!(position_ttl(&s, &txid), window);
+}
