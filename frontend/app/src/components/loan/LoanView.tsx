@@ -25,6 +25,7 @@ import {
 import { Notice } from "@/components/ui";
 import { DepositProof } from "@/components/borrow/DepositProof";
 import { ReceiveSteps, useReceive } from "./receive";
+import { LoanTimeline } from "./Timeline";
 import { Enter } from "@/components/ui/entrance";
 import type { LoanModel } from "./model";
 import {
@@ -362,6 +363,7 @@ export function LoanView({ m }: { m: LoanModel }) {
 
         <div className="ln-side">
           <DepositProof btcTxid={position.txid} stellarTxHash={position.stellarTxHash ?? null} verified />
+          <LoanTimeline m={m} position={position} />
           {!closed && (
             <WayOut
               n={n}

@@ -1,4 +1,5 @@
 import type { CctpApi, CctpStatus } from "./cctp";
+import type { TimelineApi, TimelineEvent } from "./timeline";
 import { DEFAULT_SLIPPAGE_BP, minOutFor, type SwapApi } from "./swap";
 
 /**
@@ -57,4 +58,8 @@ export function mockCctpApi(o: MockReceiveOptions = {}): CctpApi {
       return o.cctp ?? { kind: "confirming" };
     },
   };
+}
+
+export function mockTimelineApi(events: TimelineEvent[]): TimelineApi {
+  return { get: async () => events };
 }

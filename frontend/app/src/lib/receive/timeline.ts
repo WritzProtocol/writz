@@ -64,7 +64,11 @@ export function orderTimeline(events: readonly TimelineEvent[]): TimelineEvent[]
 
 export type TimelineRow = { kind: TimelineKind; event: TimelineEvent | null };
 
-/** The ordered events, then the steps of the cycle not reached yet, without a transaction. */
+/**
+ * The ordered events, then the steps of the cycle not reached yet, without a
+ * transaction. A borrow taken as USDC on Stellar is received with the borrow
+ * itself, so once something was borrowed "received" is never a pending step.
+ */
 export function timelineRows(events: readonly TimelineEvent[]): TimelineRow[] {
   const ordered = orderTimeline(events);
   const rows: TimelineRow[] = ordered.map((event) => ({ kind: event.kind, event }));
@@ -72,6 +76,7 @@ export function timelineRows(events: readonly TimelineEvent[]): TimelineRow[] {
   const last = ordered.reduce((m, e) => Math.max(m, RANK[e.kind]), -1);
   for (const kind of Object.keys(RANK) as TimelineKind[]) {
     if (has(kind) || RANK[kind] < last) continue;
+    if (kind === "received" && has("borrowed")) continue;
     rows.push({ kind, event: null });
   }
   return rows;

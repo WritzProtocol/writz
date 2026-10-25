@@ -155,6 +155,11 @@ describe("timelineRows", () => {
     ]);
   });
 
+  test("a USDC borrow needs no separate receive step", () => {
+    const rows = timelineRows([ev("btc_lock", "l", null, "bitcoin"), ev("verified", "v", 1), ev("borrowed", "b", 2)]);
+    expect(rows.map((r) => r.kind)).toEqual(["btc_lock", "verified", "borrowed", "repaid", "released"]);
+  });
+
   test("a full cycle has no placeholders", () => {
     const rows = timelineRows([
       ev("btc_lock", "l", null, "bitcoin"),

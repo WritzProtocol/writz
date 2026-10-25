@@ -3,6 +3,7 @@ import type { PendingTx } from "@/lib/flow/pendingTx";
 import type { ChainReads, LocalInputs, PositionStatusKind, RelayerIndex } from "@/lib/status/types";
 import type { MockReceiveOptions } from "@/lib/receive/mock";
 import type { ReceiveOption } from "@/lib/receive/options";
+import type { TimelineEvent } from "@/lib/receive/timeline";
 
 /** Unknown, empty and failed are different states. */
 export type Reading<T> =
@@ -104,6 +105,8 @@ export interface MockLoanPage {
 /** Receive as XLM or on Base Sepolia: the mock swap and transfer, and the state the borrow panel opens in. */
 export interface MockReceive {
   api: MockReceiveOptions;
+  /** What the timeline source answers; unset, the timeline is built on the client. */
+  timeline?: TimelineEvent[];
   seed?: ReceiveSeed;
 }
 

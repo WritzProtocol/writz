@@ -6,7 +6,7 @@ import { loanActivity, type LoanTab, type Read } from "@/lib/loan/model";
 import type { MockWorld, Reading } from "@/lib/mock/types";
 import { usePositionStatus } from "@/lib/status/provider";
 import type { ReceiveApis } from "@/lib/receive";
-import { mockCctpApi, mockSwapApi } from "@/lib/receive/mock";
+import { mockCctpApi, mockSwapApi, mockTimelineApi } from "@/lib/receive/mock";
 import { useSteadyStatus, type LoanAccess, type LoanModel } from "./model";
 
 const noop = () => {};
@@ -34,7 +34,11 @@ export function useMockLoan(world: MockWorld, n: number): LoanModel {
   const price = world.chain.oraclePriceStroops;
   const [receive] = useState<ReceiveApis>(() =>
     world.receive
-      ? { swap: mockSwapApi(world.receive.api), cctp: mockCctpApi(world.receive.api), timeline: null }
+      ? {
+          swap: mockSwapApi(world.receive.api),
+          cctp: mockCctpApi(world.receive.api),
+          timeline: world.receive.timeline ? mockTimelineApi(world.receive.timeline) : null,
+        }
       : { swap: null, cctp: null, timeline: null },
   );
 
