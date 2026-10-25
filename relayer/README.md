@@ -400,6 +400,44 @@ Returns 30-day retention cohorts for the vault, computed from the indexed events
 | `eligible` | Of those, how many have reached their 30-day mark. Younger depositors are too early to count as retained or churned, so they are left out |
 | `retained` | Of the eligible, how many still held a positive net balance at their 30-day mark |
 
+### `GET /metrics/onboarding` and `POST /metrics/onboarding/events`
+
+The testnet onboarding funnel: how many people signed in, got a Signet test key, were paid by the faucet, deposited, borrowed, repaid and released. Mounted only where lending is enabled (never on the mainnet target). Stored in `data/onboarding.db` (`ONBOARDING_SQLITE_PATH`).
+
+A person is a subject: the HMAC-SHA256 of their Stellar address under a secret generated once and kept in the same database. No address, Pollar id, email, profile or IP is stored, and the summary returns counts only. Every address is counted, team wallets included.
+
+The app reports steps with `POST /metrics/onboarding/events`:
+
+```json
+{ "step": "borrow", "stellarAddress": "G...", "channel": "social", "txid": "<the loan's Bitcoin deposit txid>" }
+```
+
+- `step` is one of `sign_in`, `key_created`, `deposit`, `borrow`, `repay`, `release`; `channel` is `social` (Pollar sign-in) or `wallet`.
+- `deposit`, `borrow`, `repay` and `release` need `txid`. The relayer reads that position on `writz-lend` and records the step only when the reporting address is its depositor and the position is in a state the step implies (debt or a closed loan for `borrow`, a closed loan for `release`). Otherwise it answers `403 not_owner` or `422 not_on_chain` / `step_not_reached`.
+- `sign_in` and `key_created` happen in the browser and are recorded as reported.
+- Each step is recorded once per subject; answers `202 { "recorded": true, "verified": true }`. Limited to `ONBOARDING_EVENTS_RATE_LIMIT` (60) per IP per `ONBOARDING_EVENTS_RATE_WINDOW_MS` (10 minutes).
+
+Faucet claims are recorded by `POST /faucet/signet` itself, with their outcome: `paid` (Pollar confirmed a live social login of this app whose wallet is that address) or the refusal code.
+
+`GET /metrics/onboarding` answers:
+
+```json
+{
+  "asOf": "2026-10-25T12:00:00.000Z",
+  "network": "testnet",
+  "contract": "C...",
+  "headline": { "activatedSocialUsers": 1, "socialUsersWithDeposit": 2 },
+  "totals": { "sign_in": 2, "key_created": 1, "faucet_paid": 2, "deposit": 3, "borrow": 2, "repay": 1, "release": 1 },
+  "social": { "sign_in": 2, "key_created": 1, "faucet_paid": 2, "deposit": 2, "borrow": 1, "repay": 0, "release": 0 },
+  "faucetOutcomes": { "paid": 2, "account_already_claimed": 1 },
+  "daily": [{ "day": "2026-10-25", "sign_in": 1, "key_created": 1, "faucet_paid": 1, "deposit": 1, "borrow": 1, "repay": 0, "release": 0 }],
+  "definitions": { "...": "what each count means" }
+}
+```
+
+- `headline.activatedSocialUsers`: addresses with a paid faucet claim, a verified deposit and a verified borrow.
+- `totals` and `social` count distinct subjects per step; `daily` counts them by the UTC day each first reached the step.
+
 ### `POST /faucet/signet`
 
 The Writz Signet faucet funds accounts created through the Writz testnet app's social login, and nobody else: it is not a public faucet. When a user signs in with Pollar (Google or GitHub) and the app creates their Signet test key, the app claims a fixed amount of Signet test BTC (default 20,000 sats, enough for one deposit at the testnet minimum plus fees and a retry) for that key's address, once. Builders and agents get Signet coins from public faucets such as [signetfaucet.com](https://signetfaucet.com). Mounted only on a Signet relayer that is not the mainnet target. Signet coins have no value.

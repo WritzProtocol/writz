@@ -17,6 +17,9 @@ import { createFaucetRouter } from "./routes/faucet.js";
 import { faucetFromConfig } from "./faucet/from-config.js";
 import { createCctpRouter } from "./routes/cctp.js";
 import { cctpRelayFromConfig } from "./cctp/from-config.js";
+import { createOnboardingRouter } from "./routes/onboarding.js";
+import { onboardingFunnelFromConfig } from "./onboarding/from-config.js";
+import type { OnboardingFunnel } from "./onboarding/funnel.js";
 
 const app = express();
 // Earn routes and the vault watcher run everywhere; the lending surface (SPV
@@ -121,6 +124,12 @@ app.get("/", (_req, res) => {
       defindexWithdraw: "POST /defindex/withdraw",
       metricsTvl: "GET /metrics/tvl",
       metricsRetention: "GET /metrics/retention",
+      ...(LENDING
+        ? {
+            metricsOnboarding: "GET /metrics/onboarding",
+            metricsOnboardingEvent: "POST /metrics/onboarding/events",
+          }
+        : {}),
     },
   });
 });
@@ -159,6 +168,20 @@ if (LENDING) {
   app.use("/", merkleRouter);
 }
 app.use("/defindex", defindexRouter);
+// The onboarding funnel follows the testnet loop (social sign-in, Signet
+// faucet, writz-lend loans), so it lives with the lending surface.
+let funnel: OnboardingFunnel | undefined;
+if (LENDING) {
+  funnel = onboardingFunnelFromConfig();
+  app.use(
+    "/metrics/onboarding",
+    createOnboardingRouter({
+      funnel,
+      rateLimit: config.onboardingEventsRateLimit,
+      rateWindowMs: config.onboardingEventsRateWindowMs,
+    }),
+  );
+}
 app.use("/metrics", metricsRouter);
 if (FAUCET) {
   const { faucet, disabledReason } = faucetFromConfig();
@@ -169,6 +192,7 @@ if (FAUCET) {
       disabledReason,
       rateLimit: config.faucet.rateLimit,
       rateWindowMs: config.faucet.rateWindowMs,
+      ...(funnel ? { onClaim: (address: unknown, outcome: string) => funnel!.recordFaucet(address, outcome) } : {}),
     }),
   );
   console.log(faucet ? `Signet faucet: ${faucet.address}` : `Signet faucet off: ${disabledReason}`);
