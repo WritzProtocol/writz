@@ -422,6 +422,15 @@ html:not([data-wz-step="review"]) .app [data-sk="review"], html:not([data-wz-ste
 .tr-item[data-state="needs_attention"] { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warning) 45%, transparent); }
 .tr-main { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; width: 100%; }
 .tr-label { font-size: 15px; color: var(--heading); }
+/* Deposit proof: the gold "Verified on Stellar" seal and the transactions behind it */
+.wz-proof { display: grid; gap: 4px; align-self: stretch; }
+.wz-proof-seal { --cut: 16px; display: flex; align-items: center; gap: 12px; padding: 14px 20px 14px 28px; background: var(--gold); color: var(--ink); font-size: 16px; font-weight: 600; clip-path: polygon(var(--cut) 0, 100% 0, 100% 100%, 0 100%, 0 calc(var(--cut) / var(--shear))); }
+.wz-proof-seal > i { width: 8px; height: 15px; background: var(--ink); transform: skewX(-16deg); flex: none; }
+.wz-proof-seal[data-moment="true"] { animation: wz-cut var(--dur-signature) var(--ease-enter) 120ms both; }
+.wz-proof-rows { margin: 0; padding: 4px 20px; background: var(--panel-2); }
+.wz-proof-rows dd small { display: block; color: var(--muted); }
+@media (prefers-reduced-motion: reduce) { .app .wz-proof-seal { animation: none; } }
+
 .tr-chip { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; white-space: nowrap; color: var(--info); }
 .tr-chip i { width: 6px; height: 11px; background: currentColor; transform: skewX(-16deg); }
 .tr-chip[data-state="needs_attention"] { color: var(--warning); }

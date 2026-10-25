@@ -12,6 +12,7 @@ import { LIQUIDATION_DOCS_URL } from "@/lib/links";
 import {
   RELEASE_STEPS,
   afterState,
+  liquidationPriceFor,
   parseUsdcAmount,
   readValue,
   releaseStepOf,
@@ -495,6 +496,22 @@ const usdcAmount = (s: bigint) => <span className="mono">{formatUsdc(s)}</span>;
 
 // ── Borrow ───────────────────────────────────────────────────────────────
 
+/** The BTC price at which this debt would be liquidated, from `liquidationPriceFor`. */
+function LiquidationEstimate({ collateralSats, debt }: { collateralSats: bigint; debt: bigint }) {
+  const liq = liquidationPriceFor(collateralSats, debt);
+  return (
+    <dl className="ln-est">
+      <div className="wz-row">
+        <dt>Liquidation price</dt>
+        <dd>
+          {liq !== null ? <span className="mono">{formatUsd(liq)}</span> : "No debt, nothing to liquidate"}
+          <small>Estimate at the current oracle price</small>
+        </dd>
+      </div>
+    </dl>
+  );
+}
+
 export function BorrowPanel({
   m,
   position,
@@ -584,6 +601,7 @@ export function BorrowPanel({
         ))}
       </div>
       <After collateralSats={collateral} debt={newDebt} price={price} overLimit={overLimit} overPool={overPool} />
+      <LiquidationEstimate collateralSats={collateral} debt={newDebt ?? debt} />
       {mine && (
         <TxResult
           flow={m.flow}

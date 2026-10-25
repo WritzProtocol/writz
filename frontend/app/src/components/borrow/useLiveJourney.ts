@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { Horizon, NotFoundError } from "@stellar/stellar-sdk";
 import { config } from "@/config";
+import { confirmationTarget } from "@/lib/borrow/depositStatus";
 import { useWallet } from "@/lib/wallet/WalletProvider";
 import { useBitcoinWallet } from "@/lib/bitcoin/useBitcoinWallet";
 import { useDepositLock } from "@/lib/bitcoin/useDepositLock";
@@ -94,6 +95,7 @@ export function useLiveJourney(): JourneyModel {
   const [createdHere, setCreatedHere] = useState<string | null>(null);
   const [doneSats, setDoneSats] = useState<bigint | null>(null);
   const [doneIndex, setDoneIndex] = useState<number | null>(null);
+  const [doneTxid, setDoneTxid] = useState<string | null>(null);
   const [drivenElsewhere, setDrivenElsewhere] = useState(false);
   const [runKey, setRunKey] = useState(0);
 
@@ -129,6 +131,7 @@ export function useLiveJourney(): JourneyModel {
         if (result.status === "active") {
           setDoneSats(BigInt(result.position.collateralSats));
           setDoneIndex(result.position.index);
+          setDoneTxid(result.position.txid);
           emit({ type: "settled", hash: result.position.stellarTxHash });
         }
       } catch (e) {
@@ -460,7 +463,10 @@ export function useLiveJourney(): JourneyModel {
       pending,
       status,
       flow,
-      m: pending?.required ?? (flow.phase === "waiting_btc" ? flow.required : config.bitcoin.minConfirmations),
+      m: confirmationTarget(
+        [pending?.required, flow.phase === "waiting_btc" ? flow.required : null],
+        config.bitcoin.minConfirmations,
+      ),
       relayerUnreachable: flow.phase === "waiting_btc" && !flow.relayerReachable,
       drivenElsewhere,
       otherTx,
@@ -476,11 +482,14 @@ export function useLiveJourney(): JourneyModel {
     done: {
       sats: doneSats,
       index: doneIndex,
+      btcTxid: doneTxid,
+      stellarTxHash: flow.phase === "settled" ? (flow.hash ?? null) : null,
       reset: () => {
         emit({ type: "reset" });
         setAction(null);
         setDoneSats(null);
         setDoneIndex(null);
+        setDoneTxid(null);
         ui.reset();
       },
     },
