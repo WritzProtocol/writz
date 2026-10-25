@@ -53,6 +53,56 @@ Returns an SPV proof bundle for the given Bitcoin transaction ID.
 
 `sorobanArgs` is pre-formatted for direct use with the Stellar SDK / Soroban CLI.
 
+### `GET /deposit-status/:txid`
+
+Where a `writz-lend` deposit is, from the Bitcoin transaction to its registration on Stellar, for a deposit card to poll. `txid` is in display byte order, as explorers and wallets show it. Served only where lending is enabled, like `/spv-proof`.
+
+**200 body**
+
+```json
+{
+  "txid": "b7b74d273e9f5f210f97fec7374884e4800ea5f93aad64d5f86946867c2b8b6e",
+  "stage": "verified",
+  "confirmations": 155,
+  "required": 1,
+  "blockHeight": 327757,
+  "proofReady": true,
+  "lightClientTipHeight": 327911,
+  "stellarTxHash": "020bdab6b5f8a576964b97b68c328e54ed5d0c0e572885ce8695fe8b18c6a6e6",
+  "ledger": 5364245,
+  "verifiedAt": "2026-10-24T12:26:52Z"
+}
+```
+
+| `stage` | Meaning |
+|---|---|
+| `unseen` | The Esplora indexer does not know the txid: not broadcast yet, not propagated to it yet, or the wrong network |
+| `mempool` | Broadcast, not in a block. `confirmations` is 0 |
+| `confirming` | In a block, and either `confirmations < required`, or the confirmations are there but `bitcoin-spv` does not hold the confirming headers yet (`proofReady: false`; the header sync submits them every `SPV_SYNC_INTERVAL_MS`) |
+| `ready` | `GET /spv-proof/:txid?confirmations=<required>` will serve a proof that `bitcoin-spv` can verify now. Nothing on Stellar has registered the deposit yet |
+| `verified` | `writz-lend` registered the deposit. `stellarTxHash`, `ledger` and `verifiedAt` come from its `deposit` event |
+
+- `required` is the deployment's minimum, `Config::min_confirmations` read from the `writz-lend` contract's storage (1 on the testnet deployment, 6 on mainnet), never a value configured in the relayer.
+- `verified` comes only from Stellar: a `deposit` event for this txid, or the contract's `Position` entry for it. The confirmation count alone never makes a deposit verified. A deposit registered before Stellar RPC's event retention (about 7 days on testnet) is `verified` with `stellarTxHash`, `ledger` and `verifiedAt` null.
+- There is no "submitted" stage. The deposit transaction is signed and submitted by the user's wallet, not by the relayer, and a failed call emits no event, so a pending or failed submission is not observable here.
+- When the Bitcoin read fails for a deposit that is already verified, the answer is still `200 verified`, with `confirmations`, `blockHeight` and `proofReady` null.
+- `lightClientTipHeight` is read only once Bitcoin has enough confirmations, and is null before that or when the read fails. When it cannot be read, `proofReady` follows the Bitcoin depth, as the proof route does.
+
+**Errors**
+
+| Status | `error` | Meaning |
+|---|---|---|
+| `400` | `invalid_txid` | `txid` is not 64 hex characters |
+| `429` | `rate_limited` | Per-IP budget spent (`DEPOSIT_STATUS_RATE_LIMIT` per `DEPOSIT_STATUS_RATE_WINDOW_MS`) |
+| `502` | `upstream_error` | Unexpected Esplora answer |
+| `503` | `upstream_unavailable` | Esplora rate limited or unavailable, for a deposit not verified on Stellar |
+| `503` | `stellar_unavailable` | Stellar RPC could not be read, so neither `required` nor the registration is known; no stage is guessed |
+| `503` | `lending_not_configured` | `WRITZ_LEND_ID` is not set on this relayer |
+
+`429` and the `503` answers carry `retryAfterSeconds` and a `Retry-After` header, except `lending_not_configured`.
+
+**Caching.** One answer per txid is shared for 5 seconds; failures are never kept. The Stellar transaction is found through an in-memory index of `writz-lend` `deposit` events: it is built from the oldest ledger Stellar RPC retains when the relayer starts, then follows the tip from its cursor at most once every 5 seconds.
+
 ### `GET /defindex/apy`
 
 Returns the Writz DeFindex vault's current APY, read live through `@defindex/sdk`.
@@ -291,6 +341,8 @@ Copy `.env.example` to `.env` and adjust as needed.
 | `SPV_PROOF_RATE_WINDOW_MS` | `60000` | Rate-limit window for `/spv-proof` |
 | `SPV_PROOF_CACHE_MAX_ENTRIES` | `1000` | Proof cache size; least recently used entries are evicted first |
 | `SPV_PROOF_CACHE_TTL_MS` | `3600000` | Lifetime of a cached proof whose block is at least 6 deep |
+| `DEPOSIT_STATUS_RATE_LIMIT` | `120` | Requests per client IP per window on `/deposit-status` |
+| `DEPOSIT_STATUS_RATE_WINDOW_MS` | `60000` | Rate-limit window for `/deposit-status` |
 | `CORS_ORIGIN` | `*` | Allowed origin(s) - comma-separated or `*` |
 | `DEFAULT_CONFIRMATIONS` | `6` | Used when caller omits the query param |
 | `MAX_CONFIRMATIONS` | `20` | Hard cap on the confirmations param |

@@ -56,6 +56,9 @@ export interface Config {
   /** Proof cache size (entries) and lifetime for deeply confirmed proofs. */
   spvProofCacheMaxEntries: number;
   spvProofCacheTtlMs: number;
+  /** Per-IP request budget for GET /deposit-status per window. */
+  depositStatusRateLimit: number;
+  depositStatusRateWindowMs: number;
   // Stellar / Soroban
   stellarRpcUrl: string;
   networkPassphrase: string;
@@ -225,6 +228,11 @@ function loadConfig(): Config {
     spvProofRateWindowMs: parseInt(getEnv("SPV_PROOF_RATE_WINDOW_MS", "60000"), 10),
     spvProofCacheMaxEntries: parseInt(getEnv("SPV_PROOF_CACHE_MAX_ENTRIES", "1000"), 10),
     spvProofCacheTtlMs: parseInt(getEnv("SPV_PROOF_CACHE_TTL_MS", "3600000"), 10),
+    // A deposit card polls every 15 s; 120 a minute leaves room for several
+    // cards behind one address (a venue, a classroom) without letting a loop
+    // hammer Esplora and Stellar RPC.
+    depositStatusRateLimit: parseInt(getEnv("DEPOSIT_STATUS_RATE_LIMIT", "120"), 10),
+    depositStatusRateWindowMs: parseInt(getEnv("DEPOSIT_STATUS_RATE_WINDOW_MS", "60000"), 10),
     stellarRpcUrl,
     networkPassphrase,
     commitmentTreeId: getEnv("COMMITMENT_TREE_ID", ""),
