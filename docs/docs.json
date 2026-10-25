@@ -81,6 +81,36 @@
         ]
       },
       {
+        "tab": "Guides",
+        "groups": [
+          {
+            "group": "Get started",
+            "pages": [
+              "guides/start-here",
+              "guides/sign-in-with-email",
+              "guides/set-up-freighter",
+              "guides/set-up-xverse",
+              "guides/get-test-funds",
+              "guides/connect-your-wallets"
+            ]
+          },
+          {
+            "group": "Use the app",
+            "pages": [
+              "guides/borrow",
+              "guides/repay-and-release",
+              "guides/lend"
+            ]
+          },
+          {
+            "group": "Help",
+            "pages": [
+              "guides/troubleshooting"
+            ]
+          }
+        ]
+      },
+      {
         "tab": "How It Works",
         "groups": [
           {

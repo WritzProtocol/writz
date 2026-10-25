@@ -1,0 +1,83 @@
+---
+title: "Repay and release your BTC"
+description: "Pay back a Writz loan in USDC, then release your locked BTC back to Xverse."
+---
+
+Getting your BTC back takes two actions: **repay** what you owe in USDC on Stellar, then **release** the BTC on Bitcoin. Writz co-signs the release only after the loan is fully repaid, and the BTC can only go to the address of the Bitcoin key that made the deposit.
+
+**You need:** the Stellar wallet that opened the loan, the same Xverse account, and enough test USDC to cover the debt.
+
+## Open your loan
+
+Go to [testnet.writz.xyz](https://testnet.writz.xyz) and connect your wallets. The home page shows your loan with **Borrow more**, **Repay** and **Open Loan 1** (the number is your loan's). Select **Open Loan** to see the full loan page. Loans are found on Stellar, so this works from any device with the same Stellar wallet.
+
+<Frame caption="The home page with an open loan. Example amounts.">
+  <img src="/images/guides/home-loan.png" alt="Home page with Loan 1, its collateral ratio, collateral and debt, and the Borrow more, Repay and Open Loan 1 buttons" />
+</Frame>
+
+## 1. Repay
+
+<Steps>
+  <Step title="Open the Repay tab">
+    On the loan page, select **Repay**. It shows your USDC balance and what you owe, for example **Wallet: 1,620.00 USDC. You owe 1,500.00 USDC.**
+  </Step>
+  <Step title="Enter the amount">
+    Enter an amount, or select **Repay all** to pay the whole debt. A partial repayment lowers the debt and raises your collateral ratio; only a full repayment lets you release the BTC.
+  </Step>
+  <Step title="Confirm">
+    Select **Repay** and confirm in your Stellar wallet.
+  </Step>
+</Steps>
+
+<Frame caption="The Repay tab. Example amounts.">
+  <img src="/images/guides/loan-repay.png" alt="Loan page on the Repay tab, with the amount field, Repay all and the wallet and debt line" />
+</Frame>
+
+<Tip>
+Interest accrues while the loan is open, so you owe slightly more than you borrowed. If your wallet holds exactly what you borrowed, get a few more test USDC from [Circle's faucet](/guides/get-test-funds#test-usdc-on-stellar-testnet) before you select **Repay all**.
+</Tip>
+
+## 2. Wait for Writz to co-sign
+
+After a full repayment the loan shows **Loan repaid** and **BTC still locked**. Writz now co-signs the release of your BTC, which is usually ready within a minute. Until then the page reads **Waiting for Writz**.
+
+Your BTC is safe while you wait: it stays in the lock address, and nobody can move it without your key.
+
+<Frame caption="Repaid, waiting for Writz's co-signature.">
+  <img src="/images/guides/loan-waiting-cosign.png" alt="Loan page showing Loan repaid, BTC still locked and Waiting for Writz" />
+</Frame>
+
+## 3. Release your BTC
+
+<Steps>
+  <Step title="Open the Release BTC tab">
+    Select **Release BTC**. The page shows where the BTC goes and what you receive:
+
+    - **Send to your Bitcoin key's address**: the address of the Xverse key that made the deposit.
+    - **Amount**, **Bitcoin network fee** (a few hundred sats) and **You receive**, the amount less the fee.
+  </Step>
+  <Step title="Slide to release">
+    Drag **Slide to release** all the way to the right. The app checks the loan on Stellar, confirms it is repaid and gets Writz's signature.
+  </Step>
+  <Step title="Confirm in Xverse">
+    Xverse opens and asks you to sign. Confirm it. The app sends the transaction to Bitcoin.
+  </Step>
+</Steps>
+
+<Frame caption="Release review. The BTC can only go to your own key's address. Example address and amounts.">
+  <img src="/images/guides/loan-release.png" alt="Release BTC tab with the destination address, amount, network fee, amount received and Slide to release" />
+</Frame>
+
+When it is sent, the loan shows **BTC released** with a **View on mempool** link. The BTC appears in Xverse once the transaction confirms on Bitcoin signet.
+
+<Frame caption="Released. Example amount and address.">
+  <img src="/images/guides/loan-released.png" alt="Loan page showing BTC released, the amount and destination, and a View on mempool link" />
+</Frame>
+
+## If something blocks the release
+
+- **Xverse not connected, or a different Xverse account**: the release needs the same Bitcoin key that made the deposit. Connect it in the Wallets panel and try again.
+- **Waiting for Writz takes longer than a few minutes**: refresh the page later. Your loan is repaid on Stellar and the release does not expire.
+- **Writz is not available at all**: you don't need Writz to get your BTC back in the end. After the block height shown under **Your way out**, your key alone can spend from the lock address. See [How to reclaim](https://testnet.writz.xyz/help/reclaim) in the app and [Manual Emergency Recovery](/how-it-works/manual-emergency-recovery).
+
+*Last checked against the app on 2026-10-25.*

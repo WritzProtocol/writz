@@ -1,0 +1,58 @@
+---
+title: "Set up Xverse on Bitcoin signet"
+description: "Install Xverse, switch it to Bitcoin signet and find the address that receives your test BTC."
+---
+
+[Xverse](https://www.xverse.app) is the Bitcoin wallet the Writz app connects to. It holds the BTC you lock, and its key is part of your lock address, so only you and Writz together can move the BTC while the loan is open. You only need it to **borrow**; lending USDC does not use Bitcoin.
+
+## 1. Install and create a wallet
+
+<Steps>
+  <Step title="Install the extension">
+    Install the Xverse browser extension from [xverse.app](https://www.xverse.app) and use it on a desktop browser.
+  </Step>
+  <Step title="Create a wallet">
+    Open Xverse and select **Create a new wallet**. Set a password when asked.
+  </Step>
+  <Step title="Back up the seed phrase">
+    Xverse shows your seed phrase. Write it down in order and keep it safe, then confirm the words it asks for.
+  </Step>
+</Steps>
+
+<Warning>
+Writz cannot recover your Bitcoin key. If you lose the seed phrase and the extension, BTC locked in a loan can't be released to you. On testnet that costs nothing, but treat it as practice for real funds.
+</Warning>
+
+## 2. Switch to Signet
+
+Writz on testnet uses **Bitcoin signet**, a Bitcoin test network. Xverse starts on Bitcoin mainnet.
+
+<Steps>
+  <Step title="Open the network settings">
+    In Xverse, open **Settings**, then **Network**.
+  </Step>
+  <Step title="Select Signet">
+    Select **Signet** and then **Save**. Do not pick Testnet3 or Testnet4: they are different test networks and Writz will not see coins on them.
+  </Step>
+</Steps>
+
+If Xverse is on any other network when you connect, the app tells you which network it found and asks you to switch to Bitcoin signet. Switch and select **Connect Xverse** again.
+
+<Frame caption="What the app shows when Xverse is on the wrong network.">
+  <img src="/images/guides/borrow-3-wrong-network.png" alt="Borrow step 3 with a Wrong network notice asking to switch Xverse to Bitcoin signet" />
+</Frame>
+
+## 3. Find your payment address
+
+Xverse has two Bitcoin addresses: a **payment** address and an **ordinals** address. Writz uses the **payment** address.
+
+- Xverse labels them in its receive screen. Use the one marked for **Bitcoin** payments, not **Ordinals**.
+- Send faucet coins to the payment address. Coins sent to the ordinals address do not count toward your balance in Writz.
+
+Once you connect Xverse to Writz, the Wallets panel shows the exact address it uses and its balance, with a **Copy address** button. Copying the address from there is the safest way to get the right one.
+
+## What's next
+
+[Get test BTC](/guides/get-test-funds#test-btc-on-bitcoin-signet) for this address.
+
+*Labels checked on 2026-10-25. Xverse updates often, so a menu name may differ slightly in your version. The app always tells you if the network is wrong.*

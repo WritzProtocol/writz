@@ -1,0 +1,134 @@
+---
+title: "Borrow USDC against BTC"
+description: "Lock test BTC on Bitcoin signet, register it on Stellar and borrow test USDC, step by step in the Writz app."
+---
+
+A loan has two parts. First you **lock BTC** in a Bitcoin address that only you and Writz together can spend from, and register that deposit on Stellar. Then you **borrow USDC** against it, as much or as little as you want up to the limit.
+
+**You need:** a [Stellar wallet](/guides/set-up-freighter) with test XLM (or a [Google, GitHub or email sign-in](/guides/sign-in-with-email)), [Xverse on signet](/guides/set-up-xverse) and at least 0.00005 BTC of [test BTC](/guides/get-test-funds#test-btc-on-bitcoin-signet) plus a few hundred sats for the fee.
+
+**Time:** a few minutes of clicks, plus the wait for Bitcoin to confirm your deposit. You can close the page while it confirms and come back later.
+
+## Part 1: Lock your BTC
+
+Open [testnet.writz.xyz](https://testnet.writz.xyz) and select **Borrow** in the menu, or **Start** on the home page. The app walks you through six steps, shown at the top as **Step 1 of 6** to **Step 6 of 6**.
+
+<Steps>
+  <Step title="Amount">
+    Under **How much BTC do you want to lock?**, enter the amount. The minimum on testnet is **0.00005 BTC**. The app shows **You can borrow up to**, the price at which the loan would be liquidated if you borrowed the full amount, and the oracle BTC price. Select **Continue**.
+
+    <Frame caption="Step 1. With 0.0001 BTC you can borrow a few USDC at the current test price.">
+      <img src="/images/guides/borrow-1-amount.png" alt="Step 1 of 6, the BTC amount field with the borrow limit, liquidation price and BTC price" />
+    </Frame>
+  </Step>
+
+  <Step title="Stellar wallet">
+    Select **Connect Stellar wallet** and approve in your wallet. If the account has no XLM, the app shows **Not funded**: select **Fund with Friendbot**, then **Check again**.
+
+    <Frame caption="Step 2. Connect the wallet that receives your USDC.">
+      <img src="/images/guides/borrow-2-connect-stellar.png" alt="Step 2 of 6 with the Connect Stellar wallet button" />
+    </Frame>
+  </Step>
+
+  <Step title="Bitcoin wallet">
+    Select **Connect Xverse** and approve in Xverse. The app then checks your signet balance.
+
+    - **Wrong network**: Xverse is not on signet. [Switch it to Signet](/guides/set-up-xverse#2-switch-to-signet) and select **Connect Xverse** again.
+    - **Not enough BTC**: the balance is below your amount. Use one of the faucet links shown, wait for the coins, then select **Check balance again**.
+
+    <Frame caption="Step 3 when the balance is too low. The faucet links are right there.">
+      <img src="/images/guides/borrow-3-not-enough-btc.png" alt="Step 3 of 6 showing Not enough BTC, two faucet links and Check balance again" />
+    </Frame>
+  </Step>
+
+  <Step title="Review and send">
+    The app shows everything about the lock before any BTC moves:
+
+    - **You lock**: the amount, plus the Bitcoin network fee.
+    - **To your lock address**: the Bitcoin address built from your Xverse key and Writz's key. **What is this?** explains it.
+    - **Release**: Writz co-signs the release when your loan is repaid.
+    - **Your way out**: the block height (and rough date) after which your key alone can move the BTC, even if Writz is gone.
+
+    Read the line **Writz cannot recover your Bitcoin key. Keep its recovery phrase.**, tick **I understand my BTC stays locked until I repay and release it, or until block …**, then drag **Slide to send** all the way to the right. Xverse opens and asks you to send the amount plus the fee: confirm it there.
+
+    <Frame caption="Step 4. Check the amount, the lock address and your way out, then slide to send. Example amounts and address.">
+      <img src="/images/guides/borrow-4-review.png" alt="Step 4 of 6, Check everything then send, with the lock details and the Slide to send control" />
+    </Frame>
+  </Step>
+
+  <Step title="Wait for Bitcoin">
+    The app counts the confirmations it needs, with an estimate of the time left and a **View on mempool** link to watch your transaction.
+
+    You can close the page. Your progress is saved in this browser for this Stellar wallet, and the home page shows the deposit when you come back.
+
+    <Frame caption="Step 5. Bitcoin signet blocks arrive about every 10 minutes.">
+      <img src="/images/guides/borrow-5-waiting.png" alt="Step 5 of 6, Bitcoin is confirming your deposit, with the confirmation counter" />
+    </Frame>
+  </Step>
+
+  <Step title="Register on Stellar">
+    When the deposit has the confirmations it needs, the app shows **One signature left**. Select **Register on Stellar**, then:
+
+    1. **Confirm in Xverse.** It signs a free message that proves the Bitcoin key is yours. No BTC moves and there is no fee.
+    2. **Confirm in your Stellar wallet.** One transaction, with a fee of about 0.01 XLM.
+
+    Writz verifies your Bitcoin transaction on Stellar itself, with a Bitcoin light client contract, before it records the deposit.
+
+    <Frame caption="Step 6. A free message in Xverse, then one Stellar transaction.">
+      <img src="/images/guides/borrow-6-registering.png" alt="Step 6 of 6, Registering your deposit on Stellar, with the Xverse and Stellar signature steps" />
+    </Frame>
+  </Step>
+</Steps>
+
+When it finishes, the app shows your BTC as locked and **Your loan is ready**. Select **Borrow now** to open the loan.
+
+<Frame caption="The deposit is registered. Example amounts.">
+  <img src="/images/guides/borrow-done.png" alt="BTC locked, Your loan is ready, with Borrow now and Make another deposit buttons" />
+</Frame>
+
+## Part 2: Borrow USDC
+
+<Steps>
+  <Step title="Add USDC, once">
+    If your Stellar account can't hold USDC yet, the loan page shows **Add USDC to your Stellar wallet so it can receive what you borrow.** Select **Add USDC** and confirm in your wallet. Your wallet sets aside 0.5 XLM for it. You only do this once per account.
+
+    <Frame caption="Only shown if USDC is not added to your account yet.">
+      <img src="/images/guides/loan-add-usdc.png" alt="Loan page with the Add USDC step above the Borrow form" />
+    </Frame>
+  </Step>
+  <Step title="Choose an amount">
+    On the **Borrow more** tab, enter how much USDC to borrow, or use **25%**, **50%** or **Max safe**. The app shows the collateral ratio the loan would have and the BTC price at which it could be liquidated.
+  </Step>
+  <Step title="Borrow">
+    Select **Borrow** and confirm in your wallet. The USDC arrives in your Stellar wallet within seconds.
+  </Step>
+</Steps>
+
+<Frame caption="An open loan. The meter shows the collateral ratio; the tabs borrow more, repay and release. Example amounts.">
+  <img src="/images/guides/loan-healthy.png" alt="Loan page with a 200% collateral ratio marked Healthy, collateral, debt and available to borrow" />
+</Frame>
+
+## Keep the loan healthy
+
+The **collateral ratio** is the value of your locked BTC divided by what you owe. The loan page shows it with a meter:
+
+| Ratio | Label | What it means |
+|---|---|---|
+| 150% and above | **Healthy** | You can borrow more, as long as the ratio stays at 150% or above. |
+| 130% to 150% | **Below borrow limit** | You can't borrow more. Repay some to get back above 150%. |
+| 120% to 130% | **Close to liquidation** | Repay now, or the next price drop can make the loan liquidatable. |
+| Below 120% | **Can be liquidated now** | Anyone running a liquidator can repay your debt and close the loan. |
+
+The ratio moves with the BTC price. Borrowing less than the maximum gives you room if the price drops. The page also states the BTC price at which your loan would become liquidatable.
+
+If a loan is liquidated, you keep the USDC you borrowed and owe nothing more on it. Writz does not take or sell your BTC: it stays in the lock address until the block height under **Your way out**, after which your key alone can [reclaim it](https://testnet.writz.xyz/help/reclaim).
+
+## Your loans on other devices
+
+Loans are recorded on Stellar, so they load on any device where you connect the same Stellar wallet. A deposit that is still confirming is saved only in the browser where you made it, so finish steps 5 and 6 in that same browser.
+
+## What's next
+
+[Repay and release your BTC](/guides/repay-and-release).
+
+*Last checked against the app on 2026-10-25.*
