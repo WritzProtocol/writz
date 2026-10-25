@@ -2,11 +2,22 @@ name: Release writz-spv-client
 
 # Push a tag `writz-spv-client-v<version>` matching
 # contracts/contracts/writz-spv-client/Cargo.toml to publish the crate to
-# crates.io and create the GitHub Release. Needs the CARGO_REGISTRY_TOKEN secret.
+# crates.io and create the GitHub Release. Needs the CARGO_REGISTRY_TOKEN
+# secret. Steps: packages/sdk/RELEASING.md.
+#
+# Run it by hand (Actions > Release writz-spv-client > Run workflow) with
+# dry_run checked to run every step with `--dry-run`, check that
+# CARGO_REGISTRY_TOKEN is set, and skip the GitHub Release. Nothing is published.
 on:
   push:
     tags:
       - "writz-spv-client-v*"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run: test, package and verify the crate, publish nothing"
+        type: boolean
+        default: true
 
 permissions:
   contents: write
@@ -20,6 +31,8 @@ jobs:
     name: publish to crates.io
     runs-on: ubuntu-latest
     environment: crates-io
+    env:
+      DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
     defaults:
       run:
         working-directory: contracts
@@ -32,6 +45,7 @@ jobs:
         with:
           workspaces: contracts
       - name: Tag matches Cargo.toml version
+        if: env.DRY_RUN != 'true'
         run: |
           version=$(cargo metadata --no-deps --format-version 1 \
             | python3 -c 'import json,sys; print(next(p["version"] for p in json.load(sys.stdin)["packages"] if p["name"]=="writz-spv-client"))')
@@ -41,11 +55,29 @@ jobs:
           fi
       - run: cargo test -p writz-spv-client --locked
       - run: cargo build -p writz-spv-client --release --target wasm32v1-none --locked
+      - name: Check CARGO_REGISTRY_TOKEN
+        if: env.DRY_RUN == 'true'
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: |
+          if [ -z "$CARGO_REGISTRY_TOKEN" ]; then
+            echo "CARGO_REGISTRY_TOKEN is not set: a real publish would fail" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          echo "CARGO_REGISTRY_TOKEN is set" >> "$GITHUB_STEP_SUMMARY"
+      # cargo publish packages the crate and builds it on its own, outside the
+      # workspace, before uploading (the same check as `cargo package`).
       - name: Publish
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-        run: cargo publish -p writz-spv-client --locked
+        run: |
+          if [ "$DRY_RUN" = "true" ]; then
+            cargo publish -p writz-spv-client --locked --dry-run
+          else
+            cargo publish -p writz-spv-client --locked
+          fi
       - name: GitHub Release
+        if: env.DRY_RUN != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

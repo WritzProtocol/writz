@@ -2,6 +2,7 @@
 name = "writz-spv-client"
 version = "0.1.0"
 edition = "2021"
+rust-version = "1.91"
 description = "Soroban client for the Writz bitcoin-spv contract: prove a Bitcoin transaction from a Stellar smart contract"
 license = "Apache-2.0"
 repository = "https://github.com/WritzProtocol/writz"
@@ -10,7 +11,10 @@ documentation = "https://docs.rs/writz-spv-client"
 readme = "README.md"
 keywords = ["soroban", "stellar", "bitcoin", "spv", "light-client"]
 categories = ["cryptography::cryptocurrencies", "no-std"]
-include = ["src/**/*.rs", "Cargo.toml", "README.md"]
+include = ["src/**/*.rs", "Cargo.toml", "README.md", "LICENSE"]
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
 
 [lib]
 crate-type = ["lib"]
