@@ -111,6 +111,7 @@ Indexes are scaled by 10^18. Lender yield is the interest Bitcoin borrowers pay:
 GET  /                                  service index (JSON)
 GET  /health                            status
 GET  /spv-proof/:txid?confirmations=N   proof for a confirmed signet tx; txid in DISPLAY order; N in 1..20, default 6
+GET  /deposit-status/:txid              writz-lend deposit progress: stage (unseen|mempool|confirming|ready|verified), confirmations, required, stellarTxHash
 GET  /faucet/signet                     faucet status: enabled, amountSats, remainingToday, ipClaimsPerWindow, ipWindowHours, address
 POST /faucet/signet  {"address":"tb1..."}   pays signet test BTC to a tb1q/tb1p address; returns { txid, amountSats, feeSats, explorerUrl }
 ```
