@@ -62,7 +62,8 @@ All are optional on testnet: unset, they fall back to the testnet values below. 
 
 | Variable | Testnet default | What it is |
 |---|---|---|
-| `NEXT_PUBLIC_WRITZ_LEND_ID` | `CCMSOCBVX2S645MQFFXJRHVHRWH2NY62KLOJXNDYFOJRYHIC47EO6ZZK` | The lending contract |
+| `NEXT_PUBLIC_WRITZ_LEND_ID` | `CABF7VK7F25ZGDLV6EWSAU3NYQYKDQNDSJIISDMDZAUASMSXUADSHZGG` | The lending contract |
+| `NEXT_PUBLIC_BITCOIN_SPV_ID` | `CBX23YKCCJMAMBMSCNP6YVKEXUIYK2CTKSR4TQ3RVBPAFYZFVCW7W4EO` | The Bitcoin light client |
 | `NEXT_PUBLIC_USDC_TOKEN_ID` | `CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA` | Circle testnet USDC (the pool asset, and the asset CCTP burns) |
 | `NEXT_PUBLIC_SOROSWAP_ROUTER_ID` | `CCJUD55AG6W5HAI5LRVNKAE5WDP5XGZBUDS5WNTIVDU7O264UZZE7BRD` | Soroswap router |
 | `NEXT_PUBLIC_XLM_TOKEN_ID` | `CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC` | Native XLM Stellar Asset Contract |
@@ -91,7 +92,7 @@ flowchart LR
 
 ## Architecture of the new work
 
-No contract was changed during the event. Everything new runs in the testnet app and the relayer.
+Everything new for the goals runs in the testnet app and the relayer. One contract change was made during the event, for an outside reason: testnet's ledger state rose above its target size, which raised storage rent so much that a new deposit on the previous deployment (`writz-lend` `CCMSOCBV...`, `bitcoin-spv` `CAHHY4S4...`) needed more fee than a transaction can carry. [#340](https://github.com/WritzProtocol/writz/pull/340) makes the storage lifetime of new entries a deployment parameter (shorter on testnet, unchanged on mainnet), and both contracts were redeployed on 25 October. No economic logic, authorization or Bitcoin verification changed.
 
 | Piece | Where | What it does |
 |---|---|---|
@@ -104,8 +105,8 @@ No contract was changed during the event. Everything new runs in the testnet app
 
 | Contract | Address |
 |---|---|
-| `bitcoin-spv` (2026-10-11 deployment) | `CAHHY4S4WCIFU4LBSKBI3IP6A4QYR2COV6EACDEBXGPJFDWBJWGOMCLP` |
-| `writz-lend` (2026-10-24 deployment: 1 confirmation, 5,000 sats minimum) | `CCMSOCBVX2S645MQFFXJRHVHRWH2NY62KLOJXNDYFOJRYHIC47EO6ZZK` |
+| `bitcoin-spv` (2026-10-25 redeploy) | `CBX23YKCCJMAMBMSCNP6YVKEXUIYK2CTKSR4TQ3RVBPAFYZFVCW7W4EO` |
+| `writz-lend` (2026-10-25 redeploy: 1 confirmation, 5,000 sats minimum) | `CABF7VK7F25ZGDLV6EWSAU3NYQYKDQNDSJIISDMDZAUASMSXUADSHZGG` |
 | Circle USDC (SAC) | `CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA` |
 | Soroswap router | `CCJUD55AG6W5HAI5LRVNKAE5WDP5XGZBUDS5WNTIVDU7O264UZZE7BRD` |
 | Soroswap USDC/XLM pair | `CCBX3NZTCQLQFSPG7HBOKL4P2RVPOPVFHDNRTOSCCJWBTPL2GHEH7RQS` |
@@ -122,7 +123,7 @@ Together, Stellar becomes the credit layer for native Bitcoin: the collateral is
 
 ## Security and limits
 
-- No contract changed during the event. The new code builds standard calls to the Soroswap router and Circle's contracts.
+- The receive features call the Soroswap router and Circle's contracts with standard calls. The one contract change during the event ([#340](https://github.com/WritzProtocol/writz/pull/340)) only sets how long new storage entries live; no economic logic, authorization or Bitcoin verification changed.
 - The swap and the transfer are a second transaction. If it fails, the borrower keeps the USDC they borrowed; nothing is lost.
 - The swap has a minimum output and a deadline; a price move beyond the slippage makes it revert instead of filling badly.
 - CCTP burns and mints Circle-native USDC. With the destination caller left open, anyone can complete the mint; our relay does it so the borrower needs nothing on Base Sepolia.
@@ -170,6 +171,7 @@ Event work, in merge order:
 | [#332](https://github.com/WritzProtocol/writz/pull/332) | Relayer: full-cycle loan timeline with explorer links |
 | [#337](https://github.com/WritzProtocol/writz/pull/337) | Fix: the relayer counted the resource fee twice when publishing releases |
 | [#336](https://github.com/WritzProtocol/writz/pull/336) | App: deposit status card with the verified-on-Stellar seal, receive-as selector and full-cycle timeline |
+| [#340](https://github.com/WritzProtocol/writz/pull/340) | Storage lifetimes set at deployment, so a testnet deposit fits in a transaction fee again; both contracts redeployed on testnet |
 
 ## What comes next
 
