@@ -25,6 +25,7 @@ import {
 } from "../leaf-store.js";
 import type { ContractProof } from "../insert-prover.js";
 import { bidInclusionFeeOnly } from "../soroban-fee.js";
+import { withAccountLock } from "../account-lock.js";
 
 export interface KeeperNoteSink {
   (leafIndex: number, commitment: bigint, note: bigint[]): void;
@@ -119,16 +120,20 @@ export function startZkKeeper(): { stop: () => void } {
     isSpent: async (n) => (await client.is_nullifier_spent({ nullifier: hex(n) })).result,
     prove: proveLiquidation,
     liquidate: async (proof, publicSignals) => {
-      const tx = await client.liquidate({ keeper, zk_proof: proof, public_signals: publicSignals });
-      bidInclusionFeeOnly(tx);
-      const sent = await tx.signAndSend({
-        signTransaction: async (xdr: string) => {
-          const t = new Transaction(xdr, config.networkPassphrase);
-          t.sign(keypair);
-          return { signedTxXdr: t.toXDR(), signerAddress: keeper };
-        },
+      // Under the keeper account's lock, in case it is also the account
+      // another submitter signs with (see account-lock.ts).
+      return withAccountLock(keeper, async () => {
+        const tx = await client.liquidate({ keeper, zk_proof: proof, public_signals: publicSignals });
+        bidInclusionFeeOnly(tx);
+        const sent = await tx.signAndSend({
+          signTransaction: async (xdr: string) => {
+            const t = new Transaction(xdr, config.networkPassphrase);
+            t.sign(keypair);
+            return { signedTxXdr: t.toXDR(), signerAddress: keeper };
+          },
+        });
+        return sent.sendTransactionResponse?.hash;
       });
-      return sent.sendTransactionResponse?.hash;
     },
     markLiquidated: markKeeperLiquidated,
     nullifierOf: (p) => poseidon2([p.liqKey, p.nonce]),

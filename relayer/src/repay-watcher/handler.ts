@@ -27,6 +27,7 @@ import { Client as WritzLendClient, type Position } from "../contracts/writzLend
 import { EsploraClient } from "../bitcoin/esplora.js";
 import { parseOutput } from "../bitcoin/tx.js";
 import { bidInclusionFeeOnly } from "../soroban-fee.js";
+import { withAccountLock } from "../account-lock.js";
 import { config } from "../config.js";
 
 // A widely-used, publicly documented placeholder account with no known
@@ -73,6 +74,16 @@ function reverseHex(hex: string): string {
   if (!bytes) return hex;
   return bytes.reverse().join("");
 }
+
+/**
+ * Validity window of the `publish_release_psbt` transaction, and how long
+ * `signAndSend` waits for it. The SDK default is 300 s: a publish that is
+ * dropped from the queue (see account-lock.ts) held the release back for five
+ * minutes before anything noticed. At 60 s the transaction has expired by the
+ * time the wait ends, so the retry in the poller can rebuild it from a fresh
+ * sequence number without any risk of both copies landing.
+ */
+export const PUBLISH_TIMEOUT_SECONDS = 60;
 
 export interface HandlerDeps {
   esplora: EsploraClient;
@@ -160,13 +171,21 @@ export async function handleRepayFull(
     return { signedTxXdr: tx.toXDR(), signerAddress: deps.relayerKeypair.publicKey() };
   };
 
-  const assembled = await writeClient.publish_release_psbt({
-    relayer: deps.relayerKeypair.publicKey(),
-    txid: txidInternal,
-    psbt: psbt.toBuffer(),
+  // Built, sent and confirmed under the relayer account's lock: the header
+  // sync signs with the same account, and a transaction built from the same
+  // sequence number can evict this one from the queue (see account-lock.ts).
+  await withAccountLock(deps.relayerKeypair.publicKey(), async () => {
+    const assembled = await writeClient.publish_release_psbt(
+      {
+        relayer: deps.relayerKeypair.publicKey(),
+        txid: txidInternal,
+        psbt: psbt.toBuffer(),
+      },
+      { timeoutInSeconds: PUBLISH_TIMEOUT_SECONDS },
+    );
+    bidInclusionFeeOnly(assembled);
+    await assembled.signAndSend({ signTransaction });
   });
-  bidInclusionFeeOnly(assembled);
-  await assembled.signAndSend({ signTransaction });
 }
 
 export type { Position };

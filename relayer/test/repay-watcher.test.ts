@@ -217,3 +217,71 @@ describe("runPollCycle", () => {
     expect(serverAfterRestart.getLatestLedger).not.toHaveBeenCalled();
   });
 });
+
+describe("withPromptRetry", () => {
+  beforeEach(() => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "watcher-test-"));
+    process.env.WATCHER_SQLITE_PATH = path.join(dir, "watcher.db");
+    jest.resetModules();
+    jest.spyOn(console, "warn").mockImplementation(() => {});
+  });
+  afterEach(() => jest.restoreAllMocks());
+
+  const txid = Buffer.from("afd69080ef55cf4544f14c5b2ccab50cecc0dfd767a9865a96b716854e089d45", "hex");
+
+  test("retries a failed publish within seconds and stops at the first success", async () => {
+    const { withPromptRetry } = require("../src/repay-watcher/poller.js");
+    const handle = jest
+      .fn()
+      .mockRejectedValueOnce(new Error("Waited 60 seconds for transaction to complete, but it did not."))
+      .mockResolvedValueOnce(undefined);
+    const sleep = jest.fn().mockResolvedValue(undefined);
+
+    await withPromptRetry(handle, { sleep })(txid);
+
+    expect(handle).toHaveBeenCalledTimes(2);
+    expect(handle).toHaveBeenNthCalledWith(2, txid);
+    expect(sleep.mock.calls).toEqual([[2_000]]);
+  });
+
+  test("gives up after three attempts, 2 s and 4 s apart, and rethrows the last error", async () => {
+    const { withPromptRetry } = require("../src/repay-watcher/poller.js");
+    const handle = jest
+      .fn()
+      .mockRejectedValueOnce(new Error("first"))
+      .mockRejectedValueOnce(new Error("second"))
+      .mockRejectedValueOnce(new Error("third"));
+    const sleep = jest.fn().mockResolvedValue(undefined);
+
+    await expect(withPromptRetry(handle, { sleep })(txid)).rejects.toThrow("third");
+    expect(handle).toHaveBeenCalledTimes(3);
+    expect(sleep.mock.calls).toEqual([[2_000], [4_000]]);
+  });
+
+  test("a batch whose publish keeps failing still leaves the cursor for the next poll", async () => {
+    const { runPollCycle, withPromptRetry } = require("../src/repay-watcher/poller.js");
+    const { readCursor } = require("../src/repay-watcher/cursor-store.js");
+    jest.spyOn(console, "error").mockImplementation(() => {});
+    const handle = jest.fn().mockRejectedValue(new Error("dropped"));
+    const server = {
+      getEvents: jest.fn().mockResolvedValue({
+        events: [{ topic: ["repay_full", txid.toString("hex")] }],
+        cursor: "0019327400076640256-0000000000",
+      }),
+      getLatestLedger: jest.fn().mockResolvedValue({ sequence: 100 }),
+    };
+
+    await runPollCycle({
+      server,
+      contractId: "CCONTRACT",
+      handle: withPromptRetry(handle, { sleep: async () => {} }),
+      decodeEvent: (event: { topic: unknown[] }) => {
+        const [tag, hex] = event.topic as [string, string];
+        return { topic0: tag, txid: Buffer.from(hex, "hex") };
+      },
+    });
+
+    expect(handle).toHaveBeenCalledTimes(3);
+    expect(readCursor()).toBeNull();
+  });
+});

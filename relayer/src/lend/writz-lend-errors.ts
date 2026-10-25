@@ -36,4 +36,5 @@ export const WRITZ_LEND_ERRORS: Readonly<Record<number, string>> = Object.freeze
   25: "InvalidKeyProof",
   26: "ZeroShareAmount",
   27: "InvalidDepositParams",
+  28: "InvalidEntryTtl",
 });

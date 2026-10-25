@@ -9,6 +9,7 @@ import { verifyInsertAuth, lookupDepositorOnChain, InsertAuthError } from "../in
 import { proveInsertion } from "../insert-prover.js";
 import { withTreeLock } from "../tree-lock.js";
 import { bidInclusionFeeOnly } from "../soroban-fee.js";
+import { withAccountLock } from "../account-lock.js";
 
 const COMMITMENT_RE = /^[0-9a-f]{64}$/i;
 const HEX_RE = /^[0-9a-f]+$/i;
@@ -192,15 +193,19 @@ merkleRouter.post("/insert-commitment", writeLimiter, async (req: Request, res: 
         return { signedTxXdr: tx.toXDR(), signerAddress: admin };
       };
 
-      const tx = await simulateWithRetry(() =>
-        writeClient.insert_commitment({
-          caller: admin,
-          zk_proof: proof,
-          public_signals: publicSignals,
-        }),
-      );
-      bidInclusionFeeOnly(tx);
-      const sent = await tx.signAndSend({ signTransaction });
+      // Built and sent under the admin account's lock, in case it is also the
+      // account another submitter signs with (see account-lock.ts).
+      const sent = await withAccountLock(admin, async () => {
+        const tx = await simulateWithRetry(() =>
+          writeClient.insert_commitment({
+            caller: admin,
+            zk_proof: proof,
+            public_signals: publicSignals,
+          }),
+        );
+        bidInclusionFeeOnly(tx);
+        return tx.signAndSend({ signTransaction });
+      });
 
       writeLeaves(newLeaves);
       if (encNote) saveNote(leafIndex, encNote);
