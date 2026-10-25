@@ -26,6 +26,7 @@ import {
 import { Client as WritzLendClient, type Position } from "../contracts/writzLend.js";
 import { EsploraClient } from "../bitcoin/esplora.js";
 import { parseOutput } from "../bitcoin/tx.js";
+import { bidInclusionFeeOnly } from "../soroban-fee.js";
 import { config } from "../config.js";
 
 // A widely-used, publicly documented placeholder account with no known
@@ -164,6 +165,7 @@ export async function handleRepayFull(
     txid: txidInternal,
     psbt: psbt.toBuffer(),
   });
+  bidInclusionFeeOnly(assembled);
   await assembled.signAndSend({ signTransaction });
 }
 

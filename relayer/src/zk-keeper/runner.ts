@@ -24,6 +24,7 @@ import {
   type StoredKeeperPosition,
 } from "../leaf-store.js";
 import type { ContractProof } from "../insert-prover.js";
+import { bidInclusionFeeOnly } from "../soroban-fee.js";
 
 export interface KeeperNoteSink {
   (leafIndex: number, commitment: bigint, note: bigint[]): void;
@@ -119,6 +120,7 @@ export function startZkKeeper(): { stop: () => void } {
     prove: proveLiquidation,
     liquidate: async (proof, publicSignals) => {
       const tx = await client.liquidate({ keeper, zk_proof: proof, public_signals: publicSignals });
+      bidInclusionFeeOnly(tx);
       const sent = await tx.signAndSend({
         signTransaction: async (xdr: string) => {
           const t = new Transaction(xdr, config.networkPassphrase);
