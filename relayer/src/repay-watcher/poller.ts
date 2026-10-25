@@ -24,6 +24,7 @@
  * interop gap in the test toolchain.
  */
 import { readCursor, writeCursor } from "./cursor-store.js";
+import { withBackoff } from "../bitcoin/header-sync.js";
 
 const REPAY_FULL_TOPIC = "repay_full";
 
@@ -113,6 +114,49 @@ export async function runPollCycle(deps: PollCycleDeps): Promise<void> {
   }
 }
 
+/**
+ * Retries a failed release publish within seconds instead of waiting for the
+ * next poll: 2 s, then 4 s, three attempts in all. Each attempt runs the whole
+ * handler again, so it re-checks `get_release_psbt` first (nothing is
+ * published twice) and builds the transaction from a fresh sequence number.
+ * Every error is retried: the handler's deterministic failures (an unknown
+ * position, a script mismatch) cost two quick extra reads, and the poll cycle
+ * still leaves the cursor in place if the last attempt fails.
+ */
+export const PUBLISH_RETRIES = 2;
+export const PUBLISH_RETRY_BASE_DELAY_MS = 2_000;
+
+export function withPromptRetry(
+  handle: (txid: Buffer) => Promise<void>,
+  {
+    retries = PUBLISH_RETRIES,
+    baseDelayMs = PUBLISH_RETRY_BASE_DELAY_MS,
+    sleep,
+  }: { retries?: number; baseDelayMs?: number; sleep?: (ms: number) => Promise<void> } = {},
+): (txid: Buffer) => Promise<void> {
+  return (txid) => {
+    let attempt = 0;
+    return withBackoff(
+      async () => {
+        attempt++;
+        try {
+          return await handle(txid);
+        } catch (e) {
+          if (attempt <= retries) {
+            console.warn(
+              `[repay-watcher] attempt ${attempt} for ${txid.toString("hex")} failed, retrying:`,
+              e instanceof Error ? e.message.split("\n")[0] : e,
+            );
+          }
+          throw e;
+        }
+      },
+      () => true,
+      { retries, baseDelayMs, ...(sleep ? { sleep } : {}) },
+    );
+  };
+}
+
 export interface RepayWatcherHandle {
   stop: () => void;
 }
@@ -174,7 +218,7 @@ export function startRepayWatcher(): RepayWatcherHandle {
         await runPollCycle({
           server,
           contractId: config.writzLendId,
-          handle: (txid) => handleRepayFull(txid, { esplora, signer: signer!, relayerKeypair }),
+          handle: withPromptRetry((txid) => handleRepayFull(txid, { esplora, signer: signer!, relayerKeypair })),
         });
       } catch (e) {
         console.error("[repay-watcher] poll failed:", e instanceof Error ? e.message : e);
