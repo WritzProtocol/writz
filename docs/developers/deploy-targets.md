@@ -40,7 +40,7 @@ Leaving the variable unset means `local` and validates nothing. That is delibera
 | `NEXT_PUBLIC_HORIZON_URL` set and not a test network (frontend) | - | yes |
 | `NEXT_PUBLIC_RELAYER_URL` set, https, and not a test deployment (frontend) | - | yes |
 | Earn mock forbidden (frontend) | - | yes |
-| No signing key or lending setting: `KMS_KEY_ID`, `PROTOCOL_SIGNING_KEY`, `ADMIN_SECRET`, `RELAYER_SECRET`, `COMMITMENT_TREE_ID`, `WRITZ_LEND_ID`, `BITCOIN_SPV_ID`, `FAUCET_SIGNET_WIF`, `CCTP_RELAY_EVM_KEY` all unset (relayer) | - | yes |
+| No signing key or lending setting: `KMS_KEY_ID`, `PROTOCOL_SIGNING_KEY`, `ADMIN_SECRET`, `RELAYER_SECRET`, `COMMITMENT_TREE_ID`, `WRITZ_LEND_ID`, `BITCOIN_SPV_ID`, `FAUCET_SIGNET_WIF`, `CCTP_RELAY_EVM_KEY`, `POLLAR_SECRET_KEY` all unset (relayer) | - | yes |
 | `CORS_ORIGIN` must name explicit origins, not `*` (relayer) | - | yes |
 
 Testnet is deliberately looser. It is allowed to run with the Earn mock and with pieces still missing while the epic is being built out; mainnet is allowed to inherit nothing by omission.
@@ -120,9 +120,14 @@ DEFINDEX_API_KEY=<from console.defindex.io>
 WRITZ_LEND_ID=<the current writz-lend, from contracts/deployments/testnet.md>
 RELAYER_SECRET=<the account writz-lend names as its relayer>
 KMS_KEY_ID=<the protocol co-signing key> plus AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and AWS_REGION
+FAUCET_SIGNET_WIF=<the Signet faucet's own key, see relayer/README.md>
+POLLAR_SECRET_KEY=<a sec_testnet_ secret key of the testnet app, Pollar dashboard, Build > API Keys>
+POLLAR_APPLICATION_ID=<the same app's App ID, Pollar dashboard, Settings>
 ```
 
-The last three run the repay watcher, which co-signs every release after a full repayment and publishes it on `writz-lend`. Without them the relayer logs `auto-cosign watcher disabled` at startup and no testnet position can release its BTC. On testnet `PROTOCOL_SIGNING_KEY` (a WIF) can stand in for `KMS_KEY_ID`; the mainnet target refuses both while it serves Earn only. The key must be the one whose public key `writz-lend` was deployed with. The watcher starts from the latest ledger the first time it runs, so a position repaid before it was configured needs a manual backfill (`relayer-backfill-runbook.md`).
+The last three run the Signet faucet, which funds only accounts created through the testnet app's social login (one claim per Pollar account, Stellar address and Signet address). The relayer checks each claim's Pollar access token with Pollar's Server API, so without `POLLAR_SECRET_KEY` and `POLLAR_APPLICATION_ID` the faucet stays off (`503 faucet_disabled`); it never falls back to paying any address. The relayer refuses to start with a `sec_mainnet_` key, and the mainnet target refuses `POLLAR_SECRET_KEY` altogether.
+
+`RELAYER_SECRET`, `KMS_KEY_ID` and the AWS credentials run the repay watcher, which co-signs every release after a full repayment and publishes it on `writz-lend`. Without them the relayer logs `auto-cosign watcher disabled` at startup and no testnet position can release its BTC. On testnet `PROTOCOL_SIGNING_KEY` (a WIF) can stand in for `KMS_KEY_ID`; the mainnet target refuses both while it serves Earn only. The key must be the one whose public key `writz-lend` was deployed with. The watcher starts from the latest ledger the first time it runs, so a position repaid before it was configured needs a manual backfill (`relayer-backfill-runbook.md`).
 
 `DEFINDEX_VAULT_ID` is the piece this issue is really about: it is per-network, has no safe default, and a relayer without it serves errors from every `/defindex` route. The testnet vault address lives in [`contracts/deployments/defindex-vault-testnet.md`](https://github.com/WritzProtocol/writz/blob/main/contracts/deployments/defindex-vault-testnet.md) rather than being repeated here, so there is one place to change when it is redeployed.
 
@@ -138,7 +143,7 @@ The relayer keeps eight SQLite databases on local disk:
 | `data/vault-watcher.db` | `vault-watcher/cursor-store.ts` | The vault watcher's cursor |
 | `data/tree-watcher.db` | `tree-watcher/cursor-store.ts` | The tree watcher's cursor |
 | `data/tree-events.db` | `tree-watcher/event-archive.ts` | **Every `insert_leaf`, `borrow` and `repay` the commitment tree emitted** |
-| `data/faucet.db` | `faucet/sqlite-store.ts` | Signet faucet claims: cooldowns and the daily count reset (testnet only) |
+| `data/faucet.db` | `faucet/sqlite-store.ts` | Signet faucet claims: the one-claim-per-account rule and the daily count reset, so every social-login account could claim again (testnet only) |
 | `data/cctp-relay.db` | `cctp/sqlite-store.ts` | CCTP relay records: past transfers and their Base Sepolia mint hashes; the daily mint count resets (testnet only) |
 
 The container image declares no `VOLUME`, so on a fresh service that directory is ephemeral and every redeploy starts empty.
@@ -255,6 +260,8 @@ CORS_ORIGIN=https://app.writz.xyz
 DEFINDEX_VAULT_ID=CDODNWQY54F4WS7AZ5Z3AAIWRLKBFUMXHNOFEM4H3UNCTMFK4RF2A6GU
 DEFINDEX_API_KEY=<the mainnet-only key; never the testnet one>
 ```
+
+No `FAUCET_SIGNET_WIF` and no `POLLAR_SECRET_KEY`: the Signet faucet does not exist on mainnet, and the relayer refuses to boot with either set.
 
 ### DNS (Cloudflare)
 

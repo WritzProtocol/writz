@@ -23,7 +23,9 @@ const app = express();
 // is enabled - not on mainnet, which is Earn-only (#122).
 const LENDING = lendingEnabled(config.target);
 // The Signet faucet exists only where the Bitcoin side is Signet, never on
-// the mainnet target. Without FAUCET_SIGNET_WIF it answers 503 faucet_disabled.
+// the mainnet target, and it pays only accounts created through the testnet
+// app's social login. Without FAUCET_SIGNET_WIF, POLLAR_SECRET_KEY and
+// POLLAR_APPLICATION_ID it answers 503 faucet_disabled.
 const FAUCET = LENDING && config.bitcoinNetwork === "signet";
 // The CCTP relay mints on Base Sepolia, a test network, so it belongs with the
 // testnet lending surface. Without CCTP_RELAY_EVM_KEY it answers 503 cctp_relay_disabled.
@@ -97,7 +99,13 @@ app.get("/", (_req, res) => {
             updateLeaf: "POST /update-leaf",
           }
         : {}),
-      ...(FAUCET ? { signetFaucet: "GET /faucet/signet", signetFaucetClaim: "POST /faucet/signet" } : {}),
+      ...(FAUCET
+        ? {
+            signetFaucet: "GET /faucet/signet",
+            signetFaucetNonce: "GET /faucet/signet/nonce",
+            signetFaucetClaim: "POST /faucet/signet (Writz testnet app social login only)",
+          }
+        : {}),
       ...(CCTP_RELAY
         ? {
             cctpRelay: "GET /cctp/relay",

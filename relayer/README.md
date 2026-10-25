@@ -269,9 +269,22 @@ Returns 30-day retention cohorts for the vault, computed from the indexed events
 
 ### `POST /faucet/signet`
 
-Writz's own Bitcoin Signet faucet: pays a fixed amount of Signet test BTC (default 20,000 sats, enough for one deposit at the testnet minimum plus fees and a retry) from a relayer-held P2WPKH wallet. Mounted only on a Signet relayer that is not the mainnet target. Signet coins have no value.
+The Writz Signet faucet funds accounts created through the Writz testnet app's social login, and nobody else: it is not a public faucet. When a user signs in with Pollar (Google or GitHub) and the app creates their Signet test key, the app claims a fixed amount of Signet test BTC (default 20,000 sats, enough for one deposit at the testnet minimum plus fees and a retry) for that key's address, once. Builders and agents get Signet coins from public faucets such as [signetfaucet.com](https://signetfaucet.com). Mounted only on a Signet relayer that is not the mainnet target. Signet coins have no value.
 
-**Request body:** `{ "address": "tb1q..." }`. Native SegWit Signet addresses only: `tb1q...` (P2WPKH, P2WSH) or `tb1p...` (Taproot). Mainnet (`bc1`), regtest (`bcrt1`), legacy and P2SH addresses are refused.
+A claim is two calls. First `GET /faucet/signet/nonce` answers `{ "nonce": "<32 hex>", "expiresAt": "<ISO time>" }`: a single-use challenge, valid five minutes. Then:
+
+```json
+{
+  "pollarAccessToken": "<the SDK access token of the user's Pollar session>",
+  "stellarAddress": "G...",
+  "signetAddress": "tb1q...",
+  "signetPubkey": "02...",
+  "nonce": "<from /faucet/signet/nonce>",
+  "keySig": "<base64 BIP-137 signature by signetPubkey>"
+}
+```
+
+`keySig` signs, as a Bitcoin signed message, exactly `"Writz Signet faucet\nnonce:" + nonce + "\nstellar:" + stellarAddress + "\nsignet:" + signetAddress`. The relayer checks, in order: the shape of the body; that the nonce was issued, is unexpired and unused (it is spent by this request, whatever the outcome); that `signetAddress` is the P2WPKH address of `signetPubkey` and `keySig` recovers to that key; that the Stellar address and the Signet address have never claimed, and the per-IP and daily limits; then asks Pollar's Server API (`POST /v3/tokens/verify` with `POLLAR_SECRET_KEY`) whether the token is a live session of the Writz testnet app (`applicationId` equal to `POLLAR_APPLICATION_ID`, `network` testnet) whose wallet is a social-login (`internal`) wallet at `stellarAddress`; and last, that this Pollar account has never claimed. Email one-time-code logins do not claim unless `FAUCET_ALLOW_EMAIL=true`.
 
 **200 body**
 
@@ -283,34 +296,49 @@ The transaction is unconfirmed when the call returns; Signet blocks come about e
 
 | Status | `error` | Meaning |
 |---|---|---|
-| `400` | `invalid_address` | Not a Signet native SegWit address |
+| `400` | `invalid_request` | A field is missing or malformed (including the old `{ "address": ... }` body) |
+| `400` | `nonce_invalid` | The nonce is unknown, expired or already used: request a new one |
+| `400` | `invalid_address` | `signetAddress` is not a Signet native SegWit address |
+| `400` | `address_key_mismatch` | `signetAddress` is not the P2WPKH address of `signetPubkey` |
+| `400` | `bad_signature` | `keySig` is not a signature by `signetPubkey` over this claim |
 | `400` | `faucet_address` | The faucet's own address |
-| `429` | `address_cooldown` | This address already claimed within the cooldown (default 24 h) |
+| `401` | `login_expired` | The Pollar access token expired: sign in again |
+| `401` | `login_invalid` | Pollar does not recognise the token |
+| `403` | `login_wrong_app` | The token belongs to another Pollar app |
+| `403` | `login_wrong_network` | The token is not a testnet login |
+| `403` | `login_not_social` | The login's wallet is a connected wallet or a smart account, not a social-login wallet |
+| `403` | `login_address_mismatch` | `stellarAddress` is not the login's wallet |
+| `403` | `login_provider_not_allowed` | Email one-time-code login while `FAUCET_ALLOW_EMAIL` is off |
+| `409` | `account_already_claimed` | This Pollar account already claimed |
+| `409` | `stellar_address_already_claimed` | This Stellar address already claimed |
+| `409` | `signet_address_already_claimed` | This Signet address already received coins |
 | `429` | `ip_cooldown` | This client IP used its allowance (default 20 claims per hour, sliding window); `retryAfterSeconds` is the time until its oldest claim leaves the window |
 | `429` | `daily_cap_reached` | The faucet paid its daily maximum (default 300 claims); resets 00:00 UTC |
 | `429` | `rate_limited` | Too many attempts from this IP (default 30 per 10 minutes) |
-| `502` | `broadcast_rejected` | The Signet node refused the transaction |
-| `503` | `faucet_disabled` | No faucet key configured, or switched off with `FAUCET_ENABLED=false` |
+| `502` | `broadcast_rejected` | The Signet node refused the transaction; nothing was recorded, so the claim can be retried |
+| `503` | `faucet_disabled` | No faucet key, no Pollar key or application id, or switched off with `FAUCET_ENABLED=false`; `reason` says which |
+| `503` | `login_check_unavailable` | Pollar's Server API could not be reached, or refused the relayer's key |
 | `503` | `faucet_empty` | The faucet wallet cannot cover the amount plus fee |
 | `503` | `upstream_unavailable` | Esplora unavailable (after retries and the fallback host) |
 
-`429` and `503` answers carry `retryAfterSeconds` and a `Retry-After` header when a wait is known. `faucet_disabled`, `faucet_empty` and `upstream_unavailable` also list public Signet faucets in `publicFaucets`.
+`429` and `503` answers carry `retryAfterSeconds` and a `Retry-After` header when a wait is known. `faucet_disabled`, `faucet_empty`, `daily_cap_reached` and `upstream_unavailable` also list public Signet faucets in `publicFaucets`.
 
-How it works: one send at a time (coin selection, signing and broadcast are serialized, and the outpoints a send spent are kept out of the next selection, so the faucet never double-spends its own coins); confirmed UTXOs first, largest first, then its own unconfirmed change; fee rate from Esplora's `/fee-estimates` for `FAUCET_FEE_TARGET_BLOCKS`, clamped to `[FAUCET_MIN_FEE_RATE, FAUCET_MAX_FEE_RATE]`; change back to the faucet address; broadcast through Esplora (`ESPLORA_URL`, then `ESPLORA_FALLBACK_URL`). Claims are stored in `data/faucet.db` (address, SHA-256 of the client IP, txid, amount, time), so the cooldown, the per-IP allowance and the daily count survive restarts when `/app/data` is a volume. The client IP is the one `TRUST_PROXY_HOPS` resolves (right-most `X-Forwarded-For` entry on Railway), so a caller cannot pick a new IP bucket by sending the header. The per-IP allowance is a count per window rather than one claim per day so that many people behind one IP (an event venue, a classroom) can be onboarded in one session; each of their addresses is still held to the 24 hour cooldown, and the daily cap bounds the total. A log warning `faucet_low_balance` fires when the balance covers fewer than 20 claims.
+How it works: one send at a time (coin selection, signing and broadcast are serialized, and the outpoints a send spent are kept out of the next selection, so the faucet never double-spends its own coins); confirmed UTXOs first, largest first, then its own unconfirmed change; fee rate from Esplora's `/fee-estimates` for `FAUCET_FEE_TARGET_BLOCKS`, clamped to `[FAUCET_MIN_FEE_RATE, FAUCET_MAX_FEE_RATE]`; change back to the faucet address; broadcast through Esplora (`ESPLORA_URL`, then `ESPLORA_FALLBACK_URL`). Claims are stored in `data/faucet.db` (Signet address, Stellar address, SHA-256 of the Pollar user id, SHA-256 of the client IP, txid, amount, time; never the user's email or profile), with unique indexes on the account, the Stellar address and the Signet address, so the one-claim rules, the per-IP allowance and the daily count survive restarts when `/app/data` is a volume. A database from before claims needed a login is migrated in place, and the addresses it paid stay refused. The client IP is the one `TRUST_PROXY_HOPS` resolves (right-most `X-Forwarded-For` entry on Railway), so a caller cannot pick a new IP bucket by sending the header. The per-IP allowance is a count per window rather than one claim per day so that many people behind one IP (an event venue, a classroom) can be onboarded in one session. A log warning `faucet_low_balance` fires when the balance covers fewer than 20 claims.
 
 ### `GET /faucet/signet`
 
-Faucet status, for apps and for whoever refills it.
+Faucet status: who can claim, and whether a claim can be paid right now.
 
 ```json
-{ "enabled": true, "network": "signet", "address": "tb1q...", "amountSats": 20000, "dailyCap": 300, "claimsToday": 3,
-  "remainingToday": 297, "resetsAt": "2026-10-25T00:00:00.000Z", "cooldownHours": 24, "ipClaimsPerWindow": 20,
-  "ipWindowHours": 1, "balanceSats": 1250000, "claimsLeftAtBalance": 61 }
+{ "enabled": true, "network": "signet", "access": "testnet_app_social_login",
+  "message": "The Writz Signet faucet only funds accounts created through the Writz testnet app's social login, once per account. Builders: use a public Signet faucet.",
+  "address": "tb1q...", "amountSats": 20000, "dailyCap": 300, "remainingToday": 297,
+  "resetsAt": "2026-10-25T00:00:00.000Z", "funded": true, "publicFaucets": ["https://signetfaucet.com", "..."] }
 ```
 
-`address` is the faucet wallet: send Signet coins there to refill it. `balanceSats` counts confirmed and unconfirmed coins and is `null` when Esplora is unavailable. Without a key the route answers `{ "enabled": false, "reason": "...", "publicFaucets": [...] }`.
+`address` is the faucet wallet: send Signet coins there to refill it, and read its balance on a Signet explorer. `funded` is false when the balance does not cover one more claim and `null` when Esplora is unavailable. When the faucet is off the route answers `{ "enabled": false, "access": "testnet_app_social_login", "message": "...", "reason": "...", "publicFaucets": [...] }`.
 
-#### Setting up the faucet key
+#### Setting up the faucet
 
 The key is a dedicated Signet hot wallet, separate from `PROTOCOL_SIGNING_KEY` (the relayer refuses to start the faucet with the protocol key, refuses `FAUCET_SIGNET_WIF` unless `BITCOIN_NETWORK=signet`, and the mainnet target refuses to boot with it set). Generate it straight into the deployment's secrets so it is never printed or written to disk:
 
@@ -318,6 +346,8 @@ The key is a dedicated Signet hot wallet, separate from `PROTOCOL_SIGNING_KEY` (
 cd relayer
 railway variables --service writz --set "FAUCET_SIGNET_WIF=$(bun scripts/faucet-keygen.ts --wif-only)"
 ```
+
+Claims also need the testnet app's Pollar credentials: `POLLAR_SECRET_KEY`, a `sec_testnet_` secret key created in the Pollar dashboard under **Build > API Keys** (shown once, at creation), and `POLLAR_APPLICATION_ID`, the app's id under **Settings > App ID**. Without both the faucet stays off; it never pays an address without a verified login. The relayer refuses to start with a `sec_mainnet_` key, and the mainnet target refuses `POLLAR_SECRET_KEY` altogether.
 
 After the redeploy, `GET /faucet/signet` shows the address to fund. Signet blocks are signed, so coins cannot be mined: fund the address from the public Signet faucets (claimed by hand, never by a script that defeats their captchas) or by a transfer from another Signet wallet. `bun run faucet:keygen` prints a key and its address instead, for local development.
 
@@ -418,18 +448,21 @@ Copy `.env.example` to `.env` and adjust as needed.
 | `MAX_CONFIRMATIONS` | `20` | Hard cap on the confirmations param |
 | `REQUEST_TIMEOUT_MS` | `10000` | Esplora request timeout in ms |
 | `FAUCET_SIGNET_WIF` | *(unset)* | WIF of the Signet faucet's hot wallet. Unset: `/faucet/signet` answers `503 faucet_disabled`. Signet only, never the protocol key |
+| `POLLAR_SECRET_KEY` | *(unset)* | Pollar Server API secret key of the testnet app (`sec_testnet_...`), used to verify the social login behind each faucet claim. Unset: the faucet answers `503 faucet_disabled`. Refused on the mainnet target |
+| `POLLAR_APPLICATION_ID` | *(unset)* | The testnet app's id in Pollar; a claim's login must belong to it. Unset: the faucet answers `503 faucet_disabled` |
+| `POLLAR_API_URL` | `https://server.api.pollar.xyz/v3` | Pollar Server API base URL |
+| `FAUCET_ALLOW_EMAIL` | `false` | `true` lets email one-time-code logins claim, not only Google and GitHub |
 | `FAUCET_ENABLED` | `true` | `false` switches the faucet off without removing the key |
 | `FAUCET_AMOUNT_SATS` | `20000` | Sats per claim; must be between 1,000 and 50,000 |
 | `FAUCET_DAILY_CAP` | `300` | Claims per UTC day across all callers |
-| `FAUCET_COOLDOWN_HOURS` | `24` | One claim per recipient address within this many hours |
 | `FAUCET_IP_CLAIMS_PER_WINDOW` | `20` | Claims per client IP within `FAUCET_IP_WINDOW_HOURS` (sliding window) |
 | `FAUCET_IP_WINDOW_HOURS` | `1` | Window for `FAUCET_IP_CLAIMS_PER_WINDOW` |
 | `FAUCET_MIN_FEE_RATE` | `2` | Fee floor, sat/vbyte |
 | `FAUCET_MAX_FEE_RATE` | `25` | Fee ceiling, sat/vbyte |
 | `FAUCET_FEE_TARGET_BLOCKS` | `3` | Esplora fee-estimate target |
-| `FAUCET_RATE_LIMIT` | `30` | POST attempts per client IP per window, successful or not |
+| `FAUCET_RATE_LIMIT` | `30` | Claim attempts per client IP per window, successful or not (nonce requests have their own budget of the same size) |
 | `FAUCET_RATE_WINDOW_MS` | `600000` | Window for `FAUCET_RATE_LIMIT` |
-| `FAUCET_SQLITE_PATH` | `data/faucet.db` | Claim records (address cooldown, per-IP allowance, daily count) |
+| `FAUCET_SQLITE_PATH` | `data/faucet.db` | Claim records (one claim per account and address, per-IP allowance, daily count) |
 | `CCTP_RELAY_EVM_KEY` | *(unset)* | 0x-prefixed hex private key of the CCTP relay's Base Sepolia account. Unset: `/cctp/relay` answers `503 cctp_relay_disabled`. Testnet only, gas only |
 | `CCTP_RELAY_ENABLED` | `true` | `false` switches the relay off without removing the key |
 | `CCTP_RELAY_RPC_URL` | `https://sepolia.base.org` | Base Sepolia RPC; checked to serve chain 84532 before the first mint |
