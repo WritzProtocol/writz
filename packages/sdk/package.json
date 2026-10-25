@@ -1,6 +1,6 @@
 {
   "name": "@writz/sdk",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Verify Bitcoin transactions on Stellar and lend in the Writz pool: network presets, relayer SPV proofs, bitcoin-spv and writz-lend clients",
   "license": "Apache-2.0",
   "author": {
