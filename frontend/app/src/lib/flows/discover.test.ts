@@ -14,7 +14,7 @@ import {
   type HorizonInvokeOp,
 } from "./discover";
 
-const CONTRACT = "CA3T7T2S7HV27BXO7OLIHSMGAMQ37BMOOUHQLTBGUQVL4B6Y2CDJPHHX";
+const CONTRACT = "CCMSOCBVX2S645MQFFXJRHVHRWH2NY62KLOJXNDYFOJRYHIC47EO6ZZK";
 const OWNER = Keypair.random().publicKey();
 const OTHER = Keypair.random().publicKey();
 const RAW_TX = Buffer.from("0200000001" + "ab".repeat(40), "hex");

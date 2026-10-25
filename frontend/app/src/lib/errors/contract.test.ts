@@ -5,7 +5,7 @@ import { BitcoinSpvError, resolveContractError } from "./contract";
 
 const TREE = "CDQCTFO3FK3M47QS47O2A4WLNPSQAQBSXBFPJ6RZEHFO5D7RY34FSBBP";
 const SPV = "CB2BD6QCSZVNZN5NLI7C5NF356WXVJDSXT6LVAQFWHHS4SZ4NCKKNIVA";
-const LEND = "CA3T7T2S7HV27BXO7OLIHSMGAMQ37BMOOUHQLTBGUQVL4B6Y2CDJPHHX";
+const LEND = "CCMSOCBVX2S645MQFFXJRHVHRWH2NY62KLOJXNDYFOJRYHIC47EO6ZZK";
 const IDS = { writzLend: LEND, commitmentTree: TREE, bitcoinSpv: SPV };
 
 // Captured from a testnet simulation of withdraw_supply over the caller's balance.
