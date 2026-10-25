@@ -188,6 +188,9 @@ Event work, in merge order:
 | [#337](https://github.com/WritzProtocol/writz/pull/337) | Fix: the relayer counted the resource fee twice when publishing releases |
 | [#336](https://github.com/WritzProtocol/writz/pull/336) | App: deposit status card with the verified-on-Stellar seal, receive-as selector and full-cycle timeline |
 | [#340](https://github.com/WritzProtocol/writz/pull/340) | Storage lifetimes set at deployment, so a testnet deposit fits in a transaction fee again; both contracts redeployed on testnet |
+| [#341](https://github.com/WritzProtocol/writz/pull/341) | App: follows the CCTP relay through retries, pending delivery and failures |
+| [#348](https://github.com/WritzProtocol/writz/pull/348) | Fix: the app waits up to ten minutes for the release co-sign and lets the user check again |
+| [#349](https://github.com/WritzProtocol/writz/pull/349) | Fix: the relayer serializes its account's transactions and retries a dropped release publish promptly |
 
 ## What comes next
 
