@@ -112,6 +112,7 @@ GET  /                                  service index (JSON)
 GET  /health                            status
 GET  /spv-proof/:txid?confirmations=N   proof for a confirmed signet tx; txid in DISPLAY order; N in 1..20, default 6
 GET  /deposit-status/:txid              writz-lend deposit progress: stage (unseen|mempool|confirming|ready|verified), confirmations, required, stellarTxHash
+     ?stellarTx=<hash>                  the app's deposit submission: adds stages submitted|failed and `submission` {status, reason}; 400 stellar_tx_mismatch if it is not this deposit
 POST /cctp/relay  {"burnHash":"<64 hex>"}   mints on Base Sepolia a USDC burn sent from Stellar with CCTP V2; returns { kind, ... }
 GET  /cctp/relay/:burnHash              transfer status: kind (sent|confirming|confirmed|arrived|failed), mintHash, explorerUrl, reason
 ```

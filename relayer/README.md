@@ -57,6 +57,12 @@ Returns an SPV proof bundle for the given Bitcoin transaction ID.
 
 Where a `writz-lend` deposit is, from the Bitcoin transaction to its registration on Stellar, for a deposit card to poll. `txid` is in display byte order, as explorers and wallets show it. Served only where lending is enabled, like `/spv-proof`.
 
+**Query**
+
+| Parameter | Required | Meaning |
+|---|---|---|
+| `stellarTx` | no | The hash the app got back when it submitted the `writz-lend` `deposit` call, 64 hex characters. Enables the `submitted` and `failed` stages and the `submission` object. Without it, `submission` is `null` and the stages are the Bitcoin ones plus `verified` |
+
 **200 body**
 
 ```json
@@ -70,7 +76,8 @@ Where a `writz-lend` deposit is, from the Bitcoin transaction to its registratio
   "lightClientTipHeight": 327911,
   "stellarTxHash": "020bdab6b5f8a576964b97b68c328e54ed5d0c0e572885ce8695fe8b18c6a6e6",
   "ledger": 5364245,
-  "verifiedAt": "2026-10-24T12:26:52Z"
+  "verifiedAt": "2026-10-24T12:26:52Z",
+  "submission": null
 }
 ```
 
@@ -80,28 +87,69 @@ Where a `writz-lend` deposit is, from the Bitcoin transaction to its registratio
 | `mempool` | Broadcast, not in a block. `confirmations` is 0 |
 | `confirming` | In a block, and either `confirmations < required`, or the confirmations are there but `bitcoin-spv` does not hold the confirming headers yet (`proofReady: false`; the header sync submits them every `SPV_SYNC_INTERVAL_MS`) |
 | `ready` | `GET /spv-proof/:txid?confirmations=<required>` will serve a proof that `bitcoin-spv` can verify now. Nothing on Stellar has registered the deposit yet |
-| `verified` | `writz-lend` registered the deposit. `stellarTxHash`, `ledger` and `verifiedAt` come from its `deposit` event |
+| `submitted` | Only with `stellarTx`. The deposit call succeeded and the registration read has not caught up yet (`submission.status: "success"`), or Stellar RPC does not hold the transaction yet (`"not_found"`) while it could still land: the Bitcoin transaction is in a block and less than 6 minutes passed since this relayer first saw the hash named for this txid |
+| `verified` | `writz-lend` registered the deposit. `stellarTxHash`, `ledger` and `verifiedAt` come from its `deposit` event, or from a successful `stellarTx` when the event is not indexed |
+| `failed` | Only with `stellarTx`. The deposit call is in a ledger and failed; `submission.reason` says why. Nothing was registered, and a new submission is needed |
 
 - `required` is the deployment's minimum, `Config::min_confirmations` read from the `writz-lend` contract's storage (1 on the testnet deployment, 6 on mainnet), never a value configured in the relayer.
 - `verified` comes only from Stellar: a `deposit` event for this txid, or the contract's `Position` entry for it. The confirmation count alone never makes a deposit verified. A deposit registered before Stellar RPC's event retention (about 7 days on testnet) is `verified` with `stellarTxHash`, `ledger` and `verifiedAt` null.
-- There is no "submitted" stage. The deposit transaction is signed and submitted by the user's wallet, not by the relayer, and a failed call emits no event, so a pending or failed submission is not observable here.
+- The deposit transaction is signed and submitted by the user's wallet, not by the relayer, and a failed call emits no event, so a submission is only observable when the app names it with `stellarTx`.
 - When the Bitcoin read fails for a deposit that is already verified, the answer is still `200 verified`, with `confirmations`, `blockHeight` and `proofReady` null.
 - `lightClientTipHeight` is read only once Bitcoin has enough confirmations, and is null before that or when the read fails. When it cannot be read, `proofReady` follows the Bitcoin depth, as the proof route does.
+
+**`submission`**, with `stellarTx`:
+
+```json
+{
+  "txid": "...",
+  "stage": "failed",
+  "confirmations": 3,
+  "required": 1,
+  "blockHeight": 327913,
+  "proofReady": true,
+  "lightClientTipHeight": 327915,
+  "stellarTxHash": null,
+  "ledger": null,
+  "verifiedAt": null,
+  "submission": {
+    "stellarTxHash": "...",
+    "status": "failed",
+    "ledger": 5383001,
+    "closedAt": "2026-10-25T14:29:41Z",
+    "reason": "InvalidKeyProof",
+    "errorCode": 25
+  }
+}
+```
+
+| `submission` field | Meaning |
+|---|---|
+| `status` | `not_found`: not in a ledger Stellar RPC holds (in flight, dropped, or never sent). `success` or `failed`: in a ledger, with that result |
+| `ledger`, `closedAt` | The ledger that included the transaction and its close time; null for `not_found` |
+| `reason` | For `failed`: the `WritzLendError` name when `writz-lend` returned the error (for example `InvalidKeyProof`, `ScriptPubKeyMismatch`, `Paused`); otherwise the first Soroban error in the diagnostic events (`Error(Contract, #3221)` from another contract, `Error(Budget, ExceededLimit)`), otherwise the operation or transaction result code (`invokeHostFunctionTrapped`, `txBadAuth`) |
+| `errorCode` | For `failed` with a contract error: its number |
+
+- A `stellarTx` that Stellar RPC holds is checked before it is trusted: its envelope (or the inner transaction of a fee bump) must invoke `deposit` on this relayer's `writz-lend` with a `raw_tx` whose double SHA-256 is this txid, as `bitcoin-spv` derives it. Anything else is `400 stellar_tx_mismatch`, whatever the stage, so an unrelated hash cannot make a deposit look submitted or failed.
+- A `not_found` hash cannot be checked, which is why it only yields `submitted` for the 6-minute window (the SDK builds the deposit with a 300 s time bound, plus a minute for RPC lag) and only once the Bitcoin transaction is in a block, since a deposit call needs its block hash and Merkle proof. After that the stage falls back to what Bitcoin says, with `submission.status: "not_found"`, which tells the app the transaction was dropped and can be submitted again. The window is kept in memory and restarts if the relayer restarts.
+- A successful `stellarTx` is still `submitted`, not `verified`, until the registration is read from the contract; `verified` comes only from the chain.
+- `failed` is the latest named submission. Once another submission registers the deposit, the stage is `verified` whatever the earlier hash says.
 
 **Errors**
 
 | Status | `error` | Meaning |
 |---|---|---|
 | `400` | `invalid_txid` | `txid` is not 64 hex characters |
+| `400` | `invalid_stellar_tx` | `stellarTx` is present but not 64 hex characters, or repeated |
+| `400` | `stellar_tx_mismatch` | `stellarTx` is on Stellar but is not a `writz-lend` `deposit` call for this txid |
 | `429` | `rate_limited` | Per-IP budget spent (`DEPOSIT_STATUS_RATE_LIMIT` per `DEPOSIT_STATUS_RATE_WINDOW_MS`) |
 | `502` | `upstream_error` | Unexpected Esplora answer |
 | `503` | `upstream_unavailable` | Esplora rate limited or unavailable, for a deposit not verified on Stellar |
-| `503` | `stellar_unavailable` | Stellar RPC could not be read, so neither `required` nor the registration is known; no stage is guessed |
+| `503` | `stellar_unavailable` | Stellar RPC could not be read, so `required`, the registration or the named `stellarTx` is not known; no stage is guessed |
 | `503` | `lending_not_configured` | `WRITZ_LEND_ID` is not set on this relayer |
 
 `429` and the `503` answers carry `retryAfterSeconds` and a `Retry-After` header, except `lending_not_configured`.
 
-**Caching.** One answer per txid is shared for 5 seconds; failures are never kept. The Stellar transaction is found through an in-memory index of `writz-lend` `deposit` events: it is built from the oldest ledger Stellar RPC retains when the relayer starts, then follows the tip from its cursor at most once every 5 seconds.
+**Caching.** One answer per txid, or per txid and `stellarTx`, is shared for 5 seconds; failures are never kept. The Stellar transaction is found through an in-memory index of `writz-lend` `deposit` events: it is built from the oldest ledger Stellar RPC retains when the relayer starts, then follows the tip from its cursor at most once every 5 seconds.
 
 ### `GET /defindex/apy`
 
