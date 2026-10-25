@@ -37,8 +37,8 @@ Source of truth for IDs: [`contracts/deployments/testnet.md`](https://github.com
 ## Packages
 
 ```text
-NPM_PACKAGE     @writz/sdk         source packages/sdk                         PUBLISHED 0.1.1, npm install @writz/sdk
-CRATE           writz-spv-client   source contracts/contracts/writz-spv-client PUBLISHED 0.1.0, cargo add writz-spv-client
+NPM_PACKAGE     @writz/sdk         source packages/sdk                         PUBLISHED, npm install @writz/sdk
+CRATE           writz-spv-client   source contracts/contracts/writz-spv-client PUBLISHED, cargo add writz-spv-client
 ```
 
 `npm install @writz/sdk` and `cargo add writz-spv-client` both work. The surface:

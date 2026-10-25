@@ -1,6 +1,6 @@
 [package]
 name = "writz-spv-client"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 rust-version = "1.91"
 description = "Soroban client for the Writz bitcoin-spv contract: prove a Bitcoin transaction from a Stellar smart contract"
