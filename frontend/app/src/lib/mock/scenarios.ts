@@ -40,7 +40,7 @@ import type {
  *   G1-G8     global states            /  (any client route)
  *   H1-H23    home                     /
  *   B1-B37    deposit journey          /borrow/new
- *   L1-L25    loan detail              /loans/1
+ *   L1-L28    loan detail              /loans/1
  *   E1-E11    earn                     /earn
  *   N1-N19    lend                     /lend
  *   P1-P5     protocol                 /protocol
@@ -313,6 +313,24 @@ const LOAN: Scenario[] = [
   define("L23", "Missing Bitcoin deposit details", (now) => loanWorld(loans.missingBtcDetails(1, now))),
   define("L24", "Not found (bad n)", (now) => loanWorld(loans.healthy(1, now), { route: "/loans/7" }, { n: 7 })),
   define("L25", "Not connected", () => baseWorld({ route: "/loans/1", wallets: NO_WALLETS, loan: loanPage() })),
+  define("L26", "Receive as: USDC, XLM or USDC on Base Sepolia", (now) =>
+    loanWorld(loans.neverBorrowed(1, now), {}, { panel: "borrow", receive: { option: "xlm", to: "" } }),
+  ),
+  define("L27", "Receive on Base Sepolia, address with a wrong checksum", (now) =>
+    loanWorld(loans.neverBorrowed(1, now), {}, { panel: "borrow", receive: { option: "base", to: "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAeD" } }),
+  ),
+  define("L28", "Full cycle timeline, received as XLM", (now) =>
+    loanWorld(loans.released(1, now), {}, {
+      timeline: [
+        { kind: "btc_lock", chain: "bitcoin", hash: btcTxid(1), at: null },
+        { kind: "verified", chain: "stellar", hash: STELLAR_TX, at: now - 3 * 86_400_000 },
+        { kind: "borrowed", chain: "stellar", hash: "b1".repeat(32), at: now - 3 * 86_400_000 + 600_000 },
+        { kind: "received", chain: "stellar", hash: "5a".repeat(32), at: now - 3 * 86_400_000 + 700_000, label: "Received as XLM" },
+        { kind: "repaid", chain: "stellar", hash: "e1".repeat(32), at: now - 86_400_000 },
+        { kind: "released", chain: "bitcoin", hash: "f1".repeat(32), at: null },
+      ],
+    }),
+  ),
 ];
 
 const EARN: Scenario[] = [

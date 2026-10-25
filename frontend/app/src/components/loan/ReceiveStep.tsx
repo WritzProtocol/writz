@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { config } from "@/config";
 import { formatUsdc, shortAddress } from "@/lib/borrow/journey";
 import { stellarTxUrl } from "@/lib/explorer";
@@ -189,6 +189,13 @@ export function ReceiveStepView(p: ReceiveStepProps) {
   );
 }
 
+/** A settled step 2 transaction, reported so the loan's timeline can show it. */
+export interface ReceivedLeg {
+  hash: string;
+  chain: "stellar" | "base-sepolia";
+  label: string;
+}
+
 /** `ReceiveStepView` on the live wallet, router and Circle. */
 export function ReceiveStep({
   intent,
@@ -196,14 +203,27 @@ export function ReceiveStep({
   walletName,
   mintHash = null,
   onKeep,
+  onReceived,
 }: {
   intent: ReceiveStepProps["intent"];
   amount: bigint;
   walletName: string;
   mintHash?: string | null;
   onKeep?: () => void;
+  onReceived?: (leg: ReceivedLeg) => void;
 }) {
   const r = useReceive();
+  const swapHash = r.swap?.hash ?? null;
+  const burnHash = r.leg.kind === "idle" ? null : r.leg.send.burnHash;
+  useEffect(() => {
+    if (swapHash) onReceived?.({ hash: swapHash, chain: "stellar", label: "Received as XLM" });
+  }, [swapHash, onReceived]);
+  useEffect(() => {
+    if (burnHash) onReceived?.({ hash: burnHash, chain: "stellar", label: `Sent to ${DEST}` });
+  }, [burnHash, onReceived]);
+  useEffect(() => {
+    if (mintHash) onReceived?.({ hash: mintHash, chain: "base-sepolia", label: `Received on ${DEST}` });
+  }, [mintHash, onReceived]);
   const [kept, setKept] = useState(false);
   const quote = useXlmQuote(intent.kind === "xlm" ? amount : null);
   const phase = receivePhase({ intent, flow: r.flow, swap: r.swap, leg: r.leg, mintHash, kept });

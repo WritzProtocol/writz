@@ -95,6 +95,8 @@ export const config = {
   },
   /** Where a borrower can take the loan besides USDC on Stellar; empty on mainnet until it ships there. */
   receive: {
+    /** EURC has no usable testnet liquidity; on only with NEXT_PUBLIC_RECEIVE_EURC=1. */
+    eurc: process.env.NEXT_PUBLIC_RECEIVE_EURC === "1",
     soroswapRouter:
       process.env.NEXT_PUBLIC_SOROSWAP_ROUTER_ID ?? (deployTarget === "mainnet" ? "" : TESTNET_SOROSWAP_ROUTER),
     /** The native XLM Stellar Asset Contract. */

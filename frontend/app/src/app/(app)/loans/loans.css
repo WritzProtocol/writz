@@ -147,3 +147,21 @@
 /* Borrow: the liquidation price estimate */
 .ln-est { margin: 0; }
 .ln-est dd small { display: block; color: var(--muted); }
+
+/* Borrow: receive as */
+.ln-recv-opt { flex-direction: column; align-items: flex-start; gap: 2px; min-height: 56px; padding: 6px 22px; white-space: normal; text-align: left; }
+.ln-recv-opt small { font-size: 13px; font-weight: 400; color: var(--muted); }
+.ln-recv-opt[aria-pressed="true"] small { color: var(--deep); }
+
+/* Full-cycle timeline */
+.ln-tl { display: grid; gap: 12px; }
+.ln-tl-list { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+.ln-tl-list li { position: relative; display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 12px; padding: 0 0 16px; }
+.ln-tl-list li::before { content: ""; position: absolute; top: 18px; bottom: 0; left: 7px; width: 2px; background: var(--rule-strong); }
+.ln-tl-list li:last-child::before { display: none; }
+.ln-tl-list li > i { width: 16px; height: 16px; margin-top: 3px; border-radius: 50%; box-shadow: inset 0 0 0 2px var(--rule-strong); }
+.ln-tl-list li[data-state="done"] > i { background: var(--positive); box-shadow: none; }
+.ln-tl-list b { display: block; font-size: 15px; font-weight: 600; color: var(--heading); }
+.ln-tl-list li[data-state="next"] b { font-weight: 500; color: var(--muted); }
+.ln-tl-meta { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 13px; color: var(--muted); }
+.ln-tl-note { font-size: 13px; }

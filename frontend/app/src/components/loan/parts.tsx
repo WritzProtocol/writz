@@ -30,7 +30,9 @@ import { Enter } from "@/components/ui/entrance";
 import { ErrorBox, ExternalLink, Notice, SlideToConfirm, Spinner, type Tone } from "@/components/ui";
 import type { LoanModel } from "./model";
 import type { ReceiveIntent } from "@/lib/receive/intent";
-import { ReceiveStep } from "./ReceiveStep";
+import { ReceiveStep, type ReceivedLeg } from "./ReceiveStep";
+import { ReceiveChooser } from "./ReceiveChooser";
+import { intentFor, type ReceiveChoiceDraft } from "@/lib/receive/options";
 
 const RECEIVE_USDC: ReceiveIntent = { kind: "usdc" };
 
@@ -523,6 +525,8 @@ export function BorrowPanel({
   price,
   onPreview,
   receiveAs = RECEIVE_USDC,
+  choice,
+  onReceived,
 }: {
   m: LoanModel;
   position: Position;
@@ -531,6 +535,15 @@ export function BorrowPanel({
   onPreview?: (bp: bigint | null) => void;
   /** How the borrower wants the money; anything but USDC adds a second step after the borrow. */
   receiveAs?: ReceiveIntent;
+  /** The "Receive as" choice before borrowing; `onBorrow` fixes the intent step 2 will run. */
+  choice?: {
+    draft: ReceiveChoiceDraft;
+    onDraft: (d: ReceiveChoiceDraft) => void;
+    onBorrow: (intent: ReceiveIntent) => void;
+    onKeep: () => void;
+  };
+  /** A settled step 2 transaction, for the timeline. */
+  onReceived?: (r: ReceivedLeg) => void;
 }) {
   const [value, setValue] = useState("");
   const [keptHash, setKeptHash] = useState<string | null>(null);
@@ -565,6 +578,9 @@ export function BorrowPanel({
   ) : (
     <>You can borrow up to {usdcAmount(max)} USDC more.</>
   );
+  const chosen = choice ? intentFor(choice.draft) : null;
+  const choiceBlocked = chosen !== null && !chosen.ok;
+  const twoSteps = chosen?.ok === true && chosen.intent.kind !== "usdc";
 
   return (
     <form
@@ -572,7 +588,9 @@ export function BorrowPanel({
       noValidate
       onSubmit={(e) => {
         e.preventDefault();
-        if (amount !== null && !error && !noTrustline && !trustChecking) m.borrow(amount);
+        if (amount === null || error || noTrustline || trustChecking || choiceBlocked) return;
+        if (choice && chosen?.ok) choice.onBorrow(chosen.intent);
+        m.borrow(amount);
       }}
     >
       {noTrustline && (
@@ -592,6 +610,7 @@ export function BorrowPanel({
           </div>
         </Notice>
       )}
+      {choice && <ReceiveChooser draft={choice.draft} onChange={choice.onDraft} disabled={running || stepTwo !== null} />}
       <AmountField
         id={`${id}-borrow`}
         label="Borrow"
@@ -633,7 +652,11 @@ export function BorrowPanel({
           intent={stepTwo}
           amount={m.lastAmount}
           walletName={m.stellar.walletName}
-          onKeep={() => setKeptHash(borrowedHash)}
+          onKeep={() => {
+            setKeptHash(borrowedHash);
+            choice?.onKeep();
+          }}
+          onReceived={onReceived}
         />
       ) : running ? (
         <TxRunning flow={m.flow} walletName={m.stellar.walletName} />
@@ -643,10 +666,10 @@ export function BorrowPanel({
             <button
               type="submit"
               className="wz-btn wz-btn-gold"
-              aria-disabled={amount === null || Boolean(error) || noTrustline || trustChecking}
+              aria-disabled={amount === null || Boolean(error) || noTrustline || trustChecking || choiceBlocked}
               aria-describedby={trustChecking || noTrustline ? `${id}-why` : undefined}
             >
-              {amount !== null && !error ? `Borrow ${formatUsdc(amount)} USDC` : "Borrow"}
+              {amount !== null && !error ? `${twoSteps ? "Step 1 of 2: " : ""}Borrow ${formatUsdc(amount)} USDC` : "Borrow"}
             </button>
           </div>
           {(trustChecking || noTrustline) && (
