@@ -19,13 +19,13 @@ Writz lets a holder borrow against Bitcoin that stays in a script built from the
 Submitted with the Scale application on 21 October, word for word. A goal is ticked only when it is merged and shown on testnet, with its transactions.
 
 - [ ] **1. A new borrow screen where the user sees their Bitcoin deposit verified and the Bitcoin price at which the position would be liquidated.**
-  Status: the relayer's deposit status endpoint is merged in [#326](https://github.com/WritzProtocol/writz/pull/326); the deposit card is in progress ([#315](https://github.com/WritzProtocol/writz/issues/315), [#311](https://github.com/WritzProtocol/writz/issues/311)).
+  Status: merged: deposit status endpoint [#326](https://github.com/WritzProtocol/writz/pull/326) and [#333](https://github.com/WritzProtocol/writz/pull/333), deposit card [#336](https://github.com/WritzProtocol/writz/pull/336); the borrow screen hands off to the receive step [#321](https://github.com/WritzProtocol/writz/pull/321). Live on testnet once the app is redeployed.
 - [ ] **2. Receiving the loan as at least one other Stellar asset (EURC or XLM) instead of USDC.**
-  Status: the swap is merged in [#320](https://github.com/WritzProtocol/writz/pull/320) and the second step in [#321](https://github.com/WritzProtocol/writz/pull/321); the selector on the borrow screen is in progress ([#316](https://github.com/WritzProtocol/writz/issues/316)). XLM, because Circle's EURC has no usable testnet liquidity.
+  Status: merged: swap [#320](https://github.com/WritzProtocol/writz/pull/320), second step with recovery [#321](https://github.com/WritzProtocol/writz/pull/321), receive-as selector [#336](https://github.com/WritzProtocol/writz/pull/336). XLM, because Circle's EURC has no usable testnet liquidity.
 - [ ] **3. Receiving the loan as native USDC on at least one other blockchain.**
-  Status: the burn on Stellar is merged in [#320](https://github.com/WritzProtocol/writz/pull/320) and attested by Circle on testnet; the relay that completes the mint on Base Sepolia is in progress ([#309](https://github.com/WritzProtocol/writz/issues/309)).
+  Status: merged: burn on Stellar [#320](https://github.com/WritzProtocol/writz/pull/320), attested by Circle on testnet; the relay that completes the mint on Base Sepolia [#328](https://github.com/WritzProtocol/writz/pull/328), [#335](https://github.com/WritzProtocol/writz/pull/335). A real mint is pending gas for the relay's account.
 - [ ] **4. Repaying the loan in USDC on Stellar from the same screen.**
-  Status: in progress ([#310](https://github.com/WritzProtocol/writz/issues/310), [#317](https://github.com/WritzProtocol/writz/issues/317)).
+  Status: merged: repay from the loan screen (prior work) with the full-cycle timeline, relayer side [#332](https://github.com/WritzProtocol/writz/pull/332) and screen [#336](https://github.com/WritzProtocol/writz/pull/336).
 
 ## Try it
 
@@ -163,6 +163,13 @@ Event work, in merge order:
 | [#321](https://github.com/WritzProtocol/writz/pull/321) | Second borrow step to convert or send, with recovery |
 | [#324](https://github.com/WritzProtocol/writz/pull/324) | Step-by-step user guides for the testnet app, with screenshots: wallets, test funds, borrow, repay and release, lend, troubleshooting |
 | [#326](https://github.com/WritzProtocol/writz/pull/326) | Relayer endpoint `GET /deposit-status/:txid`: confirmations, proof and verification on Stellar for one deposit |
+| [#328](https://github.com/WritzProtocol/writz/pull/328) | Relay that completes the CCTP mint on Base Sepolia and pays its gas, so the borrower needs no wallet there |
+| [#331](https://github.com/WritzProtocol/writz/pull/331) | Fix: the app counted the resource fee twice when signing contract calls |
+| [#333](https://github.com/WritzProtocol/writz/pull/333) | Relayer: submitted and failed deposit stages, read from the app's Stellar transaction |
+| [#335](https://github.com/WritzProtocol/writz/pull/335) | Relayer: retries transient relay failures and finds mints through an indexer |
+| [#332](https://github.com/WritzProtocol/writz/pull/332) | Relayer: full-cycle loan timeline with explorer links |
+| [#337](https://github.com/WritzProtocol/writz/pull/337) | Fix: the relayer counted the resource fee twice when publishing releases |
+| [#336](https://github.com/WritzProtocol/writz/pull/336) | App: deposit status card with the verified-on-Stellar seal, receive-as selector and full-cycle timeline |
 
 ## What comes next
 
