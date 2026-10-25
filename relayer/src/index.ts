@@ -14,6 +14,8 @@ import { startTreeWatcher, treeSyncStatus } from "./tree-watcher/poller.js";
 import { startZkKeeper } from "./zk-keeper/runner.js";
 import { createFaucetRouter } from "./routes/faucet.js";
 import { faucetFromConfig } from "./faucet/from-config.js";
+import { createCctpRouter } from "./routes/cctp.js";
+import { cctpRelayFromConfig } from "./cctp/from-config.js";
 
 const app = express();
 // Earn routes and the vault watcher run everywhere; the lending surface (SPV
@@ -23,6 +25,9 @@ const LENDING = lendingEnabled(config.target);
 // The Signet faucet exists only where the Bitcoin side is Signet, never on
 // the mainnet target. Without FAUCET_SIGNET_WIF it answers 503 faucet_disabled.
 const FAUCET = LENDING && config.bitcoinNetwork === "signet";
+// The CCTP relay mints on Base Sepolia, a test network, so it belongs with the
+// testnet lending surface. Without CCTP_RELAY_EVM_KEY it answers 503 cctp_relay_disabled.
+const CCTP_RELAY = LENDING;
 
 // Railway's edge is the one proxy in front of this service. Trusting exactly
 // that many hops makes `req.ip` the address the edge saw, the right-most
@@ -93,6 +98,13 @@ app.get("/", (_req, res) => {
           }
         : {}),
       ...(FAUCET ? { signetFaucet: "GET /faucet/signet", signetFaucetClaim: "POST /faucet/signet" } : {}),
+      ...(CCTP_RELAY
+        ? {
+            cctpRelay: "GET /cctp/relay",
+            cctpRelayStart: "POST /cctp/relay",
+            cctpRelayTransfer: "GET /cctp/relay/:burnHash",
+          }
+        : {}),
       defindexApy: "GET /defindex/apy",
       defindexPosition: "GET /defindex/position?address=G...",
       defindexDeposit: "POST /defindex/deposit",
@@ -140,6 +152,25 @@ if (FAUCET) {
     }),
   );
   console.log(faucet ? `Signet faucet: ${faucet.address}` : `Signet faucet off: ${disabledReason}`);
+}
+if (CCTP_RELAY) {
+  const { relay, disabledReason } = cctpRelayFromConfig();
+  app.use(
+    "/cctp",
+    createCctpRouter({
+      relay,
+      disabledReason,
+      rateLimit: config.cctpRelay.rateLimit,
+      rateWindowMs: config.cctpRelay.rateWindowMs,
+    }),
+  );
+  if (relay) {
+    // Transfers a previous process left in flight carry on without waiting for the app to ask again.
+    const resumed = relay.resume();
+    console.log(`CCTP relay: ${relay.address} (Base Sepolia), ${resumed} transfer(s) resumed`);
+  } else {
+    console.log(`CCTP relay off: ${disabledReason}`);
+  }
 }
 
 // 404 fallback.

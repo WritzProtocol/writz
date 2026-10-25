@@ -10,7 +10,7 @@ function getEnv(key: string, fallback?: string): string {
   return val;
 }
 
-/** A faucet limit that must be a whole number of at least 1; refuses to boot otherwise. */
+/** A faucet or relay limit that must be a whole number of at least 1; refuses to boot otherwise. */
 function positiveIntEnv(key: string, fallback: string): number {
   const raw = getEnv(key, fallback).trim();
   const n = Number(raw);
@@ -20,7 +20,7 @@ function positiveIntEnv(key: string, fallback: string): number {
   return n;
 }
 
-/** A faucet limit that must be a number greater than 0; refuses to boot otherwise. */
+/** A faucet or relay limit that must be a number greater than 0; refuses to boot otherwise. */
 function positiveNumberEnv(key: string, fallback: string): number {
   const raw = getEnv(key, fallback).trim();
   const n = Number(raw);
@@ -113,6 +113,28 @@ export interface Config {
   liquidationThresholdBp: bigint;
   /** Signet faucet (`/faucet/signet`). Off unless `wif` is set; signet only. */
   faucet: FaucetConfig;
+  /** CCTP relay to Base Sepolia (`/cctp/relay`). Off unless `evmKey` is set; never on mainnet. */
+  cctpRelay: CctpRelayConfig;
+}
+
+export interface CctpRelayConfig {
+  /** 0x-prefixed hex private key of the relay's own Base Sepolia account (CCTP_RELAY_EVM_KEY). */
+  evmKey: `0x${string}` | undefined;
+  /** CCTP_RELAY_ENABLED=false switches the relay off without removing the key. */
+  enabled: boolean;
+  rpcUrl: string;
+  irisUrl: string;
+  /** Give up on a burn Circle has not confirmed within this many minutes. */
+  confirmTimeoutMinutes: number;
+  /** Mints the relay broadcasts per UTC day. */
+  dailyCap: number;
+  /** Transfers in flight at once. */
+  maxOpen: number;
+  /** How far back `MessageReceived` logs are searched for a mint someone else sent. */
+  mintLookbackBlocks: number;
+  /** Per-IP POST attempts per window. */
+  rateLimit: number;
+  rateWindowMs: number;
 }
 
 export interface FaucetConfig {
@@ -181,6 +203,7 @@ function loadConfig(): Config {
       KEEPER_SECRET: process.env["KEEPER_SECRET"],
       KEEPER_BABYJUB_SECRET: process.env["KEEPER_BABYJUB_SECRET"],
       FAUCET_SIGNET_WIF: process.env["FAUCET_SIGNET_WIF"],
+      CCTP_RELAY_EVM_KEY: process.env["CCTP_RELAY_EVM_KEY"],
     },
   });
 
@@ -210,6 +233,24 @@ function loadConfig(): Config {
     feeTargetBlocks: positiveIntEnv("FAUCET_FEE_TARGET_BLOCKS", "3"),
     rateLimit: positiveIntEnv("FAUCET_RATE_LIMIT", "30"),
     rateWindowMs: positiveIntEnv("FAUCET_RATE_WINDOW_MS", "600000"),
+  };
+
+  const cctpRelayKey = process.env["CCTP_RELAY_EVM_KEY"]?.trim() || undefined;
+  if (cctpRelayKey && !/^0x[0-9a-fA-F]{64}$/.test(cctpRelayKey)) {
+    // The value itself is never echoed: it is a private key.
+    throw new Error("CCTP_RELAY_EVM_KEY must be a 0x-prefixed 32-byte hex private key");
+  }
+  const cctpRelay: CctpRelayConfig = {
+    evmKey: cctpRelayKey as `0x${string}` | undefined,
+    enabled: getEnv("CCTP_RELAY_ENABLED", "true").trim().toLowerCase() !== "false",
+    rpcUrl: getEnv("CCTP_RELAY_RPC_URL", "https://sepolia.base.org"),
+    irisUrl: getEnv("CCTP_IRIS_URL", "https://iris-api-sandbox.circle.com"),
+    confirmTimeoutMinutes: positiveNumberEnv("CCTP_RELAY_CONFIRM_TIMEOUT_MINUTES", "30"),
+    dailyCap: positiveIntEnv("CCTP_RELAY_DAILY_CAP", "200"),
+    maxOpen: positiveIntEnv("CCTP_RELAY_MAX_IN_FLIGHT", "50"),
+    mintLookbackBlocks: positiveIntEnv("CCTP_RELAY_MINT_LOOKBACK_BLOCKS", "10000"),
+    rateLimit: positiveIntEnv("CCTP_RELAY_RATE_LIMIT", "30"),
+    rateWindowMs: positiveIntEnv("CCTP_RELAY_RATE_WINDOW_MS", "600000"),
   };
 
   return {
@@ -257,6 +298,7 @@ function loadConfig(): Config {
     btcPriceStroops: BigInt(getEnv("BTC_PRICE_STROOPS", "600000000000")),
     liquidationThresholdBp: BigInt(getEnv("LIQUIDATION_THRESHOLD_BP", "12000")),
     faucet,
+    cctpRelay,
   };
 }
 

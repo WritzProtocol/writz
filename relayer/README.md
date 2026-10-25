@@ -321,6 +321,76 @@ railway variables --service writz --set "FAUCET_SIGNET_WIF=$(bun scripts/faucet-
 
 After the redeploy, `GET /faucet/signet` shows the address to fund. Signet blocks are signed, so coins cannot be mined: fund the address from the public Signet faucets (claimed by hand, never by a script that defeats their captchas) or by a transfer from another Signet wallet. `bun run faucet:keygen` prints a key and its address instead, for local development.
 
+### `POST /cctp/relay`
+
+Completes on Base Sepolia a USDC transfer a borrower burned on Stellar with Circle CCTP V2, so the borrower needs no wallet, gas or second signature there. The relay waits for Circle to sign the burn, then calls `receiveMessage` on Circle's MessageTransmitterV2 (`0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275`, Base Sepolia) from its own account and pays the gas. The USDC is minted to the recipient named in the burn; the relay never holds it. Mounted only where lending is enabled (never on the mainnet target).
+
+**Request body:** `{ "burnHash": "246bc8d7..." }`, the Stellar transaction hash of the `deposit_for_burn` (64 hex characters, any case).
+
+The call returns at once with where the transfer stands (`202` while the relay works on it, `200` once it has arrived or failed) and the relay carries on in the background. Poll `GET /cctp/relay/:burnHash` for the rest. Asking again for the same burn never sends a second mint.
+
+```json
+{ "burnHash": "246bc8d7...", "kind": "sent", "createdAt": "2026-10-25T14:31:02.745Z", "updatedAt": "2026-10-25T14:31:02.745Z" }
+```
+
+| Status | `error` | Meaning |
+|---|---|---|
+| `400` | `invalid_burn_hash` | Not 64 hex characters |
+| `429` | `rate_limited` | Too many requests from this IP (default 30 per 10 minutes) |
+| `503` | `cctp_relay_disabled` | No relay key configured, or switched off with `CCTP_RELAY_ENABLED=false` |
+| `503` | `relay_busy` | As many transfers in flight as `CCTP_RELAY_MAX_IN_FLIGHT` allows; `retryAfterSeconds` says when to retry |
+
+### `GET /cctp/relay/:burnHash`
+
+Where a transfer stands. `kind` takes the same values as the app's `CctpStatus`:
+
+| `kind` | Meaning |
+|---|---|
+| `sent` | Recorded; Circle has not reported the burn yet |
+| `confirming` | Circle has the burn and is waiting for Stellar finality |
+| `confirmed` | Circle signed it; the relay is minting on Base Sepolia |
+| `arrived` | Minted. `mintHash` and `explorerUrl` link the Base Sepolia transaction |
+| `failed` | The relay stopped; `reason` says why |
+
+```json
+{ "burnHash": "246bc8d7...", "kind": "arrived", "mintHash": "0x5f1e...", "explorerUrl": "https://sepolia.basescan.org/tx/0x5f1e...",
+  "recipient": "0xc766579fe25474e41f612dd345772a61325878d2", "amount": "10000000", "feeExecuted": "0", "mintedBy": "relay",
+  "createdAt": "2026-10-25T14:31:02.745Z", "updatedAt": "2026-10-25T14:31:09.120Z" }
+```
+
+`amount` and `feeExecuted` are USDC base units (6 decimals). `mintedBy` is `other` when someone completed the transfer before the relay did; the USDC arrived either way. In that case `mintHash` is `null` only if that transaction is older than the relay searches back for (`CCTP_RELAY_MINT_LOOKBACK_BLOCKS`). `404 not_found` means the relay was never asked about this burn.
+
+A failure the relay can recover from (Circle not confirming within `CCTP_RELAY_CONFIRM_TIMEOUT_MINUTES`, an RPC outage, an empty gas account, the daily cap) is picked up again by the next `POST` for the same burn. A refused transfer stays refused.
+
+How it works:
+
+- **Only the one route it exists for.** Before spending gas the relay decodes the signed message and refuses anything that is not a CCTP V2 USDC burn from Stellar (domain 27) to Base Sepolia (domain 6), addressed to Circle's TokenMessengerV2, with no destination caller, no hook and an EVM recipient. The relay key cannot be used to pay for other chains' transfers or other messages.
+- **Never twice.** One job per burn; every mint from the relay key runs behind one lock and waits for its receipt before the next is built, which also keeps the account's EVM nonces in order. Inside the lock the relay re-reads the record, checks a mint it already broadcast before sending anything new, checks `usedNonces` on MessageTransmitterV2, and simulates `receiveMessage`. A nonce already spent, by the relay or anyone else, is reported as `arrived` with the transaction that spent it, found from the `MessageReceived` log. Minting twice is impossible on chain anyway: each nonce is received once; these checks keep the relay from paying for a mint that would revert.
+- **Survives restarts.** Records live in `data/cctp-relay.db` (burn hash, state, nonce, recipient, amount, the signed message, the mint hash, times). Transfers in flight resume at startup. `lookupCctpRelay(store, burnHash)` in `src/cctp/store.ts` reads a record without driving it.
+- **Bounded.** Circle is polled with backoff (3 s doubling to 30 s); a burn Circle has never reported is dropped after 10 minutes, one it has not confirmed after `CCTP_RELAY_CONFIRM_TIMEOUT_MINUTES`. Mints are capped per UTC day (`CCTP_RELAY_DAILY_CAP`) and transfers in flight by `CCTP_RELAY_MAX_IN_FLIGHT`. A log warning `cctp_relay_low_balance` fires when the account holds less than 0.002 ETH, and `cctp_relay_out_of_gas` when it cannot pay.
+
+### `GET /cctp/relay`
+
+Relay status, for whoever keeps its account funded.
+
+```json
+{ "enabled": true, "network": "base-sepolia", "address": "0x53DB...", "balanceWei": "50000000000000000", "lowBalance": false,
+  "messageTransmitter": "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275", "mintsToday": 3, "dailyCap": 200, "inFlight": 0 }
+```
+
+`address` is the relay's Base Sepolia account: send Base Sepolia ETH there to pay for mints. `balanceWei` is `null` when the RPC is unavailable. Without a key the route answers `{ "enabled": false, "network": "base-sepolia", "reason": "..." }`.
+
+#### Setting up the relay key
+
+The key is a dedicated Base Sepolia account that only pays gas. Generate it straight into the deployment's secrets, so the key is never printed or written to disk; the command prints only the address to fund:
+
+```bash
+cd relayer
+railway variables --service writz --set "CCTP_RELAY_EVM_KEY=$(bun scripts/cctp-relay-keygen.ts --key-only)"
+```
+
+Fund that address with Base Sepolia ETH (a public Base Sepolia faucet, or a bridge from Sepolia); `receiveMessage` takes about 175,000 gas, around 0.000001 ETH at Base Sepolia's gas price in October 2026 plus the L1 data fee, so 0.01 ETH covers thousands of mints. After the redeploy, `GET /cctp/relay` shows the address and its balance. `bun run cctp-relay:keygen` prints a key and its address instead, for local development. The mainnet target refuses to boot with `CCTP_RELAY_EVM_KEY` set.
+
 ### `GET /health`
 
 Returns `{"status":"ok",...}` - used by load balancers.
@@ -360,6 +430,17 @@ Copy `.env.example` to `.env` and adjust as needed.
 | `FAUCET_RATE_LIMIT` | `30` | POST attempts per client IP per window, successful or not |
 | `FAUCET_RATE_WINDOW_MS` | `600000` | Window for `FAUCET_RATE_LIMIT` |
 | `FAUCET_SQLITE_PATH` | `data/faucet.db` | Claim records (address cooldown, per-IP allowance, daily count) |
+| `CCTP_RELAY_EVM_KEY` | *(unset)* | 0x-prefixed hex private key of the CCTP relay's Base Sepolia account. Unset: `/cctp/relay` answers `503 cctp_relay_disabled`. Testnet only, gas only |
+| `CCTP_RELAY_ENABLED` | `true` | `false` switches the relay off without removing the key |
+| `CCTP_RELAY_RPC_URL` | `https://sepolia.base.org` | Base Sepolia RPC; checked to serve chain 84532 before the first mint |
+| `CCTP_IRIS_URL` | `https://iris-api-sandbox.circle.com` | Circle's Iris API (sandbox: testnets) |
+| `CCTP_RELAY_CONFIRM_TIMEOUT_MINUTES` | `30` | How long the relay waits for Circle to confirm a burn before it reports `failed` |
+| `CCTP_RELAY_DAILY_CAP` | `200` | Mints the relay broadcasts per UTC day |
+| `CCTP_RELAY_MAX_IN_FLIGHT` | `50` | Transfers in progress at once; beyond it `POST` answers `503 relay_busy` |
+| `CCTP_RELAY_MINT_LOOKBACK_BLOCKS` | `10000` | How far back (about 5.5 hours) the relay looks for a mint someone else sent |
+| `CCTP_RELAY_RATE_LIMIT` | `30` | POST attempts per client IP per window |
+| `CCTP_RELAY_RATE_WINDOW_MS` | `600000` | Window for `CCTP_RELAY_RATE_LIMIT` |
+| `CCTP_RELAY_SQLITE_PATH` | `data/cctp-relay.db` | Relay records (each burn, its state and its mint) |
 | `DEFINDEX_API_KEY` | *(none)* | DeFindex API key (`sk_...`) from console.defindex.io |
 | `DEFINDEX_API_URL` | `https://api.defindex.io` | DeFindex API base URL |
 | `DEFINDEX_VAULT_ID` | *(none)* | Writz's own DeFindex vault contract ID - see `contracts/deployments/defindex-vault-testnet.md` |
