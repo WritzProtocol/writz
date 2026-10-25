@@ -1,0 +1,79 @@
+---
+title: "Get test funds"
+description: "Free test XLM, test BTC on Bitcoin signet and test USDC on Stellar testnet, and where each one goes."
+---
+
+You need up to three test coins. All are free and have no value.
+
+| Coin | What it is for | Where to get it |
+|---|---|---|
+| XLM (Stellar testnet) | Network fees and the small reserve each Stellar account keeps | Friendbot |
+| BTC (Bitcoin signet) | The collateral you lock to borrow | A signet faucet |
+| USDC (Stellar testnet) | To lend, or to pay the interest when you repay | Circle's testnet faucet |
+
+## Test XLM
+
+Skip this if you [signed in with Google, GitHub or email](/guides/sign-in-with-email): your account already has XLM.
+
+Use any one of these:
+
+- **In Freighter:** with Freighter on **Testnet**, select **Fund with Friendbot** on the empty account. See [Set up Freighter](/guides/set-up-freighter#3-fund-the-account-with-test-xlm).
+- **In the Writz app:** when your connected account has no XLM, the app shows **Account not funded**. Select **Fund with Friendbot**.
+- **In Stellar Lab:** open [lab.stellar.org/account/fund](https://lab.stellar.org/account/fund), make sure the network at the top is **Testnet**, paste your Stellar address and request funds.
+
+Friendbot sends 10,000 test XLM. You need only a few.
+
+## Test BTC on Bitcoin signet
+
+The smallest deposit Writz accepts on testnet is **0.00005 BTC** (5,000 sats), plus a Bitcoin network fee of a few hundred sats. One faucet payout of 10,000 sats covers it.
+
+<Steps>
+  <Step title="Copy your Xverse payment address">
+    Connect Xverse in the app and select **Copy address** under **Bitcoin wallet** in the Wallets panel, or copy the payment address from Xverse itself. See [Set up Xverse](/guides/set-up-xverse#3-find-your-payment-address).
+  </Step>
+  <Step title="Request coins from a faucet">
+    Use one of the faucets the app links to under **Testnet faucets** in the Wallets panel:
+
+    - [bitcoinsignetfaucet.com](https://bitcoinsignetfaucet.com): paste the address in **Signet address**, enter an **Amount (sats)** from 1,000 to 10,000 (10,000 is best for Writz), and select **Request test sats**. Up to five requests per address in 24 hours.
+    - [signet.dcorral.com](https://signet.dcorral.com): sends 0.0001 BTC (10,000 sats) per request. Paste the address in the **Enter your Signet address** field, complete the human check and select **Get Signet BTC**.
+  </Step>
+  <Step title="Wait for it to arrive">
+    Faucets send in batches. The coins usually show up in Xverse within a few minutes as unconfirmed, and confirm with the next signet block. Writz shows the balance it sees in the Wallets panel.
+  </Step>
+</Steps>
+
+<Note>
+A faucet may be empty or paused for a while. If one fails, try the other one. Faucets are run by third parties, not by Writz.
+</Note>
+
+## Test USDC on Stellar testnet
+
+Writz uses **Circle's testnet USDC** on Stellar, issued by `GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5`.
+
+<Warning>
+The Wallets panel also links to **Blend test USDC**. That is a different token and does not work for borrowing, repaying or lending. Use Circle's faucet below.
+</Warning>
+
+<Steps>
+  <Step title="Add USDC to your Stellar account">
+    A Stellar account must opt in to a token before it can receive it (this is called a trustline). The easiest way is in the app: open **Lend**, and if your account can't hold USDC yet, select **Add USDC** and confirm in your wallet. Your wallet sets aside 0.5 XLM for it.
+
+    Signed in with Google, GitHub or email? USDC is already added. The Wallets panel shows **USDC added: Yes**.
+  </Step>
+  <Step title="Open Circle's faucet">
+    Go to [faucet.circle.com](https://faucet.circle.com). Select **USDC**, open the **Network** menu and choose **Stellar Testnet**.
+  </Step>
+  <Step title="Send to your Stellar address">
+    Paste your Stellar address in **Send to** and select **Send 20 USDC**.
+
+    <Frame caption="Circle's faucet with Stellar Testnet selected.">
+      <img src="/images/guides/faucet-circle.png" alt="Circle testnet faucet with USDC selected, network Stellar Testnet and a Send to field" />
+    </Frame>
+  </Step>
+</Steps>
+
+Circle allows one request per asset and network every 2 hours. If the request fails, check that USDC is added to your account first: Stellar rejects a payment to an account without the trustline.
+
+You can also get test USDC by [borrowing it](/guides/borrow) against test BTC.
+
+*Last checked on 2026-10-25.*

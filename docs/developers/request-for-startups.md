@@ -28,6 +28,7 @@ Not a Soroban developer? Start with [No Soroban needed: build on Writz yield](#n
 
 Things to know before you start:
 
+- **Try the app first.** The [Guides](/guides/start-here) walk through wallet setup, test funds and a full loan in the testnet app, click by click, so you see the flow you are building on.
 - **The Bitcoin side is Signet.** On testnet, `bitcoin-spv` follows Bitcoin Signet, and the Writz relayer keeps it in sync with the Signet tip. Get Signet coins from any public Signet faucet. A transaction that is not on Signet will not verify.
 - **Confirmations take time.** Six Signet confirmations take about an hour, sometimes longer. Make your Bitcoin transactions on day one, not an hour before the deadline. For a demo you can ask for fewer confirmations; say so in your pitch.
 - **`verify_transaction` does not remember.** It proves a transaction is in the chain; it does not mark it as used. If your contract pays out against a Bitcoin payment, store the `txid` and refuse it the second time. It also does not read outputs: parse `raw_tx` to check the amount and the recipient (use `spv-types` from Rust).

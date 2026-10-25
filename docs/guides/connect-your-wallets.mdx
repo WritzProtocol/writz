@@ -1,0 +1,55 @@
+---
+title: "Connect your wallets"
+description: "Connect a Stellar wallet and Xverse to the Writz app, and read what the Wallets panel tells you."
+---
+
+The app uses two wallets, one per network:
+
+- **Stellar wallet**: receives the USDC you borrow and signs loan actions. Freighter, xBull, Lobstr and other Stellar wallets work, or [sign in with Google, GitHub or email](/guides/sign-in-with-email).
+- **Bitcoin wallet**: Xverse. It holds the BTC you lock. Only needed to borrow.
+
+Writz never sees your keys. Every action opens your wallet and waits for you to confirm.
+
+## Connect
+
+<Steps>
+  <Step title="Open the Wallets panel">
+    Go to [testnet.writz.xyz](https://testnet.writz.xyz) and select **Connect wallets** at the top right.
+
+    <Frame caption="The Wallets panel. Stellar first, then Bitcoin.">
+      <img src="/images/guides/wallets-panel.png" alt="Wallets panel with Connect Stellar wallet and Connect Xverse buttons" />
+    </Frame>
+  </Step>
+  <Step title="Connect your Stellar wallet">
+    Select **Connect Stellar wallet**. A list of Stellar wallets opens: choose Freighter, or the wallet you use. The button reads **Confirm in your wallet** until you approve the connection in the wallet's own window (in Freighter, select **Connect**).
+  </Step>
+  <Step title="Connect Xverse">
+    Select **Connect Xverse** and approve in Xverse. Xverse must be on **Signet**, see [Set up Xverse](/guides/set-up-xverse#2-switch-to-signet).
+  </Step>
+</Steps>
+
+## What the panel shows
+
+<Frame caption="Both wallets connected. Example addresses and balance.">
+  <img src="/images/guides/wallets-connected.png" alt="Wallets panel with a Stellar address, USDC added Yes, a Bitcoin address and its balance" />
+</Frame>
+
+| Line | Meaning |
+|---|---|
+| Stellar address | The account that receives USDC and signs. **View on Stellar Expert** opens it in the explorer. |
+| **USDC added** | **Yes** when your account can hold USDC. **Not yet** means you need to [add USDC](/guides/get-test-funds#test-usdc-on-stellar-testnet) before you can receive it. |
+| Bitcoin address and **Balance** | The Xverse payment address and the signet BTC Writz sees in it. **View on mempool** opens it in the explorer. |
+| **Your loans** | How many loans Writz found on Stellar for this Stellar wallet. They load on any device where you connect the same wallet. |
+| **Testnet faucets** | Links to the signet BTC faucets and Friendbot. See [Get test funds](/guides/get-test-funds). |
+
+The panel also warns you when something needs fixing:
+
+- **Wrong network**: your Stellar wallet is not on testnet. Switch it to **Testnet**.
+- **Account not funded**: the account has no XLM yet. Select **Fund with Friendbot**.
+- **Low XLM**: fewer than 2 XLM left. Fund it again so you can keep paying fees.
+
+## Disconnect
+
+Select **Disconnect** under either wallet. If a transaction is still running, the app asks first; the transaction keeps going on chain either way.
+
+*Last checked against the app on 2026-10-25.*

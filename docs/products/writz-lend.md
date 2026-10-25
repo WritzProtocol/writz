@@ -72,9 +72,11 @@ The model is designed to keep utilization near 75% - the point where lenders ear
 
 You don't need to understand SPV or Merkle proofs to use Writz Lend. The steps below tell you what to click and what to expect; each step also has an optional "How this works" note for anyone who wants the technical detail.
 
+For a click-by-click walkthrough with screenshots, including wallet setup and test funds, see the [Guides](/guides/start-here).
+
 ### Step 1 - Connect Your Wallets
 
-Open the Writz app at `writz.xyz`. Connect your Bitcoin wallet (Xverse) and your Stellar wallet (Freighter or Lobstr). Both connections happen in your browser - no private keys leave your device.
+Open the Writz app at [testnet.writz.xyz](https://testnet.writz.xyz). Connect your Bitcoin wallet (Xverse, on Bitcoin signet) and your Stellar wallet (Freighter, Lobstr, or a Google, GitHub or email sign-in on testnet). The wallet connections happen in your browser - no private keys leave your device.
 
 ### Step 2 - Choose Your Deposit Amount
 

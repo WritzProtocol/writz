@@ -1,0 +1,66 @@
+---
+title: "Set up Freighter"
+description: "Install Freighter, create a wallet, switch it to Stellar testnet and fund it with test XLM."
+---
+
+[Freighter](https://www.freighter.app) is a Stellar wallet that runs as a browser extension, made by the Stellar Development Foundation. In Writz it receives the USDC you borrow and signs every loan action. Other Stellar wallets that work with the app include xBull and Lobstr; the steps below are for Freighter.
+
+<Tip>
+No wallet to install? [Sign in with Google, GitHub or email](/guides/sign-in-with-email) instead and skip this page.
+</Tip>
+
+## 1. Install and create a wallet
+
+<Steps>
+  <Step title="Install the extension">
+    Install Freighter from [freighter.app](https://www.freighter.app), which links to the official store for your browser. Pin it to the toolbar so it is easy to open.
+  </Step>
+  <Step title="Create a wallet">
+    Open Freighter and select **Create new wallet**. Under **Create a Password**, enter a **New password** and **Confirm password**, tick **I have read and agree to** the Terms of Use, and select **Confirm**.
+  </Step>
+  <Step title="Save the recovery phrase">
+    Freighter shows **Your Recovery Phrase**. Write the words down in order and keep them somewhere safe, then select **I’ve saved my phrase somewhere safe**. On **Confirm Your Recovery Phrase**, select the words in the right order and select **Confirm**.
+  </Step>
+</Steps>
+
+<Warning>
+Anyone with the recovery phrase controls the wallet. Writz never asks for it, and neither does Freighter outside the extension.
+</Warning>
+
+Already use Freighter for real funds? Add a separate account for testing instead of reusing your main one.
+
+## 2. Switch to Testnet
+
+Freighter starts on Mainnet. Writz runs on Stellar testnet.
+
+<Steps>
+  <Step title="Open the network menu">
+    Open Freighter. At the top of the main screen, select the **globe icon**. A list of networks opens.
+  </Step>
+  <Step title="Select Testnet">
+    Select **Testnet**. The account now shows its testnet balance, which is empty until you fund it below.
+  </Step>
+</Steps>
+
+If you connect to Writz while Freighter is on another network, the app shows **Wrong network** and asks you to switch.
+
+## 3. Fund the account with test XLM
+
+A new Stellar account does not exist on the network until it holds some XLM. On testnet, a service called Friendbot gives you free test XLM.
+
+<Steps>
+  <Step title="Fund with Friendbot">
+    With Freighter on **Testnet**, the main screen shows an empty account with a **Fund with Friendbot** button. Select it.
+  </Step>
+  <Step title="Check the balance">
+    After a few seconds the account shows a balance of 10,000 XLM. That covers every fee you will pay in Writz many times over.
+  </Step>
+</Steps>
+
+You can also fund the account from Writz itself: when a connected account has no XLM, the app shows **Account not funded** with a **Fund with Friendbot** button.
+
+## What's next
+
+[Set up Xverse](/guides/set-up-xverse) if you want to borrow, or go straight to [Get test funds](/guides/get-test-funds) to get test USDC.
+
+*Labels checked against Freighter 5.49.0 on 2026-10-25. Freighter updates often, so a label may differ slightly in a newer version.*

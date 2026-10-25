@@ -1,0 +1,50 @@
+---
+title: "Sign in with Google, GitHub or email"
+description: "Get a Stellar test account without installing a wallet, through Pollar."
+---
+
+If you don't have a Stellar wallet, you can sign in with Google, GitHub or an email code. The app then creates a Stellar test account for you through [Pollar](https://pollar.xyz), with test XLM already in it and USDC already added.
+
+<Note>
+**Pollar holds the key of this account**, not you. That is fine for test coins and the reason this option exists only on testnet. For anything you want to control yourself, use [Freighter](/guides/set-up-freighter).
+</Note>
+
+This gives you a **Stellar** account only. To borrow you still need [Xverse](/guides/set-up-xverse) for the Bitcoin side. To lend USDC, the Stellar account is all you need.
+
+## Sign in
+
+<Steps>
+  <Step title="Open the Wallets panel">
+    Go to [testnet.writz.xyz](https://testnet.writz.xyz) and select **Connect wallets** at the top right.
+  </Step>
+  <Step title="Choose how to sign in">
+    Under **Stellar wallet**, below **Connect Stellar wallet**, select **Google**, **GitHub** or **Email**.
+
+    <Frame caption="The Wallets panel before connecting. The three sign-in buttons are under the Stellar wallet.">
+      <img src="/images/guides/wallets-panel.png" alt="Wallets panel with Connect Stellar wallet, then Google, GitHub and Email buttons" />
+    </Frame>
+  </Step>
+  <Step title="Finish signing in">
+    - **Google or GitHub:** a popup opens. Sign in there and allow access. The panel shows **Finish signing in in the popup** until you do.
+    - **Email:** type your email, select **Send code**, then enter the code you receive under **Code** and select **Verify**.
+
+    <Frame caption="Email sign-in. The code arrives by email; enter it in the next screen.">
+      <img src="/images/guides/pollar-email.png" alt="Wallets panel with an email field and the Send code button" />
+    </Frame>
+  </Step>
+  <Step title="Wait for your account">
+    The panel shows **Creating your Stellar account...** and then **Your account is being created on Stellar. This takes a few seconds.** When it is ready, your Stellar address appears in the panel and **USDC added** reads **Yes**.
+  </Step>
+</Steps>
+
+## What you get
+
+- A Stellar testnet account with test XLM in it, so you never need Friendbot.
+- USDC already added to the account (the trustline), so you can receive test USDC straight away.
+- Network fees paid by Pollar on Writz transactions. If a transaction is not covered, the test XLM in the account pays its small fee.
+
+## Sign out
+
+Open the Wallets panel and select **Disconnect** under the Stellar wallet. Signing in again with the same Google account, GitHub account or email gives you the same Stellar account back, with your loans and balances.
+
+*Last checked against the app on 2026-10-25.*

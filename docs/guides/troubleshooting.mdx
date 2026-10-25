@@ -1,0 +1,106 @@
+---
+title: "Troubleshooting"
+description: "What the Writz app's messages mean and how to fix the common problems on testnet."
+---
+
+The app tells you what is wrong in plain words. Find the message you see below. Your funds are never at risk from any of these: on testnet they are test coins, and a failed or declined step never moves BTC out of a lock.
+
+## Wallets and networks
+
+**Wrong network** (Stellar)
+
+Your Stellar wallet is on Mainnet or another network. Switch it to **Testnet**: in Freighter, select the globe icon at the top and choose **Testnet** ([details](/guides/set-up-freighter#2-switch-to-testnet)).
+
+**Wrong network** (Bitcoin), or a message asking you to switch Xverse to Bitcoin signet
+
+Xverse is on Bitcoin mainnet, Testnet3 or Testnet4. In Xverse, open **Settings**, then **Network**, select **Signet** and **Save**. Then select **Connect Xverse** again ([details](/guides/set-up-xverse#2-switch-to-signet)).
+
+**You declined in your wallet. Nothing was shared.**
+
+You closed or rejected the wallet window. Select the connect button again and approve it in the wallet.
+
+**Account not funded** or **Not funded**
+
+The Stellar account has no XLM, so it can't pay fees. Select **Fund with Friendbot**, then **Check again** if shown.
+
+**Low XLM**
+
+Fewer than 2 XLM left. Fund the account again from Friendbot (in Freighter, or **Test XLM from Friendbot** in the Wallets panel).
+
+## Test funds
+
+**Not enough BTC**
+
+Your Xverse payment address has less signet BTC than the amount you chose. Get more from a [signet faucet](/guides/get-test-funds#test-btc-on-bitcoin-signet), wait for it to arrive, and select **Check balance again**.
+
+**Faucet coins don't show up**
+
+Check that you sent them to the Xverse **payment** address, not the ordinals address, and that Xverse is on **Signet**. Faucets send in batches, so give it a few minutes. You can paste the address into [mempool.space/signet](https://mempool.space/signet) to see incoming transactions.
+
+**USDC added: Not yet**, or Circle's faucet fails
+
+Your account has not opted in to USDC. Open **Lend** and select **Add USDC**, confirm in your wallet, then request from the faucet again ([details](/guides/get-test-funds#test-usdc-on-stellar-testnet)).
+
+**USDC shows in my wallet but not in Writz**
+
+You probably have Blend test USDC, a different token. Writz uses Circle's testnet USDC, issuer `GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5`. Get it from [faucet.circle.com](https://faucet.circle.com) with **Stellar Testnet** selected.
+
+## While borrowing
+
+**Not seen yet**: *Bitcoin hasn't seen this transaction yet.*
+
+The deposit has not reached the Bitcoin network yet. If Xverse shows it as sent, wait a few minutes and select **Check again**. Use **View on mempool** to watch it.
+
+**Can't reach the Writz relayer. Retrying on its own.**
+
+The service that reads Bitcoin for the app is briefly unreachable. Nothing to do: it retries, and your BTC is safe on Bitcoin.
+
+**Waiting for the Writz relayer to see it**
+
+Your deposit has its confirmations and Writz is catching up with the latest Bitcoin block. This usually clears within a few minutes.
+
+**You declined in Freighter. Your BTC is still safe in the lock.**
+
+You rejected the Stellar signature that registers the deposit. Select **Sign again**.
+
+**One more step adds your loan**
+
+The deposit is recorded on Stellar but the app has not loaded it yet. Select **Finish deposit**.
+
+**The confirmation count is slow**
+
+Bitcoin signet blocks come about every 10 minutes on average, and a single block can take much longer. You can close the page; the deposit keeps confirming and the app picks it up when you come back in the same browser.
+
+## While repaying and releasing
+
+**Wallet balance lower than what you owe**
+
+The Repay tab shows both, for example *Wallet: 120.00 USDC. You owe 1,500.00 USDC.* Get more test USDC from [Circle's faucet](/guides/get-test-funds#test-usdc-on-stellar-testnet), or repay part now and the rest later.
+
+**Different Bitcoin account**
+
+The release must be signed by the Xverse account that made the deposit. Select **Use a different account** and connect that one.
+
+**Connect Xverse to sign the release.**
+
+Xverse is not connected. Select **Connect Xverse**.
+
+**Waiting for Writz**
+
+Writz is co-signing your release, usually within a minute. Come back later if it takes longer; your loan stays repaid and the BTC stays in the lock until you release it.
+
+## Network and service
+
+**Can't reach Stellar testnet right now. Your funds are not affected.**
+
+The Stellar testnet node did not answer. Select **Try again** in a moment.
+
+**Loans not loaded**
+
+The app could not read your loans. Select **Try again**. Your loans are on Stellar and nothing is lost.
+
+## Still stuck?
+
+[Open an issue on GitHub](https://github.com/WritzProtocol/writz/issues) with the message you see, the page you were on and, if there is one, the transaction link. Never post a recovery phrase or secret key.
+
+*Last checked against the app on 2026-10-25.*

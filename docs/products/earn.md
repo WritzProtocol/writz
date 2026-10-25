@@ -45,7 +45,7 @@ Writz did not write or deploy a new smart contract for Earn. The vault was creat
 
 ### Prerequisites
 
-- An email address, or a Stellar wallet: Freighter, xBull, Lobstr, Albedo or Rabet
+- A Google or GitHub account or an email address (testnet sign-in through Pollar), or a Stellar wallet: Freighter, xBull, Lobstr, Albedo or Rabet
 - A small amount of testnet XLM for transaction fees
 - Blend testnet USDC to deposit (step 3 below)
 
@@ -55,7 +55,7 @@ Go to [testnet.writz.xyz](https://testnet.writz.xyz) and select the **Earn** tab
 
 ### 2. Connect
 
-Select **Connect wallet**. Sign in with your email, which creates an embedded Stellar wallet for you, or connect an existing Stellar wallet.
+Select **Connect wallets**. Sign in with Google, GitHub or an email code, which creates a Stellar test account for you through Pollar, or connect an existing Stellar wallet. See [Sign in with Google, GitHub or email](/guides/sign-in-with-email).
 
 ### 3. Enable the USDC trustline and get test USDC
 
