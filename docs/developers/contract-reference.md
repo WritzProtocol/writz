@@ -34,7 +34,7 @@ run the interfaces documented here. See `contracts/deployments/testnet.md`.
 Runs exactly once, atomically, as part of deployment (`__constructor`): no separate initialize transaction exists for anyone to front-run (GHSA-422m-f73x-fh58).
 
 ```rust
-pub fn __constructor(admin: Address, pow_limit_bits: u32)
+pub fn __constructor(admin: Address, pow_limit_bits: u32, header_ttl_ledgers: u32, consumed_ttl_ledgers: u32)
 ```
 
 ### `set_checkpoint`
@@ -513,7 +513,7 @@ Topic fields are in **bold**.
 Runs exactly once, atomically, as part of deployment (`__constructor`): no separate initialize transaction exists for anyone to front-run (GHSA-422m-f73x-fh58).
 
 ```rust
-pub fn __constructor(admin: Address, spv_contract: Address, usdc_token: Address, oracle: Address, keeper: Address, relayer: Address, protocol_pubkey: BytesN<33>)
+pub fn __constructor(admin: Address, spv_contract: Address, usdc_token: Address, oracle: Address, keeper: Address, relayer: Address, protocol_pubkey: BytesN<33>, min_confirmations: u32, min_deposit_satoshis: u64, entry_ttl_ledgers: u32)
 ```
 
 ### `deposit`
@@ -692,7 +692,7 @@ pub fn get_supply_balance(lender: Address) -> i128
 
 ### `refresh_position_ttl`
 
-Extend the TTL of a position entry to another 180-day window.
+Extend the TTL of a position entry to the full `entry_ttl_ledgers` window (180 days on mainnet).
 
 ```rust
 pub fn refresh_position_ttl(txid: BytesN<32>) -> bool
@@ -700,7 +700,7 @@ pub fn refresh_position_ttl(txid: BytesN<32>) -> bool
 
 ### `refresh_supply_balance_ttl`
 
-Extend the TTL of a lender's supply balance entry to another 180-day window.
+Extend the TTL of a lender's supply balance entry to the full `entry_ttl_ledgers` window.
 
 ```rust
 pub fn refresh_supply_balance_ttl(lender: Address) -> bool
