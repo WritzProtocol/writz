@@ -17,16 +17,16 @@ What it does:
 Expected output (heights and confirmations grow over time):
 
 ```text
-bitcoin-spv best tip: { "chainwork": "431632794618", "hash": "2568d269...0f000000", "height": 327670 }
-proof for 1fef7b54...ccb718b1: block 327600, index 1, 9 siblings
+bitcoin-spv best tip: { "chainwork": "1813841685", "hash": "64460cd6...12000000", "height": 327934 }
+proof for eac0f95c...9507e269: block 327928, index 842, 10 siblings
 verify_transaction: {
-  "block_hash": "9e4d5092aeb95f259afd73c770b9238bee9f300237de7a026150858e0f000000",
-  "block_height": 327600,
-  "confirmations": 71,
-  "txid": "b118b7cc60c2bb03b3898f9bfb2605882251ff45ec9d71cce89a81a1547bef1f"
+  "block_hash": "fe324a4450cea25959ed180d312172c8484e8e08837b75835d3ec48f02000000",
+  "block_height": 327928,
+  "confirmations": 7,
+  "txid": "69e2079515d1a67e46a1b9569053289937d7ed4bf7977530d54b1b535cf9c0ea"
 }
 ```
 
 `txid` and `block_hash` come back in internal byte order, reversed from what explorers show.
 
-Errors are printed as one line, for example `error: relayer 409: insufficient_confirmations ...` for a block that is too recent, `error: relayer 409: light_client_behind ...` for a block the light client has not synced yet (retry after about a minute), or `error: HostError: Error(Contract, #22)` for a block older than the light client's checkpoint at signet height 325,554. The full error table is in [Build on Writz](https://docs.writz.xyz/developers/integrate#common-errors).
+Errors are printed as one line, for example `error: relayer 409: insufficient_confirmations ...` for a block that is too recent, `error: relayer 409: light_client_behind ...` for a block the light client has not synced yet (retry after about a minute), or `error: HostError: Error(Contract, #22)` for a block older than the light client's checkpoint at signet height 327,925. The full error table is in [Build on Writz](https://docs.writz.xyz/developers/integrate#common-errors).

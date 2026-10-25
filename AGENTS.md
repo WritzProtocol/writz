@@ -8,8 +8,9 @@ Use only these values; anything not listed here or in the linked pages does not 
 
 - Stellar network: testnet, passphrase `Test SDF Network ; September 2015`, RPC `https://soroban-testnet.stellar.org`
 - Bitcoin network: signet (no mainnet, testnet3 or testnet4 verification)
-- `bitcoin-spv`: `CAHHY4S4WCIFU4LBSKBI3IP6A4QYR2COV6EACDEBXGPJFDWBJWGOMCLP`
-- `writz-lend`: `CCMSOCBVX2S645MQFFXJRHVHRWH2NY62KLOJXNDYFOJRYHIC47EO6ZZK`
+- `bitcoin-spv`: `CBX23YKCCJMAMBMSCNP6YVKEXUIYK2CTKSR4TQ3RVBPAFYZFVCW7W4EO`
+- `writz-lend`: `CABF7VK7F25ZGDLV6EWSAU3NYQYKDQNDSJIISDMDZAUASMSXUADSHZGG`
+- Both were redeployed on 2026-10-25 (testnet rent; positions on the previous contracts were closed and released). Any other `bitcoin-spv` or `writz-lend` ID is superseded; the `bitcoin-spv` checkpoint is signet block 327,925 and only later blocks can be proven
 - Test USDC (SAC): `CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA`
 - Relayer: `https://api.testnet.writz.xyz`, proof route `GET /spv-proof/:txid?confirmations=N`
 - Yield on USDC: the `writz-lend` lender side, `supply_usdc(supplier, amount)` and `withdraw_supply(supplier, amount)` signed by the supplier, read with `get_supply_balance(lender)` and `get_supply_rate_bp()`. The rate is variable and zero while nothing is borrowed: read it live, never hard-code an APY
