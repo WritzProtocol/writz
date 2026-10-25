@@ -1,12 +1,14 @@
 /**
- * GET /deposit-status/:txid - one test per stage, the error answers, and the
- * deposit index that finds the Stellar transaction. Every chain read is a
+ * GET /deposit-status/:txid - one test per stage, the error answers, the
+ * `stellarTx` submission check, and the deposit index that finds the Stellar
+ * transaction. Every chain read is a
  * mock; no Esplora or Stellar RPC call is made.
  */
 import express from 'express';
 import request from 'supertest';
 import {
   createDepositStatusRouter,
+  SUBMISSION_WINDOW_MS,
   toInternalTxid,
   type DepositStatusRouterDeps,
   type Registration,
@@ -34,6 +36,7 @@ function deps(overrides: Partial<DepositStatusRouterDeps> = {}): Partial<Deposit
     bitcoinTip: jest.fn().mockResolvedValue(100),
     required: jest.fn().mockResolvedValue(1),
     registration: jest.fn().mockResolvedValue(NOT_REGISTERED),
+    submission: jest.fn().mockRejectedValue(new Error('no stellarTx was named')),
     lightClientTip: jest.fn().mockResolvedValue(100),
     warm: jest.fn().mockResolvedValue(undefined),
     notConfiguredReason: null,
@@ -68,6 +71,7 @@ describe('GET /deposit-status/:txid - stages', () => {
       stellarTxHash: null,
       ledger: null,
       verifiedAt: null,
+      submission: null,
     });
   });
 
@@ -138,6 +142,7 @@ describe('GET /deposit-status/:txid - stages', () => {
       stellarTxHash: STELLAR_TX,
       ledger: 5_364_245,
       verifiedAt: '2026-10-24T12:26:52Z',
+      submission: null,
     });
   });
 
@@ -168,6 +173,13 @@ describe('GET /deposit-status/:txid - stages', () => {
     await get(d);
     expect(d.registration).toHaveBeenCalledWith(TXID_INTERNAL);
     expect(toInternalTxid(TXID)).toBe(TXID_INTERNAL);
+  });
+
+  test('without stellarTx the transaction lookup is never made', async () => {
+    const d = deps();
+    const res = await get(d);
+    expect(res.body.submission).toBeNull();
+    expect(d.submission).not.toHaveBeenCalled();
   });
 
   test('normalises an uppercase txid', async () => {
@@ -261,6 +273,203 @@ describe('GET /deposit-status/:txid - caching', () => {
     await expect(router.warm()).resolves.toBeUndefined();
     expect(warn).toHaveBeenCalled();
     warn.mockRestore();
+  });
+});
+
+// ── ?stellarTx= ──────────────────────────────────────────────────────────
+
+const SUBMITTED_TX = 'cd'.repeat(32);
+const SUCCESS = { status: 'success' as const, ledger: 5_383_080, closedAt: '2026-10-25T14:36:27Z' };
+const FAILED = {
+  status: 'failed' as const,
+  ledger: 5_383_001,
+  closedAt: '2026-10-25T10:09:41Z',
+  reason: 'ScriptPubKeyMismatch',
+  errorCode: 21,
+};
+const NOT_FOUND = { status: 'not_found' as const };
+
+const getWith = (app: ReturnType<typeof appWith>, stellarTx: string, txid = TXID) =>
+  request(app).get(`/deposit-status/${txid}`).query({ stellarTx });
+
+describe('GET /deposit-status/:txid?stellarTx= - submission', () => {
+  test('submitted: the RPC does not hold the hash yet and the Bitcoin transaction is in a block', async () => {
+    const d = deps({ submission: jest.fn().mockResolvedValue(NOT_FOUND) });
+    const res = await getWith(appWith(d), SUBMITTED_TX);
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({
+      stage: 'submitted',
+      confirmations: 1,
+      proofReady: true,
+      stellarTxHash: null,
+      submission: {
+        stellarTxHash: SUBMITTED_TX,
+        status: 'not_found',
+        ledger: null,
+        closedAt: null,
+        reason: null,
+        errorCode: null,
+      },
+    });
+    // Looked up by the internal-order txid the envelope check compares against.
+    expect(d.submission).toHaveBeenCalledWith(TXID_INTERNAL, SUBMITTED_TX);
+  });
+
+  test('a not-found hash stops counting as submitted once the window has passed', async () => {
+    let t = 0;
+    const d = deps({ now: () => t, submission: jest.fn().mockResolvedValue(NOT_FOUND) });
+    const app = appWith(d);
+    expect((await getWith(app, SUBMITTED_TX)).body.stage).toBe('submitted');
+    // Past the 5 s answer cache, still inside the window.
+    t = SUBMISSION_WINDOW_MS - 5_001;
+    expect((await getWith(app, SUBMITTED_TX)).body.stage).toBe('submitted');
+    t = SUBMISSION_WINDOW_MS;
+    const res = await getWith(app, SUBMITTED_TX);
+    // Dropped or never sent: back to what Bitcoin says, and the app can tell why.
+    expect(res.body).toMatchObject({ stage: 'ready', submission: { status: 'not_found' } });
+  });
+
+  test('the window runs from the first request that named this hash for this txid', async () => {
+    let t = 0;
+    const d = deps({ now: () => t, submission: jest.fn().mockResolvedValue(NOT_FOUND) });
+    const app = appWith(d);
+    await getWith(app, SUBMITTED_TX);
+    t = SUBMISSION_WINDOW_MS;
+    // Another hash, first named now, gets its own full window.
+    expect((await getWith(app, 'ef'.repeat(32))).body.stage).toBe('submitted');
+    expect((await getWith(app, SUBMITTED_TX)).body.stage).toBe('ready');
+  });
+
+  test('a not-found hash is not believed before the Bitcoin transaction is in a block', async () => {
+    const mempool = deps({ bitcoinTx: jest.fn().mockResolvedValue(MEMPOOL), submission: jest.fn().mockResolvedValue(NOT_FOUND) });
+    expect((await getWith(appWith(mempool), SUBMITTED_TX)).body.stage).toBe('mempool');
+    const unseen = deps({ bitcoinTx: jest.fn().mockResolvedValue(null), submission: jest.fn().mockResolvedValue(NOT_FOUND) });
+    expect((await getWith(appWith(unseen), SUBMITTED_TX)).body.stage).toBe('unseen');
+  });
+
+  test('submitted: the call succeeded but the registration read has not caught up', async () => {
+    const d = deps({ submission: jest.fn().mockResolvedValue(SUCCESS) });
+    const res = await getWith(appWith(d), SUBMITTED_TX);
+    expect(res.body).toMatchObject({
+      stage: 'submitted',
+      stellarTxHash: null,
+      submission: { status: 'success', ledger: 5_383_080, closedAt: '2026-10-25T14:36:27Z', reason: null },
+    });
+  });
+
+  test('a successful call stays submitted past the window, until the registration lands', async () => {
+    let t = 0;
+    const registration = jest.fn().mockResolvedValue(NOT_REGISTERED);
+    const d = deps({ now: () => t, registration, submission: jest.fn().mockResolvedValue(SUCCESS) });
+    const app = appWith(d);
+    t = SUBMISSION_WINDOW_MS * 2;
+    expect((await getWith(app, SUBMITTED_TX)).body.stage).toBe('submitted');
+    registration.mockResolvedValue(REGISTERED);
+    t += 5_001;
+    expect((await getWith(app, SUBMITTED_TX)).body.stage).toBe('verified');
+  });
+
+  test('failed: the call is in a ledger and failed, with the contract error', async () => {
+    const res = await getWith(appWith(deps({ submission: jest.fn().mockResolvedValue(FAILED) })), SUBMITTED_TX);
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({
+      stage: 'failed',
+      stellarTxHash: null,
+      verifiedAt: null,
+      submission: {
+        stellarTxHash: SUBMITTED_TX,
+        status: 'failed',
+        ledger: 5_383_001,
+        closedAt: '2026-10-25T10:09:41Z',
+        reason: 'ScriptPubKeyMismatch',
+        errorCode: 21,
+      },
+    });
+  });
+
+  test('verified wins over a failed earlier attempt for the same deposit', async () => {
+    const d = deps({ registration: jest.fn().mockResolvedValue(REGISTERED), submission: jest.fn().mockResolvedValue(FAILED) });
+    const res = await getWith(appWith(d), SUBMITTED_TX);
+    expect(res.body).toMatchObject({ stage: 'verified', stellarTxHash: STELLAR_TX, submission: { status: 'failed' } });
+  });
+
+  test('verified: a successful stellarTx fills the hash when the event is not indexed', async () => {
+    const d = deps({
+      registration: jest.fn().mockResolvedValue({ registered: true, record: null }),
+      submission: jest.fn().mockResolvedValue(SUCCESS),
+    });
+    const res = await getWith(appWith(d), SUBMITTED_TX);
+    expect(res.body).toMatchObject({
+      stage: 'verified',
+      stellarTxHash: SUBMITTED_TX,
+      ledger: 5_383_080,
+      verifiedAt: '2026-10-25T14:36:27Z',
+    });
+  });
+
+  test('verified: the deposit event stays the source when it is indexed', async () => {
+    const d = deps({ registration: jest.fn().mockResolvedValue(REGISTERED), submission: jest.fn().mockResolvedValue(SUCCESS) });
+    const res = await getWith(appWith(d), SUBMITTED_TX);
+    expect(res.body).toMatchObject({ stage: 'verified', stellarTxHash: STELLAR_TX, ledger: 5_364_245 });
+  });
+
+  test('verified when Bitcoin cannot be read still reports the submission', async () => {
+    const d = deps({
+      bitcoinTx: jest.fn().mockRejectedValue(new EsploraError(503, 'https://e/tx/x', '')),
+      registration: jest.fn().mockResolvedValue({ registered: true, record: null }),
+      submission: jest.fn().mockResolvedValue(SUCCESS),
+    });
+    const res = await getWith(appWith(d), SUBMITTED_TX);
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ stage: 'verified', confirmations: null, stellarTxHash: SUBMITTED_TX, submission: { status: 'success' } });
+  });
+
+  test('normalises an uppercase stellarTx', async () => {
+    const d = deps({ submission: jest.fn().mockResolvedValue(NOT_FOUND) });
+    const res = await getWith(appWith(d), SUBMITTED_TX.toUpperCase());
+    expect(res.body.submission.stellarTxHash).toBe(SUBMITTED_TX);
+    expect(d.submission).toHaveBeenCalledWith(TXID_INTERNAL, SUBMITTED_TX);
+  });
+});
+
+describe('GET /deposit-status/:txid?stellarTx= - errors and caching', () => {
+  test('400 stellar_tx_mismatch for a hash that is not a writz-lend deposit for this txid', async () => {
+    for (const registration of [NOT_REGISTERED, REGISTERED]) {
+      const d = deps({ registration: jest.fn().mockResolvedValue(registration), submission: jest.fn().mockResolvedValue({ status: 'mismatch' }) });
+      const res = await getWith(appWith(d), SUBMITTED_TX);
+      expect(res.status).toBe(400);
+      expect(res.body.error).toBe('stellar_tx_mismatch');
+    }
+  });
+
+  test('400 invalid_stellar_tx for a malformed or repeated parameter', async () => {
+    const d = deps({ submission: jest.fn().mockResolvedValue(NOT_FOUND) });
+    const app = appWith(d);
+    for (const bad of ['', 'deadbeef', 'z'.repeat(64), 'a'.repeat(65)]) {
+      const res = await getWith(app, bad);
+      expect(res.status).toBe(400);
+      expect(res.body.error).toBe('invalid_stellar_tx');
+    }
+    const repeated = await request(app).get(`/deposit-status/${TXID}?stellarTx=${SUBMITTED_TX}&stellarTx=${SUBMITTED_TX}`);
+    expect(repeated.status).toBe(400);
+    expect(repeated.body.error).toBe('invalid_stellar_tx');
+    expect(d.submission).not.toHaveBeenCalled();
+  });
+
+  test('503 stellar_unavailable when the transaction cannot be read, never a guessed stage', async () => {
+    const res = await getWith(appWith(deps({ submission: jest.fn().mockRejectedValue(new Error('rpc down')) })), SUBMITTED_TX);
+    expect(res.status).toBe(503);
+    expect(res.body.error).toBe('stellar_unavailable');
+    expect(res.headers['retry-after']).toBe('10');
+  });
+
+  test('answers are cached per txid and hash, so a hash never speaks for another request', async () => {
+    const d = deps({ submission: jest.fn().mockResolvedValue(FAILED) });
+    const app = appWith(d);
+    expect((await getWith(app, SUBMITTED_TX)).body.stage).toBe('failed');
+    expect((await request(app).get(`/deposit-status/${TXID}`)).body).toMatchObject({ stage: 'ready', submission: null });
+    await getWith(app, SUBMITTED_TX);
+    expect(d.submission).toHaveBeenCalledTimes(1);
   });
 });
 
