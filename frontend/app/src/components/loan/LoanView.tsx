@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { formatBtc, formatUsd, formatUsdc } from "@/lib/borrow/journey";
 import { isInFlight } from "@/lib/flow/engine";
 import {
@@ -23,6 +23,12 @@ import {
   type LoanTab,
 } from "@/lib/loan/model";
 import { Notice } from "@/components/ui";
+import { DepositProof } from "@/components/borrow/DepositProof";
+import { logReceived } from "@/lib/receive/clientTimeline";
+import type { ReceiveIntent } from "@/lib/receive/intent";
+import type { ReceiveChoiceDraft } from "@/lib/receive/options";
+import type { ReceivedLeg } from "./ReceiveStep";
+import { LoanTimeline } from "./Timeline";
 import { Enter } from "@/components/ui/entrance";
 import type { LoanModel } from "./model";
 import {
@@ -73,6 +79,24 @@ export function LoanView({ m }: { m: LoanModel }) {
   const [focusTab, setFocusTab] = useState<LoanTab | null>(null);
   const [preview, setPreview] = useState<bigint | null>(null);
   const tabRefs = useRef<Record<LoanTab, HTMLButtonElement | null>>({ borrow: null, repay: null, release: null });
+  const [draft, setDraft] = useState<ReceiveChoiceDraft>(() => m.receiveDraft ?? { option: "usdc", to: "" });
+  const [sentAs, setSentAs] = useState<ReceiveIntent>({ kind: "usdc" });
+  const owner = m.owner;
+  const positionId = m.position?.id ?? null;
+  const onReceived = useCallback(
+    (leg: ReceivedLeg) => {
+      if (owner && positionId) logReceived(owner, positionId, { kind: "received", chain: leg.chain, hash: leg.hash, at: Date.now(), label: leg.label });
+    },
+    [owner, positionId],
+  );
+  // Settled borrows and repays keep their link on the timeline after a reload.
+  const settledKind = m.flow.phase === "settled" ? (m.action === "borrow" ? "borrowed" : m.action === "repay" ? "repaid" : null) : null;
+  const settledHash = settledKind && m.flow.phase === "settled" ? (m.flow.hash ?? null) : null;
+  useEffect(() => {
+    if (owner && positionId && settledKind && settledHash) {
+      logReceived(owner, positionId, { kind: settledKind, chain: "stellar", hash: settledHash, at: Date.now() });
+    }
+  }, [owner, positionId, settledKind, settledHash]);
 
   if (m.access === "disconnected")
     return (
@@ -136,7 +160,9 @@ export function LoanView({ m }: { m: LoanModel }) {
     otherTx: m.otherTx,
     catchingUp: m.catchingUp,
   });
-  const tab = busy ?? (picked && tabs[picked].enabled ? picked : defaultTab(tabs, status, m.requestedPanel, null));
+  // Step 2 (convert or send) stays on screen after the borrow, even when borrowing to the limit disabled the tab.
+  const stepTwoOpen = m.action === "borrow" && m.flow.phase === "settled" && sentAs.kind !== "usdc";
+  const tab = busy ?? (stepTwoOpen ? "borrow" : picked && tabs[picked].enabled ? picked : defaultTab(tabs, status, m.requestedPanel, null));
   const reasons = disabledReasons(tabs);
   const shownReasons = m.catchingUp ? reasons.filter((r) => r !== REASONS.catchingUp) : reasons;
   const reasonId = (t: LoanTab) => {
@@ -154,7 +180,8 @@ export function LoanView({ m }: { m: LoanModel }) {
   const released = status.kind === "released" || status.kind === "releasing";
   // A closed loan has nothing left to reclaim; don't point a liquidated borrower at the timelock.
   const closed = released || status.kind === "liquidated";
-  const landedElsewhere = m.action && m.action !== "release" && m.flow.phase === "settled" && (m.action !== tab || !tabs[tab].enabled);
+  const landedElsewhere =
+    m.action && m.action !== "release" && m.flow.phase === "settled" && !stepTwoOpen && (m.action !== tab || !tabs[tab].enabled);
 
   const onTabKey = (e: KeyboardEvent<HTMLButtonElement>, t: LoanTab) => {
     const i = LOAN_TABS.indexOf(t);
@@ -338,7 +365,7 @@ export function LoanView({ m }: { m: LoanModel }) {
                 </p>
               </Notice>
             )}
-            {!checking && tab && tabs[tab].enabled && (
+            {!checking && tab && (tabs[tab].enabled || (stepTwoOpen && tab === "borrow")) && (
               <div
                 className="ln-panel ln-act-panel wz-enter"
                 id="loan-panel"
@@ -346,7 +373,16 @@ export function LoanView({ m }: { m: LoanModel }) {
                 aria-labelledby={`loan-tab-${tab}`}
                 key={`${tab}:${position.id}`}
               >
-                {tab === "borrow" && <BorrowPanel m={m} position={position} available={available} price={price} onPreview={setPreview} />}
+                {tab === "borrow" && <BorrowPanel
+                    m={m}
+                    position={position}
+                    available={available}
+                    price={price}
+                    onPreview={setPreview}
+                    receiveAs={sentAs}
+                    choice={{ draft, onDraft: setDraft, onBorrow: setSentAs, onKeep: () => setSentAs({ kind: "usdc" }) }}
+                    onReceived={onReceived}
+                  />}
                 {tab === "repay" && <RepayPanel m={m} position={position} price={price} initial={toSafe} onPreview={setPreview} />}
                 {tab === "release" && (
                   <ReleasePanel m={m} position={position} neverBorrowed={status.kind === "repaid_locked" && status.neverBorrowed} />
@@ -357,6 +393,8 @@ export function LoanView({ m }: { m: LoanModel }) {
         )}
 
         <div className="ln-side">
+          <DepositProof btcTxid={position.txid} stellarTxHash={position.stellarTxHash ?? null} verified />
+          <LoanTimeline m={m} position={position} />
           {!closed && (
             <WayOut
               n={n}

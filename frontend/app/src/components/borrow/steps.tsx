@@ -20,6 +20,7 @@ import { loanHref } from "@/lib/loan/model";
 import { BTC_FAUCETS } from "@/lib/links";
 import { useElapsed } from "@/components/ui/hooks";
 import { ConfirmationSlots, CopyButton, ErrorBox, ExternalLink, Notice, SlideToConfirm, Spinner } from "@/components/ui";
+import { DepositProof } from "./DepositProof";
 import type { JourneyModel } from "./model";
 
 const ON_TESTNET = config.target !== "mainnet";
@@ -600,9 +601,10 @@ function NewDevicePanel({ m }: { m: JourneyModel }) {
 export function confirmationCount(m: JourneyModel): { n: number; m: number } | null {
   const s = m.deposit.status.status;
   const flow = m.deposit.flow;
+  const target = m.deposit.m;
   if (s.kind === "confirming") return { n: s.n, m: s.m };
-  if (s.kind === "btc_sent" || s.kind === "btc_unseen") return { n: 0, m: m.deposit.m };
-  if (s.kind === "ready_to_register") return { n: m.deposit.m, m: m.deposit.m };
+  if ((s.kind === "btc_sent" || s.kind === "btc_unseen") && target) return { n: 0, m: target };
+  if (s.kind === "ready_to_register" && target) return { n: target, m: target };
   if (flow.phase === "waiting_btc") return { n: flow.confirmations, m: flow.required };
   return null;
 }
@@ -897,6 +899,15 @@ export function DoneStep({ m, heading }: { m: JourneyModel; heading: RefObject<H
           </>
         ) : null}
       </p>
+      {m.done.btcTxid ? (
+        <DepositProof
+          btcTxid={m.done.btcTxid}
+          stellarTxHash={m.done.stellarTxHash}
+          verified
+          confirmations={m.deposit.m}
+          moment
+        />
+      ) : null}
       <p className="wz-sr" role="status">
         {`${btc ? `${btc} BTC locked. ` : ""}${m.done.index !== null ? `Loan ${m.done.index + 1} is ready.` : "Your loan is ready."}${max ? ` You can borrow up to ${max} USDC.` : ""}`}
       </p>

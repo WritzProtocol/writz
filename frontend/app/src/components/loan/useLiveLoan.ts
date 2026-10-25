@@ -274,6 +274,8 @@ export function useLiveLoan(n: number, requestedPanel: LoanTab | null): LoanMode
       : [],
     requestedPanel,
     now,
+    owner: address,
+    timeline: null,
     borrow,
     repay,
     release,

@@ -1,6 +1,8 @@
 import type { FlowState } from "@/lib/flow/engine";
 import type { PendingTx } from "@/lib/flow/pendingTx";
 import type { ChainReads, LocalInputs, PositionStatusKind, RelayerIndex } from "@/lib/status/types";
+import type { ReceiveChoiceDraft } from "@/lib/receive/options";
+import type { TimelineEvent } from "@/lib/receive/timeline";
 
 /** Unknown, empty and failed are different states. */
 export type Reading<T> =
@@ -97,6 +99,10 @@ export interface MockLoanPage {
   trustline: Reading<boolean>;
   walletUsdcStroops: Reading<bigint>;
   poolAvailableStroops: Reading<bigint>;
+  /** The "Receive as" choice the borrow panel opens with. */
+  receive?: ReceiveChoiceDraft;
+  /** What the relayer's timeline answers; unset, the timeline is built on the client. */
+  timeline?: TimelineEvent[];
 }
 
 export interface MockEarn {
