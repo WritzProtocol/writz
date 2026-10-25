@@ -3,7 +3,15 @@ import * as ecc from "@bitcoinerlab/secp256k1";
 import * as bitcoin from "bitcoinjs-lib";
 import { config } from "@/config";
 import { deriveP2WSH, getBitcoinNetwork } from "@/lib/bitcoin/address";
-import { checkReleasePsbt, releaseAddressOf, releaseBlocker, releaseBtc } from "./release";
+import {
+  COSIGN_POLL_MS,
+  COSIGN_WAIT_MS,
+  checkReleasePsbt,
+  isReleaseNotCosigned,
+  releaseAddressOf,
+  releaseBlocker,
+  releaseBtc,
+} from "./release";
 
 const PUBKEY = "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798";
 const position = { btcPubkey: PUBKEY, timelockHeight: 300_000, txid: "ab".repeat(32) };
@@ -192,5 +200,98 @@ describe("releaseBtc", () => {
     await expect(releaseBtc({ ...base, deps: { ...deps, read: async () => chainPosition("closed") } })).rejects.toThrow(
       "ReleaseNotCosigned",
     );
+  });
+
+  test("waits ten minutes for the co-signature, polling every five seconds, before stopping", async () => {
+    (config.bitcoin as { protocolPubkey: string }).protocolPubkey = expected.protocolPubkey;
+    expect(COSIGN_POLL_MS).toBe(5_000);
+    expect(COSIGN_WAIT_MS).toBe(10 * 60_000);
+    let waited = 0;
+    let reads = 0;
+    const error = await releaseBtc({
+      position,
+      signPsbt,
+      stellarAddress: "GOWNER",
+      signTransaction: (async () => ({ signedTxXdr: "", signerAddress: "GOWNER" })) as never,
+      emit: () => {},
+      deps: {
+        read: async () => chainPosition("closed"),
+        getReleasePsbt: async () => {
+          reads++;
+          return null;
+        },
+        close: async () => {},
+        broadcast: async () => "",
+        sleep: async (ms) => void (waited += ms),
+      },
+    }).catch((e: unknown) => e);
+    expect(isReleaseNotCosigned(error)).toBe(true);
+    expect(waited).toBe(COSIGN_WAIT_MS);
+    expect(reads).toBe(COSIGN_WAIT_MS / COSIGN_POLL_MS + 1);
+  });
+
+  test("a signature published after three minutes, as on a busy network, is still picked up", async () => {
+    (config.bitcoin as { protocolPubkey: string }).protocolPubkey = expected.protocolPubkey;
+    let waited = 0;
+    const out = await releaseBtc({
+      position,
+      signPsbt,
+      stellarAddress: "GOWNER",
+      signTransaction: (async () => ({ signedTxXdr: "", signerAddress: "GOWNER" })) as never,
+      emit: () => {},
+      deps: {
+        read: async () => chainPosition("closed"),
+        // The relayer's publish landed 5.5 minutes after the repay.
+        getReleasePsbt: async () => (waited >= 330_000 ? relayerPsbt().toBuffer() : null),
+        close: async () => {},
+        broadcast: async () => "cc".repeat(32),
+        sleep: async (ms) => void (waited += ms),
+      },
+    });
+    expect(out.btcTxid).toBe("cc".repeat(32));
+    expect(waited).toBe(330_000);
+  });
+
+  test("checking again after a timeout resumes the wait without closing the loan again", async () => {
+    (config.bitcoin as { protocolPubkey: string }).protocolPubkey = expected.protocolPubkey;
+    const closed: string[] = [];
+    const steps: string[] = [];
+    let published = false;
+    let status: "active" | "closed" = "active";
+    const run = () =>
+      releaseBtc({
+        position,
+        signPsbt,
+        stellarAddress: "GOWNER",
+        signTransaction: (async () => ({ signedTxXdr: "", signerAddress: "GOWNER" })) as never,
+        emit: (e) => void (e.type === "preparing" && e.step && steps.push(e.step)),
+        deps: {
+          read: async () => chainPosition(status),
+          getReleasePsbt: async () => (published ? relayerPsbt().toBuffer() : null),
+          close: async ({ txid }) => {
+            closed.push(txid);
+            status = "closed";
+          },
+          broadcast: async () => "dd".repeat(32),
+          sleep: async () => {},
+        },
+      });
+
+    const first = await run().catch((e: unknown) => e);
+    expect(isReleaseNotCosigned(first)).toBe(true);
+    expect(closed).toEqual([DEPOSIT_TXID]);
+
+    published = true;
+    steps.length = 0;
+    const out = await run();
+    expect(out.btcTxid).toBe("dd".repeat(32));
+    expect(closed).toEqual([DEPOSIT_TXID]);
+    expect(steps).toEqual(["reading", "cosign", "broadcasting"]);
+  });
+
+  test("only the co-sign timeout is resumable", () => {
+    expect(isReleaseNotCosigned(new Error("ReleaseNotCosigned"))).toBe(true);
+    expect(isReleaseNotCosigned(new Error("ReleaseMismatch: recipient"))).toBe(false);
+    expect(isReleaseNotCosigned("ReleaseNotCosigned")).toBe(false);
   });
 });

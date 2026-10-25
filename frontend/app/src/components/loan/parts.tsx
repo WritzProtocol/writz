@@ -6,11 +6,12 @@ import { BTC_NETWORK_LABEL, config } from "@/config";
 import { btcTxUrl, stellarTxUrl } from "@/lib/explorer";
 import { hashOf, isInFlight, type FlowState } from "@/lib/flow/engine";
 import { formatBtc, formatUsd, formatUsdc, shortAddress } from "@/lib/borrow/journey";
-import { releaseAddressOf, releaseBlocker } from "@/lib/flows/release";
+import { isReleaseNotCosigned, releaseAddressOf, releaseBlocker } from "@/lib/flows/release";
 import { AT_RISK_BP, BORROW_LIMIT_BP, LIQUIDATION_BP } from "@/lib/status/derive";
 import { LIQUIDATION_DOCS_URL } from "@/lib/links";
 import {
   RELEASE_STEPS,
+  cosignWaitText,
   afterState,
   liquidationPriceFor,
   parseUsdcAmount,
@@ -829,6 +830,8 @@ export function ReleasePanel({ m, position, neverBorrowed }: { m: LoanModel; pos
   const blocker = releaseBlocker(position, { address: m.bitcoin.address, pubkey: m.bitcoin.pubkey });
   // The release pays the deposit key's own address; Writz builds it from the key on chain.
   const destination = position.btcPubkey ? releaseAddressOf(position.btcPubkey) : null;
+  // The loan is closed but Writz's signature isn't on chain yet: resumable, not a dead end.
+  const waitingCosign = mine && m.flow.phase === "failed" && isReleaseNotCosigned(m.flow.error);
 
   if (step !== null)
     return (
@@ -842,9 +845,13 @@ export function ReleasePanel({ m, position, neverBorrowed }: { m: LoanModel; pos
             </li>
           ))}
         </ol>
-        <p className="wz-sr" role="status">
-          {RELEASE_STEPS[step]}
-        </p>
+        {step === 2 ? (
+          <CosignWait />
+        ) : (
+          <p className="wz-sr" role="status">
+            {RELEASE_STEPS[step]}
+          </p>
+        )}
       </>
     );
 
@@ -862,7 +869,24 @@ export function ReleasePanel({ m, position, neverBorrowed }: { m: LoanModel; pos
           ? "Nothing is owed on this loan, so you can close it and release your BTC."
           : "Your loan is repaid, but your BTC stays locked until you release it."}
       </p>
-      {mine && m.flow.phase === "failed" && <ErrorBox error={m.flow.error} context={{ flow: "release" }} label="Not released" />}
+      {waitingCosign ? (
+        <Notice
+          tone="warning"
+          label="Still waiting for Writz"
+          actions={
+            <button type="button" className="wz-btn wz-btn-gold" onClick={m.release} disabled={blocker !== null || m.otherTx || m.catchingUp}>
+              Check again
+            </button>
+          }
+        >
+          <p>
+            Your loan is closed and your BTC is still locked and safe. Writz hasn&apos;t published its signature yet. Check again in a
+            minute. Nothing is repaid or closed twice.
+          </p>
+        </Notice>
+      ) : (
+        mine && m.flow.phase === "failed" && <ErrorBox error={m.flow.error} context={{ flow: "release" }} label="Not released" />
+      )}
       {mine && m.flow.phase === "signature_cancelled" && (
         <Notice tone="neutral">
           <p>You declined in your wallet. Your BTC was not sent.</p>
@@ -900,7 +924,7 @@ export function ReleasePanel({ m, position, neverBorrowed }: { m: LoanModel; pos
             This address isn&apos;t on {BTC_NETWORK_LABEL}. Switch Xverse to {BTC_NETWORK_LABEL} and connect again.
           </p>
         </Notice>
-      ) : blocker === "missing_details" ? null : (
+      ) : blocker === "missing_details" || waitingCosign ? null : (
         <>
           <dl className="wz-well" id={reviewId}>
             <div className="wz-row wz-row-wrap">
@@ -950,6 +974,28 @@ export function ReleasePanel({ m, position, neverBorrowed }: { m: LoanModel; pos
         </>
       )}
     </div>
+  );
+}
+
+/** The time so far while the release waits for Writz's co-signature. */
+function CosignWait() {
+  const [start] = useState(() => Date.now());
+  const [now, setNow] = useState(start);
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1_000);
+    return () => clearInterval(t);
+  }, []);
+  const minutes = Math.floor((now - start) / 60_000);
+  return (
+    <>
+      <p className="wz-hint" aria-hidden="true">
+        {cosignWaitText(now - start)}
+      </p>
+      {/* Announced once a minute, not every second. */}
+      <p className="wz-sr" role="status">
+        {cosignWaitText(minutes * 60_000)}
+      </p>
+    </>
   );
 }
 

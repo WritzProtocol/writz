@@ -237,10 +237,20 @@ export const loanHref = (index: number, panel?: LoanTab) => `/loans/${index + 1}
 export const RELEASE_STEPS = [
   "Checking your loan on Stellar",
   "Confirming the loan is repaid",
-  "Getting Writz's signature (about a minute)",
+  "Getting Writz's signature",
   "Confirm in Xverse",
   "Sending to Bitcoin",
 ] as const;
+
+/**
+ * The line under the co-sign step while the release waits, with the time so
+ * far. The wait itself is `COSIGN_WAIT_MS` in lib/flows/release.ts.
+ */
+export function cosignWaitText(elapsedMs: number): string {
+  const s = Math.max(0, Math.floor(elapsedMs / 1000));
+  const clock = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+  return `Waiting for Writz's signature, ${clock} so far. It usually takes a minute or two, up to 10 when the network is busy.`;
+}
 
 /** Which release step a running release flow is on, or null when it is not running. */
 export function releaseStepOf(flow: FlowState): number | null {
