@@ -149,6 +149,8 @@ The transaction that creates an entry pays rent for its whole window, at the rat
 
 Testnet runs short windows because its live state is above the network's target size, which prices rent far higher than on mainnet: a 180-day position would cost more resource fee than one transaction can carry. Seven days is the network's minimum persistent TTL, so a 7-day window adds no rent beyond what creating the entry already costs. An entry that is read or rewritten in the last third of its window (at most its last 30 days) is extended back to its full window.
 
+The admin can change these windows without a redeploy (`set_entry_ttl` on writz-lend, `set_ttls` on bitcoin-spv, same bounds as the constructors), so they can follow the rent rate. A change applies to entries written or touched after it; existing entries keep their TTL until a call tops them up or refreshes them.
+
 **Permissionless refresh:** every entry above has a public `refresh_*` function (or is covered by a contract-wide `refresh_ttl`/`refresh_instance_ttl`) that extends its TTL. Any keeper - including Writz's own keeper, a third-party keeper, or even the user themselves - can call these to prevent expiry. No permission required. This is a genuinely load-bearing safety net, not a nice-to-have: none of these entries auto-renews just from being read by an unrelated call, and an idle deployment (low traffic, or a position nobody touches for months) is exactly the case these functions exist for.
 
 ```rust

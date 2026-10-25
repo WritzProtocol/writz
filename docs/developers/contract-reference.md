@@ -77,6 +77,14 @@ Restricts `submit_headers` to `submitter`, or reopens it to everyone with `None`
 pub fn set_submitter(caller: Address, submitter: Option<Address>) -> Result<(), SPVError>
 ```
 
+### `set_ttls`
+
+Sets how long stored headers (with their height index) and consumed deposit markers are kept live, in ledgers. Admin-gated, same bounds as the constructor (17,280 to 3,110,400, else `InvalidEntryTtl`). Applies to entries written or touched after the change only; emits `ttls_set`.
+
+```rust
+pub fn set_ttls(caller: Address, header_ttl_ledgers: u32, consumed_ttl_ledgers: u32) -> Result<(), SPVError>
+```
+
 ### `set_admin`
 
 Rotates the admin address. Admin-gated.
@@ -608,6 +616,14 @@ Updates the oracle contract address used for BTC/USD pricing. Admin only.
 
 ```rust
 pub fn set_oracle(caller: Address, new_oracle: Address) -> Result<(), WritzLendError>
+```
+
+### `set_entry_ttl`
+
+Sets how long per-user entries (positions, supply balances, release PSBTs) are kept live, in ledgers. Admin only, same bounds as the constructor's `entry_ttl_ledgers` (17,280 to 3,110,400, else `InvalidEntryTtl`). Applies to entries written or touched after the change only; emits `entry_ttl_set`.
+
+```rust
+pub fn set_entry_ttl(caller: Address, entry_ttl_ledgers: u32) -> Result<(), WritzLendError>
 ```
 
 ### `set_spv_contract`
