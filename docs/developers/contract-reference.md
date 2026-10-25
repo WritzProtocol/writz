@@ -17,13 +17,20 @@ order and arguments).
 
 | Contract | Address |
 |---|---|
-| `bitcoin-spv` | `CAHHY4S4WCIFU4LBSKBI3IP6A4QYR2COV6EACDEBXGPJFDWBJWGOMCLP` |
+| `bitcoin-spv` | `NEWSPVID` |
 | `zk-verifier` | `CB5XAP6MF2GVVFATFTVCKVEXUODWWRQP4B3QFDMRTM55REP7N2YMXEUD` |
 | `commitment-tree` | `CAQBLCAPGXXCZTJDAJLY7E4PTJYGR6CY4YWH4JSJKFXYIHW3GANP6RFM` |
-| `writz-lend` | `CCMSOCBVX2S645MQFFXJRHVHRWH2NY62KLOJXNDYFOJRYHIC47EO6ZZK` |
+| `writz-lend` | `NEWLENDID` |
 
-These are the instances from the coordinated redeploy (#177, 2026-10-11) and
-run the interfaces documented here. See `contracts/deployments/testnet.md`.
+`bitcoin-spv` and `writz-lend` are the instances from the NEWDEPLOYDATE redeploy;
+`zk-verifier` and `commitment-tree` are from the coordinated redeploy (#177,
+2026-10-11). All four run the interfaces documented here. See
+`contracts/deployments/testnet.md`.
+
+Testnet `bitcoin-spv` and `writz-lend` were redeployed on NEWDEPLOYDATE because testnet rent rose sharply: testnet's live state is above its target size, and the previous contracts gave every entry they created the long mainnet storage windows, so a deposit was charged about 428 XLM in fees. The new contracts take those windows as deployment parameters and run testnet-length ones (a deposit was charged about 89 XLM, measured 2026-10-25). Positions on the previous contracts were closed and their BTC released; their IDs are recorded as superseded in `contracts/deployments/testnet.md`. The windows are the `header_ttl_ledgers` and `consumed_ttl_ledgers` arguments of
+`bitcoin-spv`'s `__constructor` and the `entry_ttl_ledgers` argument of
+`writz-lend`'s (both below); what each entry keeps and when it is extended is in
+[Storage and TTL management](/how-it-works/stellar-side#storage-and-ttl-management).
 
 ---
 

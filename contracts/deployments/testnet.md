@@ -8,9 +8,46 @@
 
 ---
 
-## Storage TTL parameters (next redeploy)
+## `bitcoin-spv` and `writz-lend` redeploy (NEWDEPLOYDATE)
 
-From the next redeploy of both contracts, the storage windows of entries created per use are constructor parameters, in ledgers (17,280 a day). The transaction that creates an entry pays rent for its whole window, and testnet's live state is above its target size, so rent is priced far above mainnet's: with the windows below, a deposit declares about 118 XLM of resource fee instead of about 566 XLM, a release PSBT about 73 XLM instead of about 329, and each header the relayer submits about 17 XLM instead of about 224 (measured 2026-10-25 on throwaway instances; the rate keeps moving).
+Both protocol contracts redeployed together, built at `NEWBUILDCOMMIT` (`cargo build --release --target wasm32v1-none --locked -p bitcoin-spv -p writz-lend`) through `scripts/deploy/deploy_stack.mjs`, with the testnet storage windows from [Storage TTL parameters](#storage-ttl-parameters). The reason is testnet rent: testnet's live state is above its target size, so rent rose sharply, and the previous contracts gave every entry they created the long mainnet windows built in. A deposit on the previous contracts was charged about 428 XLM in fees; with the testnet windows it was charged about 89 XLM (measured 2026-10-25; the rate keeps moving). Positions on the previous contracts were closed and their BTC released before the switch. The previous `bitcoin-spv` and `writz-lend` are kept below, marked superseded; the app and the relayer no longer use them. The privacy edition's `zk-verifier` and `commitment-tree` are not part of this redeploy.
+
+### bitcoin-spv
+
+| Field | Value |
+|---|---|
+| **Contract ID** | `NEWSPVID` |
+| wasm sha256 | `NEWSPVWASMSHA` |
+| Deploy tx | [`NEWSPVDEPLOYTXSHORT…`](https://stellar.expert/explorer/testnet/tx/NEWSPVDEPLOYTX) |
+| `admin` | `writz-deployer` |
+| `pow_limit_bits` | `0x1e0377ae` (signet) |
+| `header_ttl_ledgers` | `120960` (7 days, the network minimum; 90 days on mainnet) |
+| `consumed_ttl_ledgers` | `120960` (7 days; 90 days on mainnet) |
+| Checkpoint | signet block NEWCHECKPOINTFMT, `NEWCHECKPOINTHASH` - [`NEWCHECKPOINTTXSHORT…`](https://stellar.expert/explorer/testnet/tx/NEWCHECKPOINTTX) |
+| Submitter | `GCNBKRZO5T24SF7EPLVUABSFO76TFWXJBIHKL4TH6ZAX7IJOFRQ5GWN4` (the relayer account; signet blocks are signature-authenticated, which this contract does not check) - [`NEWSUBMITTERTXSHORT…`](https://stellar.expert/explorer/testnet/tx/NEWSUBMITTERTX) |
+| Consumers | `writz-lend` [`NEWCONSUMERTXSHORT…`](https://stellar.expert/explorer/testnet/tx/NEWCONSUMERTX) |
+
+### writz-lend
+
+| Field | Value |
+|---|---|
+| **Contract ID** | `NEWLENDID` |
+| wasm sha256 | `NEWLENDWASMSHA` |
+| Deploy tx | [`NEWLENDDEPLOYTXSHORT…`](https://stellar.expert/explorer/testnet/tx/NEWLENDDEPLOYTX) |
+| `admin`, `keeper` | `writz-deployer` |
+| `relayer` | `GCNBKRZO5T24SF7EPLVUABSFO76TFWXJBIHKL4TH6ZAX7IJOFRQ5GWN4` |
+| `spv_contract` | `NEWSPVID` |
+| `usdc_token` | `CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA` |
+| `oracle` | `CCYOZJCOPG34LLQQ7N24YXBM7LL62R7ONMZ3G6WZAAYPB5OYKOMJRN63` (Reflector, external CEXs & DEXs) |
+| `protocol_pubkey` | `03d2f0699b167138988bf8d14a4655a8708066473b4c59ef40ee4ac500564fb70d` |
+| `min_confirmations` | `1` (testnet) |
+| `min_deposit_satoshis` | `5,000` (testnet; 100,000 on mainnet) |
+| `entry_ttl_ledgers` | `691200` (40 days; 180 days on mainnet) |
+| `max_total_borrowed` | 50,000 USDC (default) |
+
+## Storage TTL parameters
+
+From the NEWDEPLOYDATE redeploy of both contracts, the storage windows of entries created per use are constructor parameters, in ledgers (17,280 a day). The transaction that creates an entry pays rent for its whole window, and testnet's live state is above its target size, so rent is priced far above mainnet's: with the windows below, a deposit declares about 118 XLM of resource fee instead of about 566 XLM, a release PSBT about 73 XLM instead of about 329, and each header the relayer submits about 17 XLM instead of about 224 (measured 2026-10-25 on throwaway instances; the rate keeps moving).
 
 | Contract | Parameter | Testnet | Mainnet |
 |---|---|---|---|
@@ -22,7 +59,7 @@ Constructor order: `bitcoin-spv` `(admin, pow_limit_bits, header_ttl_ledgers, co
 
 An entry past its window is archived, not deleted: it cannot be read or overwritten until it is restored unchanged, which the RPC does automatically for any transaction that touches it. A consumed txid therefore stays consumed, and an archived position comes back with its debt. Uploading either wasm costs more resource fee than a plain transaction can carry (about 7,400 XLM for `bitcoin-spv` and 13,400 XLM for `writz-lend` on 2026-10-25), so `deploy_stack.mjs` wraps such transactions in a fee bump.
 
-## `writz-lend` redeploy (2026-10-24, second)
+## `writz-lend` redeploy (2026-10-24, second, superseded NEWDEPLOYDATE)
 
 The same build as the instance below (`c1fdae0`, wasm sha256 `b917558060268cf1665937726b99e4145ffab72b33ec01f8e3355cd173a34b4c`), deployed again later the same day with a rotated protocol co-signing key and a relayer account of its own, separate from the admin. `bitcoin-spv`'s header submitter moved to the same relayer account. It replaces `CAVAD3NGIJPDTFLBLJQ5FMLT6UNFE3UFOI3RTQVOVS5RWAD5EDVI5EX4`; that instance's 1,000 USDC of supply moved here and it is no longer a `bitcoin-spv` consumer.
 
@@ -83,7 +120,7 @@ The app's `NEXT_PUBLIC_PROTOCOL_BTC_PUBKEY` is `03d2f0699b167138988bf8d14a4655a8
 | `bitcoin-spv` consumer | [`59c67ba820…`](https://stellar.expert/explorer/testnet/tx/59c67ba820a0ef057c8d828f4d50a6579650804e1b8b3959cd49fb4239bc44b2) |
 | Initial supply | 1,000 test USDC from `writz-deployer` [`d63d43fb10…`](https://stellar.expert/explorer/testnet/tx/d63d43fb10ca7f8f7218097d84c36be603a427b7f4e0c8984360f52c7fa9b3c4) |
 
-## Current deployment (2026-10-11)
+## Coordinated deployment (2026-10-11)
 
 The coordinated redeploy of #177: every security-advisory fix merged in #171-#213, deployed together through `scripts/deploy/deploy_stack.mjs`. Each contract was configured by its `__constructor` inside the deploy transaction, so there was no separate `initialize` call to front-run (GHSA-422m). Built from `main` at `c7eba49` (`cargo build --release --target wasm32v1-none --locked`). The verification keys are the **development** keys in `privacy/circuits/keys/`; the production ceremony is still pending.
 
@@ -94,7 +131,7 @@ The coordinated redeploy of #177: every security-advisory fix merged in #171-#21
 | `commitment-tree` | `CAQBLCAPGXXCZTJDAJLY7E4PTJYGR6CY4YWH4JSJKFXYIHW3GANP6RFM` | `a869a6d4…8a06e` |
 | `writz-lend` | `CA3T7T2S7HV27BXO7OLIHSMGAMQ37BMOOUHQLTBGUQVL4B6Y2CDJPHHX` | `14910b78…1cbf1` |
 
-### bitcoin-spv
+### bitcoin-spv (superseded NEWDEPLOYDATE)
 
 | Field | Value |
 |---|---|
@@ -125,7 +162,7 @@ The coordinated redeploy of #177: every security-advisory fix merged in #171-#21
 | `protocol_pubkey` | `022b9711f185db1d54aa841d949d9ea1e5644dece224dba8f1acbb3275e04e8458` (the key `/api/cosign` signs with on `testnet.writz.xyz`) |
 | `max_total_borrowed` | 50,000 USDC (default) |
 
-### writz-lend
+### writz-lend (superseded 2026-10-23)
 
 | Field | Value |
 |---|---|

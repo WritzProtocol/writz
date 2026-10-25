@@ -15,14 +15,16 @@ The SDK is the deployed contract, the relayer proof route, and two packages whos
 
 | | Value |
 |---|---|
-| Contract ID (Stellar testnet) | `CAHHY4S4WCIFU4LBSKBI3IP6A4QYR2COV6EACDEBXGPJFDWBJWGOMCLP` |
+| Contract ID (Stellar testnet) | `NEWSPVID` |
 | Bitcoin network tracked | Signet |
-| Checkpoint | Signet block 325,554 (only later blocks can be proven) |
+| Checkpoint | Signet block NEWCHECKPOINTFMT (only later blocks can be proven) |
 | Header submission | Restricted to one designated Writz account on signet, because signet blocks are authorised by a signature the contract does not verify |
 | Max headers per `submit_headers` call | 16 |
 | Max reorg depth per call | 20 blocks |
 
 Source: [`contracts/contracts/bitcoin-spv/src/lib.rs`](https://github.com/WritzProtocol/writz/blob/main/contracts/contracts/bitcoin-spv/src/lib.rs). Deployment record: [`contracts/deployments/testnet.md`](https://github.com/WritzProtocol/writz/blob/main/contracts/deployments/testnet.md).
+
+This contract was redeployed on NEWDEPLOYDATE, with a new checkpoint, because testnet rent rose sharply; the storage windows of headers and consumed deposits are now deployment parameters (`header_ttl_ledgers`, `consumed_ttl_ledgers`, see the [Contract reference](/developers/contract-reference)). Blocks at or below the new checkpoint can no longer be proven against it.
 
 ---
 
@@ -199,19 +201,19 @@ GET https://api.testnet.writz.xyz/spv-proof/:txid?confirmations=6
 
 ```json
 {
-  "txid": "1fef7b54...ccb718b1",
-  "rawTxNoWitness": "0200000001b537...",
-  "blockHash": "9e4d5092...0f000000",
-  "txIndex": 1,
-  "merkleProof": ["f3e0901f...", "..."],
+  "txid": "NEWEXAMPLETXSHORT",
+  "rawTxNoWitness": "...",
+  "blockHash": "NEWEXAMPLEHASHINTERNALSHORT",
+  "txIndex": NEWEXAMPLEINDEX,
+  "merkleProof": ["...", "..."],
   "headers": ["...", "..."],
-  "blockHeight": 327600,
+  "blockHeight": NEWEXAMPLEBLOCK,
   "confirmations": 6,
   "sorobanArgs": {
-    "block_hash": "9e4d5092...0f000000",
-    "merkle_proof": ["f3e0901f...", "..."],
-    "tx_index": 1,
-    "raw_tx": "0200000001b537...",
+    "block_hash": "NEWEXAMPLEHASHINTERNALSHORT",
+    "merkle_proof": ["...", "..."],
+    "tx_index": NEWEXAMPLEINDEX,
+    "raw_tx": "...",
     "min_confirmations": 6
   }
 }

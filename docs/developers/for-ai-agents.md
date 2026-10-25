@@ -25,14 +25,16 @@ NETWORK_PASSPHRASE     Test SDF Network ; September 2015
 SOROBAN_RPC_URL        https://soroban-testnet.stellar.org
 BITCOIN_NETWORK        signet
 RELAYER_URL            https://api.testnet.writz.xyz
-BITCOIN_SPV_ID         CAHHY4S4WCIFU4LBSKBI3IP6A4QYR2COV6EACDEBXGPJFDWBJWGOMCLP
-WRITZ_LEND_ID          CCMSOCBVX2S645MQFFXJRHVHRWH2NY62KLOJXNDYFOJRYHIC47EO6ZZK
+BITCOIN_SPV_ID         NEWSPVID
+WRITZ_LEND_ID          NEWLENDID
 TEST_USDC_SAC          CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA   (USDC:GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5, 7 decimals)
-SPV_CHECKPOINT_HEIGHT  325554   (signet; only later blocks can be proven)
+SPV_CHECKPOINT_HEIGHT  NEWCHECKPOINT   (signet; only later blocks can be proven)
 SOROBAN_SDK            soroban-sdk = "26"
 ```
 
 Source of truth for IDs: [`contracts/deployments/testnet.md`](https://github.com/WritzProtocol/writz/blob/main/contracts/deployments/testnet.md), machine-readable in [`contracts/deployments/testnet.json`](https://github.com/WritzProtocol/writz/blob/main/contracts/deployments/testnet.json). The contracts are immutable; a new version gets a new ID there.
+
+Testnet `bitcoin-spv` and `writz-lend` were redeployed on NEWDEPLOYDATE because testnet rent rose sharply: testnet's live state is above its target size, and the previous contracts gave every entry they created the long mainnet storage windows, so a deposit was charged about 428 XLM in fees. The new contracts take those windows as deployment parameters and run testnet-length ones (a deposit was charged about 89 XLM, measured 2026-10-25). Positions on the previous contracts were closed and their BTC released; their IDs are recorded as superseded in `contracts/deployments/testnet.md`. Any other `bitcoin-spv` or `writz-lend` ID is superseded; do not use it. How the storage windows work: [Contract reference](/developers/contract-reference) and [Storage and TTL management](/how-it-works/stellar-side#storage-and-ttl-management).
 
 ## Packages
 
@@ -134,9 +136,9 @@ The other routes the index lists (`/merkle-path`, `/notes`, `/insert-commitment`
 **CLI** (simulation; the source account is any valid G address and is not charged):
 
 ```bash
-SPV=CAHHY4S4WCIFU4LBSKBI3IP6A4QYR2COV6EACDEBXGPJFDWBJWGOMCLP
+SPV=NEWSPVID
 READER=GB2BSYQS3FRJ5LZSSIDF3ZCSG5MKWJT5SZ3OZO4QRCAMCR357YAVPTWT
-TXID=1fef7b54a1819ae8cc719dec45ff5122880526fb9b8f89b303bbc260ccb718b1
+TXID=NEWEXAMPLETXID
 curl -s "https://api.testnet.writz.xyz/spv-proof/$TXID" > proof.json
 stellar contract invoke --id $SPV --network testnet --source-account $READER --send=no -- \
   verify_transaction \
@@ -145,7 +147,7 @@ stellar contract invoke --id $SPV --network testnet --source-account $READER --s
   --tx_index "$(jq -r .sorobanArgs.tx_index proof.json)" \
   --raw_tx "$(jq -r .sorobanArgs.raw_tx proof.json)" \
   --min_confirmations 6
-# {"block_hash":"9e4d5092...0f000000","block_height":327600,"confirmations":70,"txid":"b118b7cc...547bef1f"}
+# {"block_hash":"NEWEXAMPLEHASHINTERNALSHORT","block_height":NEWEXAMPLEBLOCK,"confirmations":NEWEXAMPLECONF,"txid":"NEWEXAMPLETXINTERNALSHORT"}
 ```
 
 **TypeScript** (`@stellar/stellar-sdk` 16.x, read-only):
@@ -154,10 +156,10 @@ stellar contract invoke --id $SPV --network testnet --source-account $READER --s
 import { Account, BASE_FEE, Contract, Keypair, TransactionBuilder, nativeToScVal, rpc, scValToNative, xdr } from "@stellar/stellar-sdk";
 
 const server = new rpc.Server("https://soroban-testnet.stellar.org");
-const spv = new Contract("CAHHY4S4WCIFU4LBSKBI3IP6A4QYR2COV6EACDEBXGPJFDWBJWGOMCLP");
+const spv = new Contract("NEWSPVID");
 const hex = (s: string) => Buffer.from(s, "hex");
 
-const txid = "1fef7b54a1819ae8cc719dec45ff5122880526fb9b8f89b303bbc260ccb718b1";
+const txid = "NEWEXAMPLETXID";
 const a = (await (await fetch(`https://api.testnet.writz.xyz/spv-proof/${txid}`)).json()).sorobanArgs;
 
 const tx = new TransactionBuilder(new Account(Keypair.random().publicKey(), "0"), {
@@ -209,7 +211,7 @@ Complete contract with tests, deployed and run against testnet: [`examples/spv-p
 ## Checklist before you answer "it works"
 
 1. `get_best_tip` returns a height near the signet tip on mempool.space.
-2. The txid is a **signet** transaction with enough confirmations, in a block above 325,554.
+2. The txid is a **signet** transaction with enough confirmations, in a block above NEWCHECKPOINTFMT.
 3. You passed `sorobanArgs` through unchanged (no extra byte reversal).
 4. You simulated reads (`--send=no`, `simulateTransaction`) and only signed real writes.
 5. Your contract checks the output (amount and scriptPubKey) and stores the txid.

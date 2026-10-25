@@ -85,8 +85,10 @@ Writz is a trustless Bitcoin lending protocol on Stellar. Lock real BTC. Borrow 
 
 | Contract | Address |
 |---|---|
-| `bitcoin-spv` | `CAHHY4S4WCIFU4LBSKBI3IP6A4QYR2COV6EACDEBXGPJFDWBJWGOMCLP` |
-| `writz-lend` | `CCMSOCBVX2S645MQFFXJRHVHRWH2NY62KLOJXNDYFOJRYHIC47EO6ZZK` |
+| `bitcoin-spv` | `NEWSPVID` |
+| `writz-lend` | `NEWLENDID` |
+
+Both were redeployed on NEWDEPLOYDATE because testnet rent rose sharply; positions on the previous contracts were closed and their BTC released. See [Storage and TTL management](/how-it-works/stellar-side#storage-and-ttl-management).
 
 The [privacy edition (in progress)](/how-it-works/privacy-edition) has its own testnet contracts, which `writz-lend` never calls:
 

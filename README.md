@@ -42,8 +42,10 @@ But a few months ago, it was a whitepaper. Version 1.0 (July 2026) is at [writz.
 
 | Contract | Address | WASM | Tests |
 |---|---|---|---|
-| `bitcoin-spv` | `CAHHY4S4WCIFU4LBSKBI3IP6A4QYR2COV6EACDEBXGPJFDWBJWGOMCLP` | 12.0 KB | 80 |
-| `writz-lend` | `CCMSOCBVX2S645MQFFXJRHVHRWH2NY62KLOJXNDYFOJRYHIC47EO6ZZK` | 78.8 KB | 135 |
+| `bitcoin-spv` | `NEWSPVID` | NEWSPVWASMKB KB | 80 |
+| `writz-lend` | `NEWLENDID` | NEWLENDWASMKB KB | 135 |
+
+Both were redeployed on NEWDEPLOYDATE because testnet rent rose sharply; positions on the previous contracts were closed and their BTC released. The storage windows that drive rent are now deployment parameters, see [Storage and TTL management](docs/how-it-works/stellar-side.md#storage-and-ttl-management).
 
 The privacy edition's contracts are also deployed on testnet, separately from the protocol (see [Privacy edition](#privacy-edition-in-progress)):
 

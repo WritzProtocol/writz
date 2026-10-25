@@ -25,7 +25,7 @@ Verifies Bitcoin transactions on Soroban using Simplified Payment Verification. 
 
 It also holds the shared deposit registry: `consume_deposit` records a Bitcoin txid the first time a registered lending contract uses it, so the same output can never back two positions.
 
-**Deployed:** `CAHHY4S4WCIFU4LBSKBI3IP6A4QYR2COV6EACDEBXGPJFDWBJWGOMCLP`
+**Deployed:** `NEWSPVID`
 
 ---
 
@@ -67,7 +67,7 @@ pub fn get_release_psbt(txid: BytesN<32>) -> Option<Bytes>
 
 **Events emitted** (topic strings, matching `contracts/contracts/writz-lend/src/events.rs` exactly): `deposit`, `borrow`, `repay`, `repay_full` (emitted instead of `repay` when a repayment fully closes the debt), `liquidate`, `supply`, `withdraw`, `paused_set`, `oracle_set`.
 
-**Deployed:** `CCMSOCBVX2S645MQFFXJRHVHRWH2NY62KLOJXNDYFOJRYHIC47EO6ZZK`
+**Deployed:** `NEWLENDID`
 
 ---
 
@@ -146,6 +146,8 @@ The transaction that creates an entry pays rent for its whole window, at the rat
 | Consumed deposit txid | bitcoin-spv | `consumed_ttl_ledgers` | 90 days | 7 days |
 | Config / Protocol accounting | writz-lend | fixed | 90 days | 90 days |
 | Config / Checkpoint / best tip | bitcoin-spv | fixed | 90 days | 90 days |
+
+The testnet contracts were redeployed with these parameters on NEWDEPLOYDATE, after testnet rent rose sharply: a deposit was charged about 428 XLM in fees on the previous contracts, which used the mainnet windows, and about 89 XLM with the testnet windows (measured 2026-10-25). Positions on the previous contracts were closed and their BTC released. The constructor arguments are in the [Contract reference](/developers/contract-reference).
 
 Testnet runs short windows because its live state is above the network's target size, which prices rent far higher than on mainnet: a 180-day position would cost more resource fee than one transaction can carry. Seven days is the network's minimum persistent TTL, so a 7-day window adds no rent beyond what creating the entry already costs. An entry that is read or rewritten in the last third of its window (at most its last 30 days) is extended back to its full window.
 
