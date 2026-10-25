@@ -428,7 +428,16 @@ Where a transfer stands. `kind` takes the same values as the app's `CctpStatus`:
 | `confirming` | Circle has the burn and is waiting for Stellar finality |
 | `confirmed` | Circle signed it; the relay is minting on Base Sepolia |
 | `arrived` | Minted. `mintHash` and `explorerUrl` link the Base Sepolia transaction |
-| `failed` | The relay stopped; `reason` says why |
+| `failed` | The relay stopped for good; `reason` says why |
+
+While the relay is waiting out a transient failure, `kind` stays at the stage the transfer reached (`confirmed` once Circle has signed, `confirming` before) and three fields are added: `retrying: true`, `reason` (what it is waiting out) and `nextRetryAt` (when the next attempt is due). The app keeps polling; nothing needs to be sent again.
+
+```json
+{ "burnHash": "246bc8d7...", "kind": "confirmed", "retrying": true,
+  "reason": "the relay is out of Base Sepolia gas; it retries once the account is refilled",
+  "nextRetryAt": "2026-10-25T14:32:02.745Z", "recipient": "0xc766579fe25474e41f612dd345772a61325878d2",
+  "amount": "10000000", "feeExecuted": "0", "createdAt": "2026-10-25T14:31:02.745Z", "updatedAt": "2026-10-25T14:31:32.745Z" }
+```
 
 ```json
 { "burnHash": "246bc8d7...", "kind": "arrived", "mintHash": "0x5f1e...", "explorerUrl": "https://sepolia.basescan.org/tx/0x5f1e...",
@@ -436,16 +445,30 @@ Where a transfer stands. `kind` takes the same values as the app's `CctpStatus`:
   "createdAt": "2026-10-25T14:31:02.745Z", "updatedAt": "2026-10-25T14:31:09.120Z" }
 ```
 
-`amount` and `feeExecuted` are USDC base units (6 decimals). `mintedBy` is `other` when someone completed the transfer before the relay did; the USDC arrived either way. In that case `mintHash` is `null` only if that transaction is older than the relay searches back for (`CCTP_RELAY_MINT_LOOKBACK_BLOCKS`). `404 not_found` means the relay was never asked about this burn.
+`amount` and `feeExecuted` are USDC base units (6 decimals). `mintedBy` is `other` when someone completed the transfer before the relay did; the USDC arrived either way. The relay then finds that transaction from its `MessageReceived` log: first through the RPC over the last `CCTP_RELAY_MINT_LOOKBACK_BLOCKS` blocks, then, if that misses it, through a public Base Sepolia indexer (`CCTP_RELAY_MINT_INDEXER_URL`, Blockscout by default, no key) over the whole chain. The indexer's answer is accepted only for a log emitted by MessageTransmitterV2 with the `MessageReceived` signature and the transfer's nonce. `mintHash` is `null` only if both sources fail; the relay searches again with backoff (up to 8 more times) and fills it in, so a later poll can return the hash. `404 not_found` means the relay was never asked about this burn.
 
-A failure the relay can recover from (Circle not confirming within `CCTP_RELAY_CONFIRM_TIMEOUT_MINUTES`, an RPC outage, an empty gas account, the daily cap) is picked up again by the next `POST` for the same burn. A refused transfer stays refused.
+Failures are transient or final:
+
+| Failure | Class | What happens |
+|---|---|---|
+| Circle has not confirmed within `CCTP_RELAY_CONFIRM_TIMEOUT_MINUTES` | transient | Retried automatically |
+| Base Sepolia unreachable (simulation, send, unexpected error) | transient | Retried automatically |
+| Mint broadcast but not mined in time, or reverted | transient | Retried automatically; the retry checks the earlier broadcast first and simulates again before any new send |
+| Gas account empty | transient | Retried once the account holds at least 0.0001 ETH; until then each due attempt only reads the balance |
+| Daily cap (`CCTP_RELAY_DAILY_CAP`) | transient | Retried after 00:00 UTC |
+| Not a Stellar to Base Sepolia USDC burn | final | Never relayed |
+| MessageTransmitterV2 refuses the mint in simulation (invalid signature, expired message) | final | Never relayed |
+| Circle never reports the burn within 10 minutes | final | Most likely not a CCTP transfer; a new `POST` starts over |
+| Transient failures for 24 hours | final | The relay gives up; `reason` says what it was waiting on; a new `POST` starts over |
+
+Automatic retries back off exponentially (30 seconds, doubling, at most 15 minutes apart). A sweep every 15 seconds runs those that are due, and a `GET` or `POST` for a burn whose retry is due runs it at once. Retries go through the same job, lock and checks as the first attempt, so they never send a second mint. Only final failures are reported as `failed`.
 
 How it works:
 
 - **Only the one route it exists for.** Before spending gas the relay decodes the signed message and refuses anything that is not a CCTP V2 USDC burn from Stellar (domain 27) to Base Sepolia (domain 6), addressed to Circle's TokenMessengerV2, with no destination caller, no hook and an EVM recipient. The relay key cannot be used to pay for other chains' transfers or other messages.
 - **Never twice.** One job per burn; every mint from the relay key runs behind one lock and waits for its receipt before the next is built, which also keeps the account's EVM nonces in order. Inside the lock the relay re-reads the record, checks a mint it already broadcast before sending anything new, checks `usedNonces` on MessageTransmitterV2, and simulates `receiveMessage`. A nonce already spent, by the relay or anyone else, is reported as `arrived` with the transaction that spent it, found from the `MessageReceived` log. Minting twice is impossible on chain anyway: each nonce is received once; these checks keep the relay from paying for a mint that would revert.
-- **Survives restarts.** Records live in `data/cctp-relay.db` (burn hash, state, nonce, recipient, amount, the signed message, the mint hash, times). Transfers in flight resume at startup. `lookupCctpRelay(store, burnHash)` in `src/cctp/store.ts` reads a record without driving it.
-- **Bounded.** Circle is polled with backoff (3 s doubling to 30 s); a burn Circle has never reported is dropped after 10 minutes, one it has not confirmed after `CCTP_RELAY_CONFIRM_TIMEOUT_MINUTES`. Mints are capped per UTC day (`CCTP_RELAY_DAILY_CAP`) and transfers in flight by `CCTP_RELAY_MAX_IN_FLIGHT`. A log warning `cctp_relay_low_balance` fires when the account holds less than 0.002 ETH, and `cctp_relay_out_of_gas` when it cannot pay.
+- **Survives restarts.** Records live in `data/cctp-relay.db` (burn hash, state, nonce, recipient, amount, the signed message, the mint hash, the failure and its retry schedule, times). Transfers in flight resume at startup, and scheduled retries run when due. `lookupCctpRelay(store, burnHash)` in `src/cctp/store.ts` reads a record without driving it.
+- **Bounded.** Circle is polled with backoff (3 s doubling to 30 s); a burn Circle has never reported is dropped after 10 minutes, one it has not confirmed is retried after `CCTP_RELAY_CONFIRM_TIMEOUT_MINUTES`, and any transfer still failing 24 hours after its first transient failure is given up. Mints are capped per UTC day (`CCTP_RELAY_DAILY_CAP`) and transfers in flight by `CCTP_RELAY_MAX_IN_FLIGHT`. A log warning `cctp_relay_low_balance` fires when the account holds less than 0.002 ETH, and `cctp_relay_out_of_gas` when it cannot pay.
 
 ### `GET /cctp/relay`
 
@@ -518,7 +541,8 @@ Copy `.env.example` to `.env` and adjust as needed.
 | `CCTP_RELAY_CONFIRM_TIMEOUT_MINUTES` | `30` | How long the relay waits for Circle to confirm a burn before it reports `failed` |
 | `CCTP_RELAY_DAILY_CAP` | `200` | Mints the relay broadcasts per UTC day |
 | `CCTP_RELAY_MAX_IN_FLIGHT` | `50` | Transfers in progress at once; beyond it `POST` answers `503 relay_busy` |
-| `CCTP_RELAY_MINT_LOOKBACK_BLOCKS` | `10000` | How far back (about 5.5 hours) the relay looks for a mint someone else sent |
+| `CCTP_RELAY_MINT_LOOKBACK_BLOCKS` | `10000` | How far back (about 5.5 hours) the relay looks through the RPC for a mint someone else sent |
+| `CCTP_RELAY_MINT_INDEXER_URL` | `https://base-sepolia.blockscout.com/api` | Etherscan-compatible indexer asked for that mint when the RPC search misses it; empty: RPC only |
 | `CCTP_RELAY_RATE_LIMIT` | `30` | POST attempts per client IP per window |
 | `CCTP_RELAY_RATE_WINDOW_MS` | `600000` | Window for `CCTP_RELAY_RATE_LIMIT` |
 | `CCTP_RELAY_SQLITE_PATH` | `data/cctp-relay.db` | Relay records (each burn, its state and its mint) |

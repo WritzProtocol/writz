@@ -175,6 +175,9 @@ if (CCTP_RELAY) {
   if (relay) {
     // Transfers a previous process left in flight carry on without waiting for the app to ask again.
     const resumed = relay.resume();
+    // Transient failures are retried on their own schedule, so an app that
+    // asked once is never left waiting on a transfer nobody drives.
+    relay.startRetrySweep();
     console.log(`CCTP relay: ${relay.address} (Base Sepolia), ${resumed} transfer(s) resumed`);
   } else {
     console.log(`CCTP relay off: ${disabledReason}`);

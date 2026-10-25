@@ -34,6 +34,7 @@ export function cctpRelayFromConfig(): RelaySetup {
       maxOpen: c.maxOpen,
       pollInitialMs: 3_000,
       pollMaxMs: 30_000,
+      ...(c.mintIndexerUrl ? { mintIndexerUrl: c.mintIndexerUrl } : {}),
     },
   });
   return { relay, disabledReason: "" };

@@ -16,7 +16,18 @@ import {
 import { fetchIrisMessage, IrisError } from '../src/cctp/iris.js';
 import { SendError, type MintLog, type ReceiptOutcome, type RelayChain, type SimulateOutcome } from '../src/cctp/chain.js';
 import { MemoryRelayStore, lookupCctpRelay, type RelayRecord } from '../src/cctp/store.js';
-import { CctpRelay, RelayError, type RelaySettings } from '../src/cctp/service.js';
+import {
+  CctpRelay,
+  MINT_LOOKUP_ATTEMPTS,
+  RelayError,
+  RETRY_GIVE_UP_MS,
+  RETRY_INITIAL_MS,
+  RETRY_MAX_MS,
+  retryDelayMs,
+  type RelaySettings,
+} from '../src/cctp/service.js';
+import { findMintOnIndexer, IndexerError, MESSAGE_RECEIVED_TOPIC } from '../src/cctp/indexer.js';
+import { toEventSelector } from 'viem';
 import { createCctpRouter } from '../src/routes/cctp.js';
 
 /** Stellar testnet burn 246bc8d7...9c62, as Iris serves it. */
@@ -168,10 +179,23 @@ const SETTINGS: RelaySettings = {
 };
 
 let t: number;
+const INDEXER = 'https://indexer.test/api';
+
+/** What the fake indexer answers; every call's URL is kept. */
+interface FakeIndexer {
+  calls: string[];
+  reply: () => Response;
+}
+
 function setup(irisReplies: (() => Response)[] = [complete], settings: Partial<RelaySettings> = {}, store = new MemoryRelayStore(), chain = new FakeChain()) {
   const states: string[] = [];
   const replies = [...irisReplies];
-  const fetchImpl = (async () => {
+  const indexer: FakeIndexer = { calls: [], reply: () => irisResponse(200, { status: '0', message: 'No logs found', result: [] }) };
+  const fetchImpl = (async (url: string) => {
+    if (url.startsWith(INDEXER)) {
+      indexer.calls.push(url);
+      return indexer.reply();
+    }
     states.push(store.get(BURN)?.state ?? 'none');
     const next = replies.length > 1 ? replies.shift()! : replies[0];
     return next();
@@ -187,7 +211,7 @@ function setup(irisReplies: (() => Response)[] = [complete], settings: Partial<R
     },
     log: () => {},
   });
-  return { relay, chain, store, states };
+  return { relay, chain, store, states, indexer };
 }
 
 /** Parks a relay's jobs at their first Iris backoff, so a test can hold transfers in flight without the clock moving. */
@@ -319,20 +343,61 @@ describe('CctpRelay', () => {
     expect(chain.sends).toHaveLength(0);
   });
 
-  test('fails with a retryable reason when out of gas, and mints once asked again after a refill', async () => {
+  test('retries an out-of-gas mint by itself once the account is refilled, reporting confirmed and retrying meanwhile', async () => {
     const { relay, chain, store } = setup();
     chain.sendError = new SendError('insufficient_funds', 'insufficient funds for gas');
     relay.request(BURN);
     await relay.idle();
-    expect(relay.status(BURN)).toMatchObject({ kind: 'failed', reason: expect.stringMatching(/out of Base Sepolia gas/) });
-    expect(store.get(BURN)?.retryable).toBe(true);
+    const first = t;
+    expect(relay.status(BURN)).toMatchObject({
+      kind: 'confirmed',
+      retrying: true,
+      reason: expect.stringMatching(/out of Base Sepolia gas/),
+      nextRetryAt: new Date(first + RETRY_INITIAL_MS).toISOString(),
+    });
+    expect(store.get(BURN)).toMatchObject({ state: 'failed', failureCode: 'out_of_gas', attempts: 1, retryingSince: first });
 
+    // Not due yet: neither a sweep nor a repeated POST sends anything.
+    expect(relay.retryDue()).toBe(0);
+    expect(relay.request(BURN)).toMatchObject({ kind: 'confirmed', retrying: true });
+    await relay.idle();
+    expect(chain.simulations).toBe(1);
+
+    // Due, but the account is still empty: no simulation, rescheduled with a longer backoff.
+    chain.balance = 0n;
+    t += RETRY_INITIAL_MS;
+    expect(relay.retryDue()).toBe(1);
+    await relay.idle();
+    expect(chain.simulations).toBe(1);
+    expect(store.get(BURN)).toMatchObject({ failureCode: 'out_of_gas', attempts: 2, retryAt: t + 2 * RETRY_INITIAL_MS });
+
+    // Refilled: the next poll of the status runs the retry, and it mints once.
+    chain.balance = 10n ** 17n;
     chain.sendError = undefined;
-    // The signed message is kept, so the retry goes straight to the mint.
-    expect(relay.request(BURN).kind).toBe('confirmed');
+    t += 2 * RETRY_INITIAL_MS;
+    // The poll answers at once (the balance check runs in the background) and starts the retry.
+    expect(relay.status(BURN)).toMatchObject({ kind: 'confirmed', retrying: true });
     await relay.idle();
     expect(relay.status(BURN)).toMatchObject({ kind: 'arrived', mintHash: MINT_TX });
     expect(chain.sends).toHaveLength(1);
+    expect(store.get(BURN)).toMatchObject({ retryable: false });
+    expect(store.get(BURN)?.retryAt).toBeUndefined();
+    expect(store.get(BURN)?.attempts).toBeUndefined();
+  });
+
+  test('a balance that cannot be read keeps an out-of-gas transfer waiting', async () => {
+    const { relay, chain, store } = setup();
+    chain.sendError = new SendError('insufficient_funds', 'insufficient funds for gas');
+    relay.request(BURN);
+    await relay.idle();
+    chain.balanceWei = async () => {
+      throw new Error('rpc down');
+    };
+    t += RETRY_INITIAL_MS;
+    relay.retryDue();
+    await relay.idle();
+    expect(chain.simulations).toBe(1);
+    expect(store.get(BURN)).toMatchObject({ failureCode: 'out_of_gas', attempts: 2 });
   });
 
   test('gives up on a burn Iris never heard of after ten minutes, without spending gas', async () => {
@@ -346,9 +411,10 @@ describe('CctpRelay', () => {
     expect(chain.simulations).toBe(0);
   });
 
-  test('gives up on a burn Circle has not confirmed within the window, polling with backoff', async () => {
+  test('keeps waiting on a burn Circle has not confirmed within the window, then mints once it does', async () => {
     const delays: number[] = [];
-    const { relay } = setup([pending]);
+    let signed = false;
+    const { relay, chain, store } = setup([() => (signed ? complete() : pending())]);
     const start = t;
     (relay as unknown as { sleep: (ms: number) => Promise<void> }).sleep = async (ms) => {
       delays.push(ms);
@@ -356,9 +422,18 @@ describe('CctpRelay', () => {
     };
     relay.request(BURN);
     await relay.idle();
-    expect(relay.status(BURN)).toMatchObject({ kind: 'failed', reason: expect.stringMatching(/did not confirm the transfer in time/) });
     expect(t - start).toBeGreaterThanOrEqual(SETTINGS.confirmTimeoutMs);
     expect(delays.slice(0, 5)).toEqual([3_000, 6_000, 12_000, 24_000, 30_000]);
+    // Circle has not signed: still confirming, not a dead end.
+    expect(relay.status(BURN)).toMatchObject({ kind: 'confirming', retrying: true, reason: expect.stringMatching(/not confirmed the transfer yet/) });
+    expect(store.get(BURN)?.failureCode).toBe('confirm_timeout');
+
+    signed = true;
+    t += RETRY_INITIAL_MS;
+    expect(relay.retryDue()).toBe(1);
+    await relay.idle();
+    expect(relay.status(BURN)).toMatchObject({ kind: 'arrived', mintHash: MINT_TX });
+    expect(chain.sends).toHaveLength(1);
   });
 
   test('keeps polling through Iris errors', async () => {
@@ -368,7 +443,7 @@ describe('CctpRelay', () => {
     expect(relay.status(BURN).kind).toBe('arrived');
   });
 
-  test('stops at the daily mint cap with a retryable reason', async () => {
+  test('waits at the daily mint cap and resumes after 00:00 UTC', async () => {
     const store = new MemoryRelayStore();
     for (let i = 0; i < SETTINGS.dailyCap; i++) {
       store.put({ burnHash: String(i).padStart(64, 'e'), state: 'arrived', retryable: false, createdAt: t, updatedAt: t, submittedAt: t });
@@ -377,7 +452,21 @@ describe('CctpRelay', () => {
     relay.request(BURN);
     await relay.idle();
     expect(chain.sends).toHaveLength(0);
-    expect(relay.status(BURN)).toMatchObject({ kind: 'failed', reason: expect.stringMatching(/daily limit of 5/) });
+    const midnight = Date.UTC(2026, 9, 26);
+    expect(relay.status(BURN)).toMatchObject({
+      kind: 'confirmed',
+      retrying: true,
+      reason: expect.stringMatching(/daily limit of 5/),
+      nextRetryAt: new Date(midnight).toISOString(),
+    });
+
+    t = midnight - 1;
+    expect(relay.retryDue()).toBe(0);
+    t = midnight;
+    expect(relay.retryDue()).toBe(1);
+    await relay.idle();
+    expect(relay.status(BURN)).toMatchObject({ kind: 'arrived', mintHash: MINT_TX });
+    expect(chain.sends).toHaveLength(1);
   });
 
   test('refuses new transfers beyond the in-flight limit', () => {
@@ -466,6 +555,424 @@ describe('CctpRelay', () => {
   });
 });
 
+/** A broadcast that does not spend the nonce (not mined yet, or reverted): the fake chain otherwise spends it on send. */
+function unspentOnSend(chain: FakeChain): void {
+  const send = chain.sendReceive.bind(chain);
+  chain.sendReceive = async (message: string) => {
+    const tx = await send(message);
+    chain.used.delete(NONCE);
+    return tx;
+  };
+}
+
+describe('CctpRelay automatic retries', () => {
+  test('backs off exponentially from 30 seconds to 15 minutes', () => {
+    expect([1, 2, 3, 4, 5, 6, 7, 20].map(retryDelayMs)).toEqual([
+      30_000, 60_000, 120_000, 240_000, 480_000, 900_000, 900_000, 900_000,
+    ]);
+    expect(RETRY_MAX_MS).toBe(15 * 60_000);
+  });
+
+  test('an RPC outage in the simulation is retried with growing delays, and the mint goes out once it is back', async () => {
+    const { relay, chain, store } = setup();
+    chain.simulateResult = { ok: false, transient: true, detail: 'fetch failed' };
+    relay.request(BURN);
+    await relay.idle();
+    const seen: number[] = [];
+    for (let i = 0; i < 3; i++) {
+      const r = store.get(BURN)!;
+      expect(r).toMatchObject({ state: 'failed', failureCode: 'rpc', attempts: i + 1 });
+      seen.push(r.retryAt! - t);
+      t = r.retryAt!;
+      relay.retryDue();
+      await relay.idle();
+    }
+    expect(seen).toEqual([30_000, 60_000, 120_000]);
+    chain.simulateResult = undefined;
+    t = store.get(BURN)!.retryAt!;
+    relay.retryDue();
+    await relay.idle();
+    expect(relay.status(BURN)).toMatchObject({ kind: 'arrived', mintHash: MINT_TX });
+    expect(chain.sends).toHaveLength(1);
+  });
+
+  test('a send that fails and a mint that is not mined in time are retried without a second broadcast', async () => {
+    const { relay, chain, store } = setup();
+    chain.sendError = new SendError('failed', 'nonce too low');
+    relay.request(BURN);
+    await relay.idle();
+    expect(store.get(BURN)?.failureCode).toBe('send_failed');
+    expect(relay.status(BURN)).toMatchObject({ kind: 'confirmed', retrying: true });
+
+    // The retry broadcasts, but the receipt does not come within the wait.
+    chain.sendError = undefined;
+    unspentOnSend(chain);
+    chain.receipts = ['pending', 'pending', 'pending', 'pending'];
+    t = store.get(BURN)!.retryAt!;
+    relay.retryDue();
+    await relay.idle();
+    expect(chain.sends).toHaveLength(1);
+    expect(store.get(BURN)).toMatchObject({ failureCode: 'not_mined', mintHash: MINT_TX, mintedBy: 'relay' });
+
+    // The next retry checks that broadcast first and finds it mined: nothing new is sent.
+    t = store.get(BURN)!.retryAt!;
+    relay.retryDue();
+    await relay.idle();
+    expect(chain.sends).toHaveLength(1);
+    expect(relay.status(BURN)).toMatchObject({ kind: 'arrived', mintHash: MINT_TX, mintedBy: 'relay' });
+  });
+
+  test('a mint that reverted is retried, and a lasting refusal in the next simulation turns final', async () => {
+    const { relay, chain, store } = setup();
+    // Reverted when it lands, and still reverted when the retry checks it first.
+    chain.receipts = ['reverted', 'reverted'];
+    unspentOnSend(chain);
+    relay.request(BURN);
+    await relay.idle();
+    expect(store.get(BURN)?.failureCode).toBe('reverted');
+    expect(relay.status(BURN)).toMatchObject({ kind: 'confirmed', retrying: true });
+
+    chain.simulateResult = { ok: false, transient: false, revert: 'Invalid attestation', detail: 'reverted' };
+    t = store.get(BURN)!.retryAt!;
+    relay.retryDue();
+    await relay.idle();
+    expect(relay.status(BURN)).toMatchObject({ kind: 'failed', reason: 'Base Sepolia refused the mint: Invalid attestation' });
+    expect(relay.status(BURN).retrying).toBeUndefined();
+    expect(store.get(BURN)).toMatchObject({ failureCode: 'mint_refused', retryable: false });
+    expect(store.get(BURN)?.retryAt).toBeUndefined();
+    expect(chain.sends).toHaveLength(1);
+  });
+
+  test('an unexpected error is retried like any transient failure', async () => {
+    const { relay, chain, store } = setup();
+    let broken = true;
+    const used = chain.isNonceUsed.bind(chain);
+    chain.isNonceUsed = async (nonce: string) => {
+      if (broken) throw new Error('boom');
+      return used(nonce);
+    };
+    relay.request(BURN);
+    await relay.idle();
+    expect(store.get(BURN)).toMatchObject({ state: 'failed', failureCode: 'unexpected', retryable: true });
+    expect(relay.status(BURN)).toMatchObject({ kind: 'confirmed', retrying: true });
+    broken = false;
+    t = store.get(BURN)!.retryAt!;
+    relay.retryDue();
+    await relay.idle();
+    expect(relay.status(BURN).kind).toBe('arrived');
+  });
+
+  test('final failures are never retried by themselves', async () => {
+    // Refused by MessageTransmitterV2.
+    const a = setup();
+    a.chain.simulateResult = { ok: false, transient: false, revert: 'Message expired', detail: 'reverted' };
+    a.relay.request(BURN);
+    await a.relay.idle();
+    t += RETRY_GIVE_UP_MS;
+    expect(a.relay.retryDue()).toBe(0);
+    expect(a.relay.status(BURN)).toMatchObject({ kind: 'failed', reason: expect.stringMatching(/Message expired/) });
+    await a.relay.idle();
+    expect(a.chain.simulations).toBe(1);
+
+    // A burn Circle never reported: final until a new POST, which starts it over.
+    const b = setup([() => irisResponse(404)]);
+    b.relay.request(BURN);
+    await b.relay.idle();
+    expect(b.store.get(BURN)).toMatchObject({ failureCode: 'unseen', retryable: true });
+    t += RETRY_GIVE_UP_MS;
+    expect(b.relay.retryDue()).toBe(0);
+    expect(b.relay.status(BURN).kind).toBe('failed');
+    expect(b.relay.request(BURN).kind).toBe('sent');
+  });
+
+  test('gives up after 24 hours of transient failures, reports failed, and a new POST starts over', async () => {
+    const { relay, chain, store } = setup();
+    chain.simulateResult = { ok: false, transient: true, detail: 'fetch failed' };
+    const start = t;
+    relay.request(BURN);
+    await relay.idle();
+    let rounds = 0;
+    while (store.get(BURN)!.retryAt !== undefined) {
+      expect(relay.status(BURN).kind).toBe('confirmed');
+      t = store.get(BURN)!.retryAt!;
+      relay.retryDue();
+      await relay.idle();
+      rounds += 1;
+      if (rounds > 500) throw new Error('never gave up');
+    }
+    expect(t - start).toBeGreaterThanOrEqual(RETRY_GIVE_UP_MS);
+    expect(t - start).toBeLessThan(RETRY_GIVE_UP_MS + RETRY_MAX_MS + 1);
+    const view = relay.status(BURN);
+    expect(view).toMatchObject({ kind: 'failed', reason: expect.stringMatching(/stopped after 24 hours of retrying \(Base Sepolia could not be reached\)/) });
+    expect(view.retrying).toBeUndefined();
+    expect(store.get(BURN)).toMatchObject({ failureCode: 'gave_up', retryable: true });
+    expect(chain.sends).toHaveLength(0);
+
+    chain.simulateResult = undefined;
+    expect(relay.request(BURN).kind).toBe('confirmed');
+    await relay.idle();
+    expect(relay.status(BURN)).toMatchObject({ kind: 'arrived', mintHash: MINT_TX });
+    expect(store.get(BURN)?.retryingSince).toBeUndefined();
+  });
+
+  test('a due retry runs once however many polls and sweeps ask for it', async () => {
+    const { relay, chain, store } = setup();
+    chain.sendError = new SendError('failed', 'timeout');
+    relay.request(BURN);
+    await relay.idle();
+    chain.sendError = undefined;
+    t = store.get(BURN)!.retryAt!;
+    relay.status(BURN);
+    relay.status(BURN);
+    relay.request(BURN);
+    relay.retryDue();
+    await relay.idle();
+    expect(chain.sends).toHaveLength(1);
+    expect(relay.status(BURN).kind).toBe('arrived');
+  });
+
+  test('a due retry waits while the relay is at its in-flight limit', async () => {
+    const { relay, chain, store } = setup([complete], { maxOpen: 1 });
+    chain.sendError = new SendError('failed', 'timeout');
+    relay.request(BURN);
+    await relay.idle();
+    chain.sendError = undefined;
+    // Another transfer holds the only slot.
+    stall(relay);
+    const other = 'f'.repeat(64);
+    store.put({ burnHash: other, state: 'sent', retryable: false, createdAt: t, updatedAt: t });
+    relay.resume();
+    t = store.get(BURN)!.retryAt!;
+    expect(relay.retryDue()).toBe(0);
+    expect(relay.status(BURN)).toMatchObject({ kind: 'confirmed', retrying: true });
+  });
+
+  test('a restarted relay picks up a retry the previous process scheduled', async () => {
+    const store = new MemoryRelayStore();
+    store.put({
+      burnHash: BURN, state: 'failed', nonce: NONCE, message: MESSAGE, attestation: ATTESTATION,
+      failure: 'Base Sepolia could not be reached', failureCode: 'rpc', retryable: true,
+      retryAt: t + 5_000, attempts: 1, retryingSince: t, createdAt: t, updatedAt: t,
+    });
+    const { relay, chain } = setup([complete], {}, store);
+    expect(relay.resume()).toBe(0);
+    expect(relay.retryDue()).toBe(0);
+    t += 5_000;
+    expect(relay.retryDue()).toBe(1);
+    await relay.idle();
+    expect(chain.sends).toHaveLength(1);
+    expect(relay.status(BURN).kind).toBe('arrived');
+  });
+
+  test('the retry sweep runs on a timer and can be stopped', async () => {
+    jest.useFakeTimers();
+    try {
+      const { relay } = setup();
+      const spy = jest.spyOn(relay, 'retryDue');
+      const stop = relay.startRetrySweep(1_000);
+      jest.advanceTimersByTime(3_000);
+      expect(spy).toHaveBeenCalledTimes(3);
+      stop();
+      jest.advanceTimersByTime(3_000);
+      expect(spy).toHaveBeenCalledTimes(3);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+});
+
+const OTHER_CALLER = '0x9999999999999999999999999999999999999999';
+const pad32 = (addr: string) => `0x${'0'.repeat(24)}${addr.slice(2).toLowerCase()}`;
+const TRANSMITTER = '0xe737e5cebeeba77efe34d4aa090756590b1ce275';
+function indexerLog(overrides: Partial<{ address: string; topics: string[]; transactionHash: string }> = {}) {
+  return {
+    address: TRANSMITTER,
+    topics: [MESSAGE_RECEIVED_TOPIC, pad32(OTHER_CALLER), NONCE, `0x${'0'.repeat(60)}07d0`],
+    transactionHash: OTHER_TX,
+    blockNumber: '0x2fc5068',
+    ...overrides,
+  };
+}
+const indexerOk = (logs: unknown[]) => () => irisResponse(200, { status: logs.length ? '1' : '0', message: logs.length ? 'OK' : 'No logs found', result: logs });
+
+describe('mint hash: RPC first, then the indexer', () => {
+  function spentElsewhere(settings: Partial<RelaySettings> = { mintIndexerUrl: INDEXER }) {
+    const ctx = setup([complete], settings);
+    ctx.chain.used.set(NONCE, { txHash: OTHER_TX, caller: OTHER_CALLER });
+    ctx.chain.findMint = async () => undefined;
+    return ctx;
+  }
+
+  test('finds through the indexer a mint older than the RPC window', async () => {
+    const { relay, indexer, store } = spentElsewhere();
+    indexer.reply = indexerOk([indexerLog()]);
+    relay.request(BURN);
+    await relay.idle();
+    expect(relay.status(BURN)).toMatchObject({
+      kind: 'arrived',
+      mintHash: OTHER_TX,
+      explorerUrl: `https://sepolia.basescan.org/tx/${OTHER_TX}`,
+      mintedBy: 'other',
+    });
+    expect(store.get(BURN)?.retryAt).toBeUndefined();
+    expect(indexer.calls).toHaveLength(1);
+  });
+
+  test('recognises a mint of its own found by the indexer', async () => {
+    const { relay, indexer } = spentElsewhere();
+    indexer.reply = indexerOk([indexerLog({ topics: [MESSAGE_RECEIVED_TOPIC, pad32(RELAY_ADDRESS), NONCE] })]);
+    relay.request(BURN);
+    await relay.idle();
+    expect(relay.status(BURN)).toMatchObject({ kind: 'arrived', mintHash: OTHER_TX, mintedBy: 'relay' });
+  });
+
+  test('does not ask the indexer when the RPC finds the mint', async () => {
+    const { relay, chain, indexer } = setup([complete], { mintIndexerUrl: INDEXER });
+    chain.used.set(NONCE, { txHash: OTHER_TX, caller: OTHER_CALLER });
+    relay.request(BURN);
+    await relay.idle();
+    expect(relay.status(BURN)).toMatchObject({ mintHash: OTHER_TX });
+    expect(indexer.calls).toHaveLength(0);
+  });
+
+  test('asks the indexer when the RPC search throws', async () => {
+    const { relay, chain, indexer } = spentElsewhere();
+    chain.findMint = async () => {
+      throw new Error('rpc down');
+    };
+    indexer.reply = indexerOk([indexerLog()]);
+    relay.request(BURN);
+    await relay.idle();
+    expect(relay.status(BURN)).toMatchObject({ kind: 'arrived', mintHash: OTHER_TX });
+  });
+
+  test.each([
+    ['another contract', { address: '0x' + '12'.repeat(20) }],
+    ['another event', { topics: [`0x${'aa'.repeat(32)}`, pad32(OTHER_CALLER), NONCE] }],
+    ['another nonce', { topics: [MESSAGE_RECEIVED_TOPIC, pad32(OTHER_CALLER), `0x${'77'.repeat(32)}`] }],
+    ['a malformed transaction hash', { transactionHash: '0x1234' }],
+  ])('ignores an indexer log from %s', async (_label, override) => {
+    const { relay, indexer } = spentElsewhere();
+    indexer.reply = indexerOk([indexerLog(override as Partial<{ address: string; topics: string[]; transactionHash: string }>)]);
+    relay.request(BURN);
+    await relay.idle();
+    expect(relay.status(BURN)).toMatchObject({ kind: 'arrived', mintHash: null });
+  });
+
+  test('with both sources failing it reports arrived with a null hash and fills it in on a later search', async () => {
+    const { relay, indexer, store } = spentElsewhere();
+    indexer.reply = () => irisResponse(502, {});
+    relay.request(BURN);
+    await relay.idle();
+    expect(relay.status(BURN)).toMatchObject({ kind: 'arrived', mintHash: null, mintedBy: 'other' });
+    expect(store.get(BURN)?.retryAt).toBe(t + RETRY_INITIAL_MS);
+
+    // Not due: a poll does not search again.
+    relay.status(BURN);
+    await relay.idle();
+    expect(indexer.calls).toHaveLength(1);
+
+    // Due: the next poll searches again, and the indexer is back.
+    indexer.reply = indexerOk([indexerLog()]);
+    t += RETRY_INITIAL_MS;
+    relay.status(BURN);
+    await relay.idle();
+    expect(relay.status(BURN)).toMatchObject({ kind: 'arrived', mintHash: OTHER_TX, mintedBy: 'other' });
+    expect(store.get(BURN)?.retryAt).toBeUndefined();
+  });
+
+  test('stops searching for the hash after a bounded number of attempts', async () => {
+    const { relay, indexer, store } = spentElsewhere();
+    indexer.reply = () => irisResponse(503, {});
+    relay.request(BURN);
+    await relay.idle();
+    let searches = 0;
+    while (store.get(BURN)?.retryAt !== undefined) {
+      t = store.get(BURN)!.retryAt!;
+      expect(relay.retryDue()).toBe(1);
+      await relay.idle();
+      searches += 1;
+    }
+    expect(searches).toBe(MINT_LOOKUP_ATTEMPTS);
+    expect(indexer.calls).toHaveLength(MINT_LOOKUP_ATTEMPTS + 1);
+    expect(relay.status(BURN)).toMatchObject({ kind: 'arrived', mintHash: null });
+  });
+
+  test('without an indexer configured only the RPC is searched', async () => {
+    const { relay, indexer } = spentElsewhere({});
+    relay.request(BURN);
+    await relay.idle();
+    expect(relay.status(BURN)).toMatchObject({ kind: 'arrived', mintHash: null });
+    expect(indexer.calls).toHaveLength(0);
+  });
+});
+
+describe('findMintOnIndexer', () => {
+  const fetchOf = (reply: () => Response, urls: string[] = []) =>
+    (async (url: string) => {
+      urls.push(url);
+      return reply();
+    }) as unknown as typeof fetch;
+
+  test('MESSAGE_RECEIVED_TOPIC is the selector of the MessageTransmitterV2 event', () => {
+    expect(MESSAGE_RECEIVED_TOPIC).toBe(toEventSelector('MessageReceived(address,uint32,bytes32,bytes32,uint32,bytes)'));
+  });
+
+  test('queries the logs of MessageTransmitterV2 by event and nonce over the whole chain', async () => {
+    const urls: string[] = [];
+    const found = await findMintOnIndexer(`${INDEXER}/`, NONCE.toUpperCase().replace('0X', '0x'), fetchOf(indexerOk([indexerLog()]), urls));
+    expect(found).toEqual({ txHash: OTHER_TX, caller: OTHER_CALLER });
+    const url = new URL(urls[0]);
+    expect(`${url.origin}${url.pathname}`).toBe(INDEXER);
+    expect(Object.fromEntries(url.searchParams)).toEqual({
+      module: 'logs',
+      action: 'getLogs',
+      address: TRANSMITTER,
+      fromBlock: '0',
+      toBlock: 'latest',
+      topic0: MESSAGE_RECEIVED_TOPIC,
+      topic2: NONCE,
+      topic0_2_opr: 'and',
+    });
+  });
+
+  test('skips logs that do not match and returns the first that does', async () => {
+    const found = await findMintOnIndexer(
+      INDEXER,
+      NONCE,
+      fetchOf(indexerOk([indexerLog({ address: '0x' + '12'.repeat(20) }), indexerLog({ transactionHash: MINT_TX })])),
+    );
+    expect(found?.txHash).toBe(MINT_TX);
+  });
+
+  test('answers undefined for "No logs found"', async () => {
+    expect(await findMintOnIndexer(INDEXER, NONCE, fetchOf(indexerOk([])))).toBeUndefined();
+  });
+
+  test('throws IndexerError when the indexer cannot answer', async () => {
+    await expect(findMintOnIndexer(INDEXER, NONCE, fetchOf(() => irisResponse(429, {})))).rejects.toThrow(IndexerError);
+    await expect(
+      findMintOnIndexer(INDEXER, NONCE, fetchOf(() => irisResponse(200, { status: '0', message: 'NOTOK', result: 'Max rate limit reached' }))),
+    ).rejects.toThrow(/Max rate limit|NOTOK/);
+    await expect(findMintOnIndexer(INDEXER, NONCE, fetchOf(() => new Response('<html>', { status: 200 })))).rejects.toThrow(IndexerError);
+    const offline = (async () => {
+      throw new DOMException('The operation timed out.', 'TimeoutError');
+    }) as unknown as typeof fetch;
+    await expect(findMintOnIndexer(INDEXER, NONCE, offline)).rejects.toThrow(/timed out/);
+    await expect(findMintOnIndexer(INDEXER, 'nope', fetchOf(indexerOk([])))).rejects.toThrow(IndexerError);
+  });
+
+  test('passes an abort signal so a slow indexer is cut off', async () => {
+    let signal: AbortSignal | undefined;
+    const spy = (async (_url: string, init?: RequestInit) => {
+      signal = init?.signal ?? undefined;
+      return indexerOk([])();
+    }) as unknown as typeof fetch;
+    await findMintOnIndexer(INDEXER, NONCE, spy, 50);
+    expect(signal).toBeInstanceOf(AbortSignal);
+  });
+});
+
 function appFor(relay: CctpRelay | undefined, rateLimit = 100) {
   const app = express();
   app.set('trust proxy', 1);
@@ -536,6 +1043,39 @@ describe('/cctp/relay routes', () => {
     // Another client is unaffected, and reads are not limited.
     expect((await request(app).post('/cctp/relay').set('X-Forwarded-For', '2.2.2.2').send({ burnHash: hash(3) })).status).toBe(202);
     expect((await request(app).get(`/cctp/relay/${hash(1)}`).set('X-Forwarded-For', '1.1.1.1')).status).toBe(200);
+  });
+
+  test('a transient failure reads as in progress with retrying, reason and the next attempt; a final one as failed', async () => {
+    const { relay, chain } = setup();
+    chain.sendError = new SendError('insufficient_funds', 'insufficient funds for gas');
+    const app = appFor(relay);
+    await request(app).post('/cctp/relay').send({ burnHash: BURN });
+    await relay.idle();
+    const get = await request(app).get(`/cctp/relay/${BURN}`);
+    expect(get.status).toBe(200);
+    expect(get.body).toEqual({
+      burnHash: BURN,
+      kind: 'confirmed',
+      retrying: true,
+      reason: 'the relay is out of Base Sepolia gas; it retries once the account is refilled',
+      nextRetryAt: new Date(t + RETRY_INITIAL_MS).toISOString(),
+      recipient: RECIPIENT,
+      amount: '10000000',
+      feeExecuted: '0',
+      createdAt: expect.any(String),
+      updatedAt: expect.any(String),
+    });
+    // Still in progress, so a repeated POST answers 202, not 200.
+    expect((await request(app).post('/cctp/relay').send({ burnHash: BURN })).status).toBe(202);
+
+    const refused = setup([() => complete(patch(MESSAGE, 8, '00000003'))]);
+    const app2 = appFor(refused.relay);
+    await request(app2).post('/cctp/relay').send({ burnHash: BURN });
+    await refused.relay.idle();
+    const final = await request(app2).get(`/cctp/relay/${BURN}`);
+    expect(final.body.kind).toBe('failed');
+    expect(final.body.retrying).toBeUndefined();
+    expect(final.body.nextRetryAt).toBeUndefined();
   });
 
   test('GET /cctp/relay shows the relay address and balance', async () => {
