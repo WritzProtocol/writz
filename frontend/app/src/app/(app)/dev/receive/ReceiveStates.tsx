@@ -43,6 +43,38 @@ const STATES: { id: string; title: string; props: ReceiveStepProps }[] = [
   { id: "c4", title: "Base Sepolia: sent from Stellar", props: { ...base, intent: CHAIN, phase: "chain_sent", leg: sent } },
   { id: "c5", title: "Base Sepolia: Circle confirmed", props: { ...base, intent: CHAIN, phase: "chain_confirmed", leg: confirmed } },
   { id: "c6", title: "Base Sepolia: arrived", props: { ...base, intent: CHAIN, phase: "chain_arrived", leg: confirmed, mintHash: "0x9b1c" + "0".repeat(60) } },
+  {
+    id: "c7",
+    title: "Base Sepolia: relay retrying",
+    props: { ...base, intent: CHAIN, phase: "chain_confirmed", leg: confirmed, relay: { kind: "pending", retrying: { reason: "the relay account is out of gas", nextRetryAt: null } } },
+  },
+  {
+    id: "c8",
+    title: "Base Sepolia: arrived, finding the transaction",
+    props: { ...base, intent: CHAIN, phase: "chain_confirmed", leg: confirmed, relay: { kind: "arrived", mintHash: null } },
+  },
+  {
+    id: "c9",
+    title: "Base Sepolia: relay off, delivery pending",
+    props: { ...base, intent: CHAIN, phase: "chain_confirmed", leg: confirmed, relay: { kind: "disabled", reason: "no relay key is configured" } },
+  },
+  {
+    id: "c10",
+    title: "Base Sepolia: not delivered, can try again",
+    props: {
+      ...base,
+      intent: CHAIN,
+      phase: "chain_confirmed",
+      leg: confirmed,
+      relay: { kind: "failed", reason: "the relay stopped after 24 hours of retrying (Base Sepolia could not be reached); ask again to start over", retryable: true },
+      onRetryRelay: noop,
+    },
+  },
+  {
+    id: "c11",
+    title: "Base Sepolia: not delivered, final",
+    props: { ...base, intent: CHAIN, phase: "chain_confirmed", leg: confirmed, relay: { kind: "failed", reason: "Base Sepolia refused the mint: Invalid signature", retryable: false } },
+  },
 ];
 
 export function ReceiveStates() {
