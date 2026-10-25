@@ -13,7 +13,7 @@ import {
   type DepositStatusRouterDeps,
   type Registration,
 } from '../src/routes/deposit-status.js';
-import { DepositIndex, ledgerOfCursor, type DepositEventsServer } from '../src/lend/deposit-reads.js';
+import { PositionEventIndex, ledgerOfCursor, type DepositEventsServer } from '../src/lend/deposit-reads.js';
 import { EsploraError } from '../src/bitcoin/esplora.js';
 import { cursorForLedger } from '../src/rpc-cursor.js';
 
@@ -490,18 +490,18 @@ function index(pages: Page[], opts: { now?: () => number; oldestLedger?: number 
     getEvents: jest.fn(),
   };
   for (const p of pages) server.getEvents.mockResolvedValueOnce(p);
-  const idx = new DepositIndex({
+  const idx = new PositionEventIndex({
     server,
     contractId: 'C',
     freshForMs: 5_000,
     now: opts.now ?? (() => 0),
     filter: FILTER,
-    decodeTxid: (topic) => topic[0] as string,
+    decode: (e) => ({ kind: 'deposit', txid: e.topic[0] as string }),
   });
   return { idx, server };
 }
 
-describe('DepositIndex', () => {
+describe('PositionEventIndex', () => {
   test('walks from the oldest retained ledger to the tip, page by page', async () => {
     const { idx, server } = index([
       page([event('aa', 3_000)], 11_000, 30_000),
@@ -568,6 +568,37 @@ describe('DepositIndex', () => {
     server.getEvents.mockRejectedValueOnce(new Error('rpc down'));
     t = 10_000;
     await expect(idx.refresh()).rejects.toThrow('rpc down');
+  });
+
+  test('history keeps every event of a position, once, across a restart from the oldest ledger', async () => {
+    const server = {
+      getHealth: jest.fn().mockResolvedValue({ oldestLedger: 1_000, latestLedger: 50_000 }),
+      getEvents: jest.fn(),
+    };
+    const ev = (kind: string, txHash: string, ledger: number) => ({ topic: [kind, 'p1'], txHash, ledger, ledgerClosedAt: `t${ledger}` });
+    let t = 0;
+    const idx = new PositionEventIndex({
+      server,
+      contractId: 'C',
+      freshForMs: 5_000,
+      now: () => t,
+      filter: FILTER,
+      decode: (e) => ({ kind: e.topic[0] as 'deposit', txid: e.topic[1] as string }),
+    });
+    server.getEvents.mockResolvedValueOnce(page([ev('deposit', 'd', 2_000), ev('borrow', 'b', 2_001)] as never, 2_001, 2_001));
+    await idx.refresh();
+    // The cursor fell out of retention; the walk restarts, and the mock replays events already indexed.
+    server.getEvents
+      .mockRejectedValueOnce(new Error('cursor is before the oldest ledger'))
+      .mockResolvedValueOnce(page([ev('deposit', 'd', 2_000), ev('borrow', 'b', 2_001), ev('repay_full', 'r', 2_005)] as never, 2_005, 2_005));
+    server.getHealth.mockResolvedValue({ oldestLedger: 2_002, latestLedger: 2_005 });
+    t = 10_000;
+    expect((await idx.history('p1')).map((e) => [e.kind, e.stellarTxHash])).toEqual([
+      ['deposit', 'd'],
+      ['borrow', 'b'],
+      ['repay_full', 'r'],
+    ]);
+    expect(await idx.lookup('p1')).toEqual({ stellarTxHash: 'd', ledger: 2_000, ledgerClosedAt: 't2000' });
   });
 
   test('ledgerOfCursor reads the ledger from the TOID', () => {

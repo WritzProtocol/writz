@@ -149,7 +149,92 @@ Where a `writz-lend` deposit is, from the Bitcoin transaction to its registratio
 
 `429` and the `503` answers carry `retryAfterSeconds` and a `Retry-After` header, except `lending_not_configured`.
 
-**Caching.** One answer per txid, or per txid and `stellarTx`, is shared for 5 seconds; failures are never kept. The Stellar transaction is found through an in-memory index of `writz-lend` `deposit` events: it is built from the oldest ledger Stellar RPC retains when the relayer starts, then follows the tip from its cursor at most once every 5 seconds.
+**Caching.** One answer per txid, or per txid and `stellarTx`, is shared for 5 seconds; failures are never kept. The Stellar transaction is found through an in-memory index of `writz-lend` position events (`deposit`, `borrow`, `repay`, `repay_full`, `liquidate`), shared with `/timeline`: it is built from the oldest ledger Stellar RPC retains when the relayer starts, then follows the tip from its cursor at most once every 5 seconds.
+
+### `GET /timeline/:btcTxid`
+
+The full cycle of one `writz-lend` position, one event per transaction, each with its explorer link: the Bitcoin lock, its verification and every borrow and repay on Stellar, how each borrow was received (a swap to XLM, or a CCTP burn and its mint on Base Sepolia), and the Bitcoin transaction that spent the lock. `btcTxid` is in display byte order. Served only where lending is enabled.
+
+**200 body** (loan 1 on the testnet deployment: deposit, borrow taken as USDC, full repay, release)
+
+```json
+{
+  "btcTxid": "b7b74d273e9f5f210f97fec7374884e4800ea5f93aad64d5f86946867c2b8b6e",
+  "positionId": "6e8b2b7c864669f8d564ad3af9a50e80e4844837c7fe970f215f9f3e274db7b7",
+  "owner": "GAXDQFQOZ645ZIZZCBZ6XPVHRDJ46OOIQ5RXU5G5KJNTZQ7AOM4DWP5L",
+  "status": "Closed",
+  "complete": true,
+  "gaps": [],
+  "events": [
+    {
+      "kind": "btc_lock",
+      "chain": "bitcoin",
+      "hash": "b7b74d273e9f5f210f97fec7374884e4800ea5f93aad64d5f86946867c2b8b6e",
+      "at": 1792844759000,
+      "url": "https://mempool.space/signet/tx/b7b74d273e9f5f210f97fec7374884e4800ea5f93aad64d5f86946867c2b8b6e"
+    },
+    {
+      "kind": "verified",
+      "chain": "stellar",
+      "hash": "020bdab6b5f8a576964b97b68c328e54ed5d0c0e572885ce8695fe8b18c6a6e6",
+      "at": 1792844812000,
+      "url": "https://stellar.expert/explorer/testnet/tx/020bdab6b5f8a576964b97b68c328e54ed5d0c0e572885ce8695fe8b18c6a6e6"
+    },
+    {
+      "kind": "borrowed",
+      "chain": "stellar",
+      "hash": "5be36a40cd29b5cc01caad910d6ff0b6a9c8ab49af691526af1be656e0851d05",
+      "at": 1792844822000,
+      "url": "https://stellar.expert/explorer/testnet/tx/5be36a40cd29b5cc01caad910d6ff0b6a9c8ab49af691526af1be656e0851d05"
+    },
+    {
+      "kind": "repaid",
+      "chain": "stellar",
+      "hash": "e6c4335836ab7e0668e6908f1712f0c0196ca5c9c2f938b60303e067b619477f",
+      "at": 1792844827000,
+      "url": "https://stellar.expert/explorer/testnet/tx/e6c4335836ab7e0668e6908f1712f0c0196ca5c9c2f938b60303e067b619477f"
+    },
+    {
+      "kind": "released",
+      "chain": "bitcoin",
+      "hash": "0a1482e31d2493967204e274eaa4df177cdd45347cbae874de30b5aab85e362d",
+      "at": 1792846559000,
+      "url": "https://mempool.space/signet/tx/0a1482e31d2493967204e274eaa4df177cdd45347cbae874de30b5aab85e362d"
+    }
+  ]
+}
+```
+
+`kind`, `chain`, `hash`, `at` (Unix ms, null when unknown) and `detail` are the app's `TimelineEvent`, so the app can render `events` as they come; `url` is the explorer page of `hash` (mempool.space, stellar.expert, Basescan). `events` are in chain order, the order the app's `orderTimeline` produces.
+
+| `kind` | `chain` | Source |
+|---|---|---|
+| `btc_lock` | `bitcoin` | The deposit transaction itself; `at` is its block time, null while unconfirmed |
+| `verified` | `stellar` | The `writz-lend` `deposit` event |
+| `borrowed` | `stellar` | Each `borrow` event |
+| `received` | `stellar` | A swap of the borrowed USDC to XLM (`detail: "as XLM"`), or a CCTP `deposit_for_burn` towards Base Sepolia (`detail: "sent to Base Sepolia"`) |
+| `received` | `base-sepolia` | The mint of that burn (`detail: "on Base Sepolia"`), when the CCTP relay on this relayer completed or observed it; `at` is when the relay recorded it |
+| `repaid` | `stellar` | Each `repay` and `repay_full` event, and a `liquidate` event (`detail: "by liquidation"`) |
+| `released` | `bitcoin` | The transaction that spent the deposit's P2WSH output (the cooperative release or the timelock path), found through Esplora's `outspends` |
+
+Only transactions that exist are listed: a step not taken yet has no event. `owner` is the position's depositor, `status` its `PositionStatus`.
+
+**How a borrow was received.** A swap or a burn is a second transaction the borrower signs after the borrow, and nothing on chain links it to the position. The relayer reads the owner's operations from Horizon, from the ledger of the first borrow on, and applies one rule: a successful `swap_exact_tokens_for_tokens` on the Soroswap router from the pool's USDC to XLM, or a successful `deposit_for_burn` of the pool's USDC from the owner to domain 6, sent by the owner, belongs to the owner's most recent `borrow` before it, unless a `borrow` or `repay` call by the owner on any position came in between. A leg after a borrow on another position belongs to that position; a leg after a repay belongs to none. The limit: an owner with two loans open who borrows on one and then swaps USDC that came from the other sees that swap under the latest borrow. Only direct calls to the router and the TokenMessengerMinter are matched, which is how the app sends them.
+
+**Partial answers.** `writz-lend` must be readable; Bitcoin and Horizon only add steps. When either cannot be read, or the position is older than Stellar RPC's event window (about 7 days on testnet), the answer is still `200` with `complete: false` and a line per gap in `gaps`.
+
+**Errors**
+
+| Status | `error` | Meaning |
+|---|---|---|
+| `400` | `invalid_txid` | `btcTxid` is not 64 hex characters |
+| `404` | `position_not_found` | `writz-lend` holds neither a `Position` nor an event for this txid; `/deposit-status` follows a deposit until then |
+| `429` | `rate_limited` | Per-IP budget spent (`TIMELINE_RATE_LIMIT` per `TIMELINE_RATE_WINDOW_MS`) |
+| `502` | `upstream_error` | Unexpected answer |
+| `503` | `stellar_unavailable` | Stellar RPC could not be read |
+| `503` | `lending_not_configured` | `WRITZ_LEND_ID` is not set on this relayer |
+
+**Caching.** One answer per txid is shared for 10 seconds; failures are never kept.
 
 ### `GET /defindex/apy`
 
@@ -514,6 +599,11 @@ Copy `.env.example` to `.env` and adjust as needed.
 | `SPV_PROOF_CACHE_TTL_MS` | `3600000` | Lifetime of a cached proof whose block is at least 6 deep |
 | `DEPOSIT_STATUS_RATE_LIMIT` | `120` | Requests per client IP per window on `/deposit-status` |
 | `DEPOSIT_STATUS_RATE_WINDOW_MS` | `60000` | Rate-limit window for `/deposit-status` |
+| `TIMELINE_RATE_LIMIT` | `60` | Requests per client IP per window on `/timeline` |
+| `TIMELINE_RATE_WINDOW_MS` | `60000` | Rate-limit window for `/timeline` |
+| `HORIZON_URL` | `https://horizon-testnet.stellar.org` | Horizon, read by `/timeline` for the borrower's swaps and burns |
+| `SOROSWAP_ROUTER_ID` | testnet Soroswap router | Router a borrow is swapped to XLM through, matched by `/timeline` |
+| `CCTP_TOKEN_MESSENGER_MINTER_ID` | testnet CCTP V2 TokenMessengerMinter | Contract a borrow is burned through for Base Sepolia, matched by `/timeline` |
 | `CORS_ORIGIN` | `*` | Allowed origin(s) - comma-separated or `*` |
 | `DEFAULT_CONFIRMATIONS` | `6` | Used when caller omits the query param |
 | `MAX_CONFIRMATIONS` | `20` | Hard cap on the confirmations param |

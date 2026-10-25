@@ -27,6 +27,19 @@ export interface TxInfo {
   status: TxStatus;
 }
 
+/** A transaction with its outputs' scriptPubKeys, from `/tx/:txid`. */
+export interface TxWithOutputs extends TxInfo {
+  vout: { scriptpubkey: string; value: number }[];
+}
+
+/** Whether one output is spent, and by which transaction, from `/tx/:txid/outspends`. */
+export interface Outspend {
+  spent: boolean;
+  txid?: string;
+  vin?: number;
+  status?: TxStatus;
+}
+
 /** One output of `/address/:address/utxo`, mempool included. */
 export interface AddressUtxo {
   txid: string;
@@ -138,6 +151,21 @@ export class EsploraClient {
     const body = await this.request(`/tx/${txid}`, (r) => r.text());
     const parsed = JSON.parse(body) as { txid: string; status: TxStatus };
     return { txid: parsed.txid, status: parsed.status };
+  }
+
+  /** Fetches the transaction's status and outputs. */
+  async getTxWithOutputs(txid: string): Promise<TxWithOutputs> {
+    const body = await this.request(`/tx/${txid}`, (r) => r.text());
+    const parsed = JSON.parse(body) as TxWithOutputs;
+    return { txid: parsed.txid, status: parsed.status, vout: parsed.vout.map((o) => ({ scriptpubkey: o.scriptpubkey, value: o.value })) };
+  }
+
+  /** Spending status of every output of the transaction, in output order. */
+  async getOutspends(txid: string): Promise<Outspend[]> {
+    const body = await this.request(`/tx/${txid}/outspends`, (r) => r.text());
+    const parsed = JSON.parse(body) as unknown;
+    if (!Array.isArray(parsed)) throw new Error(`getOutspends: expected an array, got: ${body.slice(0, 200)}`);
+    return parsed as Outspend[];
   }
 
   /**
