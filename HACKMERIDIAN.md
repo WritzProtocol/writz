@@ -29,6 +29,8 @@ Submitted with the Scale application on 21 October, word for word. A goal is tic
 
 ## Try it
 
+Step-by-step guides with screenshots, written at the event: [docs.writz.xyz/guides/start-here](https://docs.writz.xyz/guides/start-here) (wallets, test funds, borrow, repay and release, lend, troubleshooting).
+
 On [testnet.writz.xyz](https://testnet.writz.xyz) you need:
 
 1. **A Stellar wallet on testnet.** Freighter with the network set to Testnet, funded from [friendbot](https://lab.stellar.org/account/fund). The app adds the USDC trustline for you when you borrow.
@@ -159,6 +161,7 @@ Event work, in merge order:
 |---|---|
 | [#320](https://github.com/WritzProtocol/writz/pull/320) | Receive the loan as XLM through Soroswap or as USDC on Base Sepolia through CCTP |
 | [#321](https://github.com/WritzProtocol/writz/pull/321) | Second borrow step to convert or send, with recovery |
+| [#324](https://github.com/WritzProtocol/writz/pull/324) | Step-by-step user guides for the testnet app, with screenshots: wallets, test funds, borrow, repay and release, lend, troubleshooting |
 
 ## What comes next
 
