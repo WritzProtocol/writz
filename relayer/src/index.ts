@@ -1,6 +1,7 @@
 import express from "express";
 import { config } from "./config.js";
 import { proofRouter } from "./routes/proof.js";
+import { createDepositStatusRouter } from "./routes/deposit-status.js";
 import { merkleRouter } from "./routes/merkle.js";
 import { defindexRouter } from "./routes/defindex.js";
 import { metricsRouter } from "./routes/metrics.js";
@@ -84,6 +85,7 @@ app.get("/", (_req, res) => {
       ...(LENDING
         ? {
             spvProof: "GET /spv-proof/:txid",
+            depositStatus: "GET /deposit-status/:txid",
             merklePath: "GET /merkle-path",
             notes: "GET /notes",
             insertCommitment: "POST /insert-commitment",
@@ -119,6 +121,9 @@ app.get("/health", (_req, res) => {
 
 if (LENDING) {
   app.use("/spv-proof", proofRouter);
+  const depositStatus = createDepositStatusRouter();
+  app.use("/deposit-status", depositStatus);
+  void depositStatus.warm();
   app.use("/", merkleRouter);
 }
 app.use("/defindex", defindexRouter);
