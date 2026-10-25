@@ -8,6 +8,7 @@ import { readLeaves, writeLeaves, saveNote, readNotes } from "../leaf-store.js";
 import { verifyInsertAuth, lookupDepositorOnChain, InsertAuthError } from "../insert-auth.js";
 import { proveInsertion } from "../insert-prover.js";
 import { withTreeLock } from "../tree-lock.js";
+import { bidInclusionFeeOnly } from "../soroban-fee.js";
 
 const COMMITMENT_RE = /^[0-9a-f]{64}$/i;
 const HEX_RE = /^[0-9a-f]+$/i;
@@ -198,6 +199,7 @@ merkleRouter.post("/insert-commitment", writeLimiter, async (req: Request, res: 
           public_signals: publicSignals,
         }),
       );
+      bidInclusionFeeOnly(tx);
       const sent = await tx.signAndSend({ signTransaction });
 
       writeLeaves(newLeaves);
