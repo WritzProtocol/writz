@@ -28,3 +28,8 @@ export function btcAddressUrl(address: string): string {
   const prefix = net === "mainnet" ? "" : `${net}/`;
   return `https://mempool.space/${prefix}address/${address}`;
 }
+
+/** Base Sepolia explorer URL for a transaction hash (the CCTP mint). */
+export function baseSepoliaTxUrl(hash: string): string {
+  return `https://sepolia.basescan.org/tx/${hash}`;
+}

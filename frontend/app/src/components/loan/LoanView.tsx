@@ -24,6 +24,7 @@ import {
 } from "@/lib/loan/model";
 import { Notice } from "@/components/ui";
 import { DepositProof } from "@/components/borrow/DepositProof";
+import { ReceiveSteps, useReceive } from "./receive";
 import { Enter } from "@/components/ui/entrance";
 import type { LoanModel } from "./model";
 import {
@@ -74,6 +75,7 @@ export function LoanView({ m }: { m: LoanModel }) {
   const [focusTab, setFocusTab] = useState<LoanTab | null>(null);
   const [preview, setPreview] = useState<bigint | null>(null);
   const tabRefs = useRef<Record<LoanTab, HTMLButtonElement | null>>({ borrow: null, repay: null, release: null });
+  const receive = useReceive(m, m.position);
 
   if (m.access === "disconnected")
     return (
@@ -339,6 +341,7 @@ export function LoanView({ m }: { m: LoanModel }) {
                 </p>
               </Notice>
             )}
+            {receive.leg && <ReceiveSteps r={receive} walletName={m.stellar.walletName} />}
             {!checking && tab && tabs[tab].enabled && (
               <div
                 className="ln-panel ln-act-panel wz-enter"
@@ -347,7 +350,7 @@ export function LoanView({ m }: { m: LoanModel }) {
                 aria-labelledby={`loan-tab-${tab}`}
                 key={`${tab}:${position.id}`}
               >
-                {tab === "borrow" && <BorrowPanel m={m} position={position} available={available} price={price} onPreview={setPreview} />}
+                {tab === "borrow" && <BorrowPanel m={m} r={receive} position={position} available={available} price={price} onPreview={setPreview} />}
                 {tab === "repay" && <RepayPanel m={m} position={position} price={price} initial={toSafe} onPreview={setPreview} />}
                 {tab === "release" && (
                   <ReleasePanel m={m} position={position} neverBorrowed={status.kind === "repaid_locked" && status.neverBorrowed} />

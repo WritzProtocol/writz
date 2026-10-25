@@ -28,10 +28,13 @@ import type {
   MockLoanPage,
   MockPosition,
   MockProtocol,
+  MockReceive,
   MockWorld,
+  ReceiveSeed,
   Scenario,
   TxLifecycleId,
 } from "./types";
+import type { CctpStatus } from "@/lib/receive/cctp";
 
 /**
  * Mock harness scenarios, one per screen state ID. Select one
@@ -40,7 +43,7 @@ import type {
  *   G1-G8     global states            /  (any client route)
  *   H1-H23    home                     /
  *   B1-B37    deposit journey          /borrow/new
- *   L1-L25    loan detail              /loans/1
+ *   L1-L34    loan detail              /loans/1
  *   E1-E11    earn                     /earn
  *   N1-N19    lend                     /lend
  *   P1-P5     protocol                 /protocol
@@ -84,6 +87,17 @@ const loanPage = (over: Partial<MockLoanPage> = {}): MockLoanPage => ({
   walletUsdcStroops: ok(usdc(1620)),
   poolAvailableStroops: ok(POOL.available),
   ...over,
+});
+
+const BASE_TO = "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed";
+const borrowSettled = flow("borrow", "confirmed", { phase: "settled", hash: STELLAR_TX });
+const receiveSeed = (
+  option: "xlm" | "base",
+  step2: NonNullable<ReceiveSeed["step2"]>,
+  cctp?: CctpStatus,
+): MockReceive => ({
+  api: { cctp },
+  seed: { option, to: option === "base" ? BASE_TO : undefined, amountStroops: usdc(500), step2 },
 });
 
 const loanWorld = (position: MockPosition, over: Partial<MockWorld> = {}, page: Partial<MockLoanPage> = {}) =>
@@ -313,6 +327,41 @@ const LOAN: Scenario[] = [
   define("L23", "Missing Bitcoin deposit details", (now) => loanWorld(loans.missingBtcDetails(1, now))),
   define("L24", "Not found (bad n)", (now) => loanWorld(loans.healthy(1, now), { route: "/loans/7" }, { n: 7 })),
   define("L25", "Not connected", () => baseWorld({ route: "/loans/1", wallets: NO_WALLETS, loan: loanPage() })),
+  define("L26", "Receive as: USDC, XLM or USDC on Base Sepolia", (now) =>
+    loanWorld(loans.neverBorrowed(1, now), { receive: { api: {} } }, { panel: "borrow" }),
+  ),
+  define("L27", "Receive as XLM, step 2 quote", (now) =>
+    loanWorld(loans.healthy(1, now), { receive: receiveSeed("xlm", "idle"), flow: borrowSettled }, { panel: "borrow" }),
+  ),
+  define("L28", "Receive as XLM, step 2 failed (recovery)", (now) =>
+    loanWorld(loans.healthy(1, now), { receive: receiveSeed("xlm", "failed"), flow: borrowSettled }, { panel: "borrow" }),
+  ),
+  define("L29", "Receive as XLM, step 2 skipped (recovery)", (now) =>
+    loanWorld(loans.healthy(1, now), { receive: receiveSeed("xlm", "skipped"), flow: borrowSettled }, { panel: "borrow" }),
+  ),
+  define("L30", "Receive as XLM, swapped", (now) =>
+    loanWorld(loans.healthy(1, now), { receive: receiveSeed("xlm", "done"), flow: borrowSettled }, { panel: "borrow" }),
+  ),
+  define("L31", "Base Sepolia, step 2 send", (now) =>
+    loanWorld(loans.healthy(1, now), { receive: receiveSeed("base", "idle"), flow: borrowSettled }, { panel: "borrow" }),
+  ),
+  define("L32", "Base Sepolia, Circle confirming", (now) =>
+    loanWorld(loans.healthy(1, now), { receive: receiveSeed("base", "sent"), flow: borrowSettled }, { panel: "borrow" }),
+  ),
+  define("L33", "Base Sepolia, arrived", (now) =>
+    loanWorld(
+      loans.healthy(1, now),
+      { receive: receiveSeed("base", "sent", { kind: "arrived", mintHash: "ba".repeat(32) }), flow: borrowSettled },
+      { panel: "borrow" },
+    ),
+  ),
+  define("L34", "Base Sepolia address invalid", (now) =>
+    loanWorld(
+      loans.neverBorrowed(1, now),
+      { receive: { api: {}, seed: { option: "base", to: "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAeD", amountStroops: 0n } } },
+      { panel: "borrow" },
+    ),
+  ),
 ];
 
 const EARN: Scenario[] = [

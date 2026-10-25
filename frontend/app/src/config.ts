@@ -168,6 +168,11 @@ export const config = {
     /** Average Bitcoin block time, minutes - used only for the ETA estimate shown while waiting for confirmations. */
     avgBlockMinutes: 10,
   },
+  /** Receive-as options that stay off until they can be delivered on this deployment. */
+  receive: {
+    /** EURC has no usable testnet liquidity; on only with NEXT_PUBLIC_RECEIVE_EURC=1. */
+    eurc: process.env.NEXT_PUBLIC_RECEIVE_EURC === "1",
+  },
   /**
    * Pollar publishable key for email, Google and GitHub sign-in. Pollar holds
    * the key of the wallet it creates, so it is a testnet-only path: the

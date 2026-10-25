@@ -5,6 +5,8 @@ import type { FlowState } from "@/lib/flow/engine";
 import type { ActivityItem, LoanTab, Read } from "@/lib/loan/model";
 import type { Position } from "@/lib/position/types";
 import type { DerivedStatus } from "@/lib/status/types";
+import type { ReceiveApis } from "@/lib/receive";
+import type { ReceiveSeed } from "@/lib/mock/types";
 
 export type LoanAccess = "disconnected" | "finding" | "ready";
 
@@ -46,6 +48,12 @@ export interface LoanModel {
   activity: ActivityItem[];
   requestedPanel: LoanTab | null;
   now: number;
+  /** The Stellar address that signs; null while disconnected. */
+  owner: string | null;
+  /** How the loan can be received besides USDC on Stellar; a null API hides its option. */
+  receive: ReceiveApis;
+  /** Harness only: the state the receive step opens in. */
+  receiveSeed?: ReceiveSeed;
   borrow(stroops: bigint): void;
   repay(stroops: bigint): void;
   release(): void;

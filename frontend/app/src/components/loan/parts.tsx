@@ -29,6 +29,7 @@ import { useElapsed } from "@/components/ui/hooks";
 import { Enter } from "@/components/ui/entrance";
 import { ErrorBox, ExternalLink, Notice, SlideToConfirm, Spinner, type Tone } from "@/components/ui";
 import type { LoanModel } from "./model";
+import { BaseAddressField, ReceiveSelector, type Receive } from "./receive";
 
 const STELLAR = networkName(config.networkPassphrase);
 
@@ -514,12 +515,14 @@ function LiquidationEstimate({ collateralSats, debt }: { collateralSats: bigint;
 
 export function BorrowPanel({
   m,
+  r,
   position,
   available,
   price,
   onPreview,
 }: {
   m: LoanModel;
+  r: Receive;
   position: Position;
   available: Available | null;
   price: bigint | null;
@@ -562,7 +565,13 @@ export function BorrowPanel({
       noValidate
       onSubmit={(e) => {
         e.preventDefault();
-        if (amount !== null && !error && !noTrustline && !trustChecking) m.borrow(amount);
+        if (amount === null || error || noTrustline || trustChecking) return;
+        if (!r.ready) {
+          r.touchTo();
+          return;
+        }
+        r.start(amount);
+        m.borrow(amount);
       }}
     >
       {noTrustline && (
@@ -582,6 +591,7 @@ export function BorrowPanel({
           </div>
         </Notice>
       )}
+      <ReceiveSelector r={r} disabled={running || r.second.kind === "signing"} />
       <AmountField
         id={`${id}-borrow`}
         label="Borrow"
@@ -601,6 +611,7 @@ export function BorrowPanel({
         ))}
       </div>
       <After collateralSats={collateral} debt={newDebt} price={price} overLimit={overLimit} overPool={overPool} />
+      <BaseAddressField r={r} disabled={running} />
       <LiquidationEstimate collateralSats={collateral} debt={newDebt ?? debt} />
       {mine && (
         <TxResult
@@ -623,11 +634,13 @@ export function BorrowPanel({
           <div>
             <button
               type="submit"
-              className="wz-btn wz-btn-gold"
-              aria-disabled={amount === null || Boolean(error) || noTrustline || trustChecking}
+              className={`wz-btn ${r.view.active === 2 || r.view.recovery ? "wz-btn-line" : "wz-btn-gold"}`}
+              aria-disabled={amount === null || Boolean(error) || noTrustline || trustChecking || !r.ready}
               aria-describedby={trustChecking || noTrustline ? `${id}-why` : undefined}
             >
-              {amount !== null && !error ? `Borrow ${formatUsdc(amount)} USDC` : "Borrow"}
+              {amount !== null && !error
+                ? `${r.option === "usdc" ? "" : "Step 1: "}Borrow ${formatUsdc(amount)} USDC`
+                : "Borrow"}
             </button>
           </div>
           {(trustChecking || noTrustline) && (

@@ -147,3 +147,9 @@
 /* Borrow: the liquidation price estimate */
 .ln-est { margin: 0; }
 .ln-est dd small { display: block; color: var(--muted); }
+
+/* Borrow: receive as */
+.ln-recv-opt { flex-direction: column; align-items: flex-start; gap: 2px; min-height: 56px; padding: 6px 22px; white-space: normal; text-align: left; }
+.ln-recv-opt small { font-size: 13px; font-weight: 400; color: var(--muted); }
+.ln-recv-opt[aria-pressed="true"] small { color: var(--deep); }
+.ln-recv-steps { padding-top: 16px; border-top: 1px solid var(--rule); }

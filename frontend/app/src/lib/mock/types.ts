@@ -1,6 +1,8 @@
 import type { FlowState } from "@/lib/flow/engine";
 import type { PendingTx } from "@/lib/flow/pendingTx";
 import type { ChainReads, LocalInputs, PositionStatusKind, RelayerIndex } from "@/lib/status/types";
+import type { MockReceiveOptions } from "@/lib/receive/mock";
+import type { ReceiveOption } from "@/lib/receive/options";
 
 /** Unknown, empty and failed are different states. */
 export type Reading<T> =
@@ -99,6 +101,22 @@ export interface MockLoanPage {
   poolAvailableStroops: Reading<bigint>;
 }
 
+/** Receive as XLM or on Base Sepolia: the mock swap and transfer, and the state the borrow panel opens in. */
+export interface MockReceive {
+  api: MockReceiveOptions;
+  seed?: ReceiveSeed;
+}
+
+export interface ReceiveSeed {
+  option: ReceiveOption;
+  /** Base Sepolia destination. */
+  to?: string;
+  /** The USDC step 1 borrowed. */
+  amountStroops: bigint;
+  /** Where step 2 stands once step 1 settled; "sent" is a CCTP transfer on its way. Unset: nothing borrowed yet. */
+  step2?: "idle" | "failed" | "skipped" | "done" | "sent";
+}
+
 export interface MockEarn {
   apy: Reading<number>;
   trustline: Reading<boolean>;
@@ -140,6 +158,7 @@ export interface MockWorld {
   flow?: MockFlow;
   deposit?: MockDeposit;
   loan?: MockLoanPage;
+  receive?: MockReceive;
   earn?: MockEarn;
   lend?: MockLend;
   protocol?: MockProtocol;

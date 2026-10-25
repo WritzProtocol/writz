@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { getPoolState } from "@/lib/contracts/writzLend";
+import { LIVE_RECEIVE } from "@/lib/receive";
 import { useWallet } from "@/lib/wallet/WalletProvider";
 import { ensureKit } from "@/lib/wallet/kit";
 import { useBitcoinWallet } from "@/lib/bitcoin/useBitcoinWallet";
@@ -274,6 +275,8 @@ export function useLiveLoan(n: number, requestedPanel: LoanTab | null): LoanMode
       : [],
     requestedPanel,
     now,
+    owner: address,
+    receive: LIVE_RECEIVE,
     borrow,
     repay,
     release,

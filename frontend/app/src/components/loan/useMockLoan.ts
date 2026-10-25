@@ -5,6 +5,8 @@ import { IDLE } from "@/lib/flow/engine";
 import { loanActivity, type LoanTab, type Read } from "@/lib/loan/model";
 import type { MockWorld, Reading } from "@/lib/mock/types";
 import { usePositionStatus } from "@/lib/status/provider";
+import type { ReceiveApis } from "@/lib/receive";
+import { mockCctpApi, mockSwapApi } from "@/lib/receive/mock";
 import { useSteadyStatus, type LoanAccess, type LoanModel } from "./model";
 
 const noop = () => {};
@@ -30,6 +32,11 @@ export function useMockLoan(world: MockWorld, n: number): LoanModel {
   const flow = world.flow && FLOW_TABS.has(world.flow.kind) ? world.flow.state : IDLE;
   const action = world.flow && FLOW_TABS.has(world.flow.kind) ? (world.flow.kind as LoanTab) : null;
   const price = world.chain.oraclePriceStroops;
+  const [receive] = useState<ReceiveApis>(() =>
+    world.receive
+      ? { swap: mockSwapApi(world.receive.api), cctp: mockCctpApi(world.receive.api), timeline: null }
+      : { swap: null, cctp: null, timeline: null },
+  );
 
   return {
     n,
@@ -75,6 +82,9 @@ export function useMockLoan(world: MockWorld, n: number): LoanModel {
       : [],
     requestedPanel: page?.panel ?? null,
     now,
+    owner: sw?.address ?? null,
+    receive,
+    receiveSeed: world.receive?.seed,
     borrow: noop,
     repay: noop,
     release: noop,
