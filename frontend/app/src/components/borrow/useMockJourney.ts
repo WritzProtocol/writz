@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { config } from "@/config";
+import { confirmationTarget } from "@/lib/borrow/depositStatus";
 import { IDLE } from "@/lib/flow/engine";
 import { LOCK_ADDRESS, TIMELOCK } from "@/lib/mock/fixtures";
 import type { MockWorld } from "@/lib/mock/types";
@@ -160,7 +161,7 @@ export function useMockJourney(world: MockWorld): JourneyModel {
       pending,
       status,
       flow,
-      m: depositPos?.relayer?.minConfirmations ?? config.bitcoin.minConfirmations,
+      m: confirmationTarget([depositPos?.relayer?.minConfirmations], config.bitcoin.minConfirmations),
       relayerUnreachable: Boolean(world.globals.relayerUnreachable),
       drivenElsewhere: false,
       otherTx: Boolean(world.globals.otherTabTx),
@@ -170,6 +171,12 @@ export function useMockJourney(world: MockWorld): JourneyModel {
       register: noop,
       finish: noop,
     },
-    done: { sats: doneSats, index: loan?.index ?? pending?.positionIndex ?? null, reset: ui.reset },
+    done: {
+      sats: doneSats,
+      index: loan?.index ?? pending?.positionIndex ?? null,
+      btcTxid: loan?.txid ?? pending?.btcTxid ?? null,
+      stellarTxHash: loan?.stellarTxHash ?? null,
+      reset: ui.reset,
+    },
   };
 }

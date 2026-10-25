@@ -143,3 +143,7 @@
   .app .ln-bm-fill, .app .ln-bm-marker, .app .ln-bm-pre { animation: none; transition: none; }
 }
 @media (max-width: 767px) { .ln-nums dd small { display: block; margin-left: 0; } }
+
+/* Borrow: the liquidation price estimate */
+.ln-est { margin: 0; }
+.ln-est dd small { display: block; color: var(--muted); }

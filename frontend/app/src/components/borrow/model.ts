@@ -91,7 +91,8 @@ export interface DepositModel {
   pending: PendingDeposit | null;
   status: DerivedStatus;
   flow: FlowState;
-  m: number;
+  /** Confirmations this deployment requires; null when no usable count is known. */
+  m: number | null;
   relayerUnreachable: boolean;
   drivenElsewhere: boolean;
   otherTx: boolean;
@@ -115,7 +116,14 @@ export interface JourneyModel {
   newDevice: NewDeviceModel;
   deposit: DepositModel;
   /** `index` is the new loan's local position index, once known. */
-  done: { sats: bigint | null; index: number | null; reset(): void };
+  done: {
+    sats: bigint | null;
+    index: number | null;
+    /** The deposit's Bitcoin txid and the Stellar transaction that registered it, once known. */
+    btcTxid: string | null;
+    stellarTxHash: string | null;
+    reset(): void;
+  };
   busy: boolean;
   back: EditableStep | null;
   canEdit(step: EditableStep): boolean;

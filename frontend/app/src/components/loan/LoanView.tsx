@@ -23,6 +23,7 @@ import {
   type LoanTab,
 } from "@/lib/loan/model";
 import { Notice } from "@/components/ui";
+import { DepositProof } from "@/components/borrow/DepositProof";
 import { Enter } from "@/components/ui/entrance";
 import type { LoanModel } from "./model";
 import {
@@ -357,6 +358,7 @@ export function LoanView({ m }: { m: LoanModel }) {
         )}
 
         <div className="ln-side">
+          <DepositProof btcTxid={position.txid} stellarTxHash={position.stellarTxHash ?? null} verified />
           {!closed && (
             <WayOut
               n={n}
