@@ -132,6 +132,8 @@ export interface CctpRelayConfig {
   maxOpen: number;
   /** How far back `MessageReceived` logs are searched for a mint someone else sent. */
   mintLookbackBlocks: number;
+  /** Etherscan-compatible indexer API searched when the RPC window misses the mint; empty: none. */
+  mintIndexerUrl: string;
   /** Per-IP POST attempts per window. */
   rateLimit: number;
   rateWindowMs: number;
@@ -270,6 +272,7 @@ function loadConfig(): Config {
     dailyCap: positiveIntEnv("CCTP_RELAY_DAILY_CAP", "200"),
     maxOpen: positiveIntEnv("CCTP_RELAY_MAX_IN_FLIGHT", "50"),
     mintLookbackBlocks: positiveIntEnv("CCTP_RELAY_MINT_LOOKBACK_BLOCKS", "10000"),
+    mintIndexerUrl: getEnv("CCTP_RELAY_MINT_INDEXER_URL", "https://base-sepolia.blockscout.com/api").trim(),
     rateLimit: positiveIntEnv("CCTP_RELAY_RATE_LIMIT", "30"),
     rateWindowMs: positiveIntEnv("CCTP_RELAY_RATE_WINDOW_MS", "600000"),
   };

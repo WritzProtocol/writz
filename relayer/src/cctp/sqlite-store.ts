@@ -10,7 +10,7 @@
 import { Database } from "bun:sqlite";
 import path from "path";
 import fs from "fs";
-import type { RelayRecord, RelayState, RelayStore } from "./store.js";
+import type { FailureCode, RelayRecord, RelayState, RelayStore } from "./store.js";
 
 interface Row {
   burn_hash: string;
@@ -28,7 +28,19 @@ interface Row {
   created_at: number;
   updated_at: number;
   submitted_at: number | null;
+  failure_code: string | null;
+  retry_at: number | null;
+  attempts: number | null;
+  retrying_since: number | null;
 }
+
+/** Columns added after the table first shipped; added in place to a database that predates them. */
+const ADDED_COLUMNS: [name: string, type: string][] = [
+  ["failure_code", "TEXT"],
+  ["retry_at", "INTEGER"],
+  ["attempts", "INTEGER"],
+  ["retrying_since", "INTEGER"],
+];
 
 function fromRow(r: Row): RelayRecord {
   return {
@@ -47,6 +59,10 @@ function fromRow(r: Row): RelayRecord {
     createdAt: r.created_at,
     updatedAt: r.updated_at,
     ...(r.submitted_at !== null ? { submittedAt: r.submitted_at } : {}),
+    ...(r.failure_code !== null ? { failureCode: r.failure_code as FailureCode } : {}),
+    ...(r.retry_at !== null ? { retryAt: r.retry_at } : {}),
+    ...(r.attempts !== null ? { attempts: r.attempts } : {}),
+    ...(r.retrying_since !== null ? { retryingSince: r.retrying_since } : {}),
   };
 }
 
@@ -77,12 +93,20 @@ export function openSqliteRelayStore(
       submitted_at INTEGER
     )
   `);
+  const existing = new Set(db.query<{ name: string }, []>("PRAGMA table_info(cctp_relays)").all().map((c) => c.name));
+  for (const [name, type] of ADDED_COLUMNS) {
+    if (!existing.has(name)) db.exec(`ALTER TABLE cctp_relays ADD COLUMN ${name} ${type}`);
+  }
   db.exec("CREATE INDEX IF NOT EXISTS cctp_relays_state ON cctp_relays (state, created_at)");
   db.exec("CREATE INDEX IF NOT EXISTS cctp_relays_submitted ON cctp_relays (submitted_at)");
+  db.exec("CREATE INDEX IF NOT EXISTS cctp_relays_retry ON cctp_relays (retry_at)");
 
   const byHash = db.query<Row, [string]>("SELECT * FROM cctp_relays WHERE burn_hash = ?");
   const open = db.query<Row, []>(
     "SELECT * FROM cctp_relays WHERE state NOT IN ('arrived', 'failed') ORDER BY created_at ASC",
+  );
+  const due = db.query<Row, [number]>(
+    "SELECT * FROM cctp_relays WHERE retry_at IS NOT NULL AND retry_at <= ? ORDER BY retry_at ASC",
   );
   const submittedSince = db.query<{ n: number }, [number]>(
     "SELECT COUNT(*) AS n FROM cctp_relays WHERE submitted_at >= ?",
@@ -92,12 +116,14 @@ export function openSqliteRelayStore(
     [
       string, string, string | null, string | null, string | null, string | null, string | null, string | null,
       string | null, string | null, string | null, number, number, number, number | null,
+      string | null, number | null, number | null, number | null,
     ]
   >(
     `INSERT OR REPLACE INTO cctp_relays
        (burn_hash, state, nonce, recipient, amount, fee_executed, message, attestation,
-        mint_hash, minted_by, failure, retryable, created_at, updated_at, submitted_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        mint_hash, minted_by, failure, retryable, created_at, updated_at, submitted_at,
+        failure_code, retry_at, attempts, retrying_since)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   );
 
   return {
@@ -110,9 +136,11 @@ export function openSqliteRelayStore(
         r.burnHash, r.state, r.nonce ?? null, r.recipient ?? null, r.amount ?? null, r.feeExecuted ?? null,
         r.message ?? null, r.attestation ?? null, r.mintHash ?? null, r.mintedBy ?? null, r.failure ?? null,
         r.retryable ? 1 : 0, r.createdAt, r.updatedAt, r.submittedAt ?? null,
+        r.failureCode ?? null, r.retryAt ?? null, r.attempts ?? null, r.retryingSince ?? null,
       );
     },
     countSubmittedSince: (since) => submittedSince.get(since)?.n ?? 0,
     listOpen: () => open.all().map(fromRow),
+    listDue: (now) => due.all(now).map(fromRow),
   };
 }
