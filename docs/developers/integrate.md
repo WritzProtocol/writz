@@ -33,9 +33,9 @@ Ideas that fit in a weekend: a Soroban contract that releases something (an NFT,
 | Package | Registry | For | Status |
 |---|---|---|---|
 | [`@writz/sdk`](https://github.com/WritzProtocol/writz/tree/main/packages/sdk) | npm | TypeScript in the browser, Node or Bun: testnet preset, relayer client with typed errors and `Retry-After`, `bitcoin-spv` and `writz-lend` clients | Published: [`npm install @writz/sdk`](https://www.npmjs.com/package/@writz/sdk) |
-| [`writz-spv-client`](https://github.com/WritzProtocol/writz/tree/main/contracts/contracts/writz-spv-client) | crates.io | Soroban contracts: `BitcoinSpvClient`, the result and error types, the on-chain output parser `find_output_value` | Release pending: not on crates.io yet |
+| [`writz-spv-client`](https://github.com/WritzProtocol/writz/tree/main/contracts/contracts/writz-spv-client) | crates.io | Soroban contracts: `BitcoinSpvClient`, the result and error types, the on-chain output parser `find_output_value` | Published: [`cargo add writz-spv-client`](https://crates.io/crates/writz-spv-client) |
 
-`npm install @writz/sdk` works today. Until `writz-spv-client` is on crates.io, `cargo add writz-spv-client` fails: use the snippets on this page, which need only `soroban-sdk`, or depend on the source in this repository. The package code and its tests are in the repository either way.
+Both are published: `npm install @writz/sdk` and `cargo add writz-spv-client`. The snippets on this page also work without them, with only `@stellar/stellar-sdk` or `soroban-sdk`. The package code and its tests are in the repository either way.
 
 ---
 
@@ -170,7 +170,7 @@ The same command generates a client for `writz-lend` (`--contract-id CCMSOCBVX2S
 
 ## 5. From your Soroban contract
 
-Your contract calls `bitcoin-spv` with a cross-contract client. The crate `writz-spv-client` (release pending, see [Packages](#packages)) contains the client, the types and the output parser, so this becomes `writz-spv-client = "0.1"` in `Cargo.toml` and `use writz_spv_client::{find_output_value, BitcoinSpvClient};`. Until it is on crates.io, declare the result type yourself with these exact field names (they are decoded by name):
+Your contract calls `bitcoin-spv` with a cross-contract client. The crate `writz-spv-client` contains the client, the types and the output parser: add `writz-spv-client = "0.1"` to `Cargo.toml` and `use writz_spv_client::{find_output_value, BitcoinSpvClient};`. Without the crate, declare the result type yourself with these exact field names (they are decoded by name):
 
 ```rust
 use soroban_sdk::{contractclient, contracttype, Bytes, BytesN, Env, Vec};
