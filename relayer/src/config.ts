@@ -145,8 +145,6 @@ export interface FaucetConfig {
   amountSat: number;
   /** Claims per UTC day across all callers. */
   dailyCap: number;
-  /** One claim per recipient address within this many hours. */
-  cooldownHours: number;
   /** Claims per client IP within any `ipWindowHours` (sliding window). */
   ipClaimsPerWindow: number;
   ipWindowHours: number;
@@ -156,6 +154,18 @@ export interface FaucetConfig {
   /** Per-IP POST attempts per window. */
   rateLimit: number;
   rateWindowMs: number;
+  /**
+   * Pollar Server API secret key (POLLAR_SECRET_KEY, a sec_testnet_ key).
+   * Claims need it to check the user's social login; without it, or without
+   * `pollarApplicationId`, the faucet stays off.
+   */
+  pollarSecretKey: string | undefined;
+  /** The Writz testnet app's id in Pollar (POLLAR_APPLICATION_ID). */
+  pollarApplicationId: string | undefined;
+  /** Pollar Server API base URL (POLLAR_API_URL). */
+  pollarApiUrl: string;
+  /** FAUCET_ALLOW_EMAIL=true lets email one-time-code logins claim too. */
+  allowEmail: boolean;
 }
 
 // mempool.space rather than Blockstream: Blockstream's public API now
@@ -204,12 +214,20 @@ function loadConfig(): Config {
       KEEPER_BABYJUB_SECRET: process.env["KEEPER_BABYJUB_SECRET"],
       FAUCET_SIGNET_WIF: process.env["FAUCET_SIGNET_WIF"],
       CCTP_RELAY_EVM_KEY: process.env["CCTP_RELAY_EVM_KEY"],
+      POLLAR_SECRET_KEY: process.env["POLLAR_SECRET_KEY"],
     },
   });
 
   const faucetWif = process.env["FAUCET_SIGNET_WIF"]?.trim() || undefined;
   if (faucetWif && network !== "signet") {
     throw new Error("FAUCET_SIGNET_WIF is set but BITCOIN_NETWORK is not signet. The faucet pays Signet coins only.");
+  }
+
+  // The faucet checks testnet social logins only: a mainnet Pollar key has no
+  // business on this relayer, whatever the deploy target says.
+  const pollarSecretKey = process.env["POLLAR_SECRET_KEY"]?.trim() || undefined;
+  if (pollarSecretKey && !pollarSecretKey.startsWith("sec_testnet_")) {
+    throw new Error("POLLAR_SECRET_KEY must be a Pollar testnet secret key (sec_testnet_...). The faucet serves testnet logins only.");
   }
 
   // Defaults sized for onboarding: a venue or a classroom shares one IP, so the
@@ -225,7 +243,6 @@ function loadConfig(): Config {
     // The 1,000 to 50,000 sat range is enforced by the faucet itself.
     amountSat: positiveIntEnv("FAUCET_AMOUNT_SATS", "20000"),
     dailyCap: positiveIntEnv("FAUCET_DAILY_CAP", "300"),
-    cooldownHours: positiveNumberEnv("FAUCET_COOLDOWN_HOURS", "24"),
     ipClaimsPerWindow: positiveIntEnv("FAUCET_IP_CLAIMS_PER_WINDOW", "20"),
     ipWindowHours: positiveNumberEnv("FAUCET_IP_WINDOW_HOURS", "1"),
     minFeeRate: faucetMinFeeRate,
@@ -233,6 +250,10 @@ function loadConfig(): Config {
     feeTargetBlocks: positiveIntEnv("FAUCET_FEE_TARGET_BLOCKS", "3"),
     rateLimit: positiveIntEnv("FAUCET_RATE_LIMIT", "30"),
     rateWindowMs: positiveIntEnv("FAUCET_RATE_WINDOW_MS", "600000"),
+    pollarSecretKey,
+    pollarApplicationId: process.env["POLLAR_APPLICATION_ID"]?.trim() || undefined,
+    pollarApiUrl: getEnv("POLLAR_API_URL", "https://server.api.pollar.xyz/v3").trim(),
+    allowEmail: getEnv("FAUCET_ALLOW_EMAIL", "false").trim().toLowerCase() === "true",
   };
 
   const cctpRelayKey = process.env["CCTP_RELAY_EVM_KEY"]?.trim() || undefined;
