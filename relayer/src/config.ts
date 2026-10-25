@@ -68,6 +68,9 @@ export interface Config {
   soroswapRouterId: string;
   /** Circle CCTP TokenMessengerMinter on Stellar, where a borrow is burned for Base Sepolia. */
   cctpTokenMessengerMinterId: string;
+  /** Per-IP budget for POST /metrics/onboarding/events. */
+  onboardingEventsRateLimit: number;
+  onboardingEventsRateWindowMs: number;
   // Stellar / Soroban
   stellarRpcUrl: string;
   networkPassphrase: string;
@@ -318,6 +321,8 @@ function loadConfig(): Config {
     horizonUrl: process.env["HORIZON_URL"]?.trim() || TESTNET_HORIZON,
     soroswapRouterId: process.env["SOROSWAP_ROUTER_ID"]?.trim() || TESTNET_SOROSWAP_ROUTER,
     cctpTokenMessengerMinterId: process.env["CCTP_TOKEN_MESSENGER_MINTER_ID"]?.trim() || TESTNET_CCTP_TMM,
+    onboardingEventsRateLimit: parseInt(getEnv("ONBOARDING_EVENTS_RATE_LIMIT", "60"), 10),
+    onboardingEventsRateWindowMs: parseInt(getEnv("ONBOARDING_EVENTS_RATE_WINDOW_MS", "600000"), 10),
     stellarRpcUrl,
     networkPassphrase,
     commitmentTreeId: getEnv("COMMITMENT_TREE_ID", ""),

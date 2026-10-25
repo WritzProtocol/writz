@@ -12,7 +12,7 @@ mod test;
 
 use error::WritzLendError;
 use events::{
-    BorrowEvent, DepositEvent, LiquidateEvent, OracleSetEvent, PausedSetEvent, RepayEvent,
+    BorrowEvent, DepositEvent, EntryTtlSetEvent, LiquidateEvent, OracleSetEvent, PausedSetEvent, RepayEvent,
     RepayFullEvent, SupplyEvent, WithdrawEvent,
 };
 use oracle::{collateral_value_stroops, get_btc_price_stroops, health_ratio_bp};
@@ -30,6 +30,7 @@ use types::{Config, Position, PositionStatus, ProtocolState};
 pub const MAX_MIN_CONFIRMATIONS: u32 = 20;
 /// Lowest `min_deposit_satoshis` the constructor accepts.
 pub const MIN_DEPOSIT_FLOOR_SATS: u64 = 1_000;
+pub use storage::{LEDGERS_PER_DAY, MAX_ENTRY_TTL_LEDGERS, MIN_ENTRY_TTL_LEDGERS};
 
 #[contract]
 pub struct WritzLendContract;
@@ -61,6 +62,17 @@ impl WritzLendContract {
     /// - `min_deposit_satoshis` - Smallest deposit output accepted (100,000
     ///                       on mainnet). At least `MIN_DEPOSIT_FLOOR_SATS`,
     ///                       so a release fee cannot consume the deposit.
+    /// - `entry_ttl_ledgers` - How long each per-user entry (a deposit's
+    ///                       `Position`, a lender's supply balance, a release
+    ///                       PSBT) is kept live, in ledgers, from when it is
+    ///                       written or last topped up. The creating
+    ///                       transaction pays rent for this window. 3,110,400
+    ///                       (180 days, the network maximum) on mainnet; a
+    ///                       short window where rent is priced high (testnet).
+    ///                       `MIN_ENTRY_TTL_LEDGERS..=MAX_ENTRY_TTL_LEDGERS`.
+    ///                       An entry that outlives its window is archived,
+    ///                       not deleted, and is restored before any call can
+    ///                       read it again.
     pub fn __constructor(
         env: Env,
         admin: Address,
@@ -72,6 +84,7 @@ impl WritzLendContract {
         protocol_pubkey: BytesN<33>,
         min_confirmations: u32,
         min_deposit_satoshis: u64,
+        entry_ttl_ledgers: u32,
     ) {
         if !script::is_compressed_pubkey(&protocol_pubkey) {
             panic_with_error!(&env, WritzLendError::InvalidProtocolPubkey);
@@ -81,6 +94,9 @@ impl WritzLendContract {
             || min_deposit_satoshis < MIN_DEPOSIT_FLOOR_SATS
         {
             panic_with_error!(&env, WritzLendError::InvalidDepositParams);
+        }
+        if !(MIN_ENTRY_TTL_LEDGERS..=MAX_ENTRY_TTL_LEDGERS).contains(&entry_ttl_ledgers) {
+            panic_with_error!(&env, WritzLendError::InvalidEntryTtl);
         }
         set_config(
             &env,
@@ -100,6 +116,7 @@ impl WritzLendContract {
                 keeper_stale_after_secs: 86_400,      // 24h stale-keeper liveness window
                 paused: false,
                 max_total_borrowed: 500_000_000_000, // 50,000 USDC - the launch cap in docs/research/tokenomics-fee-model.md
+                entry_ttl_ledgers,
             },
         );
     }
@@ -214,7 +231,8 @@ impl WritzLendContract {
 
         // 2. Reject duplicate deposits, here and across both lending pools
         //    (GHSA-2975-ggwh-pxw5): consume the txid in the shared registry.
-        if get_position(&env, &txid).is_some() {
+        let ttl = config.entry_ttl_ledgers;
+        if get_position(&env, &txid, ttl).is_some() {
             return Err(WritzLendError::PositionAlreadyExists);
         }
         env.invoke_contract::<()>(
@@ -246,7 +264,7 @@ impl WritzLendContract {
             status: PositionStatus::Active,
             user_pubkey,
         };
-        set_position(&env, &txid, &pos);
+        set_position(&env, &txid, &pos, ttl);
 
         DepositEvent {
             txid:            txid.clone(),
@@ -290,8 +308,9 @@ impl WritzLendContract {
         proto.total_scaled_supply = proto.total_scaled_supply.saturating_add(scaled);
         set_protocol(&env, &proto);
 
-        let bal = get_supply_balance(&env, &supplier);
-        set_supply_balance(&env, &supplier, bal.saturating_add(scaled));
+        let ttl = config.entry_ttl_ledgers;
+        let bal = get_supply_balance(&env, &supplier, ttl);
+        set_supply_balance(&env, &supplier, bal.saturating_add(scaled), ttl);
 
         SupplyEvent {
             supplier,
@@ -320,7 +339,8 @@ impl WritzLendContract {
         // Price the interval that just ended before withdrawal moves utilization.
         accrue_global(&env, &mut proto);
 
-        let scaled_bal = get_supply_balance(&env, &supplier);
+        let ttl = config.entry_ttl_ledgers;
+        let scaled_bal = get_supply_balance(&env, &supplier, ttl);
         let value = scaled_bal.saturating_mul(proto.supply_index) / rates::INDEX_ONE;
         if amount > value {
             return Err(WritzLendError::InsufficientSupply);
@@ -344,7 +364,7 @@ impl WritzLendContract {
             up.min(scaled_bal)
         };
 
-        set_supply_balance(&env, &supplier, scaled_bal - burn);
+        set_supply_balance(&env, &supplier, scaled_bal - burn, ttl);
         proto.total_scaled_supply = proto.total_scaled_supply.saturating_sub(burn);
         set_protocol(&env, &proto);
 
@@ -381,7 +401,8 @@ impl WritzLendContract {
             return Err(WritzLendError::Paused);
         }
 
-        let mut pos = get_position(&env, &txid).ok_or(WritzLendError::PositionNotFound)?;
+        let ttl = config.entry_ttl_ledgers;
+        let mut pos = get_position(&env, &txid, ttl).ok_or(WritzLendError::PositionNotFound)?;
         if pos.status != PositionStatus::Active {
             return Err(WritzLendError::PositionNotActive);
         }
@@ -418,7 +439,7 @@ impl WritzLendContract {
         // Commit state.
         pos.usdc_debt = new_debt;
         proto.total_borrowed = proto.total_borrowed.saturating_add(usdc_amount);
-        set_position(&env, &txid, &pos);
+        set_position(&env, &txid, &pos, ttl);
         set_protocol(&env, &proto);
 
         // Transfer USDC to borrower.
@@ -447,7 +468,8 @@ impl WritzLendContract {
         repayer.require_auth();
         let config = get_config(&env).ok_or(WritzLendError::NotInitialized)?;
 
-        let mut pos = get_position(&env, &txid).ok_or(WritzLendError::PositionNotFound)?;
+        let ttl = config.entry_ttl_ledgers;
+        let mut pos = get_position(&env, &txid, ttl).ok_or(WritzLendError::PositionNotFound)?;
         if pos.status != PositionStatus::Active {
             return Err(WritzLendError::PositionNotActive);
         }
@@ -479,7 +501,7 @@ impl WritzLendContract {
             RepayEvent { txid: txid.clone(), usdc_amount }.publish(&env);
         }
 
-        set_position(&env, &txid, &pos);
+        set_position(&env, &txid, &pos, ttl);
         set_protocol(&env, &proto);
 
         Ok(())
@@ -528,7 +550,8 @@ impl WritzLendContract {
             return Err(WritzLendError::Unauthorized);
         }
 
-        let mut pos = get_position(&env, &txid).ok_or(WritzLendError::PositionNotFound)?;
+        let ttl = config.entry_ttl_ledgers;
+        let mut pos = get_position(&env, &txid, ttl).ok_or(WritzLendError::PositionNotFound)?;
         if pos.status != PositionStatus::Active {
             return Err(WritzLendError::PositionNotActive);
         }
@@ -568,7 +591,7 @@ impl WritzLendContract {
         pos.usdc_debt = 0;
         pos.status = PositionStatus::Liquidated;
 
-        set_position(&env, &txid, &pos);
+        set_position(&env, &txid, &pos, ttl);
         set_protocol(&env, &proto);
 
         LiquidateEvent { txid, keeper, bonus_paid }
@@ -689,6 +712,34 @@ impl WritzLendContract {
         Ok(())
     }
 
+    /// Sets how long per-user entries (positions, supply balances, release
+    /// PSBTs) are kept live, in ledgers. Admin only. Same bounds as the
+    /// constructor's `entry_ttl_ledgers`.
+    ///
+    /// Rent is priced at the ledger that creates or extends an entry, and on
+    /// a network whose live state is above its target size that price moves
+    /// by the hour; this lets the window follow it without a redeploy. It
+    /// applies to entries written or touched after the change only: an
+    /// existing entry keeps its TTL until a call tops it up or refreshes it.
+    pub fn set_entry_ttl(
+        env: Env,
+        caller: Address,
+        entry_ttl_ledgers: u32,
+    ) -> Result<(), WritzLendError> {
+        caller.require_auth();
+        let mut config = get_config(&env).ok_or(WritzLendError::NotInitialized)?;
+        if caller != config.admin {
+            return Err(WritzLendError::Unauthorized);
+        }
+        if !(MIN_ENTRY_TTL_LEDGERS..=MAX_ENTRY_TTL_LEDGERS).contains(&entry_ttl_ledgers) {
+            return Err(WritzLendError::InvalidEntryTtl);
+        }
+        config.entry_ttl_ledgers = entry_ttl_ledgers;
+        set_config(&env, &config);
+        EntryTtlSetEvent { admin: caller, entry_ttl_ledgers }.publish(&env);
+        Ok(())
+    }
+
     /// Updates the bitcoin-spv contract address used for deposit verification.
     /// Admin only. Changing this mid-flight affects only deposits submitted
     /// after the change - an in-flight deposit's SPV proof was already
@@ -751,10 +802,11 @@ impl WritzLendContract {
         if relayer != config.relayer {
             return Err(WritzLendError::Unauthorized);
         }
-        if get_position(&env, &txid).is_none() {
+        let ttl = config.entry_ttl_ledgers;
+        if get_position(&env, &txid, ttl).is_none() {
             return Err(WritzLendError::PositionNotFound);
         }
-        set_release_psbt(&env, &txid, &psbt);
+        set_release_psbt(&env, &txid, &psbt, ttl);
         Ok(())
     }
 
@@ -762,14 +814,14 @@ impl WritzLendContract {
     /// if the relayer hasn't published one yet (or the position was never
     /// fully repaid).
     pub fn get_release_psbt(env: Env, txid: BytesN<32>) -> Option<Bytes> {
-        get_release_psbt(&env, &txid)
+        get_release_psbt(&env, &txid, storage::entry_ttl(&env))
     }
 
     // ── View functions ────────────────────────────────────────────────────────
 
     /// Returns the position for the given Bitcoin txid, or `None`.
     pub fn get_position(env: Env, txid: BytesN<32>) -> Option<Position> {
-        get_position(&env, &txid)
+        get_position(&env, &txid, storage::entry_ttl(&env))
     }
 
     /// Returns the health ratio (in basis points) for a position.
@@ -781,7 +833,7 @@ impl WritzLendContract {
         txid: BytesN<32>,
     ) -> Result<i128, WritzLendError> {
         let config = get_config(&env).ok_or(WritzLendError::NotInitialized)?;
-        let pos = get_position(&env, &txid).ok_or(WritzLendError::PositionNotFound)?;
+        let pos = get_position(&env, &txid, config.entry_ttl_ledgers).ok_or(WritzLendError::PositionNotFound)?;
         if pos.usdc_debt == 0 {
             return Ok(i128::MAX);
         }
@@ -812,29 +864,31 @@ impl WritzLendContract {
     /// Returns the USDC supply balance (in stroops) for a lender.
     pub fn get_supply_balance(env: Env, lender: Address) -> i128 {
         let proto = get_protocol(&env);
-        get_supply_balance(&env, &lender).saturating_mul(proto.supply_index) / rates::INDEX_ONE
+        get_supply_balance(&env, &lender, storage::entry_ttl(&env)).saturating_mul(proto.supply_index) / rates::INDEX_ONE
     }
 
     // ── TTL refresh (permissionless) ──────────────────────────────────────────
 
-    /// Extend the TTL of a position entry to another 180-day window.
+    /// Extend the TTL of a position entry to the full `entry_ttl_ledgers`
+    /// window (180 days on mainnet).
     ///
-    /// If a position expires, the depositor loses access to their record and
-    /// the duplicate-deposit guard also expires (re-deposit attack risk).
-    /// Keepers or borrowers should call this before any position approaches
-    /// the end of its 180-day window.
+    /// A position past its window is archived, not deleted: the duplicate
+    /// guard still holds and the entry is restored, unchanged, before any
+    /// call can read it. Restoring costs the caller rent, so the keeper or
+    /// borrower should call this before an open loan's window runs out.
     /// Returns false if no position exists for the given txid.
     pub fn refresh_position_ttl(env: Env, txid: BytesN<32>) -> bool {
-        storage::refresh_position_ttl(&env, &txid)
+        storage::refresh_position_ttl(&env, &txid, storage::entry_ttl(&env))
     }
 
-    /// Extend the TTL of a lender's supply balance entry to another 180-day window.
+    /// Extend the TTL of a lender's supply balance entry to the full
+    /// `entry_ttl_ledgers` window.
     ///
-    /// Lenders who supplied USDC and do not interact for an extended period risk
-    /// having their balance entry expire, preventing withdrawal.
+    /// A lender who does not interact for longer than the window has their
+    /// balance archived, and their next withdrawal pays to restore it.
     /// Returns false if the lender has no recorded balance.
     pub fn refresh_supply_balance_ttl(env: Env, lender: Address) -> bool {
-        storage::refresh_supply_balance_ttl(&env, &lender)
+        storage::refresh_supply_balance_ttl(&env, &lender, storage::entry_ttl(&env))
     }
 
     /// Extend the TTL of the global protocol accounting entry.
@@ -851,7 +905,7 @@ impl WritzLendContract {
     /// that may not happen for a while. Returns false if no PSBT is on
     /// record for this txid.
     pub fn refresh_release_psbt_ttl(env: Env, txid: BytesN<32>) -> bool {
-        storage::refresh_release_psbt_ttl(&env, &txid)
+        storage::refresh_release_psbt_ttl(&env, &txid, storage::entry_ttl(&env))
     }
 }
 

@@ -11,6 +11,12 @@ export interface FaucetRouterDeps {
   rateLimit: number;
   rateWindowMs: number;
   now?: () => number;
+  /**
+   * Told the result of every claim that reached the faucet: "paid" or the
+   * refusal code, with the Stellar address the body named. Feeds the
+   * onboarding funnel; never changes the answer.
+   */
+  onClaim?: (stellarAddress: unknown, outcome: string) => void;
 }
 
 /**
@@ -85,15 +91,26 @@ export function createFaucetRouter(deps: FaucetRouterDeps): Router {
   });
 
   router.post("/signet", attempts, async (req: Request, res: Response) => {
+    const stellarAddress = (req.body as { stellarAddress?: unknown } | undefined)?.stellarAddress;
+    const report = (outcome: string) => {
+      try {
+        deps.onClaim?.(stellarAddress, outcome);
+      } catch (e) {
+        console.error(JSON.stringify({ evt: "faucet_funnel_error", message: e instanceof Error ? e.message : String(e) }));
+      }
+    };
     if (!deps.faucet) {
+      report("faucet_disabled");
       disabled(res);
       return;
     }
     try {
       const result = await deps.faucet.claim(req.body, clientKey(req));
+      report("paid");
       res.json({ ...result, explorerUrl: `https://mempool.space/signet/tx/${result.txid}` });
     } catch (e) {
       if (e instanceof FaucetError) {
+        report(e.code);
         if (e.retryAfterSeconds !== undefined) res.setHeader("Retry-After", String(e.retryAfterSeconds));
         res.status(e.httpStatus).json({
           error: e.code,

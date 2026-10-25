@@ -11,27 +11,26 @@ Each workflow checks that the tag matches the package version, runs the tests, p
 
 ## One-time setup
 
+Both registries publish through trusted publishing (OIDC): the registry trusts this repository, the workflow file and its GitHub environment, and the job gets a short-lived credential at publish time. No registry token is stored in GitHub.
+
 ### npm (`@writz/sdk`)
 
-1. The `writz` organization exists on npmjs.com and the publishing account is a member with publish rights.
-2. Create a granular access token on npmjs.com (Access Tokens > Generate New Token > Granular Access Token): permission **Read and write** on packages, scoped to `@writz`, with **Bypass two-factor authentication** enabled so CI can publish. Note its expiry date.
-3. In GitHub (Settings > Environments) create the environment `npm` if it does not exist yet, and add the token as the secret `NPM_TOKEN`, either on that environment or on the repository.
-4. After the first publish, switch to trusted publishing (configured for `@writz/sdk` since 0.1.1): on npmjs.com, package `@writz/sdk` > Settings > Trusted Publisher > GitHub Actions, with organization `WritzProtocol`, repository `writz`, workflow `release-sdk.yml` and environment `npm`. From then on npm authenticates the workflow with OIDC and `NPM_TOKEN` can be deleted. Trusted publishing cannot do the first publish, because npm only attaches a trusted publisher to a package that exists.
+- The `writz` organization exists on npmjs.com and its admins manage the package.
+- Package `@writz/sdk` > Settings > Trusted Publisher: GitHub Actions, organization `WritzProtocol`, repository `writz`, workflow `release-sdk.yml`, environment `npm`, with permission to publish.
+- Publishing access: two-factor authentication required and tokens disallowed, so only the workflow can publish.
 
 Every publish carries npm provenance, which links the tarball to the workflow run and the commit it was built from.
 
 ### crates.io (`writz-spv-client`)
 
-1. Sign in to crates.io with the GitHub account that will own the crate, and verify its email address (crates.io refuses to publish without one).
-2. Create an API token (Account Settings > API Tokens > New Token) with the scopes **publish-new** and **publish-update**, crate pattern `writz-spv-client`.
-3. In GitHub (Settings > Environments) create the environment `crates-io` if it does not exist yet, and add the token as the secret `CARGO_REGISTRY_TOKEN`, either on that environment or on the repository.
-4. After the first publish, add the other maintainers as owners: `cargo owner --add <github-user> writz-spv-client`.
+- Crate `writz-spv-client` > Settings > Trusted Publishing: GitHub, repository `WritzProtocol/writz`, workflow `release-spv-client.yml`, environment `crates-io`.
+- Add the other maintainers as owners: `cargo owner --add <github-user> writz-spv-client`.
 
-GitHub creates an environment named in a workflow the first time the workflow runs, if it does not exist. Creating it by hand first lets you add the secret to it and set protection rules, such as required reviewers.
+A new package needs one token publish first, because both registries attach a trusted publisher only to a package that already exists. Use a short-lived token for that publish, then configure trusted publishing and revoke the token.
 
 ## Verify before tagging
 
-Both workflows can be run by hand with **dry run** checked (Actions > the workflow > Run workflow, on `main`). A dry run builds, tests and packages exactly as a release does, runs `npm publish --dry-run` or `cargo publish --dry-run`, checks the token (`npm whoami` for `NPM_TOKEN`, presence for `CARGO_REGISTRY_TOKEN`), and writes the result to the run summary. It publishes nothing and creates no release.
+Both workflows can be run by hand with **dry run** checked (Actions > the workflow > Run workflow, on `main`). A dry run builds, tests and packages exactly as a release does, runs `npm publish --dry-run` or `cargo publish --dry-run`, and writes the result to the run summary. It publishes nothing and creates no release.
 
 Locally:
 

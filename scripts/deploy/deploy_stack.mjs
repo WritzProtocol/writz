@@ -5,7 +5,8 @@
  * require.
  *
  *   1. zk-verifier      __constructor(admin)
- *   2. bitcoin-spv      __constructor(admin, pow_limit_bits)
+ *   2. bitcoin-spv      __constructor(admin, pow_limit_bits,
+ *                                     header_ttl_ledgers, consumed_ttl_ledgers)
  *                       set_checkpoint(...)            (callable once)
  *                       set_submitter(admin, relayer)  (mandatory on signet)
  *   3. commitment-tree  __constructor(admin, spv, zk_verifier, usdc, oracle,
@@ -13,7 +14,8 @@
  *                                     keeper_pub_x, keeper_pub_y)
  *   4. writz-lend       __constructor(admin, spv, usdc, oracle, keeper,
  *                                     relayer, protocol_pubkey,
- *                                     min_confirmations, min_deposit_satoshis)
+ *                                     min_confirmations, min_deposit_satoshis,
+ *                                     entry_ttl_ledgers)
  *   5. verification keys for Deposit, BorrowRepay, Liquidation, ZeroDebt, Insert
  *   6. set_consumer on bitcoin-spv for both lenders
  *   7. set_max_total_borrowed on both lenders, when MAX_TOTAL_BORROWED is set
@@ -45,6 +47,23 @@
  *
  * Optional: MIN_CONFIRMATIONS (default 6), MIN_DEPOSIT_SATS (writz-lend,
  * default 100000; testnet runs 1 and 5000), MAX_TOTAL_BORROWED.
+ *
+ * Storage TTL windows, in ledgers (17,280 a day). The transaction that creates
+ * an entry pays rent for its whole window, so where rent is priced high
+ * (testnet) they run short:
+ *   ENTRY_TTL_LEDGERS        writz-lend per-user entries (position, supply
+ *                            balance, release PSBT). Default 3110400 (180 days);
+ *                            testnet runs 691200 (40 days).
+ *   SPV_HEADER_TTL_LEDGERS   bitcoin-spv header and height-index entries, two
+ *                            per submitted block. Default 1555200 (90 days);
+ *                            testnet runs 120960 (7 days, the network minimum).
+ *   SPV_CONSUMED_TTL_LEDGERS bitcoin-spv consumed-deposit markers. Default
+ *                            1555200 (90 days); testnet runs 120960.
+ * Mainnet refuses anything shorter than the defaults.
+ *
+ * MAX_RESOURCE_FEE_XLM caps the resource fee any one transaction may declare;
+ * the run refuses to sign above it. Required on mainnet, unlimited elsewhere
+ * when unset (a testnet wasm upload declares several thousand XLM).
  */
 import * as StellarSdk from '@stellar/stellar-sdk';
 import crypto from 'crypto';
@@ -52,7 +71,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { buildBabyjub } from 'circomlibjs';
-import { deployWithConstructor } from './constructor_deploy.mjs';
+import { buildSigned, deployWithConstructor, sendAndConfirm } from './constructor_deploy.mjs';
 
 const { Keypair, Networks, Address, Contract, StrKey, TransactionBuilder, xdr, nativeToScVal, rpc: SorobanRpc } = StellarSdk;
 
@@ -121,6 +140,17 @@ const checkpoint = {
 const minConfirmations = toUint(process.env.MIN_CONFIRMATIONS ?? '6');
 // writz-lend's smallest deposit. Signet runs lower so one faucet payout covers a deposit.
 const minDepositSats = BigInt(process.env.MIN_DEPOSIT_SATS ?? '100000');
+// Storage TTL windows (see the header). Mainnet keeps the long defaults.
+const DAY = 17_280;
+const ttl = (name, fallback) => {
+  const v = toUint(process.env[name] ?? String(fallback));
+  if (!Number.isInteger(v) || v < DAY || v > 180 * DAY) errors.push(`${name} must be ${DAY} to ${180 * DAY} ledgers`);
+  if (stellarNetwork === 'mainnet' && v < fallback) errors.push(`mainnet needs ${name} >= ${fallback}`);
+  return v;
+};
+const entryTtl = ttl('ENTRY_TTL_LEDGERS', 180 * DAY);
+const headerTtl = ttl('SPV_HEADER_TTL_LEDGERS', 90 * DAY);
+const consumedTtl = ttl('SPV_CONSUMED_TTL_LEDGERS', 90 * DAY);
 const maxTotalBorrowed = process.env.MAX_TOTAL_BORROWED ? BigInt(process.env.MAX_TOTAL_BORROWED) : undefined;
 const rpcUrl = process.env.RPC_URL ?? (stellarNetwork ? STELLAR[stellarNetwork].rpc : undefined);
 if (stellarNetwork && !rpcUrl) errors.push('RPC_URL is not set (a mainnet Soroban RPC provider endpoint)');
@@ -134,6 +164,7 @@ if (stellarNetwork === 'mainnet') {
   }
   if (minConfirmations < 6) errors.push('mainnet needs MIN_CONFIRMATIONS >= 6');
   if (minDepositSats < 100_000n) errors.push('mainnet needs MIN_DEPOSIT_SATS >= 100000');
+  if (!process.env.MAX_RESOURCE_FEE_XLM?.trim()) errors.push('mainnet needs MAX_RESOURCE_FEE_XLM (the most resource fee, in XLM, to sign for)');
 }
 
 const WASM_DIRS = V1_ONLY
@@ -181,6 +212,10 @@ console.log(`  pow limit bits    0x${powLimitBits.toString(16)}`);
 console.log(`  checkpoint        height ${checkpoint.height}, ${checkpoint.hash}, bits 0x${checkpoint.bits.toString(16)}`);
 console.log(`  min confirmations ${minConfirmations}`);
 console.log(`  min deposit       ${minDepositSats} sats (writz-lend)`);
+const days = (l) => `${l} ledgers (${(l / DAY).toFixed(1)} days)`;
+console.log(`  entry ttl         ${days(entryTtl)} (writz-lend positions, supply balances, release PSBTs)`);
+console.log(`  header ttl        ${days(headerTtl)} (bitcoin-spv)`);
+console.log(`  consumed ttl      ${days(consumedTtl)} (bitcoin-spv)`);
 console.log(`  exposure cap      ${maxTotalBorrowed === undefined ? 'contract default (50,000 USDC per lender)' : `${maxTotalBorrowed} stroops per lender`}`);
 console.log('  wasm sha256');
 for (const name of WASMS) console.log(`    ${name.padEnd(16)} ${sha256(wasm[name])}`);
@@ -199,27 +234,19 @@ const server = new SorobanRpc.Server(rpcUrl, { allowHttp: rpcUrl.startsWith('htt
 
 async function invoke(contractId, method, args) {
   for (let attempt = 1; attempt <= 5; attempt++) {
-    const account = await server.getAccount(admin.publicKey());
-    const tx = new TransactionBuilder(account, { fee: '1000000', networkPassphrase: passphrase })
-      .addOperation(new Contract(contractId).call(method, ...args))
-      .setTimeout(60)
-      .build();
-    const sim = await server.simulateTransaction(tx);
-    if (SorobanRpc.Api.isSimulationError(sim)) throw new Error(`${method} simulation failed: ${sim.error}`);
-    const prepared = SorobanRpc.assembleTransaction(tx, sim).build();
-    prepared.sign(admin);
-    const sent = await server.sendTransaction(prepared);
-    if (sent.status === 'ERROR') {
-      if (JSON.stringify(sent).includes('txBadSeq') && attempt < 5) { await new Promise((r) => setTimeout(r, 2500)); continue; }
-      throw new Error(`${method} submit failed: ${JSON.stringify(sent.errorResult)}`);
+    let prepared;
+    try {
+      prepared = await buildSigned(server, passphrase, admin, new Contract(contractId).call(method, ...args));
+    } catch (e) {
+      throw new Error(`${method}: ${e.message}`);
     }
-    for (let i = 0; i < 60; i++) {
-      const res = await server.getTransaction(sent.hash);
-      if (res.status === 'SUCCESS') return sent.hash;
-      if (res.status === 'FAILED') throw new Error(`${method} failed: tx ${sent.hash}`);
-      await new Promise((r) => setTimeout(r, 1500));
+    try {
+      await sendAndConfirm(server, prepared);
+      return prepared.hash().toString('hex');
+    } catch (e) {
+      if (e.message.includes('txBadSeq') && attempt < 5) { await new Promise((r) => setTimeout(r, 2500)); continue; }
+      throw new Error(`${method}: ${e.message}`);
     }
-    throw new Error(`${method} timed out: tx ${sent.hash}`);
   }
   throw new Error(`${method}: exhausted retries`);
 }
@@ -253,7 +280,7 @@ if (!V1_ONLY) {
 
 console.log(`${V1_ONLY ? '\n' : ''}2. bitcoin-spv`);
 out.bitcoinSpv = await deployWithConstructor({
-  ...deployer, wasm: wasm.bitcoin_spv, constructorArgs: [addr(admin.publicKey()), u32(powLimitBits)],
+  ...deployer, wasm: wasm.bitcoin_spv, constructorArgs: [addr(admin.publicKey()), u32(powLimitBits), u32(headerTtl), u32(consumedTtl)],
 });
 console.log(`   ${out.bitcoinSpv}`);
 // The contract stores block hashes in internal byte order; explorers show them reversed.
@@ -288,7 +315,7 @@ out.writzLend = await deployWithConstructor({
   ...deployer, wasm: wasm.writz_lend,
   constructorArgs: [
     addr(admin.publicKey()), addr(out.bitcoinSpv), addr(usdc), addr(oracle), addr(keeper), addr(relayer),
-    bytes(protocolKey), u32(minConfirmations), u64(minDepositSats),
+    bytes(protocolKey), u32(minConfirmations), u64(minDepositSats), u32(entryTtl),
   ],
 });
 console.log(`   ${out.writzLend}`);

@@ -71,6 +71,7 @@ export const SPV_ERRORS: Readonly<Record<number, string>> = {
   25: "ReorgTooDeep",
   26: "TxidAlreadyConsumed",
   27: "NotAConsumer",
+  28: "InvalidEntryTtl",
 };
 
 /** Error names of `writz-lend`, by code. Codes are stable. */
@@ -102,6 +103,7 @@ export const WRITZ_LEND_ERRORS: Readonly<Record<number, string>> = {
   25: "InvalidKeyProof",
   26: "ZeroShareAmount",
   27: "InvalidDepositParams",
+  28: "InvalidEntryTtl",
 };
 
 export type ContractName = "bitcoin-spv" | "writz-lend";

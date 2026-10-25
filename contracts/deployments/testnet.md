@@ -8,6 +8,20 @@
 
 ---
 
+## Storage TTL parameters (next redeploy)
+
+From the next redeploy of both contracts, the storage windows of entries created per use are constructor parameters, in ledgers (17,280 a day). The transaction that creates an entry pays rent for its whole window, and testnet's live state is above its target size, so rent is priced far above mainnet's: with the windows below, a deposit declares about 118 XLM of resource fee instead of about 566 XLM, a release PSBT about 73 XLM instead of about 329, and each header the relayer submits about 17 XLM instead of about 224 (measured 2026-10-25 on throwaway instances; the rate keeps moving).
+
+| Contract | Parameter | Testnet | Mainnet |
+|---|---|---|---|
+| `bitcoin-spv` | `header_ttl_ledgers` (header and height index, two per block) | `120960` (7 days, the network minimum) | `1555200` (90 days) |
+| `bitcoin-spv` | `consumed_ttl_ledgers` (consumed deposit txid) | `120960` (7 days) | `1555200` (90 days) |
+| `writz-lend` | `entry_ttl_ledgers` (position, supply balance, release PSBT) | `691200` (40 days) | `3110400` (180 days) |
+
+Constructor order: `bitcoin-spv` `(admin, pow_limit_bits, header_ttl_ledgers, consumed_ttl_ledgers)`; `writz-lend` `(admin, spv_contract, usdc_token, oracle, keeper, relayer, protocol_pubkey, min_confirmations, min_deposit_satoshis, entry_ttl_ledgers)`. The admin can change the windows later without a redeploy: `set_entry_ttl(admin, entry_ttl_ledgers)` on `writz-lend`, `set_ttls(admin, header_ttl_ledgers, consumed_ttl_ledgers)` on `bitcoin-spv`. `scripts/deploy/deploy_stack.mjs` reads them from `SPV_HEADER_TTL_LEDGERS`, `SPV_CONSUMED_TTL_LEDGERS` and `ENTRY_TTL_LEDGERS`, defaulting to the mainnet values.
+
+An entry past its window is archived, not deleted: it cannot be read or overwritten until it is restored unchanged, which the RPC does automatically for any transaction that touches it. A consumed txid therefore stays consumed, and an archived position comes back with its debt. Uploading either wasm costs more resource fee than a plain transaction can carry (about 7,400 XLM for `bitcoin-spv` and 13,400 XLM for `writz-lend` on 2026-10-25), so `deploy_stack.mjs` wraps such transactions in a fee bump.
+
 ## `writz-lend` redeploy (2026-10-24, second)
 
 The same build as the instance below (`c1fdae0`, wasm sha256 `b917558060268cf1665937726b99e4145ffab72b33ec01f8e3355cd173a34b4c`), deployed again later the same day with a rotated protocol co-signing key and a relayer account of its own, separate from the admin. `bitcoin-spv`'s header submitter moved to the same relayer account. It replaces `CAVAD3NGIJPDTFLBLJQ5FMLT6UNFE3UFOI3RTQVOVS5RWAD5EDVI5EX4`; that instance's 1,000 USDC of supply moved here and it is no longer a `bitcoin-spv` consumer.

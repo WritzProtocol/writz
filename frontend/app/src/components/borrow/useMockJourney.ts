@@ -122,6 +122,8 @@ export function useMockJourney(world: MockWorld): JourneyModel {
       ackLow: () => ui.setLowAck(true),
     },
     bitcoin: {
+      walletName: world.onboarding ? "Signet test key" : "Xverse",
+      embedded: Boolean(world.onboarding),
       address: btcWrongNetwork ? null : (bw?.address ?? null),
       connecting: connect?.wallet === "bitcoin" && connect.state === "awaiting",
       error: btcWrongNetwork

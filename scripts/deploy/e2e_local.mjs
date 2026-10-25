@@ -338,7 +338,7 @@ async function main() {
   const zkId = await deployWithConstructor({ ...deployer, wasm: WASM('zk_verifier'), constructorArgs: [addr(admin.publicKey())] });
   ok(`zk-verifier  ${zkId}`);
   const spvId = await deployWithConstructor({
-    ...deployer, wasm: WASM('bitcoin_spv'), constructorArgs: [addr(admin.publicKey()), u32(EASY_BITS)],
+    ...deployer, wasm: WASM('bitcoin_spv'), constructorArgs: [addr(admin.publicKey()), u32(EASY_BITS), u32(90 * 17_280), u32(90 * 17_280)],
   });
   ok(`bitcoin-spv  ${spvId}`);
   const ctId = await deployWithConstructor({
@@ -356,7 +356,7 @@ async function main() {
     constructorArgs: [
       addr(admin.publicKey()), addr(spvId), addr(nativeSac), addr(admin.publicKey()),
       addr(admin.publicKey()), addr(admin.publicKey()), bytes(PROTOCOL_PUBKEY),
-      u32(6), nativeToScVal(100_000n, { type: 'u64' }),
+      u32(6), nativeToScVal(100_000n, { type: 'u64' }), u32(180 * 17_280),
     ],
   });
   ok(`writz-lend  ${plId}`);

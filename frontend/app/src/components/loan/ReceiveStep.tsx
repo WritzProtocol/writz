@@ -6,7 +6,7 @@ import { formatUsdc, shortAddress } from "@/lib/borrow/journey";
 import { stellarTxUrl } from "@/lib/explorer";
 import type { FlowState } from "@/lib/flow/engine";
 import { destinationTxUrl } from "@/lib/receive/cctp";
-import { deliveryOf, startDelivery } from "@/lib/receive/relay";
+import { deliveryOf, nextRelayPoll, RELAY_POLL_MS, startDelivery, type Delivery } from "@/lib/receive/relay";
 import { receivePhase, type ReceiveIntent, type ReceivePhase } from "@/lib/receive/intent";
 import { minOut, type SwapResult } from "@/lib/receive/swap";
 import { useReceive, useXlmQuote, type ChainLeg, type XlmQuote } from "@/lib/receive/useReceive";
@@ -28,6 +28,10 @@ export interface ReceiveStepProps {
   walletName: string;
   onGo: () => void;
   onKeep: () => void;
+  /** Where the Writz relay stands on delivering a Base Sepolia transfer, once it was asked. */
+  relay?: Delivery | null;
+  /** Starts a failed delivery over, offered only when the relay says it can be. */
+  onRetryRelay?: () => void;
 }
 
 const usdc = (s: bigint) => <span className="mono">{formatUsdc(s)}</span>;
@@ -126,10 +130,11 @@ function XlmDone({ amount, swap }: ReceiveStepProps) {
   );
 }
 
-function ChainProgress({ phase, leg, mintHash }: ReceiveStepProps) {
+function ChainProgress({ phase, leg, mintHash, relay, onRetryRelay }: ReceiveStepProps) {
   if (leg.kind === "idle") return null;
-  const confirmed = phase === "chain_confirmed" || phase === "chain_arrived";
-  const arrived = phase === "chain_arrived";
+  const arrived = phase === "chain_arrived" || relay?.kind === "arrived";
+  const confirmed = phase === "chain_confirmed" || arrived;
+  const retrying = relay?.kind === "pending" ? relay.retrying : null;
   return (
     <div className="wz-stack" style={{ gap: 12 }}>
       <p className="wz-strong">
@@ -145,17 +150,50 @@ function ChainProgress({ phase, leg, mintHash }: ReceiveStepProps) {
           <i aria-hidden="true" />
           {confirmed ? "Circle confirmed" : "Circle confirms, usually in under a minute"}
         </li>
-        <li data-state={arrived ? "done" : confirmed ? "now" : undefined}>
+        <li data-state={arrived ? "done" : confirmed && relay?.kind !== "disabled" && relay?.kind !== "failed" ? "now" : undefined}>
           <i aria-hidden="true" />
           {arrived ? (
-            <>
-              Arrived on {DEST} <ExternalLink href={destinationTxUrl(mintHash!)}>View</ExternalLink>
-            </>
+            mintHash ? (
+              <>
+                Arrived on {DEST} <ExternalLink href={destinationTxUrl(mintHash)}>View</ExternalLink>
+              </>
+            ) : (
+              `Arrived on ${DEST}. Finding the transaction`
+            )
+          ) : relay?.kind === "disabled" ? (
+            `Delivery on ${DEST} is pending`
+          ) : relay?.kind === "failed" ? (
+            `Not delivered on ${DEST}`
           ) : (
             `Arrives on ${DEST}`
           )}
         </li>
       </ol>
+      {retrying && (
+        <p className="wz-hint" aria-live="polite">
+          Delivery is being retried ({retrying.reason}). It continues on its own; you can leave this page.
+        </p>
+      )}
+      {relay?.kind === "disabled" && (
+        <Notice tone="info" label="Pending">
+          <p>The relay that completes transfers on {DEST} isn&apos;t running right now. Your transfer waits for it; nothing was lost.</p>
+        </Notice>
+      )}
+      {relay?.kind === "failed" && (
+        <Notice
+          tone="warning"
+          label="Not delivered"
+          actions={
+            relay.retryable && onRetryRelay ? (
+              <button type="button" className="wz-btn wz-btn-gold wz-btn-sm" onClick={onRetryRelay}>
+                Try again
+              </button>
+            ) : undefined
+          }
+        >
+          <p>The relay could not complete this transfer: {relay.reason}.</p>
+        </Notice>
+      )}
     </div>
   );
 }
@@ -181,7 +219,7 @@ export function ReceiveStepView(p: ReceiveStepProps) {
     default:
       body = <ChainProgress {...p} />;
   }
-  const done = p.phase === "xlm_done" || p.phase === "chain_arrived";
+  const done = p.phase === "xlm_done" || p.phase === "chain_arrived" || p.relay?.kind === "arrived";
   return (
     <section className="wz-stack" style={{ gap: 12 }} aria-label="Step 2 of 2">
       <p className="wz-hint">{done ? "Step 2 of 2 done" : "Step 2 of 2"}</p>
@@ -190,30 +228,38 @@ export function ReceiveStepView(p: ReceiveStepProps) {
   );
 }
 
-const RELAY_POLL_MS = 5_000;
-
-/** The mint on Base Sepolia from the Writz relay: asked once after the burn, then read until it arrives or fails. */
-function useRelayedMint(burnHash: string | null, given: string | null): string | null {
-  const [mint, setMint] = useState<{ burn: string; hash: string } | null>(null);
-  const done = given !== null || (mint !== null && mint.burn === burnHash);
+/**
+ * The Writz relay's delivery of a Base Sepolia transfer: asked once after the
+ * burn, then read as `nextRelayPoll` says until it arrives, fails or the
+ * relay is off. `retry` asks again, which starts a retryable failure over.
+ */
+function useRelayDelivery(burnHash: string | null, given: string | null): { delivery: Delivery | null; retry: () => void } {
+  const [state, setState] = useState<{ burn: string; delivery: Delivery } | null>(null);
+  const [round, setRound] = useState(0);
   useEffect(() => {
-    if (!burnHash || done) return;
+    if (!burnHash || given) return;
     let live = true;
-    // Only ever called from a resolved promise, after `every` exists.
-    const settle = (d: { kind: string; mintHash?: string | null }) => {
-      if (!live) return;
-      if (d.kind === "arrived" && d.mintHash) setMint({ burn: burnHash, hash: d.mintHash });
-      if (d.kind === "arrived" || d.kind === "failed") clearInterval(every);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    // A failed read is asked again; the relay keeps working on the transfer meanwhile.
+    const again = () => {
+      if (live) timer = setTimeout(poll, RELAY_POLL_MS);
     };
-    // The relay keeps working on the transfer on its own; a failed read is asked again on the next tick.
-    const every = setInterval(() => void deliveryOf(burnHash).then(settle, () => {}), RELAY_POLL_MS);
-    startDelivery(burnHash).then(settle, () => {});
+    const settle = (delivery: Delivery) => {
+      if (!live) return;
+      setState({ burn: burnHash, delivery });
+      const wait = nextRelayPoll(delivery);
+      if (wait !== null) timer = setTimeout(poll, wait);
+    };
+    function poll() {
+      void deliveryOf(burnHash!).then(settle, again);
+    }
+    void startDelivery(burnHash).then(settle, again);
     return () => {
       live = false;
-      clearInterval(every);
+      clearTimeout(timer);
     };
-  }, [burnHash, done]);
-  return mint && mint.burn === burnHash ? mint.hash : null;
+  }, [burnHash, given, round]);
+  return { delivery: state && state.burn === burnHash ? state.delivery : null, retry: () => setRound((r) => r + 1) };
 }
 
 /** A settled step 2 transaction, reported so the loan's timeline can show it. */
@@ -240,8 +286,8 @@ export function ReceiveStep({
   onReceived?: (leg: ReceivedLeg) => void;
 }) {
   const r = useReceive();
-  const relayedMint = useRelayedMint(r.leg.kind === "idle" ? null : r.leg.send.burnHash, givenMint);
-  const mintHash = givenMint ?? relayedMint;
+  const relay = useRelayDelivery(r.leg.kind === "idle" ? null : r.leg.send.burnHash, givenMint);
+  const mintHash = givenMint ?? (relay.delivery?.kind === "arrived" ? relay.delivery.mintHash : null);
   const swapHash = r.swap?.hash ?? null;
   const burnHash = r.leg.kind === "idle" ? null : r.leg.send.burnHash;
   useEffect(() => {
@@ -268,6 +314,8 @@ export function ReceiveStep({
       swap={r.swap}
       leg={r.leg}
       mintHash={mintHash}
+      relay={givenMint ? null : relay.delivery}
+      onRetryRelay={relay.retry}
       walletName={walletName}
       onGo={onGo}
       onKeep={() => {

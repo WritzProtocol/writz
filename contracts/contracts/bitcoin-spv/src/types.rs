@@ -15,6 +15,14 @@ pub struct Config {
     /// proof-of-work (signet), because this contract cannot verify that.
     /// `None` leaves header submission permissionless.
     pub submitter: Option<Address>,
+    /// How long each stored header and its height-index entry are kept live,
+    /// in ledgers, set at deployment (90 days on mainnet). The relayer creates
+    /// two such entries per block it submits.
+    pub header_ttl_ledgers: u32,
+    /// How long each consumed-deposit marker is kept live, in ledgers, set at
+    /// deployment (90 days on mainnet). Past it the marker is archived, never
+    /// deleted, so the txid stays consumed.
+    pub consumed_ttl_ledgers: u32,
 }
 
 /// The trust root of the header chain, set exactly once by the admin.

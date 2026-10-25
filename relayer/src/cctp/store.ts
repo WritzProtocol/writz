@@ -158,6 +158,8 @@ export interface CctpRelayView {
   explorerUrl?: string;
   /** Why it failed, or, with `retrying`, what the relay is waiting out. */
   reason?: string;
+  /** With `failed`: true when a new POST for the burn starts it over (`unseen`, `gave_up`), false when it is final. */
+  retryable?: boolean;
   /** Set (true) while a transient failure is being retried automatically. */
   retrying?: true;
   /** With `retrying`: when the next attempt is due (ISO 8601). */
@@ -178,7 +180,7 @@ export function toRelayView(r: RelayRecord): CctpRelayView {
     kind,
     ...(kind === "arrived" ? { mintHash: r.mintHash ?? null } : {}),
     ...(kind === "arrived" && r.mintHash ? { explorerUrl: `${BASE_SEPOLIA_EXPLORER}/tx/${r.mintHash}` } : {}),
-    ...(kind === "failed" ? { reason: r.failure ?? "the relay stopped" } : {}),
+    ...(kind === "failed" ? { reason: r.failure ?? "the relay stopped", retryable: r.retryable } : {}),
     ...(retrying
       ? { retrying: true as const, reason: r.failure ?? "the relay is retrying", nextRetryAt: new Date(r.retryAt!).toISOString() }
       : {}),

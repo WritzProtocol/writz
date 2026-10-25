@@ -334,3 +334,44 @@ export async function readUsdcToken(server: LedgerEntriesServer, contractId: str
   }
   return config.usdc_token;
 }
+
+/** The fields of a `writz-lend` `Position` the onboarding funnel checks. */
+export interface PositionFacts {
+  depositor: string;
+  status: "active" | "closed" | "liquidated";
+  debtStroops: bigint;
+}
+
+/**
+ * Reads a `Position` by txid (internal byte order); null when none exists.
+ * `usdc_debt` is the stored debt, without the interest accrued since its
+ * last update, which is enough to tell a borrowed position from one that
+ * never was.
+ */
+export async function readPositionFacts(
+  server: LedgerEntriesServer,
+  contractId: string,
+  txidInternal: string,
+): Promise<PositionFacts | null> {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { xdr } = require("@stellar/stellar-sdk") as typeof import("@stellar/stellar-sdk");
+  const key = xdr.ScVal.scvVec([xdr.ScVal.scvSymbol("Position"), xdr.ScVal.scvBytes(Buffer.from(txidInternal, "hex"))]);
+  const raw = (await readPersistent(server, contractId, key)) as Record<string, unknown> | undefined;
+  if (!raw) return null;
+  return positionFactsOf(raw);
+}
+
+/** Normalizes a decoded `Position`: a unit enum decodes as `["Active"]`, amounts as bigint or number. */
+export function positionFactsOf(raw: Record<string, unknown>): PositionFacts {
+  const statusRaw = Array.isArray(raw.status) ? raw.status[0] : raw.status;
+  const status = String(statusRaw).toLowerCase();
+  if (status !== "active" && status !== "closed" && status !== "liquidated") {
+    throw new Error(`writz-lend returned an unknown position status: ${String(statusRaw)}`);
+  }
+  const debt = raw.usdc_debt;
+  return {
+    depositor: String(raw.depositor),
+    status,
+    debtStroops: typeof debt === "bigint" ? debt : BigInt(String(debt ?? 0)),
+  };
+}

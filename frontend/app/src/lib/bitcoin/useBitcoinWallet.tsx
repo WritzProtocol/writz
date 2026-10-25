@@ -1,9 +1,29 @@
 "use client";
 
-import { createContext, useCallback, useContext, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import Wallet, { AddressPurpose, BitcoinNetworkType, MessageSigningProtocols, RpcErrorCode } from "sats-connect";
 import { config, BTC_NETWORK_LABEL } from "@/config";
+import { usePollarSession } from "@/lib/wallet/pollarSession";
+import { reportStep } from "@/lib/onboarding/funnel";
+import { browserStorage } from "@/lib/onboarding/storage";
 import { xverseRequest } from "./xverse";
+import {
+  assertEmbeddedAllowed,
+  embeddedSignetAllowed,
+  exportKeyFile,
+  importKey,
+  loadOrCreateKey,
+  signBitcoinMessage,
+  signReleasePsbt,
+  type SignetKey,
+} from "./embedded/key";
+import { sendFromKey } from "./embedded/send";
+
+/** The Signet test key is offered with social sign-in, on testnet with Bitcoin signet only. */
+export const EMBEDDED_SIGNET = embeddedSignetAllowed(config.target, config.bitcoin.network) && Boolean(config.pollarApiKey);
+
+/** How the UI names the test key wherever it appears. */
+export const TEST_KEY_NAME = "Signet test key";
 
 /** Map the configured BTC network string to the sats-connect network type. */
 function walletNetwork(): BitcoinNetworkType {
@@ -19,7 +39,27 @@ function walletNetwork(): BitcoinNetworkType {
   }
 }
 
+/** The browser-held Signet test key of a social-login account (testnet only). */
+export interface EmbeddedSignet {
+  address: string;
+  pubkey: string;
+  /** True while it is the wallet the app signs with (not Xverse). */
+  active: boolean;
+  /** The backup file's text (see `exportKeyFile`). */
+  exportFile(): string;
+  /** Replaces this account's key with the one in a backup file or a Signet WIF. Throws a readable error. */
+  importFile(text: string): void;
+  /** Switches back to the test key after using Xverse. */
+  use(): void;
+}
+
 export interface BitcoinWalletState {
+  /** Which wallet signs: the Xverse extension or the embedded Signet test key. */
+  kind: "xverse" | "embedded" | null;
+  /** "Xverse" or "Signet test key", for prompts. */
+  walletName: string;
+  /** Null when there is no test key for this session. */
+  embedded: EmbeddedSignet | null;
   btcAddress: string | null;
   btcPubkey: string | null;
   connecting: boolean;
@@ -41,10 +81,40 @@ const BitcoinWalletContext = createContext<BitcoinWalletState | null>(null);
  * (e.g. the release flow would think the wallet is disconnected).
  */
 export function BitcoinWalletProvider({ children }: { children: React.ReactNode }) {
-  const [btcAddress, setBtcAddress] = useState<string | null>(null);
-  const [btcPubkey, setBtcPubkey] = useState<string | null>(null);
+  const [xverseAddress, setBtcAddress] = useState<string | null>(null);
+  const [xversePubkey, setBtcPubkey] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** "xverse" once the user connects Xverse; the test key is the default when one exists. */
+  const [preferXverse, setPreferXverse] = useState(false);
+
+  // ── Embedded Signet test key, one per Pollar account ──
+  const pollar = usePollarSession();
+  const stellarAddress = pollar.address;
+  const accountId =
+    pollar.auth.step === "authenticated" && stellarAddress ? (pollar.auth.session.userId ?? `wallet:${stellarAddress}`) : null;
+  const [embeddedState, setEmbeddedState] = useState<{ accountId: string; key: SignetKey } | null>(null);
+  const [embeddedError, setEmbeddedError] = useState<string | null>(null);
+  useEffect(() => {
+    if (!EMBEDDED_SIGNET || !accountId || !stellarAddress) return;
+    const storage = browserStorage();
+    if (!storage) return;
+    try {
+      const { key, created } = loadOrCreateKey(storage, accountId);
+      void Promise.resolve().then(() => setEmbeddedState({ accountId, key }));
+      if (created) {
+        void reportStep("key_created", { stellarAddress, channel: "social" }, { relayerUrl: config.services.relayerUrl, storage });
+      }
+    } catch (e) {
+      void Promise.resolve().then(() => setEmbeddedError(e instanceof Error ? e.message : "Could not create the test key."));
+    }
+  }, [accountId, stellarAddress]);
+  const key = embeddedState && embeddedState.accountId === accountId ? embeddedState.key : null;
+
+  const embeddedActive = Boolean(key) && !(preferXverse && xverseAddress);
+  const btcAddress = embeddedActive ? key!.address : xverseAddress;
+  const btcPubkey = embeddedActive ? key!.pubkey.toString("hex") : xversePubkey;
+  const kind: BitcoinWalletState["kind"] = embeddedActive ? "embedded" : xverseAddress ? "xverse" : null;
 
   const connect = useCallback(async () => {
     setError(null);
@@ -78,6 +148,7 @@ export function BitcoinWalletProvider({ children }: { children: React.ReactNode 
       }
       setBtcAddress(payment.address);
       setBtcPubkey(payment.publicKey);
+      setPreferXverse(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to connect Bitcoin wallet");
     } finally {
@@ -86,13 +157,19 @@ export function BitcoinWalletProvider({ children }: { children: React.ReactNode 
   }, []);
 
   const disconnect = useCallback(() => {
+    // The test key cannot be disconnected; disconnecting Xverse falls back to it.
     setBtcAddress(null);
     setBtcPubkey(null);
+    setPreferXverse(false);
     setError(null);
   }, []);
 
   const sendBtc = useCallback(
     async (toAddress: string, amountSats: number): Promise<string> => {
+      if (embeddedActive && key) {
+        assertEmbeddedAllowed(config.target, config.bitcoin.network);
+        return sendFromKey(key, toAddress, amountSats, { apiUrl: config.bitcoin.apiUrl });
+      }
       const res = await xverseRequest(() =>
         Wallet.request("sendTransfer", {
           recipients: [{ address: toAddress, amount: amountSats }],
@@ -100,12 +177,16 @@ export function BitcoinWalletProvider({ children }: { children: React.ReactNode 
       );
       return res.txid;
     },
-    [],
+    [embeddedActive, key],
   );
 
   const signPsbt = useCallback(
     async (psbtBase64: string): Promise<string> => {
       if (!btcAddress) throw new Error("Connect your Bitcoin wallet first");
+      if (embeddedActive && key) {
+        assertEmbeddedAllowed(config.target, config.bitcoin.network);
+        return signReleasePsbt(psbtBase64, key);
+      }
       const res = await xverseRequest(() =>
         Wallet.request("signPsbt", {
           psbt: psbtBase64,
@@ -117,12 +198,16 @@ export function BitcoinWalletProvider({ children }: { children: React.ReactNode 
       );
       return res.psbt;
     },
-    [btcAddress],
+    [btcAddress, embeddedActive, key],
   );
 
   const signMessage = useCallback(
     async (message: string): Promise<string> => {
       if (!btcAddress) throw new Error("Connect your Bitcoin wallet first");
+      if (embeddedActive && key) {
+        assertEmbeddedAllowed(config.target, config.bitcoin.network);
+        return signBitcoinMessage(message, key);
+      }
       const res = await xverseRequest(() =>
         Wallet.request("signMessage", {
           address: btcAddress,
@@ -134,12 +219,45 @@ export function BitcoinWalletProvider({ children }: { children: React.ReactNode 
       );
       return res.signature;
     },
-    [btcAddress],
+    [btcAddress, embeddedActive, key],
   );
 
+  const embedded = useMemo<EmbeddedSignet | null>(() => {
+    if (!key || !accountId) return null;
+    return {
+      address: key.address,
+      pubkey: key.pubkey.toString("hex"),
+      active: embeddedActive,
+      exportFile: () => exportKeyFile(key),
+      importFile: (text: string) => {
+        const storage = browserStorage();
+        if (!storage) throw new Error("This browser blocks storage, so it cannot keep a test key.");
+        const imported = importKey(storage, accountId, text);
+        setEmbeddedState({ accountId, key: imported });
+        setPreferXverse(false);
+      },
+      use: () => setPreferXverse(false),
+    };
+  }, [key, accountId, embeddedActive]);
+
+  const walletName = kind === "embedded" ? TEST_KEY_NAME : "Xverse";
+  const shownError = error ?? (EMBEDDED_SIGNET && accountId ? embeddedError : null);
   const value = useMemo<BitcoinWalletState>(
-    () => ({ btcAddress, btcPubkey, connecting, error, connect, disconnect, sendBtc, signPsbt, signMessage }),
-    [btcAddress, btcPubkey, connecting, error, connect, disconnect, sendBtc, signPsbt, signMessage],
+    () => ({
+      kind,
+      walletName,
+      embedded,
+      btcAddress,
+      btcPubkey,
+      connecting,
+      error: shownError,
+      connect,
+      disconnect,
+      sendBtc,
+      signPsbt,
+      signMessage,
+    }),
+    [kind, walletName, embedded, btcAddress, btcPubkey, connecting, shownError, connect, disconnect, sendBtc, signPsbt, signMessage],
   );
 
   return <BitcoinWalletContext.Provider value={value}>{children}</BitcoinWalletContext.Provider>;
