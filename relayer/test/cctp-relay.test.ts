@@ -324,6 +324,7 @@ describe('CctpRelay', () => {
     const view = relay.status(BURN);
     expect(view.kind).toBe('failed');
     expect(view.reason).toMatch(/not addressed to Base Sepolia/);
+    expect(view.retryable).toBe(false);
 
     // Refused stays refused: asking again does not reopen it.
     expect(relay.request(BURN).kind).toBe('failed');
@@ -705,6 +706,7 @@ describe('CctpRelay automatic retries', () => {
     const view = relay.status(BURN);
     expect(view).toMatchObject({ kind: 'failed', reason: expect.stringMatching(/stopped after 24 hours of retrying \(Base Sepolia could not be reached\)/) });
     expect(view.retrying).toBeUndefined();
+    expect(view.retryable).toBe(true);
     expect(store.get(BURN)).toMatchObject({ failureCode: 'gave_up', retryable: true });
     expect(chain.sends).toHaveLength(0);
 
