@@ -101,5 +101,18 @@ describe("clientTimeline", () => {
       ["released", "z"],
     ]);
   });
-});
 
+  test("borrows and repays saved on this device keep their links when the session's activity is gone", () => {
+    const events = clientTimeline(position, [], [
+      { kind: "borrowed", chain: "stellar", hash: "b", at: 20 },
+      { kind: "repaid", chain: "stellar", hash: "r", at: 30 },
+    ]);
+    expect(timelineRows(events).map((r) => [r.kind, r.event?.hash ?? null])).toEqual([
+      ["btc_lock", "t"],
+      ["verified", "s"],
+      ["borrowed", "b"],
+      ["repaid", "r"],
+      ["released", null],
+    ]);
+  });
+});

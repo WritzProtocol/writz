@@ -89,6 +89,14 @@ export function LoanView({ m }: { m: LoanModel }) {
     },
     [owner, positionId],
   );
+  // Settled borrows and repays keep their link on the timeline after a reload.
+  const settledKind = m.flow.phase === "settled" ? (m.action === "borrow" ? "borrowed" : m.action === "repay" ? "repaid" : null) : null;
+  const settledHash = settledKind && m.flow.phase === "settled" ? (m.flow.hash ?? null) : null;
+  useEffect(() => {
+    if (owner && positionId && settledKind && settledHash) {
+      logReceived(owner, positionId, { kind: settledKind, chain: "stellar", hash: settledHash, at: Date.now() });
+    }
+  }, [owner, positionId, settledKind, settledHash]);
 
   if (m.access === "disconnected")
     return (

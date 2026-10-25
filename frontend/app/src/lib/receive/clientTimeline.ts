@@ -4,8 +4,9 @@ import type { Position } from "@/lib/position/types";
 import type { TimelineEvent } from "./timeline";
 
 /**
- * Second legs (swap or CCTP) this device sent, per Stellar owner and loan, so
- * the timeline keeps them after a reload. Only settled transactions go here.
+ * Borrows, repays and second legs (swap or CCTP) this device sent, per
+ * Stellar owner and loan, so the timeline keeps their links after a reload.
+ * Only settled transactions go here.
  */
 export const receiveLog = createJsonStore<Record<string, TimelineEvent[]>>("writz:receive:");
 
