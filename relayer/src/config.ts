@@ -59,6 +59,15 @@ export interface Config {
   /** Per-IP request budget for GET /deposit-status per window. */
   depositStatusRateLimit: number;
   depositStatusRateWindowMs: number;
+  /** Per-IP requests to GET /timeline per window. */
+  timelineRateLimit: number;
+  timelineRateWindowMs: number;
+  /** Horizon, for the borrower's own operations (how a loan was received). */
+  horizonUrl: string;
+  /** Soroswap router a borrow is swapped through to XLM. */
+  soroswapRouterId: string;
+  /** Circle CCTP TokenMessengerMinter on Stellar, where a borrow is burned for Base Sepolia. */
+  cctpTokenMessengerMinterId: string;
   // Stellar / Soroban
   stellarRpcUrl: string;
   networkPassphrase: string;
@@ -180,6 +189,10 @@ const ESPLORA_URLS: Record<BitcoinNetwork, string> = {
 };
 
 const TESTNET_RPC = "https://soroban-testnet.stellar.org";
+const TESTNET_HORIZON = "https://horizon-testnet.stellar.org";
+// The same testnet deployments the app sends receive legs to (frontend/app/src/config.ts).
+const TESTNET_SOROSWAP_ROUTER = "CCJUD55AG6W5HAI5LRVNKAE5WDP5XGZBUDS5WNTIVDU7O264UZZE7BRD";
+const TESTNET_CCTP_TMM = "CDNG7HXAPBWICI2E3AUBP3YZWZELJLYSB6F5CC7WLDTLTHVM74SLRTHP";
 const TESTNET_PASSPHRASE = "Test SDF Network ; September 2015";
 
 function loadConfig(): Config {
@@ -298,6 +311,13 @@ function loadConfig(): Config {
     // hammer Esplora and Stellar RPC.
     depositStatusRateLimit: parseInt(getEnv("DEPOSIT_STATUS_RATE_LIMIT", "120"), 10),
     depositStatusRateWindowMs: parseInt(getEnv("DEPOSIT_STATUS_RATE_WINDOW_MS", "60000"), 10),
+    // A timeline is read when a loan is opened, not polled every few seconds.
+    timelineRateLimit: parseInt(getEnv("TIMELINE_RATE_LIMIT", "60"), 10),
+    timelineRateWindowMs: parseInt(getEnv("TIMELINE_RATE_WINDOW_MS", "60000"), 10),
+    // Empty counts as unset, so a copied .env.example keeps the defaults.
+    horizonUrl: process.env["HORIZON_URL"]?.trim() || TESTNET_HORIZON,
+    soroswapRouterId: process.env["SOROSWAP_ROUTER_ID"]?.trim() || TESTNET_SOROSWAP_ROUTER,
+    cctpTokenMessengerMinterId: process.env["CCTP_TOKEN_MESSENGER_MINTER_ID"]?.trim() || TESTNET_CCTP_TMM,
     stellarRpcUrl,
     networkPassphrase,
     commitmentTreeId: getEnv("COMMITMENT_TREE_ID", ""),

@@ -2,6 +2,7 @@ import express from "express";
 import { config } from "./config.js";
 import { proofRouter } from "./routes/proof.js";
 import { createDepositStatusRouter } from "./routes/deposit-status.js";
+import { createTimelineRouter, mintFromRelayView } from "./routes/timeline.js";
 import { merkleRouter } from "./routes/merkle.js";
 import { defindexRouter } from "./routes/defindex.js";
 import { metricsRouter } from "./routes/metrics.js";
@@ -93,6 +94,7 @@ app.get("/", (_req, res) => {
         ? {
             spvProof: "GET /spv-proof/:txid",
             depositStatus: "GET /deposit-status/:txid",
+            timeline: "GET /timeline/:btcTxid",
             merklePath: "GET /merkle-path",
             notes: "GET /notes",
             insertCommitment: "POST /insert-commitment",
@@ -139,11 +141,21 @@ app.get("/health", (_req, res) => {
   });
 });
 
+// Built before the routes so the timeline can read the mints the relay recorded.
+const cctp = CCTP_RELAY ? cctpRelayFromConfig() : undefined;
+
 if (LENDING) {
   app.use("/spv-proof", proofRouter);
   const depositStatus = createDepositStatusRouter();
   app.use("/deposit-status", depositStatus);
+  // Shares the deposit-status event index, so one warm-up covers both.
   void depositStatus.warm();
+  app.use(
+    "/timeline",
+    createTimelineRouter({
+      mint: (burnHash) => mintFromRelayView(cctp?.relay?.lookup(burnHash)),
+    }),
+  );
   app.use("/", merkleRouter);
 }
 app.use("/defindex", defindexRouter);
@@ -161,8 +173,8 @@ if (FAUCET) {
   );
   console.log(faucet ? `Signet faucet: ${faucet.address}` : `Signet faucet off: ${disabledReason}`);
 }
-if (CCTP_RELAY) {
-  const { relay, disabledReason } = cctpRelayFromConfig();
+if (cctp) {
+  const { relay, disabledReason } = cctp;
   app.use(
     "/cctp",
     createCctpRouter({

@@ -1,15 +1,9 @@
 import { Router, Request, Response } from "express";
 import { EsploraClient, EsploraError, isUpstreamUnavailable, type TxStatus } from "../bitcoin/esplora.js";
 import { cachedTipReader, readLightClientTipHeight } from "../bitcoin/light-client.js";
-import {
-  DepositIndex,
-  positionExists,
-  readMinConfirmations,
-  type DepositEventsServer,
-  type DepositRecord,
-  type LedgerEntriesServer,
-} from "../lend/deposit-reads.js";
-import { checkDepositSubmission, type SubmissionCheck, type TransactionLookupServer } from "../lend/deposit-submission.js";
+import { positionExists, readMinConfirmations, type DepositRecord } from "../lend/deposit-reads.js";
+import { checkDepositSubmission, type SubmissionCheck } from "../lend/deposit-submission.js";
+import { lendRpcServer as rpcServer, positionEventIndex as depositIndex } from "../lend/from-config.js";
 import { TtlCache } from "../proof-cache.js";
 import { rateLimit } from "../rate-limit.js";
 import { config } from "../config.js";
@@ -24,9 +18,8 @@ const STELLAR_TX_RE = TXID_RE;
  * keeps a page left open from turning into a stream of upstream calls.
  */
 const STATUS_TTL_MS = 5_000;
-/** How long one read of the Bitcoin tip, and one refresh of the deposit index, is shared. */
+/** How long one read of the Bitcoin tip is shared. */
 const TIP_TTL_MS = 5_000;
-const INDEX_FRESH_MS = 5_000;
 const LIGHT_CLIENT_TIP_TTL_MS = 5_000;
 /** Retry hint for a 503 when an upstream is unavailable. */
 const UPSTREAM_RETRY_AFTER_SECONDS = 10;
@@ -110,24 +103,8 @@ function defaultDeps(): DepositStatusRouterDeps {
   const contractId = config.writzLendId;
   const tip = new TtlCache<number>(1);
 
-  // Built on first use: @stellar/stellar-sdk is required lazily (see
-  // repay-watcher/poller.ts), and a relayer without WRITZ_LEND_ID never needs it.
-  let server: (DepositEventsServer & LedgerEntriesServer & TransactionLookupServer) | undefined;
-  let index: DepositIndex | undefined;
-  const rpcServer = () => {
-    if (!server) {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { rpc } = require("@stellar/stellar-sdk") as typeof import("@stellar/stellar-sdk");
-      server = new rpc.Server(config.stellarRpcUrl, {
-        allowHttp: config.stellarRpcUrl.startsWith("http://"),
-      }) as unknown as DepositEventsServer & LedgerEntriesServer & TransactionLookupServer;
-    }
-    return server;
-  };
-  const depositIndex = () => {
-    index ??= new DepositIndex({ server: rpcServer(), contractId, freshForMs: INDEX_FRESH_MS });
-    return index;
-  };
+  // The RPC client and the event index are shared with GET /timeline and
+  // built on first use (see ../lend/from-config.ts).
 
   // The constructor is the only writer of min_confirmations, so the first
   // successful read holds for the life of the process. A failed read is not

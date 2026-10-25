@@ -1,5 +1,6 @@
 /**
- * Reads `writz-lend` deposit state from Stellar for GET /deposit-status.
+ * Reads `writz-lend` position state from Stellar, for GET /deposit-status and
+ * GET /timeline.
  *
  * Two questions, each answered from the chain rather than inferred:
  *
@@ -8,13 +9,13 @@
  *     storage. The contract has no getter for its config, and the constructor
  *     is the only writer of that field, so one read per process is enough.
  *
- *   - Has a Stellar transaction registered this deposit, and which one? A
- *     `deposit` event is published only by a successful `deposit` call, with
- *     the Bitcoin txid (internal byte order) as its second topic. Stellar RPC
- *     keeps events for a rolling window (about 7 days on testnet), so a
- *     deposit older than that has no event left; its `Position` entry still
- *     proves it was registered, and that is reported without a hash rather
- *     than not at all.
+ *   - Which Stellar transactions acted on this position? `deposit`, `borrow`,
+ *     `repay`, `repay_full` and `liquidate` events are published only by a
+ *     successful call, each with the Bitcoin txid (internal byte order) as its
+ *     second topic. Stellar RPC keeps events for a rolling window (about 7
+ *     days on testnet), so a position older than that has no events left; its
+ *     `Position` entry still proves it was registered, and that is reported
+ *     without a hash rather than not at all.
  *
  * Stellar RPC scans at most 10,000 ledgers per `getEvents` request, so a
  * one-shot search of the whole window is about a dozen sequential requests.
@@ -33,6 +34,24 @@ export interface DepositRecord {
   ledgerClosedAt: string;
 }
 
+/** The writz-lend events that name a position, by their first topic. */
+export const POSITION_EVENT_KINDS = ["deposit", "borrow", "repay", "repay_full", "liquidate"] as const;
+export type PositionEventKind = (typeof POSITION_EVENT_KINDS)[number];
+
+/** What a position event says, decoded from its topics and data. */
+export interface DecodedPositionEvent {
+  kind: PositionEventKind;
+  /** Bitcoin txid, internal byte order. */
+  txid: string;
+  /** `borrower` of a borrow, `repayer` of a full repay, `keeper` of a liquidation. */
+  account?: string;
+  /** USDC stroops of a borrow or a partial repay. */
+  amount?: string;
+}
+
+/** One position event and the Stellar transaction that emitted it. */
+export interface PositionEventRecord extends DecodedPositionEvent, DepositRecord {}
+
 /** The subset of `rpc.Server` the index needs, so tests can pass a plain mock. */
 export interface DepositEventsServer {
   getHealth(): Promise<{ oldestLedger: number; latestLedger: number }>;
@@ -41,7 +60,7 @@ export interface DepositEventsServer {
       | { filters: DepositEventFilter[]; startLedger: number; limit: number }
       | { filters: DepositEventFilter[]; cursor: string; limit: number },
   ): Promise<{
-    events: { topic: unknown[]; txHash: string; ledger: number; ledgerClosedAt: string }[];
+    events: { topic: unknown[]; value?: unknown; txHash: string; ledger: number; ledgerClosedAt: string }[];
     cursor: string;
     latestLedger: number;
   }>;
@@ -64,59 +83,90 @@ export function ledgerOfCursor(cursor: string): number {
 
 /** Decodes a `deposit` event's txid topic to internal-order hex; undefined for any other shape. */
 export function decodeDepositTxid(topic: unknown[]): string | undefined {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { scValToNative } = require("@stellar/stellar-sdk") as typeof import("@stellar/stellar-sdk");
-  if (topic.length < 2) return undefined;
-  if (scValToNative(topic[0] as never) !== "deposit") return undefined;
-  const txid = scValToNative(topic[1] as never) as unknown;
-  return txid instanceof Uint8Array && txid.length === 32 ? Buffer.from(txid).toString("hex") : undefined;
+  const decoded = decodePositionEvent({ topic });
+  return decoded?.kind === "deposit" ? decoded.txid : undefined;
 }
 
-function depositTopicFilter(contractId: string): DepositEventFilter {
+/**
+ * Decodes a writz-lend position event: the kind and txid from its topics,
+ * and from its data (a map, the `contractevent` default) the account and
+ * amount the timeline shows. Undefined for any other event or shape.
+ */
+export function decodePositionEvent(event: { topic: unknown[]; value?: unknown }): DecodedPositionEvent | undefined {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { scValToNative } = require("@stellar/stellar-sdk") as typeof import("@stellar/stellar-sdk");
+  const { topic } = event;
+  if (topic.length < 2) return undefined;
+  const kind = scValToNative(topic[0] as never) as unknown;
+  if (typeof kind !== "string" || !(POSITION_EVENT_KINDS as readonly string[]).includes(kind)) return undefined;
+  const txid = scValToNative(topic[1] as never) as unknown;
+  if (!(txid instanceof Uint8Array) || txid.length !== 32) return undefined;
+  const out: DecodedPositionEvent = { kind: kind as PositionEventKind, txid: Buffer.from(txid).toString("hex") };
+  if (event.value === undefined) return out;
+  const data = scValToNative(event.value as never) as Record<string, unknown> | null;
+  if (!data || typeof data !== "object") return out;
+  const account = data.borrower ?? data.repayer ?? data.keeper;
+  if (typeof account === "string") out.account = account;
+  if (typeof data.usdc_amount === "bigint") out.amount = data.usdc_amount.toString();
+  return out;
+}
+
+function positionEventsFilter(contractId: string): DepositEventFilter {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { xdr } = require("@stellar/stellar-sdk") as typeof import("@stellar/stellar-sdk");
   return {
     type: "contract",
     contractIds: [contractId],
-    topics: [[xdr.ScVal.scvSymbol("deposit").toXDR("base64"), "*"]],
+    // One topic filter per kind, five in all, the most one filter may hold.
+    topics: POSITION_EVENT_KINDS.map((kind) => [xdr.ScVal.scvSymbol(kind).toXDR("base64"), "*"]),
   };
 }
 
-export interface DepositIndexOptions {
+export interface PositionEventIndexOptions {
   server: DepositEventsServer;
   contractId: string;
   /** A refresh younger than this is reused instead of asking the RPC again. */
   freshForMs: number;
   now?: () => number;
-  /** Defaults to the real `deposit` topic filter and XDR decoding. */
+  /** Defaults to the real position-event topic filter and XDR decoding. */
   filter?: DepositEventFilter;
-  decodeTxid?: (topic: unknown[]) => string | undefined;
+  decode?: (event: { topic: unknown[]; value?: unknown }) => DecodedPositionEvent | undefined;
 }
 
 /**
- * In-memory index of `writz-lend` deposit events, keyed by the Bitcoin txid in
- * internal byte order. Per process like the proof cache; a restart rebuilds it
- * from the RPC's retention window (the route warms it at boot).
+ * In-memory index of `writz-lend` position events, keyed by the Bitcoin txid
+ * in internal byte order. Per process like the proof cache; a restart
+ * rebuilds it from the RPC's retention window (the routes warm it at boot).
+ * GET /deposit-status reads the `deposit` event of a position, GET /timeline
+ * all of them; both share one index, so one walk serves the two.
  */
-export class DepositIndex {
-  private readonly records = new Map<string, DepositRecord>();
+export class PositionEventIndex {
+  private readonly records = new Map<string, PositionEventRecord[]>();
   private cursor: string | null = null;
   private refreshedAt = -Infinity;
   private inflight: Promise<void> | null = null;
   private readonly now: () => number;
-  private readonly decodeTxid: (topic: unknown[]) => string | undefined;
+  private readonly decode: (event: { topic: unknown[]; value?: unknown }) => DecodedPositionEvent | undefined;
   private filterValue: DepositEventFilter | undefined;
 
-  constructor(private readonly options: DepositIndexOptions) {
+  constructor(private readonly options: PositionEventIndexOptions) {
     this.now = options.now ?? Date.now;
-    this.decodeTxid = options.decodeTxid ?? decodeDepositTxid;
+    this.decode = options.decode ?? decodePositionEvent;
     this.filterValue = options.filter;
   }
 
-  /** The record for `txidInternal`, after bringing the index up to the tip. */
+  /** The `deposit` record for `txidInternal`, after bringing the index up to the tip. */
   async lookup(txidInternal: string): Promise<DepositRecord | undefined> {
+    const deposit = (await this.history(txidInternal)).find((e) => e.kind === "deposit");
+    return deposit
+      ? { stellarTxHash: deposit.stellarTxHash, ledger: deposit.ledger, ledgerClosedAt: deposit.ledgerClosedAt }
+      : undefined;
+  }
+
+  /** Every indexed event of the position, in ledger order, after bringing the index up to the tip. */
+  async history(txidInternal: string): Promise<PositionEventRecord[]> {
     await this.refresh();
-    return this.records.get(txidInternal.toLowerCase());
+    return [...(this.records.get(txidInternal.toLowerCase()) ?? [])];
   }
 
   /**
@@ -142,7 +192,7 @@ export class DepositIndex {
   }
 
   private filter(): DepositEventFilter {
-    this.filterValue ??= depositTopicFilter(this.options.contractId);
+    this.filterValue ??= positionEventsFilter(this.options.contractId);
     return this.filterValue;
   }
 
@@ -168,13 +218,14 @@ export class DepositIndex {
       }
 
       for (const event of res.events) {
-        const txid = this.decodeTxid(event.topic);
-        if (!txid) continue;
-        this.records.set(txid, {
-          stellarTxHash: event.txHash,
-          ledger: event.ledger,
-          ledgerClosedAt: event.ledgerClosedAt,
-        });
+        const decoded = this.decode(event);
+        if (!decoded) continue;
+        const list = this.records.get(decoded.txid) ?? [];
+        // A restart from the oldest retained ledger walks events it already
+        // holds; a transaction emits at most one event per position.
+        if (list.some((e) => e.kind === decoded.kind && e.stellarTxHash === event.txHash)) continue;
+        list.push({ ...decoded, stellarTxHash: event.txHash, ledger: event.ledger, ledgerClosedAt: event.ledgerClosedAt });
+        this.records.set(decoded.txid, list);
       }
       this.cursor = res.cursor;
       // A page that is not full ends at the last ledger it scanned; once that
@@ -234,4 +285,52 @@ export async function positionExists(
   const { xdr } = require("@stellar/stellar-sdk") as typeof import("@stellar/stellar-sdk");
   const key = xdr.ScVal.scvVec([xdr.ScVal.scvSymbol("Position"), xdr.ScVal.scvBytes(Buffer.from(txidInternal, "hex"))]);
   return (await readPersistent(server, contractId, key)) !== undefined;
+}
+
+/** The fields of a writz-lend `Position` the timeline reads. */
+export interface PositionSummary {
+  /** The depositor's Stellar address; the only account that can borrow against it. */
+  depositor: string;
+  /** "Active", "Closed" or "Liquidated". */
+  status: string;
+  /** The deposit's 34-byte P2WSH scriptPubKey, hex: the output a release spends. */
+  p2wshScriptPubkey: string;
+}
+
+/** The `Position` for this txid (internal byte order), or undefined when writz-lend holds none. */
+export async function readPosition(
+  server: LedgerEntriesServer,
+  contractId: string,
+  txidInternal: string,
+): Promise<PositionSummary | undefined> {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { xdr } = require("@stellar/stellar-sdk") as typeof import("@stellar/stellar-sdk");
+  const key = xdr.ScVal.scvVec([xdr.ScVal.scvSymbol("Position"), xdr.ScVal.scvBytes(Buffer.from(txidInternal, "hex"))]);
+  const pos = (await readPersistent(server, contractId, key)) as
+    | { depositor?: unknown; status?: unknown; p2wsh_script_pubkey?: unknown }
+    | undefined;
+  if (!pos) return undefined;
+  // A unit enum variant decodes as a one-element vector of its name.
+  const status = Array.isArray(pos.status) ? pos.status[0] : pos.status;
+  if (typeof pos.depositor !== "string" || !(pos.p2wsh_script_pubkey instanceof Uint8Array)) {
+    throw new Error(`writz-lend ${contractId} holds a Position for ${txidInternal} in an unexpected shape`);
+  }
+  return {
+    depositor: pos.depositor,
+    status: typeof status === "string" ? status : "unknown",
+    p2wshScriptPubkey: Buffer.from(pos.p2wsh_script_pubkey).toString("hex"),
+  };
+}
+
+/** `Config::usdc_token` of the writz-lend deployment: the USDC a borrow pays out. */
+export async function readUsdcToken(server: LedgerEntriesServer, contractId: string): Promise<string> {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { xdr } = require("@stellar/stellar-sdk") as typeof import("@stellar/stellar-sdk");
+  const config = (await readPersistent(server, contractId, xdr.ScVal.scvVec([xdr.ScVal.scvSymbol("Config")]))) as
+    | { usdc_token?: unknown }
+    | undefined;
+  if (typeof config?.usdc_token !== "string") {
+    throw new Error(`writz-lend ${contractId} has no readable Config::usdc_token on this network`);
+  }
+  return config.usdc_token;
 }
