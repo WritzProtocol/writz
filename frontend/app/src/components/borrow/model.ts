@@ -42,6 +42,10 @@ export interface StellarModel {
 export type BitcoinError = { kind: "declined" } | { kind: "network"; message: string } | { kind: "other"; raw: string };
 
 export interface BitcoinModel {
+  /** "Xverse", or "Signet test key" for a social sign-in's browser-held key. */
+  walletName: string;
+  /** The browser-held Signet test key signs: no extension, no popups. */
+  embedded: boolean;
   address: string | null;
   connecting: boolean;
   error: BitcoinError | null;

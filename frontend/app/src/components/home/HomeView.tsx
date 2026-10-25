@@ -10,6 +10,8 @@ import { useRefreshStatus } from "@/lib/status/provider";
 import { ExternalLink, Notice } from "@/components/ui";
 import { useShellAccount } from "@/components/shell/account";
 import { useEntrance } from "@/components/ui/entrance";
+import { GetStarted } from "@/components/onboarding/GetStarted";
+import { useGuide } from "@/components/onboarding/useGuide";
 import type { HomeData } from "./data";
 import { EarnCard, HowALoanWorks, LendCard, LoanSkeleton, LoanSummaryCard, Preview, UrgentCard } from "./parts";
 
@@ -61,6 +63,7 @@ function GlobalNotices({ data }: { data: HomeData }) {
 
 export function HomeView({ data }: { data: HomeData }) {
   const a = useShellAccount();
+  const guided = useGuide().guided;
   const refresh = useRefreshStatus();
   const { open, closed } = sortLoans(a.loanStatuses);
   const urgent = pickUrgent(a.loanStatuses, a.deposit);
@@ -106,6 +109,8 @@ export function HomeView({ data }: { data: HomeData }) {
           </p>
         ) : null}
       </header>
+
+      {guided ? <GetStarted /> : null}
 
       {urgent ? (
         <UrgentCard u={urgent} price={data.price} m={m} onCheckAgain={checkDeposit} />
@@ -155,7 +160,7 @@ export function HomeView({ data }: { data: HomeData }) {
         </div>
       ) : null}
 
-      {showsPreview ? (
+      {showsPreview && !guided ? (
         earn || supplied ? (
           <div {...startIn("wz-actions")}>
             <Link href="/borrow/new" className="wz-btn wz-btn-line">
@@ -167,7 +172,7 @@ export function HomeView({ data }: { data: HomeData }) {
         )
       ) : null}
 
-      {!hasLoans ? <HowALoanWorks enter={howIn} /> : null}
+      {!hasLoans && !guided ? <HowALoanWorks enter={howIn} /> : null}
 
       <nav {...foot("hm-foot")} aria-label="More">
         <Link href="/protocol" className="wz-btn wz-btn-text">

@@ -4,6 +4,7 @@ import type { MockArea, Scenario } from "./types";
 const GROUPS: readonly { area: MockArea; label: string }[] = [
   { area: "global", label: "Global" },
   { area: "home", label: "Home" },
+  { area: "onboarding", label: "Guided first loan" },
   { area: "deposit", label: "Borrow" },
   { area: "loan", label: "Loan" },
   { area: "earn", label: "Earn" },

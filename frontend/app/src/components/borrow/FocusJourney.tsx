@@ -141,16 +141,26 @@ export function FocusJourney({ m: model }: { m: JourneyModel }) {
             <aside className="bj-aside bj-need" aria-labelledby="bj-need">
               <h2 id="bj-need">What you&apos;ll need</h2>
               <ul className="bj-ticks">
-                <li>
-                  <i aria-hidden="true" />
-                  <b>A Stellar wallet</b>
-                  <span>To receive USDC and sign loan actions</span>
-                </li>
-                <li>
-                  <i aria-hidden="true" />
-                  <b>Xverse with {config.target === "mainnet" ? "BTC" : "test BTC"}</b>
-                  <span>To send the BTC you lock, on {BTC_NETWORK_LABEL}</span>
-                </li>
+                {model.bitcoin.embedded ? (
+                  <li>
+                    <i aria-hidden="true" />
+                    <b>Nothing to install</b>
+                    <span>Your sign-in holds the Stellar account and your Signet test key holds the test BTC</span>
+                  </li>
+                ) : (
+                  <>
+                    <li>
+                      <i aria-hidden="true" />
+                      <b>A Stellar wallet</b>
+                      <span>To receive USDC and sign loan actions</span>
+                    </li>
+                    <li>
+                      <i aria-hidden="true" />
+                      <b>Xverse with {config.target === "mainnet" ? "BTC" : "test BTC"}</b>
+                      <span>To send the BTC you lock, on {BTC_NETWORK_LABEL}</span>
+                    </li>
+                  </>
+                )}
                 <li>
                   <i aria-hidden="true" />
                   <b>About {journeyMinutes(config.bitcoin.minConfirmations)} minutes</b>

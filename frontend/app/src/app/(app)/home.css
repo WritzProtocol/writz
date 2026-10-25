@@ -91,3 +91,23 @@ html:has(.hm-loans[data-count="1"]), body:has(.hm-loans[data-count="1"]) { overf
 }
 .hm-col > .wz-note { gap: 10px; padding: 20px 24px; font-size: 16px; }
 .hm-col > .wz-note .wz-note-label { font-size: 14px; }
+
+/* Guided first loan (social sign-in on testnet) */
+.gs { gap: 20px; }
+.gs-head { display: flex; flex-direction: column; gap: 6px; }
+.gs-steps { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+.gs-steps li { display: flex; gap: 16px; align-items: flex-start; padding: 16px 0; border-top: 1px solid var(--rule); }
+.gs-steps li:first-child { border-top: 0; padding-top: 4px; }
+.gs-n { position: relative; isolation: isolate; display: grid; place-items: center; width: 40px; height: 32px; flex: none; color: var(--muted); font-weight: 600; font-size: 15px; }
+.gs-n::before { content: ""; position: absolute; inset: 0 5px; z-index: -1; background: var(--deep); transform: skewX(-16deg); }
+.gs-steps li[data-state="now"] .gs-n { color: var(--ink); }
+.gs-steps li[data-state="now"] .gs-n::before { background: var(--gold); }
+.gs-steps li[data-state="done"] .gs-n { color: var(--heading); }
+.gs-steps li[data-state="done"] .gs-n::before { background: color-mix(in oklab, var(--positive) 45%, var(--deep)); }
+.gs-body { display: flex; flex-direction: column; gap: 10px; min-width: 0; padding-top: 5px; font-size: 15px; color: var(--body); }
+.gs-title { color: var(--heading); font-weight: 600; font-size: 16px; }
+.gs-steps li[data-state="next"] .gs-title { color: var(--muted); font-weight: 500; }
+.gs-steps li[data-state="done"] .gs-title { color: var(--body); font-weight: 500; }
+.gs-fail { display: flex; flex-direction: column; gap: 10px; }
+.gs-fail b { color: var(--heading); font-weight: 600; }
+@media (max-width: 600px) { .gs.hm-card { padding: 28px 20px 24px; } }

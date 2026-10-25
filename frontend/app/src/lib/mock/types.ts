@@ -3,6 +3,8 @@ import type { PendingTx } from "@/lib/flow/pendingTx";
 import type { ChainReads, LocalInputs, PositionStatusKind, RelayerIndex } from "@/lib/status/types";
 import type { ReceiveChoiceDraft } from "@/lib/receive/options";
 import type { TimelineEvent } from "@/lib/receive/timeline";
+import type { ClaimState } from "@/lib/onboarding/autoClaim";
+import type { Milestones } from "@/lib/onboarding/funnel";
 
 /** Unknown, empty and failed are different states. */
 export type Reading<T> =
@@ -135,8 +137,15 @@ export interface MockReclaim {
   loan?: { n: number; p2wsh: string; txid: string };
 }
 
+/** A social sign-in on the guided loop, with its Signet test key and funding. */
+export interface MockOnboarding {
+  claim: ClaimState;
+  milestones?: Milestones;
+}
+
 export interface MockWorld {
   route: string;
+  onboarding?: MockOnboarding;
   wallets: MockWallets;
   globals: MockGlobals;
   /** Global reads; undefined means the read failed. */
@@ -152,7 +161,7 @@ export interface MockWorld {
   reclaim?: MockReclaim;
 }
 
-export type MockArea = "global" | "home" | "deposit" | "loan" | "earn" | "lend" | "protocol" | "help" | "tx" | "status";
+export type MockArea = "global" | "home" | "onboarding" | "deposit" | "loan" | "earn" | "lend" | "protocol" | "help" | "tx" | "status";
 
 export interface Scenario {
   id: string;

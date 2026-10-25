@@ -15,6 +15,7 @@ describe("dev scenarios index", () => {
     expect(groups.map((g) => g.label)).toEqual([
       "Global",
       "Home",
+      "Guided first loan",
       "Borrow",
       "Loan",
       "Earn",

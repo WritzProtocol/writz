@@ -33,6 +33,7 @@ import type { ReceiveIntent } from "@/lib/receive/intent";
 import { ReceiveStep, type ReceivedLeg } from "./ReceiveStep";
 import { ReceiveChooser } from "./ReceiveChooser";
 import { intentFor, type ReceiveChoiceDraft } from "@/lib/receive/options";
+import { repayShortfallStroops, suggestBorrowStroops } from "@/lib/onboarding/defaults";
 
 const RECEIVE_USDC: ReceiveIntent = { kind: "usdc" };
 
@@ -553,6 +554,13 @@ export function BorrowPanel({
   const collateral = BigInt(position.collateralSats);
   const debt = BigInt(position.debtStroops);
   const max = available?.stroops ?? 0n;
+  // The guided loop opens on a quarter of the safe maximum, far from liquidation.
+  const suggested = m.guided && debt === 0n ? suggestBorrowStroops(max) : null;
+  const [prefilled, setPrefilled] = useState(false);
+  if (suggested !== null && !prefilled && !value) {
+    setPrefilled(true);
+    setValue(toFieldValue(suggested));
+  }
   const parsed = value.trim() ? parseUsdcAmount(value) : null;
   const amount = parsed?.ok ? parsed.stroops : null;
   const x = formatUsdc(max);
@@ -575,6 +583,8 @@ export function BorrowPanel({
   const stepTwo = borrowedHash !== null && receiveAs.kind !== "usdc" && m.lastAmount !== null && keptHash !== borrowedHash ? receiveAs : null;
   const hint = available?.limitedByPool ? (
     <>The pool has {usdcAmount(max)} USDC available right now.</>
+  ) : suggested !== null ? (
+    <>Suggested: a quarter of the {usdcAmount(max)} USDC you can borrow, so a BTC price drop is unlikely to put this loan at risk.</>
   ) : (
     <>You can borrow up to {usdcAmount(max)} USDC more.</>
   );
@@ -702,9 +712,14 @@ export function RepayPanel({
   const debt = BigInt(position.debtStroops);
   const wallet = readValue(m.walletUsdc);
   const all = wallet !== null && wallet < debt ? wallet : debt;
-  const [value, setValue] = useState(() => (initial && initial > 0n ? toFieldValue(initial < all || all === 0n ? initial : all) : ""));
+  const [typed, setValue] = useState<string | null>(() =>
+    initial && initial > 0n ? toFieldValue(initial < all || all === 0n ? initial : all) : null,
+  );
+  // The guided loop follows "Repay all" until the user types, so a top up shows at once.
+  const value = typed ?? (m.guided && all > 0n ? toFieldValue(all) : "");
   const id = useId();
   const mine = m.action === "repay";
+  const shortfall = wallet !== null && debt > 0n ? repayShortfallStroops(debt, wallet) : 0n;
   const running = mine && isInFlight(m.flow);
   const parsed = value.trim() ? parseUsdcAmount(value) : null;
   const amount = parsed?.ok ? parsed.stroops : null;
@@ -752,6 +767,27 @@ export function RepayPanel({
         disabled={running}
       />
       <After collateralSats={collateral} debt={newDebt} price={price} />
+      {shortfall > 0n && m.topUp && !running ? (
+        <Notice
+          tone="info"
+          label="Interest"
+          actions={
+            m.topUp.busy ? (
+              <Status>Confirm in {m.stellar.walletName}</Status>
+            ) : (
+              <button type="button" className="wz-btn wz-btn-line" onClick={() => m.topUp?.buy(shortfall)} disabled={m.otherTx}>
+                Get {formatUsdc(shortfall)} USDC with XLM
+              </button>
+            )
+          }
+        >
+          <p>
+            Your debt grew with interest, so your wallet is {usdcAmount(debt - (wallet ?? 0n))} USDC short of repaying it all. Swap a little test
+            XLM for it, then repay all.
+          </p>
+          {m.topUp.error ? <ErrorBox error={m.topUp.error} label="Swap not done" tone="warning" /> : null}
+        </Notice>
+      ) : null}
       {mine && (
         <TxResult
           flow={m.flow}
@@ -841,7 +877,7 @@ export function ReleasePanel({ m, position, neverBorrowed }: { m: LoanModel; pos
             </button>
           }
         >
-          <p>Connect Xverse to sign the release.</p>
+          <p>Connect the Bitcoin wallet that made this deposit to sign the release.</p>
         </Notice>
       ) : blocker === "wrong_account" ? (
         <Notice
@@ -853,7 +889,10 @@ export function ReleasePanel({ m, position, neverBorrowed }: { m: LoanModel; pos
             </button>
           }
         >
-          <p>Connect the Bitcoin account that made this deposit. The BTC can only go back to it.</p>
+          <p>
+            Connect the Bitcoin account that made this deposit. The BTC can only go back to it.
+            {m.bitcoin.embedded ? " If it was a Signet test key from another browser, restore its backup from your account." : ""}
+          </p>
         </Notice>
       ) : blocker === "wrong_network" ? (
         <Notice tone="warning" label="Wrong Bitcoin network">
@@ -884,10 +923,10 @@ export function ReleasePanel({ m, position, neverBorrowed }: { m: LoanModel; pos
           <p className="wz-hint">
             {neverBorrowed ? (
               <>
-                You sign twice: in {m.stellar.walletName} to close the loan on {STELLAR}, then in Xverse.
+                You sign twice: in {m.stellar.walletName} to close the loan on {STELLAR}, then with {m.bitcoin.embedded ? "your test key" : "Xverse"}.
               </>
             ) : (
-              <>You sign once, in Xverse.</>
+              <>{m.bitcoin.embedded ? "Your test key signs it here, no popup." : "You sign once, in Xverse."}</>
             )}{" "}
             Writz co-signs once the loan is closed. The Bitcoin network fee
             {fee !== null ? <>, about {fee.toLocaleString("en-US")} sats,</> : null} comes out of the released amount. The BTC goes only to
@@ -900,7 +939,9 @@ export function ReleasePanel({ m, position, neverBorrowed }: { m: LoanModel; pos
             doneLabel={
               m.flow.phase === "awaiting_signature" && m.flow.wallet === "stellar"
                 ? `Confirm in ${m.stellar.walletName}...`
-                : "Confirm in Xverse..."
+                : m.bitcoin.embedded
+                  ? "Signing with your test key..."
+                  : "Confirm in Xverse..."
             }
             describedBy={reviewId}
             disabled={fee === null || destination === null || m.otherTx || m.catchingUp}

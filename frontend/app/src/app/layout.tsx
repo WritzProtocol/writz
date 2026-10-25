@@ -4,6 +4,7 @@ import { Work_Sans, Geist_Mono } from "next/font/google";
 import { config } from "@/config";
 import { WalletProvider } from "@/lib/wallet/WalletProvider";
 import { BitcoinWalletProvider } from "@/lib/bitcoin/useBitcoinWallet";
+import { OnboardingProvider } from "@/lib/onboarding/OnboardingProvider";
 import { env } from "@/config/env";
 import "../../../../packages/brand/tokens.css";
 import "./globals.css";
@@ -97,7 +98,9 @@ export default function RootLayout({
           />
         )}
         <WalletProvider>
-          <BitcoinWalletProvider>{children}</BitcoinWalletProvider>
+          <BitcoinWalletProvider>
+            <OnboardingProvider>{children}</OnboardingProvider>
+          </BitcoinWalletProvider>
         </WalletProvider>
       </body>
     </html>

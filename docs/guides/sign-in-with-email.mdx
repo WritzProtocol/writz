@@ -9,7 +9,7 @@ If you don't have a Stellar wallet, you can sign in with Google, GitHub or an em
 **Pollar holds the key of this account**, not you. That is fine for test coins and the reason this option exists only on testnet. For anything you want to control yourself, use [Freighter](/guides/set-up-freighter).
 </Note>
 
-This gives you a **Stellar** account only. To borrow you still need [Xverse](/guides/set-up-xverse) for the Bitcoin side. To lend USDC, the Stellar account is all you need.
+After you sign in, the app also creates a **Signet test key** in your browser for the Bitcoin side, and asks the Writz faucet to send it test BTC. You can then lock BTC, borrow, repay and release without installing anything. If you prefer, you can still use [Xverse](/guides/set-up-xverse) instead.
 
 ## Sign in
 
@@ -42,6 +42,18 @@ This gives you a **Stellar** account only. To borrow you still need [Xverse](/gu
 - A Stellar testnet account with test XLM in it, so you never need Friendbot.
 - USDC already added to the account (the trustline), so you can receive test USDC straight away.
 - Network fees paid by Pollar on Writz transactions. If a transaction is not covered, the test XLM in the account pays its small fee.
+
+## Your Signet test key
+
+- **Where it lives:** only in this browser's storage, one key per signed-in account. It is never sent to Writz, to Pollar or to the relayer.
+- **Test coins only:** it exists only on testnet, with Bitcoin signet coins that have no value. The mainnet app has no such key.
+- **Funding:** right after sign-in, the Writz faucet sends it 20,000 test sats once per account (Google and GitHub sign-ins). The coins can be locked as soon as they are sent. If the faucet is off, empty or has reached its daily limit, the Home page says so and links to public signet faucets; send test BTC to the key's address shown there.
+- **Losing it:** clearing site data, a private window or another device does not have the key. A test loan whose key is lost cannot be released. To move it, open the Wallets panel and select **Back up or restore** under **Signet test key** to download the key file, then restore it in the other browser.
+- **Anyone with the key file** can spend its test coins. Keep it private, even though they have no value.
+
+## Your first loan
+
+Home shows **Your first loan, in five steps**: get test BTC, lock BTC, borrow USDC, repay and release. Each step opens the usual screen with a suggested amount: most of your test BTC to lock, and a quarter of what you could borrow, far from liquidation. If interest leaves you a few cents short when you repay, the Repay panel offers to swap a little test XLM for the missing USDC.
 
 ## Sign out
 

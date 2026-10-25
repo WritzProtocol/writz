@@ -46,6 +46,7 @@ const STATUS_ROWS = [
 const APPENDIX_A = [
   ...range("G", 8),
   ...range("H", 23),
+  ...range("O", 9),
   ...range("B", 37),
   ...range("L", 28),
   ...range("E", 11),
@@ -70,7 +71,7 @@ describe("mock scenarios", () => {
     const ids = SCENARIOS.map((s) => s.id);
     expect(new Set(ids).size).toBe(ids.length);
     expect([...ids].sort()).toEqual([...APPENDIX_A].sort());
-    expect(APPENDIX_A.filter((id) => !id.includes(".")).length).toBe(135);
+    expect(APPENDIX_A.filter((id) => !id.includes(".")).length).toBe(144);
   });
 
   for (const scenario of SCENARIOS) {
