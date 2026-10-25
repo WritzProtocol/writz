@@ -133,13 +133,29 @@ Together, Stellar becomes the credit layer for native Bitcoin: the collateral is
 
 ## On-chain evidence
 
+### Full cycle on the 2026-10-25 contracts
+
+Run with the app's own flow code on 25 October; the relayer's `GET /timeline/:txid` returns all eight steps in order.
+
+| Step | Transaction |
+|---|---|
+| Lock 6,000 sats on Bitcoin Signet (block 327,928) | [`459d084e…`](https://mempool.space/signet/tx/459d084e8516b7965a86a967d7dfc0ec0cb5ca2c5b4cf14445cf55ef8090d6af) |
+| Deposit verified on Stellar by `bitcoin-spv`, recorded by `writz-lend` (goal 1) | [`4d2ef33f…`](https://stellar.expert/explorer/testnet/tx/4d2ef33f762b1667e2376a656bee3799dde028e25fde00396bda032505f528de) |
+| Borrow 2 USDC | [`14e8056f…`](https://stellar.expert/explorer/testnet/tx/14e8056fe9fb27c5d1edf124cc6156294212b46e58eed7e7bcac5189d2d9b531) |
+| Receive 0.5 USDC as 4.654 XLM through the Soroswap router (goal 2) | [`a41d0f83…`](https://stellar.expert/explorer/testnet/tx/a41d0f835747da48c050762694f8c5960ad3c474d2a3989181be955c1fdc00db) |
+| Burn 0.5 USDC on Stellar with Circle CCTP V2 (goal 3) | [`fc810e5c…`](https://stellar.expert/explorer/testnet/tx/fc810e5caec892565c9e0e9dcd595dc5e1a244386d55c407839e732b72f23210) |
+| Minted as native USDC on Base Sepolia by the relay, about 15 s later (goal 3) | [`0x4bb3e250…`](https://sepolia.basescan.org/tx/0x4bb3e250c27e3d83b5b4af0939a5c99bd8fdf37e0323f0c5b30b2a46cfbf3ab0) |
+| Repay in full in USDC on Stellar (goal 4) | [`d7a480bc…`](https://stellar.expert/explorer/testnet/tx/d7a480bc846031c2485c4a4b63835e9ebbfb09b1824fe4df55933dc2c814e10b) |
+| BTC released back to the borrower on Signet | [`dcad8ca2…`](https://mempool.space/signet/tx/dcad8ca20018e3dd8b9b57c6c7b7882446df11878d759cc4e635f0378ba00d2c) |
+
+### Earlier checks
+
 | What | Transaction |
 |---|---|
 | Swap 5 USDC to 46.54 XLM with the app's code | [`523d4d2d…`](https://stellar.expert/explorer/testnet/tx/523d4d2d3e3b84db8ee001bebfe525f12b0760a743f17a368c3c80bad68eea55) |
 | Allowance for the CCTP TokenMessengerMinter | [`d1ce1b51…`](https://stellar.expert/explorer/testnet/tx/d1ce1b512a01f714e12b7dc81b2386a826c0457ed95a1b0d960038238c4f7d88) |
 | Burn 5 USDC from Stellar to Base Sepolia, attested by Circle in 10 seconds | [`e378cd98…`](https://stellar.expert/explorer/testnet/tx/e378cd985e41b167c4bc9565d397f3f9642c34be2919394b8f0881cc26f78a79) |
 
-<!-- EVENT: the full borrow, receive and repay runs from testnet.writz.xyz, one row per goal -->
 
 ## Prior work and event work
 
