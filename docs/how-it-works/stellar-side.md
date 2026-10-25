@@ -133,17 +133,23 @@ Writz uses a multi-oracle approach for BTC/USD price feeds, with a **median aggr
 
 ## Storage and TTL Management
 
-Soroban's storage has a time-to-live (TTL) system. Every storage entry has an expiration point; entries that are not accessed eventually expire and are deleted.
+Soroban's storage has a time-to-live (TTL) system. Every persistent entry has an expiration point; an entry past it is archived, not deleted. An archived entry cannot be read or overwritten until it is restored, unchanged, which the RPC's simulation does automatically for any entry a transaction touches (the transaction pays the restore). So an archived position still blocks a second deposit of the same txid, and comes back with its debt when it is next used.
 
-Writz manages TTL per-entry (not one contract-wide setting) to ensure user positions never expire unexpectedly:
+The transaction that creates an entry pays rent for its whole window, at the rate the network charges at that moment. The windows for entries created per use are therefore set at deployment:
 
-| Entry type | Contract | TTL window |
-|---|---|---|
-| Position (by txid) | writz-lend | 180-day window |
-| Per-lender supply balances | writz-lend | 180-day window |
-| Config / Protocol accounting | writz-lend | 90-day window |
-| Published release PSBT (by txid) | writz-lend | 90-day window |
-| Config / Checkpoint | bitcoin-spv | 90-day window |
+| Entry type | Contract | TTL window | Mainnet | Testnet |
+|---|---|---|---|---|
+| Position (by txid) | writz-lend | `entry_ttl_ledgers` | 180 days | 40 days |
+| Per-lender supply balances | writz-lend | `entry_ttl_ledgers` | 180 days | 40 days |
+| Published release PSBT (by txid) | writz-lend | `entry_ttl_ledgers` | 180 days | 40 days |
+| Header and height index (two per block) | bitcoin-spv | `header_ttl_ledgers` | 90 days | 7 days |
+| Consumed deposit txid | bitcoin-spv | `consumed_ttl_ledgers` | 90 days | 7 days |
+| Config / Protocol accounting | writz-lend | fixed | 90 days | 90 days |
+| Config / Checkpoint / best tip | bitcoin-spv | fixed | 90 days | 90 days |
+
+Testnet runs short windows because its live state is above the network's target size, which prices rent far higher than on mainnet: a 180-day position would cost more resource fee than one transaction can carry. Seven days is the network's minimum persistent TTL, so a 7-day window adds no rent beyond what creating the entry already costs. An entry that is read or rewritten in the last third of its window (at most its last 30 days) is extended back to its full window.
+
+The admin can change these windows without a redeploy (`set_entry_ttl` on writz-lend, `set_ttls` on bitcoin-spv, same bounds as the constructors), so they can follow the rent rate. A change applies to entries written or touched after it; existing entries keep their TTL until a call tops them up or refreshes them.
 
 **Permissionless refresh:** every entry above has a public `refresh_*` function (or is covered by a contract-wide `refresh_ttl`/`refresh_instance_ttl`) that extends its TTL. Any keeper - including Writz's own keeper, a third-party keeper, or even the user themselves - can call these to prevent expiry. No permission required. This is a genuinely load-bearing safety net, not a nice-to-have: none of these entries auto-renews just from being read by an unrelated call, and an idle deployment (low traffic, or a position nobody touches for months) is exactly the case these functions exist for.
 
@@ -155,7 +161,7 @@ pub fn refresh_protocol_ttl(env: Env)
 pub fn refresh_release_psbt_ttl(env: Env, txid: BytesN<32>) -> bool
 
 // bitcoin-spv
-pub fn refresh_ttl(env: Env)  // extends Config and Checkpoint together
+pub fn refresh_ttl(env: Env)  // extends Config, Checkpoint, the best tip and its header
 ```
 
 `writz-lend`'s `refresh_release_psbt_ttl` is a recent addition - before it, a published release PSBT could only have its TTL bumped as a side effect of fetching or re-publishing it, with no standalone way to keep it alive.

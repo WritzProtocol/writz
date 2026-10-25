@@ -20,6 +20,10 @@ use crate::merkle::verify_merkle_inclusion;
 /// hash attempts. It is also the proof-of-work limit of the test light client.
 const EASY_TEST_BITS: u32 = 0x207f_ffff;
 
+/// Mainnet header and consumed-marker window (90 days), the one every test
+/// runs under unless it says otherwise.
+const MAINNET_TTL: u32 = 90 * crate::LEDGERS_PER_DAY;
+
 /// Height of the checkpoint in the default fixture. Far from a 2016-block
 /// boundary so ordinary tests never trigger a retarget.
 const CP_HEIGHT: u32 = 100;
@@ -180,7 +184,7 @@ fn new_light_at<'a>(
     env.ledger().set_timestamp(LEDGER_NOW);
 
     let admin = Address::generate(env);
-    let id = env.register(BitcoinSpvContract, (admin.clone(), EASY_TEST_BITS));
+    let id = env.register(BitcoinSpvContract, (admin.clone(), EASY_TEST_BITS, MAINNET_TTL, MAINNET_TTL));
     let client = BitcoinSpvContractClient::new(env, &id);
     client.set_checkpoint(
         &admin,
@@ -202,7 +206,7 @@ fn new_light(env: &Env) -> Light<'_> {
 fn new_client(env: &Env) -> (BitcoinSpvContractClient<'_>, Address) {
     env.ledger().set_timestamp(LEDGER_NOW);
     let admin = Address::generate(env);
-    let id = env.register(BitcoinSpvContract, (admin.clone(), EASY_TEST_BITS));
+    let id = env.register(BitcoinSpvContract, (admin.clone(), EASY_TEST_BITS, MAINNET_TTL, MAINNET_TTL));
     (BitcoinSpvContractClient::new(env, &id), admin)
 }
 
@@ -1144,7 +1148,7 @@ fn txid_equals_sha256d_of_raw_tx() {
 fn constructor_rejects_invalid_pow_limit_bits() {
     let env = Env::default();
     let admin = Address::generate(&env);
-    env.register(BitcoinSpvContract, (admin, 0xff12_3456u32));
+    env.register(BitcoinSpvContract, (admin, 0xff12_3456u32, MAINNET_TTL, MAINNET_TTL));
 }
 
 #[test]
@@ -1231,7 +1235,7 @@ fn set_checkpoint_rejects_bits_easier_than_pow_limit_and_bad_period_start() {
     let env = Env::default();
     env.mock_all_auths();
     let admin = Address::generate(&env);
-    let id = env.register(BitcoinSpvContract, (admin.clone(), 0x2007_ffffu32));
+    let id = env.register(BitcoinSpvContract, (admin.clone(), 0x2007_ffffu32, MAINNET_TTL, MAINNET_TTL));
     let client = BitcoinSpvContractClient::new(&env, &id);
     let hash = BytesN::<32>::from_array(&env, &[0u8; 32]);
 
@@ -1429,3 +1433,251 @@ fn set_consumer_by_non_admin_fails() {
     );
 }
 
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Storage TTL windows
+// ══════════════════════════════════════════════════════════════════════════════
+//
+// The test host models protocol 23 state archival: a persistent entry past
+// its `live_until` ledger is archived, and the next call that touches it
+// restores it unchanged before the contract runs, as the RPC's auto-restore
+// does on chain.
+
+/// Testnet's state-archival settings and the window testnet runs (7 days,
+/// the network minimum).
+const TESTNET_MIN_PERSISTENT_TTL: u32 = 120_960;
+const TESTNET_TTL: u32 = 7 * crate::LEDGERS_PER_DAY;
+
+fn testnet_ledger(env: &Env) {
+    env.ledger().with_mut(|li| {
+        li.sequence_number = 1_000;
+        li.min_persistent_entry_ttl = TESTNET_MIN_PERSISTENT_TTL;
+        li.max_entry_ttl = 3_110_400;
+    });
+}
+
+fn register_with_ttls(env: &Env, header_ttl: u32, consumed_ttl: u32) -> (BitcoinSpvContractClient<'_>, Address) {
+    env.mock_all_auths();
+    env.ledger().set_timestamp(LEDGER_NOW);
+    let admin = Address::generate(env);
+    let id = env.register(BitcoinSpvContract, (admin.clone(), EASY_TEST_BITS, header_ttl, consumed_ttl));
+    (BitcoinSpvContractClient::new(env, &id), admin)
+}
+
+fn light_with_ttls(env: &Env, header_ttl: u32, consumed_ttl: u32) -> Light<'_> {
+    let (client, admin) = register_with_ttls(env, header_ttl, consumed_ttl);
+    client.set_checkpoint(&admin, &CP_HEIGHT, &BytesN::<32>::from_array(env, &CP_HASH), &EASY_TEST_BITS, &T0, &T0);
+    Light { client, admin }
+}
+
+fn spv_ttl(env: &Env, id: &Address, key: &crate::storage::DataKey) -> u32 {
+    use soroban_sdk::testutils::storage::Persistent as _;
+    env.as_contract(id, || env.storage().persistent().get_ttl(key))
+}
+
+fn advance_ledgers(env: &Env, ledgers: u32) {
+    let seq = env.ledger().sequence();
+    env.ledger().set_sequence_number(seq + ledgers);
+}
+
+#[test]
+fn constructor_rejects_ttls_out_of_bounds() {
+    for (h, c) in [
+        (crate::MIN_ENTRY_TTL_LEDGERS - 1, MAINNET_TTL),
+        (MAINNET_TTL, crate::MIN_ENTRY_TTL_LEDGERS - 1),
+        (crate::MAX_ENTRY_TTL_LEDGERS + 1, MAINNET_TTL),
+        (MAINNET_TTL, crate::MAX_ENTRY_TTL_LEDGERS + 1),
+    ] {
+        let env = Env::default();
+        let admin = Address::generate(&env);
+        let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            env.register(BitcoinSpvContract, (admin.clone(), EASY_TEST_BITS, h, c));
+        }));
+        assert!(r.is_err(), "header {h}, consumed {c} must be refused");
+    }
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #28)")]
+fn constructor_reports_invalid_entry_ttl() {
+    let env = Env::default();
+    register_with_ttls(&env, 0, MAINNET_TTL);
+}
+
+#[test]
+fn constructor_accepts_the_ttl_bounds() {
+    let env = Env::default();
+    register_with_ttls(&env, crate::MIN_ENTRY_TTL_LEDGERS, crate::MAX_ENTRY_TTL_LEDGERS);
+    register_with_ttls(&env, crate::MAX_ENTRY_TTL_LEDGERS, crate::MIN_ENTRY_TTL_LEDGERS);
+}
+
+#[test]
+fn header_entries_take_the_configured_window() {
+    // Mainnet: 90 days for the header and its height index.
+    let env = Env::default();
+    let light = new_light(&env);
+    let hash = submit_single_block(&env, &light, [1u8; 32]);
+    let id = light.client.address.clone();
+    assert_eq!(spv_ttl(&env, &id, &crate::storage::DataKey::Header(hash)), MAINNET_TTL);
+    assert_eq!(spv_ttl(&env, &id, &crate::storage::DataKey::Canonical(CP_HEIGHT + 1)), MAINNET_TTL);
+
+    // Testnet: the network minimum, nothing on top.
+    let env = Env::default();
+    testnet_ledger(&env);
+    let light = light_with_ttls(&env, TESTNET_TTL, TESTNET_TTL);
+    let hash = submit_single_block(&env, &light, [1u8; 32]);
+    let id = light.client.address.clone();
+    let ttl = spv_ttl(&env, &id, &crate::storage::DataKey::Header(hash));
+    assert!((TESTNET_MIN_PERSISTENT_TTL - 1..=TESTNET_TTL).contains(&ttl));
+}
+
+#[test]
+fn consumed_marker_takes_the_configured_window() {
+    let env = Env::default();
+    testnet_ledger(&env);
+    let (client, admin) = register_with_ttls(&env, TESTNET_TTL, TESTNET_TTL);
+    let lend = Address::generate(&env);
+    client.set_consumer(&admin, &lend, &true);
+    let txid = BytesN::<32>::from_array(&env, &[7u8; 32]);
+    client.consume_deposit(&lend, &txid);
+    let ttl = spv_ttl(&env, &client.address, &crate::storage::DataKey::Consumed(txid));
+    assert!((TESTNET_MIN_PERSISTENT_TTL - 1..=TESTNET_TTL).contains(&ttl));
+}
+
+#[test]
+fn an_archived_consumed_txid_can_never_be_consumed_again() {
+    let env = Env::default();
+    testnet_ledger(&env);
+    let (client, admin) = register_with_ttls(&env, TESTNET_TTL, TESTNET_TTL);
+    let lend = Address::generate(&env);
+    client.set_consumer(&admin, &lend, &true);
+    let txid = BytesN::<32>::from_array(&env, &[7u8; 32]);
+    client.consume_deposit(&lend, &txid);
+
+    // Past its window the marker is archived, not deleted.
+    let key = crate::storage::DataKey::Consumed(txid.clone());
+    advance_ledgers(&env, spv_ttl(&env, &client.address, &key) + 1);
+
+    assert!(client.is_deposit_consumed(&txid));
+    assert_eq!(
+        client.try_consume_deposit(&lend, &txid),
+        Err(Ok(SPVError::TxidAlreadyConsumed)),
+    );
+}
+
+#[test]
+fn a_deposit_block_stays_provable_after_its_header_is_archived() {
+    let env = Env::default();
+    testnet_ledger(&env);
+    let light = light_with_ttls(&env, TESTNET_TTL, TESTNET_TTL);
+    let raw_tx = b"btc_tx_archived_header";
+    let block_hash = submit_single_block(&env, &light, sha256d_bytes(&env, raw_tx));
+
+    let key = crate::storage::DataKey::Header(block_hash.clone());
+    advance_ledgers(&env, spv_ttl(&env, &light.client.address, &key) + 1);
+
+    let r = light.client.verify_transaction(&block_hash, &Vec::new(&env), &0, &Bytes::from_slice(&env, raw_tx), &1);
+    assert_eq!(r.block_hash, block_hash);
+    assert_eq!(r.block_height, CP_HEIGHT + 1);
+}
+
+#[test]
+fn a_block_at_or_before_the_checkpoint_can_never_be_proven() {
+    // A fresh instance anchored at a later checkpoint knows no earlier
+    // block: the checkpoint itself is refused, and an earlier header cannot
+    // be stored because its parent chain never reaches a stored header.
+    let env = Env::default();
+    let light = new_light(&env);
+    assert_eq!(
+        light.client.try_verify_transaction(
+            &BytesN::<32>::from_array(&env, &CP_HASH),
+            &Vec::new(&env),
+            &0,
+            &Bytes::from_slice(&env, b"tx"),
+            &1
+        ),
+        Err(Ok(SPVError::BlockNotAfterCheckpoint)),
+    );
+    let older = mine_chain(&env, &[0x55u8; 32], &[[2u8; 32]], T0 - 600);
+    assert_eq!(
+        light.client.try_submit_headers(&to_sdk_headers(&env, &older)),
+        Err(Ok(SPVError::UnknownParent)),
+    );
+    assert_eq!(
+        light.client.try_verify_transaction(
+            &hash_header(&env, &older[0]),
+            &Vec::new(&env),
+            &0,
+            &Bytes::from_slice(&env, b"tx"),
+            &1
+        ),
+        Err(Ok(SPVError::HeaderNotFound)),
+    );
+}
+
+#[test]
+fn refresh_ttl_extends_the_singletons_and_the_tip_header() {
+    let env = Env::default();
+    testnet_ledger(&env);
+    let light = light_with_ttls(&env, TESTNET_TTL, TESTNET_TTL);
+    let tip = submit_single_block(&env, &light, [3u8; 32]);
+    advance_ledgers(&env, 50_000);
+    let id = light.client.address.clone();
+    let config_window = 90 * crate::LEDGERS_PER_DAY;
+    assert!(spv_ttl(&env, &id, &crate::storage::DataKey::Config) < config_window);
+
+    // A threshold of 0 never extends; these must reach their full windows.
+    light.client.refresh_ttl();
+    assert_eq!(spv_ttl(&env, &id, &crate::storage::DataKey::Config), config_window);
+    assert_eq!(spv_ttl(&env, &id, &crate::storage::DataKey::Checkpoint), config_window);
+    assert_eq!(spv_ttl(&env, &id, &crate::storage::DataKey::BestTip), config_window);
+    assert_eq!(spv_ttl(&env, &id, &crate::storage::DataKey::Header(tip)), TESTNET_TTL);
+}
+
+#[test]
+fn set_ttls_is_admin_only_and_bounded() {
+    let env = Env::default();
+    let (client, admin) = register_with_ttls(&env, MAINNET_TTL, MAINNET_TTL);
+    let stranger = Address::generate(&env);
+    assert_eq!(client.try_set_ttls(&stranger, &TESTNET_TTL, &TESTNET_TTL), Err(Ok(SPVError::Unauthorized)));
+    for (h, c) in [
+        (crate::MIN_ENTRY_TTL_LEDGERS - 1, TESTNET_TTL),
+        (TESTNET_TTL, crate::MIN_ENTRY_TTL_LEDGERS - 1),
+        (crate::MAX_ENTRY_TTL_LEDGERS + 1, TESTNET_TTL),
+        (TESTNET_TTL, crate::MAX_ENTRY_TTL_LEDGERS + 1),
+    ] {
+        assert_eq!(client.try_set_ttls(&admin, &h, &c), Err(Ok(SPVError::InvalidEntryTtl)));
+    }
+    client.set_ttls(&admin, &crate::MIN_ENTRY_TTL_LEDGERS, &crate::MAX_ENTRY_TTL_LEDGERS);
+}
+
+#[test]
+#[should_panic(expected = "Error(Auth, InvalidAction)")]
+fn set_ttls_requires_the_admins_signature() {
+    let env = Env::default();
+    let (client, admin) = register_with_ttls(&env, MAINNET_TTL, MAINNET_TTL);
+    env.set_auths(&[]);
+    client.set_ttls(&admin, &TESTNET_TTL, &TESTNET_TTL);
+}
+
+#[test]
+fn set_ttls_applies_to_the_next_header_and_marker() {
+    let env = Env::default();
+    let light = new_light(&env);
+    let id = light.client.address.clone();
+    let first = submit_single_block(&env, &light, [1u8; 32]);
+    let window = 14 * crate::LEDGERS_PER_DAY;
+    light.client.set_ttls(&light.admin, &window, &window);
+    // The header stored before the change keeps its TTL.
+    assert_eq!(spv_ttl(&env, &id, &crate::storage::DataKey::Header(first.clone())), MAINNET_TTL);
+    // The next header and consumed marker get the new windows.
+    let next = mine_chain(&env, &first.to_array(), &[[2u8; 32]], T0 + 2);
+    light.client.submit_headers(&to_sdk_headers(&env, &next));
+    let next_hash = hash_header(&env, &next[0]);
+    assert_eq!(spv_ttl(&env, &id, &crate::storage::DataKey::Header(next_hash)), window);
+    let lend = Address::generate(&env);
+    light.client.set_consumer(&light.admin, &lend, &true);
+    let txid = BytesN::<32>::from_array(&env, &[9u8; 32]);
+    light.client.consume_deposit(&lend, &txid);
+    assert_eq!(spv_ttl(&env, &id, &crate::storage::DataKey::Consumed(txid)), window);
+}

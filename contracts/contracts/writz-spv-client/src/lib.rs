@@ -128,6 +128,8 @@ pub enum SPVError {
     ReorgTooDeep = 25,
     TxidAlreadyConsumed = 26,
     NotAConsumer = 27,
+    /// Admin only: a TTL window passed to the constructor or `set_ttls` is out of bounds.
+    InvalidEntryTtl = 28,
 }
 
 /// The read interface of `bitcoin-spv`. `#[contractclient]` generates

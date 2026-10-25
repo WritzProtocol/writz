@@ -142,6 +142,11 @@ pub struct Config {
     /// cap bounds how much bad debt a price crash can leave behind when
     /// liquidation cannot release BTC (GHSA-5rxp-7f9g-r66x, #193).
     pub max_total_borrowed: i128,
+    /// How long each per-user entry (`Position`, supply balance, release
+    /// PSBT) is kept live, in ledgers, from when it is written or last topped
+    /// up. Set at deployment: 3,110,400 (180 days) on mainnet, short where
+    /// rent is priced high.
+    pub entry_ttl_ledgers: u32,
 }
 
 // The cross-contract SPV verification call's return type, `SpvVerificationResult`,

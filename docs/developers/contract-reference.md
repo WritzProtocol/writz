@@ -34,7 +34,7 @@ run the interfaces documented here. See `contracts/deployments/testnet.md`.
 Runs exactly once, atomically, as part of deployment (`__constructor`): no separate initialize transaction exists for anyone to front-run (GHSA-422m-f73x-fh58).
 
 ```rust
-pub fn __constructor(admin: Address, pow_limit_bits: u32)
+pub fn __constructor(admin: Address, pow_limit_bits: u32, header_ttl_ledgers: u32, consumed_ttl_ledgers: u32)
 ```
 
 ### `set_checkpoint`
@@ -75,6 +75,14 @@ Restricts `submit_headers` to `submitter`, or reopens it to everyone with `None`
 
 ```rust
 pub fn set_submitter(caller: Address, submitter: Option<Address>) -> Result<(), SPVError>
+```
+
+### `set_ttls`
+
+Sets how long stored headers (with their height index) and consumed deposit markers are kept live, in ledgers. Admin-gated, same bounds as the constructor (17,280 to 3,110,400, else `InvalidEntryTtl`). Applies to entries written or touched after the change only; emits `ttls_set`.
+
+```rust
+pub fn set_ttls(caller: Address, header_ttl_ledgers: u32, consumed_ttl_ledgers: u32) -> Result<(), SPVError>
 ```
 
 ### `set_admin`
@@ -513,7 +521,7 @@ Topic fields are in **bold**.
 Runs exactly once, atomically, as part of deployment (`__constructor`): no separate initialize transaction exists for anyone to front-run (GHSA-422m-f73x-fh58).
 
 ```rust
-pub fn __constructor(admin: Address, spv_contract: Address, usdc_token: Address, oracle: Address, keeper: Address, relayer: Address, protocol_pubkey: BytesN<33>)
+pub fn __constructor(admin: Address, spv_contract: Address, usdc_token: Address, oracle: Address, keeper: Address, relayer: Address, protocol_pubkey: BytesN<33>, min_confirmations: u32, min_deposit_satoshis: u64, entry_ttl_ledgers: u32)
 ```
 
 ### `deposit`
@@ -610,6 +618,14 @@ Updates the oracle contract address used for BTC/USD pricing. Admin only.
 pub fn set_oracle(caller: Address, new_oracle: Address) -> Result<(), WritzLendError>
 ```
 
+### `set_entry_ttl`
+
+Sets how long per-user entries (positions, supply balances, release PSBTs) are kept live, in ledgers. Admin only, same bounds as the constructor's `entry_ttl_ledgers` (17,280 to 3,110,400, else `InvalidEntryTtl`). Applies to entries written or touched after the change only; emits `entry_ttl_set`.
+
+```rust
+pub fn set_entry_ttl(caller: Address, entry_ttl_ledgers: u32) -> Result<(), WritzLendError>
+```
+
 ### `set_spv_contract`
 
 Updates the bitcoin-spv contract address used for deposit verification. Admin only. Changing this mid-flight affects only deposits submitted after the change - an in-flight deposit's SPV proof was already verified against the previous contract by the time this would run.
@@ -692,7 +708,7 @@ pub fn get_supply_balance(lender: Address) -> i128
 
 ### `refresh_position_ttl`
 
-Extend the TTL of a position entry to another 180-day window.
+Extend the TTL of a position entry to the full `entry_ttl_ledgers` window (180 days on mainnet).
 
 ```rust
 pub fn refresh_position_ttl(txid: BytesN<32>) -> bool
@@ -700,7 +716,7 @@ pub fn refresh_position_ttl(txid: BytesN<32>) -> bool
 
 ### `refresh_supply_balance_ttl`
 
-Extend the TTL of a lender's supply balance entry to another 180-day window.
+Extend the TTL of a lender's supply balance entry to the full `entry_ttl_ledgers` window.
 
 ```rust
 pub fn refresh_supply_balance_ttl(lender: Address) -> bool

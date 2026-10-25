@@ -93,3 +93,13 @@ pub struct OracleSetEvent {
     pub admin:      Address,
     pub new_oracle: Address,
 }
+
+/// Emitted when the admin changes the per-user entry window. It applies to
+/// entries written or touched after the change; existing TTLs are left as
+/// they are - see `set_entry_ttl`.
+#[contractevent(topics = ["entry_ttl_set"])]
+pub struct EntryTtlSetEvent {
+    #[topic]
+    pub admin:             Address,
+    pub entry_ttl_ledgers: u32,
+}
