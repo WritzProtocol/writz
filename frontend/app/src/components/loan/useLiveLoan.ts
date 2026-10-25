@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { getPoolState } from "@/lib/contracts/writzLend";
-import { LIVE_RECEIVE } from "@/lib/receive";
+import { liveReceiveApis } from "@/lib/receive/live";
 import { useWallet } from "@/lib/wallet/WalletProvider";
 import { ensureKit } from "@/lib/wallet/kit";
 import { useBitcoinWallet } from "@/lib/bitcoin/useBitcoinWallet";
@@ -228,6 +228,7 @@ export function useLiveLoan(n: number, requestedPanel: LoanTab | null): LoanMode
     }
   }, [address, w.signTransaction, refresh]);
 
+  const receive = useMemo(() => liveReceiveApis(w.signTransaction), [w.signTransaction]);
   const walletName = w.walletBackend === "pollar" ? "Pollar" : (kitWalletName() ?? "your wallet");
 
   return {
@@ -276,7 +277,7 @@ export function useLiveLoan(n: number, requestedPanel: LoanTab | null): LoanMode
     requestedPanel,
     now,
     owner: address,
-    receive: LIVE_RECEIVE,
+    receive,
     borrow,
     repay,
     release,

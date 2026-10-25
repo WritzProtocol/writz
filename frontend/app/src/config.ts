@@ -63,6 +63,10 @@ export const LENDING_ENABLED = lendingEnabled(deployTarget);
  */
 const TESTNET_BTC_ORACLE = "CCYOZJCOPG34LLQQ7N24YXBM7LL62R7ONMZ3G6WZAAYPB5OYKOMJRN63";
 const TESTNET_EARN_VAULT = "CBMHGL7GGGHODEDDJ5H2LKJEFHJWBRSQUKOXMC4FKOFDZK5HBKW6PI2S";
+const TESTNET_SOROSWAP_ROUTER = "CCJUD55AG6W5HAI5LRVNKAE5WDP5XGZBUDS5WNTIVDU7O264UZZE7BRD";
+const TESTNET_XLM_SAC = "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC";
+/** Circle CCTP V2 TokenMessengerMinter on Stellar testnet (domain 27). */
+const TESTNET_CCTP_TMM = "CDNG7HXAPBWICI2E3AUBP3YZWZELJLYSB6F5CC7WLDTLTHVM74SLRTHP";
 
 export const config = {
   /** The validated deploy target ("local" | "testnet" | "mainnet"). */
@@ -88,6 +92,27 @@ export const config = {
     /** The BTC/USD price oracle `writz-lend` reads; must be the address the contract was deployed with. */
     btcOracle:
       process.env.NEXT_PUBLIC_BTC_ORACLE_ID ?? (deployTarget === "mainnet" ? "" : TESTNET_BTC_ORACLE),
+  },
+  /** Where a borrower can take the loan besides USDC on Stellar; empty on mainnet until it ships there. */
+  receive: {
+    /** EURC has no usable testnet liquidity; on only with NEXT_PUBLIC_RECEIVE_EURC=1. */
+    eurc: process.env.NEXT_PUBLIC_RECEIVE_EURC === "1",
+    soroswapRouter:
+      process.env.NEXT_PUBLIC_SOROSWAP_ROUTER_ID ?? (deployTarget === "mainnet" ? "" : TESTNET_SOROSWAP_ROUTER),
+    /** The native XLM Stellar Asset Contract. */
+    xlmToken: process.env.NEXT_PUBLIC_XLM_TOKEN_ID ?? (deployTarget === "mainnet" ? "" : TESTNET_XLM_SAC),
+    cctp: {
+      tokenMessengerMinter:
+        process.env.NEXT_PUBLIC_CCTP_TOKEN_MESSENGER_MINTER_ID ?? (deployTarget === "mainnet" ? "" : TESTNET_CCTP_TMM),
+      irisUrl:
+        process.env.NEXT_PUBLIC_CCTP_IRIS_URL ??
+        (deployTarget === "mainnet" ? "https://iris-api.circle.com" : "https://iris-api-sandbox.circle.com"),
+      destination: {
+        name: deployTarget === "mainnet" ? "Base" : "Base Sepolia",
+        domain: 6,
+        explorerUrl: deployTarget === "mainnet" ? "https://basescan.org" : "https://sepolia.basescan.org",
+      },
+    },
   },
   services: {
     relayerUrl: process.env.NEXT_PUBLIC_RELAYER_URL ?? "",
@@ -167,11 +192,6 @@ export const config = {
     ),
     /** Average Bitcoin block time, minutes - used only for the ETA estimate shown while waiting for confirmations. */
     avgBlockMinutes: 10,
-  },
-  /** Receive-as options that stay off until they can be delivered on this deployment. */
-  receive: {
-    /** EURC has no usable testnet liquidity; on only with NEXT_PUBLIC_RECEIVE_EURC=1. */
-    eurc: process.env.NEXT_PUBLIC_RECEIVE_EURC === "1",
   },
   /**
    * Pollar publishable key for email, Google and GitHub sign-in. Pollar holds

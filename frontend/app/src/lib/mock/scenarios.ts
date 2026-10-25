@@ -34,7 +34,7 @@ import type {
   Scenario,
   TxLifecycleId,
 } from "./types";
-import type { CctpStatus } from "@/lib/receive/cctp";
+import type { CctpStatus } from "@/lib/receive/cctpApi";
 
 /**
  * Mock harness scenarios, one per screen state ID. Select one

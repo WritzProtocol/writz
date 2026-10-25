@@ -1,6 +1,7 @@
-import type { CctpApi, CctpStatus } from "./cctp";
+import type { CctpApi, CctpStatus } from "./cctpApi";
 import type { TimelineApi, TimelineEvent } from "./timeline";
-import { DEFAULT_SLIPPAGE_BP, minOutFor, type SwapApi } from "./swap";
+import { DEFAULT_SLIPPAGE_BP } from "./swap";
+import { minOutFor, type SwapApi } from "./swapApi";
 
 /**
  * Harness implementations for the mock scenarios (`/dev/scenarios`, only with

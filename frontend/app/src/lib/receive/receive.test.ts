@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { cctpSettled, cctpSteps } from "./cctp";
+import { cctpSettled, cctpSteps } from "./cctpApi";
 import { clientTimeline } from "./clientTimeline";
 import { parseEvmAddress, receiveOptions } from "./options";
 import { stepperView } from "./stepper";
-import { formatBp, minOutFor, quoteFresh, type SwapQuote } from "./swap";
+import { formatBp, minOutFor, quoteFresh, type SwapQuote } from "./swapApi";
 import { orderTimeline, timelineRows, type TimelineEvent } from "./timeline";
 import type { Position } from "@/lib/position/types";
 
@@ -104,6 +104,11 @@ describe("cctpSteps", () => {
     expect(arrived.map((s) => s.state)).toEqual(["done", "done", "done"]);
     expect(arrived[0]!.tx).toEqual({ chain: "stellar", hash: "b" });
     expect(arrived[2]!.tx).toEqual({ chain: "base-sepolia", hash: "m" });
+  });
+
+  test("Circle confirmed, waiting for the mint", () => {
+    expect(cctpSteps("b", { kind: "confirmed" }).map((s) => s.state)).toEqual(["done", "done", "now"]);
+    expect(cctpSettled({ kind: "confirmed" })).toBe(false);
   });
 
   test("labels stay in plain language", () => {

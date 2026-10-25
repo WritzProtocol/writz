@@ -439,6 +439,8 @@ export function CctpProgress({ burnHash, status }: { burnHash: string; status: C
         </Notice>
       ) : status?.kind === "arrived" ? (
         <p className="wz-hint">Arrived on Base Sepolia. Testnet USDC.</p>
+      ) : status?.kind === "confirmed" ? (
+        <p className="wz-hint">Circle confirmed the transfer. The USDC is being delivered on Base Sepolia.</p>
       ) : (
         <p className="wz-hint">Circle usually confirms within a few minutes. You can leave this page; the transfer continues.</p>
       )}
