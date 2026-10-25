@@ -9,11 +9,14 @@ import {
   type DepositRecord,
   type LedgerEntriesServer,
 } from "../lend/deposit-reads.js";
+import { checkDepositSubmission, type SubmissionCheck, type TransactionLookupServer } from "../lend/deposit-submission.js";
 import { TtlCache } from "../proof-cache.js";
 import { rateLimit } from "../rate-limit.js";
 import { config } from "../config.js";
 
 const TXID_RE = /^[0-9a-f]{64}$/i;
+/** A Stellar transaction hash is also 32 bytes of hex. */
+const STELLAR_TX_RE = TXID_RE;
 
 /**
  * How long one answer per txid is shared. A deposit card polls every few
@@ -27,11 +30,33 @@ const INDEX_FRESH_MS = 5_000;
 const LIGHT_CLIENT_TIP_TTL_MS = 5_000;
 /** Retry hint for a 503 when an upstream is unavailable. */
 const UPSTREAM_RETRY_AFTER_SECONDS = 10;
+/**
+ * How long a `stellarTx` the RPC does not hold yet is still reported as
+ * `submitted`, from the first request that named it. The SDK builds the
+ * deposit with a 300 s time bound, so a transaction not in a ledger by then
+ * can no longer land; one more minute covers RPC ingestion lag.
+ */
+export const SUBMISSION_WINDOW_MS = 360_000;
+/** How long the first sighting of a pending `stellarTx` is remembered; well past the window. */
+const FIRST_SEEN_TTL_MS = 24 * 60 * 60 * 1000;
 
-export type DepositStage = "unseen" | "mempool" | "confirming" | "ready" | "verified";
+export type DepositStage = "unseen" | "mempool" | "confirming" | "ready" | "submitted" | "verified" | "failed";
 
 /** Whether writz-lend registered the deposit, and the transaction that did when it is still visible. */
 export type Registration = { registered: false } | { registered: true; record: DepositRecord | null };
+
+/** What Stellar says about the `stellarTx` the caller named, after it was matched to this deposit. */
+export interface DepositSubmission {
+  stellarTxHash: string;
+  /** `not_found`: not in a ledger the RPC holds (in flight, dropped, or never sent). */
+  status: "not_found" | "success" | "failed";
+  ledger: number | null;
+  closedAt: string | null;
+  /** For `failed`: the `WritzLendError` name, or the Soroban or result code when the contract did not return one. */
+  reason: string | null;
+  /** For `failed` with a contract error: its numeric code. */
+  errorCode: number | null;
+}
 
 export interface DepositStatus {
   txid: string;
@@ -44,6 +69,8 @@ export interface DepositStatus {
   stellarTxHash: string | null;
   ledger: number | null;
   verifiedAt: string | null;
+  /** Null unless the request named a `stellarTx`. */
+  submission: DepositSubmission | null;
 }
 
 export interface DepositStatusRouterDeps {
@@ -54,6 +81,11 @@ export interface DepositStatusRouterDeps {
   required: () => Promise<number>;
   /** Takes the txid in internal byte order, as writz-lend keys it. */
   registration: (txidInternal: string) => Promise<Registration>;
+  /**
+   * Reads a Stellar transaction and checks it is a writz-lend `deposit` for
+   * this txid (internal byte order).
+   */
+  submission: (txidInternal: string, stellarTxHash: string) => Promise<SubmissionCheck>;
   /** bitcoin-spv's best-tip height; undefined when unknown. */
   lightClientTip: () => Promise<number | undefined>;
   /** Builds the deposit index ahead of the first request; see `warm` on the router. */
@@ -80,7 +112,7 @@ function defaultDeps(): DepositStatusRouterDeps {
 
   // Built on first use: @stellar/stellar-sdk is required lazily (see
   // repay-watcher/poller.ts), and a relayer without WRITZ_LEND_ID never needs it.
-  let server: (DepositEventsServer & LedgerEntriesServer) | undefined;
+  let server: (DepositEventsServer & LedgerEntriesServer & TransactionLookupServer) | undefined;
   let index: DepositIndex | undefined;
   const rpcServer = () => {
     if (!server) {
@@ -88,7 +120,7 @@ function defaultDeps(): DepositStatusRouterDeps {
       const { rpc } = require("@stellar/stellar-sdk") as typeof import("@stellar/stellar-sdk");
       server = new rpc.Server(config.stellarRpcUrl, {
         allowHttp: config.stellarRpcUrl.startsWith("http://"),
-      }) as unknown as DepositEventsServer & LedgerEntriesServer;
+      }) as unknown as DepositEventsServer & LedgerEntriesServer & TransactionLookupServer;
     }
     return server;
   };
@@ -129,6 +161,8 @@ function defaultDeps(): DepositStatusRouterDeps {
       await depositIndex().refresh(true);
       return { registered: true, record: (await depositIndex().lookup(txidInternal)) ?? null };
     },
+    submission: (txidInternal, stellarTxHash) =>
+      checkDepositSubmission(rpcServer(), contractId, txidInternal, stellarTxHash),
     lightClientTip: cachedTipReader(readLightClientTipHeight, LIGHT_CLIENT_TIP_TTL_MS),
     warm: () => (contractId ? depositIndex().refresh() : Promise.resolve()),
     notConfiguredReason: contractId ? null : "WRITZ_LEND_ID is not set on this relayer",
@@ -138,6 +172,14 @@ function defaultDeps(): DepositStatusRouterDeps {
   };
 }
 
+/** The `stellarTx` exists on Stellar but is not a writz-lend `deposit` for the requested txid. */
+class StellarTxMismatchError extends Error {
+  constructor() {
+    super("stellarTx is not a writz-lend deposit call for this txid");
+    this.name = "StellarTxMismatchError";
+  }
+}
+
 class StellarUnavailableError extends Error {
   constructor(cause: unknown) {
     super(cause instanceof Error ? cause.message : String(cause));
@@ -145,14 +187,49 @@ class StellarUnavailableError extends Error {
   }
 }
 
+/** A named `stellarTx`, and when this process first saw it named for this deposit. */
+interface SubmissionQuery {
+  hash: string;
+  /** Milliseconds since the first request that named it; 0 on that request. */
+  elapsedMs: number;
+}
+
+function submissionView(hash: string, check: SubmissionCheck): DepositSubmission {
+  if (check.status === "not_found" || check.status === "mismatch") {
+    return { stellarTxHash: hash, status: "not_found", ledger: null, closedAt: null, reason: null, errorCode: null };
+  }
+  const failed = check.status === "failed";
+  return {
+    stellarTxHash: hash,
+    status: check.status,
+    ledger: check.ledger,
+    closedAt: check.closedAt,
+    reason: failed ? check.reason : null,
+    errorCode: failed ? check.errorCode : null,
+  };
+}
+
 /**
  * Reads both chains and says where the deposit is. Stellar first decides
  * whether it is verified; Bitcoin says how far it is otherwise. A verified
  * deposit is still answered when Bitcoin cannot be read, with the Bitcoin
  * fields null, because the Stellar transaction is the fact the caller needs.
+ *
+ * With a `stellarTx`, the Stellar side also reads that transaction, and a
+ * deposit not registered yet can be `submitted` or `failed`. `verified` still
+ * comes only from the registration.
  */
-async function computeStatus(deps: DepositStatusRouterDeps, txid: string): Promise<DepositStatus> {
-  const stellar = Promise.all([deps.required(), deps.registration(toInternalTxid(txid))]).catch((err: unknown) => {
+async function computeStatus(
+  deps: DepositStatusRouterDeps,
+  txid: string,
+  query: SubmissionQuery | null,
+): Promise<DepositStatus> {
+  const txidInternal = toInternalTxid(txid);
+  const stellar = Promise.all([
+    deps.required(),
+    deps.registration(txidInternal),
+    query ? deps.submission(txidInternal, query.hash) : Promise.resolve(null),
+  ]).catch((err: unknown) => {
     throw new StellarUnavailableError(err);
   });
   const bitcoin = deps.bitcoinTx(txid).then(async (tx) => ({
@@ -161,14 +238,24 @@ async function computeStatus(deps: DepositStatusRouterDeps, txid: string): Promi
   }));
   const [stellarResult, bitcoinResult] = await Promise.allSettled([stellar, bitcoin]);
   if (stellarResult.status === "rejected") throw stellarResult.reason;
-  const [required, registration] = stellarResult.value;
+  const [required, registration, check] = stellarResult.value;
+  // Checked before anything else is answered: a hash that is on chain but
+  // deposits something else (or nothing) must not lend its state to this txid.
+  if (check?.status === "mismatch") throw new StellarTxMismatchError();
+  const submission = query && check ? submissionView(query.hash, check) : null;
 
   const record = registration.registered ? registration.record : null;
-  const verified = {
+  // A successful `deposit` for this txid is the registering transaction (a
+  // second one fails with PositionAlreadyExists), so it fills the hash when
+  // the event index has not caught up or the event is past its retention.
+  let verified = {
     stellarTxHash: record?.stellarTxHash ?? null,
     ledger: record?.ledger ?? null,
     verifiedAt: record?.ledgerClosedAt ?? null,
   };
+  if (registration.registered && !record && check?.status === "success" && query) {
+    verified = { stellarTxHash: query.hash, ledger: check.ledger, verifiedAt: check.closedAt };
+  }
 
   if (bitcoinResult.status === "rejected") {
     if (!registration.registered) throw bitcoinResult.reason;
@@ -181,6 +268,7 @@ async function computeStatus(deps: DepositStatusRouterDeps, txid: string): Promi
       proofReady: null,
       lightClientTipHeight: null,
       ...verified,
+      submission,
     };
   }
 
@@ -205,19 +293,39 @@ async function computeStatus(deps: DepositStatusRouterDeps, txid: string): Promi
 
   let stage: DepositStage;
   if (registration.registered) stage = "verified";
-  else if (tx === null) stage = "unseen";
+  else if (check?.status === "failed") stage = "failed";
+  // In a ledger and successful, but the registration read has not caught up.
+  else if (check?.status === "success") stage = "submitted";
+  // Not in a ledger the RPC holds, so the envelope cannot be checked. It is
+  // only believed while it could still land, and only once the Bitcoin
+  // transaction is in a block: a deposit call needs the block hash and the
+  // Merkle proof, so none can exist before that.
+  else if (check?.status === "not_found" && blockHeight !== null && query && query.elapsedMs < SUBMISSION_WINDOW_MS) {
+    stage = "submitted";
+  } else if (tx === null) stage = "unseen";
   else if (!tx.confirmed) stage = "mempool";
   else stage = proofReady ? "ready" : "confirming";
 
-  return { txid, stage, confirmations, required, blockHeight, proofReady, lightClientTipHeight, ...verified };
+  return {
+    txid,
+    stage,
+    confirmations,
+    required,
+    blockHeight,
+    proofReady,
+    lightClientTipHeight,
+    ...verified,
+    submission,
+  };
 }
 
 /**
- * GET /deposit-status/:txid
+ * GET /deposit-status/:txid[?stellarTx=<hash>]
  *
  * Where a writz-lend deposit is, from the Bitcoin transaction to its
  * registration on Stellar. `txid` is in display byte order, as explorers and
- * wallets show it.
+ * wallets show it. `stellarTx` is the hash the app got back when it submitted
+ * the `deposit` call; without it there is no `submitted` or `failed` stage.
  *
  * Success 200:
  * ```json
@@ -231,7 +339,8 @@ async function computeStatus(deps: DepositStatusRouterDeps, txid: string): Promi
  *   "lightClientTipHeight": 327911,
  *   "stellarTxHash": "...",
  *   "ledger": 5364245,
- *   "verifiedAt": "2026-10-24T12:26:52Z"
+ *   "verifiedAt": "2026-10-24T12:26:52Z",
+ *   "submission": null
  * }
  * ```
  *
@@ -244,14 +353,20 @@ async function computeStatus(deps: DepositStatusRouterDeps, txid: string): Promi
  *     headers yet (`confirmations >= required`, `proofReady: false`).
  *   - `ready`: the SPV proof can be built and the light client can verify
  *     it; nothing on Stellar has registered the deposit yet.
+ *   - `submitted` (only with `stellarTx`): the deposit call is in a ledger
+ *     and succeeded but the registration read has not caught up, or the RPC
+ *     does not hold it yet, the Bitcoin transaction is in a block, and less
+ *     than `SUBMISSION_WINDOW_MS` passed since the hash was first named.
+ *   - `failed` (only with `stellarTx`): the deposit call is in a ledger and
+ *     failed; `submission.reason` says why. A new submission is needed.
  *   - `verified`: writz-lend registered the deposit. `stellarTxHash`,
- *     `ledger` and `verifiedAt` come from its `deposit` event; they are null
+ *     `ledger` and `verifiedAt` come from its `deposit` event, or from the
+ *     successful `stellarTx` when the event is not indexed; they are null
  *     only for a deposit registered before the Stellar RPC's event retention.
  *
  * `required` is the deployment's `min_confirmations`, read from the contract.
- * A deposit transaction that is pending or failed on Stellar is not
- * observable here (it is signed and submitted by the user's wallet, and a
- * failed call emits no event), so there is no "submitted" stage.
+ * A `stellarTx` found on Stellar that is not a writz-lend `deposit` for this
+ * txid is answered `400 stellar_tx_mismatch`, whatever the stage.
  */
 export type DepositStatusRouter = Router & { cache: TtlCache<DepositStatus>; warm: () => Promise<void> };
 
@@ -260,6 +375,8 @@ export function createDepositStatusRouter(
 ): DepositStatusRouter {
   const deps: DepositStatusRouterDeps = { ...defaultDeps(), ...overrides };
   const cache = new TtlCache<DepositStatus>(1000, deps.now);
+  // Keyed by txid and hash, so a hash only ever speaks for the deposit it was named with.
+  const firstSeen = new TtlCache<number>(10_000, deps.now);
   const router = Router() as DepositStatusRouter;
   router.cache = cache;
   // The first walk of the deposit index covers the RPC's whole event window,
@@ -294,20 +411,42 @@ export function createDepositStatusRouter(
       });
       return;
     }
+    const { stellarTx } = req.query;
+    if (stellarTx !== undefined && (typeof stellarTx !== "string" || !STELLAR_TX_RE.test(stellarTx))) {
+      res.status(400).json({
+        error: "invalid_stellar_tx",
+        message: "stellarTx must be a 64-character hex Stellar transaction hash",
+      });
+      return;
+    }
     if (deps.notConfiguredReason) {
       res.status(503).json({ error: "lending_not_configured", message: deps.notConfiguredReason });
       return;
     }
 
     const normalized = txid.toLowerCase();
+    const hash = typeof stellarTx === "string" ? stellarTx.toLowerCase() : null;
+    const key = hash ? `${normalized}:${hash}` : normalized;
     try {
-      const status = await cache.getOrCompute(normalized, async () => ({
-        value: await computeStatus(deps, normalized),
-        ttlMs: STATUS_TTL_MS,
-      }));
+      const status = await cache.getOrCompute(key, async () => {
+        let query: SubmissionQuery | null = null;
+        if (hash) {
+          let since = firstSeen.get(key);
+          if (since === undefined) {
+            since = deps.now();
+            firstSeen.set(key, since, FIRST_SEEN_TTL_MS);
+          }
+          query = { hash, elapsedMs: deps.now() - since };
+        }
+        return { value: await computeStatus(deps, normalized, query), ttlMs: STATUS_TTL_MS };
+      });
       res.json(status);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
+      if (err instanceof StellarTxMismatchError) {
+        res.status(400).json({ error: "stellar_tx_mismatch", message });
+        return;
+      }
       if (err instanceof StellarUnavailableError) {
         res.setHeader("Retry-After", String(UPSTREAM_RETRY_AFTER_SECONDS));
         res.status(503).json({

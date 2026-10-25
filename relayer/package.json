@@ -9,7 +9,7 @@
     "lint": "eslint .",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:bun": "bun test test/insert-auth.bun.test.ts test/tree-decode.bun.test.ts test/faucet-store.bun.test.ts test/deposit-reads.bun.test.ts test/cctp-relay-store.bun.test.ts",
+    "test:bun": "bun test test/insert-auth.bun.test.ts test/tree-decode.bun.test.ts test/faucet-store.bun.test.ts test/deposit-reads.bun.test.ts test/deposit-submission.bun.test.ts test/cctp-relay-store.bun.test.ts",
     "test:e2e": "bun test test/earn-cycle.e2e.test.ts",
     "check:tree-archive": "bun scripts/check-tree-archive.ts",
     "rebuild-tree": "bun src/tree-rebuild/cli.ts",
