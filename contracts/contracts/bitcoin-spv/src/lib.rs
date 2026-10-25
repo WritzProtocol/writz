@@ -15,7 +15,7 @@ pub use error::SPVError;
 pub use spv_types::SpvVerificationResult;
 pub use types::{BestTip, Checkpoint, Config, HeaderEntry};
 
-use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, Vec, U256};
+use soroban_sdk::{contract, contractimpl, panic_with_error, Address, Bytes, BytesN, Env, Vec, U256};
 
 use crate::crypto::sha256d;
 use crate::difficulty::{
@@ -24,9 +24,10 @@ use crate::difficulty::{
 use crate::header::{bits_of, hash_header, merkle_root_of, prev_hash_of, time_of};
 use crate::merkle::verify_merkle_inclusion;
 use crate::storage::{
-    get_best_tip, get_canonical, get_checkpoint, get_config, get_header, set_best_tip,
-    set_canonical, set_checkpoint, set_config, set_header,
+    get_best_tip, get_canonical, get_checkpoint, get_config, get_header, header_ttl,
+    set_best_tip, set_canonical, set_checkpoint, set_config, set_header,
 };
+pub use crate::storage::{LEDGERS_PER_DAY, MAX_ENTRY_TTL_LEDGERS, MIN_ENTRY_TTL_LEDGERS};
 
 /// Most headers one `submit_headers` call accepts. Keeps the call inside
 /// Soroban's per-transaction ledger-entry write limit.
@@ -63,14 +64,37 @@ impl BitcoinSpvContract {
     /// `pow_limit_bits` is the tracked network's compact proof-of-work limit
     /// (mainnet `0x1d00ffff`, signet `0x1e0377ae`). Header submission starts
     /// permissionless; call `set_submitter` to restrict it.
-    pub fn __constructor(env: Env, admin: Address, pow_limit_bits: u32) {
+    ///
+    /// `header_ttl_ledgers` is how long each stored header and its
+    /// height-index entry are kept live, and `consumed_ttl_ledgers` how long
+    /// each consumed-deposit marker is, in ledgers from when the entry is
+    /// written or last topped up. The transaction that creates one pays rent
+    /// for its window: 1,555,200 (90 days) for both on mainnet; a short
+    /// window where rent is priced high (testnet). Both must lie in
+    /// `MIN_ENTRY_TTL_LEDGERS..=MAX_ENTRY_TTL_LEDGERS`. An entry that
+    /// outlives its window is archived, not deleted, and is restored before
+    /// any call can read it again, so neither window weakens the duplicate
+    /// deposit guard.
+    pub fn __constructor(
+        env: Env,
+        admin: Address,
+        pow_limit_bits: u32,
+        header_ttl_ledgers: u32,
+        consumed_ttl_ledgers: u32,
+    ) {
         bits_to_target(&env, pow_limit_bits).expect("invalid pow_limit_bits");
+        let ttl_bounds = MIN_ENTRY_TTL_LEDGERS..=MAX_ENTRY_TTL_LEDGERS;
+        if !ttl_bounds.contains(&header_ttl_ledgers) || !ttl_bounds.contains(&consumed_ttl_ledgers) {
+            panic_with_error!(&env, SPVError::InvalidEntryTtl);
+        }
         set_config(
             &env,
             &Config {
                 admin,
                 pow_limit_bits,
                 submitter: None,
+                header_ttl_ledgers,
+                consumed_ttl_ledgers,
             },
         );
     }
@@ -119,6 +143,7 @@ impl BitcoinSpvContract {
                 set_at_ledger: env.ledger().sequence(),
             },
         );
+        let ttl = config.header_ttl_ledgers;
         set_header(
             &env,
             &block_hash,
@@ -131,8 +156,9 @@ impl BitcoinSpvContract {
                 period_start_time,
                 chainwork: U256::from_u32(&env, 0),
             },
+            ttl,
         );
-        set_canonical(&env, height, &block_hash);
+        set_canonical(&env, height, &block_hash, ttl);
         set_best_tip(
             &env,
             &BestTip {
@@ -168,13 +194,14 @@ impl BitcoinSpvContract {
     /// Called by each lending contract's `deposit` after its own checks.
     pub fn consume_deposit(env: Env, consumer: Address, txid: BytesN<32>) -> Result<(), SPVError> {
         consumer.require_auth();
+        let config = get_config(&env).ok_or(SPVError::NotInitialized)?;
         if !storage::is_consumer(&env, &consumer) {
             return Err(SPVError::NotAConsumer);
         }
         if storage::is_consumed(&env, &txid) {
             return Err(SPVError::TxidAlreadyConsumed);
         }
-        storage::set_consumed(&env, &txid);
+        storage::set_consumed(&env, &txid, config.consumed_ttl_ledgers);
         Ok(())
     }
 
@@ -231,12 +258,12 @@ impl BitcoinSpvContract {
 
     /// Returns the stored header for `block_hash`, if any.
     pub fn get_header(env: Env, block_hash: BytesN<32>) -> Option<HeaderEntry> {
-        get_header(&env, &block_hash)
+        get_header(&env, &block_hash, header_ttl(&env))
     }
 
     /// Returns the most-work chain's block hash at `height`, if known.
     pub fn get_canonical_hash(env: Env, height: u32) -> Option<BytesN<32>> {
-        get_canonical(&env, height)
+        get_canonical(&env, height, header_ttl(&env))
     }
 
     /// Extends the TTL of the Config, Checkpoint and best-tip entries.
@@ -275,16 +302,17 @@ impl BitcoinSpvContract {
 
         let pow_limit = bits_to_target(&env, config.pow_limit_bits)?;
         let now = env.ledger().timestamp();
+        let ttl = config.header_ttl_ledgers;
 
         let mut last: Option<(BytesN<32>, HeaderEntry)> = None;
         for header in headers.iter() {
             let hash = hash_header(&env, &header);
-            if let Some(existing) = get_header(&env, &hash) {
+            if let Some(existing) = get_header(&env, &hash, ttl) {
                 last = Some((hash, existing));
                 continue;
             }
 
-            let parent = get_header(&env, &prev_hash_of(&env, &header))
+            let parent = get_header(&env, &prev_hash_of(&env, &header), ttl)
                 .ok_or(SPVError::UnknownParent)?;
 
             validate_proof_of_work(&env, &header)?;
@@ -314,7 +342,7 @@ impl BitcoinSpvContract {
                 },
                 chainwork: parent.chainwork.add(&work),
             };
-            set_header(&env, &hash, &entry);
+            set_header(&env, &hash, &entry, ttl);
             last = Some((hash, entry));
         }
 
@@ -325,14 +353,14 @@ impl BitcoinSpvContract {
             let mut hash = tip_hash.clone();
             let mut entry = tip_entry.clone();
             let mut rewritten = 0u32;
-            while get_canonical(&env, entry.height).as_ref() != Some(&hash) {
+            while get_canonical(&env, entry.height, ttl).as_ref() != Some(&hash) {
                 rewritten += 1;
                 if rewritten > MAX_REORG_DEPTH {
                     return Err(SPVError::ReorgTooDeep);
                 }
-                set_canonical(&env, entry.height, &hash);
+                set_canonical(&env, entry.height, &hash, ttl);
                 let parent_hash = entry.prev.clone();
-                entry = get_header(&env, &parent_hash).ok_or(SPVError::UnknownParent)?;
+                entry = get_header(&env, &parent_hash, ttl).ok_or(SPVError::UnknownParent)?;
                 hash = parent_hash;
             }
             best = BestTip {
@@ -400,17 +428,17 @@ impl BitcoinSpvContract {
             return Err(SPVError::AmbiguousTransactionLength);
         }
 
-        get_config(&env).ok_or(SPVError::NotInitialized)?;
+        let ttl = get_config(&env).ok_or(SPVError::NotInitialized)?.header_ttl_ledgers;
         let checkpoint = get_checkpoint(&env).ok_or(SPVError::CheckpointNotSet)?;
 
-        let entry = get_header(&env, &block_hash).ok_or(SPVError::HeaderNotFound)?;
+        let entry = get_header(&env, &block_hash, ttl).ok_or(SPVError::HeaderNotFound)?;
         if entry.height <= checkpoint.height {
             return Err(SPVError::BlockNotAfterCheckpoint);
         }
 
         let best = get_best_tip(&env).ok_or(SPVError::CheckpointNotSet)?;
         if entry.height > best.height
-            || get_canonical(&env, entry.height).as_ref() != Some(&block_hash)
+            || get_canonical(&env, entry.height, ttl).as_ref() != Some(&block_hash)
         {
             return Err(SPVError::NotOnBestChain);
         }

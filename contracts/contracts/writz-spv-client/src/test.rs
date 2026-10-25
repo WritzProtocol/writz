@@ -111,7 +111,10 @@ fn client_calls_the_real_contract() {
     let env = Env::default();
     env.mock_all_auths();
     let admin = Address::generate(&env);
-    let id = env.register(BitcoinSpvContract, (admin.clone(), EASY_BITS));
+    let id = env.register(
+        BitcoinSpvContract,
+        (admin.clone(), EASY_BITS, 90 * 17_280u32, 90 * 17_280u32),
+    );
     let spv = BitcoinSpvClient::new(&env, &id);
 
     assert_eq!(spv.get_best_tip(), None);

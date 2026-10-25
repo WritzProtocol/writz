@@ -104,4 +104,7 @@ pub enum SPVError {
     TxidAlreadyConsumed = 26,
     /// The caller is not a registered lending consumer.
     NotAConsumer = 27,
+    /// A constructor `header_ttl_ledgers` or `consumed_ttl_ledgers` is
+    /// outside `MIN_ENTRY_TTL_LEDGERS..=MAX_ENTRY_TTL_LEDGERS`.
+    InvalidEntryTtl = 28,
 }

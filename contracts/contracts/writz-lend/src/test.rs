@@ -269,12 +269,18 @@ struct Setup {
 /// Mainnet deposit parameters, the ones every test runs under unless it says otherwise.
 const MAINNET_MIN_CONFIRMATIONS: u32 = 6;
 const MAINNET_MIN_DEPOSIT_SATS: u64 = 100_000;
+/// Mainnet per-user entry window: 180 days, the network maximum.
+const MAINNET_ENTRY_TTL: u32 = crate::MAX_ENTRY_TTL_LEDGERS;
 
 fn setup() -> Setup {
     setup_with(MAINNET_MIN_CONFIRMATIONS, MAINNET_MIN_DEPOSIT_SATS)
 }
 
 fn setup_with(min_confirmations: u32, min_deposit_satoshis: u64) -> Setup {
+    setup_full(min_confirmations, min_deposit_satoshis, MAINNET_ENTRY_TTL)
+}
+
+fn setup_full(min_confirmations: u32, min_deposit_satoshis: u64, entry_ttl_ledgers: u32) -> Setup {
     let env = Env::default();
     env.mock_all_auths();
     env.ledger().set_sequence_number(1_000);
@@ -311,6 +317,7 @@ fn setup_with(min_confirmations: u32, min_deposit_satoshis: u64) -> Setup {
             fake_protocol_pubkey(&env),
             min_confirmations,
             min_deposit_satoshis,
+            entry_ttl_ledgers,
         ),
     );
     let client = WritzLendContractClient::new(&env, &pl);
@@ -518,16 +525,20 @@ fn constructor_rejects_protocol_pubkey_that_is_not_compressed() {
     buf[0] = 0x05;
     env.register(
         WritzLendContract,
-        (a.clone(), a.clone(), a.clone(), a.clone(), a.clone(), a.clone(), BytesN::<33>::from_array(&env, &buf), 6u32, 100_000u64),
+        (a.clone(), a.clone(), a.clone(), a.clone(), a.clone(), a.clone(), BytesN::<33>::from_array(&env, &buf), 6u32, 100_000u64, MAINNET_ENTRY_TTL),
     );
 }
 
 fn register_with_deposit_params(min_confirmations: u32, min_deposit_satoshis: u64) {
+    register_with_params(min_confirmations, min_deposit_satoshis, MAINNET_ENTRY_TTL);
+}
+
+fn register_with_params(min_confirmations: u32, min_deposit_satoshis: u64, entry_ttl_ledgers: u32) {
     let env = Env::default();
     let a = Address::generate(&env);
     env.register(
         WritzLendContract,
-        (a.clone(), a.clone(), a.clone(), a.clone(), a.clone(), a.clone(), fake_protocol_pubkey(&env), min_confirmations, min_deposit_satoshis),
+        (a.clone(), a.clone(), a.clone(), a.clone(), a.clone(), a.clone(), fake_protocol_pubkey(&env), min_confirmations, min_deposit_satoshis, entry_ttl_ledgers),
     );
 }
 
@@ -1860,4 +1871,214 @@ fn liquidation_keeps_the_pool_solvent_and_the_lender_gains() {
     assert!(s.client.get_supply_balance(&s.supplier) > supply);
     let v = s.client.get_supply_balance(&s.supplier);
     s.client.withdraw_supply(&s.supplier, &v);
+}
+
+// ── Storage TTL windows ──────────────────────────────────────────────────────
+//
+// The test host models protocol 23 state archival: a persistent entry past
+// its `live_until` ledger is archived, and the next call that touches it
+// restores it (unchanged, at the network's minimum TTL) before the contract
+// runs, as the RPC's auto-restore does on chain. These tests advance the
+// ledger past an entry's window and check that every path sees the entry
+// as it was, never as absent.
+
+/// Testnet's state-archival settings (`configSettingStateArchival`).
+const TESTNET_MIN_PERSISTENT_TTL: u32 = 120_960;
+const TESTNET_MAX_ENTRY_TTL: u32 = 3_110_400;
+/// The window testnet runs: the network minimum, 7 days.
+const TESTNET_ENTRY_TTL: u32 = 7 * crate::LEDGERS_PER_DAY;
+
+fn setup_testnet_ttl() -> Setup {
+    let s = setup_full(1, 5_000, TESTNET_ENTRY_TTL);
+    s.env.ledger().with_mut(|li| {
+        li.min_persistent_entry_ttl = TESTNET_MIN_PERSISTENT_TTL;
+        li.max_entry_ttl = TESTNET_MAX_ENTRY_TTL;
+    });
+    s
+}
+
+fn ttl_of(s: &Setup, key: &crate::storage::DataKey) -> u32 {
+    use soroban_sdk::testutils::storage::Persistent as _;
+    s.env.as_contract(&s.client.address, || s.env.storage().persistent().get_ttl(key))
+}
+
+fn position_ttl(s: &Setup, txid: &BytesN<32>) -> u32 {
+    ttl_of(s, &crate::storage::DataKey::Position(txid.clone()))
+}
+
+/// Advances past the end of `key`'s TTL, so the entry is archived.
+fn archive(s: &Setup, key: &crate::storage::DataKey) {
+    let ttl = ttl_of(s, key);
+    advance(s, ttl + 1);
+}
+
+fn advance(s: &Setup, ledgers: u32) {
+    let seq = s.env.ledger().sequence();
+    s.env.ledger().set_sequence_number(seq + ledgers);
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #28)")]
+fn constructor_rejects_an_entry_ttl_below_the_floor() {
+    register_with_params(6, 100_000, crate::MIN_ENTRY_TTL_LEDGERS - 1);
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #28)")]
+fn constructor_rejects_an_entry_ttl_above_the_network_maximum() {
+    register_with_params(6, 100_000, crate::MAX_ENTRY_TTL_LEDGERS + 1);
+}
+
+#[test]
+fn constructor_accepts_the_entry_ttl_bounds() {
+    register_with_params(6, 100_000, crate::MIN_ENTRY_TTL_LEDGERS);
+    register_with_params(6, 100_000, crate::MAX_ENTRY_TTL_LEDGERS);
+}
+
+#[test]
+fn mainnet_window_keeps_a_new_position_for_180_days() {
+    let s = setup();
+    let txid = do_deposit(&s);
+    assert_eq!(position_ttl(&s, &txid), crate::MAX_ENTRY_TTL_LEDGERS);
+}
+
+#[test]
+fn testnet_window_creates_a_position_at_the_network_minimum() {
+    let s = setup_testnet_ttl();
+    let txid = do_deposit(&s);
+    // A new entry lives for the network minimum; the 7-day window adds
+    // nothing on top, so the deposit pays no rent beyond it.
+    assert!(position_ttl(&s, &txid) <= TESTNET_ENTRY_TTL);
+    assert!(position_ttl(&s, &txid) >= TESTNET_MIN_PERSISTENT_TTL - 1);
+}
+
+#[test]
+fn refresh_position_ttl_extends_to_the_full_window() {
+    let s = setup_testnet_ttl();
+    let txid = do_deposit(&s);
+    advance(&s, 50_000);
+    assert!(position_ttl(&s, &txid) < TESTNET_ENTRY_TTL);
+    // A threshold of 0 never extends: this would stay where it is.
+    assert!(s.client.refresh_position_ttl(&txid));
+    assert_eq!(position_ttl(&s, &txid), TESTNET_ENTRY_TTL);
+}
+
+#[test]
+fn refresh_position_ttl_extends_on_mainnet_too() {
+    let s = setup();
+    let txid = do_deposit(&s);
+    advance(&s, 1_000_000);
+    assert_eq!(position_ttl(&s, &txid), crate::MAX_ENTRY_TTL_LEDGERS - 1_000_000);
+    assert!(s.client.refresh_position_ttl(&txid));
+    assert_eq!(position_ttl(&s, &txid), crate::MAX_ENTRY_TTL_LEDGERS);
+}
+
+#[test]
+fn refresh_supply_balance_and_release_psbt_ttl_extend_to_the_full_window() {
+    let s = setup_testnet_ttl();
+    s.client.supply_usdc(&s.supplier, &1_000_i128);
+    let txid = do_deposit(&s);
+    s.client.publish_release_psbt(&s.relayer, &txid, &Bytes::from_slice(&s.env, &[0xaa; 260]));
+    advance(&s, 50_000);
+
+    let bal_key = crate::storage::DataKey::SupplyBalance(s.supplier.clone());
+    let psbt_key = crate::storage::DataKey::ReleasePsbt(txid.clone());
+    assert!(ttl_of(&s, &bal_key) < TESTNET_ENTRY_TTL);
+    assert!(ttl_of(&s, &psbt_key) < TESTNET_ENTRY_TTL);
+
+    assert!(s.client.refresh_supply_balance_ttl(&s.supplier));
+    assert!(s.client.refresh_release_psbt_ttl(&txid));
+    assert_eq!(ttl_of(&s, &bal_key), TESTNET_ENTRY_TTL);
+    assert_eq!(ttl_of(&s, &psbt_key), TESTNET_ENTRY_TTL);
+}
+
+#[test]
+fn refresh_protocol_ttl_extends_config_and_protocol() {
+    let s = setup();
+    s.client.supply_usdc(&s.supplier, &1_000_i128);
+    advance(&s, 1_000_000);
+    let window = 90 * crate::LEDGERS_PER_DAY;
+    assert!(ttl_of(&s, &crate::storage::DataKey::Config) < window);
+    assert!(ttl_of(&s, &crate::storage::DataKey::Protocol) < window);
+    s.client.refresh_protocol_ttl();
+    assert_eq!(ttl_of(&s, &crate::storage::DataKey::Config), window);
+    assert_eq!(ttl_of(&s, &crate::storage::DataKey::Protocol), window);
+}
+
+#[test]
+fn borrowing_tops_up_a_position_near_the_end_of_its_window() {
+    let s = setup_testnet_ttl();
+    let txid = setup_with_supply_and_deposit(&s, 10_000_000_000_i128);
+
+    // Early in the window a borrow pays no rent: the TTL is left alone.
+    advance(&s, 10_000);
+    let before = position_ttl(&s, &txid);
+    s.client.borrow(&s.depositor, &txid, &100_000_000_i128);
+    assert_eq!(position_ttl(&s, &txid), before);
+
+    // Inside the last third, the next touch extends it back to the window.
+    advance(&s, TESTNET_MIN_PERSISTENT_TTL - 10_000 - TESTNET_ENTRY_TTL / 3 + 100);
+    assert!(position_ttl(&s, &txid) < TESTNET_ENTRY_TTL / 3);
+    s.client.borrow(&s.depositor, &txid, &100_000_000_i128);
+    assert_eq!(position_ttl(&s, &txid), TESTNET_ENTRY_TTL);
+}
+
+#[test]
+fn an_archived_position_is_restored_never_read_as_absent() {
+    let s = setup_testnet_ttl();
+    let txid = setup_with_supply_and_deposit(&s, 10_000_000_000_i128);
+    let debt = 1_000_000_000_i128;
+    s.client.borrow(&s.depositor, &txid, &debt);
+
+    // Past the window: the position is archived.
+    archive(&s, &crate::storage::DataKey::Position(txid.clone()));
+
+    // The duplicate guard holds: the same txid cannot open a second position.
+    let again = s.client.try_deposit(
+        &s.depositor,
+        &fake_block_hash(&s.env),
+        &fake_proof(&s.env),
+        &0u32,
+        &s.raw_tx,
+        &s.spk,
+        &TEST_TIMELOCK,
+        &fake_user_pubkey(&s.env),
+        &sign_deposit(&s),
+    );
+    assert_eq!(again, Err(Ok(WritzLendError::PositionAlreadyExists)));
+
+    // The loan comes back as it was, debt included, and can be repaid.
+    let pos = s.client.get_position(&txid).unwrap();
+    assert_eq!(pos.status, PositionStatus::Active);
+    assert!(pos.usdc_debt >= debt);
+    archive(&s, &crate::storage::DataKey::Position(txid.clone()));
+    StellarAssetClient::new(&s.env, &s.usdc).mint(&s.depositor, &debt);
+    s.client.repay(&s.depositor, &txid, &(debt / 2));
+    assert!(s.client.get_position(&txid).unwrap().usdc_debt > 0);
+}
+
+#[test]
+fn an_archived_release_psbt_stays_readable_until_the_release() {
+    let s = setup_testnet_ttl();
+    let txid = do_deposit(&s);
+    archive(&s, &crate::storage::DataKey::Position(txid.clone()));
+    // The position was archived; the relayer can still publish against it.
+    let psbt = Bytes::from_slice(&s.env, &[0x70; 260]);
+    s.client.publish_release_psbt(&s.relayer, &txid, &psbt);
+    // Past the PSBT's own window it is archived, and comes back unchanged.
+    archive(&s, &crate::storage::DataKey::ReleasePsbt(txid.clone()));
+    assert_eq!(s.client.get_release_psbt(&txid), Some(psbt));
+}
+
+#[test]
+fn an_archived_supply_balance_is_withdrawn_in_full() {
+    let s = setup_testnet_ttl();
+    let amount = 5_000_000_000_i128;
+    s.client.supply_usdc(&s.supplier, &amount);
+    archive(&s, &crate::storage::DataKey::SupplyBalance(s.supplier.clone()));
+    // Not read as zero: the whole balance is still there to withdraw.
+    let value = s.client.get_supply_balance(&s.supplier);
+    assert_eq!(value, amount);
+    s.client.withdraw_supply(&s.supplier, &value);
+    assert_eq!(s.client.get_supply_balance(&s.supplier), 0);
 }
