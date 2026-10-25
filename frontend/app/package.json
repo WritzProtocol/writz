@@ -15,7 +15,7 @@
     "@noble/hashes": "^2.2.0",
     "@pollar/core": "0.11.5",
     "@pollar/react": "0.11.5",
-    "@stellar/stellar-sdk": "^16.0.1",
+    "@stellar/stellar-sdk": "^16.4.1",
     "bitcoinjs-lib": "^6.1.7",
     "framer-motion": "^12.43.0",
     "lucide-react": "^1.28.0",
