@@ -102,7 +102,7 @@ The full list, including the codes of `submit_headers` and the admin functions, 
 
 | Package | Registry | For | Status |
 |---|---|---|---|
-| [`@writz/sdk`](https://github.com/WritzProtocol/writz/tree/main/packages/sdk) | npm | TypeScript in the browser, Node or Bun: testnet preset, relayer client with typed errors and `Retry-After`, `bitcoin-spv` and `writz-lend` clients | Release pending: not on npm yet |
+| [`@writz/sdk`](https://github.com/WritzProtocol/writz/tree/main/packages/sdk) | npm | TypeScript in the browser, Node or Bun: testnet preset, relayer client with typed errors and `Retry-After`, `bitcoin-spv` and `writz-lend` clients | Published: [`npm install @writz/sdk`](https://www.npmjs.com/package/@writz/sdk) |
 | [`writz-spv-client`](https://github.com/WritzProtocol/writz/tree/main/contracts/contracts/writz-spv-client) | crates.io | Soroban contracts: `BitcoinSpvClient`, the result and error types, the on-chain output parser `find_output_value` | Release pending: not on crates.io yet |
 
 With `writz-spv-client` the contract below shrinks to the call itself:
@@ -256,7 +256,7 @@ These appeared in earlier versions of this page and do not exist today:
 
 - Output extraction in the result (an `outputs` field or address matching). The result has only the four fields above; use the parser in `spv-types`.
 - A `headers` argument to `verify_transaction`. Headers are submitted separately with `submit_headers`, and the call takes a stored `block_hash`.
-- A published npm package or crates.io crate, until the first release of `@writz/sdk` and `writz-spv-client` (see [Packages](#packages)). Until then use the deployed contract, the relayer route, `stellar contract bindings typescript`, and the `spv-types` git dependency.
+- A published crates.io crate, until the first release of `writz-spv-client` (see [Packages](#packages)). Until then use the `spv-types` git dependency. `@writz/sdk` is on npm.
 - A light client tracking Bitcoin mainnet on Stellar, and any per-call fee. Neither exists.
 
 ---

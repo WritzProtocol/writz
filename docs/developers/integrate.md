@@ -32,10 +32,10 @@ Ideas that fit in a weekend: a Soroban contract that releases something (an NFT,
 
 | Package | Registry | For | Status |
 |---|---|---|---|
-| [`@writz/sdk`](https://github.com/WritzProtocol/writz/tree/main/packages/sdk) | npm | TypeScript in the browser, Node or Bun: testnet preset, relayer client with typed errors and `Retry-After`, `bitcoin-spv` and `writz-lend` clients | Release pending: not on npm yet |
+| [`@writz/sdk`](https://github.com/WritzProtocol/writz/tree/main/packages/sdk) | npm | TypeScript in the browser, Node or Bun: testnet preset, relayer client with typed errors and `Retry-After`, `bitcoin-spv` and `writz-lend` clients | Published: [`npm install @writz/sdk`](https://www.npmjs.com/package/@writz/sdk) |
 | [`writz-spv-client`](https://github.com/WritzProtocol/writz/tree/main/contracts/contracts/writz-spv-client) | crates.io | Soroban contracts: `BitcoinSpvClient`, the result and error types, the on-chain output parser `find_output_value` | Release pending: not on crates.io yet |
 
-Until a package is published, `npm install @writz/sdk` and `cargo add writz-spv-client` fail. Use the snippets on this page, which need only `@stellar/stellar-sdk` or `soroban-sdk`, or depend on the source in this repository. The package code and its tests are in the repository either way.
+`npm install @writz/sdk` works today. Until `writz-spv-client` is on crates.io, `cargo add writz-spv-client` fails: use the snippets on this page, which need only `soroban-sdk`, or depend on the source in this repository. The package code and its tests are in the repository either way.
 
 ---
 
@@ -125,7 +125,7 @@ Runnable example: [`examples/verify-bitcoin-tx`](https://github.com/WritzProtoco
 cd examples/verify-bitcoin-tx && bun install && bun run start
 ```
 
-With `@writz/sdk` (release pending, see [Packages](#packages)) the whole flow is three lines, and relayer errors arrive typed, with the `Retry-After` wait already honoured:
+With `@writz/sdk` (`npm install @writz/sdk`) the whole flow is three lines, and relayer errors arrive typed, with the `Retry-After` wait already honoured:
 
 ```ts
 import { createWritzClient } from "@writz/sdk";
@@ -258,7 +258,7 @@ stellar contract invoke --id $LEND --network testnet --source-account me -- with
 
 The supply rate is variable and is zero while nothing is borrowed; with very little borrowed it still reads `0`, because it is counted in whole basis points (`500` is 5% a year). Read it live and label it as variable. Never show a fixed APY.
 
-With `@writz/sdk` (release pending, see [Packages](#packages)) these are `lend.getSupplyRateBp`, `lend.getSupplyBalance`, `lend.buildSupplyUsdc` and `lend.buildWithdrawSupply`; the builders return unsigned transactions for the wallet and never sign. A browser flow with `@stellar/stellar-sdk` and product ideas built on it are in [What to build on Writz](/developers/request-for-startups#no-soroban-needed-build-on-writz-yield).
+With `@writz/sdk` these are `lend.getSupplyRateBp`, `lend.getSupplyBalance`, `lend.buildSupplyUsdc` and `lend.buildWithdrawSupply`; the builders return unsigned transactions for the wallet and never sign. A browser flow with `@stellar/stellar-sdk` and product ideas built on it are in [What to build on Writz](/developers/request-for-startups#no-soroban-needed-build-on-writz-yield).
 
 ---
 
