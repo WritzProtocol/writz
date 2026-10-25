@@ -137,9 +137,21 @@ export const releaseDeps: ReleaseDeps = {
   sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
 };
 
-/** How long the release waits for the relayer to co-sign: it does so within a poll or two of the repay. */
-const COSIGN_POLL_MS = 5_000;
-const COSIGN_POLLS = 36;
+/**
+ * How long the release waits for the relayer to co-sign. It usually does so
+ * within a poll or two of the repay, but on a busy testnet its publish can be
+ * dropped and land on its next attempt, minutes later, so the wait is generous.
+ * Past it the release stops with `ReleaseNotCosigned`, which the release panel
+ * shows as a resumable state: checking again reads the chain, finds the loan
+ * already closed and only polls for the signature.
+ */
+export const COSIGN_POLL_MS = 5_000;
+export const COSIGN_WAIT_MS = 10 * 60_000;
+const COSIGN_POLLS = COSIGN_WAIT_MS / COSIGN_POLL_MS;
+
+/** The release stopped waiting for the co-signature; the loan is closed and checking again resumes it. */
+export const isReleaseNotCosigned = (error: unknown): boolean =>
+  error instanceof Error && error.message === "ReleaseNotCosigned";
 
 /**
  * Releases a repaid position's BTC. Repaying in full closes the position on
