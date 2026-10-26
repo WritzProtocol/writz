@@ -148,6 +148,8 @@ Response:
 - A deep reorg affecting more than 6 blocks (extraordinarily unlikely, but theoretically possible on a heavily attacked network)
 - Bugs in the SPV contract itself (mitigated by audits and extensive testing)
 
+For how this trust model compares with wrapped Bitcoin and bridges, including the risks a light client does share with them, see [SPV vs Wrapped Bitcoin](/security/spv-vs-wrapped).
+
 ---
 
 ## Tested on Real Bitcoin Transactions

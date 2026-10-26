@@ -45,7 +45,7 @@ The properties above are enforced by specific mechanisms in `bitcoin-spv`, `writ
 
 ### Bitcoin SPV verification
 
-`bitcoin-spv` is a header-chain light client, and `verify_transaction` is the sole gate a Bitcoin deposit must pass before Writz recognizes it. A caller no longer supplies a header chain: it proves a transaction against block headers the contract already stored, so a chain mined privately can never be presented.
+`bitcoin-spv` is a header-chain light client, and `verify_transaction` is the sole gate a Bitcoin deposit must pass before Writz recognizes it. A caller no longer supplies a header chain: it proves a transaction against block headers the contract already stored, so a chain mined privately can never be presented. How this compares with wrapped Bitcoin and bridges, and which of their risks a light client still shares, is set out in [SPV vs Wrapped Bitcoin](/security/spv-vs-wrapped).
 
 - **Anchored to a checkpoint.** `set_checkpoint` (admin-gated, callable exactly once) stores a real block's height, hash, `bits`, timestamp and the start time of its difficulty period. Every header accepted by `submit_headers` must descend from a stored header, so it must descend from that block. A header whose `prev_block_hash` is not stored is rejected with `UnknownParent`. Because the checkpoint can only be set once, the admin cannot later swap the trusted chain.
 - **Proof-of-work and exact difficulty.** Each header must satisfy `SHA256d(header) < target(header.bits)` (`difficulty.rs::validate_proof_of_work`, replicating Bitcoin Core's `arith_uint256::SetCompact`), and must carry exactly the `bits` Bitcoin's rules require at its height: unchanged inside a 2016-block period, and at each boundary the retargeted value (`parent_target * clamp(timespan, 1/4, 4x) / 2 weeks`, capped at the network's proof-of-work limit, compact-encoded like `GetCompact`). This replaces the earlier 64x "difficulty band", so an attacker must expend the network's real difficulty, not a 64x discount. Testnet3/testnet4's minimum-difficulty exception is not modelled; only mainnet and signet are supported.
@@ -281,4 +281,4 @@ As the fund grows and protocol governance decentralizes, the insurance fund allo
 
 ---
 
-**Next:** [Audits →](/security/audits)
+**Next:** [SPV vs Wrapped Bitcoin →](/security/spv-vs-wrapped)

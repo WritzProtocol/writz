@@ -6,6 +6,8 @@ title: "The Bitcoin Side"
 
 Before anything happens on Stellar, a Bitcoin transaction secures your collateral. This page explains the Bitcoin locking mechanism: what it is, how it works, and what the security guarantees are.
 
+For how keeping BTC in your own script compares with wrapped Bitcoin and bridges, see [SPV vs Wrapped Bitcoin](/security/spv-vs-wrapped).
+
 ---
 
 ## The Core Idea: Rules Written Into Bitcoin
