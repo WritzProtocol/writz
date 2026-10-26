@@ -98,3 +98,118 @@ export async function syncHeaders(
   }
   return { submittedThrough };
 }
+
+/** A chain tip: height and block hash, hex in Esplora's display byte order. */
+export interface ChainTip {
+  height: number;
+  hash: string;
+}
+
+/**
+ * Whether a sync pass has anything to store. bitcoin-spv skips headers it
+ * already holds but still charges for the call, so a pass with no new block
+ * only costs fees: before this check, about nine in ten calls on testnet
+ * stored nothing.
+ *
+ * Submits when the contract has no tip yet, when the Bitcoin source is
+ * higher, or when both are at the same height on different blocks (a
+ * same-height reorg: the resubmitted range carries the competing branch).
+ * Skips when the source is at the contract's tip or behind it.
+ */
+export function hasNewHeaders(bitcoinTip: ChainTip, contractTip: ChainTip | undefined): boolean {
+  if (contractTip === undefined) return true;
+  if (bitcoinTip.height > contractTip.height) return true;
+  if (bitcoinTip.height < contractTip.height) return false;
+  return bitcoinTip.hash.toLowerCase() !== contractTip.hash.toLowerCase();
+}
+
+/** 32-byte hash in the contract's internal byte order, as Esplora's display hex. */
+export function internalHashToDisplayHex(hash: Uint8Array): string {
+  return Buffer.from(hash).reverse().toString("hex");
+}
+
+/** Stroops as an XLM string with seven decimals, for logs and /health. */
+export function stroopsToXlm(stroops: bigint): string {
+  const negative = stroops < 0n;
+  const abs = negative ? -stroops : stroops;
+  const whole = abs / 10_000_000n;
+  const frac = (abs % 10_000_000n).toString().padStart(7, "0");
+  return `${negative ? "-" : ""}${whole}.${frac}`;
+}
+
+/**
+ * Thrown when a simulated submit_headers would cost more than the configured
+ * ceiling. Nothing is sent; the next pass simulates again, so the sync
+ * resumes on its own once network fees fall back under the ceiling.
+ */
+export class FeeCeilingExceededError extends Error {
+  constructor(
+    readonly feeStroops: bigint,
+    readonly maxFeeStroops: bigint,
+  ) {
+    super(
+      `submit_headers would cost ${stroopsToXlm(feeStroops)} XLM, above the ${stroopsToXlm(maxFeeStroops)} XLM ceiling (SPV_MAX_FEE_XLM)`,
+    );
+    this.name = "FeeCeilingExceededError";
+  }
+}
+
+/** Throws FeeCeilingExceededError when `feeStroops` is above `maxFeeStroops`. */
+export function assertWithinFeeCeiling(feeStroops: bigint, maxFeeStroops: bigint): void {
+  if (feeStroops > maxFeeStroops) throw new FeeCeilingExceededError(feeStroops, maxFeeStroops);
+}
+
+/** Header sync state reported by GET /health. Amounts are XLM strings. */
+export interface HeaderSyncStatus {
+  enabled: boolean;
+  lastPassAt: string | null;
+  bitcoinTipHeight: number | null;
+  contractTipHeight: number | null;
+  lastSubmittedThrough: number | null;
+  lastSubmissionAt: string | null;
+  lastFeeXlm: string | null;
+  maxFeeXlm: string | null;
+  submissions: number;
+  skippedNoNewHeaders: number;
+  skippedFeeCeiling: number;
+  lastFeeCeilingSkip: { at: string; feeXlm: string } | null;
+  relayerBalanceXlm: string | null;
+  minBalanceXlm: string | null;
+  balanceLow: boolean;
+  lastError: string | null;
+}
+
+export const headerSyncStatus: HeaderSyncStatus = {
+  enabled: false,
+  lastPassAt: null,
+  bitcoinTipHeight: null,
+  contractTipHeight: null,
+  lastSubmittedThrough: null,
+  lastSubmissionAt: null,
+  lastFeeXlm: null,
+  maxFeeXlm: null,
+  submissions: 0,
+  skippedNoNewHeaders: 0,
+  skippedFeeCeiling: 0,
+  lastFeeCeilingSkip: null,
+  relayerBalanceXlm: null,
+  minBalanceXlm: null,
+  balanceLow: false,
+  lastError: null,
+};
+
+/**
+ * Records the relayer account balance and reports whether it is under the
+ * alert threshold. The caller logs the alert at error level on every pass
+ * while this returns true, so log-based alerting sees it until it is topped up.
+ */
+export function recordRelayerBalance(
+  status: HeaderSyncStatus,
+  balanceStroops: bigint,
+  minBalanceStroops: bigint,
+): boolean {
+  status.relayerBalanceXlm = stroopsToXlm(balanceStroops);
+  status.minBalanceXlm = stroopsToXlm(minBalanceStroops);
+  status.balanceLow = balanceStroops < minBalanceStroops;
+  return status.balanceLow;
+}
