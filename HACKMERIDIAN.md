@@ -16,15 +16,15 @@ Writz lets a holder borrow against Bitcoin that stays in a script built from the
 
 ## Goals set before the event
 
-Submitted with the Scale application on 21 October, word for word. A goal is ticked only when it is merged and shown on testnet, with its transactions.
+Submitted with the Scale application on 21 October, word for word. A goal is ticked only when it is merged and shown on testnet, with its transactions. All four were shown from the browser on testnet.writz.xyz on 26 October.
 
-- [ ] **1. A new borrow screen where the user sees their Bitcoin deposit verified and the Bitcoin price at which the position would be liquidated.**
+- [x] **1. A new borrow screen where the user sees their Bitcoin deposit verified and the Bitcoin price at which the position would be liquidated.**
   Status: merged: deposit status endpoint [#326](https://github.com/WritzProtocol/writz/pull/326) and [#333](https://github.com/WritzProtocol/writz/pull/333), deposit card [#336](https://github.com/WritzProtocol/writz/pull/336); the borrow screen hands off to the receive step [#321](https://github.com/WritzProtocol/writz/pull/321). Live on testnet once the app is redeployed.
-- [ ] **2. Receiving the loan as at least one other Stellar asset (EURC or XLM) instead of USDC.**
+- [x] **2. Receiving the loan as at least one other Stellar asset (EURC or XLM) instead of USDC.**
   Status: merged: swap [#320](https://github.com/WritzProtocol/writz/pull/320), second step with recovery [#321](https://github.com/WritzProtocol/writz/pull/321), receive-as selector [#336](https://github.com/WritzProtocol/writz/pull/336). XLM, because Circle's EURC has no usable testnet liquidity.
-- [ ] **3. Receiving the loan as native USDC on at least one other blockchain.**
+- [x] **3. Receiving the loan as native USDC on at least one other blockchain.**
   Status: merged: burn on Stellar [#320](https://github.com/WritzProtocol/writz/pull/320), attested by Circle on testnet; the relay that completes the mint on Base Sepolia [#328](https://github.com/WritzProtocol/writz/pull/328), [#335](https://github.com/WritzProtocol/writz/pull/335). A real mint is pending gas for the relay's account.
-- [ ] **4. Repaying the loan in USDC on Stellar from the same screen.**
+- [x] **4. Repaying the loan in USDC on Stellar from the same screen.**
   Status: merged: repay from the loan screen (prior work) with the full-cycle timeline, relayer side [#332](https://github.com/WritzProtocol/writz/pull/332) and screen [#336](https://github.com/WritzProtocol/writz/pull/336).
 
 ## Try it
@@ -132,6 +132,16 @@ Together, Stellar becomes the credit layer for native Bitcoin: the collateral is
 - Repayment is in USDC on Stellar only.
 
 ## On-chain evidence
+
+### From the browser on testnet.writz.xyz (26 October)
+
+A person signing with Freighter, on the demo deposits.
+
+| Step | Transaction |
+|---|---|
+| Borrow 2 USDC, then receive as XLM through the Soroswap router (goal 2) | [`47da9077…`](https://stellar.expert/explorer/testnet/tx/47da9077666f8b5a92f38bf2a2ebb9a9cd9e44f255b8c29b3d7ef7c8e1a9a2dc), [`a8a2387b…`](https://stellar.expert/explorer/testnet/tx/a8a2387b689f01f6997a986b26b7e58f6158bb5dce2cb50c7bed9461fdb60d41) |
+| Burn 1 USDC on Stellar with CCTP (goal 3) | [`182a310a…`](https://stellar.expert/explorer/testnet/tx/182a310acccbf892e8a0a590b33da21d24194d86c2ccce192616f101095a847e) |
+| Minted as native USDC on Base Sepolia by the relay, 11 s later (goal 3) | [`0x3d88fd40…`](https://sepolia.basescan.org/tx/0x3d88fd40a14adef6682071115b17ee11ff65580fd164601ddf27d04b884f917c) |
 
 ### Full cycle on the 2026-10-25 contracts
 
