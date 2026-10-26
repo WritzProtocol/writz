@@ -75,12 +75,13 @@ export interface LoanModel {
 
 /**
  * A loan whose local record changed (after a borrow or repay) starts its
- * status read from scratch; keep showing the last answer for the same loan
- * meanwhile so the page doesn't flash back to "Checking...".
+ * status read from scratch, and a single read can fail on a flaky RPC; keep
+ * showing the last answer for the same loan meanwhile so the page doesn't
+ * flash back to "Checking..." and drop the open action panel.
  */
 export function useSteadyStatus(status: DerivedStatus, loanKey: string | null): DerivedStatus {
   const [last, setLast] = useState<{ key: string | null; status: DerivedStatus } | null>(null);
-  const fresh = !(status.status.kind === "checking" && status.status.missing.length === 0);
+  const fresh = status.status.kind !== "checking";
   if (fresh && (last?.key !== loanKey || last.status !== status)) setLast({ key: loanKey, status });
   if (fresh) return status;
   return last && last.key === loanKey ? last.status : status;

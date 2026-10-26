@@ -10,6 +10,7 @@
 import { config } from "../config.js";
 import { EsploraClient, EsploraError } from "./esplora.js";
 import { syncHeaders, syncStartHeight, withBackoff } from "./header-sync.js";
+import { withAccountLock } from "../account-lock.js";
 
 const MAX_HEADERS_PER_SUBMIT = 16;
 
@@ -80,9 +81,22 @@ async function readContractTipHeight(): Promise<number | undefined> {
 async function submitHeadersOnChain(headersHex: string[]): Promise<void> {
   // eslint-disable-next-line @typescript-eslint/no-require-imports -- see top-of-file comment.
   const sdk = require("@stellar/stellar-sdk") as typeof import("@stellar/stellar-sdk");
-  const { Keypair, Contract, TransactionBuilder, nativeToScVal, rpc } = sdk;
+  const { Keypair } = sdk;
 
   const keypair = Keypair.fromSecret(config.relayerSecret!);
+  // The repay watcher publishes releases from this same account. Holding the
+  // account's lock from getAccount to confirmation keeps this batch from
+  // reusing the sequence number of a pending publish and, with its higher
+  // bid, evicting it from the queue (see account-lock.ts).
+  await withAccountLock(keypair.publicKey(), () => sendHeaders(sdk, keypair, headersHex));
+}
+
+async function sendHeaders(
+  sdk: typeof import("@stellar/stellar-sdk"),
+  keypair: import("@stellar/stellar-sdk").Keypair,
+  headersHex: string[],
+): Promise<void> {
+  const { Contract, TransactionBuilder, nativeToScVal, rpc } = sdk;
   const server = new rpc.Server(config.stellarRpcUrl, { allowHttp: config.stellarRpcUrl.startsWith("http://") });
   const account = await server.getAccount(keypair.publicKey());
   const headersVal = nativeToScVal(headersHex.map((h) => Buffer.from(h, "hex")));

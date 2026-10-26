@@ -15,6 +15,7 @@ import {
   parseUsdcAmount,
   ratioLimitStroops,
   releaseStepOf,
+  cosignWaitText,
   repayToSafeStroops,
   shortDate,
   toFieldValue,
@@ -280,5 +281,16 @@ describe("loan activity", () => {
 describe("dates", () => {
   test("short date is locale independent", () => {
     expect(shortDate(Date.UTC(2026, 8, 24, 12))).toBe("24 Sep 2026");
+  });
+});
+
+describe("cosignWaitText", () => {
+  test("shows the time so far as minutes and seconds, and the honest range", () => {
+    expect(cosignWaitText(0)).toBe(
+      "Waiting for Writz's signature, 0:00 so far. It usually takes a minute or two, up to 10 when the network is busy.",
+    );
+    expect(cosignWaitText(65_400)).toContain("1:05 so far");
+    expect(cosignWaitText(9 * 60_000 + 59_000)).toContain("9:59 so far");
+    expect(cosignWaitText(-5)).toContain("0:00 so far");
   });
 });
