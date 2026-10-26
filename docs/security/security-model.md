@@ -55,11 +55,11 @@ The properties above are enforced by specific mechanisms in `bitcoin-spv`, `writ
 - **Permissionless ingestion, optional allowlist.** Anyone can call `submit_headers`; the relayer does so routinely. **On signet, restrict it with `set_submitter`:** signet blocks are authenticated by a block signature that this contract does not verify, and signet's proof-of-work is trivially cheap, so on signet the header source must be a trusted submitter. On mainnet, proof-of-work at real difficulty is the security and submission can stay open.
 - **Admin governance.** The checkpoint admin can no longer rewrite the trusted chain after the fact, but it still chooses the checkpoint and the submitter, so the `bitcoin-spv` (and `zk-verifier`) admin accounts are Stellar accounts intended to be configured as 2-of-3 multisigs via native `SetOptions` before mainnet - no contract code is involved, since `caller.require_auth()` already validates against whatever signing thresholds the admin account carries.
 
-Until `initialize` and `set_checkpoint` have both been called, `verify_transaction` and `submit_headers` fail closed with `NotInitialized`/`CheckpointNotSet`.
+The contract is configured by its constructor at deployment. Until `set_checkpoint` has been called, `verify_transaction` and `submit_headers` fail closed with `CheckpointNotSet`.
 
 **This same requirement extends to `writz-lend` and `commitment-tree`'s admin accounts, not just `bitcoin-spv`/`zk-verifier`.** Their admins control functions with equal blast radius: `commitment-tree`'s admin gates `insert_commitment` (when a deposit enters the Merkle tree; the resulting root is proven, #211) and, as of the config setters added alongside this document, `set_oracle`/`set_spv_contract`/`set_zk_verifier` - an admin who can silently repoint any of those can redirect the entire lending flow's trust assumptions. `writz-lend`'s admin gates the equivalent setters plus `set_keeper`/`set_relayer`/`set_keeper_stale_window`, which govern who can liquidate and who can trigger BTC release. None of the four contracts enforce multisig in contract logic - all four depend entirely on the underlying Stellar account being configured as a multisig externally. **Before mainnet, all four admin accounts need the same 2-of-3 (or stricter) multisig configuration, not just two of them.**
 
-A stronger design would have the contract accumulate its own validated chainwork across calls (a stateful "light client," as BTCRelay/tBTC-style bridges do) rather than trusting an admin-set checkpoint at all. That's a real architecture change, not a parameter tweak, and is tracked as future work rather than a mainnet blocker given the mitigations above.
+The contract already is a stateful light client: it accumulates its own validated chainwork across calls and follows the most-work chain, as described above. What it still trusts is its starting point, the checkpoint, which is set once and is public, so anyone can compare it with a Bitcoin node. Planned hardening (proof-depth binding, median-time-past, an on-chain freshness rule, redundant relayers and an independent monitor) and how this model compares with wrapped Bitcoin and bridges are set out in [SPV vs Wrapped Bitcoin](/security/spv-vs-wrapped).
 
 ### Deposit script binding (`writz-lend`)
 
@@ -133,11 +133,9 @@ The contract stores only the Merkle root, so the relayer's leaf store is the onl
 
 A repaid position's zero-debt leaf also has to stop being borrowable once its BTC leaves: otherwise a fully repaid and released position could borrow again against no collateral (GHSA-w4rp-v54x-2cv3, GHSA-hcjf-8vjc-2hfv). `zero_debt.circom` publishes the leaf's nullifier, `commitment-tree::mark_released` spends it, and `/api/cosign` refuses to co-sign until that is recorded on-chain, so `borrow` on the released leaf fails with `NullifierAlreadySpent` (#205, deployed in the 2026-10-11 testnet redeploy).
 
-### Contract initialization (`initialize`, all four contracts)
+### Contract initialization (constructors, all four contracts)
 
-Every contract's `initialize` now calls `admin.require_auth()`, so the admin address being installed must have authorized the call (GHSA-422m-f73x-fh58). Before this, any account could name any admin and seize the contract's configuration, since initialization is a separate transaction from deployment and has an open front-running window.
-
-This is a partial closure. Requiring the admin's signature stops an attacker from installing an admin they don't control, but an attacker can still race to initialize with *their own* address as admin before the operator's transaction lands. Fully closing the window needs deploy and initialize to happen atomically in one transaction, which is a change to the deployment scripts and is tracked with the coordinated redeploy (#177).
+All four contracts (`bitcoin-spv`, `writz-lend`, and the privacy edition's `commitment-tree` and `zk-verifier`) take their admin and configuration in a `__constructor` that runs atomically as part of deployment, so there is no separate initialization transaction for anyone to front-run (GHSA-422m-f73x-fh58). Earlier versions used a separate `initialize` call, which left a window in which another account could install itself as admin; the constructors replaced it (#199) and shipped with the coordinated redeploy (#177).
 
 ### SegWit transaction handling
 
