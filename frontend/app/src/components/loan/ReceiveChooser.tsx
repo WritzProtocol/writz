@@ -53,6 +53,9 @@ export function ReceiveChooser({
           </button>
         ))}
       </div>
+      {RECEIVE_OPTIONS.some((o) => o.id === "xlm") && (
+        <p className="wz-hint">XLM is here for testing only. Writz pays out in stablecoins, and XLM leaves this list before mainnet.</p>
+      )}
       {swapping && (
         <p className="wz-hint">
           Two signatures: borrow USDC, then convert it to {swapping.label} through Soroswap at the price shown, with slippage up to{" "}
