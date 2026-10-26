@@ -137,7 +137,7 @@ Response:
 
 ## Security Guarantees
 
-**6-confirmation requirement:** Writz requires 6 Bitcoin block confirmations before accepting a deposit. A 6-block reorganization has never occurred in Bitcoin's history. This provides practical certainty that a transaction will not be reversed.
+**6-confirmation requirement:** Writz requires 6 Bitcoin block confirmations before accepting a deposit. Reorganizations that deep are very rare: the deepest on mainnet are the 2010 value-overflow fix and the 2013 BIP-50 fork. Six confirmations make reversal of an accepted deposit negligible at launch exposure caps.
 
 **PoW validation:** Each header's proof-of-work is checked independently. A forged header chain would require generating valid PoW - computationally infeasible against Bitcoin's current hash rate.
 
