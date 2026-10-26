@@ -2,7 +2,7 @@
 
 Lock native Bitcoin, borrow on Stellar, and receive the loan as the asset you need, on Stellar or on another chain. Your Bitcoin never leaves the Bitcoin network and the loan stays in USDC.
 
-HackMeridian 2026, Lisbon, 25 and 26 October. Scale track, thematic track Stellar Composed: Writz + Soroswap + Circle CCTP V2. Everything runs on testnet.
+HackMeridian 2026, Lisbon, 25 and 26 October. Scale track. Built on Writz, Soroswap and Circle CCTP V2. Everything runs on testnet.
 
 - **Live app:** [testnet.writz.xyz](https://testnet.writz.xyz)
 - **Event work:** pull requests with the [`hackmeridian`](https://github.com/WritzProtocol/writz/pulls?q=label%3Ahackmeridian) label, tracked in [#319](https://github.com/WritzProtocol/writz/issues/319)
@@ -19,11 +19,11 @@ Writz lets a holder borrow against Bitcoin that stays in a script built from the
 Submitted with the Scale application on 21 October, word for word. A goal is ticked only when it is merged and shown on testnet, with its transactions. All four were shown from the browser on testnet.writz.xyz on 26 October.
 
 - [x] **1. A new borrow screen where the user sees their Bitcoin deposit verified and the Bitcoin price at which the position would be liquidated.**
-  Status: merged: deposit status endpoint [#326](https://github.com/WritzProtocol/writz/pull/326) and [#333](https://github.com/WritzProtocol/writz/pull/333), deposit card [#336](https://github.com/WritzProtocol/writz/pull/336); the borrow screen hands off to the receive step [#321](https://github.com/WritzProtocol/writz/pull/321). Live on testnet once the app is redeployed.
+  Status: merged: deposit status endpoint [#326](https://github.com/WritzProtocol/writz/pull/326) and [#333](https://github.com/WritzProtocol/writz/pull/333), deposit card [#336](https://github.com/WritzProtocol/writz/pull/336); the borrow screen hands off to the receive step [#321](https://github.com/WritzProtocol/writz/pull/321). Live on testnet.writz.xyz.
 - [x] **2. Receiving the loan as at least one other Stellar asset (EURC or XLM) instead of USDC.**
   Status: merged: swap [#320](https://github.com/WritzProtocol/writz/pull/320), second step with recovery [#321](https://github.com/WritzProtocol/writz/pull/321), receive-as selector [#336](https://github.com/WritzProtocol/writz/pull/336), and EURC, PYUSD and a USDT0 test token through Soroswap [#361](https://github.com/WritzProtocol/writz/pull/361), [#362](https://github.com/WritzProtocol/writz/pull/362). Shown first with XLM, then with EURC (the stablecoins are the default; XLM stays available for testing).
 - [x] **3. Receiving the loan as native USDC on at least one other blockchain.**
-  Status: merged: burn on Stellar [#320](https://github.com/WritzProtocol/writz/pull/320), attested by Circle on testnet; the relay that completes the mint on Base Sepolia [#328](https://github.com/WritzProtocol/writz/pull/328), [#335](https://github.com/WritzProtocol/writz/pull/335). A real mint is pending gas for the relay's account.
+  Status: merged: burn on Stellar [#320](https://github.com/WritzProtocol/writz/pull/320), attested by Circle on testnet; the relay that completes the mint on Base Sepolia [#328](https://github.com/WritzProtocol/writz/pull/328), [#335](https://github.com/WritzProtocol/writz/pull/335). The relay completed the mint on Base Sepolia from the browser on 26 October (see On-chain evidence).
 - [x] **4. Repaying the loan in USDC on Stellar from the same screen.**
   Status: merged: repay from the loan screen (prior work) with the full-cycle timeline, relayer side [#332](https://github.com/WritzProtocol/writz/pull/332) and screen [#336](https://github.com/WritzProtocol/writz/pull/336).
 
@@ -35,14 +35,14 @@ On [testnet.writz.xyz](https://testnet.writz.xyz) you need:
 
 1. **A Stellar wallet on testnet.** Freighter with the network set to Testnet, funded from [friendbot](https://lab.stellar.org/account/fund). The app adds the USDC trustline for you when you borrow.
 2. **A Bitcoin wallet on Signet.** Xverse with the network set to Signet, and coins from [bitcoinsignetfaucet.com](https://bitcoinsignetfaucet.com/) or [signetfaucet.com](https://signetfaucet.com). One faucet payout covers the testnet minimum deposit of 5,000 sats.
-3. **Borrow:** lock BTC, wait for one Signet confirmation (about 10 minutes; mainnet requires six), borrow USDC, and choose how to receive it: keep USDC, convert to EURC or PYUSD, or send USDC to an address on Base Sepolia.
+3. **Borrow:** lock BTC, wait for one Signet confirmation (about 10 minutes; mainnet requires six), borrow USDC, and choose how to receive it: keep USDC, convert to EURC, PYUSD, the Writz USDT0 test token or XLM (XLM for testing only), or send USDC to an address on Base Sepolia.
 4. **Repay** in USDC on Stellar from the same screen.
 
 <!-- EVENT: a pre-verified demo deposit judges can borrow against, if we publish one -->
 
 ## Run it locally
 
-Requirements: [Bun](https://bun.sh) and Node 24 (pinned in `.tool-versions`).
+Requirements: [Bun](https://bun.sh) and Node 24 (pinned in `frontend/app/.tool-versions`).
 
 ```bash
 git clone https://github.com/WritzProtocol/writz.git
@@ -58,7 +58,7 @@ Tests: `bun test src` in `frontend/app`.
 
 ### Environment variables used by the event work
 
-All are optional on testnet: unset, they fall back to the testnet values below. On a mainnet build they are empty and the receive options stay off.
+The first three come from `frontend/app/.env.example`. The others are optional on testnet: unset, they fall back to the values below; on a mainnet build they are empty and the receive options stay off.
 
 | Variable | Testnet default | What it is |
 |---|---|---|
@@ -92,14 +92,14 @@ flowchart LR
 
 ## Architecture of the new work
 
-Everything new for the goals runs in the testnet app and the relayer. One contract change was made during the event, for an outside reason: testnet's ledger state rose above its target size, which raised storage rent so much that a new deposit on the previous deployment (`writz-lend` `CCMSOCBV...`, `bitcoin-spv` `CAHHY4S4...`) needed more fee than a transaction can carry. [#340](https://github.com/WritzProtocol/writz/pull/340) makes the storage lifetime of new entries a deployment parameter (shorter on testnet, unchanged on mainnet), and both contracts were redeployed on 25 October. No economic logic, authorization or Bitcoin verification changed.
+Everything new for the goals runs in the testnet app and the relayer. The live testnet app runs on one contract change made during the event, for an outside reason: testnet's ledger state rose above its target size, which raised storage rent so much that a new deposit on the previous deployment (`writz-lend` `CCMSOCBV...`, `bitcoin-spv` `CAHHY4S4...`) needed more fee than a transaction can carry. [#340](https://github.com/WritzProtocol/writz/pull/340) makes the storage lifetime of new entries a deployment parameter (shorter on testnet, unchanged on mainnet), and both contracts were redeployed on 25 October. #340 changes no economic logic, authorization or Bitcoin verification. A separate hardening of `writz-lend` ([#356](https://github.com/WritzProtocol/writz/pull/356): timelock margin against the light client tip, liquidation cutoff, distinct user and protocol keys) was merged on 26 October; it is not claimed as goal work, and its testnet deployment is staged but not active yet, so the app still uses `CABF7VK7…`.
 
 | Piece | Where | What it does |
 |---|---|---|
 | Swap to another stablecoin | [`frontend/app/src/lib/receive/swap.ts`](frontend/app/src/lib/receive/swap.ts) | Quotes with `router_get_amounts_out`, quotes again right before signing, then `swap_exact_tokens_for_tokens` with a minimum output (0.5% slippage by default, 5% at most) and a 5 minute deadline |
 | Send to Base Sepolia | [`frontend/app/src/lib/receive/cctp.ts`](frontend/app/src/lib/receive/cctp.ts) | Allowance for the TokenMessengerMinter when needed, then `deposit_for_burn` to domain 6 with the EVM address as bytes32, the amount rounded to CCTP's 6 decimals and the fee from Circle's fee API; reads Circle's attestation |
 | Second step and recovery | [`frontend/app/src/components/loan/ReceiveStep.tsx`](frontend/app/src/components/loan/ReceiveStep.tsx), [`lib/receive/intent.ts`](frontend/app/src/lib/receive/intent.ts) | After the borrow settles, converts or sends as the borrower chose. If the second signature is declined or fails, the USDC stays in the wallet and the borrower can try again or keep it |
-| Mint relay | Relayer, [#309](https://github.com/WritzProtocol/writz/issues/309) | Completes `receiveMessage` on Base Sepolia, so the borrower needs no wallet or gas there |
+| Mint relay | Relayer, [#328](https://github.com/WritzProtocol/writz/pull/328), [#335](https://github.com/WritzProtocol/writz/pull/335) | Completes `receiveMessage` on Base Sepolia, so the borrower needs no wallet or gas there |
 
 ### Contracts used (testnet)
 
@@ -113,6 +113,22 @@ Everything new for the goals runs in the testnet app and the relayer. One contra
 | CCTP TokenMessengerMinter (Stellar) | `CDNG7HXAPBWICI2E3AUBP3YZWZELJLYSB6F5CC7WLDTLTHVM74SLRTHP` |
 | CCTP MessageTransmitterV2 (Base Sepolia) | `0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275` |
 
+## Developer packages, first published at the event
+
+So other Stellar projects can verify Bitcoin themselves, the two client packages went public during HackMeridian. They were made publishable just before the event ([#300](https://github.com/WritzProtocol/writz/pull/300), [#303](https://github.com/WritzProtocol/writz/pull/303), prior work); their first releases are event work.
+
+| Package | Registry | Releases during the event |
+|---|---|---|
+| [`@writz/sdk`](https://www.npmjs.com/package/@writz/sdk): TypeScript client to prove a Bitcoin transaction against `bitcoin-spv` and read `writz-lend` | npm | 0.1.0 and 0.1.1 on 25 Oct, 0.1.2 with the 2026-10-25 testnet contracts on 26 Oct ([#334](https://github.com/WritzProtocol/writz/pull/334), [#353](https://github.com/WritzProtocol/writz/pull/353)) |
+| [`writz-spv-client`](https://crates.io/crates/writz-spv-client): Soroban client for `bitcoin-spv`, to prove a Bitcoin transaction from a Stellar smart contract | crates.io | 0.1.0 and 0.1.1 on 25 Oct ([#347](https://github.com/WritzProtocol/writz/pull/347)) |
+
+Both publish through trusted publishing from GitHub Actions, with no long-lived registry tokens ([#346](https://github.com/WritzProtocol/writz/pull/346)).
+
+```bash
+npm install @writz/sdk
+cargo add writz-spv-client
+```
+
 ## Why it is composed
 
 - **Writz** verifies native Bitcoin on Stellar and lends against it, but pays out only USDC on Stellar.
@@ -123,7 +139,7 @@ Together, Stellar becomes the credit layer for native Bitcoin: the collateral is
 
 ## Security and limits
 
-- The receive features call the Soroswap router and Circle's contracts with standard calls. The one contract change during the event ([#340](https://github.com/WritzProtocol/writz/pull/340)) only sets how long new storage entries live; no economic logic, authorization or Bitcoin verification changed.
+- The receive features call the Soroswap router and Circle's contracts with standard calls. The contracts the app runs on changed once during the event ([#340](https://github.com/WritzProtocol/writz/pull/340)), only to set how long new storage entries live. The [#356](https://github.com/WritzProtocol/writz/pull/356) hardening is merged but not active on testnet yet.
 - The swap and the transfer are a second transaction. If it fails, the borrower keeps the USDC they borrowed; nothing is lost.
 - The swap has a minimum output and a deadline; a price move beyond the slippage makes it revert instead of filling badly.
 - CCTP burns and mints Circle-native USDC. With the destination caller left open, anyone can complete the mint; our relay does it so the borrower needs nothing on Base Sepolia.
@@ -140,8 +156,10 @@ A person signing with Freighter, on the demo deposits.
 | Step | Transaction |
 |---|---|
 | Borrow 2 USDC, then receive as XLM through the Soroswap router (goal 2) | [`47da9077…`](https://stellar.expert/explorer/testnet/tx/47da9077666f8b5a92f38bf2a2ebb9a9cd9e44f255b8c29b3d7ef7c8e1a9a2dc), [`a8a2387b…`](https://stellar.expert/explorer/testnet/tx/a8a2387b689f01f6997a986b26b7e58f6158bb5dce2cb50c7bed9461fdb60d41) |
+| Borrow 2 USDC, then receive as 1.583 EURC through the Soroswap router (goal 2) | [`becd4be4…`](https://stellar.expert/explorer/testnet/tx/becd4be472168e9f29a1b130277fe69147f7307e5b956a372b54cdab0318dae2), [`d2e4ea2f…`](https://stellar.expert/explorer/testnet/tx/d2e4ea2f8e3e096cea72b93e3a4fd225816839817c44b8c04fd8887be1234e1e) |
 | Burn 1 USDC on Stellar with CCTP (goal 3) | [`182a310a…`](https://stellar.expert/explorer/testnet/tx/182a310acccbf892e8a0a590b33da21d24194d86c2ccce192616f101095a847e) |
 | Minted as native USDC on Base Sepolia by the relay, 11 s later (goal 3) | [`0x3d88fd40…`](https://sepolia.basescan.org/tx/0x3d88fd40a14adef6682071115b17ee11ff65580fd164601ddf27d04b884f917c) |
+| Repay 2 USDC on Stellar from the loan screen (goal 4) | [`1143df8d…`](https://stellar.expert/explorer/testnet/tx/1143df8dff8520738881a41d72d745c107aec24f7c06b8ecf2a75aa65cd14053) |
 
 ### Full cycle on the 2026-10-25 contracts
 
@@ -154,7 +172,7 @@ Run with the app's own flow code on 25 October; the relayer's `GET /timeline/:tx
 | Borrow 2 USDC | [`14e8056f…`](https://stellar.expert/explorer/testnet/tx/14e8056fe9fb27c5d1edf124cc6156294212b46e58eed7e7bcac5189d2d9b531) |
 | Receive 0.5 USDC as 4.654 XLM through the Soroswap router (goal 2) | [`a41d0f83…`](https://stellar.expert/explorer/testnet/tx/a41d0f835747da48c050762694f8c5960ad3c474d2a3989181be955c1fdc00db) |
 | Burn 0.5 USDC on Stellar with Circle CCTP V2 (goal 3) | [`fc810e5c…`](https://stellar.expert/explorer/testnet/tx/fc810e5caec892565c9e0e9dcd595dc5e1a244386d55c407839e732b72f23210) |
-| Minted as native USDC on Base Sepolia by the relay, about 15 s later (goal 3) | [`0x4bb3e250…`](https://sepolia.basescan.org/tx/0x4bb3e250c27e3d83b5b4af0939a5c99bd8fdf37e0323f0c5b30b2a46cfbf3ab0) |
+| Minted as native USDC on Base Sepolia by the relay, about 12 s later (goal 3) | [`0x4bb3e250…`](https://sepolia.basescan.org/tx/0x4bb3e250c27e3d83b5b4af0939a5c99bd8fdf37e0323f0c5b30b2a46cfbf3ab0) |
 | Repay in full in USDC on Stellar (goal 4) | [`d7a480bc…`](https://stellar.expert/explorer/testnet/tx/d7a480bc846031c2485c4a4b63835e9ebbfb09b1824fe4df55933dc2c814e10b) |
 | BTC released back to the borrower on Signet | [`dcad8ca2…`](https://mempool.space/signet/tx/dcad8ca20018e3dd8b9b57c6c7b7882446df11878d759cc4e635f0378ba00d2c) |
 
@@ -182,7 +200,7 @@ Everything before tag `hackmeridian-start` is prior work. The parts the event bu
 
 The liquidation price, the confirmation count and the Bitcoin explorer link on the loan screens existed before the event. Event work on goal 1 is the verified-on-Stellar moment, the full set of transaction links and the hand-off from the borrow to the receive step.
 
-Event work, in merge order:
+Event work, roughly in merge order:
 
 | Pull request | What |
 |---|---|
@@ -204,6 +222,27 @@ Event work, in merge order:
 | [#350](https://github.com/WritzProtocol/writz/pull/350), [#352](https://github.com/WritzProtocol/writz/pull/352) | Fix: the app and relayer read testnet's protocol 29 values (Stellar SDK 16.4.1) |
 | [#351](https://github.com/WritzProtocol/writz/pull/351) | Fix: the loan keeps its last status and the second step through a failed read |
 | [#361](https://github.com/WritzProtocol/writz/pull/361), [#362](https://github.com/WritzProtocol/writz/pull/362) | Receive as EURC, PYUSD or a USDT0 test token through Soroswap; stablecoins by default |
+| [#345](https://github.com/WritzProtocol/writz/pull/345) | Docs, examples, SDK preset and landing pointed at the 2026-10-25 testnet contracts |
+| [#323](https://github.com/WritzProtocol/writz/pull/323) | This page |
+
+Other work merged during the event, not tied to a goal and not claimed as goal work:
+
+| Pull request | What |
+|---|---|
+| [#306](https://github.com/WritzProtocol/writz/pull/306) | Test fixtures use the deployed writz-lend id |
+| [#325](https://github.com/WritzProtocol/writz/pull/325) | Docs navigation: the USDC vault page last under products |
+| [#327](https://github.com/WritzProtocol/writz/pull/327) | Relayer: fund Signet only for social login accounts |
+| [#329](https://github.com/WritzProtocol/writz/pull/329) | Docs: @writz/sdk marked as published on npm |
+| [#338](https://github.com/WritzProtocol/writz/pull/338) | App: instant Signet funding and a guided borrow flow for social login |
+| [#342](https://github.com/WritzProtocol/writz/pull/342) | Vercel: deploy only main, no pull request previews |
+| [#344](https://github.com/WritzProtocol/writz/pull/344) | Docs: writz-spv-client marked as published on crates.io |
+| [#354](https://github.com/WritzProtocol/writz/pull/354) | Relayer: cap header submission fees, alert on low balance, skip passes with no new block |
+| [#355](https://github.com/WritzProtocol/writz/pull/355) | Docs (security): SPV versus wrapped Bitcoin comparison |
+| [#356](https://github.com/WritzProtocol/writz/pull/356) | writz-lend hardening: timelock margin against the light client tip, liquidation cutoff, distinct keys (merged, testnet deployment staged, not active) |
+| [#357](https://github.com/WritzProtocol/writz/pull/357) | Docs: signer, oracle and script wording aligned with the current design |
+| [#358](https://github.com/WritzProtocol/writz/pull/358) | Docs: relayer signer variables |
+| [#359](https://github.com/WritzProtocol/writz/pull/359) | Docs: staged writz-lend testnet deployment recorded |
+| [#363](https://github.com/WritzProtocol/writz/pull/363) | CI: cargo audit for every cargo workspace |
 
 ## What comes next
 
