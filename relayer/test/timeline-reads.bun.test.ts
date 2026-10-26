@@ -9,6 +9,7 @@ const ROUTER = "CCJUD55AG6W5HAI5LRVNKAE5WDP5XGZBUDS5WNTIVDU7O264UZZE7BRD";
 const TMM = "CDNG7HXAPBWICI2E3AUBP3YZWZELJLYSB6F5CC7WLDTLTHVM74SLRTHP";
 const USDC = "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA";
 const XLM = Asset.native().contractId("Test SDF Network ; September 2015");
+const EURC = "CCUUDM434BMZMYWYDITHFXHDMIVTGGD6T2I5UKNX5BSLXLW7HVR4MCGZ";
 const OWNER = Keypair.random().publicKey();
 const OTHER = Keypair.random().publicKey();
 const TXID = "6e8b2b7c864669f8d564ad3af9a50e80e4844837c7fe970f215f9f3e274db7b7";
@@ -107,7 +108,7 @@ const CTX: ReceiveContext = {
   soroswapRouter: ROUTER,
   tokenMessengerMinter: TMM,
   usdcToken: USDC,
-  xlmToken: XLM,
+  swapTokens: { [XLM]: "XLM", [EURC]: "EURC" },
   baseDomain: 6,
 };
 
@@ -142,8 +143,10 @@ describe("classifyOperation", () => {
     expect(classifyOperation(op(LEND, "deposit", []), CTX)).toBeUndefined();
   });
 
-  it("takes a swap from the pool's USDC to XLM, and no other path", () => {
-    expect(classifyOperation(swap(path(USDC, XLM)), CTX)?.kind).toBe("swap_to_xlm");
+  it("takes a swap from the pool's USDC to a known swap asset, and no other path", () => {
+    expect(classifyOperation(swap(path(USDC, XLM)), CTX)).toMatchObject({ kind: "swap", asset: "XLM" });
+    expect(classifyOperation(swap(path(USDC, EURC)), CTX)).toMatchObject({ kind: "swap", asset: "EURC" });
+    expect(classifyOperation(swap(path(USDC, LEND)), CTX)).toBeUndefined();
     expect(classifyOperation(swap(path(XLM, USDC)), CTX)).toBeUndefined();
     expect(classifyOperation(swap(path(TMM, XLM)), CTX)).toBeUndefined();
   });

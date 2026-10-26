@@ -357,8 +357,8 @@ const LOAN: Scenario[] = [
   define("L23", "Missing Bitcoin deposit details", (now) => loanWorld(loans.missingBtcDetails(1, now))),
   define("L24", "Not found (bad n)", (now) => loanWorld(loans.healthy(1, now), { route: "/loans/7" }, { n: 7 })),
   define("L25", "Not connected", () => baseWorld({ route: "/loans/1", wallets: NO_WALLETS, loan: loanPage() })),
-  define("L26", "Receive as: USDC, XLM or USDC on Base Sepolia", (now) =>
-    loanWorld(loans.neverBorrowed(1, now), {}, { panel: "borrow", receive: { option: "xlm", to: "" } }),
+  define("L26", "Receive as: USDC, a stablecoin, XLM or USDC on Base Sepolia", (now) =>
+    loanWorld(loans.neverBorrowed(1, now), {}, { panel: "borrow", receive: { option: "pyusd", to: "" } }),
   ),
   define("L27", "Receive on Base Sepolia, address with a wrong checksum", (now) =>
     loanWorld(loans.neverBorrowed(1, now), {}, { panel: "borrow", receive: { option: "base", to: "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAeD" } }),

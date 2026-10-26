@@ -1,14 +1,15 @@
 /**
  * How a borrow was received, read from the borrower's own Stellar operations.
  *
- * A borrow pays USDC to the borrower on Stellar. Taking it as XLM (a swap
- * through the Soroswap router) or on Base Sepolia (a CCTP `deposit_for_burn`)
+ * A borrow pays USDC to the borrower on Stellar. Taking it as another asset
+ * (a swap through the Soroswap router into EURC, PYUSD, the USDT0 test token
+ * or XLM) or on Base Sepolia (a CCTP `deposit_for_burn`)
  * is a second transaction the borrower signs afterwards, and nothing on chain
  * ties it to the position: the router and the TokenMessengerMinter know an
  * account and an amount, not a loan. So the link is made here, by a rule, and
  * the rule is stated rather than hidden:
  *
- *   A swap of USDC into XLM, or a burn of USDC for Base Sepolia, sent by the
+ *   A swap of USDC into one of the known swap assets, or a burn of USDC for Base Sepolia, sent by the
  *   position's owner belongs to the owner's most recent `borrow` before it,
  *   provided no `borrow` or `repay` call by the owner (on any position) came
  *   in between. If that borrow is on another position, the leg belongs to
@@ -29,13 +30,15 @@
  */
 
 /** An operation of the owner that matters to the timeline. */
-export type OwnerOperationKind = "borrow" | "repay" | "swap_to_xlm" | "burn_to_base_sepolia";
+export type OwnerOperationKind = "borrow" | "repay" | "swap" | "burn_to_base_sepolia";
 
 export interface OwnerOperation {
   kind: OwnerOperationKind;
   txHash: string;
   /** Unix ms, from the operation's ledger close time. */
   at: number;
+  /** For a `swap`: the ticker it bought, e.g. "EURC". */
+  asset?: string;
 }
 
 /** The contracts and tokens an operation is matched against. */
@@ -45,7 +48,8 @@ export interface ReceiveContext {
   soroswapRouter: string;
   tokenMessengerMinter: string;
   usdcToken: string;
-  xlmToken: string;
+  /** The assets a borrow may be swapped into: Stellar Asset Contract id to ticker. */
+  swapTokens: Readonly<Record<string, string>>;
   /** CCTP domain the burn must target: Base (and Base Sepolia) is 6. */
   baseDomain: number;
 }
@@ -65,7 +69,7 @@ export interface HorizonOperation {
 /**
  * Names an owner's invoke-contract operation, or undefined for one the
  * timeline does not show. Arguments are checked, not only the method: a
- * swap must start at the lending pool's USDC and end at XLM, a burn must
+ * swap must start at the lending pool's USDC and end at a known swap asset, a burn must
  * burn that USDC from the owner towards Base Sepolia.
  */
 export function classifyOperation(op: HorizonOperation, ctx: ReceiveContext): OwnerOperation | undefined {
@@ -95,10 +99,9 @@ export function classifyOperation(op: HorizonOperation, ctx: ReceiveContext): Ow
   if (contract === ctx.soroswapRouter && method === "swap_exact_tokens_for_tokens") {
     // (amount_in, amount_out_min, path, to, deadline)
     const path = args[2];
-    if (Array.isArray(path) && path.length >= 2 && path[0] === ctx.usdcToken && path[path.length - 1] === ctx.xlmToken) {
-      return leg("swap_to_xlm");
-    }
-    return undefined;
+    const end = Array.isArray(path) && path.length >= 2 && path[0] === ctx.usdcToken ? path[path.length - 1] : undefined;
+    const asset = typeof end === "string" ? ctx.swapTokens[end] : undefined;
+    return asset ? { ...leg("swap"), asset } : undefined;
   }
   if (contract === ctx.tokenMessengerMinter && method === "deposit_for_burn") {
     // (from, amount, destination_domain, mint_recipient, burn_token, destination_caller, max_fee, min_finality_threshold)

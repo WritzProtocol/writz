@@ -1,20 +1,26 @@
 import { describe, expect, test } from "bun:test";
 import { formatBp } from "./format";
+import type { SwapAsset, SwapAssetId } from "./assets";
 import { intentFor, parseEvmAddress, receiveOptions } from "./options";
+
+const asset = (id: SwapAssetId, label: string, usd: boolean): SwapAsset => ({
+  id,
+  label,
+  network: id === "usdt0" ? "Writz testnet token" : "Stellar testnet",
+  token: "C" + id,
+  classic: id === "xlm" ? null : { code: label, issuer: "G" + id },
+  usd,
+});
+const SWAP = [asset("eurc", "EURC", false), asset("pyusd", "PYUSD", true), asset("usdt0", "USDT0", true), asset("xlm", "XLM", false)];
 
 describe("receiveOptions", () => {
   test("USDC on Stellar is always offered, the others only when wired", () => {
-    expect(receiveOptions({ swap: false, cctp: false, eurc: false }).map((o) => o.id)).toEqual(["usdc"]);
-    expect(receiveOptions({ swap: true, cctp: true, eurc: false }).map((o) => o.id)).toEqual(["usdc", "xlm", "base"]);
-  });
-
-  test("EURC stays hidden unless its flag is on", () => {
-    expect(receiveOptions({ swap: true, cctp: true, eurc: false }).some((o) => o.id === "eurc")).toBe(false);
-    expect(receiveOptions({ swap: false, cctp: false, eurc: true }).map((o) => o.id)).toEqual(["usdc", "eurc"]);
+    expect(receiveOptions({ swap: [], cctp: false }).map((o) => o.id)).toEqual(["usdc"]);
+    expect(receiveOptions({ swap: SWAP, cctp: true }).map((o) => o.id)).toEqual(["usdc", "eurc", "pyusd", "usdt0", "xlm", "base"]);
   });
 
   test("every option names a testnet network", () => {
-    for (const o of receiveOptions({ swap: true, cctp: true, eurc: true })) expect(o.network).toMatch(/testnet/);
+    for (const o of receiveOptions({ swap: SWAP, cctp: true })) expect(o.network).toMatch(/testnet/);
   });
 });
 describe("parseEvmAddress", () => {
@@ -45,9 +51,11 @@ describe("parseEvmAddress", () => {
 });
 
 describe("intentFor", () => {
-  test("USDC and XLM need nothing more", () => {
+  test("USDC and every swap asset need nothing more", () => {
     expect(intentFor({ option: "usdc", to: "" })).toEqual({ ok: true, intent: { kind: "usdc" } });
-    expect(intentFor({ option: "xlm", to: "" }, 50)).toEqual({ ok: true, intent: { kind: "xlm", slippageBp: 50 } });
+    for (const a of ["eurc", "pyusd", "usdt0", "xlm"] as const) {
+      expect(intentFor({ option: a, to: "" }, 50)).toEqual({ ok: true, intent: { kind: "swap", asset: a, slippageBp: 50 } });
+    }
   });
 
   test("Base Sepolia needs a valid address and carries it as the recipient", () => {
@@ -57,10 +65,6 @@ describe("intentFor", () => {
     });
     expect(intentFor({ option: "base", to: "" }).ok).toBe(false);
     expect(intentFor({ option: "base", to: "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAeD" }).ok).toBe(false);
-  });
-
-  test("EURC never becomes an intent", () => {
-    expect(intentFor({ option: "eurc", to: "" }).ok).toBe(false);
   });
 });
 

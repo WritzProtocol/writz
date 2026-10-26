@@ -69,7 +69,7 @@ export interface Config {
   timelineRateWindowMs: number;
   /** Horizon, for the borrower's own operations (how a loan was received). */
   horizonUrl: string;
-  /** Soroswap router a borrow is swapped through to XLM. */
+  /** Soroswap router a borrow is swapped through to a stablecoin or XLM. */
   soroswapRouterId: string;
   /** Circle CCTP TokenMessengerMinter on Stellar, where a borrow is burned for Base Sepolia. */
   cctpTokenMessengerMinterId: string;
