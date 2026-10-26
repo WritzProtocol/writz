@@ -153,7 +153,7 @@ Where a `writz-lend` deposit is, from the Bitcoin transaction to its registratio
 
 ### `GET /timeline/:btcTxid`
 
-The full cycle of one `writz-lend` position, one event per transaction, each with its explorer link: the Bitcoin lock, its verification and every borrow and repay on Stellar, how each borrow was received (a swap to XLM, or a CCTP burn and its mint on Base Sepolia), and the Bitcoin transaction that spent the lock. `btcTxid` is in display byte order. Served only where lending is enabled.
+The full cycle of one `writz-lend` position, one event per transaction, each with its explorer link: the Bitcoin lock, its verification and every borrow and repay on Stellar, how each borrow was received (a swap to EURC, PYUSD, the USDT0 test token or XLM, or a CCTP burn and its mint on Base Sepolia), and the Bitcoin transaction that spent the lock. `btcTxid` is in display byte order. Served only where lending is enabled.
 
 **200 body** (loan 1 on the testnet deployment: deposit, borrow taken as USDC, full repay, release)
 
@@ -212,14 +212,14 @@ The full cycle of one `writz-lend` position, one event per transaction, each wit
 | `btc_lock` | `bitcoin` | The deposit transaction itself; `at` is its block time, null while unconfirmed |
 | `verified` | `stellar` | The `writz-lend` `deposit` event |
 | `borrowed` | `stellar` | Each `borrow` event |
-| `received` | `stellar` | A swap of the borrowed USDC to XLM (`detail: "as XLM"`), or a CCTP `deposit_for_burn` towards Base Sepolia (`detail: "sent to Base Sepolia"`) |
+| `received` | `stellar` | A swap of the borrowed USDC to a stablecoin or XLM (`detail: "as EURC"`, `"as XLM"`, ...), or a CCTP `deposit_for_burn` towards Base Sepolia (`detail: "sent to Base Sepolia"`) |
 | `received` | `base-sepolia` | The mint of that burn (`detail: "on Base Sepolia"`), when the CCTP relay on this relayer completed or observed it; `at` is when the relay recorded it |
 | `repaid` | `stellar` | Each `repay` and `repay_full` event, and a `liquidate` event (`detail: "by liquidation"`) |
 | `released` | `bitcoin` | The transaction that spent the deposit's P2WSH output (the cooperative release or the timelock path), found through Esplora's `outspends` |
 
 Only transactions that exist are listed: a step not taken yet has no event. `owner` is the position's depositor, `status` its `PositionStatus`.
 
-**How a borrow was received.** A swap or a burn is a second transaction the borrower signs after the borrow, and nothing on chain links it to the position. The relayer reads the owner's operations from Horizon, from the ledger of the first borrow on, and applies one rule: a successful `swap_exact_tokens_for_tokens` on the Soroswap router from the pool's USDC to XLM, or a successful `deposit_for_burn` of the pool's USDC from the owner to domain 6, sent by the owner, belongs to the owner's most recent `borrow` before it, unless a `borrow` or `repay` call by the owner on any position came in between. A leg after a borrow on another position belongs to that position; a leg after a repay belongs to none. The limit: an owner with two loans open who borrows on one and then swaps USDC that came from the other sees that swap under the latest borrow. Only direct calls to the router and the TokenMessengerMinter are matched, which is how the app sends them.
+**How a borrow was received.** A swap or a burn is a second transaction the borrower signs after the borrow, and nothing on chain links it to the position. The relayer reads the owner's operations from Horizon, from the ledger of the first borrow on, and applies one rule: a successful `swap_exact_tokens_for_tokens` on the Soroswap router from the pool's USDC to EURC, PYUSD, the USDT0 test token or XLM, or a successful `deposit_for_burn` of the pool's USDC from the owner to domain 6, sent by the owner, belongs to the owner's most recent `borrow` before it, unless a `borrow` or `repay` call by the owner on any position came in between. A leg after a borrow on another position belongs to that position; a leg after a repay belongs to none. The limit: an owner with two loans open who borrows on one and then swaps USDC that came from the other sees that swap under the latest borrow. Only direct calls to the router and the TokenMessengerMinter are matched, which is how the app sends them.
 
 **Partial answers.** `writz-lend` must be readable; Bitcoin and Horizon only add steps. When either cannot be read, or the position is older than Stellar RPC's event window (about 7 days on testnet), the answer is still `200` with `complete: false` and a line per gap in `gaps`.
 
@@ -654,7 +654,7 @@ Copy `.env.example` to `.env` and adjust as needed.
 | `TIMELINE_RATE_LIMIT` | `60` | Requests per client IP per window on `/timeline` |
 | `TIMELINE_RATE_WINDOW_MS` | `60000` | Rate-limit window for `/timeline` |
 | `HORIZON_URL` | `https://horizon-testnet.stellar.org` | Horizon, read by `/timeline` for the borrower's swaps and burns |
-| `SOROSWAP_ROUTER_ID` | testnet Soroswap router | Router a borrow is swapped to XLM through, matched by `/timeline` |
+| `SOROSWAP_ROUTER_ID` | testnet Soroswap router | Router a borrow is swapped through to EURC, PYUSD, the USDT0 test token or XLM, matched by `/timeline` |
 | `CCTP_TOKEN_MESSENGER_MINTER_ID` | testnet CCTP V2 TokenMessengerMinter | Contract a borrow is burned through for Base Sepolia, matched by `/timeline` |
 | `CORS_ORIGIN` | `*` | Allowed origin(s) - comma-separated or `*` |
 | `DEFAULT_CONFIRMATIONS` | `6` | Used when caller omits the query param |

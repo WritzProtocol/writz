@@ -3,17 +3,17 @@
 import { useId, useState } from "react";
 import { config } from "@/config";
 import { formatBp } from "@/lib/receive/format";
+import { debtLine, isSwapAssetId, offeredSwapAssets, swapAsset } from "@/lib/receive/assets";
 import { parseEvmAddress, receiveOptions, type ReceiveChoiceDraft } from "@/lib/receive/options";
 import { DEFAULT_SLIPPAGE_BP } from "@/lib/receive/swap";
 
-/** The options this deployment can deliver: XLM and Base Sepolia only when their contracts are configured. */
+/** The options this deployment can deliver: each swap asset and Base Sepolia only when their contracts are configured. */
 export const RECEIVE_OPTIONS = receiveOptions({
-  swap: Boolean(config.receive.soroswapRouter && config.receive.xlmToken),
+  swap: offeredSwapAssets(),
   cctp: Boolean(config.receive.cctp.tokenMessengerMinter),
-  eurc: config.receive.eurc,
 });
 
-/** "Receive as": USDC on Stellar, XLM on Stellar or USDC on Base Sepolia, with the Base Sepolia address. */
+/** "Receive as": USDC on Stellar, a stablecoin or XLM on Stellar, or USDC on Base Sepolia with the Base Sepolia address. */
 export function ReceiveChooser({
   draft,
   onChange,
@@ -28,6 +28,7 @@ export function ReceiveChooser({
   if (RECEIVE_OPTIONS.length < 2) return null;
   const parsed = parseEvmAddress(draft.to);
   const toError = draft.option === "base" && (touched || draft.to) && !parsed.ok ? parsed.error : null;
+  const swapping = isSwapAssetId(draft.option) ? swapAsset(draft.option) : null;
 
   return (
     <div className="wz-stack" style={{ gap: 8 }}>
@@ -41,22 +42,23 @@ export function ReceiveChooser({
             type="button"
             className="wz-chip ln-recv-opt"
             aria-pressed={draft.option === o.id}
-            disabled={disabled || o.id === "eurc"}
+            disabled={disabled}
             onClick={() => {
               setTouched(false);
               onChange({ ...draft, option: o.id });
             }}
           >
             <span>{o.label}</span>
-            <small>{o.id === "eurc" ? "No testnet liquidity yet" : o.network}</small>
+            <small>{o.network}</small>
           </button>
         ))}
       </div>
-      {draft.option === "xlm" && (
+      {swapping && (
         <p className="wz-hint">
-          Two signatures: borrow USDC, then convert it to XLM at the price shown, with slippage up to{" "}
-          <span className="mono">{formatBp(DEFAULT_SLIPPAGE_BP)}</span>. Your debt stays in USDC; if the price of XLM moves, what you owe in
-          XLM terms changes.
+          Two signatures: borrow USDC, then convert it to {swapping.label} through Soroswap at the price shown, with slippage up to{" "}
+          <span className="mono">{formatBp(DEFAULT_SLIPPAGE_BP)}</span>. {debtLine(swapping)}
+          {swapping.id === "usdt0" &&
+            " No official USDT0 exists on any testnet, so this is a USDT0 test token Writz issues, with its own pool against USDC."}
         </p>
       )}
       {draft.option === "base" && (

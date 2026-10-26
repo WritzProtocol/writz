@@ -1,13 +1,15 @@
 import { keccak_256 } from "@noble/hashes/sha3.js";
+import type { SwapAsset, SwapAssetId } from "./assets";
 import type { ReceiveIntent } from "./intent";
 import { DEFAULT_SLIPPAGE_BP } from "./swap";
 
 /**
  * How a borrower receives the loan. The debt is always USDC on Stellar; the
- * option only decides what reaches the borrower: the USDC itself, XLM after a
- * swap on Stellar, or USDC on Base Sepolia through Circle CCTP.
+ * option only decides what reaches the borrower: the USDC itself, another
+ * asset after a swap on Stellar (EURC, PYUSD, the USDT0 test token or XLM), or
+ * USDC on Base Sepolia through Circle CCTP.
  */
-export type ReceiveOption = "usdc" | "xlm" | "base" | "eurc";
+export type ReceiveOption = "usdc" | SwapAssetId | "base";
 
 export interface ReceiveChoice {
   id: ReceiveOption;
@@ -16,24 +18,18 @@ export interface ReceiveChoice {
   network: string;
 }
 
-const CHOICES: Record<ReceiveOption, ReceiveChoice> = {
-  usdc: { id: "usdc", label: "USDC", network: "Stellar testnet" },
-  xlm: { id: "xlm", label: "XLM", network: "Stellar testnet" },
-  base: { id: "base", label: "USDC", network: "Base Sepolia testnet" },
-  eurc: { id: "eurc", label: "EURC", network: "Stellar testnet" },
-};
+const USDC: ReceiveChoice = { id: "usdc", label: "USDC", network: "Stellar testnet" };
+const BASE: ReceiveChoice = { id: "base", label: "USDC", network: "Base Sepolia testnet" };
 
 /**
  * The options this build can deliver, in display order. USDC on Stellar is
- * always there. XLM and Base Sepolia appear only when their transaction code
- * is wired in (live, or the mock harness); EURC only behind its flag, since
- * it has no usable testnet liquidity.
+ * always there, then each swap asset with a configured pool, stablecoins
+ * first, then Base Sepolia when its transaction code is wired in (live, or the
+ * mock harness).
  */
-export function receiveOptions(f: { swap: boolean; cctp: boolean; eurc: boolean }): ReceiveChoice[] {
-  const out = [CHOICES.usdc];
-  if (f.swap) out.push(CHOICES.xlm);
-  if (f.cctp) out.push(CHOICES.base);
-  if (f.eurc) out.push(CHOICES.eurc);
+export function receiveOptions(f: { swap: readonly SwapAsset[]; cctp: boolean }): ReceiveChoice[] {
+  const out = [USDC, ...f.swap.map(({ id, label, network }) => ({ id, label, network }))];
+  if (f.cctp) out.push(BASE);
   return out;
 }
 
@@ -77,13 +73,11 @@ export function intentFor(d: ReceiveChoiceDraft, slippageBp = DEFAULT_SLIPPAGE_B
   switch (d.option) {
     case "usdc":
       return { ok: true, intent: { kind: "usdc" } };
-    case "xlm":
-      return { ok: true, intent: { kind: "xlm", slippageBp } };
     case "base": {
       const r = parseEvmAddress(d.to);
       return r.ok ? { ok: true, intent: { kind: "chain", recipient: r.address } } : { ok: false, error: r.error };
     }
-    case "eurc":
-      return { ok: false, error: "EURC has no testnet liquidity yet." };
+    default:
+      return { ok: true, intent: { kind: "swap", asset: d.option, slippageBp } };
   }
 }
