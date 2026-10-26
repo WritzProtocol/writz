@@ -75,8 +75,8 @@ const TESTNET_SWAP_ASSETS = {
   pyusd: { code: "PYUSD", issuer: "GBT2KJDKUZYZTQPCSR57VZT5NJHI4H7FOB5LT5FPRWSR7I5B4FS3UU7G", token: "CACZL3MGXXP3O6ROMB4Q36ROFULRWD6QARPE3AKWPSWMYZVF2474CBXP" },
   usdt0: { code: "USDT0", issuer: "GCZS6UMPQDE5QVDFCJWRKLM3NR77IT7KSGEH3THSZNTWOH53E66KZ2CC", token: "CBBUGWDNLXMEFRECTRWUE2AV7VISS5ICC5OKPKY3B4ZEYXSQE2LTVKN6" },
 };
-/** EURC and PYUSD join once their pools against USDC are seeded. */
-const TESTNET_SWAP_OFFER = "usdt0,xlm";
+/** Stablecoins first; XLM stays only for testing and leaves the list before mainnet. */
+const TESTNET_SWAP_OFFER = "eurc,pyusd,usdt0,xlm";
 /** Circle CCTP V2 TokenMessengerMinter on Stellar testnet (domain 27). */
 const TESTNET_CCTP_TMM = "CDNG7HXAPBWICI2E3AUBP3YZWZELJLYSB6F5CC7WLDTLTHVM74SLRTHP";
 
