@@ -1,0 +1,54 @@
+name: Dependency audit
+
+# Checks every Cargo workspace's lockfile against the RustSec advisory
+# database. Runs when a manifest or lockfile changes, and weekly, because
+# new advisories land against dependencies that did not change.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '**/Cargo.toml'
+      - '**/Cargo.lock'
+      - '.github/workflows/dependency-audit.yml'
+  pull_request:
+    paths:
+      - '**/Cargo.toml'
+      - '**/Cargo.lock'
+      - '.github/workflows/dependency-audit.yml'
+  schedule:
+    - cron: "41 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dependency-audit-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cargo-audit:
+    name: cargo audit (${{ matrix.workspace }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        workspace:
+          - contracts
+          - privacy/contracts
+          - examples/spv-payment-check
+    defaults:
+      run:
+        working-directory: ${{ matrix.workspace }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit
+      # RUSTSEC-2026-0387 (crypto-bigint 0.5.5, timing variability) comes in
+      # through soroban-env-host -> elliptic-curve 0.13 on host builds only
+      # (tests and tooling). It is not in the wasm32v1-none contract build,
+      # and the fix (crypto-bigint >= 0.7.6) needs a soroban-sdk release that
+      # moves to elliptic-curve 0.14. Drop the ignore once the SDK is bumped.
+      # Unmaintained and yanked crates are reported as warnings, not failures.
+      - run: cargo audit --ignore RUSTSEC-2026-0387
