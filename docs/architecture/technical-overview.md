@@ -110,7 +110,7 @@ OP_ENDIF
 - After a predefined locktime (e.g., loan maturity + 30 days), the user can spend without the protocol's signature
 - Protects users if the protocol becomes unavailable
 
-**Taproot consideration:** Taproot (P2TR) would make the normal spending path look like a regular payment, adding privacy on the Bitcoin side. This is a Phase 2+ consideration - P2WSH is simpler to implement first.
+**Script type:** Writz stays on P2WSH with an absolute block-height time-lock for mainnet v1. An earlier plan to move to Taproot (P2TR) is withdrawn: the planned 2-of-3 protocol side does not fit a MuSig2 key path, Taproot signing is not broadly supported by the launch wallets, and Soroban has no host functions for a Taproot output check. See "Script Roadmap: P2WSH, not Taproot" in [The Bitcoin Side](/how-it-works/bitcoin-side).
 
 ---
 
@@ -267,16 +267,16 @@ let result = spv.verify_payment(
 
 | Risk | Mitigation |
 |---|---|
-| Bitcoin reorg (chain reorganization) | Require 6 confirmations - a 6-block reorg is extremely rare (has not happened in Bitcoin's history) |
+| Bitcoin reorg (chain reorganization) | Require 6 confirmations. Reorganizations that deep are very rare: the deepest on mainnet are the 2010 value-overflow fix and the 2013 BIP-50 fork |
 | P2WSH script bug | Formal verification of locking script; multiple independent reviews |
-| Protocol key compromise | Use MPC (multi-party computation) or HSM for protocol co-signing key |
+| Protocol key compromise | Planned: a 2-of-3 protocol side in the P2WSH script, three keys held separately, so no single key can co-sign a release; the signing policy will be published. The user's time-lock exit never depends on these keys |
 
 ### Soroban-side risks
 
 | Risk | Mitigation |
 |---|---|
 | SPV contract bug | Small header light client with no upgrade path; independent audit planned before mainnet; exposure caps bound what a verification failure could cost lenders. See [SPV vs Wrapped Bitcoin](/security/spv-vs-wrapped) |
-| Oracle/price feed manipulation | Use median of multiple price oracles (Pyth primary, Reflector secondary) - see `docs/research/oracle-design.md` |
+| Oracle/price feed manipulation | Reflector SEP-40 price feed today, rejected when older than one hour; a second source (Pyth, pull model) with a deviation guard is planned - see `docs/research/oracle-design.md` |
 | Interest rate model edge cases | Stress-test model against historical volatility; cap max borrow rate |
 
 ### Economic risks
@@ -294,12 +294,12 @@ let result = spv.verify_payment(
 | Component | Technology |
 |---|---|
 | Stellar smart contracts | Soroban (Rust) |
-| Bitcoin SPV library | summa-tx/bitcoin-spv (Rust) - adapted |
-| Bitcoin scripting | P2WSH (Phase 1) → Taproot (Phase 3) |
+| Bitcoin SPV library | Writz's own header light client (`bitcoin-spv`, Rust, no external SPV library) |
+| Bitcoin scripting | P2WSH with an absolute CLTV time-lock; a 2-of-3 miniscript form planned; Taproot withdrawn |
 | Frontend | React/Next.js |
 | Bitcoin wallet | Xverse (via PSBT standard) |
 | Stellar wallet | Stellar Wallets Kit (Freighter, Lobstr, others) |
-| Price oracles | Pyth (primary) + Reflector (secondary), SEP-40 median - see `docs/research/oracle-design.md` |
+| Price oracles | Reflector (SEP-40) today; Pyth planned as a second source with a deviation guard - see `docs/research/oracle-design.md` |
 | Header service | Custom Node.js service connecting to Bitcoin full node |
 
 ---

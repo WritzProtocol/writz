@@ -3,7 +3,7 @@
 > **Bitcoin was built to be yours. Your loans should be too.**
 
 [![CI](https://github.com/WritzProtocol/writz/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/WritzProtocol/writz/actions/workflows/ci.yml?query=branch%3Amain)
-[![Tests](https://img.shields.io/badge/tests-406%20passing-brightgreen)](https://github.com/WritzProtocol/writz/actions)
+[![Tests](https://img.shields.io/badge/tests-623%20passing-brightgreen)](https://github.com/WritzProtocol/writz/actions)
 [![Network](https://img.shields.io/badge/network-Stellar%20Testnet-blue)](https://stellar.expert/explorer/testnet)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
@@ -358,9 +358,9 @@ python3 scripts/diagrams/render-all.py
 |---|---|
 | Bitcoin reorg | Require 6 confirmations before deposit is recognized |
 | P2WSH script bug | Formal review; emergency timelock protects users regardless |
-| Protocol key compromise | MPC / HSM co-signing key; key rotation roadmap |
+| Protocol key compromise | The protocol key cannot move BTC without the user's key; a 2-of-3 protocol side in the P2WSH script is planned, with a published signing policy |
 | SPV contract exploit | Header light client anchored to a public checkpoint, with proof-of-work, exact difficulty and chainwork checks; no upgrade path; independent audit planned before mainnet. See [SPV vs Wrapped Bitcoin](docs/security/spv-vs-wrapped.md) |
-| Oracle manipulation | Median of multiple price feeds (Pyth + DIA) |
+| Oracle manipulation | Reflector SEP-40 feed with a one-hour staleness check; a second source (Pyth) with a deviation guard is planned |
 | Mass liquidation (BTC crash) | Conservative 150% collateral ratio; open liquidation keeps keepers competitive |
 
 ### Audit Roadmap
