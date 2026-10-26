@@ -144,17 +144,14 @@ The timelock recovery script is embedded in a Tapscript leaf, committed to in th
 
 ### The problem
 
-Writz holds a co-signing private key for the `protocol_pubkey` in every locking script. If this key is compromised, an attacker can drain all locked BTC by co-signing arbitrary release transactions.
+Writz holds a co-signing private key for the `protocol_pubkey` in every locking script. Every spending path also requires the user's key, so a compromised protocol key cannot move locked BTC on its own, but it is a single point of failure for cooperative releases, and any future path in which the protocol side completes a transaction the user pre-signed (such as liquidation) raises its value to an attacker.
 
 ### Solutions (in order of security)
 
-**Phase 1.5 (implemented): AWS KMS**
-The protocol private key is generated and held inside an AWS KMS asymmetric key (`ECC_SECG_P256K1` curve, `ECDSA_SHA_256` signing algorithm - natively matching Bitcoin's curve). The raw key material never leaves KMS; signing is a `kms:Sign` API call authenticated via IAM, with CloudTrail audit logging on every call. See `bitcoin-script/src/keys.ts`'s `KmsSigner` and `frontend/app/src/app/api/cosign/route.ts`. The `$50K` mainnet TVL cap bounds exposure on top of this custody model. See `docs/security/security-model.md` for the full trust-model discussion.
-
 **Planned: 2-of-3 protocol side in the script**
-Instead of splitting one key with MPC, the script itself requires the user's key and any 2 of 3 protocol keys, `wsh(and_v(v:pk(U),or_i(multi(2,K1,K2,K3),after(H))))`, held separately. Bitcoin enforces the threshold natively, each protocol key signs plain ECDSA, and the user's timelock exit is unchanged. Threshold ECDSA (MPC, for example GG20/21 or CGGMP21) is not planned.
+Instead of splitting one key with MPC, the script itself requires the user's key and any 2 of 3 protocol keys, `wsh(and_v(v:pk(U),or_i(multi(2,K1,K2,K3),after(H))))`, held separately. Bitcoin enforces the threshold natively, each protocol key signs plain ECDSA, and the user's timelock exit is unchanged. Threshold ECDSA (MPC, for example GG20/21 or CGGMP21) is not planned. The signing policy, what the protocol signers can and cannot sign, will be published.
 
-**Phase 2+: Stellar Auth Delegation (Protocol 27)**
+**Considered: Stellar Auth Delegation (Protocol 27)**
 Protocol 27 (July 8, 2026) enables distributing the co-signing authority on the Stellar side across multiple delegated accounts. While this doesn't directly affect the Bitcoin signing key, it enables a multi-party signing ceremony where multiple Stellar accounts must authorize a BTC co-signature before it's produced.
 
 **Only if Taproot is reopened: FROST (Flexible Round-Optimized Schnorr Threshold)**
@@ -258,7 +255,7 @@ EMERGENCY RECOVERY (if Writz offline):
 | Script type | P2WSH with absolute CLTV for mainnet v1; a 2-of-3 miniscript form planned; P2TR withdrawn | Signer support for P2WSH miniscript today; 2-of-3 does not fit MuSig2; Soroban can check P2WSH with one SHA-256 comparison |
 | Timelock | CLTV absolute block height | Simpler than relative timelocks, predictable |
 | Timelock duration | Loan term + 7 days safety buffer | Protects users without locking capital indefinitely |
-| Protocol key storage | AWS KMS (Phase 1.5, implemented) → 2-of-3 protocol keys in the script (planned) | Progressive decentralization of signing authority, enforced by Bitcoin Script rather than MPC |
+| Protocol signing | 2-of-3 protocol keys in the script (planned), with a published signing policy | Threshold enforced natively by Bitcoin Script rather than MPC; no single key can co-sign a release |
 | Confirmation requirement | 6 (fast lane considered, not adopted) | 6 makes reorg risk negligible at launch caps |
 | SPV type | On-chain header light client (original recommendation, stateless, superseded) | A stateless design lets a caller present a privately mined header chain |
 | Future direction | Zero-knowledge header-chain proof, under research | A second check that can only refuse a tip, never credit value |

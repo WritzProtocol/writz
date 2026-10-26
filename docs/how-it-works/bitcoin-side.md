@@ -138,11 +138,9 @@ This ensures that user funds are never permanently inaccessible, even in a worst
 
 ## Protocol Co-signing Key Architecture
 
-**Phase 1 (current):** The protocol co-signing key is held in an HSM (Hardware Security Module) operated by the Writz team. It is used exclusively to sign BTC release transactions for fully repaid loans.
+The protocol co-signing key is used only to co-sign release transactions for fully repaid loans. It can never move Bitcoin alone: every spending path of the script also requires the user's key, and the user's time-lock exit does not need it at all.
 
-**Phase 2 (after Protocol 27 ships, Q3 2026):** The co-signing key architecture is upgraded using Stellar's `delegate_account_auth` (Protocol 27 / Zipper). This enables threshold co-signing - multiple independent parties must agree before a release is signed - removing the single-point-of-failure of an HSM.
-
-**Phase 3 (2027):** Full MPC (Multi-Party Computation) for the protocol co-signing key, eliminating any single HSM as a trust assumption.
+**Planned:** the protocol side becomes 2-of-3 keys, held separately and written into the P2WSH script itself (see the script form below), so Bitcoin enforces the threshold natively and no single key can co-sign a release. This replaces earlier plans for threshold MPC signing. The signing policy, what the protocol signers can and cannot sign, will be published.
 
 ---
 

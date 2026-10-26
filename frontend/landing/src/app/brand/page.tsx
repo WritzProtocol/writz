@@ -106,7 +106,7 @@ const TYPE = [
   { spec: "H2 36 / 600 / -0.022em", size: 36, weight: 600, tracking: "-0.022em", text: "No bridge, no custodian" },
   { spec: "Body 17 / 400", size: 17, weight: 400, tracking: "0", text: "The collateral stays on Bitcoin, held by a Bitcoin Script." },
   { spec: "Label 13 / 500 / 0.06em", size: 13, weight: 500, tracking: "0.06em", text: "COLLATERAL", upper: true },
-  { spec: "Data 16 / mono / tabular", size: 16, weight: 400, tracking: "0", text: "CB2BD6QC…NCKKNIVA 0.04120000 BTC", mono: true },
+  { spec: "Data 16 / mono / tabular", size: 16, weight: 400, tracking: "0", text: "CBX23YKC…VCW7W4EO 0.04120000 BTC", mono: true },
 ];
 
 const ONE_LINE =

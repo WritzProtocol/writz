@@ -30,7 +30,7 @@ Every security system has trust assumptions. Writz's are:
 | Soroban contracts | Smart contract code runs as written | Critical - mitigated by audits and open-source code |
 | ZK circuits (privacy edition only) | Groth16 proofs are sound (no witness forgery) | Critical for that edition - mitigated by its own audit; not a v1 assumption |
 | Trusted setup ceremony (privacy edition only) | ≥1 participant destroyed their randomness honestly | Critical for that edition - mitigated by a multi-party ceremony; not on the v1 mainnet path |
-| Protocol co-signing key (Phase 1) | Writz's HSM is not compromised | High - mitigated by migration to MPC in Phase 2 |
+| Protocol co-signing key | The protocol co-signing key is not compromised | High - it cannot move Bitcoin without the user's key; a 2-of-3 protocol side in the script is planned, with a published signing policy |
 | Oracle price feed | BTC/USD price is not manipulated beyond staleness threshold | High - mitigated by staleness checks today (single Reflector source); a second source for a median is planned |
 | User's private keys | User's Bitcoin and Stellar keys are not compromised | Critical - user responsibility |
 | All of the above | No large-scale quantum computer capable of running Shor's algorithm exists | Catastrophic if it does, but this breaks Bitcoin's ECDSA, Stellar's Ed25519, and Groth16's BN254 pairing curve simultaneously. Not a Writz-specific risk, and not one Writz can mitigate unilaterally |
@@ -145,13 +145,11 @@ For SegWit deposits, `verify_transaction` computes the txid as `SHA256d` of the 
 
 The P2WSH cooperative-release path requires the protocol's co-signature; the fallback path uses `OP_CHECKLOCKTIMEVERIFY` so a user can always recover BTC unilaterally once the timelock expires. CLTV has a sharp edge: if the spending input's `nSequence` is `0xFFFFFFFF` (Bitcoin's "final" value, and many wallets' default), the Script interpreter fails the CLTV check immediately regardless of whether the timelock has actually expired, with no clear error message. Writz's own tooling (`buildEmergencyTransaction`/`finalizePathB` in `bitcoin-script`) hardcodes `nSequence = 0xFFFFFFFE` and gives `SpendParams` no caller-settable sequence field for this path, so it cannot regress. Users constructing this recovery transaction by hand with a third-party wallet must set this themselves - see [Manual Emergency Recovery](/how-it-works/manual-emergency-recovery).
 
-### Protocol co-signing key custody
+### Protocol co-signing key
 
-The two call sites that need to co-sign a Bitcoin release (`/api/cosign` and the repay-watcher relayer) resolve their signer through a single shared function, `resolveProtocolSigner`, rather than each hardcoding a custody assumption. It prefers an AWS KMS asymmetric key (`ECC_SECG_P256K1` / `ECDSA_SHA_256` - the same curve Bitcoin uses): the private key material never leaves KMS, and every signature is an authenticated `kms:Sign` call, audit-logged via CloudTrail.
+The relayer's repay watcher co-signs a Bitcoin release in response to a `repay_full` event recorded on Stellar, and publishes the half-signed transaction on `writz-lend` so it can be read even if Writz is down.
 
-When KMS isn't configured, the same function falls back to a WIF-encoded key read from an environment variable (`PROTOCOL_SIGNING_KEY`) - the custody model Writz used before KMS. This exists to unblock testnet/signet operation when KMS setup is delayed (for example, while an AWS account identity-verification hold is being resolved), not as a permanent alternative: it reintroduces the exact risk the KMS migration closed (a compromised host or leaked environment variable exposes the key outright, with no HSM boundary). To keep that fallback from silently becoming the mainnet posture, `resolveProtocolSigner` refuses it unconditionally on `bitcoin.networks.bitcoin` - a deployment misconfigured for mainnet fails loudly at startup instead of running with a weaker custody model than the rest of this document assumes. KMS takes priority whenever both are configured, so setting `KMS_KEY_ID` is the only step needed to move a given deployment off the fallback.
-
-**Operational monitoring gap:** the mainnet guard is a hard stop, but there is currently no alerting for the WIF fallback being active on testnet/signet - `resolveProtocolSigner` silently uses it whenever `KMS_KEY_ID` is unset, with no log line or metric flagging that a deployment is running with the weaker custody model. Before mainnet, add a startup-time log/alert (not just the mainnet-network refusal) so the team always knows which custody mode a given deployment is running under, rather than discovering it only if the mainnet guard fires.
+The protocol key cannot move Bitcoin on its own: the cooperative path also requires the user's signature, and the time-lock path needs only the user's key. The planned design replaces the single protocol key with a 2-of-3 protocol side written into the P2WSH script, three keys held separately, so Bitcoin enforces the threshold natively. The signing policy, what the protocol signers can and cannot sign, will be published.
 
 ### Trusted setup ceremony (privacy edition)
 
@@ -210,7 +208,7 @@ The keeper does need position preimages to monitor health ratios in the first pl
 - If borrowers do not repay before Writz shuts down, and liquidations cannot occur, USDC lenders may face losses
 - This risk is mitigated by conservative TVL caps, insurance fund accumulation, and progressive decentralization
 
-### "The protocol co-signing key is compromised (Phase 1)"
+### "The protocol co-signing key is compromised"
 
 An attacker with the protocol co-signing key cannot:
 - Move BTC from any P2WSH address (user signature still required for Condition A)
@@ -220,7 +218,7 @@ An attacker could:
 - Refuse to co-sign repayment releases (effectively locking users out of Condition A) - users fall back to Condition B time-lock
 - Generate invalid co-signatures for transactions where loans haven't been repaid - invalid because the Stellar contract checks repayment before the event is emitted
 
-**Phase 2 mitigation:** The co-signing key is replaced with a threshold MPC scheme (Protocol 27). Compromising the co-signing key requires compromising multiple independent parties simultaneously.
+**Planned mitigation:** the single co-signing key is replaced by a 2-of-3 protocol side written into the P2WSH script, three keys held separately. Bitcoin enforces the threshold natively, so co-signing a release requires compromising two independent keys at once. The signing policy will be published.
 
 ### "The oracle reports a wrong price"
 
@@ -228,7 +226,7 @@ If the BTC/USD price is manipulated downward:
 - Healthy positions could appear undercollateralized and be liquidated (their debt is cleared in USDC; no BTC moves in a `writz-lend` liquidation)
 
 **Mitigations:**
-- Median of two independent oracles (Pyth + Reflector - corrected 2026-09-16, then re-verified on-chain; RedStone dropped, DIA parked, see `docs/research/oracle-design.md`) - manipulating the median requires moving both
+- Planned: a median of two independent oracles (Reflector plus Pyth, with a deviation guard - corrected 2026-09-16, then re-verified on-chain; RedStone dropped, DIA parked, see `docs/research/oracle-design.md`) - manipulating the median requires moving both
 
 **Interim status (2026-09-17):** only Reflector is wired into `writz-lend` today - see `contracts/contracts/writz-lend/src/oracle.rs`. There is no median yet; a single misbehaving or unavailable Reflector feed currently blocks (via `OraclePriceStale`/`OraclePriceUnavailable`) rather than silently mispricing, but it cannot yet be cross-checked against a second source the way the target design requires. Do not treat this as the finished manipulation-resistance story until Pyth is also wired.
 - Staleness check: price data older than 60 minutes is rejected; liquidations are paused (aligned with `docs/research/oracle-design.md` - Pyth is a pull oracle, not a continuous push feed, so the threshold accounts for time between pulls, not just publish latency)
