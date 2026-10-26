@@ -9,6 +9,8 @@
 
 **[Live App](https://writz.xyz)** · **[Docs](https://docs.writz.xyz)** · **[Relayer API](https://api.testnet.writz.xyz)**
 
+> **HackMeridian 2026 judges:** the event work, goals, demo steps and prior-work disclosure are in [HACKMERIDIAN.md](HACKMERIDIAN.md).
+
 **Writz** is a Bitcoin lending protocol on Stellar where the collateral never leaves Bitcoin. Lock real BTC directly from your Bitcoin wallet, borrow USDC on Stellar, and take it back alone if Writz ever disappears.
 
 No bridge. No custodian. No wrapped tokens.
