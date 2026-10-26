@@ -10,6 +10,7 @@ import { vaultMetricsSnapshot } from "./defindex/metrics.js";
 import { startRepayWatcher } from "./repay-watcher/poller.js";
 import { startVaultWatcher } from "./vault-watcher/poller.js";
 import { startHeaderSync } from "./bitcoin/spv-submit.js";
+import { headerSyncStatus } from "./bitcoin/header-sync.js";
 import { lendingEnabled } from "./deploy-target.js";
 import { startTreeWatcher, treeSyncStatus } from "./tree-watcher/poller.js";
 import { startZkKeeper } from "./zk-keeper/runner.js";
@@ -143,7 +144,7 @@ app.get("/health", (_req, res) => {
     service: "writz-relayer",
     target: config.target,
     lending: LENDING,
-    ...(LENDING ? { treeSync: treeSyncStatus } : {}),
+    ...(LENDING ? { treeSync: treeSyncStatus, headerSync: headerSyncStatus } : {}),
     bitcoinNetwork: config.bitcoinNetwork,
     esploraBaseUrl: config.esploraBaseUrl,
     defindex: vaultMetricsSnapshot(),

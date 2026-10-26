@@ -619,6 +619,20 @@ Fund that address with Base Sepolia ETH (a public Base Sepolia faucet, or a brid
 
 Returns `{"status":"ok",...}` - used by load balancers.
 
+Where lending is enabled, `headerSync` reports the `bitcoin-spv` header sync:
+
+| Field | Meaning |
+|---|---|
+| `enabled` | `BITCOIN_SPV_ID`, `SPV_SYNC_FROM_HEIGHT` and `RELAYER_SECRET` are set |
+| `lastPassAt`, `bitcoinTipHeight`, `contractTipHeight` | Last pass, and the two tips it compared |
+| `submissions`, `lastSubmissionAt`, `lastSubmittedThrough`, `lastFeeXlm` | Confirmed `submit_headers` calls since start, the last one, and the fee it was charged |
+| `skippedNoNewHeaders` | Passes that sent nothing because the Bitcoin tip was already the contract's tip |
+| `maxFeeXlm`, `skippedFeeCeiling`, `lastFeeCeilingSkip` | The `SPV_MAX_FEE_XLM` ceiling, passes skipped because the simulated fee was above it, and the last such fee |
+| `relayerBalanceXlm`, `minBalanceXlm`, `balanceLow` | Relayer account balance (read every 10 minutes), the `RELAYER_MIN_BALANCE_XLM` threshold, and whether it is under it |
+| `lastError` | Why the last pass failed or was skipped, `null` after a clean pass |
+
+Each pass first compares the Bitcoin tip (height and hash) with the contract's best tip, read with a free `get_best_tip` simulation, and sends a transaction only when there is something new: a higher Bitcoin tip, or a different block at the same height. When it sends, it still starts six blocks below the contract tip, so reorg handling is unchanged.
+
 ## Environment variables
 
 Copy `.env.example` to `.env` and adjust as needed.
@@ -646,6 +660,9 @@ Copy `.env.example` to `.env` and adjust as needed.
 | `DEFAULT_CONFIRMATIONS` | `6` | Used when caller omits the query param |
 | `MAX_CONFIRMATIONS` | `20` | Hard cap on the confirmations param |
 | `REQUEST_TIMEOUT_MS` | `10000` | Esplora request timeout in ms |
+| `SPV_SYNC_INTERVAL_MS` | `60000` | How often the header sync compares the Bitcoin tip with the `bitcoin-spv` tip; a transaction is sent only when there are new headers |
+| `SPV_MAX_FEE_XLM` | `5` | Most one `submit_headers` transaction may cost (inclusion bid plus simulated resource fee). Above it nothing is sent, a warning is logged and the next pass retries. A one-header call costs about 0.0068 XLM on testnet at normal rent; the default leaves headroom for a full 16-header catch-up batch on mainnet |
+| `RELAYER_MIN_BALANCE_XLM` | `100` | Relayer account balance under which the header sync logs an error-level `ALERT relayer balance low` line (checked every 10 minutes) and `/health` reports `headerSync.balanceLow: true` |
 | `FAUCET_SIGNET_WIF` | *(unset)* | WIF of the Signet faucet's hot wallet. Unset: `/faucet/signet` answers `503 faucet_disabled`. Signet only, never the protocol key |
 | `POLLAR_SECRET_KEY` | *(unset)* | Pollar Server API secret key of the testnet app (`sec_testnet_...`), used to verify the social login behind each faucet claim. Unset: the faucet answers `503 faucet_disabled`. Refused on the mainnet target |
 | `POLLAR_APPLICATION_ID` | *(unset)* | The testnet app's id in Pollar; a claim's login must belong to it. Unset: the faucet answers `503 faucet_disabled` |
