@@ -90,7 +90,8 @@ pub struct ProtocolState {
 
 /// Protocol configuration, set at initialization. Most fields are fixed for
 /// the contract's lifetime; `keeper`, `relayer`, `keeper_stale_after_secs`,
-/// and `paused` are admin-mutable via their own setters - see `lib.rs`.
+/// `borrow_timelock_margin_blocks`, `max_tip_age_secs` and `paused` are
+/// admin-mutable via their own setters - see `lib.rs`.
 ///
 /// Stored under `DataKey::Config` in persistent storage.
 #[contracttype]
@@ -147,6 +148,14 @@ pub struct Config {
     /// up. Set at deployment: 3,110,400 (180 days) on mainnet, short where
     /// rent is priced high.
     pub entry_ttl_ledgers: u32,
+    /// Bitcoin blocks a borrow must leave between the `bitcoin-spv` tip and
+    /// the position's timelock height (4,320, about 30 days, by default;
+    /// never lower). Admin-mutable via `set_borrow_timelock_margin`.
+    pub borrow_timelock_margin_blocks: u32,
+    /// Oldest the `bitcoin-spv` tip header may be, in seconds of ledger
+    /// time, for `borrow` and `liquidate` to measure a timelock against it
+    /// (6 hours by default). Admin-mutable via `set_max_tip_age`.
+    pub max_tip_age_secs: u64,
 }
 
 // The cross-contract SPV verification call's return type, `SpvVerificationResult`,

@@ -533,7 +533,7 @@ pub fn __constructor(admin: Address, spv_contract: Address, usdc_token: Address,
 
 ### `deposit`
 
-Register a BTC deposit by submitting an SPV proof.
+Register a BTC deposit by submitting an SPV proof. `user_pubkey` must differ from the protocol key, else `UserKeyIsProtocolKey`.
 
 ```rust
 pub fn deposit(depositor: Address, block_hash: BytesN<32>, merkle_proof: Vec<BytesN<32>>, tx_index: u32, raw_tx: Bytes, p2wsh_script_pubkey: Bytes, timelock_height: u32, user_pubkey: BytesN<33>, key_sig: BytesN<65>) -> Result<BytesN<32>, WritzLendError>
@@ -557,7 +557,7 @@ pub fn withdraw_supply(supplier: Address, amount: i128) -> Result<(), WritzLendE
 
 ### `borrow`
 
-Borrow USDC against an existing BTC deposit.
+Borrow USDC against an existing BTC deposit. Every borrow, including a top-up, requires the position's timelock height H to be at least `borrow_timelock_margin_blocks` (4,320 by default) above the `bitcoin-spv` tip, read from a tip header no older than `max_tip_age_secs` (6 hours by default); else `TimelockTooSoon`, or `StaleBitcoinTip` when the tip is missing or too old.
 
 ```rust
 pub fn borrow(borrower: Address, txid: BytesN<32>, usdc_amount: i128) -> Result<(), WritzLendError>
@@ -573,7 +573,7 @@ pub fn repay(repayer: Address, txid: BytesN<32>, usdc_amount: i128) -> Result<()
 
 ### `liquidate`
 
-Liquidate an undercollateralized position.
+Liquidate an undercollateralized position. Accepted only while H is at least `LIQUIDATION_CUTOFF_BLOCKS` (288) above the `bitcoin-spv` tip, read from a fresh tip as for `borrow`; else `LiquidationWindowClosed`, or `StaleBitcoinTip`.
 
 ```rust
 pub fn liquidate(keeper: Address, txid: BytesN<32>) -> Result<(), WritzLendError>
@@ -607,6 +607,22 @@ Updates how many seconds of keeper inactivity before liquidation opens to any ca
 
 ```rust
 pub fn set_keeper_stale_window(caller: Address, secs: u64) -> Result<(), WritzLendError>
+```
+
+### `set_borrow_timelock_margin`
+
+Sets how many Bitcoin blocks a borrow must leave between the `bitcoin-spv` tip and the position's timelock height. Admin only; 4,320 to 105,000, else `InvalidTimelockParams`: the margin can be raised, never lowered below the default.
+
+```rust
+pub fn set_borrow_timelock_margin(caller: Address, blocks: u32) -> Result<(), WritzLendError>
+```
+
+### `set_max_tip_age`
+
+Sets how old the `bitcoin-spv` tip header may be, in seconds, for `borrow` and `liquidate` to rely on it. Admin only; 1 to 48 hours, else `InvalidTimelockParams`.
+
+```rust
+pub fn set_max_tip_age(caller: Address, secs: u64) -> Result<(), WritzLendError>
 ```
 
 ### `set_relayer`
@@ -679,6 +695,22 @@ Returns the health ratio (in basis points) for a position.
 
 ```rust
 pub fn get_health_ratio_bp(txid: BytesN<32>) -> Result<i128, WritzLendError>
+```
+
+### `get_borrow_timelock_margin`
+
+Blocks a borrow must leave between the `bitcoin-spv` tip and the position's timelock height.
+
+```rust
+pub fn get_borrow_timelock_margin() -> Result<u32, WritzLendError>
+```
+
+### `get_max_tip_age`
+
+Oldest the `bitcoin-spv` tip header may be, in seconds, for `borrow` and `liquidate` to rely on it.
+
+```rust
+pub fn get_max_tip_age() -> Result<u64, WritzLendError>
 ```
 
 ### `get_borrow_rate_bp`
