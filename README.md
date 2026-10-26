@@ -67,7 +67,7 @@ The protocol operates across two blockchains. Bitcoin is the custody layer - BTC
 **Four layers, each with a clear boundary:**
 
 1. **Bitcoin Network** - user's BTC wallet locks funds into a P2WSH script. The script enforces two spending conditions; no third party can move the funds.
-2. **Backend Services** - a stateless SPV Relayer watches Bitcoin blocks and assembles proof bundles for Soroban, and a repay watcher co-signs the release PSBT once a loan is fully repaid.
+2. **Backend Services** - an SPV Relayer watches Bitcoin blocks, submits their headers to the `bitcoin-spv` light client and assembles transaction proofs against them, and a repay watcher co-signs the release PSBT once a loan is fully repaid.
 3. **Soroban Contracts** - `bitcoin-spv` verifies Bitcoin transactions cryptographically; `writz-lend` registers deposits and issues, accrues and settles USDC loans.
 4. **Browser** - keys stay on the user's device. The Bitcoin wallet signs the key-control proof and the release transaction; the Stellar wallet signs Soroban transactions.
 
@@ -359,7 +359,7 @@ python3 scripts/diagrams/render-all.py
 | Bitcoin reorg | Require 6 confirmations before deposit is recognized |
 | P2WSH script bug | Formal review; emergency timelock protects users regardless |
 | Protocol key compromise | MPC / HSM co-signing key; key rotation roadmap |
-| SPV contract exploit | External audit; stateless approach minimizes attack surface |
+| SPV contract exploit | Header light client anchored to a public checkpoint, with proof-of-work, exact difficulty and chainwork checks; no upgrade path; independent audit planned before mainnet. See [SPV vs Wrapped Bitcoin](docs/security/spv-vs-wrapped.md) |
 | Oracle manipulation | Median of multiple price feeds (Pyth + DIA) |
 | Mass liquidation (BTC crash) | Conservative 150% collateral ratio; open liquidation keeps keepers competitive |
 
@@ -382,7 +382,7 @@ To report a security issue: open a private [GitHub Security Advisory](https://gi
 Full documentation lives in [`docs/`](docs/) and is published at **[docs.writz.xyz](https://docs.writz.xyz)**:
 
 **Start here:**
-- [Whitepaper](https://writz.xyz/whitepaper) - The technical paper (v1.0, July 2026): stateless SPV and the lending market. The Groth16 position privacy it describes is now planned as a separate edition, in progress. DOI [10.5281/zenodo.23148520](https://doi.org/10.5281/zenodo.23148520).
+- [Whitepaper](https://writz.xyz/whitepaper) - The technical paper (v1.0, July 2026): SPV verification and the lending market. The paper describes a stateless SPV design; the `bitcoin-spv` contract has since replaced it with an on-chain header light client. The Groth16 position privacy it describes is now planned as a separate edition, in progress. DOI [10.5281/zenodo.23148520](https://doi.org/10.5281/zenodo.23148520).
 - [What is Writz?](docs/introduction/what-is-writz.md) - Plain English. No jargon. 5 minutes.
 - [The Problem](docs/introduction/the-problem.md) - Why public DeFi breaks BTC holders.
 - [How Writz Works](docs/introduction/how-writz-works.md) - Full flow for any reader.

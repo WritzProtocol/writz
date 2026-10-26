@@ -6,6 +6,8 @@ title: "The Bitcoin Side"
 
 Before anything happens on Stellar, a Bitcoin transaction secures your collateral. This page explains the Bitcoin locking mechanism: what it is, how it works, and what the security guarantees are.
 
+For how keeping BTC in your own script compares with wrapped Bitcoin and bridges, see [SPV vs Wrapped Bitcoin](/security/spv-vs-wrapped).
+
 ---
 
 ## The Core Idea: Rules Written Into Bitcoin
@@ -144,15 +146,21 @@ This ensures that user funds are never permanently inaccessible, even in a worst
 
 ---
 
-## Taproot Roadmap
+## Script Roadmap: P2WSH, not Taproot
 
-Phase 1 uses P2WSH for simplicity and auditability. P2WSH is well-understood, battle-tested, and the easiest to implement correctly.
+Writz stays on P2WSH with an absolute block-height time-lock (`OP_CHECKLOCKTIMEVERIFY`) for mainnet v1. An earlier plan to move to Taproot (P2TR) with a MuSig2 key path is withdrawn, because:
 
-In Phase 2+, Writz will migrate to **Taproot (P2TR)**:
-- The normal release path (Condition A) becomes a simple key-path spend that looks like any ordinary Bitcoin payment
-- No script is revealed on-chain for the happy path - improving privacy on the Bitcoin side
-- Script-path spending (Condition B emergency) is still available but is now a hidden alternative
-- Reduced transaction fees (~50% smaller for Condition A)
+- Every launch wallet can sign a P2WSH miniscript today, while Taproot script-path and MuSig2 signing are not broadly supported.
+- The protocol side is planned as 2-of-3 keys. MuSig2 is n-of-n, so a 2-of-3 key path would need threshold Schnorr signing (FROST), which no launch wallet or custody option supports.
+- The Soroban contract checks a P2WSH output with one SHA-256 comparison. A Taproot output check would need Schnorr or elliptic-curve arithmetic that Soroban does not provide as host functions.
+
+The planned change is to the script's form, not its type. It moves to a miniscript policy with the user's key and any 2 of 3 protocol keys on the cooperative path, and the user's key alone after the time-lock:
+
+```
+wsh(and_v(v:pk(U),or_i(multi(2,K1,K2,K3),after(H))))
+```
+
+This keeps the user's emergency exit exactly as it is and lets policy-based hardware wallets sign it. Until it ships, the deployed script is the one shown above. Taproot is reconsidered only once threshold Schnorr signing is available in the launch wallets and signers.
 
 ---
 

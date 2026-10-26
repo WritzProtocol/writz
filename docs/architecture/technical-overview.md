@@ -118,42 +118,37 @@ OP_ENDIF
 
 The core of Writz's technical innovation. A Soroban smart contract that verifies Bitcoin transactions cryptographically.
 
-**Approach: Stateless SPV**
+**Approach: an on-chain header light client**
 
-Rather than maintaining a chain of Bitcoin block headers on Stellar (expensive, creates relayer dependency), Writz uses stateless SPV: the caller provides the relevant headers at verification time, and the contract verifies them without storing state.
+`bitcoin-spv` keeps a compact chain of Bitcoin block headers on Stellar, anchored at a checkpoint block that is set once and never changed. Relayers submit new headers with `submit_headers`; each one must descend from a stored header, carry valid proof of work at exactly the difficulty Bitcoin's retarget rules require, and accumulate chainwork, and the contract tracks the most-work chain. A transaction is then proven against a header the contract already stored, so a caller cannot present a header chain it mined privately. An earlier stateless design, in which the caller supplied the headers at verification time, was replaced for that reason. See [How SPV Verification Works](/how-it-works/spv-verification) and [SPV vs Wrapped Bitcoin](/security/spv-vs-wrapped).
 
 **Core functions:**
 
 ```rust
-// Verify that a Bitcoin transaction is included in a confirmed block
+// Add contiguous block headers to the light client (80-byte raw headers).
+// Permissionless unless a submitter is configured. Returns the best tip height.
+pub fn submit_headers(env: Env, headers: Vec<BytesN<80>>) -> Result<u32, SPVError>
+
+// Prove that a transaction is in a stored block on the most-work chain,
+// buried under at least `min_confirmations` blocks.
 pub fn verify_transaction(
     env: Env,
-    // The block headers - must form a valid chain with sufficient PoW
-    headers: Vec<BitcoinBlockHeader>,
-    // Merkle proof: sibling hashes from tx to block root
-    merkle_proof: Vec<Bytes32>,
-    // The transaction index in the block
-    tx_index: u32,
-    // The raw Bitcoin transaction
-    raw_tx: Bytes,
-    // Minimum confirmations required
+    block_hash: BytesN<32>,          // a header the contract already stored
+    merkle_proof: Vec<BytesN<32>>,   // sibling hashes from tx to block root
+    tx_index: u32,                   // the transaction index in the block
+    raw_tx: Bytes,                   // the raw transaction, without witness data
     min_confirmations: u32,
-) -> SpvVerificationResult
-
-// Extract the output sent to a specific address from a transaction
-pub fn extract_output(
-    raw_tx: Bytes,
-    expected_address: BitcoinAddress,
-) -> Option<u64>  // Returns satoshi amount if found
+) -> Result<SpvVerificationResult, SPVError> // { txid, block_hash, block_height, confirmations }
 ```
+
+Output checks are done by the consumer: `writz-lend::deposit` rebuilds the expected Writz P2WSH script from the protocol key, the depositor's key and the timelock, and requires the deposit output to match it.
 
 **Cryptographic operations required:**
 - `SHA256d` (double-SHA256): Bitcoin's primary hash function - used for block hashes, txids, Merkle tree nodes
 - Merkle proof verification: O(log n) SHA256d operations for n transactions in the block
 - Block header PoW verification: check that `SHA256d(header) < target`
-- Header chain continuity: verify each header's `prev_block_hash` matches the previous
-
-**Reference implementation:** `summa-tx/bitcoin-spv` Rust library provides all these functions. The Soroban port will adapt this library.
+- Header chain continuity: verify each header's `prev_block_hash` matches a stored header
+- Difficulty retargeting and cumulative chainwork, to follow the most-work chain
 
 ---
 
@@ -280,7 +275,7 @@ let result = spv.verify_payment(
 
 | Risk | Mitigation |
 |---|---|
-| SPV contract bug | External audit; stateless approach limits attack surface |
+| SPV contract bug | Small header light client with no upgrade path; independent audit planned before mainnet; exposure caps bound what a verification failure could cost lenders. See [SPV vs Wrapped Bitcoin](/security/spv-vs-wrapped) |
 | Oracle/price feed manipulation | Use median of multiple price oracles (Pyth primary, Reflector secondary) - see `docs/research/oracle-design.md` |
 | Interest rate model edge cases | Stress-test model against historical volatility; cap max borrow rate |
 

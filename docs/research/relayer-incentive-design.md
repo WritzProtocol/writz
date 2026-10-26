@@ -11,17 +11,19 @@ sidebarTitle: "Relayer Incentive Design"
 
 ## Overview
 
-Writz uses **stateless SPV** (no on-chain header chain), which means the header relay problem is substantially simpler than BTC Relay's approach. However, users still need a reliable source of Bitcoin block headers and Merkle proofs to construct their SPV proofs. This document designs the relayer service and its incentive model.
+> **Updated 2026-10-26.** This June 2026 design assumed stateless SPV, with no header chain on Stellar. That is no longer the design: `bitcoin-spv` is an on-chain header light client, so headers must be submitted continuously, as in BTC Relay, and relayer liveness is on the critical path. Liveness is engineered rather than assumed: planned permissionless header submission on mainnet, several independent relayers on different providers and Bitcoin sources, and an on-chain freshness rule so that loans depending on the Bitcoin tip are refused when it is too old (see [SPV vs Wrapped Bitcoin](/security/spv-vs-wrapped)). The sections below are kept as the original research; where they describe the stateless design, read them as superseded.
+
+The original design assumed **stateless SPV** (no on-chain header chain), which would have made the header relay problem simpler than BTC Relay's. Users still need a reliable source of Bitcoin block headers and Merkle proofs to construct their SPV proofs. This document designs the relayer service and its incentive model.
 
 ---
 
-## The Stateless SPV Relayer Difference
+## The Stateless SPV Relayer Difference (superseded)
 
 ### BTC Relay's failure (stateful approach)
 BTC Relay required relayers to continuously submit every Bitcoin block header to Ethereum. When fee revenue dropped, relayers stopped. No headers = system dead.
 
-### Writz's approach (stateless)
-Writz does NOT store Bitcoin block headers on Stellar. Instead:
+### The original approach (stateless, superseded)
+The original design did not store Bitcoin block headers on Stellar. Instead:
 - Users provide the headers themselves at verification time
 - The Soroban contract verifies the provided headers on-demand
 - No continuous relay is required
@@ -110,7 +112,7 @@ When Writz launches a decentralized relayer network, relayers need economic ince
 
 ### Liveness guarantee
 
-Unlike BTC Relay, stateless SPV doesn't require 24/7 relayer availability. Users only need a relayer when making a transaction. A relayer that's offline 90% of the time is still useful - as long as it responds when a user needs it.
+Superseded: the original design argued that stateless SPV needs no 24/7 relayer availability. With the header light client it does: headers have to keep arriving, or the contract's view of Bitcoin goes stale. Redundant relayers and the planned on-chain freshness rule address this; a stale tip yields fewer confirmations, never false ones.
 
 **Minimum viable liveness:** A relayer that responds within 60 seconds and has >99% uptime over 30-day windows can participate.
 
@@ -151,7 +153,7 @@ Research found **zkRelay** - a ZK-SNARK-based relay that batches Bitcoin header 
 | Fallback | User self-service from public APIs | Eliminates complete dependency on Writz relayer |
 | Fee model | $1 per proof request (paid in USDC) | Fair compensation, low burden on user |
 | zkRelay adoption | Phase 2+ if needed | Only if header verification becomes a cost bottleneck |
-| Liveness guarantee | Convenience service, not critical path | Stateless SPV means any Bitcoin data source works |
+| Liveness guarantee | Critical path (originally: convenience service) | The header light client needs headers submitted continuously; redundant relayers and a freshness rule are planned |
 
 ---
 

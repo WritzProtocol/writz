@@ -52,6 +52,7 @@ Writz is a trustless Bitcoin lending protocol on Stellar. Lock real BTC. Borrow 
 
 ### Security
 - [Security Model](/security/security-model) - Trust assumptions, failure scenarios, what Writz can't do.
+- [SPV vs Wrapped Bitcoin](/security/spv-vs-wrapped) - Where a light client differs from wrapped BTC and bridges, and where it shares their risks.
 - [Audits](/security/audits) - Audit roadmap, target firms, Audit Bank process.
 - [Bug Bounty](/security/bug-bounty) - Responsible disclosure. Up to $50,000 for critical findings.
 - [STRIDE Threat Model](/security/stride-threat-model) - Threats by component, trust boundaries, mitigations.
