@@ -28,14 +28,19 @@ const record = (kind: PositionEventRecord['kind'], hash: string, offsetS: number
   ledgerClosedAt: iso(T0 + offsetS * 1000),
   ...extra,
 });
-const ownerOp = (kind: OwnerOperation['kind'], hash: string, offsetS: number): OwnerOperation => ({ kind, txHash: hash, at: T0 + offsetS * 1000 });
+const ownerOp = (kind: OwnerOperation['kind'], hash: string, offsetS: number): OwnerOperation => ({
+  kind,
+  txHash: hash,
+  at: T0 + offsetS * 1000,
+  ...(kind === 'swap' ? { asset: 'XLM' } : {}),
+});
 
 const HISTORY = [
   record('deposit', h('1'), 0),
   record('borrow', h('2'), 10, { account: OWNER, amount: '10000000' }),
   record('repay_full', h('5'), 100, { account: OWNER }),
 ];
-const OPS = [ownerOp('borrow', h('2'), 10), ownerOp('swap_to_xlm', h('3'), 20), ownerOp('burn_to_base_sepolia', h('4'), 30), ownerOp('repay', h('5'), 100)];
+const OPS = [ownerOp('borrow', h('2'), 10), ownerOp('swap', h('3'), 20), ownerOp('burn_to_base_sepolia', h('4'), 30), ownerOp('repay', h('5'), 100)];
 
 function deps(overrides: Partial<TimelineRouterDeps> = {}): Partial<TimelineRouterDeps> {
   return {
@@ -226,18 +231,18 @@ describe('attributeReceiveLegs', () => {
   });
 
   test('a later borrow on another position takes the legs after it', () => {
-    const ops = [ownerOp('borrow', h('2'), 10), ownerOp('swap_to_xlm', h('3'), 20), ownerOp('borrow', h('8'), 30), ownerOp('swap_to_xlm', h('4'), 40)];
+    const ops = [ownerOp('borrow', h('2'), 10), ownerOp('swap', h('3'), 20), ownerOp('borrow', h('8'), 30), ownerOp('swap', h('4'), 40)];
     expect(attributeReceiveLegs(ops, mine).map((l) => l.txHash)).toEqual([h('3')]);
     expect(attributeReceiveLegs(ops, new Set([h('8')])).map((l) => l.txHash)).toEqual([h('4')]);
   });
 
   test('a repay closes the window: a leg after it belongs to no position', () => {
-    const ops = [ownerOp('borrow', h('2'), 10), ownerOp('repay', h('7'), 20), ownerOp('swap_to_xlm', h('3'), 30)];
+    const ops = [ownerOp('borrow', h('2'), 10), ownerOp('repay', h('7'), 20), ownerOp('swap', h('3'), 30)];
     expect(attributeReceiveLegs(ops, mine)).toEqual([]);
   });
 
   test('a leg before any borrow belongs to no position', () => {
-    expect(attributeReceiveLegs([ownerOp('swap_to_xlm', h('3'), 5), ownerOp('borrow', h('2'), 10)], mine)).toEqual([]);
+    expect(attributeReceiveLegs([ownerOp('swap', h('3'), 5), ownerOp('borrow', h('2'), 10)], mine)).toEqual([]);
   });
 });
 

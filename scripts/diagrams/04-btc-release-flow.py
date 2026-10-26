@@ -25,7 +25,7 @@ g.node("prereq", hl("Full Repayment", "writz-lend.repay() · debt = 0", "emits r
        fillcolor=F_SUCCESS, color=B_SUCCESS)
 g.node("watcher", hl("Repay Watcher (relayer)", "Polls Soroban RPC for repay_full", "Loads the position · rebuilds the redeem script"),
        fillcolor=F_RELAYER, color=B_RELAYER)
-g.node("protocol_sign", hl("Build + Co-Sign PSBT", "Pays the user key's own address", "Protocol key (KMS, or testnet WIF)"),
+g.node("protocol_sign", hl("Build + Co-Sign PSBT", "Pays the user key's own address", "Protocol co-signing key"),
        fillcolor=F_RELAYER, color=B_RELAYER)
 g.node("publish", hl("writz-lend.publish_release_psbt()", "Half-signed PSBT stored on Stellar", "Retrievable even if Writz is down"),
        fillcolor=F_STELLAR, color=B_STELLAR)

@@ -8,6 +8,8 @@ sidebarTitle: "Bitcoin SPV Implementations on Other Chains"
 **Status:** Complete - initial survey
 **Relevance:** Directly informs Writz Protocol's core technical approach
 
+> **Updated 2026-10-26.** Two points of this June 2026 survey are superseded. Writz did not adopt the stateless approach it recommends: `bitcoin-spv` is an on-chain header light client, because a stateless design lets a caller present a header chain it mined privately (see [How SPV Verification Works](/how-it-works/spv-verification) and [SPV vs Wrapped Bitcoin](/security/spv-vs-wrapped)). And Interlay/interBTC is no longer live: the project has wound down and its repository is archived.
+
 ---
 
 ## Overview
@@ -98,9 +100,9 @@ This is the **most directly relevant existing work**. The Rust library (`bitcoin
 
 ---
 
-## 3. Interlay / interBTC - Polkadot (2021–present)
+## 3. Interlay / interBTC - Polkadot (2021–2026)
 
-**Status:** Active - deployed on Polkadot (Interlay) and Kusama (Kintsugi)
+**Status:** Wound down in 2026; the repository is archived (checked 2026-10-26). Previously deployed on Polkadot (Interlay) and Kusama (Kintsugi). Not to be cited as a live system.
 **Chain:** Substrate/Polkadot (Rust)
 **Repository:** [github.com/interlay/interbtc](https://github.com/interlay/interbtc)
 **Spec:** [github.com/interlay/interbtc-spec](https://github.com/interlay/interbtc-spec)
@@ -220,7 +222,7 @@ This is the **Phase 3 vision** for Writz Protocol - not the starting point. Trac
 |---|---|---|---|---|---|
 | **BTC Relay** | Ethereum | Stateful headers on-chain | Deprecated | No (Solidity) | High - what NOT to do |
 | **summa-tx/bitcoin-spv** | Multi-chain | Stateless SPV toolkit | Active | ✓ Yes | Very high - direct reference |
-| **Interlay/interBTC** | Polkadot | SPV + collateralized vaults | Active | ✓ Yes | Very high - closest to Writz |
+| **Interlay/interBTC** | Polkadot | SPV + collateralized vaults | Wound down, archived | ✓ Yes | Very high - closest to Writz |
 | **Solana BTC SPV** | Solana | Experimental program | Minimal | ✓ Yes | Medium - shows pitfalls |
 | **SP1 + BitVM** | Bitcoin-native | ZK proofs on Bitcoin | Cutting-edge | ✓ Yes | Medium - long-term vision |
 
@@ -228,14 +230,14 @@ This is the **Phase 3 vision** for Writz Protocol - not the starting point. Trac
 
 ## Critical Findings for Writz Protocol
 
-### 1. Start with stateless SPV (summa-tx approach)
-Don't build a stateful header chain - it's expensive and creates relayer dependency. Use stateless SPV where the caller provides headers at verification time. The Soroban contract only needs to verify the math, not store state.
+### 1. Start with stateless SPV (summa-tx approach) - superseded
+Original recommendation: don't build a stateful header chain, because it is expensive and creates relayer dependency; let the caller provide headers at verification time. Writz later moved to an on-chain header light client, because a stateless contract cannot tell an honest header chain from one the caller mined privately. The relayer dependency this finding warned about is real and is handled by redundant relayers and an on-chain freshness rule (planned).
 
 ### 2. The Rust ecosystem is already there
 Both `summa-tx/bitcoin-spv` (Rust) and `interbtc` (Rust/Substrate) are written in Rust. Soroban contracts are written in Rust. This is a significant advantage - the hardest parts of the implementation have precedent in the same language.
 
 ### 3. Relayer incentives must be designed from day 0
-Every failed implementation either ignored relayer incentives or added them as an afterthought. For stateless SPV, relayers are less critical (no on-chain header chain to maintain), but someone still needs to provide valid headers to users. A small fee mechanism for header provision should be designed into the protocol.
+Every failed implementation either ignored relayer incentives or added them as an afterthought. With an on-chain header light client, relayers are on the critical path: someone has to keep submitting headers, or the contract's view of Bitcoin goes stale. A small fee mechanism for header provision should be designed into the protocol.
 
 ### 4. Bitcoin confirmation time is a UX problem, not a technical one
 6 confirmations ≈ 60 minutes. A tiered confirmation option was evaluated in `docs/research/bitcoin-locking-script.md` - fast lane (3 confirmations, capped deposit size) vs. standard lane (6 confirmations) - but was not adopted for the current spec. Writz requires a flat 6 confirmations for all deposit sizes; see `docs/products/writz-lend.md` and `docs/how-it-works/spv-verification.md` for the adopted policy.

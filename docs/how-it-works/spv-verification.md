@@ -137,7 +137,7 @@ Response:
 
 ## Security Guarantees
 
-**6-confirmation requirement:** Writz requires 6 Bitcoin block confirmations before accepting a deposit. A 6-block reorganization has never occurred in Bitcoin's history. This provides practical certainty that a transaction will not be reversed.
+**6-confirmation requirement:** Writz requires 6 Bitcoin block confirmations before accepting a deposit. Reorganizations that deep are very rare: the deepest on mainnet are the 2010 value-overflow fix and the 2013 BIP-50 fork. Six confirmations make reversal of an accepted deposit negligible at launch exposure caps.
 
 **PoW validation:** Each header's proof-of-work is checked independently. A forged header chain would require generating valid PoW - computationally infeasible against Bitcoin's current hash rate.
 
@@ -147,6 +147,8 @@ Response:
 - A user sending BTC to the wrong P2WSH address (user error)
 - A deep reorg affecting more than 6 blocks (extraordinarily unlikely, but theoretically possible on a heavily attacked network)
 - Bugs in the SPV contract itself (mitigated by audits and extensive testing)
+
+For how this trust model compares with wrapped Bitcoin and bridges, including the risks a light client does share with them, see [SPV vs Wrapped Bitcoin](/security/spv-vs-wrapped).
 
 ---
 

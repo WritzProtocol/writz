@@ -30,6 +30,11 @@ function positiveNumberEnv(key: string, fallback: string): number {
   return n;
 }
 
+/** Whole stroops (1 XLM = 10,000,000 stroops) for an XLM amount. */
+export function xlmToStroops(xlm: number): bigint {
+  return BigInt(Math.round(xlm * 10_000_000));
+}
+
 export interface Config {
   /** Validated deploy target ("local" | "testnet" | "mainnet"), from WRITZ_ENV. */
   target: DeployTarget;
@@ -64,7 +69,7 @@ export interface Config {
   timelineRateWindowMs: number;
   /** Horizon, for the borrower's own operations (how a loan was received). */
   horizonUrl: string;
-  /** Soroswap router a borrow is swapped through to XLM. */
+  /** Soroswap router a borrow is swapped through to a stablecoin or XLM. */
   soroswapRouterId: string;
   /** Circle CCTP TokenMessengerMinter on Stellar, where a borrow is burned for Base Sepolia. */
   cctpTokenMessengerMinterId: string;
@@ -111,6 +116,13 @@ export interface Config {
   /** Height to start syncing from - the bitcoin-spv checkpoint height. */
   spvSyncFromHeight: number | undefined;
   spvSyncIntervalMs: number;
+  /** Most a single submit_headers transaction may cost, in stroops (inclusion
+   * bid plus simulated resource fee). Above it the pass is skipped and
+   * retried on the next one. From SPV_MAX_FEE_XLM. */
+  spvMaxFeeStroops: bigint;
+  /** Relayer account balance, in stroops, below which every header-sync pass
+   * logs an error-level alert. From RELAYER_MIN_BALANCE_XLM. */
+  relayerMinBalanceStroops: bigint;
   // ZK keeper (#212)
   /** BabyJubJub scalar whose public key commitment-tree holds as its keeper
    * key; opens the keeper note every borrow and repay publishes. */
@@ -341,6 +353,8 @@ function loadConfig(): Config {
     bitcoinSpvId: getEnv("BITCOIN_SPV_ID", ""),
     spvSyncFromHeight: process.env["SPV_SYNC_FROM_HEIGHT"] ? parseInt(process.env["SPV_SYNC_FROM_HEIGHT"], 10) : undefined,
     spvSyncIntervalMs: parseInt(getEnv("SPV_SYNC_INTERVAL_MS", "60000"), 10),
+    spvMaxFeeStroops: xlmToStroops(positiveNumberEnv("SPV_MAX_FEE_XLM", "5")),
+    relayerMinBalanceStroops: xlmToStroops(positiveNumberEnv("RELAYER_MIN_BALANCE_XLM", "100")),
     keeperBabyjubSecret: process.env["KEEPER_BABYJUB_SECRET"] ? BigInt(process.env["KEEPER_BABYJUB_SECRET"].trim()) : undefined,
     keeperSecret: process.env["KEEPER_SECRET"],
     keeperPollIntervalMs: parseInt(getEnv("KEEPER_POLL_INTERVAL_MS", "60000"), 10),

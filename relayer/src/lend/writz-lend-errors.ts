@@ -37,4 +37,9 @@ export const WRITZ_LEND_ERRORS: Readonly<Record<number, string>> = Object.freeze
   26: "ZeroShareAmount",
   27: "InvalidDepositParams",
   28: "InvalidEntryTtl",
+  29: "UserKeyIsProtocolKey",
+  30: "TimelockTooSoon",
+  31: "StaleBitcoinTip",
+  32: "LiquidationWindowClosed",
+  33: "InvalidTimelockParams",
 });

@@ -6,7 +6,9 @@ import type { ChainLeg } from "@/lib/receive/useReceive";
 
 const AMOUNT = 1_000_000_000n;
 const RECIPIENT = "0x7a3f9c2b41d08e5a6b2c9d1e4f7a8b3c5d6e9f01";
-const XLM = { kind: "xlm" as const, slippageBp: 50 };
+const XLM = { kind: "swap" as const, asset: "xlm" as const, slippageBp: 50 };
+const EURC = { kind: "swap" as const, asset: "eurc" as const, slippageBp: 50 };
+const USDT0 = { kind: "swap" as const, asset: "usdt0" as const, slippageBp: 50 };
 const CHAIN = { kind: "chain" as const, recipient: RECIPIENT };
 const send = { burnHash: "e378cd985e41b167c4bc9565d397f3f9642c34be2919394b8f0881cc26f78a79", amount: AMOUNT, maxFee: 0n };
 const sent: ChainLeg = { kind: "sent", send, recipient: RECIPIENT };
@@ -16,7 +18,7 @@ const noop = () => {};
 const base: Omit<ReceiveStepProps, "intent" | "phase"> = {
   amount: AMOUNT,
   flow: IDLE,
-  quote: { kind: "ok", amountIn: AMOUNT, xlmOut: 9_305_340_000n },
+  quote: { kind: "ok", amountIn: AMOUNT, out: 9_305_340_000n },
   swap: null,
   leg: { kind: "idle" },
   mintHash: null,
@@ -35,7 +37,14 @@ const STATES: { id: string; title: string; props: ReceiveStepProps }[] = [
   {
     id: "x7",
     title: "XLM: converted",
-    props: { ...base, intent: XLM, phase: "xlm_done", swap: { hash: "523d4d2d3e3b84db8ee001bebfe525f12b0760a743f17a368c3c80bad68eea55", quotedOut: 9_305_340_000n, minOut: 9_258_813_300n, received: 9_302_118_000n } },
+    props: { ...base, intent: XLM, phase: "swap_done", swap: { hash: "523d4d2d3e3b84db8ee001bebfe525f12b0760a743f17a368c3c80bad68eea55", quotedOut: 9_305_340_000n, minOut: 9_258_813_300n, received: 9_302_118_000n } },
+  },
+  { id: "s1", title: "EURC: ready, price read", props: { ...base, intent: EURC, phase: "ready", quote: { kind: "ok", amountIn: AMOUNT, out: 857_412_000n } } },
+  { id: "s2", title: "USDT0 test token: ready, price read", props: { ...base, intent: USDT0, phase: "ready", quote: { kind: "ok", amountIn: AMOUNT, out: 987_158_030n } } },
+  {
+    id: "s3",
+    title: "EURC: converted",
+    props: { ...base, intent: EURC, phase: "swap_done", swap: { hash: "523d4d2d3e3b84db8ee001bebfe525f12b0760a743f17a368c3c80bad68eea55", quotedOut: 857_412_000n, minOut: 853_124_940n, received: 857_400_000n } },
   },
   { id: "c1", title: "Base Sepolia: ready", props: { ...base, intent: CHAIN, phase: "ready" } },
   { id: "c2", title: "Base Sepolia: confirm in wallet", props: { ...base, intent: CHAIN, phase: "running", flow: { phase: "awaiting_signature", wallet: "stellar" } } },

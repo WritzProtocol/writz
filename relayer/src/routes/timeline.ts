@@ -16,6 +16,16 @@ import { rateLimit } from "../rate-limit.js";
 import { config } from "../config.js";
 import { toInternalTxid } from "./deposit-status.js";
 
+/**
+ * The stablecoins the app offers to swap a borrow into on testnet, as classic
+ * assets: Circle EURC, Paxos PYUSD and the Writz USDT0 test token.
+ */
+const TESTNET_SWAP_ASSETS: readonly (readonly [string, string])[] = [
+  ["EURC", "GB3Q6QDZYTHWT7E5PVS3W7FUT5GVAFC5KSZFFLPU25GO7VTC3NM2ZTVO"],
+  ["PYUSD", "GBT2KJDKUZYZTQPCSR57VZT5NJHI4H7FOB5LT5FPRWSR7I5B4FS3UU7G"],
+  ["USDT0", "GCZS6UMPQDE5QVDFCJWRKLM3NR77IT7KSGEH3THSZNTWOH53E66KZ2CC"],
+];
+
 const TXID_RE = /^[0-9a-f]{64}$/i;
 
 /**
@@ -42,7 +52,7 @@ export interface TimelineEvent {
   hash: string;
   /** Unix ms, when known. */
   at: number | null;
-  /** For `received`: "as XLM", "sent to Base Sepolia", "on Base Sepolia". For a liquidation: "by liquidation". */
+  /** For `received`: "as XLM", "as EURC", "sent to Base Sepolia", "on Base Sepolia". For a liquidation: "by liquidation". */
   detail?: string;
   url: string;
 }
@@ -154,10 +164,14 @@ function defaultDeps(): TimelineRouterDeps {
     });
     return usdc;
   };
-  const xlmToken = () => {
+  const swapTokens = () => {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { Asset } = require("@stellar/stellar-sdk") as typeof import("@stellar/stellar-sdk");
-    return Asset.native().contractId(config.networkPassphrase);
+    const tokens: Record<string, string> = { [Asset.native().contractId(config.networkPassphrase)]: "XLM" };
+    if (!config.networkPassphrase.startsWith("Public Global")) {
+      for (const [code, issuer] of TESTNET_SWAP_ASSETS) tokens[new Asset(code, issuer).contractId(config.networkPassphrase)] = code;
+    }
+    return tokens;
   };
 
   const stellarNetwork = config.networkPassphrase.startsWith("Public Global") ? "public" : "testnet";
@@ -182,7 +196,7 @@ function defaultDeps(): TimelineRouterDeps {
         soroswapRouter: config.soroswapRouterId,
         tokenMessengerMinter: config.cctpTokenMessengerMinterId,
         usdcToken: await usdcToken(),
-        xlmToken: xlmToken(),
+        swapTokens: swapTokens(),
         baseDomain: BASE_DOMAIN,
       };
       const { operations, truncated } = await fetchOwnerOperations({
@@ -286,8 +300,8 @@ async function computeTimeline(deps: TimelineRouterDeps, btcTxid: string): Promi
       const { operations, truncated } = await deps.ownerOperations(owner, fromLedger);
       if (truncated) gaps.push("stellar: the owner has more operations than one timeline reads; later receive legs may be missing");
       for (const leg of attributeReceiveLegs(operations, new Set(borrows.map((b) => b.stellarTxHash)))) {
-        if (leg.kind === "swap_to_xlm") {
-          events.push({ kind: "received", chain: "stellar", hash: leg.txHash, at: leg.at, detail: "as XLM" });
+        if (leg.kind === "swap") {
+          events.push({ kind: "received", chain: "stellar", hash: leg.txHash, at: leg.at, detail: `as ${leg.asset ?? "another asset"}` });
         } else if (leg.kind === "burn_to_base_sepolia") {
           events.push({ kind: "received", chain: "stellar", hash: leg.txHash, at: leg.at, detail: "sent to Base Sepolia" });
           const mint = deps.mint(leg.txHash);

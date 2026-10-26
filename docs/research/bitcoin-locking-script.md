@@ -8,6 +8,8 @@ sidebarTitle: "Bitcoin Locking Script Design"
 **Status:** Complete
 **Roadmap task:** Phase 0.4
 
+> **Updated 2026-10-26.** Parts of this June 2026 research are superseded. The output type for mainnet v1 stays P2WSH with an absolute-height CLTV (`OP_CHECKLOCKTIMEVERIFY`, heights only). The move to Taproot with a MuSig2 key path is withdrawn until threshold Schnorr signing is supported by the launch wallets and signers. The planned script change is a 2-of-3 protocol side written as miniscript, `wsh(and_v(v:pk(U),or_i(multi(2,K1,K2,K3),after(H))))`, so policy-based hardware wallets can sign it; today's deployed script is not miniscript and those devices cannot sign it yet. The SPV contract is an on-chain header light client, not the stateless design recommended below. The sections below are kept as the original research, with these points corrected in place.
+
 ---
 
 ## Overview
@@ -30,7 +32,7 @@ The solution is a **2-of-2 multi-signature with a timelock escape hatch**, encod
 
 ## Option A: P2WSH (Pay-to-Witness-Script-Hash)
 
-**Recommended for Phase 1**
+**Chosen for mainnet v1** (decision of 2026-10-26)
 
 P2WSH locks funds to the hash of a custom redeem script, with spending data carried in the Witness field rather than ScriptSig. Lower witness weight = lower transaction fees when spending.
 
@@ -102,7 +104,7 @@ The `timelock` is unique per deposit (based on current block height + loan durat
 
 ## Option B: Taproot / P2TR (Pay-to-Taproot)
 
-**Recommended for Phase 2+**
+**Not planned.** Withdrawn on 2026-10-26 until threshold Schnorr signing exists in the launch wallets and protocol signers (see the reasons under "Why P2WSH, and not Taproot" below).
 
 Taproot (BIP 341, active since November 2021) is a significant privacy and efficiency upgrade to Bitcoin scripting. It uses Schnorr signatures and Merkle trees (MAST - Merkelized Abstract Syntax Tree) to hide spending conditions until they are used.
 
@@ -114,7 +116,7 @@ Taproot (BIP 341, active since November 2021) is a significant privacy and effic
 | **Script privacy** | Redeem script revealed when spent | Unused script branches never revealed |
 | **Fee efficiency (normal path)** | ~250 bytes | ~57 bytes (key-path spend with MuSig2) |
 | **Complex script support** | Full Bitcoin Script | Tapscript (similar, slightly extended) |
-| **Hardware wallet support** | Universal | Growing but not universal |
+| **Hardware wallet support** | Wide for standard templates; a custom script needs a miniscript form for policy-based devices (today's Writz script is not miniscript, a miniscript form is planned) | Script-path and MuSig2 key-path signing limited |
 | **MuSig2 compatibility** | No | Yes - aggregates protocol + user key into one key |
 
 ### Taproot design for Writz
@@ -127,11 +129,13 @@ The timelock recovery script is embedded in a Tapscript leaf, committed to in th
 
 **Privacy benefit:** Chain surveillance firms cannot identify Writz deposits from normal Bitcoin payments in the common case. Only the emergency path reveals the script structure.
 
-### Why P2WSH first, Taproot later
+### Why P2WSH, and not Taproot
 
 - MuSig2 for the key-path requires interactive signing protocols (nonce exchange) between the user and the Writz backend. This adds complexity to the UX flow (two round trips instead of one).
 - Hardware wallet support for Taproot key-path with MuSig2 is still limited in 2026.
-- P2WSH is universally supported, well-audited, and simpler to implement correctly.
+- P2WSH is well-audited and simpler to implement correctly, and a P2WSH miniscript can be signed by the launch wallets today.
+- The planned 2-of-3 protocol side does not fit a MuSig2 key path (MuSig2 is n-of-n); it would need FROST or nested aggregation, which no launch wallet or custody option supports. `multi(2,...)` in P2WSH works with ECDSA signers now.
+- Verifying a Taproot output on Soroban would need BIP-340 Schnorr verification or secp256k1 point arithmetic, which Soroban does not provide as host functions; a P2WSH check is one SHA-256 comparison, already built.
 - The security properties are equivalent - only the on-chain privacy and fee efficiency differ.
 
 ---
@@ -140,27 +144,24 @@ The timelock recovery script is embedded in a Tapscript leaf, committed to in th
 
 ### The problem
 
-Writz holds a co-signing private key for the `protocol_pubkey` in every locking script. If this key is compromised, an attacker can drain all locked BTC by co-signing arbitrary release transactions.
+Writz holds a co-signing private key for the `protocol_pubkey` in every locking script. Every spending path also requires the user's key, so a compromised protocol key cannot move locked BTC on its own, but it is a single point of failure for cooperative releases, and any future path in which the protocol side completes a transaction the user pre-signed (such as liquidation) raises its value to an attacker.
 
 ### Solutions (in order of security)
 
-**Phase 1.5 (implemented): AWS KMS**
-The protocol private key is generated and held inside an AWS KMS asymmetric key (`ECC_SECG_P256K1` curve, `ECDSA_SHA_256` signing algorithm - natively matching Bitcoin's curve). The raw key material never leaves KMS; signing is a `kms:Sign` API call authenticated via IAM, with CloudTrail audit logging on every call. See `bitcoin-script/src/keys.ts`'s `KmsSigner` and `frontend/app/src/app/api/cosign/route.ts`. The `$50K` mainnet TVL cap bounds exposure on top of this custody model. See `docs/security/security-model.md` for the full trust-model discussion.
+**Planned: 2-of-3 protocol side in the script**
+Instead of splitting one key with MPC, the script itself requires the user's key and any 2 of 3 protocol keys, `wsh(and_v(v:pk(U),or_i(multi(2,K1,K2,K3),after(H))))`, held separately. Bitcoin enforces the threshold natively, each protocol key signs plain ECDSA, and the user's timelock exit is unchanged. Threshold ECDSA (MPC, for example GG20/21 or CGGMP21) is not planned. The signing policy, what the protocol signers can and cannot sign, will be published.
 
-**Phase 2: MPC (Multi-Party Computation)**
-Distribute the protocol private key across multiple parties using threshold ECDSA (e.g., GG20/21 or CGGMP21 protocols). No single party ever holds the complete key. A 2-of-3 or 3-of-5 MPC setup is standard in institutional custody. Used by Fireblocks, Copper, and major custodians.
-
-**Phase 2+: Stellar Auth Delegation (Protocol 27)**
+**Considered: Stellar Auth Delegation (Protocol 27)**
 Protocol 27 (July 8, 2026) enables distributing the co-signing authority on the Stellar side across multiple delegated accounts. While this doesn't directly affect the Bitcoin signing key, it enables a multi-party signing ceremony where multiple Stellar accounts must authorize a BTC co-signature before it's produced.
 
-**Phase 3: FROST (Flexible Round-Optimized Schnorr Threshold)**
-If Writz moves to Taproot (Phase 2+), FROST enables threshold Schnorr signatures where t-of-n parties cooperate to sign. More efficient than ECDSA MPC. Produces a single Schnorr signature indistinguishable from a regular single-key spend.
+**Only if Taproot is reopened: FROST (Flexible Round-Optimized Schnorr Threshold)**
+If Writz ever moves to Taproot, FROST enables threshold Schnorr signatures where t-of-n parties cooperate to sign. More efficient than ECDSA MPC. Produces a single Schnorr signature indistinguishable from a regular single-key spend.
 
 ---
 
 ## zkRelay Alternative: ZK-SNARK Bitcoin Relay
 
-Research uncovered an interesting alternative to pure stateless SPV: **zkRelay** - using ZK-SNARKs to batch-verify multiple Bitcoin block headers off-chain and post a single proof on-chain.
+Research uncovered an interesting alternative to verifying every header on chain: **zkRelay** - using ZK-SNARKs to batch-verify multiple Bitcoin block headers off-chain and post a single proof on-chain.
 
 ### zkRelay approach
 
@@ -175,9 +176,9 @@ The on-chain verifier only checks the ZK proof - a constant-cost operation regar
 
 ### Why this matters for Writz
 
-Writz's stateless SPV approach already avoids the worst costs of BTC Relay. But zkRelay's approach could further reduce the on-chain verification cost for the header chain portion of SPV, particularly if Writz needs to support longer confirmation periods or chains of headers for reorg safety.
+Writz's SPV contract is an on-chain header light client, the same family as BTC Relay: each header is submitted and verified on Stellar. zkRelay's approach could reduce the on-chain cost of the header chain, or serve as an independent second check of it.
 
-**Recommendation:** Start with stateless SPV (summa-tx approach) in Phase 1. Evaluate zkRelay-style batched ZK header proofs in Phase 2 if header chain verification becomes a cost bottleneck.
+**Recommendation (original, superseded):** this research recommended starting with stateless SPV (the summa-tx approach). The contract has since moved to a header light client, because a stateless design lets a caller present a header chain it mined privately. A zero-knowledge proof of the header chain remains under research as a second check that could only refuse a tip, never credit value (see [SPV vs Wrapped Bitcoin](/security/spv-vs-wrapped)).
 
 ---
 
@@ -189,7 +190,7 @@ A Bitcoin block reorganization ("reorg") occurs when the network switches to a l
 
 - Reorgs of 1–2 blocks: happen occasionally (~once per few days)
 - Reorgs of 3 blocks: extremely rare (a few times in Bitcoin's history)
-- Reorgs of 6 blocks: **never happened in Bitcoin's history**
+- Reorgs of 6 blocks or more: very rare; the deepest on mainnet are the 2010 value-overflow fix (about 53 blocks) and the 2013 BIP-50 fork (24 blocks)
 
 **Writz policy:** Require **6 confirmations** before accepting a deposit. This makes reorg risk negligibly small. The tradeoff is 60 minutes of user wait time - addressed in the UX section.
 
@@ -251,13 +252,13 @@ EMERGENCY RECOVERY (if Writz offline):
 
 | Decision | Choice | Rationale |
 |---|---|---|
-| Script type | P2WSH (Phase 1) → P2TR (Phase 2) | P2WSH: simpler, universal support. P2TR: better privacy, lower fees |
+| Script type | P2WSH with absolute CLTV for mainnet v1; a 2-of-3 miniscript form planned; P2TR withdrawn | Signer support for P2WSH miniscript today; 2-of-3 does not fit MuSig2; Soroban can check P2WSH with one SHA-256 comparison |
 | Timelock | CLTV absolute block height | Simpler than relative timelocks, predictable |
 | Timelock duration | Loan term + 7 days safety buffer | Protects users without locking capital indefinitely |
-| Protocol key storage | AWS KMS (Phase 1.5, implemented) → MPC (Phase 2, not started) | Progressive decentralization of signing authority |
-| Confirmation requirement | 6 standard, 3 fast-lane (capped) | 6 eliminates reorg risk; 3 improves UX for small amounts |
-| SPV type | Stateless (summa-tx) | No on-chain header storage, no relayer dependency |
-| Future direction | zkRelay batching for Phase 2+ | If header chain verification becomes a cost bottleneck |
+| Protocol signing | 2-of-3 protocol keys in the script (planned), with a published signing policy | Threshold enforced natively by Bitcoin Script rather than MPC; no single key can co-sign a release |
+| Confirmation requirement | 6 (fast lane considered, not adopted) | 6 makes reorg risk negligible at launch caps |
+| SPV type | On-chain header light client (original recommendation, stateless, superseded) | A stateless design lets a caller present a privately mined header chain |
+| Future direction | Zero-knowledge header-chain proof, under research | A second check that can only refuse a tip, never credit value |
 
 ---
 

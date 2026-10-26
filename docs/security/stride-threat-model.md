@@ -15,8 +15,8 @@
 | `bitcoin-spv` Soroban contract | Stellar on-chain | Trustless - Soroban VM |
 | `writz-lend` Soroban contract | Stellar on-chain | Trustless - Soroban VM |
 | Writz SPV relayer | Off-chain service | Untrusted - convenience only |
-| Pyth / Reflector oracle | Off-chain + on-chain | Partially trusted |
-| Protocol co-signing key (HSM) | Off-chain | Trusted - Writz operator |
+| Reflector oracle (a second source planned) | Off-chain + on-chain | Partially trusted |
+| Protocol co-signing key | Off-chain | Trusted - Writz operator |
 | Liquidation keeper | Off-chain | Trusted - Phase 1 |
 | User Bitcoin wallet (Xverse) | Client-side | Untrusted |
 | User Stellar wallet (Freighter) | Client-side | Untrusted |
@@ -52,7 +52,7 @@
         ▼         ▼
 [User Stellar Wallet]     [Protocol Treasury / USDC Pool]
 
-[Protocol Co-signing Key (HSM)] ─── co-signs P2WSH release on Bitcoin
+[Protocol Co-signing Key] ─────── co-signs P2WSH release on Bitcoin
 [Liquidation Keeper] ─────────── calls liquidate() on Writz Lend
 ```
 
@@ -75,19 +75,19 @@
 #### S2: Attacker impersonates the Writz protocol co-signing key
 **Threat:** An attacker obtains the protocol private key and co-signs a fraudulent P2WSH release, draining all BTC collateral.
 
-**Mitigation (Phase 1):** Protocol key stored in cloud HSM (AWS CloudHSM or equivalent). Key never leaves HSM in plaintext. Signing requires authenticated access.
+**Mitigation (today):** The protocol key alone cannot move Bitcoin: the cooperative path also requires the user's signature, so a stolen protocol key can at most refuse or delay releases, and the user's time-lock exit (Path B) never needs it.
 
-**Mitigation (Phase 2):** Migrate to MPC (multi-party computation): 2-of-3 or 3-of-5 threshold ECDSA. No single party holds the complete key.
+**Mitigation (planned):** A 2-of-3 protocol side written into the P2WSH script, three keys held separately, so Bitcoin enforces the threshold natively and no single key can co-sign a release. Threshold ECDSA (MPC) is not planned. The signing policy, what the protocol signers can and cannot sign, will be published.
 
-**Residual risk:** MEDIUM in Phase 1 (HSM compromise is the primary attack vector on the protocol's Bitcoin-side custody). Mitigated to LOW in Phase 2 with MPC.
+**Residual risk:** MEDIUM with a single protocol key; LOW once the 2-of-3 protocol side ships.
 
 #### S3: Oracle price spoofing
 **Threat:** An attacker manipulates the BTC/USD price fed to Writz Lend to artificially trigger liquidations or allow over-borrowing.
 
 **Mitigation:**
-- Pyth uses off-chain institutional price aggregation (30–60 publishers per feed). Cannot be manipulated by on-chain flash loans.
-- Phase 2 adds a second oracle (Reflector's external-prices instance) and takes the median - requires compromising both simultaneously. (Corrected 2026-09-16, on-chain verified: RedStone dropped as primary - Stellar isn't in its supported-chain list. DIA parked - its documented testnet contract address returns "contract not found" when queried directly. See `docs/research/oracle-design.md`.)
-- TWAP (time-weighted average price) delays as additional manipulation resistance considered for Phase 2.
+- `writz-lend` reads Reflector's external-prices SEP-40 feed (CEX and DEX aggregation), which an on-chain flash loan cannot move. A price older than one hour is rejected, so a stale or unavailable feed blocks price-dependent calls rather than mispricing them.
+- Planned: a second source (Pyth, pull model) with a deviation guard, so a single bad feed is caught by the other. (RedStone dropped: Stellar is not in its supported-chain list. DIA parked: its documented testnet contract address returns "contract not found". See `docs/research/oracle-design.md`.)
+- TWAP (time-weighted average price) delays are considered as additional manipulation resistance.
 
 **Residual risk:** LOW for retail manipulation. Theoretical risk from compromised institutional publishers - mitigated by publisher diversity.
 
@@ -187,8 +187,8 @@
 | Threat | Severity | Mitigation state | Residual |
 |---|---|---|---|
 | S1: Fake SPV proof | Critical | Bitcoin PoW | NONE |
-| S2: Protocol key compromise | Critical | HSM (P1) → MPC (P2) | MEDIUM (P1), LOW (P2) |
-| S3: Oracle price manipulation | High | Multi-publisher, median (P2) | LOW |
+| S2: Protocol key compromise | Critical | User key required on every path; 2-of-3 protocol side planned | MEDIUM (single key), LOW (2-of-3) |
+| S3: Oracle price manipulation | High | Reflector with staleness check; second source with deviation guard planned | LOW |
 | T1: P2WSH script tampering | Critical | SHA256 commitment | NONE |
 | T2: Storage tampering | Critical | Soroban VM isolation | NONE |
 | T3: Proof data in transit | Medium | User self-service | LOW |
@@ -196,7 +196,7 @@
 | R2: Keeper repudiation | Low | On-chain immutability | NONE |
 | I1: Public position amounts | High | None in v1 (by design); separate privacy edition in progress | HIGH (accepted for v1) |
 | I2: Relayer data collection | Medium | Self-service available | MEDIUM (P1), LOW (P2) |
-| D1: Relayer DoS | Low | Stateless SPV redundancy | LOW |
+| D1: Relayer DoS | Low | Redundant relayers and a tip freshness rule planned (the header light client needs headers submitted continuously); the user's time-lock exit is unaffected | LOW |
 | D2: Compute spam | Low | Soroban fee model | LOW |
 | D3: Key unavailability | High | CLTV timelock backstop | LOW (users), HIGH (ops) |
 | E1: False liquidation | High | On-chain check + keeper ACL | LOW |
@@ -212,9 +212,9 @@ The external audit before mainnet should focus on, in priority order:
 1. **SPV verification correctness** - is the SHA256d implementation correct? Does header chain validation correctly prevent header substitution attacks?
 2. **Interest rate model overflow** - are there edge cases in the kinked rate formula that could cause incorrect interest calculation at extreme values?
 3. **Cross-contract call trust** - can a malicious contract be registered as the SPV contract to bypass deposit verification?
-4. **Protocol key security** - HSM configuration, signing policy, and key recovery procedures
+4. **Protocol key security** - the 2-of-3 protocol signers, their published signing policy, and key recovery procedures
 5. **ZK circuit soundness** - not part of v1; the privacy edition's circuits get their own audit before that edition launches
 
 ---
 
-*Last updated: June 2026 - v0.1 draft. Full revision planned for a future Tranche #1 submission, which is not currently scheduled.*
+*Last updated: June 2026 - v0.1 draft. Full revision planned before the external audit.*

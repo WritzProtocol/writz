@@ -8,8 +8,9 @@ import type { FlowState } from "@/lib/flow/engine";
 import { destinationTxUrl } from "@/lib/receive/cctp";
 import { deliveryOf, nextRelayPoll, RELAY_POLL_MS, startDelivery, type Delivery } from "@/lib/receive/relay";
 import { receivePhase, type ReceiveIntent, type ReceivePhase } from "@/lib/receive/intent";
+import { debtLine, swapAsset } from "@/lib/receive/assets";
 import { minOut, type SwapResult } from "@/lib/receive/swap";
-import { useReceive, useXlmQuote, type ChainLeg, type XlmQuote } from "@/lib/receive/useReceive";
+import { useReceive, useSwapQuote, type ChainLeg, type SwapQuote } from "@/lib/receive/useReceive";
 import { ExternalLink, Notice } from "@/components/ui";
 import { TxRunning } from "./parts";
 
@@ -21,7 +22,7 @@ export interface ReceiveStepProps {
   amount: bigint;
   phase: ReceivePhase;
   flow: FlowState;
-  quote: XlmQuote;
+  quote: SwapQuote;
   swap: SwapResult | null;
   leg: ChainLeg;
   mintHash: string | null;
@@ -36,34 +37,41 @@ export interface ReceiveStepProps {
 
 const usdc = (s: bigint) => <span className="mono">{formatUsdc(s)}</span>;
 
+/** The ticker a swap intent delivers, for copy; the id upper-cased if this build does not configure it. */
+const swapLabel = (intent: ReceiveStepProps["intent"]) =>
+  intent.kind === "swap" ? (swapAsset(intent.asset)?.label ?? intent.asset.toUpperCase()) : "USDC";
+
 function Ready({ intent, amount, quote, onGo, onKeep }: ReceiveStepProps) {
   const keep = (
     <button type="button" className="wz-btn wz-btn-text" onClick={onKeep}>
       Keep as USDC
     </button>
   );
-  if (intent.kind === "xlm") {
-    const q = quote.kind === "ok" ? quote.xlmOut : null;
+  if (intent.kind === "swap") {
+    const a = swapAsset(intent.asset);
+    const label = swapLabel(intent);
+    const q = quote.kind === "ok" ? quote.out : null;
     return (
       <div className="wz-stack" style={{ gap: 12 }}>
         <p className="wz-strong">
-          Convert {usdc(amount)} USDC to {q !== null ? <>about <span className="mono">{formatUsdc(q)}</span> XLM</> : "XLM"}.
+          Convert {usdc(amount)} USDC to {q !== null ? <>about <span className="mono">{formatUsdc(q)}</span> {label}</> : label}.
         </p>
         <p className="wz-hint">
           {q !== null ? (
             <>
-              You get at least <span className="mono">{formatUsdc(minOut(q, intent.slippageBp))}</span> XLM or the swap does not happen.{" "}
+              You get at least <span className="mono">{formatUsdc(minOut(q, intent.slippageBp))}</span> {label} or the swap does not happen.{" "}
             </>
           ) : quote.kind === "failed" ? (
             "The price could not be read. Try again in a moment. "
           ) : (
             "Getting the price. "
           )}
-          Your debt stays in USDC; if the price of XLM moves, what you owe in XLM terms changes.
+          {a ? debtLine(a) : null}
+          {a?.classic ? ` If ${label} is not in your wallet yet, it asks once more to add it.` : null}
         </p>
         <div className="wz-actions">
           <button type="button" className="wz-btn wz-btn-gold" onClick={q !== null ? onGo : undefined} aria-disabled={q === null}>
-            Convert to XLM
+            Convert to {label}
           </button>
           {keep}
         </div>
@@ -88,7 +96,7 @@ function Ready({ intent, amount, quote, onGo, onKeep }: ReceiveStepProps) {
 
 function Recover({ intent, amount, flow, walletName, onGo, onKeep }: ReceiveStepProps) {
   const declined = flow.phase === "signature_cancelled";
-  const what = intent.kind === "xlm" ? "conversion" : "transfer";
+  const what = intent.kind === "swap" ? "conversion" : "transfer";
   return (
     <Notice
       tone="info"
@@ -108,7 +116,7 @@ function Recover({ intent, amount, flow, walletName, onGo, onKeep }: ReceiveStep
         You have your {usdc(amount)} USDC in your Stellar wallet. Nothing was lost.{" "}
         {declined
           ? `You declined in ${walletName}.`
-          : intent.kind === "xlm"
+          : intent.kind === "swap"
             ? "The conversion didn't go through, maybe because the price moved. Trying again gets a fresh price."
             : `The ${what} didn't go through.`}
       </p>
@@ -116,14 +124,15 @@ function Recover({ intent, amount, flow, walletName, onGo, onKeep }: ReceiveStep
   );
 }
 
-function XlmDone({ amount, swap }: ReceiveStepProps) {
+function SwapDone({ intent, amount, swap }: ReceiveStepProps) {
   if (!swap) return null;
+  const label = swapLabel(intent);
   const got = swap.received ?? swap.minOut;
   return (
     <Notice tone="positive" label="Done">
       <p>
         Converted {usdc(amount)} USDC to {swap.received === null ? "at least " : ""}
-        <span className="mono">{formatUsdc(got)}</span> XLM. It&apos;s in your Stellar wallet. Your debt stays in USDC.{" "}
+        <span className="mono">{formatUsdc(got)}</span> {label}. It&apos;s in your Stellar wallet. Your debt stays in USDC.{" "}
         <ExternalLink href={stellarTxUrl(swap.hash)}>View transaction</ExternalLink>
       </p>
     </Notice>
@@ -213,13 +222,13 @@ export function ReceiveStepView(p: ReceiveStepProps) {
     case "recover":
       body = <Recover {...p} />;
       break;
-    case "xlm_done":
-      body = <XlmDone {...p} />;
+    case "swap_done":
+      body = <SwapDone {...p} />;
       break;
     default:
       body = <ChainProgress {...p} />;
   }
-  const done = p.phase === "xlm_done" || p.phase === "chain_arrived" || p.relay?.kind === "arrived";
+  const done = p.phase === "swap_done" || p.phase === "chain_arrived" || p.relay?.kind === "arrived";
   return (
     <section className="wz-stack" style={{ gap: 12 }} aria-label="Step 2 of 2">
       <p className="wz-hint">{done ? "Step 2 of 2 done" : "Step 2 of 2"}</p>
@@ -290,9 +299,11 @@ export function ReceiveStep({
   const mintHash = givenMint ?? (relay.delivery?.kind === "arrived" ? relay.delivery.mintHash : null);
   const swapHash = r.swap?.hash ?? null;
   const burnHash = r.leg.kind === "idle" ? null : r.leg.send.burnHash;
+  const asset = intent.kind === "swap" ? swapAsset(intent.asset) : null;
+  const receivedLabel = `Received as ${asset?.label ?? "USDC"}`;
   useEffect(() => {
-    if (swapHash) onReceived?.({ hash: swapHash, chain: "stellar", label: "Received as XLM" });
-  }, [swapHash, onReceived]);
+    if (swapHash) onReceived?.({ hash: swapHash, chain: "stellar", label: receivedLabel });
+  }, [swapHash, receivedLabel, onReceived]);
   useEffect(() => {
     if (burnHash) onReceived?.({ hash: burnHash, chain: "stellar", label: `Sent to ${DEST}` });
   }, [burnHash, onReceived]);
@@ -300,10 +311,12 @@ export function ReceiveStep({
     if (mintHash) onReceived?.({ hash: mintHash, chain: "base-sepolia", label: `Received on ${DEST}` });
   }, [mintHash, onReceived]);
   const [kept, setKept] = useState(false);
-  const quote = useXlmQuote(intent.kind === "xlm" ? amount : null);
+  const quote = useSwapQuote(asset?.token ?? null, asset ? amount : null);
   const phase = receivePhase({ intent, flow: r.flow, swap: r.swap, leg: r.leg, mintHash, kept });
-  const onGo = () =>
-    void (intent.kind === "xlm" ? r.toXlm(amount, intent.slippageBp) : r.toChain(amount, intent.recipient));
+  const onGo = () => {
+    if (intent.kind === "chain") void r.toChain(amount, intent.recipient);
+    else if (asset) void r.toAsset(asset, amount, intent.slippageBp);
+  };
   return (
     <ReceiveStepView
       intent={intent}

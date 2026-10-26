@@ -67,6 +67,7 @@
             "group": "Security",
             "pages": [
               "security/security-model",
+              "security/spv-vs-wrapped",
               "security/audits",
               "security/bug-bounty",
               "security/stride-threat-model"

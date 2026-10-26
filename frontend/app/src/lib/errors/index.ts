@@ -311,6 +311,25 @@ const RULES: Rule[] = [
     }),
   },
   {
+    match: /^TimelockTooSoon$/,
+    contract: "writz-lend",
+    build: () => ({
+      headline: "This deposit's Bitcoin lock opens in less than about 30 days, too soon to borrow against.",
+      safety: "No USDC moved. Your BTC is safe in its lock.",
+      action: "Repay what this loan owes, or make a new deposit with a later lock date to borrow.",
+    }),
+  },
+  {
+    match: /^StaleBitcoinTip$/,
+    contract: "writz-lend",
+    build: () => ({
+      headline: "Writz can't confirm the latest Bitcoin block right now.",
+      safety: "No USDC moved.",
+      action: "Try again in a few minutes.",
+      report: "if_repeats",
+    }),
+  },
+  {
     match: /^RepayExceedsDebt$/,
     contract: "writz-lend",
     build: () => ({
@@ -374,7 +393,7 @@ const RULES: Rule[] = [
     }),
   },
   {
-    match: /^(OutputNotFound|ScriptPubKeyMismatch|InvalidScriptPubKey|InvalidUserPubkey|InvalidTimelock)$/,
+    match: /^(OutputNotFound|ScriptPubKeyMismatch|InvalidScriptPubKey|InvalidUserPubkey|InvalidTimelock|UserKeyIsProtocolKey)$/,
     contract: "writz-lend",
     build: () => ({
       headline: "Stellar didn't accept this deposit: it doesn't match a Writz lock for your Bitcoin key.",

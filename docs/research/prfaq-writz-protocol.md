@@ -59,11 +59,15 @@ Key subagent-equivalent findings (manual research this session, not from local D
     to do so already exists in their GitHub org, already shipped and audited.
     This is a materially shorter fast-follower window than the 12-18 months
     assumed for a from-scratch entrant - see market-landscape.md's revised timing
-    section. Still true, and worth keeping as the sharpest available claim: nobody
-    surveyed - Solv, Templar, or Babylon - combines trustless native-BTC
-    verification (no wrapping, no MPC-custody trust) WITH ZK-private position
-    sizes, on any chain. That combination is still Writz's alone. What changed is
-    confidence in how long it stays that way, specifically against Templar.
+    section. (Corrected 2026-10-26: this note used to call native-BTC verification
+    combined with ZK-private position sizes Writz's alone. Writz v1 has no
+    privacy, positions are public, and privacy is a separate later edition; the
+    cooperative release path uses a protocol co-signing key. The claim Writz
+    makes is native BTC collateral without custody or wrapping, verified on
+    Stellar by an SPV light client. Babylon also keeps Bitcoin in the owner's own
+    script, so no stronger custody guarantee than Babylon's is claimed.) What
+    changed is confidence in how long the lead lasts, specifically against
+    Templar.
 
 Why this direction over alternatives: existing vision.md/growth-strategy.md already
 define a specific primary customer (Segment 1 - Sophisticated Bitcoin Holder, 0.5-10

@@ -65,6 +65,18 @@ const TESTNET_BTC_ORACLE = "CCYOZJCOPG34LLQQ7N24YXBM7LL62R7ONMZ3G6WZAAYPB5OYKOMJ
 const TESTNET_EARN_VAULT = "CBMHGL7GGGHODEDDJ5H2LKJEFHJWBRSQUKOXMC4FKOFDZK5HBKW6PI2S";
 const TESTNET_SOROSWAP_ROUTER = "CCJUD55AG6W5HAI5LRVNKAE5WDP5XGZBUDS5WNTIVDU7O264UZZE7BRD";
 const TESTNET_XLM_SAC = "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC";
+/**
+ * The assets step 2 can swap borrowed USDC into on Stellar testnet, each with
+ * a Soroswap pool against Circle USDC: Circle EURC, Paxos PYUSD, and a USDT0
+ * test token Writz issues because no official USDT0 exists on any testnet.
+ */
+const TESTNET_SWAP_ASSETS = {
+  eurc: { code: "EURC", issuer: "GB3Q6QDZYTHWT7E5PVS3W7FUT5GVAFC5KSZFFLPU25GO7VTC3NM2ZTVO", token: "CCUUDM434BMZMYWYDITHFXHDMIVTGGD6T2I5UKNX5BSLXLW7HVR4MCGZ" },
+  pyusd: { code: "PYUSD", issuer: "GBT2KJDKUZYZTQPCSR57VZT5NJHI4H7FOB5LT5FPRWSR7I5B4FS3UU7G", token: "CACZL3MGXXP3O6ROMB4Q36ROFULRWD6QARPE3AKWPSWMYZVF2474CBXP" },
+  usdt0: { code: "USDT0", issuer: "GCZS6UMPQDE5QVDFCJWRKLM3NR77IT7KSGEH3THSZNTWOH53E66KZ2CC", token: "CBBUGWDNLXMEFRECTRWUE2AV7VISS5ICC5OKPKY3B4ZEYXSQE2LTVKN6" },
+};
+/** Stablecoins first; XLM stays only for testing and leaves the list before mainnet. */
+const TESTNET_SWAP_OFFER = "eurc,pyusd,usdt0,xlm";
 /** Circle CCTP V2 TokenMessengerMinter on Stellar testnet (domain 27). */
 const TESTNET_CCTP_TMM = "CDNG7HXAPBWICI2E3AUBP3YZWZELJLYSB6F5CC7WLDTLTHVM74SLRTHP";
 
@@ -95,8 +107,16 @@ export const config = {
   },
   /** Where a borrower can take the loan besides USDC on Stellar; empty on mainnet until it ships there. */
   receive: {
-    /** EURC has no usable testnet liquidity; on only with NEXT_PUBLIC_RECEIVE_EURC=1. */
-    eurc: process.env.NEXT_PUBLIC_RECEIVE_EURC === "1",
+    /**
+     * Which swap assets step 2 offers, in order: a comma list of eurc, pyusd,
+     * usdt0 and xlm. Each needs a funded pool against USDC on the router.
+     */
+    swapOffer: (process.env.NEXT_PUBLIC_RECEIVE_SWAP_ASSETS ?? (deployTarget === "mainnet" ? "" : TESTNET_SWAP_OFFER))
+      .split(",")
+      .map((a) => a.trim())
+      .filter(Boolean),
+    /** The classic asset and its Stellar Asset Contract for each stablecoin step 2 can deliver. */
+    swapAssets: deployTarget === "mainnet" ? null : TESTNET_SWAP_ASSETS,
     soroswapRouter:
       process.env.NEXT_PUBLIC_SOROSWAP_ROUTER_ID ?? (deployTarget === "mainnet" ? "" : TESTNET_SOROSWAP_ROUTER),
     /** The native XLM Stellar Asset Contract. */

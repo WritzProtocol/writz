@@ -83,8 +83,8 @@ These audits are re-assessments as the codebase and TVL grow. Writz intends to a
 Before the formal Audit Bank engagement, Writz applies the following:
 
 **Automated tooling:**
-- `cargo clippy` with all warnings treated as errors
-- `cargo audit` - dependency vulnerability scanning
+- `cargo clippy` with warnings treated as errors, apart from a short documented allow-list of pre-existing lints
+- `cargo audit` - dependency vulnerability scanning of every Cargo workspace against the RustSec database, on manifest or lockfile changes and weekly (`.github/workflows/dependency-audit.yml`); any ignored advisory is listed in the workflow with its reason
 - Custom constraint analysis for ZK circuits (circom-specific tooling)
 
 **Test coverage:**

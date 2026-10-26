@@ -39,7 +39,7 @@ Writz's Soroban contracts are written in Rust - the same language as the best Bi
 
 ### Protocol 27 - Delegation Infrastructure
 
-Protocol 27 (Zipper), scheduled for July 2026, introduces `delegate_account_auth` - a mechanism that changes how the protocol co-signing key is structured. Writz's Phase 1 architecture is designed to upgrade cleanly after Protocol 27 ships, moving from a single HSM co-signing key toward a more decentralized delegation model.
+Protocol 27 (Zipper) introduced `delegate_account_auth`, which lets authority on the Stellar side be distributed across delegated accounts. On the Bitcoin side, Writz plans a 2-of-3 protocol side written into the P2WSH script itself, so no single key can co-sign a release; the signing policy will be published.
 
 ---
 

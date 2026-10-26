@@ -6,7 +6,7 @@
 <!-- Title: btc&#45;release&#45;flow Pages: 1 -->
 <svg width="2700pt" height="191pt"
  viewBox="0.00 0.00 2700.00 191.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-<g id="graph0" class="graph" transform="scale(1.06966 1.06966) rotate(0) translate(50.4 128.12)">
+<g id="graph0" class="graph" transform="scale(1.07189 1.07189) rotate(0) translate(50.4 128.12)">
 <title>btc&#45;release&#45;flow</title>
 <text xml:space="preserve" text-anchor="start" x="54.5" y="-62.37" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="13.00" fill="#1c1917">Writz Protocol &#45; BTC Release Flow (Path A)</text>
 <text xml:space="preserve" text-anchor="start" x="8" y="-53.17" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#57534e">After full repay · cooperative co&#45;sign · witness: [user_sig, protocol_sig, 0x01, redeemScript]</text>
@@ -36,104 +36,104 @@
 <!-- protocol_sign -->
 <g id="node3" class="node">
 <title>protocol_sign</title>
-<path fill="#faf5ff" stroke="#7c3aed" stroke-width="1.6" d="M739.54,-47.72C739.54,-47.72 593.86,-47.72 593.86,-47.72 587.86,-47.72 581.86,-41.72 581.86,-35.72 581.86,-35.72 581.86,-12 581.86,-12 581.86,-6 587.86,0 593.86,0 593.86,0 739.54,0 739.54,0 745.54,0 751.54,-6 751.54,-12 751.54,-12 751.54,-35.72 751.54,-35.72 751.54,-41.72 745.54,-47.72 739.54,-47.72"/>
-<text xml:space="preserve" text-anchor="start" x="608.58" y="-28.91" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="11.00" fill="#1c1917">Build + Co&#45;Sign PSBT</text>
-<text xml:space="preserve" text-anchor="start" x="600.33" y="-19.81" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#57534e">Pays the user key&#39;s own address</text>
-<text xml:space="preserve" text-anchor="start" x="597.7" y="-10.81" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#a8a29e">Protocol key (KMS, or testnet WIF)</text>
+<path fill="#faf5ff" stroke="#7c3aed" stroke-width="1.6" d="M734.29,-47.72C734.29,-47.72 593.86,-47.72 593.86,-47.72 587.86,-47.72 581.86,-41.72 581.86,-35.72 581.86,-35.72 581.86,-12 581.86,-12 581.86,-6 587.86,0 593.86,0 593.86,0 734.29,0 734.29,0 740.29,0 746.29,-6 746.29,-12 746.29,-12 746.29,-35.72 746.29,-35.72 746.29,-41.72 740.29,-47.72 734.29,-47.72"/>
+<text xml:space="preserve" text-anchor="start" x="605.95" y="-28.91" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="11.00" fill="#1c1917">Build + Co&#45;Sign PSBT</text>
+<text xml:space="preserve" text-anchor="start" x="597.7" y="-19.81" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#57534e">Pays the user key&#39;s own address</text>
+<text xml:space="preserve" text-anchor="start" x="616.45" y="-10.81" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#a8a29e">Protocol co&#45;signing key</text>
 </g>
 <!-- watcher&#45;&gt;protocol_sign -->
 <g id="edge2" class="edge">
 <title>watcher&#45;&gt;protocol_sign</title>
-<path fill="none" stroke="#7c3aed" stroke-width="2" d="M515.38,-23.86C515.38,-23.86 569.81,-23.86 569.81,-23.86"/>
-<polygon fill="#7c3aed" stroke="#7c3aed" stroke-width="2" points="569.81,-26.84 578.31,-23.86 569.81,-20.89 569.81,-26.84"/>
+<path fill="none" stroke="#7c3aed" stroke-width="2" d="M515.4,-23.86C515.4,-23.86 569.57,-23.86 569.57,-23.86"/>
+<polygon fill="#7c3aed" stroke="#7c3aed" stroke-width="2" points="569.57,-26.84 578.07,-23.86 569.57,-20.89 569.57,-26.84"/>
 </g>
 <!-- publish -->
 <g id="node4" class="node">
 <title>publish</title>
-<path fill="#eff6ff" stroke="#2563eb" stroke-width="1.6" d="M1105.72,-47.72C1105.72,-47.72 924.79,-47.72 924.79,-47.72 918.79,-47.72 912.79,-41.72 912.79,-35.72 912.79,-35.72 912.79,-12 912.79,-12 912.79,-6 918.79,0 924.79,0 924.79,0 1105.72,0 1105.72,0 1111.72,0 1117.72,-6 1117.72,-12 1117.72,-12 1117.72,-35.72 1117.72,-35.72 1117.72,-41.72 1111.72,-47.72 1105.72,-47.72"/>
-<text xml:space="preserve" text-anchor="start" x="928.63" y="-28.91" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="11.00" fill="#1c1917">writz&#45;lend.publish_release_psbt()</text>
-<text xml:space="preserve" text-anchor="start" x="944.38" y="-19.81" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#57534e">Half&#45;signed PSBT stored on Stellar</text>
-<text xml:space="preserve" text-anchor="start" x="948.88" y="-10.81" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#a8a29e">Retrievable even if Writz is down</text>
+<path fill="#eff6ff" stroke="#2563eb" stroke-width="1.6" d="M1100.47,-47.72C1100.47,-47.72 919.54,-47.72 919.54,-47.72 913.54,-47.72 907.54,-41.72 907.54,-35.72 907.54,-35.72 907.54,-12 907.54,-12 907.54,-6 913.54,0 919.54,0 919.54,0 1100.47,0 1100.47,0 1106.47,0 1112.47,-6 1112.47,-12 1112.47,-12 1112.47,-35.72 1112.47,-35.72 1112.47,-41.72 1106.47,-47.72 1100.47,-47.72"/>
+<text xml:space="preserve" text-anchor="start" x="923.38" y="-28.91" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="11.00" fill="#1c1917">writz&#45;lend.publish_release_psbt()</text>
+<text xml:space="preserve" text-anchor="start" x="939.13" y="-19.81" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#57534e">Half&#45;signed PSBT stored on Stellar</text>
+<text xml:space="preserve" text-anchor="start" x="943.63" y="-10.81" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#a8a29e">Retrievable even if Writz is down</text>
 </g>
 <!-- protocol_sign&#45;&gt;publish -->
 <g id="edge3" class="edge">
 <title>protocol_sign&#45;&gt;publish</title>
-<path fill="none" stroke="#7c3aed" stroke-width="2" d="M751.97,-23.86C751.97,-23.86 900.71,-23.86 900.71,-23.86"/>
-<polygon fill="#7c3aed" stroke="#7c3aed" stroke-width="2" points="900.71,-26.84 909.21,-23.86 900.71,-20.89 900.71,-26.84"/>
-<text xml:space="preserve" text-anchor="middle" x="832.17" y="-25.61" font-family="Helvetica,sans-Serif" font-size="10.00" fill="#7c3aed">protocol&#45;signed PSBT</text>
+<path fill="none" stroke="#7c3aed" stroke-width="2" d="M746.93,-23.86C746.93,-23.86 895.24,-23.86 895.24,-23.86"/>
+<polygon fill="#7c3aed" stroke="#7c3aed" stroke-width="2" points="895.24,-26.84 903.74,-23.86 895.24,-20.89 895.24,-26.84"/>
+<text xml:space="preserve" text-anchor="middle" x="826.92" y="-25.61" font-family="Helvetica,sans-Serif" font-size="10.00" fill="#7c3aed">protocol&#45;signed PSBT</text>
 </g>
 <!-- fetch -->
 <g id="node5" class="node">
 <title>fetch</title>
-<path fill="#eff6ff" stroke="#2563eb" stroke-width="1.6" d="M1329.65,-47.72C1329.65,-47.72 1196.72,-47.72 1196.72,-47.72 1190.72,-47.72 1184.72,-41.72 1184.72,-35.72 1184.72,-35.72 1184.72,-12 1184.72,-12 1184.72,-6 1190.72,0 1196.72,0 1196.72,0 1329.65,0 1329.65,0 1335.65,0 1341.65,-6 1341.65,-12 1341.65,-12 1341.65,-35.72 1341.65,-35.72 1341.65,-41.72 1335.65,-47.72 1329.65,-47.72"/>
-<text xml:space="preserve" text-anchor="start" x="1205.06" y="-28.91" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="11.00" fill="#1c1917">get_release_psbt(txid)</text>
-<text xml:space="preserve" text-anchor="start" x="1200.56" y="-19.81" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#57534e">Read by the app (or any client)</text>
-<text xml:space="preserve" text-anchor="start" x="1211.81" y="-10.81" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#a8a29e">No Writz service required</text>
+<path fill="#eff6ff" stroke="#2563eb" stroke-width="1.6" d="M1324.4,-47.72C1324.4,-47.72 1191.47,-47.72 1191.47,-47.72 1185.47,-47.72 1179.47,-41.72 1179.47,-35.72 1179.47,-35.72 1179.47,-12 1179.47,-12 1179.47,-6 1185.47,0 1191.47,0 1191.47,0 1324.4,0 1324.4,0 1330.4,0 1336.4,-6 1336.4,-12 1336.4,-12 1336.4,-35.72 1336.4,-35.72 1336.4,-41.72 1330.4,-47.72 1324.4,-47.72"/>
+<text xml:space="preserve" text-anchor="start" x="1199.81" y="-28.91" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="11.00" fill="#1c1917">get_release_psbt(txid)</text>
+<text xml:space="preserve" text-anchor="start" x="1195.31" y="-19.81" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#57534e">Read by the app (or any client)</text>
+<text xml:space="preserve" text-anchor="start" x="1206.56" y="-10.81" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#a8a29e">No Writz service required</text>
 </g>
 <!-- publish&#45;&gt;fetch -->
 <g id="edge4" class="edge">
 <title>publish&#45;&gt;fetch</title>
-<path fill="none" stroke="#2563eb" stroke-width="1.4" stroke-dasharray="5,2" d="M1118.25,-23.86C1118.25,-23.86 1173.33,-23.86 1173.33,-23.86"/>
-<polygon fill="#2563eb" stroke="#2563eb" stroke-width="1.4" points="1173.33,-26.84 1181.83,-23.86 1173.33,-20.89 1173.33,-26.84"/>
+<path fill="none" stroke="#2563eb" stroke-width="1.4" stroke-dasharray="5,2" d="M1113,-23.86C1113,-23.86 1168.08,-23.86 1168.08,-23.86"/>
+<polygon fill="#2563eb" stroke="#2563eb" stroke-width="1.4" points="1168.08,-26.84 1176.58,-23.86 1168.08,-20.89 1168.08,-26.84"/>
 </g>
 <!-- user_sign -->
 <g id="node6" class="node">
 <title>user_sign</title>
-<path fill="#fff7ed" stroke="#ea580c" stroke-width="1.6" d="M1550.33,-47.72C1550.33,-47.72 1445.9,-47.72 1445.9,-47.72 1439.9,-47.72 1433.9,-41.72 1433.9,-35.72 1433.9,-35.72 1433.9,-12 1433.9,-12 1433.9,-6 1439.9,0 1445.9,0 1445.9,0 1550.33,0 1550.33,0 1556.33,0 1562.33,-6 1562.33,-12 1562.33,-12 1562.33,-35.72 1562.33,-35.72 1562.33,-41.72 1556.33,-47.72 1550.33,-47.72"/>
-<text xml:space="preserve" text-anchor="start" x="1452.74" y="-28.91" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="11.00" fill="#1c1917">User Signs PSBT</text>
-<text xml:space="preserve" text-anchor="start" x="1454.61" y="-19.81" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#57534e">Xverse · sats&#45;connect</text>
-<text xml:space="preserve" text-anchor="start" x="1449.74" y="-10.81" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#a8a29e">Adds the user signature</text>
+<path fill="#fff7ed" stroke="#ea580c" stroke-width="1.6" d="M1545.08,-47.72C1545.08,-47.72 1440.65,-47.72 1440.65,-47.72 1434.65,-47.72 1428.65,-41.72 1428.65,-35.72 1428.65,-35.72 1428.65,-12 1428.65,-12 1428.65,-6 1434.65,0 1440.65,0 1440.65,0 1545.08,0 1545.08,0 1551.08,0 1557.08,-6 1557.08,-12 1557.08,-12 1557.08,-35.72 1557.08,-35.72 1557.08,-41.72 1551.08,-47.72 1545.08,-47.72"/>
+<text xml:space="preserve" text-anchor="start" x="1447.49" y="-28.91" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="11.00" fill="#1c1917">User Signs PSBT</text>
+<text xml:space="preserve" text-anchor="start" x="1449.36" y="-19.81" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#57534e">Xverse · sats&#45;connect</text>
+<text xml:space="preserve" text-anchor="start" x="1444.49" y="-10.81" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#a8a29e">Adds the user signature</text>
 </g>
 <!-- fetch&#45;&gt;user_sign -->
 <g id="edge5" class="edge">
 <title>fetch&#45;&gt;user_sign</title>
-<path fill="none" stroke="#ea580c" stroke-width="2" d="M1342.39,-23.86C1342.39,-23.86 1421.77,-23.86 1421.77,-23.86"/>
-<polygon fill="#ea580c" stroke="#ea580c" stroke-width="2" points="1421.77,-26.84 1430.27,-23.86 1421.77,-20.89 1421.77,-26.84"/>
-<text xml:space="preserve" text-anchor="middle" x="1387.77" y="-25.61" font-family="Helvetica,sans-Serif" font-size="10.00" fill="#ea580c">PSBT</text>
+<path fill="none" stroke="#ea580c" stroke-width="2" d="M1337.14,-23.86C1337.14,-23.86 1416.52,-23.86 1416.52,-23.86"/>
+<polygon fill="#ea580c" stroke="#ea580c" stroke-width="2" points="1416.52,-26.84 1425.02,-23.86 1416.52,-20.89 1416.52,-26.84"/>
+<text xml:space="preserve" text-anchor="middle" x="1382.52" y="-25.61" font-family="Helvetica,sans-Serif" font-size="10.00" fill="#ea580c">PSBT</text>
 </g>
 <!-- finalize -->
 <g id="node7" class="node">
 <title>finalize</title>
-<path fill="#ecfdf5" stroke="#059669" stroke-width="1.6" d="M1942.01,-47.72C1942.01,-47.72 1719.08,-47.72 1719.08,-47.72 1713.08,-47.72 1707.08,-41.72 1707.08,-35.72 1707.08,-35.72 1707.08,-12 1707.08,-12 1707.08,-6 1713.08,0 1719.08,0 1719.08,0 1942.01,0 1942.01,0 1948.01,0 1954.01,-6 1954.01,-12 1954.01,-12 1954.01,-35.72 1954.01,-35.72 1954.01,-41.72 1948.01,-47.72 1942.01,-47.72"/>
-<text xml:space="preserve" text-anchor="start" x="1792.29" y="-28.91" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="11.00" fill="#1c1917">finalizePathA()</text>
-<text xml:space="preserve" text-anchor="start" x="1781.04" y="-19.81" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#57534e">Merge partial signatures</text>
-<text xml:space="preserve" text-anchor="start" x="1722.92" y="-10.81" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#a8a29e">Witness: [user_sig, protocol_sig, 0x01, redeemScript]</text>
+<path fill="#ecfdf5" stroke="#059669" stroke-width="1.6" d="M1936.76,-47.72C1936.76,-47.72 1713.83,-47.72 1713.83,-47.72 1707.83,-47.72 1701.83,-41.72 1701.83,-35.72 1701.83,-35.72 1701.83,-12 1701.83,-12 1701.83,-6 1707.83,0 1713.83,0 1713.83,0 1936.76,0 1936.76,0 1942.76,0 1948.76,-6 1948.76,-12 1948.76,-12 1948.76,-35.72 1948.76,-35.72 1948.76,-41.72 1942.76,-47.72 1936.76,-47.72"/>
+<text xml:space="preserve" text-anchor="start" x="1787.04" y="-28.91" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="11.00" fill="#1c1917">finalizePathA()</text>
+<text xml:space="preserve" text-anchor="start" x="1775.79" y="-19.81" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#57534e">Merge partial signatures</text>
+<text xml:space="preserve" text-anchor="start" x="1717.67" y="-10.81" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#a8a29e">Witness: [user_sig, protocol_sig, 0x01, redeemScript]</text>
 </g>
 <!-- user_sign&#45;&gt;finalize -->
 <g id="edge6" class="edge">
 <title>user_sign&#45;&gt;finalize</title>
-<path fill="none" stroke="#ea580c" stroke-width="2" d="M1563,-23.86C1563,-23.86 1695.07,-23.86 1695.07,-23.86"/>
-<polygon fill="#ea580c" stroke="#ea580c" stroke-width="2" points="1695.07,-26.84 1703.57,-23.86 1695.07,-20.89 1695.07,-26.84"/>
-<text xml:space="preserve" text-anchor="middle" x="1634.7" y="-25.61" font-family="Helvetica,sans-Serif" font-size="10.00" fill="#ea580c">fully signed PSBT</text>
+<path fill="none" stroke="#ea580c" stroke-width="2" d="M1557.75,-23.86C1557.75,-23.86 1689.82,-23.86 1689.82,-23.86"/>
+<polygon fill="#ea580c" stroke="#ea580c" stroke-width="2" points="1689.82,-26.84 1698.32,-23.86 1689.82,-20.89 1689.82,-26.84"/>
+<text xml:space="preserve" text-anchor="middle" x="1629.45" y="-25.61" font-family="Helvetica,sans-Serif" font-size="10.00" fill="#ea580c">fully signed PSBT</text>
 </g>
 <!-- broadcast -->
 <g id="node8" class="node">
 <title>broadcast</title>
-<path fill="#fff7ed" stroke="#ea580c" stroke-width="1.6" d="M2206.19,-47.72C2206.19,-47.72 2090.51,-47.72 2090.51,-47.72 2084.51,-47.72 2078.51,-41.72 2078.51,-35.72 2078.51,-35.72 2078.51,-12 2078.51,-12 2078.51,-6 2084.51,0 2090.51,0 2090.51,0 2206.19,0 2206.19,0 2212.19,0 2218.19,-6 2218.19,-12 2218.19,-12 2218.19,-35.72 2218.19,-35.72 2218.19,-41.72 2212.19,-47.72 2206.19,-47.72"/>
-<text xml:space="preserve" text-anchor="start" x="2094.35" y="-28.91" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="11.00" fill="#1c1917">Broadcast to Bitcoin</text>
-<text xml:space="preserve" text-anchor="start" x="2113.85" y="-19.81" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#57534e">POST Esplora /tx</text>
-<text xml:space="preserve" text-anchor="start" x="2108.97" y="-10.81" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#a8a29e">Returns Bitcoin txid</text>
+<path fill="#fff7ed" stroke="#ea580c" stroke-width="1.6" d="M2200.94,-47.72C2200.94,-47.72 2085.26,-47.72 2085.26,-47.72 2079.26,-47.72 2073.26,-41.72 2073.26,-35.72 2073.26,-35.72 2073.26,-12 2073.26,-12 2073.26,-6 2079.26,0 2085.26,0 2085.26,0 2200.94,0 2200.94,0 2206.94,0 2212.94,-6 2212.94,-12 2212.94,-12 2212.94,-35.72 2212.94,-35.72 2212.94,-41.72 2206.94,-47.72 2200.94,-47.72"/>
+<text xml:space="preserve" text-anchor="start" x="2089.1" y="-28.91" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="11.00" fill="#1c1917">Broadcast to Bitcoin</text>
+<text xml:space="preserve" text-anchor="start" x="2108.6" y="-19.81" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#57534e">POST Esplora /tx</text>
+<text xml:space="preserve" text-anchor="start" x="2103.72" y="-10.81" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#a8a29e">Returns Bitcoin txid</text>
 </g>
 <!-- finalize&#45;&gt;broadcast -->
 <g id="edge7" class="edge">
 <title>finalize&#45;&gt;broadcast</title>
-<path fill="none" stroke="#e3a646" stroke-width="2.5" d="M1954.78,-23.86C1954.78,-23.86 2065.6,-23.86 2065.6,-23.86"/>
-<polygon fill="#e3a646" stroke="#e3a646" stroke-width="2.5" points="2065.6,-26.84 2074.1,-23.86 2065.6,-20.89 2065.6,-26.84"/>
-<text xml:space="preserve" text-anchor="middle" x="2016.26" y="-25.61" font-family="Helvetica,sans-Serif" font-size="10.00" fill="#e3a646">signed tx hex</text>
+<path fill="none" stroke="#e3a646" stroke-width="2.5" d="M1949.53,-23.86C1949.53,-23.86 2060.35,-23.86 2060.35,-23.86"/>
+<polygon fill="#e3a646" stroke="#e3a646" stroke-width="2.5" points="2060.35,-26.84 2068.85,-23.86 2060.35,-20.89 2060.35,-26.84"/>
+<text xml:space="preserve" text-anchor="middle" x="2011.01" y="-25.61" font-family="Helvetica,sans-Serif" font-size="10.00" fill="#e3a646">signed tx hex</text>
 </g>
 <!-- done -->
 <g id="node9" class="node">
 <title>done</title>
-<path fill="#f0fdf4" stroke="#16a34a" stroke-width="1.6" d="M2411.37,-47.72C2411.37,-47.72 2297.19,-47.72 2297.19,-47.72 2291.19,-47.72 2285.19,-41.72 2285.19,-35.72 2285.19,-35.72 2285.19,-12 2285.19,-12 2285.19,-6 2291.19,0 2297.19,0 2297.19,0 2411.37,0 2411.37,0 2417.37,0 2423.37,-6 2423.37,-12 2423.37,-12 2423.37,-35.72 2423.37,-35.72 2423.37,-41.72 2417.37,-47.72 2411.37,-47.72"/>
-<text xml:space="preserve" text-anchor="start" x="2317.15" y="-28.91" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="11.00" fill="#1c1917">BTC Released</text>
-<text xml:space="preserve" text-anchor="start" x="2301.03" y="-19.81" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#57534e">Collateral returned to user</text>
-<text xml:space="preserve" text-anchor="start" x="2319.78" y="-10.81" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#a8a29e">Loan fully closed</text>
+<path fill="#f0fdf4" stroke="#16a34a" stroke-width="1.6" d="M2406.12,-47.72C2406.12,-47.72 2291.94,-47.72 2291.94,-47.72 2285.94,-47.72 2279.94,-41.72 2279.94,-35.72 2279.94,-35.72 2279.94,-12 2279.94,-12 2279.94,-6 2285.94,0 2291.94,0 2291.94,0 2406.12,0 2406.12,0 2412.12,0 2418.12,-6 2418.12,-12 2418.12,-12 2418.12,-35.72 2418.12,-35.72 2418.12,-41.72 2412.12,-47.72 2406.12,-47.72"/>
+<text xml:space="preserve" text-anchor="start" x="2311.9" y="-28.91" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="11.00" fill="#1c1917">BTC Released</text>
+<text xml:space="preserve" text-anchor="start" x="2295.78" y="-19.81" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#57534e">Collateral returned to user</text>
+<text xml:space="preserve" text-anchor="start" x="2314.53" y="-10.81" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#a8a29e">Loan fully closed</text>
 </g>
 <!-- broadcast&#45;&gt;done -->
 <g id="edge8" class="edge">
 <title>broadcast&#45;&gt;done</title>
-<path fill="none" stroke="#e3a646" stroke-width="2.5" d="M2218.93,-23.86C2218.93,-23.86 2272.2,-23.86 2272.2,-23.86"/>
-<polygon fill="#e3a646" stroke="#e3a646" stroke-width="2.5" points="2272.2,-26.84 2280.7,-23.86 2272.2,-20.89 2272.2,-26.84"/>
+<path fill="none" stroke="#e3a646" stroke-width="2.5" d="M2213.68,-23.86C2213.68,-23.86 2266.95,-23.86 2266.95,-23.86"/>
+<polygon fill="#e3a646" stroke="#e3a646" stroke-width="2.5" points="2266.95,-26.84 2275.45,-23.86 2266.95,-20.89 2266.95,-26.84"/>
 </g>
 </g>
 </svg>

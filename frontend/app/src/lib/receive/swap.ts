@@ -12,11 +12,11 @@ const DEADLINE_SECONDS = 300;
 
 const routerId = () => requireContract(config.receive.soroswapRouter, "Soroswap router");
 
-/** USDC to XLM on the direct pair; both legs are SACs with 7 decimals. */
-export const usdcToXlmPath = (): string[] => [
-  requireContract(config.contracts.usdcToken, "USDC token"),
-  requireContract(config.receive.xlmToken, "XLM token"),
-];
+/** USDC to `token` on their direct pair; every leg is a SAC with 7 decimals. */
+export const usdcToPath = (token: string): string[] => [requireContract(config.contracts.usdcToken, "USDC token"), token];
+
+/** USDC to XLM on the direct pair. */
+export const usdcToXlmPath = (): string[] => usdcToPath(requireContract(config.receive.xlmToken, "XLM token"));
 
 /** The least the swap may return before it reverts: `quoted` less `slippageBp`, rounded down. */
 export function minOut(quoted: bigint, slippageBp: number): bigint {
@@ -32,8 +32,8 @@ export const swapDeadline = (nowMs: number, seconds = DEADLINE_SECONDS): bigint 
 
 const pathScVal = (path: string[]) => nativeToScVal(path.map((p) => Address.fromString(p)));
 
-/** What `amountIn` stroops of USDC buy in XLM stroops right now, from the router's own pair reserves. */
-export async function quoteUsdcToXlm(amountIn: bigint, path: string[] = usdcToXlmPath()): Promise<bigint> {
+/** What `amountIn` stroops of USDC buy at the end of `path` right now, from the router's own pair reserves. */
+export async function quoteUsdcTo(amountIn: bigint, path: string[]): Promise<bigint> {
   if (amountIn <= 0n) throw new Error("Enter an amount above 0.");
   const tx = await callContract<bigint[]>({
     contractId: routerId(),
@@ -50,27 +50,28 @@ export interface SwapResult {
   hash: string;
   quotedOut: bigint;
   minOut: bigint;
-  /** XLM stroops the router paid, from the transaction result. */
+  /** Stroops of the bought asset the router paid, from the transaction result. */
   received: bigint | null;
 }
 
 /**
- * Swap borrowed USDC for XLM through the Soroswap router. The quote is taken
- * again right before signing so the minimum reflects the pool as it is now.
+ * Swap borrowed USDC for the asset at the end of `path` through the Soroswap
+ * router. The quote is taken again right before signing so the minimum
+ * reflects the pool as it is now.
  */
-export async function swapUsdcToXlm(params: {
+export async function swapUsdcTo(params: {
   owner: string;
+  path: string[];
   amountIn: bigint;
   slippageBp?: number;
   signTransaction: SignTransaction;
   emit?: Emit;
   now?: () => number;
 }): Promise<SwapResult> {
-  const { owner, amountIn, signTransaction, emit, slippageBp = DEFAULT_SLIPPAGE_BP, now = Date.now } = params;
-  const path = usdcToXlmPath();
+  const { owner, path, amountIn, signTransaction, emit, slippageBp = DEFAULT_SLIPPAGE_BP, now = Date.now } = params;
 
   emit?.({ type: "preparing", step: "reading" });
-  const quotedOut = await quoteUsdcToXlm(amountIn, path);
+  const quotedOut = await quoteUsdcTo(amountIn, path);
   const floor = minOut(quotedOut, slippageBp);
 
   emit?.({ type: "preparing", step: "building" });

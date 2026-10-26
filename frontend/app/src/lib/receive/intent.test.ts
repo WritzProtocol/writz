@@ -3,7 +3,7 @@ import { IDLE, type FlowState } from "@/lib/flow/engine";
 import { receivePhase, type ReceiveIntent } from "./intent";
 import type { ChainLeg } from "./useReceive";
 
-const XLM: ReceiveIntent = { kind: "xlm", slippageBp: 50 };
+const XLM: ReceiveIntent = { kind: "swap", asset: "xlm", slippageBp: 50 };
 const CHAIN: ReceiveIntent = { kind: "chain", recipient: "0x" + "ab".repeat(20) };
 const send = { burnHash: "b".repeat(64), amount: 1_000_000_000n, maxFee: 0n };
 const base = { flow: IDLE, swap: null, leg: { kind: "idle" } as ChainLeg, mintHash: null, kept: false };
@@ -27,7 +27,7 @@ describe("receivePhase", () => {
   });
 
   it("finishes the swap", () => {
-    expect(phase(XLM, { swap: { hash: "h", quotedOut: 1n, minOut: 1n, received: 1n } })).toBe("xlm_done");
+    expect(phase(XLM, { swap: { hash: "h", quotedOut: 1n, minOut: 1n, received: 1n } })).toBe("swap_done");
   });
 
   it("follows the other chain from sent to arrived", () => {

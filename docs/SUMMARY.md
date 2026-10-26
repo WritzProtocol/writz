@@ -56,6 +56,7 @@
 ## Security
 
 * [Security Model](/security/security-model)
+* [SPV vs Wrapped Bitcoin](/security/spv-vs-wrapped)
 * [Audits](/security/audits)
 * [Bug Bounty](/security/bug-bounty)
 * [STRIDE Threat Model](/security/stride-threat-model)

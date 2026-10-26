@@ -72,4 +72,24 @@ pub enum WritzLendError {
     /// A constructor or `set_entry_ttl` `entry_ttl_ledgers` is outside
     /// `MIN_ENTRY_TTL_LEDGERS..=MAX_ENTRY_TTL_LEDGERS`.
     InvalidEntryTtl = 28,
+    /// `user_pubkey` equals the protocol's co-signing key. Every key in the
+    /// Writz script must be distinct, or the holder of that one key could
+    /// complete the cooperative path alone.
+    UserKeyIsProtocolKey = 29,
+    /// The borrow would leave fewer than `borrow_timelock_margin_blocks`
+    /// (4,320 by default) between the `bitcoin-spv` tip and the position's
+    /// timelock height.
+    TimelockTooSoon = 30,
+    /// `bitcoin-spv` has no tip yet, or its tip header is older than
+    /// `max_tip_age_secs`, so the current Bitcoin height is not known well
+    /// enough to measure a timelock against.
+    StaleBitcoinTip = 31,
+    /// Fewer than `LIQUIDATION_CUTOFF_BLOCKS` (288) blocks remain between the
+    /// `bitcoin-spv` tip and the position's timelock height, so the
+    /// borrower's unilateral exit is about to open and a liquidation is no
+    /// longer accepted.
+    LiquidationWindowClosed = 32,
+    /// A `set_borrow_timelock_margin` or `set_max_tip_age` value is outside
+    /// its allowed range.
+    InvalidTimelockParams = 33,
 }
