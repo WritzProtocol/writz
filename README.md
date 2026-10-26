@@ -7,11 +7,11 @@
 [![Network](https://img.shields.io/badge/network-Stellar%20Testnet-blue)](https://stellar.expert/explorer/testnet)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
-**[Live App](https://writz.xyz)** · **[Docs](https://docs.writz.xyz)** · **[Relayer API](https://api.testnet.writz.xyz)**
+**[Live App (testnet)](https://testnet.writz.xyz)** · **[Docs](https://docs.writz.xyz)** · **[Relayer API](https://api.testnet.writz.xyz)**
 
 > **HackMeridian 2026 judges:** the event work, goals, demo steps and prior-work disclosure are in [HACKMERIDIAN.md](HACKMERIDIAN.md).
 
-**Writz** is a Bitcoin lending protocol on Stellar where the collateral never leaves Bitcoin. Lock real BTC directly from your Bitcoin wallet, borrow USDC on Stellar, and take it back alone if Writz ever disappears.
+**Writz** is a Bitcoin lending protocol on Stellar where the collateral never leaves Bitcoin. Lock native BTC directly from your Bitcoin wallet (Signet coins on today's testnet), borrow USDC on Stellar, and take it back alone if Writz ever disappears.
 
 No bridge. No custodian. No wrapped tokens.
 
@@ -29,13 +29,14 @@ No bridge. No custodian. No wrapped tokens.
 
 ## This Is Not a Whitepaper
 
-As of August 2026, the protocol's two contracts (`bitcoin-spv` and `writz-lend`) are live on Stellar testnet, 623 tests pass, and real Bitcoin transactions have been verified on-chain.
+As of October 2026, the protocol's two contracts (`bitcoin-spv` and `writz-lend`, redeployed on 25 October) are live on Stellar testnet, 623 tests pass, and Bitcoin Signet transactions have been verified on-chain.
 
 | What | Status |
 |---|---|
 | Bitcoin SPV verification on Soroban | ✓ Live on testnet |
 | `writz-lend` deposit, borrow, repay and release PSBT | ✓ Live on testnet |
 | P2WSH locking + co-signed BTC release | ✓ Broadcast on Bitcoin Signet |
+| Receive the loan as EURC, PYUSD or XLM (Soroswap) or as USDC on Base Sepolia (Circle CCTP V2) | ✓ Live on testnet |
 | 623 tests across all modules | ✓ All passing |
 
 But a few months ago, it was a whitepaper. Version 1.0 (July 2026) is at [writz.xyz/whitepaper](https://writz.xyz/whitepaper) and archived on Zenodo with the DOI [10.5281/zenodo.23148520](https://doi.org/10.5281/zenodo.23148520).
@@ -44,8 +45,8 @@ But a few months ago, it was a whitepaper. Version 1.0 (July 2026) is at [writz.
 
 | Contract | Address | WASM | Tests |
 |---|---|---|---|
-| `bitcoin-spv` | `CBX23YKCCJMAMBMSCNP6YVKEXUIYK2CTKSR4TQ3RVBPAFYZFVCW7W4EO` | 45.2 KB | 80 |
-| `writz-lend` | `CABF7VK7F25ZGDLV6EWSAU3NYQYKDQNDSJIISDMDZAUASMSXUADSHZGG` | 83.2 KB | 135 |
+| `bitcoin-spv` | `CBX23YKCCJMAMBMSCNP6YVKEXUIYK2CTKSR4TQ3RVBPAFYZFVCW7W4EO` | 45.2 KB | 68 |
+| `writz-lend` | `CABF7VK7F25ZGDLV6EWSAU3NYQYKDQNDSJIISDMDZAUASMSXUADSHZGG` | 83.2 KB | 100 |
 
 Both were redeployed on 2026-10-25 because testnet rent rose sharply; positions on the previous contracts were closed and their BTC released. The storage windows that drive rent are now deployment parameters, see [Storage and TTL management](docs/how-it-works/stellar-side.md#storage-and-ttl-management).
 
@@ -53,8 +54,8 @@ The privacy edition's contracts are also deployed on testnet, separately from th
 
 | Contract | Address | WASM | Tests |
 |---|---|---|---|
-| `zk-verifier` | `CB5XAP6MF2GVVFATFTVCKVEXUODWWRQP4B3QFDMRTM55REP7N2YMXEUD` | 14.5 KB | 25 |
-| `commitment-tree` | `CAQBLCAPGXXCZTJDAJLY7E4PTJYGR6CY4YWH4JSJKFXYIHW3GANP6RFM` | 31.7 KB | 32 |
+| `zk-verifier` | `CB5XAP6MF2GVVFATFTVCKVEXUODWWRQP4B3QFDMRTM55REP7N2YMXEUD` | 14.5 KB | 26 |
+| `commitment-tree` | `CAQBLCAPGXXCZTJDAJLY7E4PTJYGR6CY4YWH4JSJKFXYIHW3GANP6RFM` | 31.7 KB | 59 |
 
 Full deployment log, init transactions, and verified calls: [`contracts/deployments/testnet.md`](contracts/deployments/testnet.md)
 
@@ -86,16 +87,16 @@ Positions, amounts and collateral are public on chain, like any other lending ma
 1. User connects their Bitcoin wallet (Xverse) and a Stellar wallet (Freighter) to the Writz UI.
 2. The frontend derives a unique P2WSH address for this deposit (user public key + protocol public key + timelock).
 3. User sends BTC to that address on Bitcoin. The script is now live on-chain.
-4. After 6 confirmations, the SPV Relayer assembles a proof bundle: raw transaction, block headers, and Merkle inclusion path.
+4. After the required confirmations (1 on this testnet deployment, 6 on mainnet), the SPV Relayer assembles a proof bundle: raw transaction, block headers, and Merkle inclusion path.
 5. The user signs a key-control message with the Bitcoin key in the script, and calls `writz-lend.deposit` with the proof bundle and the signature.
 6. `writz-lend` rebuilds the expected P2WSH script, asks `bitcoin-spv` to verify the transaction's inclusion and confirmations cryptographically - no oracle, no trust - and records the position.
-7. The user can now borrow up to 66% of BTC value in USDC from the `writz-lend` pool.
+7. The user can now borrow USDC from the `writz-lend` pool while keeping a collateral ratio of at least 150% (debt up to about two thirds of the BTC value). After borrowing, the user can keep USDC, convert it through the Soroswap router (EURC, PYUSD, XLM), or send it as native USDC to Base Sepolia with Circle CCTP V2 (testnet).
 
 ### 2 - Borrow & Repay
 
 ![Borrow / Repay Flow](docs/diagrams/output/03-borrow-repay-flow.png)
 
-`writz-lend.borrow` checks the post-borrow collateral ratio against the BTC/USD oracle price and refuses anything below 150%. Interest accrues on a utilization-based curve. `repay` accepts partial or full repayment; a full repayment closes the position and emits a `repay_full` event.
+`writz-lend.borrow` checks the post-borrow collateral ratio against the BTC/USD oracle price and refuses anything below 150%, or a borrow when the position's Bitcoin timelock is less than 4,320 blocks above the `bitcoin-spv` tip. Interest accrues on a utilization-based curve. `repay` accepts partial or full repayment; a full repayment closes the position and emits a `repay_full` event.
 
 ### 3 - BTC Release
 
@@ -142,9 +143,9 @@ OP_ELSE
 OP_ENDIF
 ```
 
-**Path A - Cooperative release (normal case):** Both the protocol and user sign. Triggered when the loan is repaid. The Soroban contract issues the co-signature only after verifying repayment on-chain.
+**Path A - Cooperative release (normal case):** Both the protocol and user sign. Triggered when the loan is repaid. The relayer's repay watcher co-signs only after `writz-lend` records full repayment, and publishes the PSBT on chain with `publish_release_psbt`.
 
-**Path B - Emergency recovery (timelock):** After a predefined locktime (loan maturity + 30 days), the user can spend without any protocol involvement. If Writz disappears, the user's funds are never locked forever.
+**Path B - Emergency recovery (timelock):** After the timelock height chosen at deposit (`borrow` requires it to be at least 4,320 blocks, about 30 days, above the Bitcoin tip; liquidation closes 288 blocks before it), the user can spend without any protocol involvement. If Writz disappears, the user's funds are never locked forever.
 
 See [`bitcoin-script/`](bitcoin-script/) for the full P2WSH builder, address derivation, and PSBT signing toolkit.
 
@@ -159,7 +160,7 @@ See [`bitcoin-script/`](bitcoin-script/) for the full P2WSH builder, address der
 | **BTC Savings** | BTC collateral + USDC auto-routed to highest-yield Stellar pools | Phase 3 - planned |
 | **ZK Proof of Reserve** | Prove BTC holdings without revealing wallets or amounts · B2B SaaS | Phase 3 - planned |
 
-The **Bitcoin SPV SDK** is also open infrastructure. Any Stellar protocol that needs to verify a Bitcoin transaction on-chain can use `bitcoin-spv` with one call. Writz charges a per-verification fee.
+The **Bitcoin SPV SDK** is also open infrastructure. Any Stellar protocol that needs to verify a Bitcoin transaction on-chain can use `bitcoin-spv` with one call, through [`writz-spv-client`](https://crates.io/crates/writz-spv-client) or [`@writz/sdk`](https://www.npmjs.com/package/@writz/sdk). Verification is free today; no per-call fee exists.
 
 ---
 
@@ -200,11 +201,12 @@ writz/
 │       ├── spend.ts         # Path A/B PSBT signing
 │       └── keys.ts          # Key management
 │
-├── frontend/                # Next.js web app (React 19 · TypeScript · Tailwind)
-│   └── src/
-│       ├── components/      # DepositFlow · PositionDashboard · LenderPanel
-│       ├── lib/flows/       # deposit · borrow · repay · release · lend
-│       └── lib/position/    # Local cache of positions read from writz-lend
+├── frontend/
+│   ├── app/src/             # Next.js testnet app (React 19 · TypeScript)
+│   │   ├── components/      # borrow · loan · lend · earn · reclaim
+│   │   ├── lib/flows/       # deposit · borrow · repay · release · lend
+│   │   └── lib/receive/     # Soroswap swap · Circle CCTP burn and relay status
+│   └── landing/             # writz.xyz
 │
 ├── packages/
 │   └── brand/               # Graphite & Gold design tokens
@@ -229,7 +231,7 @@ writz/
 | Stellar wallets | Stellar Wallets Kit · Pollar | Freighter · Lobstr · email and social login on testnet |
 | Relayer runtime | Bun · Express.js | Alpine Docker · Esplora-backed |
 | Privacy edition (in progress) | Circom 2.2.3 · snarkjs · Groth16 · Poseidon | BN254 via Protocol 26 host functions; not part of v1 |
-| CI | GitHub Actions | 4 parallel jobs · all tests must pass |
+| CI | GitHub Actions | Per-module jobs plus docs sync · all must pass |
 
 ---
 
@@ -313,7 +315,7 @@ bun install && bun dev
 # → http://localhost:3000
 ```
 
-The testnet app is also live at **[writz.xyz](https://writz.xyz)**.
+The testnet app is live at **[testnet.writz.xyz](https://testnet.writz.xyz)**.
 
 ### Generate Architecture Diagrams
 
@@ -329,14 +331,15 @@ python3 scripts/diagrams/render-all.py
 
 | Module | Language | Tests | How to run |
 |---|---|---|---|
-| `bitcoin-spv` contract | Rust | 47 | `cd contracts && cargo test -p bitcoin-spv` |
-| `zk-verifier` contract | Rust | 18 | `cd privacy/contracts && cargo test -p zk-verifier` |
-| `commitment-tree` contract | Rust | 18 | `cd privacy/contracts && cargo test -p commitment-tree` |
-| `writz-lend` contract | Rust | 63 | `cd contracts && cargo test -p writz-lend` |
-| Relayer service | TypeScript | 48 | `cd relayer && bun run test` |
+| `bitcoin-spv` contract | Rust | 68 | `cd contracts && cargo test -p bitcoin-spv` |
+| `zk-verifier` contract | Rust | 26 | `cd privacy/contracts && cargo test -p zk-verifier` |
+| `commitment-tree` contract | Rust | 59 | `cd privacy/contracts && cargo test -p commitment-tree` |
+| `writz-lend` contract | Rust | 100 |
+| `spv-types` | Rust | 10 | `cd contracts && cargo test -p spv-types` | `cd contracts && cargo test -p writz-lend` |
+| Relayer service | TypeScript | 248 | `cd relayer && bun run test` |
 | Bitcoin script toolkit | TypeScript | 60 | `cd bitcoin-script && bun test` |
-| ZK circuits | Circom / JS | 20 | `cd privacy/circuits && npm test` |
-| **Total** | | **274** | |
+| ZK circuits | Circom / JS | 52 | `cd privacy/circuits && npm test` |
+| **Total** | | **623** | |
 
 ---
 
@@ -346,9 +349,9 @@ python3 scripts/diagrams/render-all.py
 |---|---|
 | **Lending spread** | Borrow rate minus supply rate on Writz Lend |
 | **Swap fees** | Basis points on each Dark Swap conversion |
-| **SPV API fees** | Per-verification or subscription for third-party Stellar protocol integrations |
+| **SPV API fees** (later, not live) | Possible per-verification or subscription pricing for third-party integrations; verification is free today |
 | **Proof of Reserve SaaS** | Monthly subscription for enterprise B2B customers |
-| **Insurance fund** | % of all protocol fees auto-routed to an on-chain reserve |
+| **Protocol reserve** | A share of borrower interest kept on chain; today it funds liquidation bonuses |
 
 ---
 
@@ -358,12 +361,12 @@ python3 scripts/diagrams/render-all.py
 
 | Risk | Mitigation |
 |---|---|
-| Bitcoin reorg | Require 6 confirmations before deposit is recognized |
+| Bitcoin reorg | Confirmation depth set at deployment: 6 on mainnet (1 on the current testnet deployment) |
 | P2WSH script bug | Formal review; emergency timelock protects users regardless |
 | Protocol key compromise | The protocol key cannot move BTC without the user's key; a 2-of-3 protocol side in the P2WSH script is planned, with a published signing policy |
 | SPV contract exploit | Header light client anchored to a public checkpoint, with proof-of-work, exact difficulty and chainwork checks; no upgrade path; independent audit planned before mainnet. See [SPV vs Wrapped Bitcoin](docs/security/spv-vs-wrapped.md) |
 | Oracle manipulation | Reflector SEP-40 feed with a one-hour staleness check; a second source (Pyth) with a deviation guard is planned |
-| Mass liquidation (BTC crash) | Conservative 150% collateral ratio; open liquidation keeps keepers competitive |
+| Mass liquidation (BTC crash) | Conservative 150% collateral ratio, liquidation below 120%; a designated keeper liquidates, and liquidation opens to anyone if the keeper goes stale |
 
 ### Audit Roadmap
 

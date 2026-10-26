@@ -6,7 +6,7 @@ HackMeridian 2026, Lisbon, 25 and 26 October. Scale track. Built on Writz, Soros
 
 - **Live app:** [testnet.writz.xyz](https://testnet.writz.xyz)
 - **Event work:** pull requests with the [`hackmeridian`](https://github.com/WritzProtocol/writz/pulls?q=label%3Ahackmeridian) label, tracked in [#319](https://github.com/WritzProtocol/writz/issues/319)
-- **Prior work ends at:** tag [`hackmeridian-start`](https://github.com/WritzProtocol/writz/tree/hackmeridian-start) (`0a7c65c`, 25 Oct 01:00 Lisbon). Event work is the pull requests merged after it with the `hackmeridian` label, listed below; other work on `main` in the same days (documentation upkeep, an unrelated lender-yield sprint) is not claimed.
+- **Prior work ends at:** tag [`hackmeridian-start`](https://github.com/WritzProtocol/writz/tree/hackmeridian-start) (`0a7c65c`, 25 Oct 01:00 Lisbon). No commits landed on `main` between the tag and the 09:00 start of hacking. Event work is the pull requests merged after it with the `hackmeridian` label, listed below; other work on `main` in the same days (documentation upkeep, an unrelated lender-yield sprint) is not claimed.
 
 ## The problem
 
@@ -16,7 +16,7 @@ Writz lets a holder borrow against Bitcoin that stays in a script built from the
 
 ## Goals set before the event
 
-Submitted with the Scale application on 21 October, word for word. A goal is ticked only when it is merged and shown on testnet, with its transactions. All four were shown from the browser on testnet.writz.xyz on 26 October.
+Submitted with the Scale application on 21 October, word for word. A goal is ticked only when it is merged and shown on testnet, with its transactions. All four were shown on testnet.writz.xyz: goals 2 to 4 have browser transactions from 26 October, and goal 1's on-chain verification is in the full cycle of 25 October (see On-chain evidence).
 
 - [x] **1. A new borrow screen where the user sees their Bitcoin deposit verified and the Bitcoin price at which the position would be liquidated.**
   Status: merged: deposit status endpoint [#326](https://github.com/WritzProtocol/writz/pull/326) and [#333](https://github.com/WritzProtocol/writz/pull/333), deposit card [#336](https://github.com/WritzProtocol/writz/pull/336); the borrow screen hands off to the receive step [#321](https://github.com/WritzProtocol/writz/pull/321). Live on testnet.writz.xyz.
@@ -38,7 +38,6 @@ On [testnet.writz.xyz](https://testnet.writz.xyz) you need:
 3. **Borrow:** lock BTC, wait for one Signet confirmation (about 10 minutes; mainnet requires six), borrow USDC, and choose how to receive it: keep USDC, convert to EURC, PYUSD, the Writz USDT0 test token or XLM (XLM for testing only), or send USDC to an address on Base Sepolia.
 4. **Repay** in USDC on Stellar from the same screen.
 
-<!-- EVENT: a pre-verified demo deposit judges can borrow against, if we publish one -->
 
 ## Run it locally
 
@@ -134,16 +133,18 @@ cargo add writz-spv-client
 - **Writz** verifies native Bitcoin on Stellar and lends against it, but pays out only USDC on Stellar.
 - **Soroswap** turns that USDC into EURC or PYUSD in one call with a guaranteed minimum.
 - **Circle CCTP** moves the same USDC to another chain by burning and minting it, with nothing wrapped and no pool.
+- **Any Stellar builder** can reuse the base layer: `bitcoin-spv` is an on-chain verifier, and the published `@writz/sdk` and `writz-spv-client` let another contract check a native Bitcoin payment without trusting Writz.
 
-Together, Stellar becomes the credit layer for native Bitcoin: the collateral is verified, the loan is held and repaid on Stellar, wherever the money is spent.
+Together, Stellar can become the credit layer for native Bitcoin: the collateral is verified, the loan is held and repaid on Stellar, wherever the money is spent.
 
 ## Security and limits
 
 - The receive features call the Soroswap router and Circle's contracts with standard calls. The contracts the app runs on changed once during the event ([#340](https://github.com/WritzProtocol/writz/pull/340)), only to set how long new storage entries live. The [#356](https://github.com/WritzProtocol/writz/pull/356) hardening is merged but not active on testnet yet.
-- The swap and the transfer are a second transaction. If it fails, the borrower keeps the USDC they borrowed; nothing is lost.
+- The swap and the transfer are a second transaction. If it fails, the borrowed USDC stays in the wallet; only the network fee is spent.
 - The swap has a minimum output and a deadline; a price move beyond the slippage makes it revert instead of filling badly.
 - CCTP burns and mints Circle-native USDC. With the destination caller left open, anyone can complete the mint; our relay does it so the borrower needs nothing on Base Sepolia.
 - Testnet only: Signet coins, Circle testnet USDC, testnet CCTP. This testnet deployment accepts 1 confirmation and 5,000 sats; mainnet values are 6 confirmations and 100,000 sats.
+- On Signet, block headers are authenticated by a signature the light client does not check, so header submission is restricted to one configured submitter; the testnet demo trusts that submitter for Signet headers. On Bitcoin mainnet, headers are verified by proof of work and anyone can submit them.
 - The liquidation price shown is an estimate at the oracle price.
 - Repayment is in USDC on Stellar only.
 
@@ -248,7 +249,7 @@ Other work merged during the event, not tied to a goal and not claimed as goal w
 
 - Protecting lenders when a borrower does not repay, without ever holding the Bitcoin: pre-signed liquidation transactions with fixed outputs, enforced on Stellar.
 - An independent audit and an audited mainnet launch under caps.
-- A Bitcoin verification SDK so other Stellar projects can accept native Bitcoin.
+- A first outside integration of `bitcoin-spv`: a Stellar protocol (a lending market, vault or wallet) accepting native Bitcoin through `writz-spv-client`, now that both client packages are public.
 
 ## Team
 
