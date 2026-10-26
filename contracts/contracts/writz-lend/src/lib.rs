@@ -20,7 +20,7 @@ use rates::{borrow_rate_bp, supply_rate_bp, total_supply_assets};
 use soroban_sdk::{
     contract, contractimpl, panic_with_error, token, Address, Bytes, BytesN, Env, IntoVal, Symbol, Vec,
 };
-use spv_types::{btc_parser, key_proof, script, SpvVerificationResult};
+use spv_types::{btc_parser, key_proof, script, BestTip, HeaderEntry, SpvVerificationResult};
 use storage::{get_config, get_position, get_protocol, get_release_psbt, get_supply_balance,
                set_config, set_position, set_protocol, set_release_psbt, set_supply_balance};
 use types::{Config, Position, PositionStatus, ProtocolState};
@@ -31,6 +31,28 @@ pub const MAX_MIN_CONFIRMATIONS: u32 = 20;
 /// Lowest `min_deposit_satoshis` the constructor accepts.
 pub const MIN_DEPOSIT_FLOOR_SATS: u64 = 1_000;
 pub use storage::{LEDGERS_PER_DAY, MAX_ENTRY_TTL_LEDGERS, MIN_ENTRY_TTL_LEDGERS};
+
+// Time ordering between a loan and its Bitcoin timelock H. The recovery path
+// of the Writz script can be mined from block H + 1, so from a tip T there
+// are H - T blocks left in which anything the protocol does on Bitcoin can
+// still confirm before the borrower can exit alone.
+
+/// Blocks (about 30 days) a borrow must leave between the `bitcoin-spv` tip
+/// and the position's timelock height: `borrow` requires
+/// `H >= tip + borrow_timelock_margin_blocks`. Also the lowest value
+/// `set_borrow_timelock_margin` accepts, so the margin can be raised, never
+/// lowered below this.
+pub const DEFAULT_BORROW_TIMELOCK_MARGIN_BLOCKS: u32 = 4_320;
+/// Blocks (about 2 days) before the timelock height after which no
+/// liquidation is accepted: `liquidate` requires
+/// `H >= tip + LIQUIDATION_CUTOFF_BLOCKS`.
+pub const LIQUIDATION_CUTOFF_BLOCKS: u32 = 288;
+/// Default oldest age of the `bitcoin-spv` tip header, in seconds, that
+/// `borrow` and `liquidate` will measure a timelock against.
+pub const DEFAULT_MAX_TIP_AGE_SECS: u64 = 6 * 60 * 60;
+/// Bounds of `set_max_tip_age`: 1 to 48 hours.
+pub const MIN_MAX_TIP_AGE_SECS: u64 = 60 * 60;
+pub const MAX_MAX_TIP_AGE_SECS: u64 = 48 * 60 * 60;
 
 #[contract]
 pub struct WritzLendContract;
@@ -117,6 +139,8 @@ impl WritzLendContract {
                 paused: false,
                 max_total_borrowed: 500_000_000_000, // 50,000 USDC - the launch cap in docs/research/tokenomics-fee-model.md
                 entry_ttl_ledgers,
+                borrow_timelock_margin_blocks: DEFAULT_BORROW_TIMELOCK_MARGIN_BLOCKS,
+                max_tip_age_secs: DEFAULT_MAX_TIP_AGE_SECS,
             },
         );
     }
@@ -155,7 +179,8 @@ impl WritzLendContract {
     ///                          either spending path is used; stored so the
     ///                          auto-cosign relayer watcher can reconstruct
     ///                          the redeem script and return address without
-    ///                          a separate off-chain store.
+    ///                          a separate off-chain store. Must differ
+    ///                          from the protocol key (`UserKeyIsProtocolKey`).
     pub fn deposit(
         env: Env,
         depositor: Address,
@@ -189,6 +214,12 @@ impl WritzLendContract {
         // from pledging BTC they can spend alone, or someone else's UTXO.
         if !script::is_compressed_pubkey(&user_pubkey) {
             return Err(WritzLendError::InvalidUserPubkey);
+        }
+        // Every key in the script must be distinct: a user key equal to the
+        // protocol key would let the holder of that one key complete the
+        // cooperative path alone.
+        if user_pubkey == config.protocol_pubkey {
+            return Err(WritzLendError::UserKeyIsProtocolKey);
         }
         let expected_spk = script::p2wsh_script_pubkey(
             &env,
@@ -389,6 +420,14 @@ impl WritzLendContract {
     /// `min_collateral_ratio_bp` (150%).  Interest starts accruing immediately.
     ///
     /// Only the depositor who created the position can borrow against it.
+    ///
+    /// Every borrow, including a top-up of an existing loan, also requires
+    /// the position's timelock height H to be at least
+    /// `borrow_timelock_margin_blocks` (4,320 by default) above the
+    /// `bitcoin-spv` tip, read from a tip header no older than
+    /// `max_tip_age_secs`. Otherwise it fails with `TimelockTooSoon`, or with
+    /// `StaleBitcoinTip` when the tip is missing or too old. This keeps the
+    /// borrower's unilateral exit at least the margin away from any loan.
     pub fn borrow(
         env: Env,
         borrower: Address,
@@ -408,6 +447,16 @@ impl WritzLendContract {
         }
         if pos.depositor != borrower {
             return Err(WritzLendError::Unauthorized);
+        }
+
+        // The borrower's unilateral exit must stay at least the margin away.
+        let tip_height = fresh_tip_height(&env, &config)?;
+        if !timelock_clears(
+            pos.timelock_height,
+            tip_height,
+            config.borrow_timelock_margin_blocks,
+        ) {
+            return Err(WritzLendError::TimelockTooSoon);
         }
 
         let mut proto = get_protocol(&env);
@@ -532,6 +581,12 @@ impl WritzLendContract {
     /// - If the caller is the designated keeper, `last_keeper_heartbeat` is
     ///   refreshed (a keeper that successfully liquidates is provably alive).
     ///
+    /// A liquidation is accepted only while the position's timelock height H
+    /// is at least `LIQUIDATION_CUTOFF_BLOCKS` (288) above the `bitcoin-spv`
+    /// tip, read from a tip header no older than `max_tip_age_secs`; past
+    /// that it fails with `LiquidationWindowClosed`, and with
+    /// `StaleBitcoinTip` when the tip is missing or too old.
+    ///
     /// Phase 2 will replace the keeper check with a ZK proof of
     /// undercollateralization - see `docs/research/liquidation-mechanism.md`.
     pub fn liquidate(
@@ -554,6 +609,12 @@ impl WritzLendContract {
         let mut pos = get_position(&env, &txid, ttl).ok_or(WritzLendError::PositionNotFound)?;
         if pos.status != PositionStatus::Active {
             return Err(WritzLendError::PositionNotActive);
+        }
+
+        // No liquidation once the borrower's unilateral exit is this close.
+        let tip_height = fresh_tip_height(&env, &config)?;
+        if !timelock_clears(pos.timelock_height, tip_height, LIQUIDATION_CUTOFF_BLOCKS) {
+            return Err(WritzLendError::LiquidationWindowClosed);
         }
 
         accrue_position_interest(&env, &mut pos, &mut proto);
@@ -663,6 +724,47 @@ impl WritzLendContract {
             return Err(WritzLendError::Unauthorized);
         }
         config.keeper_stale_after_secs = secs;
+        set_config(&env, &config);
+        Ok(())
+    }
+
+    /// Sets how many Bitcoin blocks a borrow must leave between the
+    /// `bitcoin-spv` tip and the position's timelock height. Admin only.
+    /// `DEFAULT_BORROW_TIMELOCK_MARGIN_BLOCKS` (4,320) up to the deposit
+    /// window's own maximum (105,000): the margin can be raised, never
+    /// lowered below the default.
+    pub fn set_borrow_timelock_margin(
+        env: Env,
+        caller: Address,
+        blocks: u32,
+    ) -> Result<(), WritzLendError> {
+        caller.require_auth();
+        let mut config = get_config(&env).ok_or(WritzLendError::NotInitialized)?;
+        if caller != config.admin {
+            return Err(WritzLendError::Unauthorized);
+        }
+        if !(DEFAULT_BORROW_TIMELOCK_MARGIN_BLOCKS..=script::MAX_TIMELOCK_MARGIN_BLOCKS)
+            .contains(&blocks)
+        {
+            return Err(WritzLendError::InvalidTimelockParams);
+        }
+        config.borrow_timelock_margin_blocks = blocks;
+        set_config(&env, &config);
+        Ok(())
+    }
+
+    /// Sets how old the `bitcoin-spv` tip header may be, in seconds, for
+    /// `borrow` and `liquidate` to rely on it. Admin only; 1 to 48 hours.
+    pub fn set_max_tip_age(env: Env, caller: Address, secs: u64) -> Result<(), WritzLendError> {
+        caller.require_auth();
+        let mut config = get_config(&env).ok_or(WritzLendError::NotInitialized)?;
+        if caller != config.admin {
+            return Err(WritzLendError::Unauthorized);
+        }
+        if !(MIN_MAX_TIP_AGE_SECS..=MAX_MAX_TIP_AGE_SECS).contains(&secs) {
+            return Err(WritzLendError::InvalidTimelockParams);
+        }
+        config.max_tip_age_secs = secs;
         set_config(&env, &config);
         Ok(())
     }
@@ -843,6 +945,22 @@ impl WritzLendContract {
         Ok(health_ratio_bp(collateral, pos.usdc_debt))
     }
 
+    /// Blocks a borrow must leave between the `bitcoin-spv` tip and the
+    /// position's timelock height.
+    pub fn get_borrow_timelock_margin(env: Env) -> Result<u32, WritzLendError> {
+        Ok(get_config(&env)
+            .ok_or(WritzLendError::NotInitialized)?
+            .borrow_timelock_margin_blocks)
+    }
+
+    /// Oldest the `bitcoin-spv` tip header may be, in seconds, for `borrow`
+    /// and `liquidate` to rely on it.
+    pub fn get_max_tip_age(env: Env) -> Result<u64, WritzLendError> {
+        Ok(get_config(&env)
+            .ok_or(WritzLendError::NotInitialized)?
+            .max_tip_age_secs)
+    }
+
     /// Current annual borrow rate in basis points (e.g. 800 = 8%).
     pub fn get_borrow_rate_bp(env: Env) -> i128 {
         let proto = get_protocol(&env);
@@ -910,6 +1028,34 @@ impl WritzLendContract {
 }
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
+
+/// Height of the `bitcoin-spv` best tip, if its header is recent enough to
+/// measure a timelock against. Fails closed: no tip, a tip whose header is
+/// not stored, or a header time more than `max_tip_age_secs` behind the
+/// ledger time is `StaleBitcoinTip`.
+fn fresh_tip_height(env: &Env, config: &Config) -> Result<u32, WritzLendError> {
+    let tip: Option<BestTip> = env.invoke_contract(
+        &config.spv_contract,
+        &Symbol::new(env, "get_best_tip"),
+        Vec::new(env),
+    );
+    let tip = tip.ok_or(WritzLendError::StaleBitcoinTip)?;
+    let header: Option<HeaderEntry> = env.invoke_contract(
+        &config.spv_contract,
+        &Symbol::new(env, "get_header"),
+        (tip.hash,).into_val(env),
+    );
+    let header = header.ok_or(WritzLendError::StaleBitcoinTip)?;
+    if env.ledger().timestamp() > (header.time as u64).saturating_add(config.max_tip_age_secs) {
+        return Err(WritzLendError::StaleBitcoinTip);
+    }
+    Ok(tip.height)
+}
+
+/// True when the timelock height lies at least `blocks` above the tip.
+fn timelock_clears(timelock_height: u32, tip_height: u32, blocks: u32) -> bool {
+    timelock_height as u64 >= tip_height as u64 + blocks as u64
+}
 
 /// Brings the global borrow index up to date, charging interest on all
 /// outstanding debt at the rate in force since the last update. Must run

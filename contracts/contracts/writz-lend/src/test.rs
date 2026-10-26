@@ -8,7 +8,7 @@ use soroban_sdk::{
     symbol_short, Address, Bytes, BytesN, Env, Vec,
 };
 
-use spv_types::SpvVerificationResult;
+use spv_types::{BestTip, HeaderEntry, SpvVerificationResult};
 
 use crate::{
     error::WritzLendError,
@@ -49,6 +49,72 @@ impl MockSpv {
 
     /// The shared registry is tested in bitcoin-spv; this mock only accepts the call.
     pub fn consume_deposit(_env: Env, _consumer: Address, _txid: BytesN<32>) {}
+
+    /// The best tip: `MOCK_TIP_HEIGHT` unless a test moved it with
+    /// `set_tip`, `None` after `clear_tip`.
+    pub fn get_best_tip(env: Env) -> Option<BestTip> {
+        if env
+            .storage()
+            .instance()
+            .get(&symbol_short!("no_tip"))
+            .unwrap_or(false)
+        {
+            return None;
+        }
+        let height: u32 = env
+            .storage()
+            .instance()
+            .get(&symbol_short!("tip_h"))
+            .unwrap_or(MOCK_TIP_HEIGHT);
+        Some(BestTip {
+            hash: BytesN::from_array(&env, &[0x7au8; 32]),
+            height,
+            chainwork: soroban_sdk::U256::from_u32(&env, 0),
+        })
+    }
+
+    /// The tip's header, timestamped `hdr_age` seconds (0 by default) before
+    /// the current ledger time, so the tip stays fresh however far a test
+    /// moves the clock unless it ages the header on purpose.
+    pub fn get_header(env: Env, _block_hash: BytesN<32>) -> Option<HeaderEntry> {
+        let age: u64 = env
+            .storage()
+            .instance()
+            .get(&symbol_short!("hdr_age"))
+            .unwrap_or(0);
+        let height: u32 = env
+            .storage()
+            .instance()
+            .get(&symbol_short!("tip_h"))
+            .unwrap_or(MOCK_TIP_HEIGHT);
+        Some(HeaderEntry {
+            prev: BytesN::from_array(&env, &[0u8; 32]),
+            merkle_root: BytesN::from_array(&env, &[0u8; 32]),
+            height,
+            bits: 0x1e03_77ae,
+            time: env.ledger().timestamp().saturating_sub(age) as u32,
+            period_start_time: 0,
+            chainwork: soroban_sdk::U256::from_u32(&env, 0),
+        })
+    }
+
+    pub fn set_tip(env: Env, height: u32) {
+        env.storage()
+            .instance()
+            .set(&symbol_short!("tip_h"), &height);
+    }
+
+    pub fn clear_tip(env: Env) {
+        env.storage()
+            .instance()
+            .set(&symbol_short!("no_tip"), &true);
+    }
+
+    pub fn set_hdr_age(env: Env, secs: u64) {
+        env.storage()
+            .instance()
+            .set(&symbol_short!("hdr_age"), &secs);
+    }
 }
 
 // ── Mock Reflector oracle ──────────────────────────────────────────────────
@@ -226,6 +292,10 @@ const MOCK_BLOCK_HEIGHT: u32 = 2_900_000;
 
 /// A valid default timelock: 5,328 blocks above the mock deposit block.
 const TEST_TIMELOCK: u32 = 2_905_328;
+
+/// Default `bitcoin-spv` tip in the mock: the deposit block plus 5, so the
+/// deposit has its 6 confirmations and `TEST_TIMELOCK` is 5,323 blocks ahead.
+const MOCK_TIP_HEIGHT: u32 = MOCK_BLOCK_HEIGHT + 5;
 
 /// A fake 33-byte compressed key standing in for the protocol co-signing key.
 fn fake_protocol_pubkey(env: &Env) -> BytesN<33> {
@@ -2138,4 +2208,304 @@ fn set_entry_ttl_applies_to_the_next_entry_written() {
     // The next one created gets the new window.
     let txid = do_deposit(&s);
     assert_eq!(position_ttl(&s, &txid), window);
+}
+
+// ── Time ordering against the Bitcoin timelock ───────────────────────────────
+
+fn spv_mock(s: &Setup) -> MockSpvClient<'_> {
+    MockSpvClient::new(&s.env, &s.spv)
+}
+
+fn try_borrow(s: &Setup, txid: &BytesN<32>, amount: i128) -> Result<(), WritzLendError> {
+    match s.client.try_borrow(&s.depositor, txid, &amount) {
+        Ok(Ok(())) => Ok(()),
+        Err(Ok(err)) => Err(err),
+        other => panic!("unexpected borrow result: {:?}", other),
+    }
+}
+
+fn try_liquidate(s: &Setup, txid: &BytesN<32>) -> Result<(), WritzLendError> {
+    match s.client.try_liquidate(&s.keeper, txid) {
+        Ok(Ok(())) => Ok(()),
+        Err(Ok(err)) => Err(err),
+        other => panic!("unexpected liquidate result: {:?}", other),
+    }
+}
+
+/// A position borrowed near the limit and left to accrue until it is below
+/// the 120% liquidation threshold (same numbers as
+/// `liquidation_of_undercollateralized_position`).
+fn undercollateralized_position(s: &Setup) -> BytesN<32> {
+    let txid = setup_with_supply_and_deposit(s, 2_654_000_000_i128);
+    s.client.borrow(&s.depositor, &txid, &1_990_000_000_i128);
+    s.env.ledger().set_sequence_number(1_000 + 25_000_000);
+    StellarAssetClient::new(&s.env, &s.usdc).mint(&s.keeper, &10_000_000_000_i128);
+    txid
+}
+
+#[test]
+fn timelock_rule_defaults() {
+    let s = setup();
+    assert_eq!(s.client.get_borrow_timelock_margin(), 4_320);
+    assert_eq!(s.client.get_max_tip_age(), 6 * 60 * 60);
+    assert_eq!(crate::LIQUIDATION_CUTOFF_BLOCKS, 288);
+}
+
+/// H exactly 4,320 blocks above the tip is enough to borrow.
+#[test]
+fn borrow_with_exactly_the_margin_succeeds() {
+    let s = setup();
+    let txid = setup_with_supply_and_deposit(&s, 10_000_000_000_i128);
+    spv_mock(&s).set_tip(&(TEST_TIMELOCK - 4_320));
+    assert_eq!(try_borrow(&s, &txid, 1_000_000_000), Ok(()));
+}
+
+/// H 4,319 blocks above the tip is one block short.
+#[test]
+fn borrow_one_block_inside_the_margin_fails() {
+    let s = setup();
+    let txid = setup_with_supply_and_deposit(&s, 10_000_000_000_i128);
+    spv_mock(&s).set_tip(&(TEST_TIMELOCK - 4_319));
+    assert_eq!(
+        try_borrow(&s, &txid, 1_000_000_000),
+        Err(WritzLendError::TimelockTooSoon)
+    );
+    assert_eq!(s.client.get_position(&txid).unwrap().usdc_debt, 0);
+}
+
+/// A tip at or past H is refused, without underflow.
+#[test]
+fn borrow_with_the_tip_past_the_timelock_fails() {
+    let s = setup();
+    let txid = setup_with_supply_and_deposit(&s, 10_000_000_000_i128);
+    spv_mock(&s).set_tip(&(TEST_TIMELOCK + 10));
+    assert_eq!(
+        try_borrow(&s, &txid, 1_000_000_000),
+        Err(WritzLendError::TimelockTooSoon)
+    );
+}
+
+/// The rule applies to every borrow, so an existing loan cannot be topped up
+/// once the tip is inside the margin.
+#[test]
+fn borrow_top_up_inside_the_margin_fails() {
+    let s = setup();
+    let txid = setup_with_supply_and_deposit(&s, 10_000_000_000_i128);
+    assert_eq!(try_borrow(&s, &txid, 500_000_000), Ok(()));
+    spv_mock(&s).set_tip(&(TEST_TIMELOCK - 4_319));
+    assert_eq!(
+        try_borrow(&s, &txid, 500_000_000),
+        Err(WritzLendError::TimelockTooSoon)
+    );
+    assert_eq!(s.client.get_position(&txid).unwrap().usdc_debt, 500_000_000);
+}
+
+#[test]
+fn borrow_fails_closed_without_a_bitcoin_tip() {
+    let s = setup();
+    let txid = setup_with_supply_and_deposit(&s, 10_000_000_000_i128);
+    spv_mock(&s).clear_tip();
+    assert_eq!(
+        try_borrow(&s, &txid, 1_000_000_000),
+        Err(WritzLendError::StaleBitcoinTip)
+    );
+}
+
+/// A tip header exactly `max_tip_age` old is accepted; one second older is not.
+#[test]
+fn borrow_fails_closed_on_a_stale_bitcoin_tip() {
+    let s = setup();
+    let txid = setup_with_supply_and_deposit(&s, 10_000_000_000_i128);
+    s.env.ledger().set_timestamp(1_800_000_000);
+    spv_mock(&s).set_hdr_age(&(6 * 60 * 60 + 1));
+    assert_eq!(
+        try_borrow(&s, &txid, 1_000_000_000),
+        Err(WritzLendError::StaleBitcoinTip)
+    );
+    spv_mock(&s).set_hdr_age(&(6 * 60 * 60));
+    assert_eq!(try_borrow(&s, &txid, 1_000_000_000), Ok(()));
+}
+
+/// Liquidation is accepted with exactly 288 blocks left before H.
+#[test]
+fn liquidation_at_the_cutoff_succeeds() {
+    let s = setup();
+    let txid = undercollateralized_position(&s);
+    spv_mock(&s).set_tip(&(TEST_TIMELOCK - 288));
+    assert_eq!(try_liquidate(&s, &txid), Ok(()));
+    assert_eq!(
+        s.client.get_position(&txid).unwrap().status,
+        PositionStatus::Liquidated
+    );
+}
+
+/// With 287 blocks left the borrower's exit is too close: refused, and the
+/// position and the keeper's USDC are untouched.
+#[test]
+fn liquidation_past_the_cutoff_fails() {
+    let s = setup();
+    let txid = undercollateralized_position(&s);
+    let keeper_before = TokenClient::new(&s.env, &s.usdc).balance(&s.keeper);
+    spv_mock(&s).set_tip(&(TEST_TIMELOCK - 287));
+    assert_eq!(
+        try_liquidate(&s, &txid),
+        Err(WritzLendError::LiquidationWindowClosed)
+    );
+    assert_eq!(
+        s.client.get_position(&txid).unwrap().status,
+        PositionStatus::Active
+    );
+    assert_eq!(
+        TokenClient::new(&s.env, &s.usdc).balance(&s.keeper),
+        keeper_before
+    );
+}
+
+#[test]
+fn liquidation_fails_closed_on_a_stale_or_missing_tip() {
+    let s = setup();
+    let txid = undercollateralized_position(&s);
+    s.env.ledger().set_timestamp(1_800_000_000);
+    spv_mock(&s).set_hdr_age(&(6 * 60 * 60 + 1));
+    assert_eq!(
+        try_liquidate(&s, &txid),
+        Err(WritzLendError::StaleBitcoinTip)
+    );
+    spv_mock(&s).clear_tip();
+    assert_eq!(
+        try_liquidate(&s, &txid),
+        Err(WritzLendError::StaleBitcoinTip)
+    );
+}
+
+/// The time rules never stop a borrower from repaying.
+#[test]
+fn repay_is_allowed_past_the_cutoff() {
+    let s = setup();
+    let txid = setup_with_supply_and_deposit(&s, 10_000_000_000_i128);
+    s.client.borrow(&s.depositor, &txid, &1_000_000_000_i128);
+    spv_mock(&s).set_tip(&TEST_TIMELOCK);
+    let debt = s.client.get_position(&txid).unwrap().usdc_debt;
+    s.client.repay(&s.depositor, &txid, &debt);
+    assert_eq!(
+        s.client.get_position(&txid).unwrap().status,
+        PositionStatus::Closed
+    );
+}
+
+#[test]
+fn borrow_timelock_margin_can_be_raised_but_not_lowered() {
+    let s = setup();
+    assert_eq!(
+        s.client.try_set_borrow_timelock_margin(&s.admin, &4_319),
+        Err(Ok(WritzLendError::InvalidTimelockParams)),
+    );
+    assert_eq!(
+        s.client.try_set_borrow_timelock_margin(&s.admin, &105_001),
+        Err(Ok(WritzLendError::InvalidTimelockParams)),
+    );
+    assert_eq!(
+        s.client
+            .try_set_borrow_timelock_margin(&s.depositor, &5_000),
+        Err(Ok(WritzLendError::Unauthorized)),
+    );
+    s.client.set_borrow_timelock_margin(&s.admin, &5_000);
+    assert_eq!(s.client.get_borrow_timelock_margin(), 5_000);
+
+    // TEST_TIMELOCK is 5,323 blocks above the default tip.
+    let txid = setup_with_supply_and_deposit(&s, 10_000_000_000_i128);
+    spv_mock(&s).set_tip(&(TEST_TIMELOCK - 4_999));
+    assert_eq!(
+        try_borrow(&s, &txid, 1_000_000_000),
+        Err(WritzLendError::TimelockTooSoon)
+    );
+    spv_mock(&s).set_tip(&(TEST_TIMELOCK - 5_000));
+    assert_eq!(try_borrow(&s, &txid, 1_000_000_000), Ok(()));
+}
+
+#[test]
+fn max_tip_age_bounds() {
+    let s = setup();
+    for (secs, ok) in [
+        (3_599u64, false),
+        (3_600, true),
+        (172_800, true),
+        (172_801, false),
+    ] {
+        let r = s.client.try_set_max_tip_age(&s.admin, &secs);
+        if ok {
+            assert_eq!(r, Ok(Ok(())), "{} must be accepted", secs);
+            assert_eq!(s.client.get_max_tip_age(), secs);
+        } else {
+            assert_eq!(
+                r,
+                Err(Ok(WritzLendError::InvalidTimelockParams)),
+                "{}",
+                secs
+            );
+        }
+    }
+    assert_eq!(
+        s.client.try_set_max_tip_age(&s.depositor, &3_600),
+        Err(Ok(WritzLendError::Unauthorized)),
+    );
+}
+
+// ── Distinct keys ────────────────────────────────────────────────────────────
+
+/// A deposit whose user key is the protocol key is refused before anything
+/// else is checked: the holder of that key could complete the cooperative
+/// path alone.
+#[test]
+fn deposit_rejects_user_key_equal_to_the_protocol_key() {
+    let s = setup();
+    let key = real_user_pubkey(&s.env);
+    let pool = s.env.register(
+        WritzLendContract,
+        (
+            s.admin.clone(),
+            s.spv.clone(),
+            s.usdc.clone(),
+            s.oracle.clone(),
+            s.keeper.clone(),
+            s.relayer.clone(),
+            key.clone(),
+            MAINNET_MIN_CONFIRMATIONS,
+            MAINNET_MIN_DEPOSIT_SATS,
+            MAINNET_ENTRY_TTL,
+        ),
+    );
+    let client = WritzLendContractClient::new(&s.env, &pool);
+    let spk = spv_types::script::p2wsh_script_pubkey(&s.env, &key, &key, TEST_TIMELOCK);
+    let raw_tx = Bytes::from_slice(&s.env, &build_deposit_tx(500_000, &spk));
+    let sig = sign_with(
+        &s.env,
+        &user_signing_key(),
+        &pool,
+        &s.depositor,
+        &mock_txid(&s.env),
+    );
+
+    assert_eq!(
+        client.try_deposit(
+            &s.depositor,
+            &fake_block_hash(&s.env),
+            &fake_proof(&s.env),
+            &0u32,
+            &raw_tx,
+            &spk,
+            &TEST_TIMELOCK,
+            &key,
+            &sig,
+        ),
+        Err(Ok(WritzLendError::UserKeyIsProtocolKey)),
+    );
+}
+
+/// The same deposit under a distinct protocol key goes through.
+#[test]
+fn deposit_accepts_a_user_key_distinct_from_the_protocol_key() {
+    let s = setup();
+    assert_ne!(fake_user_pubkey(&s.env), fake_protocol_pubkey(&s.env));
+    assert!(try_deposit_with(&s, &s.spk, TEST_TIMELOCK, &fake_user_pubkey(&s.env)).is_ok());
 }
