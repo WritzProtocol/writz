@@ -21,7 +21,7 @@ Submitted with the Scale application on 21 October, word for word. A goal is tic
 - [x] **1. A new borrow screen where the user sees their Bitcoin deposit verified and the Bitcoin price at which the position would be liquidated.**
   Status: merged: deposit status endpoint [#326](https://github.com/WritzProtocol/writz/pull/326) and [#333](https://github.com/WritzProtocol/writz/pull/333), deposit card [#336](https://github.com/WritzProtocol/writz/pull/336); the borrow screen hands off to the receive step [#321](https://github.com/WritzProtocol/writz/pull/321). Live on testnet once the app is redeployed.
 - [x] **2. Receiving the loan as at least one other Stellar asset (EURC or XLM) instead of USDC.**
-  Status: merged: swap [#320](https://github.com/WritzProtocol/writz/pull/320), second step with recovery [#321](https://github.com/WritzProtocol/writz/pull/321), receive-as selector [#336](https://github.com/WritzProtocol/writz/pull/336). XLM, because Circle's EURC has no usable testnet liquidity.
+  Status: merged: swap [#320](https://github.com/WritzProtocol/writz/pull/320), second step with recovery [#321](https://github.com/WritzProtocol/writz/pull/321), receive-as selector [#336](https://github.com/WritzProtocol/writz/pull/336), and EURC, PYUSD and a USDT0 test token through Soroswap [#361](https://github.com/WritzProtocol/writz/pull/361), [#362](https://github.com/WritzProtocol/writz/pull/362). Shown first with XLM, then with EURC (the stablecoins are the default; XLM stays available for testing).
 - [x] **3. Receiving the loan as native USDC on at least one other blockchain.**
   Status: merged: burn on Stellar [#320](https://github.com/WritzProtocol/writz/pull/320), attested by Circle on testnet; the relay that completes the mint on Base Sepolia [#328](https://github.com/WritzProtocol/writz/pull/328), [#335](https://github.com/WritzProtocol/writz/pull/335). A real mint is pending gas for the relay's account.
 - [x] **4. Repaying the loan in USDC on Stellar from the same screen.**
@@ -35,7 +35,7 @@ On [testnet.writz.xyz](https://testnet.writz.xyz) you need:
 
 1. **A Stellar wallet on testnet.** Freighter with the network set to Testnet, funded from [friendbot](https://lab.stellar.org/account/fund). The app adds the USDC trustline for you when you borrow.
 2. **A Bitcoin wallet on Signet.** Xverse with the network set to Signet, and coins from [bitcoinsignetfaucet.com](https://bitcoinsignetfaucet.com/) or [signetfaucet.com](https://signetfaucet.com). One faucet payout covers the testnet minimum deposit of 5,000 sats.
-3. **Borrow:** lock BTC, wait for one Signet confirmation (about 10 minutes; mainnet requires six), borrow USDC, and choose how to receive it: keep USDC, convert to XLM, or send USDC to an address on Base Sepolia.
+3. **Borrow:** lock BTC, wait for one Signet confirmation (about 10 minutes; mainnet requires six), borrow USDC, and choose how to receive it: keep USDC, convert to EURC or PYUSD, or send USDC to an address on Base Sepolia.
 4. **Repay** in USDC on Stellar from the same screen.
 
 <!-- EVENT: a pre-verified demo deposit judges can borrow against, if we publish one -->
@@ -79,7 +79,7 @@ flowchart LR
   BTC["Bitcoin<br/>script: user key + protocol key + timelock"] -->|SPV proof| SPV["bitcoin-spv<br/>light client on Soroban"]
   SPV --> LEND["writz-lend<br/>lends USDC"]
   LEND -->|keep| USDC["USDC on Stellar"]
-  LEND -->|Soroswap router| XLM["XLM on Stellar"]
+  LEND -->|Soroswap router| STB["EURC or PYUSD on Stellar"]
   LEND -->|Circle CCTP V2| BASE["native USDC on Base Sepolia"]
   USDC -->|repay on Stellar| LEND
 ```
@@ -96,7 +96,7 @@ Everything new for the goals runs in the testnet app and the relayer. One contra
 
 | Piece | Where | What it does |
 |---|---|---|
-| Swap to XLM | [`frontend/app/src/lib/receive/swap.ts`](frontend/app/src/lib/receive/swap.ts) | Quotes with `router_get_amounts_out`, quotes again right before signing, then `swap_exact_tokens_for_tokens` with a minimum output (0.5% slippage by default, 5% at most) and a 5 minute deadline |
+| Swap to another stablecoin | [`frontend/app/src/lib/receive/swap.ts`](frontend/app/src/lib/receive/swap.ts) | Quotes with `router_get_amounts_out`, quotes again right before signing, then `swap_exact_tokens_for_tokens` with a minimum output (0.5% slippage by default, 5% at most) and a 5 minute deadline |
 | Send to Base Sepolia | [`frontend/app/src/lib/receive/cctp.ts`](frontend/app/src/lib/receive/cctp.ts) | Allowance for the TokenMessengerMinter when needed, then `deposit_for_burn` to domain 6 with the EVM address as bytes32, the amount rounded to CCTP's 6 decimals and the fee from Circle's fee API; reads Circle's attestation |
 | Second step and recovery | [`frontend/app/src/components/loan/ReceiveStep.tsx`](frontend/app/src/components/loan/ReceiveStep.tsx), [`lib/receive/intent.ts`](frontend/app/src/lib/receive/intent.ts) | After the borrow settles, converts or sends as the borrower chose. If the second signature is declined or fails, the USDC stays in the wallet and the borrower can try again or keep it |
 | Mint relay | Relayer, [#309](https://github.com/WritzProtocol/writz/issues/309) | Completes `receiveMessage` on Base Sepolia, so the borrower needs no wallet or gas there |
@@ -116,7 +116,7 @@ Everything new for the goals runs in the testnet app and the relayer. One contra
 ## Why it is composed
 
 - **Writz** verifies native Bitcoin on Stellar and lends against it, but pays out only USDC on Stellar.
-- **Soroswap** turns that USDC into XLM in one call with a guaranteed minimum.
+- **Soroswap** turns that USDC into EURC or PYUSD in one call with a guaranteed minimum.
 - **Circle CCTP** moves the same USDC to another chain by burning and minting it, with nothing wrapped and no pool.
 
 Together, Stellar becomes the credit layer for native Bitcoin: the collateral is verified, the loan is held and repaid on Stellar, wherever the money is spent.
@@ -201,6 +201,9 @@ Event work, in merge order:
 | [#341](https://github.com/WritzProtocol/writz/pull/341) | App: follows the CCTP relay through retries, pending delivery and failures |
 | [#348](https://github.com/WritzProtocol/writz/pull/348) | Fix: the app waits up to ten minutes for the release co-sign and lets the user check again |
 | [#349](https://github.com/WritzProtocol/writz/pull/349) | Fix: the relayer serializes its account's transactions and retries a dropped release publish promptly |
+| [#350](https://github.com/WritzProtocol/writz/pull/350), [#352](https://github.com/WritzProtocol/writz/pull/352) | Fix: the app and relayer read testnet's protocol 29 values (Stellar SDK 16.4.1) |
+| [#351](https://github.com/WritzProtocol/writz/pull/351) | Fix: the loan keeps its last status and the second step through a failed read |
+| [#361](https://github.com/WritzProtocol/writz/pull/361), [#362](https://github.com/WritzProtocol/writz/pull/362) | Receive as EURC, PYUSD or a USDT0 test token through Soroswap; stablecoins by default |
 
 ## What comes next
 
