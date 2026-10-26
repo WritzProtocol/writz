@@ -119,7 +119,7 @@ DEFINDEX_VAULT_ID=<the testnet vault, from contracts/deployments/defindex-vault-
 DEFINDEX_API_KEY=<from console.defindex.io>
 WRITZ_LEND_ID=<the current writz-lend, from contracts/deployments/testnet.md>
 RELAYER_SECRET=<the account writz-lend names as its relayer>
-KMS_KEY_ID=<the protocol co-signing key> plus AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and AWS_REGION
+KMS_KEY_ID=<a KMS key id> plus AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and AWS_REGION, or PROTOCOL_SIGNING_KEY=<the protocol co-signing key>
 FAUCET_SIGNET_WIF=<the Signet faucet's own key, see relayer/README.md>
 POLLAR_SECRET_KEY=<a sec_testnet_ secret key of the testnet app, Pollar dashboard, Build > API Keys>
 POLLAR_APPLICATION_ID=<the same app's App ID, Pollar dashboard, Settings>
@@ -127,7 +127,7 @@ POLLAR_APPLICATION_ID=<the same app's App ID, Pollar dashboard, Settings>
 
 The last three run the Signet faucet, which funds only accounts created through the testnet app's social login (one claim per Pollar account, Stellar address and Signet address). The relayer checks each claim's Pollar access token with Pollar's Server API, so without `POLLAR_SECRET_KEY` and `POLLAR_APPLICATION_ID` the faucet stays off (`503 faucet_disabled`); it never falls back to paying any address. The relayer refuses to start with a `sec_mainnet_` key, and the mainnet target refuses `POLLAR_SECRET_KEY` altogether.
 
-`RELAYER_SECRET`, `KMS_KEY_ID` and the AWS credentials run the repay watcher, which co-signs every release after a full repayment and publishes it on `writz-lend`. Without them the relayer logs `auto-cosign watcher disabled` at startup and no testnet position can release its BTC. On testnet `PROTOCOL_SIGNING_KEY` (a WIF) can stand in for `KMS_KEY_ID`; the mainnet target refuses both while it serves Earn only. The key must be the one whose public key `writz-lend` was deployed with. The watcher starts from the latest ledger the first time it runs, so a position repaid before it was configured needs a manual backfill (`relayer-backfill-runbook.md`).
+`RELAYER_SECRET` and a protocol signer run the repay watcher, which co-signs every release after a full repayment and publishes it on `writz-lend`. The relayer accepts either a KMS key id (`KMS_KEY_ID` with the AWS credentials) or a signing key via `PROTOCOL_SIGNING_KEY`, and prefers `KMS_KEY_ID` when both are set; see the signing policy in the [security model](/security/security-model). `PROTOCOL_SIGNING_KEY` is accepted on test networks only, and the mainnet target refuses both while it serves Earn only. Without `RELAYER_SECRET` and one of the two the relayer logs `auto-cosign watcher disabled` at startup and no testnet position can release its BTC. The key must be the one whose public key `writz-lend` was deployed with. The watcher starts from the latest ledger the first time it runs, so a position repaid before it was configured needs a manual backfill (`relayer-backfill-runbook.md`).
 
 `DEFINDEX_VAULT_ID` is the piece this issue is really about: it is per-network, has no safe default, and a relayer without it serves errors from every `/defindex` route. The testnet vault address lives in [`contracts/deployments/defindex-vault-testnet.md`](https://github.com/WritzProtocol/writz/blob/main/contracts/deployments/defindex-vault-testnet.md) rather than being repeated here, so there is one place to change when it is redeployed.
 
