@@ -145,6 +145,22 @@
         ]
       },
       {
+        "tab": "Go-to-Market",
+        "groups": [
+          {
+            "group": "Go-to-Market",
+            "pages": [
+              "go-to-market/overview",
+              "go-to-market/customers-and-message",
+              "go-to-market/lessons-from-babylon",
+              "go-to-market/step-by-step",
+              "go-to-market/channels",
+              "go-to-market/measuring-progress"
+            ]
+          }
+        ]
+      },
+      {
         "tab": "Research",
         "groups": [
           {
@@ -163,8 +179,7 @@
               "research/blend-usdc-integration",
               "research/tokenomics-fee-model",
               "research/security-audit-strategy",
-              "research/regulatory-landscape",
-              "research/growth-strategy"
+              "research/regulatory-landscape"
             ]
           }
         ]

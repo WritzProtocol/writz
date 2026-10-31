@@ -1,0 +1,79 @@
+---
+title: "Lessons from Babylon"
+description: "A study of how Babylon took native Bitcoin staking to market, from research to its move into lending, and what Writz takes from each stage."
+---
+
+Babylon is the largest project built on the same idea as Writz: Bitcoin stays on Bitcoin, in a script with a timelock exit, and nothing is wrapped. Its products are different. Babylon staking secures proof-of-stake chains, and its Trustless Bitcoin Vaults target lending on Aave. The two projects are at very different scales, which is why its path is worth studying and why it cannot be copied whole.
+
+<Note>
+Facts below were checked on 31 October 2026 against Babylon and Aave governance pages unless marked as reported by press. Readings are ours, not Babylon's. Babylon's lending vaults were on public testnet at that date, with the Aave proposal still in governance. For the technical view, see [SPV vs wrapped Bitcoin](/security/spv-vs-wrapped).
+</Note>
+
+## How Babylon went to market
+
+<Steps>
+  <Step title="Research first (2022 to 2023)">
+    Babylon started as academic work on using Bitcoin to secure proof-of-stake chains, with a paper accepted at IEEE S&P 2023. The idea could be cited before there was a product.
+  </Step>
+  <Step title="An open testnet (February 2024)">
+    The [staking testnet](https://babylonlabs.io/blog/babylons-bitcoin-staking-testnet-open-for-public) ran on Bitcoin Signet and was open to stakers, validators, service providers and wallet teams. The app was offered as a reference for staking services. A wallet added Signet support, and a partner hosted the faucet.
+  </Step>
+  <Step title="Capped mainnet deposits (August to December 2024)">
+    [Phase 1](https://babylonlabs.io/blog/babylon-bitcoin-staking-mainnet-launch-phase-1) opened with a 1,000 BTC cap, first come by block order, with no staking rewards and no slashing. Participants earned points. Babylon [reported](https://www.prnewswire.com/news-releases/babylon-phase-1-mainnet-staking-cap-extended-to-10-bitcoin-blocks-following-high-demand-302270387.html) that the cap closed in 74 minutes and that miner fees passed 50 BTC. Later rounds used windows of Bitcoin blocks instead of a fixed amount.
+  </Step>
+  <Step title="Reach through other companies">
+    Babylon's [institutional page](https://babylonlabs.io/institutional-staking) lists custodians, wallets and finality providers that carry the product to their own clients. Liquid staking protocols took part from the first cap, and one unverified press estimate credits them with most of it.
+  </Step>
+  <Step title="Token and live chain (April 2025)">
+    Babylon Genesis launched with the BABY token and an airdrop to early participants, then opened permissionless staking two weeks later.
+  </Step>
+  <Step title="The move to lending (December 2025 onward)">
+    Babylon [partnered with Aave Labs](https://babylonlabs.io/blog/babylon-labs-and-aave-labs-partner-to-bring-native-bitcoin-backed-lending-to-aave-v4) to offer native Bitcoin as collateral on Aave V4, and listed wallet, custody and liquidation partners on its [vault page](https://babylonlabs.io/trustless-bitcoin-vaults). An [onboarding proposal](https://governance.aave.com/t/arfc-onboard-native-btc-as-collateral-to-aave-v4-via-babylon-trustless-bitcoin-vaults/25845) was posted in October 2026.
+  </Step>
+</Steps>
+
+## What we take from it
+
+### Remove friction before inviting anyone
+
+Babylon's testnet had a wallet that supported Signet and a hosted faucet before mainnet. Writz has the same problem, and [sign-in with a built-in test key and faucet](/guides/sign-in-with-email) is our first answer. Proving that it works for newcomers comes before any push for reach. [Step 3](/go-to-market/step-by-step#step-3-make-the-first-loan-easy-to-try).
+
+### Treat integrators as the sales team
+
+Babylon's page for institutions sends visitors straight to an app. The selling happens at the custodian or wallet they already trust. A small team should do the same: find who already has the audience and make integration easy. [Step 5](/go-to-market/step-by-step#step-5-open-the-developer-door) and [Step 9](/go-to-market/step-by-step#step-9-grow-through-partners).
+
+### State clearly what is not offered
+
+Babylon's Phase 1 terms said plainly that there were no staking rewards and that points had no monetary value. Precise limits build more trust than broad promises, and this is especially true in lending.
+
+### Bring credibility before reach
+
+Papers, open repositories and known Bitcoin names on the contract design earned attention from people who would judge the design. We use the [whitepaper](https://writz.xyz/whitepaper), public code and open security pages in the same way, knowing that this reaches builders and researchers first, not borrowers.
+
+## What we do differently
+
+### No race for capacity
+
+A first-come cap makes news, and it also makes people bid against each other in Bitcoin fees. In Babylon's case, stakes that arrived after the cap had to be withdrawn. Writz limits borrowing, not deposits, so nobody has to outbid anyone in miner fees for a place.
+
+### Distribution must keep the promise
+
+Liquid staking carried Babylon far, and [its own documentation](https://docs.babylonlabs.io/) says that those holders trust the liquid staking protocol with their Bitcoin. The channel changed what the customer was getting. Writz will not accept wrapped or liquid-staked Bitcoin as collateral, even when it would be the fastest way to grow.
+
+### No plan built on incentives
+
+Points and an airdrop created strong demand, and press reports tied a large exit of stake in April 2025 to the period after the airdrop, though the protocol involved described it as a planned move. We cannot tell from outside how much stake came for the product and how much came for the token. We want to be able to tell, so our plan is built to work without either.
+
+### Prepare people for a different kind of risk
+
+A Babylon staker in Phase 1 faced no slashing. A Writz borrower can be liquidated. Curiosity is enough to try the first and not the second, so our steps are slower and carry more explanation.
+
+## What we cannot copy
+
+- **A lender at Aave's scale.** Babylon's lending plan draws stablecoin liquidity from Aave. Writz has to build its lender side itself, which is why that side has [its own steps](/go-to-market/step-by-step#step-4-build-the-lender-side-from-the-beginning).
+- **Its reach and capital.** Babylon launched with known investors and a large audience. Writz competes with focus: one group, one network and a single clear use.
+- **A separate chain.** Babylon has its own chain to run and grow. Writz runs on Stellar, where USDC already lives, so we build for people and teams already there.
+
+## What is still open
+
+Babylon's lending launch is a lesson in itself: the [target date of April 2026](https://babylonlabs.io/blog/babylon-labs-and-aave-labs-partner-to-bring-native-bitcoin-backed-lending-to-aave-v4) passed while reviews and governance continued. Working with a large protocol brings reach, and it also ties your calendar to theirs. We will keep watching how that market performs once it launches, and we will update this page when it does.

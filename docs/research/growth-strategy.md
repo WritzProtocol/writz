@@ -3,6 +3,10 @@ title: "Research: Growth Strategy & Business Development"
 sidebarTitle: "Growth Strategy & Business Development"
 ---
 
+<Warning>
+This page is a June 2026 research note kept for history. It is out of date and no longer describes the plan or the product: it assumes privacy, points and a token that are not part of Writz Lend. The current plan is in [Go-to-market strategy](/go-to-market/overview).
+</Warning>
+
 **Author:** Research
 **Date:** 2026-06-22
 **Status:** Complete

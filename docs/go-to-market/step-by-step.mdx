@@ -1,0 +1,124 @@
+---
+title: "The plan, step by step"
+description: "Ten steps from first conversations to scaling after mainnet, each with what we do, why, the signal to move on and the reason to stop."
+---
+
+The plan has ten steps across three stages. Some steps run in parallel, because the two sides of the market have to grow together. Each one closes with a **signal to advance**, which is the evidence we need before moving on, and a **reason to stop**, which tells us the idea is wrong and needs rethinking.
+
+| Stage | Steps | What it answers |
+|---|---|---|
+| **Learn** | 1 to 3 | Do real people want this, and can they use it? |
+| **Prepare** | 4 to 7 | Will both sides show up, and is the protocol worthy of their trust? |
+| **Launch and grow** | 8 to 10 | Does it work with real money, and can it spread? |
+
+---
+
+## Stage 1: Learn
+
+### Step 1: Listen before pitching
+
+**What we do.** We hold structured interviews with Bitcoin holders and USDC users. We ask about the last time they needed money, what they did, what they feared, and how they turn USDC into money they can spend. We do not start by describing Writz.
+
+**Why.** It is easy for a technical team to answer the question it finds most interesting. In our first interviews, custody was not the first reason people gave for avoiding a loan. Liquidation risk and the habit of selling and rebuying came up more often. Only real conversations surface that kind of thing.
+
+**Signal to advance.** We can name who feels the problem most, in their own words, and where to find more people like them.
+
+**Reason to stop.** Nobody in the target group has a recent, concrete need. Then the target group is wrong.
+
+### Step 2: Make the message answer the real objection
+
+**What we do.** We rewrite the landing page, the pitch and the first borrow screen around what we heard. Liquidation is explained before a loan, in plain language, with an example of what a price fall does to a position.
+
+**Why.** A message that answers the wrong fear wastes every channel behind it. It should be correct before we spend effort on reach.
+
+**Signal to advance.** New readers can repeat our one sentence correctly after hearing it once and explain what happens if the price falls, and their questions move on from "what is this?" to "how do I try it?".
+
+**Reason to stop.** People understand the product and still prefer selling. Then the difference we are selling is not strong enough for this group.
+
+### Step 3: Make the first loan easy to try
+
+**What we do.** We start with guided sessions: a person sits with a Writz team member and takes a full loan on testnet, from locking test BTC to repaying and releasing it. We record every point where they hesitate. Then we remove those points. [Sign-in and test Bitcoin](/guides/sign-in-with-email) already work without a browser wallet, and the sessions show what still blocks people.
+
+**Why.** A loan touches two networks, and a flow that looks simple to its builders may not be simple to a newcomer. Sending an audience into it too early loses them, and we would learn nothing. Sitting beside a few people teaches more than dashboards can.
+
+**Signal to advance.** Someone new completes a loan and a repayment alone, using only [the guides](/guides/start-here).
+
+**Reason to stop.** People complete the flow and do not care. Then the problem is value, not usability.
+
+---
+
+## Stage 2: Prepare
+
+### Step 4: Build the lender side from the beginning
+
+**What we do.** We explain lending to Stellar USDC holders, invite them to supply test USDC, and show how interest flows from borrowers. In parallel we talk with Stellar teams that could route USDC to Writz Lend from their own products, and we work out how the pool gets its first liquidity at launch.
+
+**Why.** A borrower who arrives to an empty pool does not come back, and a lender with no borrowers earns nothing. Each side waits for the other unless we plan for it. Lenders can start first, because they need less setup and take no liquidation risk on a position of their own.
+
+**Signal to advance.** We know who would supply USDC at launch, what they would need to see first, and that they have said so directly.
+
+**Reason to stop.** Lenders will not accept the risk at any reasonable rate. Then the launch design has to change before anything else moves.
+
+### Step 5: Open the developer door
+
+**What we do.** We make Writz useful to other builders. The [SDK and verification tools](/developers/integrate) let a Stellar product check Bitcoin activity, and [What to build on Writz](/developers/request-for-startups) lists ideas that can run as a weekend project and as a business later. We support hackathons and bounties, and we help teams that want to go further.
+
+**Why.** Every product built on Writz has its own users. Developers can also adopt testnet tools today, long before lending is on mainnet, and their usage tests our tools with people who owe us nothing.
+
+**Signal to advance.** A team outside Writz ships something on Writz, and keeps it running after the event ends.
+
+**Reason to stop.** Projects appear for prizes and stop afterwards. Then we change what we reward, or spend that effort elsewhere.
+
+### Step 6: Earn trust in public
+
+**What we do.** We complete an independent [audit](/security/audits), publish the result, and open the [bug bounty](/security/bug-bounty) for mainnet. We add a second price source. Today a liquidation moves no Bitcoin, so we make the collateral answer for a default and name who carries out liquidations. We move the signing key to a multisig, state exactly what its holders can and cannot do, and work towards publishing those rules as code. We make recovery something a normal person can do, by turning the [manual timelock procedure](/how-it-works/manual-emergency-recovery) into a guided flow in the app.
+
+**Why.** A careful holder does not ask for a promise, they ask what happens when things go wrong. Publishing the answers lets people check for themselves, and a good security review tells us what we missed.
+
+**Signal to advance.** The audit is finished, its findings are resolved or disclosed, and a reviewer outside the team can verify our claims from public sources.
+
+**Reason to stop.** Mainnet does not ship with an open critical finding, at any date.
+
+### Step 7: Gather a real early group
+
+**What we do.** Once counsel defines who may use Writz, we invite the people from earlier steps, and those who ask, to an early list. It records what they intend to do, on both sides: what a borrower needs to borrow, and what a lender needs to supply. We keep in touch with what is changing, and we also tell them when we think Writz is not a fit.
+
+**Why.** A launch with nobody ready to use it teaches nothing. People who have already completed a testnet loan are the best first users, and they will tell us what breaks.
+
+**Signal to advance.** Enough known people on both sides intend to use the first version that a small market can function.
+
+**Reason to stop.** Interest stays polite and nobody will commit a next step. Then launch waits, or the group changes.
+
+---
+
+## Stage 3: Launch and grow
+
+### Step 8: Launch small, with limits on borrowing
+
+**What we do.** We launch [Writz Lend on mainnet](/products/writz-lend#mainnet) only after [its gates](/products/writz-lend#mainnet) are closed, including the legal entity and the audit. Liquidity comes first and borrowers follow. Borrowing starts under conservative caps. We stay close to the first borrowers and publish how the first loans go, including the first repayment and release of Bitcoin.
+
+**Why.** The first real loans are where trust is either earned or lost. Limits reduce what can go wrong, and capping borrowing rather than deposits means nobody has to race for a place.
+
+**Signal to advance.** Loans open, get repaid and release Bitcoin without incident, and any liquidation behaves as documented.
+
+**Reason to stop.** Any incident affecting funds. Caps stay where they are, or lending pauses within what the contracts allow, until the cause is understood and published.
+
+### Step 9: Grow through partners
+
+**What we do.** We build on testnet conversations and, with a working mainnet to point at, go to those who already have the audience: wallets people use to hold Bitcoin or USDC on Stellar, hardware wallet makers, products that want Bitcoin-backed credit for their users, and regional communities. We provide integrations, and users still sign with their own keys.
+
+**Why.** This is the clearest lesson from [Babylon](/go-to-market/lessons-from-babylon): a small team does not sell one user at a time. Partners want proof before lending their name, so integration work starts on testnet and public names follow launch.
+
+**Signal to advance.** A partner brings borrowers or lenders we did not reach ourselves, and those users stay.
+
+**Reason to stop.** A partnership would require wrapping collateral, adding a custodian or changing what users are promised. We decline it.
+
+### Step 10: Raise limits, then widen the audience
+
+**What we do.** We raise caps gradually, based on how the protocol behaves and how much liquidity it has. When the first group works, we look at the next: borrowers on the same path in other regions, larger holders, and, once its requirements can be met, institutions.
+
+**Why.** Each new group needs its own message and its own proof. Adding one before the last one works spreads a small team too thin.
+
+**Signal to advance.** People come back for a second loan, or recommend Writz without being asked.
+
+**Reason to stop.** Growth depends on effort or incentives alone, and stops when they stop. Then we go back to what the first group actually valued.
