@@ -209,7 +209,7 @@ Writz Lend is targeted for mainnet in Q2 to Q3 2027, starting with conservative 
 - **Open access under caps:** open to outside lenders and borrowers, with no whitelist, under a global and a per-borrower limit
 - **Protocol fee:** the launch value is not decided yet (the contract charges 15% of interest today)
 
-The date is a target, not a commitment. It depends on gates that are not yet closed, including a formed legal entity, an external audit of the contracts, and a second price source cross-checking Reflector. No trusted-setup ceremony is on the v1 mainnet path. None of this blocks using Writz Lend on testnet today.
+The date is a target, not a commitment. It depends on gates that are not yet closed, including a formed legal entity, an external audit of the contracts, a second price source cross-checking Reflector, and Bitcoin collateral that answers for a default. No trusted-setup ceremony is on the v1 mainnet path. None of this blocks using Writz Lend on testnet today.
 
 ---
 
