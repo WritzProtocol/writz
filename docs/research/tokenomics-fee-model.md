@@ -53,12 +53,14 @@ Other Stellar protocols pay to use Writz's Bitcoin SPV client.
 
 Early adopter pricing is aggressive - the goal is ecosystem adoption, not maximizing API revenue in Year 1.
 
-### Tertiary: Swap Fees (Dark Swap)
+> These two streams belong to planned features, not products, and no code exists for them. Figures for them come from the June 2026 model and are not a forecast. See [Vision](/roadmap/vision#planned-for-later).
+
+### Tertiary: Swap Fees (planned feature)
 Basis points on BTC/USDC swaps. Target: 0.3% per swap (comparable to Uniswap v3).
 
 At $10M monthly swap volume: $30,000/month in swap fees.
 
-### Quaternary: ZK Proof of Reserve SaaS (B2B)
+### Quaternary: ZK Proof of Reserve (planned feature)
 Enterprise customers pay for private, verifiable BTC reserve attestations.
 
 **Pricing model:**
@@ -137,7 +139,9 @@ Expected timeline: Q2–Q3 2027.
 
 ---
 
-## Financial Projections (Conservative)
+## Financial Projections (June 2026 model, not a forecast)
+
+These tables include revenue from planned features that have no code.
 
 ### Year 1 (2027, post-launch)
 

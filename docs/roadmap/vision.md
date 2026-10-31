@@ -65,15 +65,6 @@ The WRTZ token launches at $5M TVL (Q2–Q3 2027), with a community-first struct
 
 This is not a token launched to raise money. It is a token launched to give ownership to the community that built the TVL.
 
-### The Full Product Suite
-
-By 2028, all four products are live:
-
-- **Writz Lend** - the flagship, proven, at $100M TVL
-- **Dark Swap** - processing $10M+/month in BTC-to-USDC conversions, capturing a category that currently requires KYC-gated exchanges
-- **BTC Savings** - serving retail and institutional Bitcoin holders who want USDC yield without selling
-- **ZK Proof of Reserve** - 20+ enterprise customers paying monthly subscriptions
-
 ### Stellar Ecosystem Infrastructure
 
 The Writz Bitcoin SPV SDK is integrated into:
@@ -87,6 +78,19 @@ Writz has proposed and is co-authoring a Stellar SEP (Standards Evolution Propos
 ### Institutional Presence
 
 Writz has 5+ institutional deposits of $100K+ each - crypto funds, family offices, and mining companies using the protocol for treasury management. Institutions that need confidential positions are the audience of the separate, opt-in [privacy edition](/how-it-works/privacy-edition), still in progress, which is not part of the Writz protocol.
+
+---
+
+## Planned for later
+
+Writz has one product: Writz Lend. The SPV SDK is the open infrastructure behind it.
+
+The features below are directions we want to explore after Writz Lend is live on mainnet. They are not products. None has a date, and none is promised.
+
+- **Privacy.** A separate, opt-in edition where a borrower proves they hold enough collateral without showing the amount. The design and testnet contracts exist. See [Privacy edition](/how-it-works/privacy-edition).
+- **ZK proof of reserve.** A way for a company to prove it holds Bitcoin without revealing its addresses or the exact amount. No circuit exists.
+- **Private conversion.** Turning Bitcoin into USDC directly, without Writz ever holding the Bitcoin. Nothing is built, and no design meets that condition yet.
+- **Automatic yield.** Putting borrowed USDC to work without adding risk the borrower did not choose. Nothing is built.
 
 ---
 

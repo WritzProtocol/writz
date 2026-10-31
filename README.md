@@ -155,10 +155,9 @@ See [`bitcoin-script/`](bitcoin-script/) for the full P2WSH builder, address der
 
 | Product | Description | Status |
 |---|---|---|
-| **Writz Lend** | Deposit BTC as collateral → borrow USDC. Lend USDC to the pool → earn the interest borrowers pay | Phase 1 - testnet ✓ |
-| **Dark Swap** | Convert BTC to USDC directly · no exchange · no visible order | Phase 3 - planned |
-| **BTC Savings** | BTC collateral + USDC auto-routed to highest-yield Stellar pools | Phase 3 - planned |
-| **ZK Proof of Reserve** | Prove BTC holdings without revealing wallets or amounts · B2B SaaS | Phase 3 - planned |
+| **Writz Lend** | Deposit BTC as collateral → borrow USDC. Lend USDC to the pool → earn the interest borrowers pay | Testnet. Mainnet planned for Q2 to Q3 2027 |
+
+Writz Lend is the only product. Features planned for later, such as privacy and ZK proof of reserve, are listed in [Vision](docs/roadmap/vision.md#planned-for-later) and are not products.
 
 The **Bitcoin SPV SDK** is also open infrastructure. Any Stellar protocol that needs to verify a Bitcoin transaction on-chain can use `bitcoin-spv` with one call, through [`writz-spv-client`](https://crates.io/crates/writz-spv-client) or [`@writz/sdk`](https://www.npmjs.com/package/@writz/sdk). Verification is free today; no per-call fee exists.
 
@@ -348,9 +347,7 @@ python3 scripts/diagrams/render-all.py
 | Revenue Stream | Mechanism |
 |---|---|
 | **Lending spread** | Borrow rate minus supply rate on Writz Lend |
-| **Swap fees** | Basis points on each Dark Swap conversion |
 | **SPV API fees** (later, not live) | Possible per-verification or subscription pricing for third-party integrations; verification is free today |
-| **Proof of Reserve SaaS** | Monthly subscription for enterprise B2B customers |
 | **Protocol reserve** | A share of borrower interest kept on chain; today it funds liquidation bonuses |
 
 ---
@@ -395,7 +392,6 @@ Full documentation lives in [`docs/`](docs/) and is published at **[docs.writz.x
 
 **Products:**
 - [Writz Lend](docs/products/writz-lend.md) - Step-by-step user guide.
-- [ZK Proof of Reserve](docs/products/zk-proof-of-reserve.md) - The B2B enterprise product.
 
 **How it works (technical):**
 - [Bitcoin Side](docs/how-it-works/bitcoin-side.md) - P2WSH locking, spending paths, CLTV.
@@ -437,7 +433,7 @@ See [`docs/developers/contribution-guide.md`](docs/developers/contribution-guide
 | **BTC holder** who wants to borrow USDC against BTC | [Writz Lend →](docs/products/writz-lend.md) |
 | **Developer** who wants to build on the protocol | [Build on Writz →](docs/developers/integrate.md) |
 | **Stellar protocol** that needs Bitcoin verification | [SPV SDK →](docs/developers/spv-sdk.md) |
-| **Institution** exploring ZK Proof of Reserve | [ZK PoR →](docs/products/zk-proof-of-reserve.md) |
+| **USDC holder** who wants to supply the lending pool | [Writz Lend →](docs/products/writz-lend.md#for-usdc-lenders-earn) |
 
 ---
 

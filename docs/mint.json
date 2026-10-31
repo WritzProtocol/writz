@@ -75,11 +75,7 @@
     {
       "group": "Products",
       "pages": [
-        "products/writz-lend",
-        "products/dark-swap",
-        "products/btc-savings",
-        "products/zk-proof-of-reserve",
-        "products/earn"
+        "products/writz-lend"
       ]
     },
     {
@@ -113,9 +109,15 @@
       ]
     },
     {
-      "group": "Roadmap",
+      "group": "Vision",
       "pages": [
         "roadmap/vision"
+      ]
+    },
+    {
+      "group": "Use the app",
+      "pages": [
+        "products/earn"
       ]
     },
     {
