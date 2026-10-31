@@ -38,19 +38,20 @@
         "tab": "Documentation",
         "groups": [
           {
-            "group": "Architecture",
-            "pages": [
-              "architecture/technical-overview",
-              "architecture/diagrams"
-            ]
-          },
-          {
             "group": "Introduction",
             "pages": [
+              "index",
               "introduction/what-is-writz",
               "introduction/the-problem",
               "introduction/how-writz-works",
               "introduction/why-stellar-why-now"
+            ]
+          },
+          {
+            "group": "Architecture",
+            "pages": [
+              "architecture/technical-overview",
+              "architecture/diagrams"
             ]
           },
           {
