@@ -1,0 +1,74 @@
+---
+title: "Writz Protocol documentation"
+sidebarTitle: "Home"
+description: "Guides, architecture, security and developer references for Writz, a lending protocol on Stellar backed by native BTC."
+mode: "wide"
+---
+
+Writz is a lending protocol on Stellar backed by native BTC. A Bitcoin Script holds the collateral on Bitcoin itself rather than a company, and it never becomes a wrapped token. Borrow USDC against it, repay on your own schedule, and recover your Bitcoin even if Writz disappears. Live on Stellar testnet.
+
+<Warning>
+Writz is on testnet only. The contracts are not audited yet. Never send real BTC, real USDC or a wallet that holds real funds to the testnet app.
+</Warning>
+
+## Start here
+
+<CardGroup cols={3}>
+  <Card title="What is Writz?" icon="bitcoin-sign" href="/introduction/what-is-writz">
+    The short version, and why it was not possible before.
+  </Card>
+  <Card title="How Writz works" icon="route" href="/introduction/how-writz-works">
+    A loan from deposit to release, in plain language.
+  </Card>
+  <Card title="Try the testnet app" icon="play" href="/guides/start-here">
+    What you need and the order to set it up, with free test coins.
+  </Card>
+</CardGroup>
+
+## Use the app
+
+<CardGroup cols={3}>
+  <Card title="Borrow USDC against BTC" icon="hand-holding-dollar" href="/guides/borrow">
+    Lock test BTC on signet and draw test USDC on Stellar.
+  </Card>
+  <Card title="Repay and release your BTC" icon="unlock" href="/guides/repay-and-release">
+    Pay back the loan and take your collateral back.
+  </Card>
+  <Card title="Lend USDC" icon="coins" href="/guides/lend">
+    Supply USDC to the pool and earn the interest borrowers pay.
+  </Card>
+</CardGroup>
+
+## Build on Writz
+
+<CardGroup cols={2}>
+  <Card title="Integration guide" icon="plug" href="/developers/integrate">
+    Prove a Bitcoin transaction from your Soroban contract or your app.
+  </Card>
+  <Card title="Bitcoin SPV SDK" icon="cube" href="/developers/spv-sdk">
+    The `verify_transaction` reference: signature, errors and the proof route.
+  </Card>
+  <Card title="Contract reference" icon="file-code" href="/developers/contract-reference">
+    The public functions of the Writz contracts.
+  </Card>
+  <Card title="For AI agents" icon="robot" href="/developers/for-ai-agents">
+    Contract IDs, signatures and verified examples in a compact format.
+  </Card>
+</CardGroup>
+
+## Understand the design
+
+<CardGroup cols={2}>
+  <Card title="Technical architecture" icon="sitemap" href="/architecture/technical-overview">
+    How the Bitcoin script, the light client and the lending contract fit together.
+  </Card>
+  <Card title="Security model" icon="shield-halved" href="/security/security-model">
+    What the protocol protects against, and what it assumes.
+  </Card>
+  <Card title="SPV vs wrapped Bitcoin" icon="scale-balanced" href="/security/spv-vs-wrapped">
+    Where a light client differs from bridges, and where it shares their risks.
+  </Card>
+  <Card title="Research" icon="flask" href="/research/spv-implementations">
+    The studies behind the design: SPV, oracles, rates and liquidation.
+  </Card>
+</CardGroup>

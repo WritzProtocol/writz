@@ -4,17 +4,18 @@
 
 ---
 
-## Architecture
-
-* [Technical Overview](/architecture/technical-overview)
-* [Diagrams](/architecture/diagrams)
-
 ## Introduction
 
+* [Home](/)
 * [What is Writz?](/introduction/what-is-writz)
 * [The Problem](/introduction/the-problem)
 * [How Writz Works](/introduction/how-writz-works)
 * [Why Stellar, Why Now](/introduction/why-stellar-why-now)
+
+## Architecture
+
+* [Technical Overview](/architecture/technical-overview)
+* [Diagrams](/architecture/diagrams)
 
 ## Guides
 
