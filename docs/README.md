@@ -74,7 +74,7 @@ Writz is a trustless Bitcoin lending protocol on Stellar. Lock real BTC. Borrow 
 - [Tokenomics & Fee Model](/research/tokenomics-fee-model)
 - [Security Audit Strategy](/research/security-audit-strategy)
 - [Regulatory Landscape](/research/regulatory-landscape)
-- [Growth Strategy](/research/growth-strategy)
+- [Growth Strategy](/research/growth-strategy) - June 2026 note, replaced by [Go-to-market strategy](/go-to-market/overview).
 
 ---
 

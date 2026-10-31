@@ -1,0 +1,119 @@
+---
+title: "Customers and message"
+description: "The first borrower and the first lender Writz is going after, the alternatives they use today, and the message that speaks to their real objections."
+---
+
+Writz serves holders who borrow, lenders who fund them, institutions and reserves that can act on either side, and projects that integrate the protocol. Each wants something different, so the plan names one starting group for each.
+
+<Note>
+The groups below are working hypotheses. So far we have a small number of recorded interviews, which give us direction, not proof. [Step 1 of the plan](/go-to-market/step-by-step#step-1-reach-holders-and-listen) tests them, and this page changes if the evidence disagrees.
+</Note>
+
+## The first borrower
+
+**A Bitcoin holder who keeps their own keys and has recently sold Bitcoin they wanted to keep, to cover an expense.**
+
+| | |
+|---|---|
+| **The moment that matters** | A bill, a purchase or an opportunity arrives, and the only large asset they have is Bitcoin |
+| **What they do today** | Sell and try to buy back later, borrow from a custodial lender, or wrap part of their Bitcoin |
+| **What they care about** | Keeping their coins, not being surprised by a liquidation, and being able to get out alone |
+| **Why they come first** | The promise of Writz, that the Bitcoin stays in a script tied to their own key, matters most to someone who already acts on it |
+| **Where we start looking** | Latin America, where our first conversations and developer community are. Who may use Writz at launch is a separate legal question |
+
+## The first lender
+
+**A Stellar team with idle USDC in its treasury, or supplied to a Stellar lending pool.**
+
+| | |
+|---|---|
+| **The moment that matters** | USDC sits idle in a treasury, on the network the team already uses |
+| **What they do today** | Hold it, or supply it to an existing Stellar lending market |
+| **What they care about** | Where the interest comes from, how losses are handled, and how fast they can withdraw |
+| **Why they come first** | They need no Bitcoin wallet and no new network, so they can start with the fewest steps |
+
+These teams can also route their users' USDC to Writz Lend through the [developer tools](/developers/request-for-startups#no-soroban-needed-build-on-writz-yield). Individual USDC holders on Stellar are the natural next group on this side.
+
+## Institutions and reserves
+
+**Organizations that hold Bitcoin for the long term: treasury companies, funds, custodians, family offices, and the public bodies behind sovereign and state Bitcoin reserves.**
+
+| | |
+|---|---|
+| **The moment that matters** | The organization needs liquidity or wants its reserve to do more, and selling is not an option |
+| **What they do today** | Hold without using it, sell, or borrow through a custodial lender |
+| **What they care about** | Mandate and legal fit, control of keys, reporting, and an audit trail |
+| **Why they matter** | One agreement can carry more weight than many small loans, and it shows others that the design holds up to serious review |
+
+Institutions take longer, and they will need the audit, the legal entity and limits suited to their size. Early agreements are therefore evaluations and pilots, and no real funds are involved until mainnet.
+
+## Projects that integrate Writz
+
+**Stellar teams whose product would improve by verifying Bitcoin activity, or by offering Bitcoin-backed credit or yield on USDC.**
+
+| | |
+|---|---|
+| **The moment that matters** | Their users ask about Bitcoin, or they need yield or credit they do not want to build |
+| **What they do today** | Skip Bitcoin, or depend on wrapped assets and trusted parties |
+| **What they care about** | Clear docs, stable interfaces and a clean integration |
+| **Why they matter** | Every integration brings its own users, and it can start on testnet today |
+
+## Who we are not starting with
+
+Saying no is what makes a small team effective. These groups are not rejected forever.
+
+| Group | Why not yet |
+|---|---|
+| People new to Bitcoin | They have no collateral to lend against and no reason to compare options |
+| Traders looking for leverage | A conservative, capped launch does not serve them, and they are the most likely to leave |
+| Privacy-focused users | Writz Lend positions are public on chain. Privacy is a [separate edition, in progress](/how-it-works/privacy-edition) |
+
+## The message
+
+One sentence, for anyone who needs to hear it once:
+
+> Borrow dollars against native BTC, without a custodian holding it and without wrapping it.
+
+Each side then needs an answer to the question they actually ask.
+
+### For the borrower
+
+| What they ask | What we say |
+|---|---|
+| Why not just sell? | Selling ends your position. A loan keeps it, at the cost of interest and the risk of liquidation. If you would be glad to rebuy later at any price, selling may be the better choice |
+| What happens if the price falls? | You see your ratio, you can repay at any time, and liquidation has a known threshold. We explain this before the first borrow, not after it |
+| Who can touch my Bitcoin? | It stays on Bitcoin, in a script that needs your key on every path. [See the script](/how-it-works/bitcoin-side) |
+| What if Writz disappears? | A timelock lets you recover the Bitcoin alone. [The procedure is public](/how-it-works/manual-emergency-recovery) |
+| Is it audited? | Not yet, and there is no mainnet until it is. [Audit status](/security/audits) |
+
+### For the lender
+
+| What they ask | What we say |
+|---|---|
+| Where does the interest come from? | From borrowers. The rate is variable, and it can be zero while nothing is borrowed. We never promise a fixed return |
+| What backs the loans? | Bitcoin locked in scripts on Bitcoin, verified on Stellar by a light client contract. Today a liquidation moves no Bitcoin, and the borrow cap bounds that exposure. [How liquidation works](/products/writz-lend) |
+| What can go wrong? | Smart contract failure, a bad price, or a loan that is not repaid. [The security model](/security/security-model) states each one |
+| Can I withdraw? | You can withdraw what is not lent out. High borrowing can make you wait |
+
+### For institutions and reserves
+
+| What they ask | What we say |
+|---|---|
+| Does the Bitcoin leave our control? | No. It stays on Bitcoin in a script that requires your key on every path, and no custodian is added |
+| Can we verify it? | Positions and proofs are public on chain, so an auditor or the public can check them. An institution that needs confidentiality should weigh this |
+| What is the risk? | Liquidation, smart contract failure and price feed failure, as stated in [the security model](/security/security-model) |
+| What is the first step? | A technical evaluation and a testnet pilot, with no real funds |
+
+### For projects that integrate
+
+| What they ask | What we say |
+|---|---|
+| What can we build today? | Bitcoin payment verification and lending flows on testnet. [Start here](/developers/integrate) |
+| Do we need to know Soroban? | Not for every integration. [See the options](/developers/request-for-startups#no-soroban-needed-build-on-writz-yield) |
+
+## What the message must not do
+
+- **Hide liquidation.** It is the first thing a careful holder asks about, so it comes first in our explanations too.
+- **Promise a return.** We describe how interest works, never how much it will be.
+- **Claim more than we have.** Testnet is called testnet, a letter of intent is never called a partnership, and a conversation is never called an agreement.
+- **Make the safe option look bad.** Selling or holding can be the right answer. People trust advice that sometimes says no.

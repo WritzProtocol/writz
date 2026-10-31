@@ -71,6 +71,14 @@
 * [Terms of Service](/legal/terms-of-service)
 * [Privacy Policy](/legal/privacy-policy)
 
+## Go-to-Market
+
+* [Overview](/go-to-market/overview)
+* [Customers and Message](/go-to-market/customers-and-message)
+* [The Plan, Step by Step](/go-to-market/step-by-step)
+* [Channels](/go-to-market/channels)
+* [How We Measure Progress](/go-to-market/measuring-progress)
+
 ## Research
 
 * [Bitcoin SPV on Other Chains](/research/spv-implementations)
@@ -87,5 +95,4 @@
 * [Tokenomics & Fee Model](/research/tokenomics-fee-model)
 * [Security Audit Strategy](/research/security-audit-strategy)
 * [Regulatory Landscape](/research/regulatory-landscape)
-* [Growth Strategy](/research/growth-strategy)
 
