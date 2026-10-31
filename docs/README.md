@@ -17,7 +17,7 @@ Writz is a trustless Bitcoin lending protocol on Stellar. Lock real BTC. Borrow 
 | Ready to use Writz Lend | [Writz Lend Guide →](/products/writz-lend) |
 | A developer building on Stellar | [Build on Writz →](/developers/integrate) |
 | A Stellar protocol that needs Bitcoin verification | [SPV SDK →](/developers/spv-sdk) |
-| An institution exploring Proof of Reserve | [ZK Proof of Reserve →](/products/zk-proof-of-reserve) |
+| A USDC holder who wants to supply the lending pool | [Lend USDC →](/products/writz-lend#for-usdc-lenders-earn) |
 | An investor or grant reviewer | [Vision →](/roadmap/vision) |
 
 ---
@@ -32,9 +32,6 @@ Writz is a trustless Bitcoin lending protocol on Stellar. Lock real BTC. Borrow 
 
 ### Products
 - [Writz Lend](/products/writz-lend) - BTC collateral → USDC loan. Step-by-step guide.
-- [Dark Swap](/products/dark-swap) - Private BTC↔USDC conversion (Phase 3).
-- [BTC Savings](/products/btc-savings) - BTC collateral + USDC yield (Phase 3).
-- [ZK Proof of Reserve](/products/zk-proof-of-reserve) - Enterprise B2B attestation product.
 
 ### How It Works (Technical)
 - [Bitcoin Side](/how-it-works/bitcoin-side) - P2WSH script, spending paths, co-signing architecture.

@@ -36,7 +36,7 @@ Both are production-ready. Writz combines them: native BTC collateral verified o
 
 ## What You Can Do With Writz
 
-### Writz Lend *(available Phase 2 - mainnet)*
+### Writz Lend *(on testnet today, mainnet planned for Q2 to Q3 2027)*
 
 Deposit BTC as collateral. Borrow USDC up to 66% of your BTC's value. Interest accrues at market rates. Repay anytime and get your BTC back.
 
@@ -46,17 +46,7 @@ This is a loan against your Bitcoin savings, taken without giving up custody of 
 
 Lend USDC to the Writz Lend pool and earn the interest Bitcoin borrowers pay. The rate is variable and follows how much of the pool is borrowed, so it is zero while nothing is borrowed. Withdraw your USDC and its interest at any time, up to what is not lent out at that moment. See [Writz Lend, For USDC Lenders](/products/writz-lend#for-usdc-lenders-earn).
 
-### Dark Swap *(Phase 3)*
-
-Convert BTC to USDC directly - no exchange account, no KYC, no visible order book. The SPV contract verifies your BTC deposit; USDC is released instantly. The swap size is hidden behind a ZK proof.
-
-### BTC Savings *(Phase 3)*
-
-Deposit BTC as collateral and receive USDC that automatically routes to yield-bearing positions on Stellar. Your BTC stays yours. Your savings generate yield in USDC while Bitcoin does what Bitcoin does.
-
-### ZK Proof of Reserve *(Phase 3 - B2B)*
-
-Enterprises and exchanges can prove they hold a specific amount of Bitcoin without revealing wallet addresses or exact figures. A cryptographic attestation that satisfies auditors, regulators, and counterparties - without exposing the underlying holdings.
+Writz Lend is the only product today. Features planned for later are listed in [Vision](/roadmap/vision#planned-for-later).
 
 ---
 

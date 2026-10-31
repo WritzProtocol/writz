@@ -57,11 +57,7 @@
           {
             "group": "Products",
             "pages": [
-              "products/writz-lend",
-              "products/dark-swap",
-              "products/btc-savings",
-              "products/zk-proof-of-reserve",
-              "products/earn"
+              "products/writz-lend"
             ]
           },
           {
@@ -75,7 +71,7 @@
             ]
           },
           {
-            "group": "Roadmap",
+            "group": "Vision",
             "pages": [
               "roadmap/vision"
             ]
@@ -101,7 +97,8 @@
             "pages": [
               "guides/borrow",
               "guides/repay-and-release",
-              "guides/lend"
+              "guides/lend",
+              "products/earn"
             ]
           },
           {
@@ -235,6 +232,18 @@
     {
       "source": "/how-it-works/zk-privacy-layer",
       "destination": "/how-it-works/privacy-edition"
+    },
+    {
+      "source": "/products/dark-swap",
+      "destination": "/roadmap/vision"
+    },
+    {
+      "source": "/products/btc-savings",
+      "destination": "/roadmap/vision"
+    },
+    {
+      "source": "/products/zk-proof-of-reserve",
+      "destination": "/roadmap/vision"
     }
   ]
 }

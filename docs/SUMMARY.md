@@ -33,10 +33,6 @@
 ## Products
 
 * [Writz Lend](/products/writz-lend)
-* [Dark Swap](/products/dark-swap)
-* [BTC Savings](/products/btc-savings)
-* [ZK Proof of Reserve](/products/zk-proof-of-reserve)
-* [USDC Vault](/products/earn)
 
 ## How It Works
 
@@ -62,9 +58,13 @@
 * [Bug Bounty](/security/bug-bounty)
 * [STRIDE Threat Model](/security/stride-threat-model)
 
-## Roadmap
+## Vision
 
 * [Vision](/roadmap/vision)
+
+## Use the app
+
+* [USDC Vault](/products/earn)
 
 ## Legal
 
