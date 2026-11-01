@@ -346,7 +346,9 @@ impl WritzLendContract {
         SupplyEvent {
             supplier,
             usdc_amount: amount,
-            total_supplied: total_supply_assets(&proto, proto.supply_index),
+            scaled_amount: scaled,
+            supply_index: proto.supply_index,
+            total_supply_assets: total_supply_assets(&proto, proto.supply_index),
         }
         .publish(&env);
 
@@ -405,7 +407,9 @@ impl WritzLendContract {
         WithdrawEvent {
             supplier,
             usdc_amount: amount,
-            total_supplied: total_supply_assets(&proto, proto.supply_index),
+            scaled_amount: burn,
+            supply_index: proto.supply_index,
+            total_supply_assets: total_supply_assets(&proto, proto.supply_index),
         }
         .publish(&env);
 

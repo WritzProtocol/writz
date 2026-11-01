@@ -2509,3 +2509,167 @@ fn deposit_accepts_a_user_key_distinct_from_the_protocol_key() {
     assert_ne!(fake_user_pubkey(&s.env), fake_protocol_pubkey(&s.env));
     assert!(try_deposit_with(&s, &s.spk, TEST_TIMELOCK, &fake_user_pubkey(&s.env)).is_ok());
 }
+
+// ── Supply and withdraw events carry the scaled amount and index (#257) ──────
+
+/// The last event this pool published. The test environment keeps only the
+/// events of the most recent invocation, so read it before any other call.
+fn last_pool_event(s: &Setup) -> soroban_sdk::xdr::ContractEvent {
+    use soroban_sdk::testutils::Events as _;
+    s.env.events().all().filter_by_contract(&s.client.address).events().last().unwrap().clone()
+}
+
+/// The supplier's stored scaled balance, read from storage rather than through
+/// `get_supply_balance`, which returns its value at the current index.
+fn stored_scaled(s: &Setup, lender: &Address) -> i128 {
+    s.env.as_contract(&s.client.address, || {
+        crate::storage::get_supply_balance(&s.env, lender, crate::storage::entry_ttl(&s.env))
+    })
+}
+
+/// Reads one i128 field of an event's data map, as an indexer would.
+fn event_i128(event: &soroban_sdk::xdr::ContractEvent, field: &str) -> i128 {
+    use soroban_sdk::xdr::{ContractEventBody, ScVal};
+    let ContractEventBody::V0(body) = &event.body;
+    let ScVal::Map(Some(map)) = &body.data else { panic!("event data is not a map") };
+    let entry = map
+        .iter()
+        .find(|e| matches!(&e.key, ScVal::Symbol(sym) if sym.to_utf8_string_lossy() == field))
+        .unwrap_or_else(|| panic!("event has no field {field}"));
+    let ScVal::I128(parts) = &entry.val else { panic!("{field} is not an i128") };
+    ((parts.hi as i128) << 64) | parts.lo as i128
+}
+
+#[test]
+fn the_supply_event_carries_every_field() {
+    use crate::events::SupplyEvent;
+    use soroban_sdk::Event as _;
+
+    let s = setup();
+    let amount = 1_000_000_000_i128;
+    s.client.supply_usdc(&s.supplier, &amount);
+
+    let expected = SupplyEvent {
+        supplier: s.supplier.clone(),
+        usdc_amount: amount,
+        scaled_amount: amount,
+        supply_index: crate::rates::INDEX_ONE,
+        total_supply_assets: amount,
+    };
+    assert_eq!(last_pool_event(&s), expected.to_xdr(&s.env, &s.client.address));
+    assert_eq!(stored_scaled(&s, &s.supplier), amount);
+}
+
+#[test]
+fn the_supply_event_scales_at_the_index_after_accrual() {
+    use crate::events::SupplyEvent;
+    use soroban_sdk::Event as _;
+
+    let (s, _) = lender_year_fully_repaid();
+    let late = s.depositor.clone();
+    let amount = 1_000_000_000_i128;
+    StellarAssetClient::new(&s.env, &s.usdc).mint(&late, &amount);
+    s.client.supply_usdc(&late, &amount);
+    let event = last_pool_event(&s);
+
+    let p = s.client.get_protocol_state();
+    assert!(p.supply_index > crate::rates::INDEX_ONE);
+    let scaled = amount * crate::rates::INDEX_ONE / p.supply_index;
+    let expected = SupplyEvent {
+        supplier: late.clone(),
+        usdc_amount: amount,
+        scaled_amount: scaled,
+        supply_index: p.supply_index,
+        total_supply_assets: crate::rates::total_supply_assets(&p, p.supply_index),
+    };
+    assert_eq!(event, expected.to_xdr(&s.env, &s.client.address));
+    assert_eq!(stored_scaled(&s, &late), scaled);
+}
+
+#[test]
+fn the_withdraw_event_carries_the_burned_units_on_a_partial_withdraw() {
+    use crate::events::WithdrawEvent;
+    use soroban_sdk::Event as _;
+
+    let (s, _) = lender_year_fully_repaid();
+    let before = stored_scaled(&s, &s.supplier);
+    let amount = 1_000_000_000_i128;
+    s.client.withdraw_supply(&s.supplier, &amount);
+    let event = last_pool_event(&s);
+
+    let p = s.client.get_protocol_state();
+    let burned = before - stored_scaled(&s, &s.supplier);
+    // Rounded up, in the pool's favour.
+    let ceil = (amount * crate::rates::INDEX_ONE + p.supply_index - 1) / p.supply_index;
+    assert_eq!(burned, ceil);
+    let expected = WithdrawEvent {
+        supplier: s.supplier.clone(),
+        usdc_amount: amount,
+        scaled_amount: burned,
+        supply_index: p.supply_index,
+        total_supply_assets: crate::rates::total_supply_assets(&p, p.supply_index),
+    };
+    assert_eq!(event, expected.to_xdr(&s.env, &s.client.address));
+}
+
+#[test]
+fn the_withdraw_event_burns_the_whole_balance_on_a_full_withdraw() {
+    use crate::events::WithdrawEvent;
+    use soroban_sdk::Event as _;
+
+    let (s, _) = lender_year_fully_repaid();
+    let before = stored_scaled(&s, &s.supplier);
+    let value = s.client.get_supply_balance(&s.supplier);
+    s.client.withdraw_supply(&s.supplier, &value);
+    let event = last_pool_event(&s);
+
+    let p = s.client.get_protocol_state();
+    assert_eq!(stored_scaled(&s, &s.supplier), 0);
+    let expected = WithdrawEvent {
+        supplier: s.supplier.clone(),
+        usdc_amount: value,
+        scaled_amount: before,
+        supply_index: p.supply_index,
+        total_supply_assets: crate::rates::total_supply_assets(&p, p.supply_index),
+    };
+    assert_eq!(event, expected.to_xdr(&s.env, &s.client.address));
+}
+
+#[test]
+fn summing_scaled_amounts_from_events_rebuilds_every_stored_balance() {
+    let s = setup();
+    let other = Address::generate(&s.env);
+    StellarAssetClient::new(&s.env, &s.usdc).mint(&other, &10_000_000_000_i128);
+    let txid = setup_with_supply_and_deposit(&s, 2_654_000_000_i128);
+    let mut from_events = [s.client.get_supply_balance(&s.supplier), 0_i128];
+    s.client.borrow(&s.depositor, &txid, &1_990_000_000_i128);
+
+    // Supplies and withdrawals at different indexes, each scaled differently.
+    let steps: [(usize, bool, i128); 6] = [
+        (1, true, 1_234_567_891),
+        (0, false, 333_333_333),
+        (1, true, 77_777_777),
+        (0, true, 500_000_001),
+        (1, false, 999_999_999),
+        (0, false, 1),
+    ];
+    for (i, (who, supply, amount)) in steps.iter().enumerate() {
+        s.env.ledger().set_sequence_number(1_000 + (i as u32 + 1) * YEAR / 8);
+        let lender = if *who == 0 { &s.supplier } else { &other };
+        if *supply {
+            s.client.supply_usdc(lender, amount);
+        } else {
+            s.client.withdraw_supply(lender, amount);
+        }
+        let event = last_pool_event(&s);
+        assert_eq!(event_i128(&event, "usdc_amount"), *amount);
+        assert_eq!(event_i128(&event, "supply_index"), s.client.get_protocol_state().supply_index);
+        let scaled = event_i128(&event, "scaled_amount");
+        from_events[*who] += if *supply { scaled } else { -scaled };
+    }
+
+    assert!(s.client.get_protocol_state().supply_index > crate::rates::INDEX_ONE);
+    assert_eq!(from_events[0], stored_scaled(&s, &s.supplier));
+    assert_eq!(from_events[1], stored_scaled(&s, &other));
+    assert_eq!(from_events[0] + from_events[1], s.client.get_protocol_state().total_scaled_supply);
+}
