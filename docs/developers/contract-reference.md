@@ -788,7 +788,9 @@ Topic fields are in **bold**.
 | `RepayFullEvent` | `repay_full` | **txid**, repayer, p2wsh_script_pubkey |
 | `RepayEvent` | `repay` | **txid**, usdc_amount |
 | `LiquidateEvent` | `liquidate` | **txid**, keeper, bonus_paid |
-| `SupplyEvent` | `supply` | **supplier**, usdc_amount, total_supplied |
-| `WithdrawEvent` | `withdraw` | **supplier**, usdc_amount, total_supplied |
+| `SupplyEvent` | `supply` | **supplier**, usdc_amount, scaled_amount, supply_index, total_supply_assets |
+| `WithdrawEvent` | `withdraw` | **supplier**, usdc_amount, scaled_amount, supply_index, total_supply_assets |
 | `PausedSetEvent` | `paused_set` | **admin**, paused |
 | `OracleSetEvent` | `oracle_set` | **admin**, new_oracle |
+
+`scaled_amount` is the number of scaled units minted (`supply`, rounded down) or burned (`withdraw`, rounded up, or the whole balance on a full withdrawal), and `supply_index` is the index it was scaled at, after accrual. A lender's `scaled_amount` summed over its `supply` events, minus its `withdraw` events, equals its stored scaled balance; that balance times the current supply index, divided by `10^18`, is what `get_supply_balance` returns. `total_supply_assets` is the pool's total lender assets after the call.

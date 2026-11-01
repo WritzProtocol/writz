@@ -50,7 +50,7 @@ This is harder, because "just let it wind down" isn't good enough when the old c
 
 ### A real prerequisite gap this runbook surfaces
 
-Both lending contracts now emit `supply`/`withdraw` events (topic on `supplier`, carrying `usdc_amount` and the resulting `total_supplied`). Lenders can be enumerated the same way borrowers are: scan `supply` events from genesis, then confirm current balance with `get_supply_balance(lender)` for each address found (the event tells you *who*, the getter tells you *how much right now* - the same two-step pattern as `writz-lend` positions above).
+Both lending contracts now emit `supply`/`withdraw` events (topic on `supplier`, carrying `usdc_amount`; `writz-lend` adds the `scaled_amount`, `supply_index` and resulting `total_supply_assets`, and `commitment-tree` the resulting `total_supplied`). Lenders can be enumerated the same way borrowers are: scan `supply` events from genesis, then confirm current balance with `get_supply_balance(lender)` for each address found (the event tells you *who*, the getter tells you *how much right now* - the same two-step pattern as `writz-lend` positions above).
 
 ## Governance: who can declare and execute a migration
 

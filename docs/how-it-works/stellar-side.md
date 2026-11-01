@@ -186,7 +186,7 @@ Contract state changes emit structured events using Soroban's `#[contractevent]`
 | `paused_set` | writz-lend | Admin paused or unpaused new deposits/borrows/supply |
 | `oracle_set` | writz-lend | Admin changed the oracle address |
 
-`supply`/`withdraw` carry `supplier`, `usdc_amount`, and the resulting `total_supplied` - enough to enumerate every lender an off-chain indexer needs, the same way `deposit` events let you enumerate borrowers (see `docs/architecture/contract-migration-runbook.md`).
+`supply`/`withdraw` carry `supplier`, `usdc_amount`, the `scaled_amount` minted or burned, the `supply_index` it was scaled at and the resulting `total_supply_assets` - enough to enumerate every lender and rebuild each scaled balance from events alone, the same way `deposit` events let you enumerate borrowers (see `docs/architecture/contract-migration-runbook.md`).
 
 Events are the primary mechanism for the Writz backend to detect loan repayments (`repay_full` on `writz-lend`) and trigger the BTC co-signing release on the Bitcoin side - see `relayer/src/repay-watcher/`.
 

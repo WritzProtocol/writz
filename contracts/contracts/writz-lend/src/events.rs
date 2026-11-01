@@ -60,18 +60,30 @@ pub struct LiquidateEvent {
 #[contractevent(topics = ["supply"])]
 pub struct SupplyEvent {
     #[topic]
-    pub supplier:       Address,
-    pub usdc_amount:    i128,
-    pub total_supplied: i128,
+    pub supplier:            Address,
+    pub usdc_amount:         i128,
+    /// Scaled units minted to the supplier: `usdc_amount * INDEX_ONE / supply_index`,
+    /// rounded down. Summing them per supplier, minus the withdrawn ones,
+    /// rebuilds `get_supply_balance` without reading the contract.
+    pub scaled_amount:       i128,
+    /// The supply index the amount was scaled at, after accrual.
+    pub supply_index:        i128,
+    /// Total lender assets after the supply, at that index.
+    pub total_supply_assets: i128,
 }
 
 /// Emitted when a lender withdraws USDC from the pool.
 #[contractevent(topics = ["withdraw"])]
 pub struct WithdrawEvent {
     #[topic]
-    pub supplier:       Address,
-    pub usdc_amount:    i128,
-    pub total_supplied: i128,
+    pub supplier:            Address,
+    pub usdc_amount:         i128,
+    /// Scaled units burned from the supplier's balance.
+    pub scaled_amount:       i128,
+    /// The supply index the amount was scaled at, after accrual.
+    pub supply_index:        i128,
+    /// Total lender assets after the withdrawal, at that index.
+    pub total_supply_assets: i128,
 }
 
 /// Emitted when the admin pauses or unpauses new deposits/borrows/supply.
