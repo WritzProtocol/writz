@@ -49,7 +49,7 @@ Both are published: `npm install @writz/sdk` and `cargo add writz-spv-client`. T
 | Bitcoin network | Signet |
 | Writz relayer | `https://api.testnet.writz.xyz` |
 | `bitcoin-spv` | `CBX23YKCCJMAMBMSCNP6YVKEXUIYK2CTKSR4TQ3RVBPAFYZFVCW7W4EO` |
-| `writz-lend` | `CABF7VK7F25ZGDLV6EWSAU3NYQYKDQNDSJIISDMDZAUASMSXUADSHZGG` |
+| `writz-lend` | `CC7XGEWAUNUHZYKM5CED6KQXGFS6UWVI5H6XOB76YTMZRWCEH6DKT62A` |
 | Test USDC (Stellar Asset Contract for `USDC:GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5`) | `CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA` |
 | BTC price oracle read by `writz-lend` (Reflector) | `CCYOZJCOPG34LLQQ7N24YXBM7LL62R7ONMZ3G6WZAAYPB5OYKOMJRN63` |
 
@@ -57,7 +57,7 @@ The source of truth for every ID, with deploy transactions and wasm hashes, is [
 
 The `bitcoin-spv` checkpoint is signet block **327,925**. Only blocks after it can be proven.
 
-Testnet `bitcoin-spv` and `writz-lend` were redeployed on 2026-10-25 because testnet rent rose sharply: testnet's live state is above its target size, and the previous contracts gave every entry they created the long mainnet storage windows, so a deposit was charged about 428 XLM in fees. The new contracts take those windows as deployment parameters and run testnet-length ones (a deposit was charged about 89 XLM, measured 2026-10-25). Positions on the previous contracts were closed and their BTC released; their IDs are recorded as superseded in `contracts/deployments/testnet.md`. A transaction in a block at or below the new checkpoint can no longer be proven; pick one above it. How the storage windows work: [Contract reference](/developers/contract-reference) and [Storage and TTL management](/how-it-works/stellar-side#storage-and-ttl-management).
+Testnet `bitcoin-spv` and `writz-lend` were redeployed on 2026-10-25 because testnet rent rose sharply: testnet's live state is above its target size, and the previous contracts gave every entry they created the long mainnet storage windows, so a deposit was charged about 428 XLM in fees. The new contracts take those windows as deployment parameters and run testnet-length ones (a deposit was charged about 89 XLM, measured 2026-10-25). Positions on the previous contracts were closed and their BTC released; their IDs are recorded as superseded in `contracts/deployments/testnet.md`. `writz-lend` was redeployed again on 2026-11-01 so its `supply` and `withdraw` events carry the scaled amount and the supply index (#257); `bitcoin-spv` was not. A transaction in a block at or below the new checkpoint can no longer be proven; pick one above it. How the storage windows work: [Contract reference](/developers/contract-reference) and [Storage and TTL management](/how-it-works/stellar-side#storage-and-ttl-management).
 
 ---
 
@@ -168,7 +168,7 @@ console.log(result.isOk() ? result.unwrap() : result.unwrapErr());
 // { block_hash: <Buffer fe 32 ...>, block_height: 327928, confirmations: 7, txid: <Buffer 69 e2 ...> }
 ```
 
-The same command generates a client for `writz-lend` (`--contract-id CABF7VK7F25ZGDLV6EWSAU3NYQYKDQNDSJIISDMDZAUASMSXUADSHZGG`). Generate bindings from the deployed contract ID, not from the source on `main`: the source can be ahead of what is deployed.
+The same command generates a client for `writz-lend` (`--contract-id CC7XGEWAUNUHZYKM5CED6KQXGFS6UWVI5H6XOB76YTMZRWCEH6DKT62A`). Generate bindings from the deployed contract ID, not from the source on `main`: the source can be ahead of what is deployed.
 
 ## 5. From your Soroban contract
 
@@ -228,7 +228,7 @@ The complete contract, with tests, is [`examples/spv-payment-check`](https://git
 ## 6. Read the Writz lending pool
 
 ```bash
-LEND=CABF7VK7F25ZGDLV6EWSAU3NYQYKDQNDSJIISDMDZAUASMSXUADSHZGG
+LEND=CC7XGEWAUNUHZYKM5CED6KQXGFS6UWVI5H6XOB76YTMZRWCEH6DKT62A
 stellar contract invoke --id $LEND --network testnet --source-account $READER --send=no -- get_protocol_state
 stellar contract invoke --id $LEND --network testnet --source-account $READER --send=no -- get_borrow_rate_bp
 stellar contract invoke --id $LEND --network testnet --source-account $READER --send=no -- get_supply_balance --lender $READER
@@ -249,7 +249,7 @@ USDC amounts are in stroops (7 decimals: `10000000000` is 1,000 USDC). Rates are
 Yield on Writz is the lender side of `writz-lend`. Lenders supply USDC to the pool that Bitcoin borrowers draw from, and the interest those borrowers pay is the lenders' yield. You need no contract of your own: the user's wallet signs `supply_usdc` and `withdraw_supply`, and your app reads the balance and the rate by simulation. The asset is the same test USDC as the rest of this page (`USDC:GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5`), and the user's account needs a trustline to it.
 
 ```bash
-LEND=CABF7VK7F25ZGDLV6EWSAU3NYQYKDQNDSJIISDMDZAUASMSXUADSHZGG
+LEND=CC7XGEWAUNUHZYKM5CED6KQXGFS6UWVI5H6XOB76YTMZRWCEH6DKT62A
 stellar contract invoke --id $LEND --network testnet --source-account me --send=no -- get_supply_rate_bp
 stellar contract invoke --id $LEND --network testnet --source-account me -- supply_usdc --supplier $(stellar keys address me) --amount 100000000
 stellar contract invoke --id $LEND --network testnet --source-account me --send=no -- get_supply_balance --lender $(stellar keys address me)

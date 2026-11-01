@@ -6,7 +6,7 @@ export type LedgerEntry = { name: string; role: string; address: string };
 // and are not listed here.
 export const ledger: LedgerEntry[] = [
   { name: "bitcoin-spv", role: "Verifies Bitcoin transactions on Stellar", address: "CBX23YKCCJMAMBMSCNP6YVKEXUIYK2CTKSR4TQ3RVBPAFYZFVCW7W4EO" },
-  { name: "writz-lend", role: "Runs the loans", address: "CABF7VK7F25ZGDLV6EWSAU3NYQYKDQNDSJIISDMDZAUASMSXUADSHZGG" },
+  { name: "writz-lend", role: "Runs the loans", address: "CC7XGEWAUNUHZYKM5CED6KQXGFS6UWVI5H6XOB76YTMZRWCEH6DKT62A" },
   { name: "Earn vault", role: "Holds Earn deposits", address: "CBMHGL7GGGHODEDDJ5H2LKJEFHJWBRSQUKOXMC4FKOFDZK5HBKW6PI2S" },
 ];
 

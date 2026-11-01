@@ -8,6 +8,35 @@
 
 ---
 
+## `writz-lend` redeploy (2026-11-01)
+
+Carries #257 (`supply` and `withdraw` events with `scaled_amount`, `supply_index` and `total_supply_assets`) on top of #356 (#260). The relayer (`WRITZ_LEND_ID`) and the app (`NEXT_PUBLIC_WRITZ_LEND_ID`, `testnet.writz.xyz`) run on it from 2026-11-01; `bitcoin-spv` is unchanged. It replaces `CABF7VK7…` below and supersedes `CDKXFBHU…`, which was staged on 2026-10-26 without #257 and never activated.
+
+Supply moved at the switch by `writz-deployer`: 990 USDC withdrawn from `CABF7VK7…` ([`9faa88c9a5…`](https://stellar.expert/explorer/testnet/tx/9faa88c9a50bd1938506851d59b1d2376f78652986e4fc2da15eaeb900250cf7)) and supplied here ([`9c6e540d81…`](https://stellar.expert/explorer/testnet/tx/9c6e540d81677e7a9f05d38ee81634e06e679b9be43cfee147d41b4cfc2ab1ea)), then 1 USDC withdrawn to check withdrawals ([`bc0ebe71b9…`](https://stellar.expert/explorer/testnet/tx/bc0ebe71b9856a3b71acdbe9856325cf54dd22154ff745556b02ff87e99120ab)). About 1 USDC of supply stays on `CABF7VK7…` behind its open 7 USDC loan, withdrawable once that loan is repaid.
+
+Built at `9d9114e` (#370) with `cargo build --release --target wasm32v1-none --locked -p writz-lend`, deployed with `scripts/deploy/deploy_stack.mjs --lend-only` (#372) against the existing `bitcoin-spv`. Same constructor arguments as `CDKXFBHU…`; `bitcoin-spv` is unchanged. Charged 5.21 XLM in total (upload 5.07, deploy 0.12, consumer registration 0.02).
+
+| Field | Value |
+|---|---|
+| **Contract ID** | `CC7XGEWAUNUHZYKM5CED6KQXGFS6UWVI5H6XOB76YTMZRWCEH6DKT62A` |
+| wasm sha256 | `cb6f8741c78ca80f62a0096d0f0368de75ed7c5f3835e23155998452d754ee4d` (90,961 bytes) |
+| Upload tx | [`52a0d95387…`](https://stellar.expert/explorer/testnet/tx/52a0d95387ae6b2f8e0914cc51514a8843dc05811b4fc6da9b818ce67551d421) |
+| Deploy tx | [`f53c8f5678…`](https://stellar.expert/explorer/testnet/tx/f53c8f5678cbf8dc1380f813352210fe265f9e07ad068712e6654d5a54888a10) |
+| `admin`, `keeper` | `writz-deployer` |
+| `relayer` | `GCNBKRZO5T24SF7EPLVUABSFO76TFWXJBIHKL4TH6ZAX7IJOFRQ5GWN4` |
+| `spv_contract` | `CBX23YKCCJMAMBMSCNP6YVKEXUIYK2CTKSR4TQ3RVBPAFYZFVCW7W4EO` |
+| `usdc_token` | `CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA` |
+| `oracle` | `CCYOZJCOPG34LLQQ7N24YXBM7LL62R7ONMZ3G6WZAAYPB5OYKOMJRN63` (Reflector, external CEXs & DEXs) |
+| `protocol_pubkey` | `03d2f0699b167138988bf8d14a4655a8708066473b4c59ef40ee4ac500564fb70d` |
+| `min_confirmations` | `1` (testnet) |
+| `min_deposit_satoshis` | `5,000` (testnet; 100,000 on mainnet) |
+| `entry_ttl_ledgers` | `691200` (40 days; 180 days on mainnet) |
+| `borrow_timelock_margin_blocks` | `4320` (default and minimum) |
+| `max_tip_age_secs` | `21600` (6 hours, default) |
+| `max_total_borrowed` | 50,000 USDC (default) |
+| `bitcoin-spv` consumer | [`78d3f6c6df…`](https://stellar.expert/explorer/testnet/tx/78d3f6c6df07f5209aacdc221ed9bb1f39f68932f2c57386273162d2164e7453); `CABF7VK7…` and `CDKXFBHU…` stay consumers |
+| Supply | 989 USDC from `writz-deployer` (see above) |
+
 ## `bitcoin-spv` and `writz-lend` redeploy (2026-10-25)
 
 Both protocol contracts redeployed together, built at `477788f` (`cargo build --release --target wasm32v1-none --locked -p bitcoin-spv -p writz-lend`) through `scripts/deploy/deploy_stack.mjs`, with the testnet storage windows from [Storage TTL parameters](#storage-ttl-parameters). The reason is testnet rent: testnet's live state is above its target size, so rent rose sharply, and the previous contracts gave every entry they created the long mainnet windows built in. A deposit on the previous contracts was charged about 428 XLM in fees; with the testnet windows it was charged about 89 XLM (measured 2026-10-25; the rate keeps moving). Positions on the previous contracts were closed and their BTC released before the switch (#307). The previous `bitcoin-spv` and `writz-lend` are kept below, marked superseded; the app and the relayer no longer use them. The privacy edition's `zk-verifier` and `commitment-tree` are not part of this redeploy.
@@ -28,9 +57,9 @@ The relayer and the app (`testnet.writz.xyz`) run on these contracts from the sa
 | `consumed_ttl_ledgers` | `120960` (7 days; 90 days on mainnet) |
 | Checkpoint | signet block 327,925, `00000003fa4e4447fb47656a7a548e21619507061339416a78b364ce23e1f3d1`, bits `0x1d154f9b`, time `1792943300`, period start time `1792145465` - [`bc15bf2d19…`](https://stellar.expert/explorer/testnet/tx/bc15bf2d19570d56c90d9754bd908b1b4b3c6de51a51057b617185374f696072) |
 | Submitter | `GCNBKRZO5T24SF7EPLVUABSFO76TFWXJBIHKL4TH6ZAX7IJOFRQ5GWN4` (the relayer account; signet blocks are signature-authenticated, which this contract does not check) - [`2bf80f58aa…`](https://stellar.expert/explorer/testnet/tx/2bf80f58aae1a39a202f07626b8bcc12ed0b3ea490eca2e51dedf5cc8fb0ff8a) |
-| Consumers | `writz-lend` [`335c3fc541…`](https://stellar.expert/explorer/testnet/tx/335c3fc5415489cbd26b3d684f56f235c95ae2b66716679f45c74cb3a2012490) |
+| Consumers | `writz-lend` `CABF7VK7…` [`335c3fc541…`](https://stellar.expert/explorer/testnet/tx/335c3fc5415489cbd26b3d684f56f235c95ae2b66716679f45c74cb3a2012490), `CDKXFBHU…` [`866be44e00…`](https://stellar.expert/explorer/testnet/tx/866be44e00e8c4beed1f035e6f0814470847a7737c4abf928fb5bd504a474e55), `CC7XGEWA…` [`78d3f6c6df…`](https://stellar.expert/explorer/testnet/tx/78d3f6c6df07f5209aacdc221ed9bb1f39f68932f2c57386273162d2164e7453) |
 
-### writz-lend
+### writz-lend (superseded 2026-11-01)
 
 | Field | Value |
 |---|---|
@@ -50,7 +79,7 @@ The relayer and the app (`testnet.writz.xyz`) run on these contracts from the sa
 | `max_total_borrowed` | 50,000 USDC (default) |
 | Initial supply | 1,000 test USDC [`a7e0029d47…`](https://stellar.expert/explorer/testnet/tx/a7e0029d4710f0e82fd296eff0cb14bc3ab5702176844d7cb99cc4b07016f5af) |
 
-## `writz-lend` redeploy (2026-10-26, deployed, not yet active)
+## `writz-lend` redeploy (2026-10-26, never activated, superseded 2026-11-01)
 
 Deployed, not yet active: the switch is scheduled for 2026-10-26 18:37 UTC. Until then the app, the relayer, `testnet.json` and the `@writz/sdk` preset stay on `CABF7VK7…SHZGG` above, which keeps its supply, its positions and its `bitcoin-spv` consumer registration. This section is placed below the current one on purpose, so `scripts/sync-deployments.mjs` keeps reading `CABF7VK7…` as current; at the switch, the `writz-lend` section above is marked superseded and this one moves to the top.
 
@@ -78,33 +107,6 @@ Built at `49e4a4e` (#356: borrow timelock margin against the `bitcoin-spv` tip, 
 | Supply | None yet; added at the switch |
 
 Checked on chain after the deploy: the stored `Config` matches the table, `get_borrow_timelock_margin` returns 4,320 and `get_max_tip_age` 21,600, and a simulated `borrow` on an unknown txid fails with `PositionNotFound` (#8). The instance and the wasm live for the network minimum (about 7 days) until they are extended at the switch.
-
-## `writz-lend` redeploy (2026-11-01, deployed, not yet active)
-
-Deployed, not yet active: carries #257 (`supply` and `withdraw` events with `scaled_amount`, `supply_index` and `total_supply_assets`) on top of #356, so it is the deployment to switch to; `CDKXFBHU…` above has #356 but not #257. Until the switch the app, the relayer, `testnet.json` and the `@writz/sdk` preset stay on `CABF7VK7…SHZGG`. This section is placed below the current one on purpose, so `scripts/sync-deployments.mjs` keeps reading `CABF7VK7…` as current; at the switch, the current `writz-lend` section is marked superseded and this one moves to the top.
-
-Built at `9d9114e` (#370) with `cargo build --release --target wasm32v1-none --locked -p writz-lend`, deployed with `scripts/deploy/deploy_stack.mjs --lend-only` (#372) against the existing `bitcoin-spv`. Same constructor arguments as `CDKXFBHU…`; `bitcoin-spv` is unchanged. Charged 5.21 XLM in total (upload 5.07, deploy 0.12, consumer registration 0.02).
-
-| Field | Value |
-|---|---|
-| **Contract ID** | `CC7XGEWAUNUHZYKM5CED6KQXGFS6UWVI5H6XOB76YTMZRWCEH6DKT62A` |
-| wasm sha256 | `cb6f8741c78ca80f62a0096d0f0368de75ed7c5f3835e23155998452d754ee4d` (90,961 bytes) |
-| Upload tx | [`52a0d95387…`](https://stellar.expert/explorer/testnet/tx/52a0d95387ae6b2f8e0914cc51514a8843dc05811b4fc6da9b818ce67551d421) |
-| Deploy tx | [`f53c8f5678…`](https://stellar.expert/explorer/testnet/tx/f53c8f5678cbf8dc1380f813352210fe265f9e07ad068712e6654d5a54888a10) |
-| `admin`, `keeper` | `writz-deployer` |
-| `relayer` | `GCNBKRZO5T24SF7EPLVUABSFO76TFWXJBIHKL4TH6ZAX7IJOFRQ5GWN4` |
-| `spv_contract` | `CBX23YKCCJMAMBMSCNP6YVKEXUIYK2CTKSR4TQ3RVBPAFYZFVCW7W4EO` |
-| `usdc_token` | `CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA` |
-| `oracle` | `CCYOZJCOPG34LLQQ7N24YXBM7LL62R7ONMZ3G6WZAAYPB5OYKOMJRN63` (Reflector, external CEXs & DEXs) |
-| `protocol_pubkey` | `03d2f0699b167138988bf8d14a4655a8708066473b4c59ef40ee4ac500564fb70d` |
-| `min_confirmations` | `1` (testnet) |
-| `min_deposit_satoshis` | `5,000` (testnet; 100,000 on mainnet) |
-| `entry_ttl_ledgers` | `691200` (40 days; 180 days on mainnet) |
-| `borrow_timelock_margin_blocks` | `4320` (default and minimum) |
-| `max_tip_age_secs` | `21600` (6 hours, default) |
-| `max_total_borrowed` | 50,000 USDC (default) |
-| `bitcoin-spv` consumer | [`78d3f6c6df…`](https://stellar.expert/explorer/testnet/tx/78d3f6c6df07f5209aacdc221ed9bb1f39f68932f2c57386273162d2164e7453); `CABF7VK7…` and `CDKXFBHU…` stay consumers |
-| Supply | None yet; added at the switch |
 
 ## Storage TTL parameters
 
