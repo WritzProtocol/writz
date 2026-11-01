@@ -8,13 +8,6 @@ export default tseslint.config(
     ignores: [
       "dist/**",
       "node_modules/**",
-      // Auto-generated Soroban TS bindings, copied verbatim from
-      // `stellar contract bindings typescript` output (see the file's own
-      // header comment for the regeneration command). Hand-editing it to
-      // satisfy lint rules would fight every future regeneration and gains
-      // nothing - mirrors frontend/eslint.config.mjs's treatment of its own
-      // generated contract bindings.
-      "src/contracts/writzLend.ts",
     ],
   },
   {

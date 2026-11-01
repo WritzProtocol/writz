@@ -23,7 +23,7 @@ import {
   buildReleaseTransaction,
   pubkeyToP2WPKHAddress,
 } from "@writz/bitcoin-script";
-import { Client as WritzLendClient, type Position } from "../contracts/writzLend.js";
+import { Client as WritzLendClient, type Position } from "writz-lend";
 import { EsploraClient } from "../bitcoin/esplora.js";
 import { parseOutput } from "../bitcoin/tx.js";
 import { bidInclusionFeeOnly } from "../soroban-fee.js";
