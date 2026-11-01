@@ -40,7 +40,7 @@
 <title>writz_lend</title>
 <path fill="#eff6ff" stroke="#2563eb" stroke-width="2.2" d="M595.22,-209.94C595.22,-209.94 250.78,-209.94 250.78,-209.94 244.78,-209.94 238.78,-203.94 238.78,-197.94 238.78,-197.94 238.78,-174.22 238.78,-174.22 238.78,-168.22 244.78,-162.22 250.78,-162.22 250.78,-162.22 595.22,-162.22 595.22,-162.22 601.22,-162.22 607.22,-168.22 607.22,-174.22 607.22,-174.22 607.22,-197.94 607.22,-197.94 607.22,-203.94 601.22,-209.94 595.22,-209.94"/>
 <text xml:space="preserve" text-anchor="start" x="397.5" y="-191.13" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="11.00" fill="#1c1917">writz&#45;lend</text>
-<text xml:space="preserve" text-anchor="start" x="254.62" y="-182.03" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#57534e">CABF7VK7F25ZGDLV… · deposit · supply_usdc · withdraw_supply · borrow · repay</text>
+<text xml:space="preserve" text-anchor="start" x="254.62" y="-182.03" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#57534e">CC7XGEWAUNUHZYKM… · deposit · supply_usdc · withdraw_supply · borrow · repay</text>
 <text xml:space="preserve" text-anchor="start" x="318.75" y="-173.03" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#a8a29e">liquidate · publish_release_psbt · get_release_psbt</text>
 </g>
 <!-- borrower&#45;&gt;writz_lend -->

@@ -26,7 +26,7 @@ SOROBAN_RPC_URL        https://soroban-testnet.stellar.org
 BITCOIN_NETWORK        signet
 RELAYER_URL            https://api.testnet.writz.xyz
 BITCOIN_SPV_ID         CBX23YKCCJMAMBMSCNP6YVKEXUIYK2CTKSR4TQ3RVBPAFYZFVCW7W4EO
-WRITZ_LEND_ID          CABF7VK7F25ZGDLV6EWSAU3NYQYKDQNDSJIISDMDZAUASMSXUADSHZGG
+WRITZ_LEND_ID          CC7XGEWAUNUHZYKM5CED6KQXGFS6UWVI5H6XOB76YTMZRWCEH6DKT62A
 TEST_USDC_SAC          CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA   (USDC:GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5, 7 decimals)
 SPV_CHECKPOINT_HEIGHT  327925   (signet; only later blocks can be proven)
 SOROBAN_SDK            soroban-sdk = "26"
@@ -34,7 +34,7 @@ SOROBAN_SDK            soroban-sdk = "26"
 
 Source of truth for IDs: [`contracts/deployments/testnet.md`](https://github.com/WritzProtocol/writz/blob/main/contracts/deployments/testnet.md), machine-readable in [`contracts/deployments/testnet.json`](https://github.com/WritzProtocol/writz/blob/main/contracts/deployments/testnet.json). The contracts are immutable; a new version gets a new ID there.
 
-Testnet `bitcoin-spv` and `writz-lend` were redeployed on 2026-10-25 because testnet rent rose sharply: testnet's live state is above its target size, and the previous contracts gave every entry they created the long mainnet storage windows, so a deposit was charged about 428 XLM in fees. The new contracts take those windows as deployment parameters and run testnet-length ones (a deposit was charged about 89 XLM, measured 2026-10-25). Positions on the previous contracts were closed and their BTC released; their IDs are recorded as superseded in `contracts/deployments/testnet.md`. Any other `bitcoin-spv` or `writz-lend` ID is superseded; do not use it. How the storage windows work: [Contract reference](/developers/contract-reference) and [Storage and TTL management](/how-it-works/stellar-side#storage-and-ttl-management).
+Testnet `bitcoin-spv` and `writz-lend` were redeployed on 2026-10-25 because testnet rent rose sharply: testnet's live state is above its target size, and the previous contracts gave every entry they created the long mainnet storage windows, so a deposit was charged about 428 XLM in fees. The new contracts take those windows as deployment parameters and run testnet-length ones (a deposit was charged about 89 XLM, measured 2026-10-25). Positions on the previous contracts were closed and their BTC released; their IDs are recorded as superseded in `contracts/deployments/testnet.md`. `writz-lend` was redeployed again on 2026-11-01 so its `supply` and `withdraw` events carry the scaled amount and the supply index (#257); `bitcoin-spv` was not. Any other `bitcoin-spv` or `writz-lend` ID is superseded; do not use it. How the storage windows work: [Contract reference](/developers/contract-reference) and [Storage and TTL management](/how-it-works/stellar-side#storage-and-ttl-management).
 
 ## Packages
 

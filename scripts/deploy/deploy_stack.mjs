@@ -25,6 +25,12 @@
  * Writz v1 alone: bitcoin-spv and writz-lend, with no privacy contracts, keys
  * or KEEPER_BABYJUB_PUBKEY.
  *
+ * --lend-only redeploys writz-lend alone against an existing bitcoin-spv
+ * (SPV_CONTRACT=C...), for a writz-lend change that leaves bitcoin-spv as it
+ * is (#260): steps 4, 6 and 7 for writz-lend only, with no checkpoint inputs.
+ * The deployer must be bitcoin-spv's admin, since step 6 calls set_consumer
+ * on it. The previous writz-lend stays a consumer until its admin removes it.
+ *
  * Without --execute it only validates the inputs and prints the plan; nothing
  * is sent. Do not run it with --execute without the project owner's explicit
  * sign-off for that network. Mainnet also needs CONFIRM_MAINNET=I_HAVE_SIGN_OFF
@@ -44,6 +50,15 @@
  *   CHECKPOINT_HEIGHT=... CHECKPOINT_HASH=... \
  *   CHECKPOINT_BITS=0x... CHECKPOINT_TIME=... CHECKPOINT_PERIOD_START_TIME=... \
  *     node deploy_stack.mjs [--v1-only] [--execute]
+ *
+ *   # writz-lend alone, against the bitcoin-spv already deployed:
+ *   (cd contracts && cargo build --release --target wasm32v1-none --locked -p writz-lend)
+ *   STELLAR_NETWORK=testnet BITCOIN_NETWORK=signet ADMIN_SECRET=S... \
+ *   SPV_CONTRACT=C... RELAYER_ADDRESS=G... KEEPER_ADDRESS=G... USDC_TOKEN=C... \
+ *   ORACLE=C... PROTOCOL_PUBKEY=02... \
+ *     node deploy_stack.mjs --lend-only [--execute]
+ *
+ * After a testnet run, check it read-only with smoke_testnet.mjs.
  *
  * Optional: MIN_CONFIRMATIONS (default 6), MIN_DEPOSIT_SATS (writz-lend,
  * default 100000; testnet runs 1 and 5000), MAX_TOTAL_BORROWED.
@@ -84,7 +99,9 @@ const PRIVACY_WASM_DIR = path.join(ROOT, 'privacy/contracts/target/wasm32v1-none
 const KEYS_DIR = path.join(ROOT, 'privacy/circuits/keys');
 
 const EXECUTE = process.argv.includes('--execute');
-const V1_ONLY = process.argv.includes('--v1-only');
+const LEND_ONLY = process.argv.includes('--lend-only');
+// writz-lend alone is a v1-only run that reuses bitcoin-spv.
+const V1_ONLY = LEND_ONLY || process.argv.includes('--v1-only');
 
 // ── inputs ───────────────────────────────────────────────────────────────────
 const STELLAR = {
@@ -130,7 +147,10 @@ const keeperBabyjub = V1_ONLY ? undefined : env('KEEPER_BABYJUB_PUBKEY', (v) => 
   const point = [babyjub.F.e(BigInt('0x' + v.slice(0, 64))), babyjub.F.e(BigInt('0x' + v.slice(64)))];
   return babyjub.inCurve(point) && babyjub.inSubgroup(point);
 }, 'x||y hex of a BabyJubJub subgroup point (scripts/deploy/keeper_keygen.mjs)');
-const checkpoint = {
+// --lend-only wires writz-lend to this bitcoin-spv instead of deploying one,
+// so it needs no checkpoint.
+const existingSpv = LEND_ONLY ? env('SPV_CONTRACT', isContract, 'C... bitcoin-spv already deployed') : undefined;
+const checkpoint = LEND_ONLY ? undefined : {
   height: toUint(env('CHECKPOINT_HEIGHT', isUint)),
   hash: env('CHECKPOINT_HASH', (v) => /^[0-9a-f]{64}$/i.test(v), 'block hash, display (explorer) byte order'),
   bits: toUint(env('CHECKPOINT_BITS', isUint)),
@@ -167,7 +187,9 @@ if (stellarNetwork === 'mainnet') {
   if (!process.env.MAX_RESOURCE_FEE_XLM?.trim()) errors.push('mainnet needs MAX_RESOURCE_FEE_XLM (the most resource fee, in XLM, to sign for)');
 }
 
-const WASM_DIRS = V1_ONLY
+const WASM_DIRS = LEND_ONLY
+  ? { writz_lend: WASM_DIR }
+  : V1_ONLY
   ? { bitcoin_spv: WASM_DIR, writz_lend: WASM_DIR }
   : { zk_verifier: PRIVACY_WASM_DIR, bitcoin_spv: WASM_DIR, commitment_tree: PRIVACY_WASM_DIR, writz_lend: WASM_DIR };
 const WASMS = Object.keys(WASM_DIRS);
@@ -199,23 +221,29 @@ const powLimitBits = POW_LIMIT_BITS[bitcoinNetwork];
 const sha256 = (b) => crypto.createHash('sha256').update(b).digest('hex');
 
 // ── plan ─────────────────────────────────────────────────────────────────────
-console.log(`Writz coordinated redeploy - ${stellarNetwork} (Bitcoin ${bitcoinNetwork})${V1_ONLY ? ', v1 only' : ''}`);
+console.log(`Writz coordinated redeploy - ${stellarNetwork} (Bitcoin ${bitcoinNetwork})${LEND_ONLY ? ', writz-lend only' : V1_ONLY ? ', v1 only' : ''}`);
 console.log(`  rpc               ${rpcUrl}`);
 console.log(`  admin / deployer  ${admin.publicKey()}`);
-console.log(`  relayer           ${relayer}  (writz-lend relayer${bitcoinNetwork === 'signet' ? ', bitcoin-spv submitter' : ''})`);
+console.log(`  relayer           ${relayer}  (writz-lend relayer${bitcoinNetwork === 'signet' && !LEND_ONLY ? ', bitcoin-spv submitter' : ''})`);
 console.log(`  keeper            ${keeper}`);
 console.log(`  usdc              ${usdc}`);
 console.log(`  oracle            ${oracle}`);
 console.log(`  protocol pubkey   ${protocolPubkey}`);
 if (!V1_ONLY) console.log(`  keeper babyjub    ${keeperBabyjub.slice(0, 16)}…`);
-console.log(`  pow limit bits    0x${powLimitBits.toString(16)}`);
-console.log(`  checkpoint        height ${checkpoint.height}, ${checkpoint.hash}, bits 0x${checkpoint.bits.toString(16)}`);
+if (LEND_ONLY) {
+  console.log(`  bitcoin-spv       ${existingSpv}  (existing, not redeployed)`);
+} else {
+  console.log(`  pow limit bits    0x${powLimitBits.toString(16)}`);
+  console.log(`  checkpoint        height ${checkpoint.height}, ${checkpoint.hash}, bits 0x${checkpoint.bits.toString(16)}`);
+}
 console.log(`  min confirmations ${minConfirmations}`);
 console.log(`  min deposit       ${minDepositSats} sats (writz-lend)`);
 const days = (l) => `${l} ledgers (${(l / DAY).toFixed(1)} days)`;
 console.log(`  entry ttl         ${days(entryTtl)} (writz-lend positions, supply balances, release PSBTs)`);
-console.log(`  header ttl        ${days(headerTtl)} (bitcoin-spv)`);
-console.log(`  consumed ttl      ${days(consumedTtl)} (bitcoin-spv)`);
+if (!LEND_ONLY) {
+  console.log(`  header ttl        ${days(headerTtl)} (bitcoin-spv)`);
+  console.log(`  consumed ttl      ${days(consumedTtl)} (bitcoin-spv)`);
+}
 console.log(`  exposure cap      ${maxTotalBorrowed === undefined ? 'contract default (50,000 USDC per lender)' : `${maxTotalBorrowed} stroops per lender`}`);
 console.log('  wasm sha256');
 for (const name of WASMS) console.log(`    ${name.padEnd(16)} ${sha256(wasm[name])}`);
@@ -278,22 +306,27 @@ if (!V1_ONLY) {
   console.log(`   ${out.zkVerifier}`);
 }
 
-console.log(`${V1_ONLY ? '\n' : ''}2. bitcoin-spv`);
-out.bitcoinSpv = await deployWithConstructor({
-  ...deployer, wasm: wasm.bitcoin_spv, constructorArgs: [addr(admin.publicKey()), u32(powLimitBits), u32(headerTtl), u32(consumedTtl)],
-});
-console.log(`   ${out.bitcoinSpv}`);
-// The contract stores block hashes in internal byte order; explorers show them reversed.
-out.txs.setCheckpoint = await invoke(out.bitcoinSpv, 'set_checkpoint', [
-  addr(admin.publicKey()), u32(checkpoint.height), bytes(Buffer.from(checkpoint.hash, 'hex').reverse()),
-  u32(checkpoint.bits), u32(checkpoint.time), u32(checkpoint.periodStartTime),
-]);
-console.log(`   checkpoint set at ${checkpoint.height}`);
-if (bitcoinNetwork === 'signet') {
-  // Signet blocks are authenticated by a signature bitcoin-spv does not verify;
-  // only the relayer may submit headers there.
-  out.txs.setSubmitter = await invoke(out.bitcoinSpv, 'set_submitter', [addr(admin.publicKey()), addr(relayer)]);
-  console.log(`   header submitter restricted to ${relayer}`);
+if (LEND_ONLY) {
+  out.bitcoinSpv = existingSpv;
+  console.log(`\n2. bitcoin-spv: reusing ${existingSpv}`);
+} else {
+  console.log(`${V1_ONLY ? '\n' : ''}2. bitcoin-spv`);
+  out.bitcoinSpv = await deployWithConstructor({
+    ...deployer, wasm: wasm.bitcoin_spv, constructorArgs: [addr(admin.publicKey()), u32(powLimitBits), u32(headerTtl), u32(consumedTtl)],
+  });
+  console.log(`   ${out.bitcoinSpv}`);
+  // The contract stores block hashes in internal byte order; explorers show them reversed.
+  out.txs.setCheckpoint = await invoke(out.bitcoinSpv, 'set_checkpoint', [
+    addr(admin.publicKey()), u32(checkpoint.height), bytes(Buffer.from(checkpoint.hash, 'hex').reverse()),
+    u32(checkpoint.bits), u32(checkpoint.time), u32(checkpoint.periodStartTime),
+  ]);
+  console.log(`   checkpoint set at ${checkpoint.height}`);
+  if (bitcoinNetwork === 'signet') {
+    // Signet blocks are authenticated by a signature bitcoin-spv does not verify;
+    // only the relayer may submit headers there.
+    out.txs.setSubmitter = await invoke(out.bitcoinSpv, 'set_submitter', [addr(admin.publicKey()), addr(relayer)]);
+    console.log(`   header submitter restricted to ${relayer}`);
+  }
 }
 
 const protocolKey = Buffer.from(protocolPubkey, 'hex');
@@ -365,5 +398,5 @@ console.log('\nrelayer/.env');
 if (!V1_ONLY) console.log(`COMMITMENT_TREE_ID=${out.commitmentTree}`);
 console.log(`WRITZ_LEND_ID=${out.writzLend}`);
 console.log(`BITCOIN_SPV_ID=${out.bitcoinSpv}`);
-console.log(`SPV_SYNC_FROM_HEIGHT=${checkpoint.height}`);
+if (!LEND_ONLY) console.log(`SPV_SYNC_FROM_HEIGHT=${checkpoint.height}`);
 console.log('\nNext: put the admin account behind the multisig, then record the addresses in contracts/deployments/.');

@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "deploy-stack": "bun run deploy_stack.mjs",
+    "smoke-testnet": "bun run smoke_testnet.mjs",
     "set-vkeys": "bun run set_vkeys.js",
     "extend-ttl": "bun run extend_ttl.mjs",
     "deploy-defindex-vault": "bun run deploy_defindex_vault.mjs",
