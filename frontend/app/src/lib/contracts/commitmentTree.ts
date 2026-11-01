@@ -1,3 +1,4 @@
+import { Buffer } from "buffer";
 import { Client } from "@/lib/contracts/generated";
 import { config, requireContract } from "@/config";
 
@@ -44,5 +45,14 @@ export async function getPoolState(): Promise<PoolState> {
 /** A lender's supplied balance (stroops) from `get_supply_balance`. */
 export async function getSupplyBalance(lender: string): Promise<bigint> {
   const { result } = await getClient().get_supply_balance({ lender });
+  return result;
+}
+
+/**
+ * True while a deposit's commitment waits for the relayer to insert it into
+ * the tree (`is_commitment_pending`); false once inserted.
+ */
+export async function isCommitmentPending(commitmentHex: string): Promise<boolean> {
+  const { result } = await getClient().is_commitment_pending({ commitment: Buffer.from(commitmentHex, "hex") });
   return result;
 }
