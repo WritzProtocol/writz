@@ -24,6 +24,7 @@ jobs:
       e2e: ${{ steps.filter.outputs.e2e }}
       sdk: ${{ steps.filter.outputs.sdk }}
       examples: ${{ steps.filter.outputs.examples }}
+      bindings: ${{ steps.filter.outputs.bindings }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -35,6 +36,7 @@ jobs:
               - '.github/workflows/ci.yml'
             relayer:
               - 'relayer/**'
+              - 'packages/writz-lend/**'
               - 'privacy/packages/commitment-tree/**'
               - 'bitcoin-script/**'
               - 'Dockerfile'
@@ -71,6 +73,11 @@ jobs:
             examples:
               - 'examples/**'
               - 'contracts/contracts/spv-types/**'
+              - '.github/workflows/ci.yml'
+            bindings:
+              - 'contracts/**'
+              - 'packages/writz-lend/**'
+              - 'scripts/writz-lend-bindings.sh'
               - '.github/workflows/ci.yml'
 
   # Cheap, dependency-free (only Node builtins), so it always runs rather
@@ -157,6 +164,8 @@ jobs:
             ${{ runner.os }}-bun-
       - run: bun install --frozen-lockfile
         working-directory: privacy/packages/commitment-tree
+      - run: bun install --frozen-lockfile
+        working-directory: packages/writz-lend
       # relayer's repay-watcher depends on the local
       # @writz/bitcoin-script package's built dist/ output (its `main`
       # field points there) - build it before relayer's own install/test.
@@ -317,6 +326,34 @@ jobs:
       # fails CI. Drop an entry here once its backlog is cleaned up.
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings -A clippy::bool-assert-comparison -A clippy::doc-overindented-list-items -A clippy::empty-line-after-doc-comments -A clippy::manual-is-multiple-of -A clippy::manual-repeat-n -A clippy::needless-borrows-for-generic-args -A clippy::too-many-arguments -A clippy::unnecessary-cast
       - run: cargo test --workspace --locked
+
+  # packages/writz-lend/src/index.ts (the relayer's) and the app's
+  # writzLendGenerated.ts are generated from the contract (#259). Rebuild the
+  # wasm, regenerate with the pinned CLI and fail on any diff in either, so
+  # the bindings cannot drift from the contract. The CLI version must match STELLAR_CLI_VERSION in the script.
+  writz-lend-bindings:
+    name: writz-lend bindings (regenerate + diff)
+    needs: changes
+    if: needs.changes.outputs.bindings == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32v1-none
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: contracts
+      - name: Install stellar-cli 28.1.0
+        run: |
+          curl -fL -o /tmp/stellar-cli.tar.gz \
+            https://github.com/stellar/stellar-cli/releases/download/v28.1.0/stellar-cli-28.1.0-x86_64-unknown-linux-gnu.tar.gz
+          echo "c1680deee94301d33ada7a17f98411e642a4248c727afbd2e43050d345746462  /tmp/stellar-cli.tar.gz" | sha256sum -c -
+          mkdir -p "$HOME/.local/bin"
+          tar -xzf /tmp/stellar-cli.tar.gz -C "$HOME/.local/bin"
+          "$HOME/.local/bin/stellar" --version
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - run: scripts/writz-lend-bindings.sh --check
 
   # The privacy edition (in progress, testnet only) is its own Cargo
   # workspace, so v1 above builds and tests without it.
@@ -610,6 +647,7 @@ jobs:
       - e2e-local
       - sdk
       - examples
+      - writz-lend-bindings
     runs-on: ubuntu-latest
     steps:
       - name: Fail if any non-skipped job failed

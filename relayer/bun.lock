@@ -14,6 +14,7 @@
         "poseidon-lite": "^0.3.0",
         "snarkjs": "0.7.6",
         "viem": "2.56.9",
+        "writz-lend": "file:../packages/writz-lend",
       },
       "devDependencies": {
         "@eslint/js": "^9",
@@ -1180,6 +1181,8 @@
     "wrappy": ["wrappy@1.0.2", "", {}, "sha512-l4Sp/DRseor9wL6EvV2+TuQn63dMkPjZ/sp9XkghTEbV9KlPS1xUsZ3u7/IQO4wxtcFB4bgpQPRcR3QCvezPcQ=="],
 
     "write-file-atomic": ["write-file-atomic@4.0.2", "", { "dependencies": { "imurmurhash": "^0.1.4", "signal-exit": "^3.0.7" } }, "sha512-7KxauUdBmSdWnmpaGFg+ppNjKF8uNLry8LyzjauQDOVONfFLNKrKvQOxZ/VuTIcS/gge/YNahf5RIIQWTSarlg=="],
+
+    "writz-lend": ["writz-lend@file:../packages/writz-lend", { "dependencies": { "@stellar/stellar-sdk": "^16.4.1", "buffer": "6.0.3" }, "devDependencies": { "typescript": "^5.6.2" } }],
 
     "ws": ["ws@8.21.0", "", { "peerDependencies": { "bufferutil": "^4.0.1", "utf-8-validate": ">=5.0.2" }, "optionalPeers": ["bufferutil", "utf-8-validate"] }, "sha512-Vsp28b7DRcimFQvrqu2Wek3z1iYxDCWqHYB8Qsnk/S4RfaCQzPGPyBNuVjJV3cd6UiKtUtp6sNM77gWvzcCH+g=="],
 

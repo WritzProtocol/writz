@@ -25,7 +25,8 @@
     "express-rate-limit": "^8.7.0",
     "poseidon-lite": "^0.3.0",
     "snarkjs": "0.7.6",
-    "viem": "2.56.9"
+    "viem": "2.56.9",
+    "writz-lend": "file:../packages/writz-lend"
   },
   "devDependencies": {
     "@eslint/js": "^9",
