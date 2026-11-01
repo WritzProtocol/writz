@@ -79,6 +79,33 @@ Built at `49e4a4e` (#356: borrow timelock margin against the `bitcoin-spv` tip, 
 
 Checked on chain after the deploy: the stored `Config` matches the table, `get_borrow_timelock_margin` returns 4,320 and `get_max_tip_age` 21,600, and a simulated `borrow` on an unknown txid fails with `PositionNotFound` (#8). The instance and the wasm live for the network minimum (about 7 days) until they are extended at the switch.
 
+## `writz-lend` redeploy (2026-11-01, deployed, not yet active)
+
+Deployed, not yet active: carries #257 (`supply` and `withdraw` events with `scaled_amount`, `supply_index` and `total_supply_assets`) on top of #356, so it is the deployment to switch to; `CDKXFBHU…` above has #356 but not #257. Until the switch the app, the relayer, `testnet.json` and the `@writz/sdk` preset stay on `CABF7VK7…SHZGG`. This section is placed below the current one on purpose, so `scripts/sync-deployments.mjs` keeps reading `CABF7VK7…` as current; at the switch, the current `writz-lend` section is marked superseded and this one moves to the top.
+
+Built at `9d9114e` (#370) with `cargo build --release --target wasm32v1-none --locked -p writz-lend`, deployed with `scripts/deploy/deploy_stack.mjs --lend-only` (#372) against the existing `bitcoin-spv`. Same constructor arguments as `CDKXFBHU…`; `bitcoin-spv` is unchanged. Charged 5.21 XLM in total (upload 5.07, deploy 0.12, consumer registration 0.02).
+
+| Field | Value |
+|---|---|
+| **Contract ID** | `CC7XGEWAUNUHZYKM5CED6KQXGFS6UWVI5H6XOB76YTMZRWCEH6DKT62A` |
+| wasm sha256 | `cb6f8741c78ca80f62a0096d0f0368de75ed7c5f3835e23155998452d754ee4d` (90,961 bytes) |
+| Upload tx | [`52a0d95387…`](https://stellar.expert/explorer/testnet/tx/52a0d95387ae6b2f8e0914cc51514a8843dc05811b4fc6da9b818ce67551d421) |
+| Deploy tx | [`f53c8f5678…`](https://stellar.expert/explorer/testnet/tx/f53c8f5678cbf8dc1380f813352210fe265f9e07ad068712e6654d5a54888a10) |
+| `admin`, `keeper` | `writz-deployer` |
+| `relayer` | `GCNBKRZO5T24SF7EPLVUABSFO76TFWXJBIHKL4TH6ZAX7IJOFRQ5GWN4` |
+| `spv_contract` | `CBX23YKCCJMAMBMSCNP6YVKEXUIYK2CTKSR4TQ3RVBPAFYZFVCW7W4EO` |
+| `usdc_token` | `CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA` |
+| `oracle` | `CCYOZJCOPG34LLQQ7N24YXBM7LL62R7ONMZ3G6WZAAYPB5OYKOMJRN63` (Reflector, external CEXs & DEXs) |
+| `protocol_pubkey` | `03d2f0699b167138988bf8d14a4655a8708066473b4c59ef40ee4ac500564fb70d` |
+| `min_confirmations` | `1` (testnet) |
+| `min_deposit_satoshis` | `5,000` (testnet; 100,000 on mainnet) |
+| `entry_ttl_ledgers` | `691200` (40 days; 180 days on mainnet) |
+| `borrow_timelock_margin_blocks` | `4320` (default and minimum) |
+| `max_tip_age_secs` | `21600` (6 hours, default) |
+| `max_total_borrowed` | 50,000 USDC (default) |
+| `bitcoin-spv` consumer | [`78d3f6c6df…`](https://stellar.expert/explorer/testnet/tx/78d3f6c6df07f5209aacdc221ed9bb1f39f68932f2c57386273162d2164e7453); `CABF7VK7…` and `CDKXFBHU…` stay consumers |
+| Supply | None yet; added at the switch |
+
 ## Storage TTL parameters
 
 From the 2026-10-25 redeploy of both contracts, the storage windows of entries created per use are constructor parameters, in ledgers (17,280 a day). The transaction that creates an entry pays rent for its whole window, and testnet's live state is above its target size, so rent is priced far above mainnet's: with the windows below, a deposit declares about 118 XLM of resource fee instead of about 566 XLM, a release PSBT about 73 XLM instead of about 329, and each header the relayer submits about 17 XLM instead of about 224 (measured 2026-10-25 on throwaway instances; the rate keeps moving).
