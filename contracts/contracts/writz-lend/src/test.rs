@@ -2673,3 +2673,70 @@ fn summing_scaled_amounts_from_events_rebuilds_every_stored_balance() {
     assert_eq!(from_events[1], stored_scaled(&s, &other));
     assert_eq!(from_events[0] + from_events[1], s.client.get_protocol_state().total_scaled_supply);
 }
+
+// ── Views projected to the current ledger (#256) ──────────────────────────────
+
+/// 265.4 USDC supplied, 199 borrowed (75% utilization), at ledger 1,000.
+fn pool_with_debt() -> (Setup, BytesN<32>) {
+    let s = setup();
+    let txid = setup_with_supply_and_deposit(&s, 2_654_000_000_i128);
+    s.client.borrow(&s.depositor, &txid, &1_990_000_000_i128);
+    (s, txid)
+}
+
+#[test]
+fn the_supply_balance_grows_between_writes_while_anything_is_borrowed() {
+    let (s, _) = pool_with_debt();
+    let stored_at = s.client.get_protocol_state().index_ledger;
+
+    let mut last = s.client.get_supply_balance(&s.supplier);
+    for step in [1_u32, 10, 1_000, 100_000, YEAR] {
+        s.env.ledger().set_sequence_number(stored_at + step);
+        let now = s.client.get_supply_balance(&s.supplier);
+        assert!(now > last, "balance {now} did not grow past {last} at +{step} ledgers");
+        last = now;
+    }
+    // Nothing was written: the stored state still dates from the borrow.
+    assert_eq!(s.client.get_protocol_state().index_ledger, stored_at);
+}
+
+#[test]
+fn the_supply_balance_stays_flat_with_nothing_borrowed() {
+    let s = setup();
+    s.client.supply_usdc(&s.supplier, &1_000_000_000_i128);
+    let before = s.client.get_supply_balance(&s.supplier);
+    s.env.ledger().set_sequence_number(1_000 + YEAR);
+    assert_eq!(s.client.get_supply_balance(&s.supplier), before);
+}
+
+#[test]
+fn the_projected_balance_equals_what_the_next_write_computes_in_the_same_ledger() {
+    let (s, _) = pool_with_debt();
+    s.env.ledger().set_sequence_number(1_000 + YEAR / 3);
+    let viewed = s.client.get_supply_balance(&s.supplier);
+
+    // Any write accrues: another lender supplying in the same ledger.
+    let other = Address::generate(&s.env);
+    StellarAssetClient::new(&s.env, &s.usdc).mint(&other, &1_000_000_i128);
+    s.client.supply_usdc(&other, &1_000_000_i128);
+
+    let p = s.client.get_protocol_state();
+    assert_eq!(p.index_ledger, 1_000 + YEAR / 3);
+    assert_eq!(viewed, stored_scaled(&s, &s.supplier) * p.supply_index / crate::rates::INDEX_ONE);
+    assert_eq!(s.client.get_supply_balance(&s.supplier), viewed);
+}
+
+#[test]
+fn the_rates_are_read_on_projected_totals() {
+    let (s, _) = pool_with_debt();
+    let ledger = 1_000 + YEAR;
+    s.env.ledger().set_sequence_number(ledger);
+
+    let stored = s.client.get_protocol_state();
+    let (_, supply_index, total_borrowed, _) = crate::rates::project(&stored, ledger);
+    let assets = crate::rates::total_supply_assets(&stored, supply_index);
+    let borrow = crate::rates::borrow_rate_bp(total_borrowed, assets);
+    assert_eq!(s.client.get_borrow_rate_bp(), borrow);
+    assert_eq!(s.client.get_supply_rate_bp(), crate::rates::supply_rate_bp(borrow, total_borrowed, assets));
+    assert!(s.client.get_supply_rate_bp() > 0);
+}
