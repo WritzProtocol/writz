@@ -330,7 +330,8 @@ jobs:
   # packages/writz-lend/src/index.ts (the relayer's) and the app's
   # writzLendGenerated.ts are generated from the contract (#259). Rebuild the
   # wasm, regenerate with the pinned CLI and fail on any diff in either, so
-  # the bindings cannot drift from the contract. The CLI version must match STELLAR_CLI_VERSION in the script.
+  # the bindings cannot drift from the contract. The CLI version must match
+  # STELLAR_CLI_VERSION in the script.
   writz-lend-bindings:
     name: writz-lend bindings (regenerate + diff)
     needs: changes

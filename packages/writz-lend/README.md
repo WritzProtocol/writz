@@ -14,8 +14,8 @@ dependency as per-file symlinks, and Turbopack cannot resolve a package whose
 regenerate.
 
 ```bash
-scripts/writz-lend-bindings.sh           # rebuild the wasm and rewrite src/index.ts
-scripts/writz-lend-bindings.sh --check   # fail if src/index.ts is out of date
+scripts/writz-lend-bindings.sh           # rebuild the wasm and rewrite both files
+scripts/writz-lend-bindings.sh --check   # fail if either file is out of date
 ```
 
 The script runs, with stellar-cli 28.1.0:
@@ -27,8 +27,8 @@ stellar contract bindings typescript \
   --output-dir <tmp>/writz-lend --overwrite
 ```
 
-and copies `<tmp>/writz-lend/src/index.ts` to both places. CI runs the `--check` form, so
-a contract change that is not regenerated fails the build.
+and copies `<tmp>/writz-lend/src/index.ts` to both places. CI runs the
+`--check` form, so a contract change that is not regenerated fails the build.
 
 Like `privacy/packages/commitment-tree`, the package has its own dependencies:
 run `bun install --frozen-lockfile` here before installing the relayer.
