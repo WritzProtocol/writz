@@ -63,16 +63,15 @@ stellar contract bindings typescript \
   --output-dir packages/<name> --overwrite
 ```
 
-The `writz-lend` client (`src/lib/contracts/writzLendGenerated.ts`) is
-generated from the contract built in this repository, so it matches the code
-rather than a deployment:
+The `writz-lend` client (`src/lib/contracts/writzLendGenerated.ts`) is a
+byte-identical copy of the relayer's `packages/writz-lend` package, kept here
+because Turbopack cannot resolve a bun `file:` dependency. Both are generated
+from the contract built in this repository, so they match the code rather than
+a deployment, and CI fails if either is stale. Regenerate after a contract
+change, from the repo root:
 
 ```bash
-(cd ../../contracts && cargo build --release --target wasm32v1-none --locked -p writz-lend)
-stellar contract bindings typescript \
-  --wasm ../../contracts/target/wasm32v1-none/release/writz_lend.wasm \
-  --output-dir /tmp/writz-lend --overwrite
-cp /tmp/writz-lend/src/index.ts src/lib/contracts/writzLendGenerated.ts
+scripts/writz-lend-bindings.sh
 ```
 
 The app consumes them as `file:` dependencies (e.g. `commitment-tree`). Next

@@ -83,7 +83,8 @@ output, so build those first.
 ```bash
 cd privacy/packages/commitment-tree && bun install
 cd ../../../bitcoin-script && bun run build
-cd ../relayer && bun install && bun run test
+cd ../packages/writz-lend && bun install
+cd ../../relayer && bun install && bun run test
 ```
 
 Expected output: 248 tests pass.

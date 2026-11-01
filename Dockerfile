@@ -26,6 +26,13 @@ RUN cd /privacy/packages/commitment-tree && bun install
 COPY bitcoin-script/ /bitcoin-script/
 RUN cd /bitcoin-script && bun install --frozen-lockfile && bun run build
 
+# The package.json references writz-lend as file:../packages/writz-lend,
+# the writz-lend bindings generated from the contract (#259). Bun resolves it
+# to that folder at runtime, so, like commitment-tree, it needs its own
+# dependencies installed there.
+COPY packages/writz-lend/ /packages/writz-lend/
+RUN cd /packages/writz-lend && bun install --frozen-lockfile
+
 # Relayer
 COPY relayer/package.json relayer/bun.lock ./
 RUN bun install --frozen-lockfile

@@ -279,7 +279,8 @@ cd bitcoin-script && bun install && bun test
 #    via their built dist/ output, so build those first.
 cd ../privacy/packages/commitment-tree && bun install
 cd ../../../bitcoin-script && bun run build
-cd ../relayer && bun install && bun run test
+cd ../packages/writz-lend && bun install
+cd ../../relayer && bun install && bun run test
 
 # 4. Privacy edition ZK circuits - 52 tests (npm + Jest; needs circom on PATH)
 cd ../privacy/circuits && npm install && npm test

@@ -32,7 +32,8 @@ cd contracts && cargo fetch
 cd ../privacy/contracts && cargo fetch
 cd ../../bitcoin-script && bun install && bun run build
 cd ../privacy/packages/commitment-tree && bun install
-cd ../../../relayer && bun install
+cd ../../../packages/writz-lend && bun install
+cd ../../relayer && bun install
 cd ../privacy/circuits && npm install
 ```
 
