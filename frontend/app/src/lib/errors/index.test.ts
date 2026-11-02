@@ -64,7 +64,7 @@ describe("contract codes route through the deployed variant", () => {
   it("maps #13 to the withdraw-limit message with the caller's balance on the Lend tab", () => {
     const e = describeError(code(13), { flow: "withdraw", ownBalanceUsdc: "250" });
     expect(e.contract).toEqual({ contract: "writz-lend", code: 13, variant: "InsufficientSupply" });
-    expect(text(e)).toBe("You supplied 250 USDC. No USDC moved. Enter that or less.");
+    expect(text(e)).toBe("Your balance is 250 USDC. No USDC moved. Enter that or less.");
   });
 
   it("words InsufficientLiquidity for borrowing and for withdrawing", () => {

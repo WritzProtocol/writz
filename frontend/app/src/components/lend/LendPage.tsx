@@ -20,7 +20,7 @@ function Skeleton() {
   return (
     <FundsSkeleton
       title="Lend USDC"
-      lede="Supply USDC to the pool borrowers draw from. You can withdraw what you supplied."
+      lede="Supply USDC to the lending pool and earn interest from borrowers. The rate moves with how much of the pool is borrowed. Stellar testnet, test USDC."
       wallet={{
         hero: { label: "Your balance", value: "2,500.00", unit: "USDC" },
         tiles: [

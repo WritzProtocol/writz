@@ -629,7 +629,7 @@ export function LendCard({ supplied }: { supplied: bigint }) {
       <p className="hm-big mono">
         {formatUsdc(supplied)} <span>USDC</span>
       </p>
-      <p className="wz-hint">You supplied {formatUsdc(supplied)} USDC to the borrow pool.</p>
+      <p className="wz-hint">Your balance in the lending pool, interest included.</p>
       <div className="wz-actions">
         <Link href="/lend" className="wz-btn wz-btn-line wz-btn-sm">
           Go to Lend

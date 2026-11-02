@@ -9,7 +9,7 @@ import { LENDING_DOCS_URL } from "@/lib/links";
 import { Enter } from "@/components/ui/entrance";
 import { FundsCard, NotConnected } from "@/components/funds/FundsCard";
 import { Hero, RiskNotes, Tile, Tiles } from "@/components/funds/parts";
-import { balanceDecimals, formatApr, poolSupplyRate, type LendModel } from "./model";
+import { balanceCaption, balanceDecimals, formatApr, poolSupplyRate, type LendModel } from "./model";
 
 const STELLAR = networkName(config.networkPassphrase);
 
@@ -34,7 +34,7 @@ function SupplyRate({ pool }: { pool: LendModel["pool"] }) {
           </>
         )}
       </dd>
-      <dd className="fu-caption">APR. Moves with how much of the pool is borrowed.</dd>
+      <dd className="fu-caption">Variable APR.</dd>
     </div>
   );
 }
@@ -48,7 +48,7 @@ export function LendView({ m }: { m: LendModel }) {
     <div className="fu-page">
       <Enter as="header" name="head">
         <h1 className="fu-h1">Lend USDC</h1>
-        <p className="fu-lede">Supply USDC to the pool borrowers draw from. You can withdraw what you supplied.</p>
+        <p className="fu-lede">Supply USDC to the lending pool and earn interest from borrowers. The rate moves with how much of the pool is borrowed. Stellar testnet, test USDC.</p>
       </Enter>
 
       {m.stale ? (
@@ -76,7 +76,7 @@ export function LendView({ m }: { m: LendModel }) {
                 value={m.balance}
                 unit="USDC"
                 decimals={m.balance.kind === "ok" && m.balance.value > 0n ? balanceDecimals(m.pool) : 2}
-                caption={m.supplied.kind === "ok" && m.supplied.value === 0n ? "You haven't supplied any USDC." : undefined}
+                caption={balanceCaption(m.supplied, m.pool)}
               />
               <Tiles>
                 <SupplyRate pool={m.pool} />
