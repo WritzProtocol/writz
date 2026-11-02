@@ -23,7 +23,7 @@ use soroban_sdk::{
 use spv_types::{btc_parser, key_proof, script, BestTip, HeaderEntry, SpvVerificationResult};
 use storage::{get_config, get_position, get_protocol, get_release_psbt, get_supply_balance,
                set_config, set_position, set_protocol, set_release_psbt, set_supply_balance};
-use types::{Config, Position, PositionStatus, ProtocolState};
+use types::{Config, PoolTotals, Position, PositionStatus, ProtocolState, SupplyPosition};
 
 /// Highest `min_confirmations` the constructor accepts (the relayer serves
 /// SPV proofs for 1 to 20 confirmations).
@@ -965,28 +965,66 @@ impl WritzLendContract {
             .max_tip_age_secs)
     }
 
-    /// Current annual borrow rate in basis points (e.g. 800 = 8%).
+    /// Annual borrow rate in basis points (e.g. 800 = 8%), on the pool totals
+    /// projected to the current ledger.
     pub fn get_borrow_rate_bp(env: Env) -> i128 {
-        let proto = get_protocol(&env);
+        let proto = projected(&env);
         borrow_rate_bp(proto.total_borrowed, total_supply_assets(&proto, proto.supply_index))
     }
 
-    /// Current annual supply rate in basis points.
+    /// Annual supply rate in basis points, on the pool totals projected to
+    /// the current ledger.
     pub fn get_supply_rate_bp(env: Env) -> i128 {
-        let proto = get_protocol(&env);
-        let borrow = borrow_rate_bp(proto.total_borrowed, total_supply_assets(&proto, proto.supply_index));
-        supply_rate_bp(borrow, proto.total_borrowed, total_supply_assets(&proto, proto.supply_index))
+        let proto = projected(&env);
+        let assets = total_supply_assets(&proto, proto.supply_index);
+        supply_rate_bp(borrow_rate_bp(proto.total_borrowed, assets), proto.total_borrowed, assets)
     }
 
-    /// Returns a snapshot of the global protocol state.
+    /// The protocol state exactly as stored, as of the last write: its indexes
+    /// and totals do not include interest accrued since `index_ledger`. For
+    /// current values use the projected views (`get_pool_totals`,
+    /// `get_supply_index`, `get_borrow_index`, `get_supply_balance`).
     pub fn get_protocol_state(env: Env) -> ProtocolState {
         get_protocol(&env)
     }
 
-    /// Returns the USDC supply balance (in stroops) for a lender.
+    /// A lender's current USDC value in stroops, interest included:
+    /// `floor(scaled * supply_index / 1e18)` at the supply index projected to
+    /// the current ledger, so it grows between writes while anything is
+    /// borrowed.
     pub fn get_supply_balance(env: Env, lender: Address) -> i128 {
-        let proto = get_protocol(&env);
-        get_supply_balance(&env, &lender, storage::entry_ttl(&env)).saturating_mul(proto.supply_index) / rates::INDEX_ONE
+        let proto = projected(&env);
+        storage::peek_supply_balance(&env, &lender).saturating_mul(proto.supply_index) / rates::INDEX_ONE
+    }
+
+    /// A lender's scaled units as stored, and their current value in USDC
+    /// stroops at the supply index projected to the current ledger.
+    pub fn get_supply_position(env: Env, lender: Address) -> SupplyPosition {
+        let proto = projected(&env);
+        let scaled = storage::peek_supply_balance(&env, &lender);
+        SupplyPosition { scaled, value: scaled.saturating_mul(proto.supply_index) / rates::INDEX_ONE }
+    }
+
+    /// The supply index projected to the current ledger, scaled by 1e18.
+    pub fn get_supply_index(env: Env) -> i128 {
+        projected(&env).supply_index
+    }
+
+    /// The borrow index projected to the current ledger, scaled by 1e18.
+    pub fn get_borrow_index(env: Env) -> i128 {
+        projected(&env).borrow_index
+    }
+
+    /// Pool totals projected to the current ledger, in USDC stroops.
+    pub fn get_pool_totals(env: Env) -> PoolTotals {
+        let proto = projected(&env);
+        let assets = total_supply_assets(&proto, proto.supply_index);
+        PoolTotals {
+            total_supply_assets: assets,
+            total_borrowed: proto.total_borrowed,
+            reserve_usdc: proto.reserve_usdc,
+            available: assets.saturating_sub(proto.total_borrowed).max(0),
+        }
     }
 
     // ── TTL refresh (permissionless) ──────────────────────────────────────────
@@ -1059,6 +1097,14 @@ fn fresh_tip_height(env: &Env, config: &Config) -> Result<u32, WritzLendError> {
 /// True when the timelock height lies at least `blocks` above the tip.
 fn timelock_clears(timelock_height: u32, tip_height: u32, blocks: u32) -> bool {
     timelock_height as u64 >= tip_height as u64 + blocks as u64
+}
+
+/// The stored protocol state with interest accrued to the current ledger, as
+/// the next write would compute it. Nothing is written: views use this.
+fn projected(env: &Env) -> ProtocolState {
+    let mut proto = get_protocol(env);
+    accrue_global(env, &mut proto);
+    proto
 }
 
 /// Brings the global borrow index up to date, charging interest on all

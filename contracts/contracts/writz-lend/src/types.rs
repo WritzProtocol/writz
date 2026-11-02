@@ -88,6 +88,33 @@ pub struct ProtocolState {
     pub index_ledger: u32,
 }
 
+/// A lender's supply, projected to the current ledger (`get_supply_position`).
+#[contracttype]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SupplyPosition {
+    /// Scaled units the lender holds, as stored. Unchanged by interest.
+    pub scaled: i128,
+    /// Their current value in USDC stroops:
+    /// `floor(scaled * supply_index / 1e18)` at the projected index.
+    pub value: i128,
+}
+
+/// Pool totals projected to the current ledger (`get_pool_totals`), all in
+/// USDC stroops.
+#[contracttype]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PoolTotals {
+    /// USDC the lenders hold claim to, principal plus interest.
+    pub total_supply_assets: i128,
+    /// Outstanding debt, interest included.
+    pub total_borrowed: i128,
+    /// The protocol's share of the interest.
+    pub reserve_usdc: i128,
+    /// Liquidity a lender could withdraw or a borrower draw now:
+    /// `total_supply_assets - total_borrowed`, never below zero.
+    pub available: i128,
+}
+
 /// Protocol configuration, set at initialization. Most fields are fixed for
 /// the contract's lifetime; `keeper`, `relayer`, `keeper_stale_after_secs`,
 /// `borrow_timelock_margin_blocks`, `max_tip_age_secs` and `paused` are

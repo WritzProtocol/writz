@@ -197,6 +197,12 @@ pub fn get_supply_balance(env: &Env, lender: &Address, ttl: u32) -> i128 {
     }
 }
 
+/// A lender's scaled balance for a view: one read, and no TTL extension, so
+/// it needs neither the config nor a write.
+pub fn peek_supply_balance(env: &Env, lender: &Address) -> i128 {
+    env.storage().persistent().get::<_, i128>(&DataKey::SupplyBalance(lender.clone())).unwrap_or(0)
+}
+
 pub fn set_supply_balance(env: &Env, lender: &Address, balance: i128, ttl: u32) {
     let key = DataKey::SupplyBalance(lender.clone());
     env.storage().persistent().set(&key, &balance);
