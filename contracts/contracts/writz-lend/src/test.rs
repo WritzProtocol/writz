@@ -19,6 +19,7 @@ use crate::{
 // ── Mock SPV contract ─────────────────────────────────────────────────────────
 // Returns the SHA256d of the raw_tx as the txid (mirroring the real contract),
 // using a fixed fake value so tests don't need real Bitcoin transactions.
+// `set_txid` changes that value, for tests that need several positions.
 
 #[contract]
 struct MockSpv;
@@ -34,12 +35,22 @@ impl MockSpv {
         min_confirmations: u32,
     ) -> SpvVerificationResult {
         env.storage().instance().set(&symbol_short!("min_conf"), &min_confirmations);
+        let txid = env
+            .storage()
+            .instance()
+            .get(&symbol_short!("txid"))
+            .unwrap_or(BytesN::from_array(&env, &[0xdeu8; 32]));
         SpvVerificationResult {
-            txid: BytesN::from_array(&env, &[0xdeu8; 32]),
+            txid,
             block_hash: BytesN::from_array(&env, &[0xadu8; 32]),
             block_height: 2_900_000,
             confirmations: 6,
         }
+    }
+
+    /// The txid the next `verify_transaction` calls return.
+    pub fn set_txid(env: Env, txid: BytesN<32>) {
+        env.storage().instance().set(&symbol_short!("txid"), &txid);
     }
 
     /// The `min_confirmations` the last `verify_transaction` call asked for.
@@ -427,6 +438,16 @@ fn initialize_sets_config() {
 }
 
 // ── deposit ───────────────────────────────────────────────────────────────────
+
+/// A deposit whose SPV proof yields `txid`, so one test can hold several positions.
+fn deposit_as(s: &Setup, txid: &BytesN<32>) -> BytesN<32> {
+    MockSpvClient::new(&s.env, &s.spv).set_txid(txid);
+    let sig = sign_with(&s.env, &user_signing_key(), &s.client.address, &s.depositor, txid);
+    s.client.deposit(
+        &s.depositor, &fake_block_hash(&s.env), &fake_proof(&s.env), &0u32, &s.raw_tx, &s.spk,
+        &TEST_TIMELOCK, &fake_user_pubkey(&s.env), &sig,
+    )
+}
 
 fn do_deposit(s: &Setup) -> BytesN<32> {
     s.client.deposit(
@@ -2817,4 +2838,16 @@ fn view_costs() {
     measure("get_pool_totals", &|| { s.client.get_pool_totals(); });
     measure("get_supply_rate_bp", &|| { s.client.get_supply_rate_bp(); });
     measure("get_borrow_rate_bp", &|| { s.client.get_borrow_rate_bp(); });
+}
+
+#[test]
+fn one_test_can_hold_several_positions() {
+    let s = setup();
+    s.client.supply_usdc(&s.supplier, &10_000_000_000_i128);
+    let a = deposit_as(&s, &BytesN::from_array(&s.env, &[1u8; 32]));
+    let b = deposit_as(&s, &BytesN::from_array(&s.env, &[2u8; 32]));
+    assert_ne!(a, b);
+    s.client.borrow(&s.depositor, &a, &100_000_000_i128);
+    s.client.borrow(&s.depositor, &b, &200_000_000_i128);
+    assert_eq!(s.client.get_protocol_state().total_borrowed, 300_000_000);
 }
