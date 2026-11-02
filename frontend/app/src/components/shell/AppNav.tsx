@@ -12,7 +12,7 @@ import { useShellAccount } from "@/components/shell/account";
 import { Sheet } from "@/components/shell/Sheet";
 import { AccountSheetBody } from "@/components/shell/AccountSheet";
 import { ActivityTrayBody, useTray } from "@/components/shell/ActivityTray";
-import { NAV_MAIN, currentNav, type NavId } from "./nav";
+import { NAV_INTEGRATIONS, NAV_MAIN, currentNav, type NavId } from "./nav";
 
 const STELLAR = networkName(config.networkPassphrase);
 
@@ -72,6 +72,23 @@ export function AppNav() {
             <ExternalLink size={16} strokeWidth={1.75} className="wz-navlink-ext" aria-hidden="true" />
           </a>
         </nav>
+        {NAV_INTEGRATIONS.length > 0 ? (
+          <nav aria-labelledby="rail-integrations">
+            <div className="wz-rail-sep" role="presentation" />
+            <p id="rail-integrations" className="wz-rail-label">
+              Integrations
+            </p>
+            {NAV_INTEGRATIONS.map(({ id, label, href }) => {
+              const Icon = ICONS[id];
+              return (
+                <Link key={id} href={href} className="wz-navlink" aria-current={aria(id)}>
+                  <Icon size={20} strokeWidth={1.75} aria-hidden="true" />
+                  {label}
+                </Link>
+              );
+            })}
+          </nav>
+        ) : null}
         {config.target === "mainnet" ? null : (
           <p className="wz-rail-foot">
             {STELLAR} and {BTC_NETWORK_LABEL}. Test funds only.

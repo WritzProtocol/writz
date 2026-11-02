@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { currentNav, navFor } from "./nav";
+import { currentNav, integrationsFor, navFor } from "./nav";
 
 describe("currentNav", () => {
   test("home and every loan mark Home", () => {
@@ -27,11 +27,13 @@ describe("currentNav", () => {
 });
 
 describe("navFor", () => {
-  test("shows the full nav where lending is enabled", () => {
-    expect(navFor(true).map((n) => n.id)).toEqual(["home", "borrow", "earn", "lend"]);
+  test("shows the protocol alone where lending is enabled, with the vault apart", () => {
+    expect(navFor(true).map((n) => n.id)).toEqual(["home", "borrow", "lend"]);
+    expect(integrationsFor(true).map((n) => [n.id, n.label])).toEqual([["earn", "DeFindex vault"]]);
   });
 
   test("shows Earn alone on an Earn-only deploy", () => {
     expect(navFor(false).map((n) => n.id)).toEqual(["earn"]);
+    expect(integrationsFor(false)).toEqual([]);
   });
 });

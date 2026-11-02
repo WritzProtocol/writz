@@ -35,7 +35,7 @@ function Main({ top, children }: { top: React.ReactNode; children: React.ReactNo
         {a.mainnetGuard ? (
           <section className="hm-guard" role="alert">
             <h1 className="hm-h1">This build is set up for Stellar testnet only.</h1>
-            <p className="wz-muted">It points at a different network, so loans, Earn and Lend are turned off.</p>
+            <p className="wz-muted">It points at a different network, so loans, Lend and the DeFindex vault are turned off.</p>
           </section>
         ) : (
           children

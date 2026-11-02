@@ -1,6 +1,7 @@
 "use client";
 
-import { config } from "@/config";
+import Link from "next/link";
+import { LENDING_ENABLED, config } from "@/config";
 import { networkName } from "@/lib/wallet/precheck";
 import { ExternalLink, Notice } from "@/components/ui";
 import { Enter } from "@/components/ui/entrance";
@@ -43,8 +44,20 @@ export function EarnView({ m }: { m: EarnModel }) {
   return (
     <div className="fu-page">
       <Enter as="header" name="head">
-        <h1 className="fu-h1">Earn on USDC</h1>
-        <p className="fu-lede">{EARN_COPY.lede}</p>
+        <h1 className="fu-h1">{EARN_COPY.title}</h1>
+        <p className="fu-lede">
+          {EARN_COPY.lede}
+          {LENDING_ENABLED ? (
+            <>
+              {" "}
+              To lend to Bitcoin borrowers on Writz, use{" "}
+              <Link href="/lend" className="wz-link">
+                Lend
+              </Link>
+              .
+            </>
+          ) : null}
+        </p>
       </Enter>
 
       {m.stale ? (
