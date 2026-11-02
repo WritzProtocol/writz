@@ -37,10 +37,13 @@ The difference between the borrow rate (what borrowers pay) and the supply rate 
 
 ```
 At 75% utilization (Uoptimal):
-  Borrow rate: 8% APR
-  Supply rate: 6.8% APR (= 8% × 75% × 85%)
-  Protocol spread: 1.2% APR on borrowed amount
+  Borrow rate: 8% APR on the borrowed amount
+  Lenders' share: 85% of the interest, 6.8% APR on the borrowed amount
+  Supply rate: 5.1% APR on the supplied amount (= 8% × 75% × 85%)
+  Protocol spread: 15% of the interest, 1.2% APR on the borrowed amount
 ```
+
+The rates come from `contracts/contracts/writz-lend/src/rates.rs`. The supply rate is variable: it follows utilization and is 0 while nothing is borrowed. The protocol's 15% is credited to the on-chain reserve (`reserve_usdc`) at every accrual.
 
 At $1M TVL with 75% utilization ($750K borrowed): ~$9,000/year in spread revenue.
 

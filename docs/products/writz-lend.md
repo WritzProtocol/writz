@@ -172,22 +172,46 @@ The liquidator pays the full outstanding USDC debt and receives a 10% USDC bonus
 
 ## For USDC Lenders: Earn
 
-Earn on Writz means lending USDC to the Writz Lend pool. The USDC lenders supply is what Bitcoin borrowers draw against, and the interest those borrowers pay is the lenders' yield. Nothing else is in between: no vault, no strategy, no second protocol. On testnet, use the **Lend** tab at [testnet.writz.xyz](https://testnet.writz.xyz), or call the contract directly.
+Lending USDC on Writz means supplying the Writz Lend pool. The USDC lenders supply is what Bitcoin borrowers draw against, and the interest those borrowers pay is the lenders' yield. Nothing else is in between: no vault, no strategy, no second protocol. This is separate from the [Earn vault](/products/earn), a DeFindex vault that lends through Blend. On testnet, use the **Lend** tab at [testnet.writz.xyz](https://testnet.writz.xyz), or call the contract directly.
 
-**How the yield works**
+**How your balance grows**
 
-- You supply USDC with `supply_usdc(supplier, amount)`. The pool records your deposit as scaled units, so your balance grows as the supply index grows with every interest payment. `get_supply_balance(lender)` returns your balance with the interest included.
-- The supply rate follows utilization: `supply rate = borrow rate x utilization x 0.85` (see the interest rate model above). The 15% that is not passed to lenders is the protocol reserve, which pays liquidation bonuses.
-- The rate is variable and can be zero. With nothing borrowed, nobody pays interest and lenders earn nothing; with very little borrowed, `get_supply_rate_bp()` still reads `0` because the rate is counted in whole basis points. Read it live. Writz never promises an APY.
+- `supply_usdc(supplier, amount)` records your deposit as scaled units: `amount x 10^18 / supply_index`, rounded down. Your scaled units never change until you supply or withdraw again.
+- Your balance is `scaled units x supply_index / 10^18`. Interest raises the supply index, so the same scaled units are worth more USDC over time.
+- Interest is brought up to date at every state change: a deposit, borrow, repayment, liquidation, supply or withdrawal. Of the interest borrowers owe for the interval since the last one, 15% goes to the protocol reserve (`reserve_usdc`) and 85% raises the supply index.
+- Between those writes the read views project the interest to the current ledger without writing it, so `get_supply_balance` and `get_supply_position` keep growing while anything is borrowed. The Lend tab shows that balance to the stroop and counts it up every second.
+- Each interval is priced at the rate that held during it, as simple interest. The next interval starts from the index the previous one left, so interest compounds at every state change: often in a busy pool, less often in a quiet one.
+
+**Worked example** (from `contracts/contracts/writz-lend/src/rates.rs`):
+
+```
+Pool:      1,000 USDC supplied, 500 USDC borrowed (50% utilization)
+Borrow:    500 x 0.08 / 0.75 = 5.33% APR   (533 bp)
+One year with no other write:
+  interest borrowers owe    500 x 5.33%      = 26.65 USDC
+  protocol reserve (15%)    26.65 x 0.15     =  4.00 USDC
+  lenders (85%)             26.65 x 0.85     = 22.65 USDC
+  supply index              1 + 22.65/1,000  =  1.02265
+A lender who supplied 100 USDC at index 1 now has 102.265 USDC: 2.27% APR,
+which is 5.33% x 50% x 0.85.
+```
+
+**The rate is variable and can be zero**
+
+- `supply rate = borrow rate x utilization x 0.85`, where utilization is borrowed over supplied. It moves every time someone borrows, repays, supplies or withdraws, and it is not fixed or guaranteed. Writz never promises an APY.
+- With nothing borrowed, nobody pays interest and lenders earn nothing.
+- With very little borrowed, `get_supply_rate_bp()` reads `0`, because it counts whole basis points, while balances still grow. The Lend tab computes the rate from `get_borrow_rate_bp` and `get_pool_totals` instead, and shows "under 0.01%" below two decimals.
 
 **Withdrawing**
 
-- `withdraw_supply(supplier, amount)` returns up to your balance, principal plus interest. There is no lockup and no fee on deposits or withdrawals.
-- You can only withdraw USDC that is not lent out at that moment. If borrowers hold most of the pool, a withdrawal above the free liquidity fails (`InsufficientLiquidity`) until borrowers repay or new lenders supply. High utilization raises the borrow rate steeply above 75%, which is what pulls that liquidity back.
+- `withdraw_supply(supplier, amount)` returns up to your balance, principal plus interest. Withdrawing the whole balance burns all your scaled units, so nothing is left behind. There is no lockup and no fee on deposits or withdrawals.
+- Rounding always favours the pool, by at most 1 stroop per operation: scaled units minted on supply round down, and scaled units burned on a partial withdrawal round up.
+- You can only withdraw USDC that is not lent out at that moment. If borrowers hold most of the pool, a withdrawal above the free liquidity fails (`InsufficientLiquidity`) until borrowers repay or new lenders supply. The Lend tab shows what you can withdraw now whenever it is less than your balance. High utilization raises the borrow rate steeply above 75%, which is what pulls that liquidity back.
 
 **What you are exposed to**
 
-- Your USDC funds loans backed by BTC at a 150% minimum collateral ratio, eligible for liquidation below 120%. A liquidation repays the full debt to the pool in USDC; the liquidator is paid from the protocol reserve, not with BTC (see Liquidation above). A position that nobody liquidates stays borrowed, and the pool's total exposure is bounded by the 50,000 USDC borrow cap.
+- Your USDC funds loans backed by BTC at a 150% minimum collateral ratio, eligible for liquidation below 120%. A liquidation repays the full debt to the pool in USDC; the liquidator is paid from the protocol reserve, not with BTC (see Liquidation above).
+- A liquidation is refused within 288 Bitcoin blocks of a position's timelock (`LiquidationWindowClosed`), because the borrower's own exit is about to open. A position that is neither repaid nor liquidated by then stays borrowed, and its interest keeps being credited to lenders even though it may never be paid. The contract has no write-off for such debt yet, so lender balances can then exceed what the pool can pay back. The pool's total exposure is bounded by the 50,000 USDC borrow cap.
 - Collateral is priced by a single oracle today (Reflector BTC/USD), and the contracts are not audited yet. Writz lending is on testnet only, with test USDC that has no value.
 
 | Lender call | What it does | Signed by |
@@ -195,7 +219,10 @@ Earn on Writz means lending USDC to the Writz Lend pool. The USDC lenders supply
 | `supply_usdc(supplier, amount)` | Moves `amount` USDC stroops from the supplier into the pool | The supplier |
 | `withdraw_supply(supplier, amount)` | Returns `amount` USDC stroops, up to the balance and the free liquidity | The supplier |
 | `get_supply_balance(lender)` | The lender's balance with interest, in stroops (7 decimals) | Read only |
-| `get_supply_rate_bp()` | The current annual supply rate in basis points (`500` is 5%) | Read only |
+| `get_supply_position(lender)` | The lender's scaled units and their current value in stroops | Read only |
+| `get_pool_totals()` | Total supplied, total borrowed, the reserve and the free liquidity, in stroops | Read only |
+| `get_borrow_rate_bp()` | The current annual borrow rate in basis points (`800` is 8%) | Read only |
+| `get_supply_rate_bp()` | The current annual supply rate in whole basis points (`500` is 5%) | Read only |
 
 Code for a web page, a bot or the CLI is in [Build on Writz](/developers/integrate#7-earn-yield-on-usdc-as-a-lender).
 

@@ -21,7 +21,7 @@ order and arguments).
 | `writz-lend` | `CD3BRE32LDNDHAEVI6H35UC3NIRREW5BLH64AZMHSQY3LEKYDLKYWBXS` |
 
 `bitcoin-spv` is the instance from the 2026-10-25 redeploy and `writz-lend` the one
-from the 2026-11-01 redeploy (#257). See
+from the 2026-11-02 redeploy (#377), which carries the projected views below. See
 `contracts/deployments/testnet.md`.
 
 Testnet `bitcoin-spv` and `writz-lend` were redeployed on 2026-10-25 because testnet rent rose sharply: testnet's live state is above its target size, and the previous contracts gave every entry they created the long mainnet storage windows, so a deposit was charged about 428 XLM in fees. The new contracts take those windows as deployment parameters and run testnet-length ones (a deposit was charged about 89 XLM, measured 2026-10-25). Positions on the previous contracts were closed and their BTC released; their IDs are recorded as superseded in `contracts/deployments/testnet.md`. `writz-lend` was redeployed again on 2026-11-01 so its `supply` and `withdraw` events carry the scaled amount and the supply index (#257); `bitcoin-spv` was not. The windows are the `header_ttl_ledgers` and `consumed_ttl_ledgers` arguments of
@@ -453,5 +453,46 @@ Topic fields are in **bold**.
 | `WithdrawEvent` | `withdraw` | **supplier**, usdc_amount, scaled_amount, supply_index, total_supply_assets |
 | `PausedSetEvent` | `paused_set` | **admin**, paused |
 | `OracleSetEvent` | `oracle_set` | **admin**, new_oracle |
+| `EntryTtlSetEvent` | `entry_ttl_set` | **admin**, entry_ttl_ledgers |
 
 `scaled_amount` is the number of scaled units minted (`supply`, rounded down) or burned (`withdraw`, rounded up, or the whole balance on a full withdrawal), and `supply_index` is the index it was scaled at, after accrual. A lender's `scaled_amount` summed over its `supply` events, minus its `withdraw` events, equals its stored scaled balance; that balance times the current supply index, divided by `10^18`, is what `get_supply_balance` returns. `total_supply_assets` is the pool's total lender assets after the call.
+
+### Errors
+
+`WritzLendError`, returned as a contract error code.
+
+| Code | Error | Meaning |
+|---|---|---|
+| 1 | `AlreadyInitialized` | Contract has already been initialized. |
+| 2 | `NotInitialized` | Contract has not been initialized yet. |
+| 3 | `Unauthorized` | Caller is not the admin. |
+| 4 | `SpvVerificationFailed` | The SPV verification call to the bitcoin-spv contract failed. |
+| 5 | `OutputNotFound` | No P2WSH output matching the provided scriptPubKey was found in the transaction. |
+| 6 | `DepositTooSmall` | The BTC deposit is below the minimum required amount. |
+| 7 | `PositionAlreadyExists` | A position already exists for this Bitcoin txid. |
+| 8 | `PositionNotFound` | No position found for the given Bitcoin txid. |
+| 9 | `PositionNotActive` | The position is not in Active status (already closed or liquidated). |
+| 10 | `ExceedsCollateralRatio` | The borrow amount would exceed the maximum loan-to-value ratio. |
+| 11 | `InsufficientLiquidity` | Not enough USDC liquidity in the pool. |
+| 12 | `RepayExceedsDebt` | Repayment amount exceeds the outstanding debt. |
+| 13 | `InsufficientSupply` | The withdrawal is above the lender's balance, interest included. |
+| 14 | `PositionHealthy` | The position is healthy and cannot be liquidated yet. |
+| 15 | `Overflow` | An integer overflow or underflow was detected. |
+| 16 | `InvalidScriptPubKey` | The provided scriptPubKey is not a valid 34-byte P2WSH scriptPubKey. |
+| 17 | `Paused` | The contract is paused - new deposits, borrows, and USDC supply are refused. Existing positions can still repay, withdraw, liquidate, and release BTC; a pause only blocks new risk-taking. |
+| 18 | `OraclePriceUnavailable` | The oracle returned no price for BTC/USD, or its raw price converted to a zero or negative USDC-stroops value. |
+| 19 | `OraclePriceStale` | The oracle's last price update is older than `oracle::MAX_PRICE_STALENESS_SECS`. |
+| 20 | `InvalidUserPubkey` | `user_pubkey` is not a compressed secp256k1 public key encoding. |
+| 21 | `ScriptPubKeyMismatch` | The supplied scriptPubKey is not the P2WSH of the Writz redeem script derived from the protocol key, `user_pubkey` and `timelock_height`, so the output is not locked under the protocol's control. |
+| 22 | `InvalidTimelock` | `timelock_height` is not within the allowed window above the deposit block: too soon (an instant exit for a fresh position) or too far. |
+| 23 | `InvalidProtocolPubkey` | The configured protocol public key is not a compressed secp256k1 public key encoding. |
+| 24 | `ExposureCapExceeded` | The borrow would take the pool past its total exposure cap (see `Config::max_total_borrowed`). |
+| 25 | `InvalidKeyProof` | `key_sig` is not a Bitcoin signed message by `user_pubkey` over this contract, the depositor and the deposit txid (GHSA-862g-739q-x6h8). |
+| 26 | `ZeroShareAmount` | The amount is too small to mint or burn a single scaled unit at the current supply index, or is not positive. |
+| 27 | `InvalidDepositParams` | A constructor `min_confirmations` is 0 or above `MAX_MIN_CONFIRMATIONS`, or `min_deposit_satoshis` is below `MIN_DEPOSIT_FLOOR_SATS`. |
+| 28 | `InvalidEntryTtl` | A constructor or `set_entry_ttl` `entry_ttl_ledgers` is outside `MIN_ENTRY_TTL_LEDGERS..=MAX_ENTRY_TTL_LEDGERS`. |
+| 29 | `UserKeyIsProtocolKey` | `user_pubkey` equals the protocol's co-signing key. Every key in the Writz script must be distinct, or the holder of that one key could complete the cooperative path alone. |
+| 30 | `TimelockTooSoon` | The borrow would leave fewer than `borrow_timelock_margin_blocks` (4,320 by default) between the `bitcoin-spv` tip and the position's timelock height. |
+| 31 | `StaleBitcoinTip` | `bitcoin-spv` has no tip yet, or its tip header is older than `max_tip_age_secs`, so the current Bitcoin height is not known well enough to measure a timelock against. |
+| 32 | `LiquidationWindowClosed` | Fewer than `LIQUIDATION_CUTOFF_BLOCKS` (288) blocks remain between the `bitcoin-spv` tip and the position's timelock height, so the borrower's unilateral exit is about to open and a liquidation is no longer accepted. |
+| 33 | `InvalidTimelockParams` | A `set_borrow_timelock_margin` or `set_max_tip_age` value is outside its allowed range. |
