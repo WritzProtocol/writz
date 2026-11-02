@@ -1,12 +1,14 @@
 import { formatUsdc } from "@/lib/borrow/journey";
+import { supplyRate } from "@/lib/contracts/writzLend";
 import { withdrawable } from "@/lib/funds/model";
-import type { Read } from "@/lib/loan/model";
+import { toExactFieldValue, type Read } from "@/lib/loan/model";
 import type { FundsModel } from "@/components/funds/FundsCard";
 
 export interface PoolTotals {
   totalSupplied: bigint;
   totalBorrowed: bigint;
   available: bigint;
+  borrowRateBp: bigint;
 }
 
 export interface LendModel {
@@ -17,7 +19,10 @@ export interface LendModel {
   wrongNetwork: string | null;
   unfunded: boolean;
   pool: Read<PoolTotals>;
+  /** The balance as last read from the chain; caps Withdraw. */
   supplied: Read<bigint>;
+  /** The balance to show: `supplied` plus what it has accrued since it was read. */
+  balance: Read<bigint>;
   /** Last good values after a failed read, and when they were read. */
   stale: { supplied: bigint; pool: PoolTotals; at: number } | null;
   retry(): void;
@@ -25,6 +30,17 @@ export interface LendModel {
 }
 
 const value = <T,>(r: Read<T>) => (r.kind === "ok" ? r.value : null);
+
+export const poolSupplyRate = (p: PoolTotals): number => supplyRate(p.borrowRateBp, p.totalBorrowed, p.totalSupplied);
+
+/** The supply APR to two decimals; a rate too small for that reads "under 0.01%". */
+export function formatApr(rate: number): string {
+  if (rate > 0 && rate < 0.0001) return "under 0.01%";
+  return `${(Math.floor(rate * 10_000) / 100).toFixed(2)}%`;
+}
+
+/** While anything is borrowed a minute of interest is under 0.00001 USDC, so the balance shows every stroop. */
+export const balanceDecimals = (pool: Read<PoolTotals>): 2 | 7 => (pool.kind === "ok" && pool.value.totalBorrowed > 0n ? 7 : 2);
 
 /** Supply is capped by the wallet; withdraw by what you supplied and what the pool hasn't lent out. */
 export function lendSides(
@@ -54,6 +70,7 @@ export function lendSides(
       label: "Withdraw",
       fieldLabel: "Withdraw USDC",
       max: out?.stroops ?? null,
+      maxField: toExactFieldValue,
       hint:
         out === null
           ? "Checking your balance..."

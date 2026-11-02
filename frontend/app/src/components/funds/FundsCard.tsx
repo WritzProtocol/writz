@@ -13,6 +13,8 @@ export interface SideModel {
   fieldLabel: string;
   /** The most this side can move; null while unknown. */
   max: bigint | null;
+  /** What Max writes in the field; cents by default. */
+  maxField?(max: bigint): string;
   hint: ReactNode;
   over(max: bigint): string;
   /** Why this side can't be used right now. */
@@ -96,7 +98,7 @@ function SidePanel({ m, side }: { m: FundsModel; side: FundsSide }) {
         maxLabel="Max"
         onMax={() => {
           if (s.max !== null) {
-            setValue(toFieldValue(s.max));
+            setValue((s.maxField ?? toFieldValue)(s.max));
             setTouched(true);
           }
         }}

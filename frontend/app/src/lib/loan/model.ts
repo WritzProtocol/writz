@@ -88,6 +88,12 @@ export function toFieldValue(stroops: bigint): string {
   return `${(cents / 100n).toLocaleString("en-US")}.${(cents % 100n).toString().padStart(2, "0")}`;
 }
 
+/** Every stroop, trailing zeros past the cents dropped, so the field holds the exact amount. */
+export function toExactFieldValue(stroops: bigint): string {
+  const frac = (stroops % STROOP).toString().padStart(7, "0").replace(/0+$/, "").padEnd(2, "0");
+  return `${(stroops / STROOP).toLocaleString("en-US")}.${frac}`;
+}
+
 // ── Status ───────────────────────────────────────────────────────────────
 
 export type Health = "none" | "healthy" | "below_limit" | "at_risk" | "liquidatable";

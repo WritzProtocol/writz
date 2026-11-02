@@ -22,13 +22,13 @@ function Skeleton() {
       title="Lend USDC"
       lede="Supply USDC to the pool borrowers draw from. You can withdraw what you supplied."
       wallet={{
-        hero: { label: "You supplied", value: "2,500.00", unit: "USDC" },
+        hero: { label: "Your balance", value: "2,500.00", unit: "USDC" },
         tiles: [
+          ["Supply rate", "1.00%"],
           ["Available in pool", "122,820.00 USDC"],
-          ["You can withdraw now", "2,500.00 USDC"],
         ],
       }}
-      nowallet={{ hero: { label: "Available in pool", value: "122,820.00", unit: "USDC" }, tiles: [["Supplied by lenders", "184,250.00 USDC"]] }}
+      nowallet={{ hero: { label: "Available in pool", value: "122,820.00", unit: "USDC" }, tiles: [["Supply rate", "1.00%"], ["Supplied by lenders", "184,250.00 USDC"]] }}
       risk={["Suppliers carry Bitcoin credit risk. When borrowers are using the pool, you may have to wait to withdraw."]}
       link="See pool stats"
       tabs={["Supply", "Withdraw"]}

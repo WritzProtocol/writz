@@ -182,13 +182,56 @@ export async function getPoolState(): Promise<PoolState> {
   return poolStateAt(proto, ledger);
 }
 
-/** The relayer's co-signed release PSBT for a repaid position, or null until it publishes one. */
-/** A lender's balance (stroops) from `get_supply_balance`. */
+// ── Lender view ──────────────────────────────────────────────────────────
+
+/** Pool totals from `get_pool_totals` and the borrow rate from `get_borrow_rate_bp`, both projected to the latest ledger. */
+export interface LendPoolState extends PoolState {
+  borrowRateBp: bigint;
+}
+
+export async function getLendPool(): Promise<LendPoolState> {
+  const client = writzLendClient();
+  const [totals, rate] = await Promise.all([client.get_pool_totals(), client.get_borrow_rate_bp()]);
+  const t = totals.result;
+  return { totalSupplied: t.total_supply_assets, totalBorrowed: t.total_borrowed, available: t.available, borrowRateBp: rate.result };
+}
+
+/** A lender's balance (stroops), interest included, from `get_supply_balance`. */
 export async function getSupplyBalance(lender: string): Promise<bigint> {
   const { result } = await writzLendClient().get_supply_balance({ lender });
   return result;
 }
 
+/** A lender's balance in stroops, interest included, from `get_supply_position`. */
+export async function getSupplyValue(lender: string): Promise<bigint> {
+  return (await writzLendClient().get_supply_position({ lender })).result.value;
+}
+
+const RATE_SCALE = 10n ** 12n;
+
+/**
+ * The lenders' annual rate as a fraction: `borrow rate x utilization x 0.85`.
+ * `get_supply_rate_bp` rounds to whole basis points and reads 0 at low
+ * utilization while interest is still accruing, so the rate is derived here.
+ */
+export function supplyRate(borrowRateBp: bigint, totalBorrowed: bigint, totalSupplied: bigint): number {
+  if (borrowRateBp <= 0n || totalBorrowed <= 0n || totalSupplied <= 0n) return 0;
+  const borrowed = totalBorrowed > totalSupplied ? totalSupplied : totalBorrowed;
+  const scaled = (borrowRateBp * borrowed * (BP_SCALE - 1_500n) * RATE_SCALE) / (totalSupplied * BP_SCALE * BP_SCALE);
+  return Number(scaled) / Number(RATE_SCALE);
+}
+
+/** Five seconds a ledger, as `LEDGERS_PER_YEAR` assumes. */
+const MS_PER_YEAR = LEDGERS_PER_YEAR * 5_000n;
+
+/** `value` grown by `rate` (annual fraction) over `elapsedMs`, rounded down, as a lender accrues between reads. */
+export function accrueBalance(value: bigint, rate: number, elapsedMs: number): bigint {
+  if (value <= 0n || !(rate > 0) || !(elapsedMs > 0)) return value;
+  const r = BigInt(Math.floor(rate * Number(RATE_SCALE)));
+  return value + (value * r * BigInt(Math.floor(elapsedMs))) / (RATE_SCALE * MS_PER_YEAR);
+}
+
+/** The relayer's co-signed release PSBT for a repaid position, or null until it publishes one. */
 export async function getReleasePsbt(txidDisplay: string): Promise<Buffer | null> {
   const { result } = await writzLendClient().get_release_psbt({ txid: internalTxid(txidDisplay) });
   return result ? Buffer.from(result) : null;

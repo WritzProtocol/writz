@@ -4,7 +4,7 @@ import { formatUsdc } from "@/lib/borrow/journey";
 import type { Read } from "@/lib/loan/model";
 import { Enter } from "@/components/ui/entrance";
 
-function Amount({ value, unit, checking }: { value: Read<bigint>; unit: string; checking: string }) {
+function Amount({ value, unit, checking, decimals }: { value: Read<bigint>; unit: string; checking: string; decimals?: 2 | 7 }) {
   if (value.kind === "failed") return <span className="fu-na">Unavailable</span>;
   if (value.kind === "checking") {
     return (
@@ -16,7 +16,7 @@ function Amount({ value, unit, checking }: { value: Read<bigint>; unit: string; 
   }
   return (
     <>
-      <span className="mono">{formatUsdc(value.value)}</span> <span className="fu-unit">{unit}</span>
+      <span className="mono">{formatUsdc(value.value, decimals)}</span> <span className="fu-unit">{unit}</span>
     </>
   );
 }
@@ -27,13 +27,15 @@ export function Hero({
   value,
   unit,
   caption,
+  decimals,
 }: {
   label: string;
   value: Read<bigint> | { kind: "text"; text: string };
   unit: string;
   caption?: ReactNode;
+  decimals?: 2 | 7;
 }) {
-  const digits = value.kind === "ok" ? formatUsdc(value.value).length : value.kind === "text" ? value.text.length : 8;
+  const digits = value.kind === "ok" ? formatUsdc(value.value, decimals).length : value.kind === "text" ? value.text.length : 8;
   return (
     <Enter name="hero" kind="open" className="fu-hero wz-cut" style={{ "--n": Math.max(digits, 6), "--u": unit.length } as CSSProperties}>
       <dl>
@@ -44,7 +46,7 @@ export function Hero({
               <span className="mono">{value.text}</span> <span className="fu-unit">{unit}</span>
             </>
           ) : (
-            <Amount value={value} unit={unit} checking="Checking..." />
+            <Amount value={value} unit={unit} checking="Checking..." decimals={decimals} />
           )}
         </dd>
         {caption ? <dd className="fu-caption">{caption}</dd> : null}
