@@ -155,8 +155,8 @@ export function HomeView({ data }: { data: HomeData }) {
 
       {earn || supplied ? (
         <div className="hm-grid">
-          {earn ? <EarnCard earn={earn} /> : null}
           {supplied ? <LendCard supplied={supplied} /> : null}
+          {earn ? <EarnCard earn={earn} /> : null}
         </div>
       ) : null}
 

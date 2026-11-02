@@ -20,7 +20,7 @@ function MockEarn({ world }: { world: MockWorld }) {
 function Skeleton() {
   return (
     <FundsSkeleton
-      title="Earn on USDC"
+      title={EARN_COPY.title}
       lede={EARN_COPY.lede}
       wallet={{
         hero: { label: "Your balance", value: "1,003.41", unit: EARN_COPY.unit },

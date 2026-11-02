@@ -35,16 +35,16 @@ export function Products() {
             </div>
           </article>
 
-          <article className="tile earn" id="earn" data-reveal>
+          <article className="tile earn" id="lend" data-reveal>
             <h3>Lend dollars. Earn on them.</h3>
-            <p>Deposit USDC and earn yield that accrues on its own. Withdraw part or all of it whenever you want.</p>
+            <p>Supply USDC to the pool Bitcoin borrowers draw from. Interest accrues on its own, and you withdraw whatever is not lent out at that moment.</p>
             <p className="big">
-              <b>APY</b> from borrower interest
+              <b>APR</b> from borrower interest
             </p>
             <p className="sub">Variable, shown live in the app.</p>
             <div className="tfoot">
-              <a className="btn" href={APP_ROUTE}>
-                Start earning
+              <a className="btn" href={`${APP_ROUTE.replace(/\/$/, "")}/lend`}>
+                Start lending
               </a>
               <span>No lock-up</span>
             </div>

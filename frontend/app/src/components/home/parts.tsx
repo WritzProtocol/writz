@@ -8,6 +8,7 @@ import { formatBtc, formatUsd, formatUsdc, maxBorrowStroops, parseBtcAmount, tim
 import { btcTxUrl } from "@/lib/explorer";
 import type { HomeLoan, Urgent } from "@/lib/home/model";
 import { BTC_FAUCETS } from "@/lib/links";
+import { VAULT_NAME } from "@/components/shell/nav";
 import { setDraftAmount } from "@/lib/borrow/draft";
 import { blockDate, healthOf, liquidationPriceFor, loanHref, repayToSafeStroops, type Read } from "@/lib/loan/model";
 import { networkName } from "@/lib/wallet/precheck";
@@ -461,8 +462,8 @@ export function Preview({
             {STELLAR} and {BTC_NETWORK_LABEL}. Test funds only.
           </li>
         </ul>
-        <Link href="/earn" className="wz-btn wz-btn-text">
-          Earn on USDC instead
+        <Link href="/lend" className="wz-btn wz-btn-text">
+          Lend USDC instead
         </Link>
       </section>
     </div>
@@ -526,7 +527,7 @@ export function PreviewSkeleton() {
           </li>
         </ul>
         <span className="wz-btn wz-btn-text">
-          <T>Earn on USDC instead</T>
+          <T>Lend USDC instead</T>
         </span>
       </div>
     </div>
@@ -599,7 +600,7 @@ export function EarnCard({ earn }: { earn: EarnSummary }) {
   return (
     <section {...open("hm-card wz-cut-sm")} aria-labelledby="earn-title">
       <h2 id="earn-title" className="wz-label">
-        Earn
+        {VAULT_NAME}
       </h2>
       <p className="hm-big mono">
         {formatUsdc(earn.balanceStroops)} <span>USDC</span>
@@ -612,7 +613,7 @@ export function EarnCard({ earn }: { earn: EarnSummary }) {
       ) : null}
       <div className="wz-actions">
         <Link href="/earn" className="wz-btn wz-btn-line wz-btn-sm">
-          Go to Earn
+          Open the vault
         </Link>
       </div>
     </section>

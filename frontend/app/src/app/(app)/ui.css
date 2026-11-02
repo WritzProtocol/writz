@@ -66,6 +66,7 @@ body:has(.app) { background: var(--bg); }
   .wz-rail-home { display: inline-flex; align-self: flex-start; padding: 9px 10px 30px; }
   .wz-rail-home:focus-visible { outline-offset: -2px; }
   .wz-rail-sep { height: 1px; margin: 14px 10px; background: var(--rule); }
+  .wz-rail-label { margin: 0 10px 6px 22px; font-size: 12px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
   .wz-rail-foot { margin-top: auto; padding: 24px 10px 0; font-size: 13px; line-height: 1.5; color: var(--muted); }
 }
 

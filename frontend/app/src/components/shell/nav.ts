@@ -2,20 +2,28 @@ import { LENDING_ENABLED } from "@/config";
 
 export type NavId = "home" | "borrow" | "earn" | "lend" | "protocol";
 
-const NAV_ALL: { id: NavId; label: string; href: string; lending: boolean }[] = [
-  { id: "home", label: "Home", href: "/", lending: true },
-  { id: "borrow", label: "Borrow", href: "/borrow/new", lending: true },
-  { id: "earn", label: "Earn", href: "/earn", lending: false },
-  { id: "lend", label: "Lend", href: "/lend", lending: true },
+type NavItem = { id: NavId; label: string; href: string };
+
+const PROTOCOL: NavItem[] = [
+  { id: "home", label: "Home", href: "/" },
+  { id: "borrow", label: "Borrow", href: "/borrow/new" },
+  { id: "lend", label: "Lend", href: "/lend" },
 ];
 
 /** The main nav for this deploy. Home is the loans dashboard, so an Earn-only
  * deploy (mainnet, #122) shows Earn alone - its `/` redirects to `/earn`. */
-export function navFor(lending: boolean): { id: NavId; label: string; href: string }[] {
-  return NAV_ALL.filter((item) => lending || !item.lending).map(({ id, label, href }) => ({ id, label, href }));
+export function navFor(lending: boolean): NavItem[] {
+  return lending ? PROTOCOL : [{ id: "earn", label: "Earn", href: "/earn" }];
 }
 
+/** Products built on other protocols, kept apart from the Writz protocol in their own group. */
+export function integrationsFor(lending: boolean): NavItem[] {
+  return lending ? [{ id: "earn", label: VAULT_NAME, href: "/earn" }] : [];
+}
+
+export const VAULT_NAME = "DeFindex vault";
 export const NAV_MAIN = navFor(LENDING_ENABLED);
+export const NAV_INTEGRATIONS = integrationsFor(LENDING_ENABLED);
 
 const under = (pathname: string, base: string) => pathname === base || pathname.startsWith(`${base}/`);
 
