@@ -714,9 +714,11 @@ Oldest the `bitcoin-spv` tip header may be, in seconds, for `borrow` and `liquid
 pub fn get_max_tip_age() -> Result<u64, WritzLendError>
 ```
 
+Every view below except `get_protocol_state` is projected: it applies the interest accrued since the last write to the current ledger, without writing it, so it returns what the next write would compute in the same ledger. Amounts are USDC stroops (7 decimals); indexes are scaled by `10^18`.
+
 ### `get_borrow_rate_bp`
 
-Current annual borrow rate in basis points (e.g. 800 = 8%).
+Annual borrow rate in basis points (e.g. 800 = 8%), on the projected pool totals.
 
 ```rust
 pub fn get_borrow_rate_bp() -> i128
@@ -724,7 +726,7 @@ pub fn get_borrow_rate_bp() -> i128
 
 ### `get_supply_rate_bp`
 
-Current annual supply rate in basis points.
+Annual supply rate in basis points, on the projected pool totals.
 
 ```rust
 pub fn get_supply_rate_bp() -> i128
@@ -732,7 +734,7 @@ pub fn get_supply_rate_bp() -> i128
 
 ### `get_protocol_state`
 
-Returns a snapshot of the global protocol state.
+The protocol state exactly as stored at the last write. Its indexes and totals exclude interest accrued since `index_ledger`; use the projected views for current values.
 
 ```rust
 pub fn get_protocol_state() -> ProtocolState
@@ -740,10 +742,35 @@ pub fn get_protocol_state() -> ProtocolState
 
 ### `get_supply_balance`
 
-Returns the USDC supply balance (in stroops) for a lender.
+A lender's current value in USDC stroops, interest included: `floor(scaled * supply_index / 10^18)` at the projected supply index. It grows between writes while anything is borrowed.
 
 ```rust
 pub fn get_supply_balance(lender: Address) -> i128
+```
+
+### `get_supply_position`
+
+A lender's scaled units as stored, and their current value as `get_supply_balance` returns it.
+
+```rust
+pub fn get_supply_position(lender: Address) -> SupplyPosition // { scaled: i128, value: i128 }
+```
+
+### `get_supply_index` / `get_borrow_index`
+
+The supply and borrow indexes projected to the current ledger, scaled by `10^18`.
+
+```rust
+pub fn get_supply_index() -> i128
+pub fn get_borrow_index() -> i128
+```
+
+### `get_pool_totals`
+
+Projected pool totals in USDC stroops. `available` is `total_supply_assets - total_borrowed`, never below zero: what a lender could withdraw or a borrower draw now.
+
+```rust
+pub fn get_pool_totals() -> PoolTotals // { total_supply_assets, total_borrowed, reserve_usdc, available }
 ```
 
 ### `refresh_position_ttl`
