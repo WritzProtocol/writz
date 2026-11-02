@@ -3,7 +3,6 @@ import { config } from "./config.js";
 import { proofRouter } from "./routes/proof.js";
 import { createDepositStatusRouter } from "./routes/deposit-status.js";
 import { createTimelineRouter, mintFromRelayView } from "./routes/timeline.js";
-import { merkleRouter } from "./routes/merkle.js";
 import { defindexRouter } from "./routes/defindex.js";
 import { metricsRouter } from "./routes/metrics.js";
 import { vaultMetricsSnapshot } from "./defindex/metrics.js";
@@ -12,8 +11,6 @@ import { startVaultWatcher } from "./vault-watcher/poller.js";
 import { startHeaderSync } from "./bitcoin/spv-submit.js";
 import { headerSyncStatus } from "./bitcoin/header-sync.js";
 import { lendingEnabled } from "./deploy-target.js";
-import { startTreeWatcher, treeSyncStatus } from "./tree-watcher/poller.js";
-import { startZkKeeper } from "./zk-keeper/runner.js";
 import { createFaucetRouter } from "./routes/faucet.js";
 import { faucetFromConfig } from "./faucet/from-config.js";
 import { createCctpRouter } from "./routes/cctp.js";
@@ -24,7 +21,7 @@ import type { OnboardingFunnel } from "./onboarding/funnel.js";
 
 const app = express();
 // Earn routes and the vault watcher run everywhere; the lending surface (SPV
-// proofs, the commitment tree, header sync, auto-cosign) only where lending
+// proofs, header sync, auto-cosign) only where lending
 // is enabled - not on mainnet, which is Earn-only (#122).
 const LENDING = lendingEnabled(config.target);
 // The Signet faucet exists only where the Bitcoin side is Signet, never on
@@ -63,7 +60,7 @@ app.use((req, res, next) => {
 // Nothing this API returns is cacheable, and the failure modes of a cache in
 // front of it are silent rather than loud.
 //
-// The read routes (`/defindex/apy`, `/defindex/position`, `/merkle/*`) are live
+// The read routes (`/defindex/apy`, `/defindex/position`) are live
 // state: a stale hit shows a balance or an APY that is no longer true, with no
 // error anywhere, which defeats the point of reading them live at all. The
 // transaction-building routes are worse - a built envelope carries the source
@@ -99,10 +96,6 @@ app.get("/", (_req, res) => {
             spvProof: "GET /spv-proof/:txid",
             depositStatus: "GET /deposit-status/:txid",
             timeline: "GET /timeline/:btcTxid",
-            merklePath: "GET /merkle-path",
-            notes: "GET /notes",
-            insertCommitment: "POST /insert-commitment",
-            updateLeaf: "POST /update-leaf",
           }
         : {}),
       ...(FAUCET
@@ -144,7 +137,7 @@ app.get("/health", (_req, res) => {
     service: "writz-relayer",
     target: config.target,
     lending: LENDING,
-    ...(LENDING ? { treeSync: treeSyncStatus, headerSync: headerSyncStatus } : {}),
+    ...(LENDING ? { headerSync: headerSyncStatus } : {}),
     bitcoinNetwork: config.bitcoinNetwork,
     esploraBaseUrl: config.esploraBaseUrl,
     defindex: vaultMetricsSnapshot(),
@@ -166,7 +159,6 @@ if (LENDING) {
       mint: (burnHash) => mintFromRelayView(cctp?.relay?.lookup(burnHash)),
     }),
   );
-  app.use("/", merkleRouter);
 }
 app.use("/defindex", defindexRouter);
 // The onboarding funnel follows the testnet loop (social sign-in, Signet
@@ -244,11 +236,3 @@ startVaultWatcher();
 
 // bitcoin-spv header sync - no-ops until BITCOIN_SPV_ID and SPV_SYNC_FROM_HEIGHT are set.
 if (LENDING) startHeaderSync();
-
-// Follows commitment-tree events so the leaf store never depends on a client
-// calling /update-leaf (GHSA-vwvv-3255-783f).
-if (LENDING) startTreeWatcher();
-
-// ZK keeper (#212): liquidates undercollateralized commitment-tree positions
-// from the keeper notes the tree watcher collects. Off unless its keys are set.
-if (LENDING) startZkKeeper();

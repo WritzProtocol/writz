@@ -3,7 +3,7 @@
 //! Shared cross-contract types for Bitcoin SPV verification.
 //!
 //! Before this crate existed, `SpvVerificationResult` (as `VerificationResult`
-//! in `bitcoin-spv` and `SpvResult` in `commitment-tree`/`writz-lend`) was
+//! in `bitcoin-spv` and `SpvResult` in `writz-lend`) was
 //! hand-copied verbatim into three separate crates, each with a comment
 //! warning that "field names must match exactly for XDR round-tripping" - a
 //! constraint the compiler could not check, since nothing tied the three
@@ -17,17 +17,14 @@
 //! `bitcoin-spv::verify_transaction` returns this type directly (a rename
 //! from its previous local `VerificationResult` - no field changes, so any
 //! caller decoding by field name is unaffected; only the on-chain contract
-//! spec's type name changes). `commitment-tree` and `writz-lend` use it as
-//! the expected return type for their `env.invoke_contract` calls into
+//! spec's type name changes). `writz-lend` uses it as
+//! the expected return type for its `env.invoke_contract` calls into
 //! `bitcoin-spv`.
 
-use soroban_sdk::{contracttype, Address, BytesN, Env, U256};
+use soroban_sdk::{contracttype, BytesN, U256};
 
 /// Bitcoin transaction output parsing. Moved here from `writz-lend` (its
-/// original and, until now, only caller) so `commitment-tree` can share the
-/// same on-chain parser rather than re-implementing it - the "hand-copied
-/// verbatim into separate crates" problem this module's own doc comment
-/// above describes, applied to a parser instead of a struct.
+/// original caller).
 pub mod btc_parser;
 
 /// The Writz P2WSH locking script and its timelock bounds, shared by both
@@ -35,11 +32,11 @@ pub mod btc_parser;
 pub mod script;
 
 /// Proof that a depositor controls the Bitcoin key their deposit names
-/// (GHSA-862g-739q-x6h8), shared by both lending contracts.
+/// (GHSA-862g-739q-x6h8), used by `writz-lend`.
 pub mod key_proof;
 
 /// A header accepted into `bitcoin-spv`, keyed by its block hash. Shared so
-/// `commitment-tree` can read the tip's timestamp (#212).
+/// `writz-lend` can read the tip's timestamp (#212).
 #[contracttype]
 #[derive(Clone, Debug)]
 pub struct HeaderEntry {
@@ -77,40 +74,4 @@ pub struct SpvVerificationResult {
 
     /// The block's depth below the best chain tip (the tip itself is 1).
     pub confirmations: u32,
-}
-
-/// Hardcoded testnet price: $60,000 USD per BTC, expressed in USDC stroops
-/// (7 decimal places) so that:
-///   collateral_usdc = btc_satoshis × STUB_PRICE / 100_000_000
-///
-/// As of 2026-09-17, `writz-lend` no longer uses this - it calls a real
-/// Reflector oracle via its own `oracle::get_btc_price_stroops`
-/// (`contracts/contracts/writz-lend/src/oracle.rs`). This stub remains
-/// solely for `commitment-tree`, which cannot safely take a live, moving
-/// price yet: its ZK circuits commit to an exact `btc_price` public signal
-/// with no tolerance window or timestamp, so a price that changes between
-/// proof generation and on-chain submission would make legitimate
-/// borrows/repays fail intermittently. Wiring a real oracle into
-/// `commitment-tree` needs a circuit-level change first - see
-/// `docs/research/oracle-design.md` and the plan at
-/// `docs/superpowers/plans/2026-09-17-reflector-oracle-integration.md`,
-/// "Why commitment-tree is not included".
-pub const STUB_PRICE_STROOPS_PER_BTC: i128 = 60_000 * 10_000_000; // = 600_000_000_000
-
-/// Returns the BTC/USD price as USDC stroops per BTC.
-///
-/// Only `commitment-tree` still routes through this stub (`writz-lend`
-/// now calls a real Reflector oracle via its own `oracle.rs` instead) -
-/// swapping in a real price feed here requires changing this function's
-/// body (not just the `Config.oracle` address this contract already
-/// supports via its `set_oracle` setter), since the address alone is never
-/// read here yet; the Phase 2 oracle integration blocks on it.
-///
-/// Phase 2 migration: replace the body with a SEP-40 cross-contract call:
-/// ```text
-/// fn lastprice(asset: Asset) -> Option<PriceData>
-/// // PriceData = { price: i128, timestamp: u64 }
-/// ```
-pub fn get_btc_price_stroops(_env: &Env, _oracle: &Address) -> i128 {
-    STUB_PRICE_STROOPS_PER_BTC
 }

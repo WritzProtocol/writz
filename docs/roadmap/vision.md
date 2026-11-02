@@ -77,7 +77,7 @@ Writz has proposed and is co-authoring a Stellar SEP (Standards Evolution Propos
 
 ### Institutional Presence
 
-Writz has 5+ institutional deposits of $100K+ each - crypto funds, family offices, and mining companies using the protocol for treasury management. Institutions that need confidential positions are the audience of the separate, opt-in [privacy edition](/how-it-works/privacy-edition), still in progress, which is not part of the Writz protocol.
+Writz has 5+ institutional deposits of $100K+ each - crypto funds, family offices, and mining companies using the protocol for treasury management.
 
 ---
 
@@ -87,8 +87,7 @@ Writz has one product: Writz Lend. The SPV SDK is the open infrastructure behind
 
 The features below are directions we want to explore after Writz Lend is live on mainnet. They are not products. None has a date, and none is promised.
 
-- **Privacy.** A separate, opt-in edition where a borrower proves they hold enough collateral without showing the amount. The design and testnet contracts exist. See [Privacy edition](/how-it-works/privacy-edition).
-- **ZK proof of reserve.** A way for a company to prove it holds Bitcoin without revealing its addresses or the exact amount. No circuit exists.
+- **Privacy.** A possible future direction.
 - **Private conversion.** Turning Bitcoin into USDC directly, without Writz ever holding the Bitcoin. Nothing is built, and no design meets that condition yet.
 - **Automatic yield.** Putting borrowed USDC to work without adding risk the borrower did not choose. Nothing is built.
 

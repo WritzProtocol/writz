@@ -416,8 +416,8 @@ const RULES: Rule[] = [
     }),
   },
   {
-    match: /^WithdrawExceedsBalance$/,
-    contract: "commitment-tree",
+    match: /^InsufficientSupply$/,
+    contract: "writz-lend",
     build: (ctx) =>
       ctx.ownBalanceUsdc
         ? {
@@ -616,8 +616,7 @@ function fallback(ctx: ErrorContext): Parts {
 export function describeError(error: unknown, ctx: ErrorContext = {}): FriendlyError {
   const raw = errorMessage(error);
   const onVault = ctx.flow === "earn-deposit" || ctx.flow === "earn-withdraw";
-  const onPool = ctx.flow === "lend" || ctx.flow === "withdraw";
-  const contract = onVault ? null : resolveContractError(raw, undefined, onPool ? "commitment-tree" : "writz-lend");
+  const contract = onVault ? null : resolveContractError(raw);
   const subject = contract?.variant ?? raw;
   for (const rule of RULES) {
     if (rule.contract && contract && rule.contract !== contract.contract) continue;

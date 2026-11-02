@@ -181,7 +181,7 @@ Updated against the on-chain verification pass above:
 3. **Get a working DIA contract address** directly from DIA (their docs' listed address doesn't resolve) if DIA is still wanted as a third median leg.
 4. **Confirm Pyth's Hermes access policy** (API key requirement, rate limits) at whatever call volume Writz's relayer/keeper will actually generate.
 5. Re-run `contracts/scripts/verify-oracles.sh` against **mainnet** addresses before any mainnet deployment - everything confirmed above is testnet-only.
-6. **Done for `writz-lend` (2026-09-17):** `get_btc_price_stroops` now calls Reflector's external-prices instance live, replacing `STUB_PRICE_STROOPS_PER_BTC` - see `contracts/contracts/writz-lend/src/oracle.rs`. Reads `decimals()` live rather than assuming 14, per the note above. `commitment-tree` is unchanged and still stubbed - see that crate's `oracle.rs` and `spv-types`'s doc comment for why (the ZK circuit's exact-match price signal has no tolerance window, so a live price would make honest borrows/repays fail intermittently until the circuit itself changes).
+6. **Done for `writz-lend` (2026-09-17):** `get_btc_price_stroops` now calls Reflector's external-prices instance live, replacing `STUB_PRICE_STROOPS_PER_BTC` - see `contracts/contracts/writz-lend/src/oracle.rs`. Reads `decimals()` live rather than assuming 14, per the note above.
 7. **Still open:** Pyth is not wired anywhere yet. `writz-lend` is single-source (Reflector only) until it is - see `docs/security/security-model.md` for what that means for manipulation resistance in the interim.
 
 ---

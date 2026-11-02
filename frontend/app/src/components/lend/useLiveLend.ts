@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { useWallet } from "@/lib/wallet/WalletProvider";
-import { getPoolState, getSupplyBalance } from "@/lib/contracts/commitmentTree";
+import { getPoolState, getSupplyBalance } from "@/lib/contracts/writzLend";
 import { usePolledValue } from "@/lib/earn/usePolledValue";
 import { supply, withdraw } from "@/lib/flows/lend";
 import { enableTrustline, getAssetBalance, POOL_ASSET } from "@/lib/flows/trustline";

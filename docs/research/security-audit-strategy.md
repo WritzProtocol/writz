@@ -44,7 +44,7 @@ The following firms are officially pre-approved by the SDF for the Soroban Secur
 
 | Firm | Specialization | Writz relevance |
 |---|---|---|
-| **Veridise** | Smart contract + ZK circuit audits, advanced vulnerability detection tooling | ✓ Primary - only approved firm with explicit ZK circuit capability |
+| **Veridise** | Smart contract audits, advanced vulnerability detection tooling | Option |
 | **OtterSec** | $36B+ TVL secured, 120+ protocols, Soroban track record | ✓ Primary - Soroban smart contract audit |
 | **Zellic** | Blockchain + cryptography security, world-class white-hat team | ✓ Strong option for Soroban contracts |
 | **Certora** | Formal verification via mathematical reasoning of code | Good for Writz Lend financial math formal proofs |
@@ -56,7 +56,6 @@ The following firms are officially pre-approved by the SDF for the Soroban Secur
 | **Code4rena** | Competitive platform, 100+ researchers per audit | Good for community-wide coverage |
 
 **Writz's target firms:**
-- **Veridise** - Circom ZK circuit audit (5 circuits: deposit, borrow/repay, liquidation, zero-debt release, Merkle insertion)
 - **OtterSec or Zellic** - Soroban smart contracts (SPV client + Writz Lend + USDC pool)
 
 ---
@@ -75,13 +74,13 @@ Based on CertiK's research and the audit bank's findings across 40+ audited proj
 #[contracttype]
 pub struct PoolState {
     pub commitments: Vec<BytesN<32>>,  // grows forever!
-    pub nullifiers: Vec<BytesN<32>>,   // grows forever!
+    pub entries: Vec<BytesN<32>>,   // grows forever!
 }
 ```
 
 **Writz mitigation:**
 - Each commitment stored as a separate `persistent` ledger entry keyed by commitment hash
-- Each nullifier stored as a separate `persistent` ledger entry keyed by nullifier hash
+- Each entry stored as a separate `persistent` ledger entry keyed by its hash
 - Pool-level state (TVL, utilization) stored in `instance` storage (fixed size)
 - Never use `Vec` in instance storage for data that grows with users
 
@@ -91,7 +90,7 @@ pub struct PoolState {
 
 **Writz mitigation:**
 - Define all storage types explicitly with `#[contracttype]` derive macro
-- Use newtype wrappers for semantic distinction (e.g., `CommitmentHash(BytesN<32>)` vs `NullifierHash(BytesN<32>)`)
+- Use newtype wrappers for semantic distinction (e.g., `Txid(BytesN<32>)` vs `BlockHash(BytesN<32>)`)
 - Write round-trip tests for every storage type: store → retrieve → assert equality
 
 ### 3. Integer Overflow in Financial Math (HIGH SEVERITY)
@@ -123,22 +122,12 @@ pub struct PoolState {
 - Price deviation check: reject if sources disagree by >5%
 - Liquidation smoothing: use min(current, 5-min-ago price) for liquidations
 
-### 6. ZK Proof Soundness (CRITICAL)
-
-**What it is:** A bug in the Circom circuit could allow an attacker to construct a valid-looking proof that proves a false statement - e.g., proving they have more collateral than they do.
-
-**Writz mitigation:**
-- Engage ZK-specialized auditors (Veridise, Trail of Bits' ZK team) separately from Soroban contract auditors
-- Conduct formal verification of critical circuit constraints
-- Run the trusted setup ceremony transparently with multiple parties
-- Test circuits against known attack patterns (under-constrained circuits, malicious witness generation)
-
 ### 7. Timing Attacks on Liquidations (MEDIUM SEVERITY)
 
 **What it is:** If liquidations can only happen at specific times or by specific parties, an attacker can front-run or delay liquidations to profit.
 
 **Writz mitigation:**
-- Liquidation is open to anyone once the ZK proof is valid
+- Liquidation opens to anyone once the keeper is stale
 - No minimum delay between liquidation proof submission and execution
 - Keeper bond ensures keepers don't collude to delay
 
@@ -156,7 +145,6 @@ pub struct PoolState {
 - Interest rate calculations (extreme utilization, very large/small amounts)
 - Collateral ratio calculations (zero debt, max BTC, extreme prices)
 - SPV verification (malformed headers, invalid Merkle proofs, reorg scenarios)
-- ZK proof submission (invalid proofs, replayed proofs, malformed inputs)
 
 **Invariant testing:** Define protocol invariants and test that no sequence of operations can violate them:
 - `total_usdc_borrowed ≤ total_usdc_supplied × Umax`
@@ -173,7 +161,6 @@ Phase 1 (before testnet with real funds):
 
 Phase 2 (before mainnet):
   ├── OtterSec audit of Soroban contracts (4–6 weeks)
-  ├── Veridise ZK circuit audit (3–4 weeks, parallel)
   └── Remediation and re-audit of critical/high findings
 
 Phase 3 ($10M TVL milestone):
@@ -200,8 +187,6 @@ Ongoing:
 - [ ] Fuzz tests run for minimum 48 hours with no crashes
 - [ ] External audit completed (OtterSec or equivalent)
 - [ ] All critical and high findings remediated
-- [ ] ZK circuit audit completed (Veridise or equivalent)
-- [ ] Trusted setup ceremony completed and transcript published
 - [ ] Bug bounty program live on Immunefi
 - [ ] TVL cap set at $50K for first 30 days
 - [ ] Insurance fund seeded with $5K minimum (= 10% of the $50K launch TVL cap, consistent with the 10%-of-TVL target in `docs/research/tokenomics-fee-model.md` - see that doc for the ramp as TVL scales past the launch cap)

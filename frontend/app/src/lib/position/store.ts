@@ -9,7 +9,7 @@ const keyFor = (owner: string) => `${KEY_PREFIX}${owner}`;
 
 /**
  * Records saved before the app moved to `writz-lend` are keyed by a
- * commitment-tree commitment, not a Bitcoin txid; those loans live on the
+ * position commitment from an earlier design, not a Bitcoin txid; those loans live on the
  * other contract and this app does not serve them, so they are skipped.
  */
 const isWritzLend = (p: Position) => typeof p.txid === "string" && p.id === p.txid;

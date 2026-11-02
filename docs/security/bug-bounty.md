@@ -27,14 +27,6 @@ The following are in-scope for the bug bounty program:
 **Soroban contracts (high priority):**
 - `bitcoin-spv` - SPV verification, SHA256d implementation, Merkle proofs
 - `writz-lend` - Lending mechanics, interest accrual, liquidation
-- `commitment-tree` - privacy edition (in progress, testnet only): ZK lending logic, nullifier set, Merkle tree
-- `zk-verifier` - privacy edition (in progress, testnet only): Groth16 verification, verification key management
-
-**ZK circuits:**
-- `deposit.circom` - Soundness issues, underconstrained signals
-- `borrow_repay.circom` - Collateral ratio enforcement, state transition
-- `liquidation.circom` - Undercollateralization proof, usdc_debt binding
-- `merkle.circom` - Poseidon Merkle tree components
 
 **Relayer service:**
 - SPV proof assembly correctness
@@ -59,14 +51,13 @@ these are payable during the testnet phase**; see the notice at the top.
 
 | Severity | Description | Reward |
 |---|---|---|
-| **Critical** | Theft of user funds, ZK circuit soundness bypass, unauthorized BTC access | Up to $50,000 |
-| **High** | Significant fund loss risk, privacy leak of positions in the privacy edition contracts, oracle manipulation | Up to $15,000 |
+| **Critical** | Theft of user funds, unauthorized BTC access | Up to $50,000 |
+| **High** | Significant fund loss risk, oracle manipulation | Up to $15,000 |
 | **Medium** | Denial of service for a specific user, minor fund loss risk, incorrect calculations | Up to $5,000 |
 | **Low** | Minor issues, incorrect error handling, non-exploitable edge cases | Up to $1,000 |
 | **Informational** | Best-practice improvements, documentation issues | Recognition only |
 
 **Critical finding examples:**
-- A ZK circuit that accepts a proof where the loan-to-value constraint is not enforced
 - A Soroban contract bug that allows withdrawing more USDC than was deposited
 - A Bitcoin SPV verification bypass that accepts a fabricated transaction as valid
 

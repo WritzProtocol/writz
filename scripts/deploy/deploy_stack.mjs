@@ -4,37 +4,26 @@
  * through its constructor, then wired together in the order the contracts
  * require.
  *
- *   1. zk-verifier      __constructor(admin)
- *   2. bitcoin-spv      __constructor(admin, pow_limit_bits,
+ *   1. bitcoin-spv      __constructor(admin, pow_limit_bits,
  *                                     header_ttl_ledgers, consumed_ttl_ledgers)
  *                       set_checkpoint(...)            (callable once)
  *                       set_submitter(admin, relayer)  (mandatory on signet)
- *   3. commitment-tree  __constructor(admin, spv, zk_verifier, usdc, oracle,
- *                                     min_confirmations, protocol_pubkey,
- *                                     keeper_pub_x, keeper_pub_y)
- *   4. writz-lend       __constructor(admin, spv, usdc, oracle, keeper,
+ *   2. writz-lend       __constructor(admin, spv, usdc, oracle, keeper,
  *                                     relayer, protocol_pubkey,
  *                                     min_confirmations, min_deposit_satoshis,
  *                                     entry_ttl_ledgers)
- *   5. verification keys for Deposit, BorrowRepay, Liquidation, ZeroDebt, Insert
- *   6. set_consumer on bitcoin-spv for both lenders
- *   7. set_max_total_borrowed on both lenders, when MAX_TOTAL_BORROWED is set
- *
- * zk-verifier, commitment-tree and the verification keys belong to the
- * privacy edition (privacy/, in progress, testnet only). --v1-only deploys
- * Writz v1 alone: bitcoin-spv and writz-lend, with no privacy contracts, keys
- * or KEEPER_BABYJUB_PUBKEY.
+ *   3. set_consumer on bitcoin-spv for writz-lend
+ *   4. set_max_total_borrowed on writz-lend, when MAX_TOTAL_BORROWED is set
  *
  * --lend-only redeploys writz-lend alone against an existing bitcoin-spv
  * (SPV_CONTRACT=C...), for a writz-lend change that leaves bitcoin-spv as it
- * is (#260): steps 4, 6 and 7 for writz-lend only, with no checkpoint inputs.
- * The deployer must be bitcoin-spv's admin, since step 6 calls set_consumer
+ * is (#260): steps 2 to 4, with no checkpoint inputs.
+ * The deployer must be bitcoin-spv's admin, since step 3 calls set_consumer
  * on it. The previous writz-lend stays a consumer until its admin removes it.
  *
  * Without --execute it only validates the inputs and prints the plan; nothing
  * is sent. Do not run it with --execute without the project owner's explicit
- * sign-off for that network. Mainnet also needs CONFIRM_MAINNET=I_HAVE_SIGN_OFF
- * and a production ceremony manifest (privacy/circuits/keys/CEREMONY_MANIFEST.json).
+ * sign-off for that network. Mainnet also needs CONFIRM_MAINNET=I_HAVE_SIGN_OFF.
  *
  * The admin is the deployer account (ADMIN_SECRET). Move it behind the 2-of-3
  * multisig (docs/security/security-model.md) right after the run - the
@@ -43,13 +32,12 @@
  *
  * Usage:
  *   (cd contracts && cargo build --release --target wasm32v1-none --locked)
- *   (cd privacy/contracts && cargo build --release --target wasm32v1-none --locked)  # not with --v1-only
  *   STELLAR_NETWORK=testnet BITCOIN_NETWORK=signet ADMIN_SECRET=S... \
  *   RELAYER_ADDRESS=G... KEEPER_ADDRESS=G... USDC_TOKEN=C... ORACLE=C... \
- *   PROTOCOL_PUBKEY=02... KEEPER_BABYJUB_PUBKEY=<x||y hex, keeper_keygen.mjs> \
+ *   PROTOCOL_PUBKEY=02... \
  *   CHECKPOINT_HEIGHT=... CHECKPOINT_HASH=... \
  *   CHECKPOINT_BITS=0x... CHECKPOINT_TIME=... CHECKPOINT_PERIOD_START_TIME=... \
- *     node deploy_stack.mjs [--v1-only] [--execute]
+ *     node deploy_stack.mjs [--execute]
  *
  *   # writz-lend alone, against the bitcoin-spv already deployed:
  *   (cd contracts && cargo build --release --target wasm32v1-none --locked -p writz-lend)
@@ -85,23 +73,15 @@ import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { buildBabyjub } from 'circomlibjs';
 import { buildSigned, deployWithConstructor, sendAndConfirm } from './constructor_deploy.mjs';
 
 const { Keypair, Networks, Address, Contract, StrKey, TransactionBuilder, xdr, nativeToScVal, rpc: SorobanRpc } = StellarSdk;
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '../..');
-// v1 and the privacy edition are separate Cargo workspaces, so their WASM
-// lands in separate target directories.
 const WASM_DIR = path.join(ROOT, 'contracts/target/wasm32v1-none/release');
-const PRIVACY_WASM_DIR = path.join(ROOT, 'privacy/contracts/target/wasm32v1-none/release');
-const KEYS_DIR = path.join(ROOT, 'privacy/circuits/keys');
-
 const EXECUTE = process.argv.includes('--execute');
 const LEND_ONLY = process.argv.includes('--lend-only');
-// writz-lend alone is a v1-only run that reuses bitcoin-spv.
-const V1_ONLY = LEND_ONLY || process.argv.includes('--v1-only');
 
 // ── inputs ───────────────────────────────────────────────────────────────────
 const STELLAR = {
@@ -138,15 +118,6 @@ const usdc = env('USDC_TOKEN', isContract, 'C... USDC Stellar Asset Contract');
 const oracle = env('ORACLE', isContract, "C... Reflector oracle (docs/research/oracle-design.md)");
 const protocolPubkey = env('PROTOCOL_PUBKEY', (v) => /^0[23][0-9a-f]{64}$/i.test(v),
   'compressed 33-byte hex key matching the relayer KMS key or PROTOCOL_SIGNING_KEY');
-// The ZK keeper's BabyJubJub key (#212), from keeper_keygen.mjs: 32-byte x
-// then 32-byte y, big-endian. Every borrow/repay note is encrypted to it.
-// Privacy edition only.
-const babyjub = V1_ONLY ? undefined : await buildBabyjub();
-const keeperBabyjub = V1_ONLY ? undefined : env('KEEPER_BABYJUB_PUBKEY', (v) => {
-  if (!/^[0-9a-f]{128}$/i.test(v) || /^0{64}/.test(v)) return false;
-  const point = [babyjub.F.e(BigInt('0x' + v.slice(0, 64))), babyjub.F.e(BigInt('0x' + v.slice(64)))];
-  return babyjub.inCurve(point) && babyjub.inSubgroup(point);
-}, 'x||y hex of a BabyJubJub subgroup point (scripts/deploy/keeper_keygen.mjs)');
 // --lend-only wires writz-lend to this bitcoin-spv instead of deploying one,
 // so it needs no checkpoint.
 const existingSpv = LEND_ONLY ? env('SPV_CONTRACT', isContract, 'C... bitcoin-spv already deployed') : undefined;
@@ -179,37 +150,18 @@ if (stellarNetwork === 'mainnet') {
   if (process.env.CONFIRM_MAINNET !== 'I_HAVE_SIGN_OFF') {
     errors.push('mainnet needs CONFIRM_MAINNET=I_HAVE_SIGN_OFF (the project owner\'s explicit sign-off)');
   }
-  if (!V1_ONLY && !fs.existsSync(path.join(KEYS_DIR, 'CEREMONY_MANIFEST.json'))) {
-    errors.push('mainnet needs the production ceremony keys (privacy/circuits/keys/CEREMONY_MANIFEST.json is missing)');
-  }
   if (minConfirmations < 6) errors.push('mainnet needs MIN_CONFIRMATIONS >= 6');
   if (minDepositSats < 100_000n) errors.push('mainnet needs MIN_DEPOSIT_SATS >= 100000');
   if (!process.env.MAX_RESOURCE_FEE_XLM?.trim()) errors.push('mainnet needs MAX_RESOURCE_FEE_XLM (the most resource fee, in XLM, to sign for)');
 }
 
-const WASM_DIRS = LEND_ONLY
-  ? { writz_lend: WASM_DIR }
-  : V1_ONLY
-  ? { bitcoin_spv: WASM_DIR, writz_lend: WASM_DIR }
-  : { zk_verifier: PRIVACY_WASM_DIR, bitcoin_spv: WASM_DIR, commitment_tree: PRIVACY_WASM_DIR, writz_lend: WASM_DIR };
-const WASMS = Object.keys(WASM_DIRS);
+const WASMS = LEND_ONLY ? ['writz_lend'] : ['bitcoin_spv', 'writz_lend'];
 const wasm = {};
 for (const name of WASMS) {
-  const file = path.join(WASM_DIRS[name], `${name}.wasm`);
+  const file = path.join(WASM_DIR, `${name}.wasm`);
   if (!fs.existsSync(file)) { errors.push(`${file} not built`); continue; }
   wasm[name] = fs.readFileSync(file);
 }
-const CIRCUITS = V1_ONLY ? [] : [
-  ['Deposit', 'deposit'], ['BorrowRepay', 'borrow_repay'], ['Liquidation', 'liquidation'],
-  ['ZeroDebt', 'zero_debt'], ['Insert', 'insert'],
-];
-const vkeys = {};
-for (const [circuit, file] of CIRCUITS) {
-  const p = path.join(KEYS_DIR, `${file}_vkey.json`);
-  if (!fs.existsSync(p)) { errors.push(`${p} is missing`); continue; }
-  vkeys[circuit] = JSON.parse(fs.readFileSync(p, 'utf8'));
-}
-
 if (errors.length) {
   console.error('Cannot deploy:\n' + errors.map((e) => `  - ${e}`).join('\n'));
   process.exit(1);
@@ -229,7 +181,6 @@ console.log(`  keeper            ${keeper}`);
 console.log(`  usdc              ${usdc}`);
 console.log(`  oracle            ${oracle}`);
 console.log(`  protocol pubkey   ${protocolPubkey}`);
-if (!V1_ONLY) console.log(`  keeper babyjub    ${keeperBabyjub.slice(0, 16)}…`);
 if (LEND_ONLY) {
   console.log(`  bitcoin-spv       ${existingSpv}  (existing, not redeployed)`);
 } else {
@@ -244,14 +195,9 @@ if (!LEND_ONLY) {
   console.log(`  header ttl        ${days(headerTtl)} (bitcoin-spv)`);
   console.log(`  consumed ttl      ${days(consumedTtl)} (bitcoin-spv)`);
 }
-console.log(`  exposure cap      ${maxTotalBorrowed === undefined ? 'contract default (50,000 USDC per lender)' : `${maxTotalBorrowed} stroops per lender`}`);
+console.log(`  exposure cap      ${maxTotalBorrowed === undefined ? 'contract default (50,000 USDC)' : `${maxTotalBorrowed} stroops per lender`}`);
 console.log('  wasm sha256');
 for (const name of WASMS) console.log(`    ${name.padEnd(16)} ${sha256(wasm[name])}`);
-if (!V1_ONLY) {
-  console.log('  verification keys');
-  for (const [circuit] of CIRCUITS) console.log(`    ${circuit.padEnd(16)} ${vkeys[circuit].IC.length} IC points`);
-}
-
 if (!EXECUTE) {
   console.log('\nDry run: inputs are valid, nothing was sent. Re-run with --execute once deploying is signed off.');
   process.exit(0);
@@ -283,34 +229,16 @@ const addr = (a) => Address.fromString(a).toScVal();
 const u32 = (n) => nativeToScVal(n, { type: 'u32' });
 const u64 = (n) => nativeToScVal(n, { type: 'u64' });
 const bytes = (buf) => xdr.ScVal.scvBytes(Buffer.from(buf));
-const hex32 = (n) => BigInt(n).toString(16).padStart(64, '0');
-const point = (hex) => xdr.ScVal.scvMap([
-  new xdr.ScMapEntry({ key: xdr.ScVal.scvSymbol('bytes'), val: xdr.ScVal.scvBytes(Buffer.from(hex, 'hex')) }),
-]);
-const g1 = (p) => point(hex32(p[0]) + hex32(p[1]));
-// G2 in EIP-197 order: x.c1 || x.c0 || y.c1 || y.c0
-const g2 = (p) => point(hex32(p[0][1]) + hex32(p[0][0]) + hex32(p[1][1]) + hex32(p[1][0]));
-const entry = (k, v) => new xdr.ScMapEntry({ key: xdr.ScVal.scvSymbol(k), val: v });
-const vkeyVal = (vk) => xdr.ScVal.scvMap([
-  entry('alpha_g1', g1(vk.vk_alpha_1)), entry('beta_g2', g2(vk.vk_beta_2)), entry('delta_g2', g2(vk.vk_delta_2)),
-  entry('gamma_g2', g2(vk.vk_gamma_2)), entry('ic', xdr.ScVal.scvVec(vk.IC.map(g1))),
-]);
 
 // ── run ──────────────────────────────────────────────────────────────────────
 const deployer = { server, networkPassphrase: passphrase, keypair: admin };
 const out = { network: stellarNetwork, bitcoinNetwork, admin: admin.publicKey(), txs: {} };
 
-if (!V1_ONLY) {
-  console.log('\n1. zk-verifier');
-  out.zkVerifier = await deployWithConstructor({ ...deployer, wasm: wasm.zk_verifier, constructorArgs: [addr(admin.publicKey())] });
-  console.log(`   ${out.zkVerifier}`);
-}
-
 if (LEND_ONLY) {
   out.bitcoinSpv = existingSpv;
-  console.log(`\n2. bitcoin-spv: reusing ${existingSpv}`);
+  console.log(`\n1. bitcoin-spv: reusing ${existingSpv}`);
 } else {
-  console.log(`${V1_ONLY ? '\n' : ''}2. bitcoin-spv`);
+  console.log('\n1. bitcoin-spv');
   out.bitcoinSpv = await deployWithConstructor({
     ...deployer, wasm: wasm.bitcoin_spv, constructorArgs: [addr(admin.publicKey()), u32(powLimitBits), u32(headerTtl), u32(consumedTtl)],
   });
@@ -330,20 +258,7 @@ if (LEND_ONLY) {
 }
 
 const protocolKey = Buffer.from(protocolPubkey, 'hex');
-if (!V1_ONLY) {
-  console.log('3. commitment-tree');
-  out.commitmentTree = await deployWithConstructor({
-    ...deployer, wasm: wasm.commitment_tree,
-    constructorArgs: [
-      addr(admin.publicKey()), addr(out.bitcoinSpv), addr(out.zkVerifier), addr(usdc), addr(oracle),
-      u32(minConfirmations), bytes(protocolKey),
-      bytes(Buffer.from(keeperBabyjub.slice(0, 64), 'hex')), bytes(Buffer.from(keeperBabyjub.slice(64), 'hex')),
-    ],
-  });
-  console.log(`   ${out.commitmentTree}`);
-}
-
-console.log('4. writz-lend');
+console.log('2. writz-lend');
 out.writzLend = await deployWithConstructor({
   ...deployer, wasm: wasm.writz_lend,
   constructorArgs: [
@@ -353,35 +268,19 @@ out.writzLend = await deployWithConstructor({
 });
 console.log(`   ${out.writzLend}`);
 
-if (!V1_ONLY) console.log('5. verification keys');
-for (const [circuit] of CIRCUITS) {
-  out.txs[`vkey${circuit}`] = await invoke(out.zkVerifier, 'set_verification_key', [
-    addr(admin.publicKey()), xdr.ScVal.scvVec([xdr.ScVal.scvSymbol(circuit)]), vkeyVal(vkeys[circuit]),
-  ]);
-  console.log(`   ${circuit}`);
-}
-
-const lenders = V1_ONLY
-  ? [['writz-lend', out.writzLend]]
-  : [['commitment-tree', out.commitmentTree], ['writz-lend', out.writzLend]];
-console.log(`6. register ${V1_ONLY ? 'the lender' : 'both lenders'} with the shared txid registry`);
-for (const [name, id] of lenders) {
-  out.txs[`consumer_${name}`] = await invoke(out.bitcoinSpv, 'set_consumer', [
-    addr(admin.publicKey()), addr(id), nativeToScVal(true),
-  ]);
-  console.log(`   ${name}`);
-}
+console.log('3. register writz-lend with the shared txid registry');
+out.txs.consumer_writz_lend = await invoke(out.bitcoinSpv, 'set_consumer', [
+  addr(admin.publicKey()), addr(out.writzLend), nativeToScVal(true),
+]);
 
 if (maxTotalBorrowed !== undefined) {
   // A borrower can reclaim BTC through the timelock exit while still owing
-  // USDC, so each lender's total exposure is capped (GHSA-5rxp).
-  console.log('7. exposure cap');
-  for (const [name, id] of lenders) {
-    out.txs[`maxTotalBorrowed_${name}`] = await invoke(id, 'set_max_total_borrowed', [
-      addr(admin.publicKey()), nativeToScVal(maxTotalBorrowed, { type: 'i128' }),
-    ]);
-    console.log(`   ${name}: ${maxTotalBorrowed} stroops`);
-  }
+  // USDC, so total exposure is capped (GHSA-5rxp).
+  console.log('4. exposure cap');
+  out.txs.maxTotalBorrowed = await invoke(out.writzLend, 'set_max_total_borrowed', [
+    addr(admin.publicKey()), nativeToScVal(maxTotalBorrowed, { type: 'i128' }),
+  ]);
+  console.log(`   ${maxTotalBorrowed} stroops`);
 }
 
 out.wasmSha256 = Object.fromEntries(WASMS.map((n) => [n, sha256(wasm[n])]));
@@ -390,12 +289,9 @@ fs.writeFileSync(record, JSON.stringify(out, null, 2) + '\n');
 
 console.log(`\nDeployed. Record written to ${path.relative(ROOT, record)}.`);
 console.log('\nfrontend/app/.env');
-if (!V1_ONLY) console.log(`NEXT_PUBLIC_ZK_VERIFIER_ID=${out.zkVerifier}`);
 console.log(`NEXT_PUBLIC_BITCOIN_SPV_ID=${out.bitcoinSpv}`);
-if (!V1_ONLY) console.log(`NEXT_PUBLIC_COMMITMENT_TREE_ID=${out.commitmentTree}`);
 console.log(`NEXT_PUBLIC_WRITZ_LEND_ID=${out.writzLend}`);
 console.log('\nrelayer/.env');
-if (!V1_ONLY) console.log(`COMMITMENT_TREE_ID=${out.commitmentTree}`);
 console.log(`WRITZ_LEND_ID=${out.writzLend}`);
 console.log(`BITCOIN_SPV_ID=${out.bitcoinSpv}`);
 if (!LEND_ONLY) console.log(`SPV_SYNC_FROM_HEIGHT=${checkpoint.height}`);

@@ -28,7 +28,7 @@ Two things make accessibility a sharper requirement here than for a typical
 DeFi frontend, not a softer one:
 
 1. **The growth research explicitly targets a conservative, complexity-averse
-   segment** (`docs/research/growth-strategy.md`) - the opposite of the
+   segment** - the opposite of the
    "crypto power user" persona accessibility gets skipped for elsewhere. That
    audience skews toward wanting things legible and predictable, which is
    substantially the same thing accessibility asks for.

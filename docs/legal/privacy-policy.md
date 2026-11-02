@@ -12,7 +12,7 @@ Writz does not require an account, an email address, or any form of identity ver
 
 Bitcoin and Stellar are public blockchains. Any transaction you make, including deposits, borrows, repayments, and withdrawals, is recorded on these public ledgers and is visible to anyone, independent of Writz. This is a property of the underlying networks, not something Writz collects or controls.
 
-Writz Lend positions are recorded in plaintext on public blockchains. Your Stellar address, the Bitcoin deposit transaction linked to it, the size of your collateral, the size of your loan and your health ratio are visible on-chain to anyone. Writz does not offer a privacy layer for Writz Lend. A separate, opt-in privacy edition is being designed and is not available; see docs/how-it-works/privacy-edition.md.
+Writz Lend positions are recorded in plaintext on public blockchains. Your Stellar address, the Bitcoin deposit transaction linked to it, the size of your collateral, the size of your loan and your health ratio are visible on-chain to anyone. Writz does not offer a privacy layer for Writz Lend.
 
 ## 3. Website Analytics
 
@@ -26,14 +26,10 @@ Parts of the Writz stack, including the relayer service and RPC access to the Bi
 
 When you connect a Bitcoin or Stellar wallet to the Writz interface, the interface reads your public wallet address to display your positions and to construct transactions for you to sign. Writz never requests, receives, or stores your private keys or seed phrases. All signing happens in your own wallet software.
 
-## 6. Future Compliance Features
-
-As described in the project's regulatory research (docs/research/regulatory-landscape.md), Writz plans to integrate an Association Set Provider (ASP) system for deposits above certain thresholds once the protocol reaches later phases. When that integration ships, this policy will be updated to describe exactly what is verified, what is disclosed, and to whom, before it becomes active.
-
-## 7. Your Rights
+## 6. Your Rights
 
 If you are located in a jurisdiction that grants you data protection rights (such as the GDPR in the European Union), those rights apply to any data Writz does hold about you, which, per Sections 1 through 5 above, is minimal by design. Questions or requests can be raised through the project's public GitHub repository at github.com/WritzProtocol/writz.
 
-## 8. Changes to This Policy
+## 7. Changes to This Policy
 
 This policy will be updated as the protocol adds features that change what data is processed, including the ASP compliance integration referenced in Section 6. Material changes will be reflected here with an updated effective date.

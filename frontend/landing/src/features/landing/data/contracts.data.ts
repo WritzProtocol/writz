@@ -1,9 +1,7 @@
 export type LedgerEntry = { name: string; role: string; address: string };
 
 // From contracts/deployments/testnet.md and defindex-vault-testnet.md.
-// The protocol (v1) is bitcoin-spv + writz-lend. The privacy edition's
-// contracts (zk-verifier, commitment-tree) are a separate edition in progress
-// and are not listed here.
+// The protocol is bitcoin-spv + writz-lend.
 export const ledger: LedgerEntry[] = [
   { name: "bitcoin-spv", role: "Verifies Bitcoin transactions on Stellar", address: "CBX23YKCCJMAMBMSCNP6YVKEXUIYK2CTKSR4TQ3RVBPAFYZFVCW7W4EO" },
   { name: "writz-lend", role: "Runs the loans", address: "CC7XGEWAUNUHZYKM5CED6KQXGFS6UWVI5H6XOB76YTMZRWCEH6DKT62A" },

@@ -7,13 +7,13 @@ sidebarTitle: "Technical Overview"
 **Last updated:** 2026-06-22
 **Status:** Preliminary - subject to change after Phase 0 benchmarks
 
-> **Superseded values notice:** This document predates several Phase 0/1 decisions and is kept for historical architecture context only. Where it conflicts with `docs/research/circom-circuit-design.md`, `docs/research/interest-rate-model.md`, `docs/research/oracle-design.md`, or the contract source (`contracts/contracts/writz-lend/src/`), those are the sources of truth, not this file. Known stale values below have been corrected inline; treat any other specific number in this document as unverified until cross-checked against the docs above.
+> **Superseded values notice:** This document predates several Phase 0/1 decisions and is kept for historical architecture context only. Where it conflicts with `docs/research/interest-rate-model.md`, `docs/research/oracle-design.md`, or the contract source (`contracts/contracts/writz-lend/src/`), those are the sources of truth, not this file. Known stale values below have been corrected inline; treat any other specific number in this document as unverified until cross-checked against the docs above.
 
 ---
 
 ## System Architecture
 
-Writz Protocol operates across two blockchains: Bitcoin and Stellar. The architecture is designed to be trustless on the verification layer. Positions are plaintext: amounts, collateral and addresses are public on chain. Privacy is not part of the protocol; it is being designed as a separate, opt-in edition, in progress (see `docs/how-it-works/privacy-edition.md`).
+Writz Protocol operates across two blockchains: Bitcoin and Stellar. The architecture is designed to be trustless on the verification layer. Positions are plaintext: amounts, collateral and addresses are public on chain.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -154,7 +154,7 @@ Output checks are done by the consumer: `writz-lend::deposit` rebuilds the expec
 
 ### 3. Privacy (not part of the protocol)
 
-Writz v1 has no privacy layer. Positions, amounts and collateral are public on chain. An opt-in privacy edition with its own contracts (`commitment-tree`, `zk-verifier`, Circom circuits verified with Groth16 on Soroban), its own pool, audit and trusted-setup ceremony is in progress on testnet and planned for after v1 is live on mainnet, with no date. See `docs/how-it-works/privacy-edition.md`.
+Writz v1 has no privacy layer. Positions, amounts and collateral are public on chain.
 
 ---
 

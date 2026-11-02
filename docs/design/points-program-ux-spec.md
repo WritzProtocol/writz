@@ -2,7 +2,7 @@
 
 **Author:** Kaan (UX)
 **Status:** Spec only - no points UI exists yet. The growth research
-(`docs/research/growth-strategy.md`) defines the earning rules and anti-Sybil
+defines the earning rules and anti-Sybil
 thresholds; this spec defines what the user sees.
 
 ---
@@ -51,6 +51,6 @@ product surface.
 
 Exact points-per-action multipliers, the conversion ratio to WRTZ, and the
 claim/distribution mechanism are growth/tokenomics decisions
-(`docs/research/growth-strategy.md`, `docs/research/tokenomics-fee-model.md`),
+(`docs/research/tokenomics-fee-model.md`),
 not UX ones - this spec only covers how the program is surfaced and explained
 to the user, whatever the underlying numbers end up being.

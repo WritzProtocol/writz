@@ -2,8 +2,7 @@
 /**
  * Persisted Signet faucet claims, in their own database file under the
  * relayer's data directory (mount a volume at /app/data, see
- * docs/developers/deploy-targets.md). Same bun:sqlite + WAL pattern as
- * `../leaf-store.ts`. Without a volume the file is lost on redeploy, which
+ * docs/developers/deploy-targets.md), bun:sqlite in WAL mode. Without a volume the file is lost on redeploy, which
  * resets the one-claim rules, the per-IP allowance and the daily count.
  *
  * Schema history: the first version stored `address, ip_hash, txid,

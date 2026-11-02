@@ -152,33 +152,10 @@ Writz holds a co-signing private key for the `protocol_pubkey` in every locking 
 Instead of splitting one key with MPC, the script itself requires the user's key and any 2 of 3 protocol keys, `wsh(and_v(v:pk(U),or_i(multi(2,K1,K2,K3),after(H))))`, held separately. Bitcoin enforces the threshold natively, each protocol key signs plain ECDSA, and the user's timelock exit is unchanged. Threshold ECDSA (MPC, for example GG20/21 or CGGMP21) is not planned. The signing policy, what the protocol signers can and cannot sign, will be published.
 
 **Considered: Stellar Auth Delegation (Protocol 27)**
-Protocol 27 (July 8, 2026) enables distributing the co-signing authority on the Stellar side across multiple delegated accounts. While this doesn't directly affect the Bitcoin signing key, it enables a multi-party signing ceremony where multiple Stellar accounts must authorize a BTC co-signature before it's produced.
+Protocol 27 (July 8, 2026) enables distributing the co-signing authority on the Stellar side across multiple delegated accounts. While this doesn't directly affect the Bitcoin signing key, it enables multi-party signing where multiple Stellar accounts must authorize a BTC co-signature before it's produced.
 
 **Only if Taproot is reopened: FROST (Flexible Round-Optimized Schnorr Threshold)**
 If Writz ever moves to Taproot, FROST enables threshold Schnorr signatures where t-of-n parties cooperate to sign. More efficient than ECDSA MPC. Produces a single Schnorr signature indistinguishable from a regular single-key spend.
-
----
-
-## zkRelay Alternative: ZK-SNARK Bitcoin Relay
-
-Research uncovered an interesting alternative to verifying every header on chain: **zkRelay** - using ZK-SNARKs to batch-verify multiple Bitcoin block headers off-chain and post a single proof on-chain.
-
-### zkRelay approach
-
-Instead of the caller providing raw headers + Merkle proofs, a prover computes a ZK proof that:
-- "I have validated N consecutive Bitcoin block headers"
-- "Each header has valid PoW"
-- "Transaction T is included in block at height H"
-
-The on-chain verifier only checks the ZK proof - a constant-cost operation regardless of how many headers were validated off-chain.
-
-**Cost reduction achieved in research:** 187x cheaper than BTC Relay's per-header approach when batching 504 headers.
-
-### Why this matters for Writz
-
-Writz's SPV contract is an on-chain header light client, the same family as BTC Relay: each header is submitted and verified on Stellar. zkRelay's approach could reduce the on-chain cost of the header chain, or serve as an independent second check of it.
-
-**Recommendation (original, superseded):** this research recommended starting with stateless SPV (the summa-tx approach). The contract has since moved to a header light client, because a stateless design lets a caller present a header chain it mined privately. A zero-knowledge proof of the header chain remains under research as a second check that could only refuse a tip, never credit value (see [SPV vs Wrapped Bitcoin](/security/spv-vs-wrapped)).
 
 ---
 
@@ -218,7 +195,7 @@ DEPOSIT:
 5. After 6 Bitcoin confirmations, Writz UI prompts user to submit SPV proof
 6. User (or Writz UI) submits proof to Soroban SPV contract
 7. SPV contract verifies and signals Writz Lend contract
-8. Writz Lend creates ZK position commitment, allows USDC borrowing
+8. Writz Lend records the position, allows USDC borrowing
 
 REPAYMENT (writz-lend's plaintext flow - automated):
 1. User repays USDC + interest via Writz Lend contract
@@ -234,7 +211,6 @@ REPAYMENT (writz-lend's plaintext flow - automated):
 6. User retrieves the PSBT, adds their own signature, and broadcasts it
 7. BTC arrives in user's wallet (standard Bitcoin transaction)
 
-REPAYMENT (commitment-tree's ZK flow - still manual): cosigning requires the
 user's own private witness to construct a zero-debt proof, which the backend
 does not have. The user submits this proof via the existing /api/cosign route
 themselves.

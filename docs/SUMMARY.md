@@ -39,7 +39,6 @@
 * [The Bitcoin Side](/how-it-works/bitcoin-side)
 * [SPV Verification](/how-it-works/spv-verification)
 * [The Stellar Side](/how-it-works/stellar-side)
-* [Privacy edition (in progress)](/how-it-works/privacy-edition)
 
 ## Developers
 
@@ -83,16 +82,12 @@
 
 * [Bitcoin SPV on Other Chains](/research/spv-implementations)
 * [Market Landscape](/research/market-landscape)
-* [Protocol X-Ray Capabilities](/research/protocol-x-ray-capabilities)
-* [Soroban Compute Benchmarks](/research/soroban-compute-benchmarks)
 * [Bitcoin Locking Script Design](/research/bitcoin-locking-script)
 * [Oracle Design](/research/oracle-design)
 * [Interest Rate Model](/research/interest-rate-model)
 * [Liquidation Mechanism](/research/liquidation-mechanism)
-* [Circom Circuit Design](/research/circom-circuit-design)
 * [Relayer Incentive Design](/research/relayer-incentive-design)
 * [Blend & USDC Integration](/research/blend-usdc-integration)
 * [Tokenomics & Fee Model](/research/tokenomics-fee-model)
 * [Security Audit Strategy](/research/security-audit-strategy)
-* [Regulatory Landscape](/research/regulatory-landscape)
 

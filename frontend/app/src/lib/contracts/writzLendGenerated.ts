@@ -504,7 +504,7 @@ export interface BestTip {
 
 /**
  * A header accepted into `bitcoin-spv`, keyed by its block hash. Shared so
- * `commitment-tree` can read the tip's timestamp (#212).
+ * `writz-lend` can read the tip's timestamp (#212).
  */
 export interface HeaderEntry {
   bits: u32;

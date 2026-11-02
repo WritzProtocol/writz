@@ -6,7 +6,7 @@ title: "Writz Lend"
 
 Writz Lend is the lending product of Writz Protocol. Bitcoin is the collateral and USDC is the borrowed asset. The BTC never leaves Bitcoin: it is locked in a script that you co-own with the protocol, and the `writz-lend` contract on Stellar recognizes it through `bitcoin-spv`, an on-chain Bitcoin header light client. There is no bridge, no custodian and no wrapped BTC.
 
-Positions are plaintext. Your collateral amount, debt, health ratio, Stellar address and Bitcoin deposit transaction are public on chain, like in any other lending market. Privacy is not part of the protocol; it is being designed as a separate, opt-in [privacy edition (in progress)](/how-it-works/privacy-edition) that Writz Lend users never touch.
+Positions are plaintext. Your collateral amount, debt, health ratio, Stellar address and Bitcoin deposit transaction are public on chain, like in any other lending market.
 
 ---
 
@@ -209,7 +209,7 @@ Writz Lend is targeted for mainnet in Q2 to Q3 2027, starting with conservative 
 - **Open access under caps:** open to outside lenders and borrowers, with no whitelist, under a global and a per-borrower limit
 - **Protocol fee:** the launch value is not decided yet (the contract charges 15% of interest today)
 
-The date is a target, not a commitment. It depends on gates that are not yet closed, including a formed legal entity, an external audit of the contracts, a second price source cross-checking Reflector, and Bitcoin collateral that answers for a default. No trusted-setup ceremony is on the v1 mainnet path. None of this blocks using Writz Lend on testnet today.
+The date is a target, not a commitment. It depends on gates that are not yet closed, including a formed legal entity, an external audit of the contracts, a second price source cross-checking Reflector, and Bitcoin collateral that answers for a default. None of this blocks using Writz Lend on testnet today.
 
 ---
 

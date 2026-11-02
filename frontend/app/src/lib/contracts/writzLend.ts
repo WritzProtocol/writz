@@ -183,6 +183,12 @@ export async function getPoolState(): Promise<PoolState> {
 }
 
 /** The relayer's co-signed release PSBT for a repaid position, or null until it publishes one. */
+/** A lender's balance (stroops) from `get_supply_balance`. */
+export async function getSupplyBalance(lender: string): Promise<bigint> {
+  const { result } = await writzLendClient().get_supply_balance({ lender });
+  return result;
+}
+
 export async function getReleasePsbt(txidDisplay: string): Promise<Buffer | null> {
   const { result } = await writzLendClient().get_release_psbt({ txid: internalTxid(txidDisplay) });
   return result ? Buffer.from(result) : null;

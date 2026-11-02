@@ -319,7 +319,7 @@ These are on the Writz roadmap or in progress. Do not depend on them this weeken
 | Not available | Status |
 |---|---|
 | Writz lending on mainnet | Testnet only; mainnet target Q2 to Q3 2027 |
-| Privacy for positions | A separate, opt-in privacy edition is being designed. It is not part of the protocol, and its testnet contracts are not an integration target |
+| Privacy for positions | Not part of the protocol. Positions are public on chain |
 | An SDK on npm or crates.io | Not published; use `@writz/bitcoin-script` and `spv-types` from the repository |
 | A liquidator receiving Bitcoin | Not how liquidation works today: it clears the debt on Stellar and no BTC moves to the liquidator (see [Writz Lend](/products/writz-lend)). Do not design a product that assumes it |
 | Proof of Bitcoin reserves, private conversion, automatic yield | Planned features listed in Vision, not built |

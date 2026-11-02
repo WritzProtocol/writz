@@ -19,8 +19,6 @@ jobs:
       relayer: ${{ steps.filter.outputs.relayer }}
       bitcoin_script: ${{ steps.filter.outputs.bitcoin_script }}
       contracts: ${{ steps.filter.outputs.contracts }}
-      privacy_contracts: ${{ steps.filter.outputs.privacy_contracts }}
-      circuits: ${{ steps.filter.outputs.circuits }}
       e2e: ${{ steps.filter.outputs.e2e }}
       sdk: ${{ steps.filter.outputs.sdk }}
       examples: ${{ steps.filter.outputs.examples }}
@@ -37,7 +35,6 @@ jobs:
             relayer:
               - 'relayer/**'
               - 'packages/writz-lend/**'
-              - 'privacy/packages/commitment-tree/**'
               - 'bitcoin-script/**'
               - 'Dockerfile'
               - '.dockerignore'
@@ -48,20 +45,8 @@ jobs:
             contracts:
               - 'contracts/**'
               - '.github/workflows/ci.yml'
-            # The privacy edition's workspace also builds spv-types from the
-            # v1 workspace through a path dependency.
-            privacy_contracts:
-              - 'privacy/contracts/**'
-              - 'contracts/Cargo.toml'
-              - 'contracts/contracts/spv-types/**'
-              - '.github/workflows/ci.yml'
-            circuits:
-              - 'privacy/circuits/**'
-              - '.github/workflows/ci.yml'
             e2e:
               - 'contracts/**'
-              - 'privacy/contracts/**'
-              - 'privacy/circuits/**'
               - 'scripts/deploy/**'
               - '.github/workflows/ci.yml'
             sdk:
@@ -162,8 +147,6 @@ jobs:
           key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock') }}
           restore-keys: |
             ${{ runner.os }}-bun-
-      - run: bun install --frozen-lockfile
-        working-directory: privacy/packages/commitment-tree
       - run: bun install --frozen-lockfile
         working-directory: packages/writz-lend
       # relayer's repay-watcher depends on the local
@@ -356,98 +339,6 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - run: scripts/writz-lend-bindings.sh --check
 
-  # The privacy edition (in progress, testnet only) is its own Cargo
-  # workspace, so v1 above builds and tests without it.
-  privacy-contracts:
-    name: privacy contracts (clippy + cargo test)
-    needs: changes
-    if: needs.changes.outputs.privacy_contracts == 'true'
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: privacy/contracts
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy
-      - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: privacy/contracts
-      # Same allow-list as the v1 job.
-      - run: cargo clippy --workspace --all-targets --locked -- -D warnings -A clippy::bool-assert-comparison -A clippy::doc-overindented-list-items -A clippy::empty-line-after-doc-comments -A clippy::manual-is-multiple-of -A clippy::manual-repeat-n -A clippy::needless-borrows-for-generic-args -A clippy::too-many-arguments -A clippy::unnecessary-cast
-      - run: cargo test --workspace --locked
-
-  circuits:
-    name: circuits (circom compile + test)
-    needs: changes
-    if: needs.changes.outputs.circuits == 'true'
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: privacy/circuits
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: privacy/circuits/package-lock.json
-      # privacy/circuits/ is npm-managed (package-lock.json), unlike the bun-managed
-      # bitcoin-script/relayer packages - matches its existing convention.
-      - run: npm ci
-      - name: Cache circom binary
-        id: cache-circom
-        uses: actions/cache@v4
-        with:
-          path: ~/.local/bin/circom
-          key: circom-v2.2.3
-      # actions/cache's restore step runs as the unprivileged runner user
-      # (no sudo), so the cached path must be runner-owned rather than a
-      # system directory like /usr/local/bin - otherwise a cache hit could
-      # fail to restore with a permission error.
-      - name: Add circom install dir to PATH
-        run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-      - name: Install circom
-        if: steps.cache-circom.outputs.cache-hit != 'true'
-        run: |
-          mkdir -p "$HOME/.local/bin"
-          curl -fL -o /tmp/circom https://github.com/iden3/circom/releases/download/v2.2.3/circom-linux-amd64
-          chmod +x /tmp/circom
-          mv /tmp/circom "$HOME/.local/bin/circom"
-      - name: Ensure cached circom is executable
-        if: steps.cache-circom.outputs.cache-hit == 'true'
-        run: chmod +x "$HOME/.local/bin/circom"
-      - name: Cache compiled circuits + dev trusted setup
-        id: cache-circuits
-        uses: actions/cache@v4
-        with:
-          path: |
-            privacy/circuits/build
-            privacy/circuits/ptau
-            privacy/circuits/keys
-          # IMPORTANT: Bump this key's "-v1" suffix when the circom version
-          # in the "Cache circom binary" step (above) changes - the hash below
-          # only covers circuit sources and setup scripts, not the compiler
-          # version. A circom version upgrade requires a manual bump here too,
-          # or stale compiled output will silently be reused with the new compiler.
-          key: circuits-setup-v1-${{ hashFiles('privacy/circuits/src/**', 'privacy/circuits/scripts/compile_all.sh', 'privacy/circuits/scripts/setup_dev.sh') }}
-      - run: npm run compile
-        if: steps.cache-circuits.outputs.cache-hit != 'true'
-      # The existing test suite proves real deposit/borrow_repay/liquidation
-      # circuits via snarkjs, which needs proving keys - same dev trusted
-      # setup already used locally (see scripts/setup_dev.sh's own "NOT for
-      # production" warning; this is a test-only key generation step, not
-      # part of the production ceremony. Skipped on cache hit - see the
-      # "Cache compiled circuits" step above; only reruns when circuit
-      # sources or the setup scripts themselves change.
-      - run: npm run setup:dev
-        if: steps.cache-circuits.outputs.cache-hit != 'true'
-      - run: npm test
-
-  # Runs the real contracts and the real Groth16 proofs on a local Stellar
-  # network - no testnet, no secrets. Unit tests mock auth; this does not, and
-  # it exercises the constructor deploy path and cross-contract calls for real.
   e2e-local:
     name: e2e (local Stellar network)
     needs: changes
@@ -460,60 +351,10 @@ jobs:
           targets: wasm32v1-none
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: |
-            contracts
-            privacy/contracts
+          workspaces: contracts
       - name: Build the v1 contracts the run deploys
         working-directory: contracts
         run: cargo build --release --target wasm32v1-none --locked -p bitcoin-spv -p writz-lend
-      - name: Build the privacy contracts the run deploys
-        working-directory: privacy/contracts
-        run: cargo build --release --target wasm32v1-none --locked -p zk-verifier -p commitment-tree
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: privacy/circuits/package-lock.json
-      - name: Install circuit dependencies
-        working-directory: privacy/circuits
-        run: npm ci
-      - name: Cache circom binary
-        id: cache-circom
-        uses: actions/cache@v4
-        with:
-          path: ~/.local/bin/circom
-          key: circom-v2.2.3
-      - name: Add circom install dir to PATH
-        run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-      - name: Install circom
-        if: steps.cache-circom.outputs.cache-hit != 'true'
-        run: |
-          mkdir -p "$HOME/.local/bin"
-          curl -fL -o /tmp/circom https://github.com/iden3/circom/releases/download/v2.2.3/circom-linux-amd64
-          chmod +x /tmp/circom
-          mv /tmp/circom "$HOME/.local/bin/circom"
-      - name: Ensure cached circom is executable
-        if: steps.cache-circom.outputs.cache-hit == 'true'
-        run: chmod +x "$HOME/.local/bin/circom"
-      # Same key as the circuits job, so the compiled circuits and dev
-      # trusted setup are shared between the two.
-      - name: Cache compiled circuits + dev trusted setup
-        id: cache-circuits
-        uses: actions/cache@v4
-        with:
-          path: |
-            privacy/circuits/build
-            privacy/circuits/ptau
-            privacy/circuits/keys
-          key: circuits-setup-v1-${{ hashFiles('privacy/circuits/src/**', 'privacy/circuits/scripts/compile_all.sh', 'privacy/circuits/scripts/setup_dev.sh') }}
-      - name: Compile circuits
-        working-directory: privacy/circuits
-        if: steps.cache-circuits.outputs.cache-hit != 'true'
-        run: npm run compile
-      - name: Dev trusted setup
-        working-directory: privacy/circuits
-        if: steps.cache-circuits.outputs.cache-hit != 'true'
-        run: npm run setup:dev
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.3.14
@@ -543,94 +384,6 @@ jobs:
         if: failure()
         run: docker logs stellar-local | tail -100
 
-  # Gates committed ceremony/verification-key artifacts. This is
-  # a mechanical sanity check (hash + IC-length + transcript consistency),
-  # not a substitute for the human verification steps in
-  # privacy/circuits/scripts/ceremony/README.md. Cheap no-op until
-  # keys/CEREMONY_MANIFEST.json exists (i.e. until a real ceremony has run
-  # at least once) - the repo currently only has dev keys, so this job
-  # exits early on every run today; it activates automatically the moment
-  # 04_export.js writes a manifest.
-  circuits-ceremony-verify:
-    name: circuits ceremony verify
-    needs: changes
-    if: needs.changes.outputs.circuits == 'true'
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: privacy/circuits
-    steps:
-      - uses: actions/checkout@v4
-      - name: Check for ceremony manifest
-        id: check
-        run: |
-          if [ ! -f keys/CEREMONY_MANIFEST.json ]; then
-            echo "No CEREMONY_MANIFEST.json yet - nothing to verify (dev keys only so far)."
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "skip=false" >> "$GITHUB_OUTPUT"
-          fi
-      - uses: actions/setup-node@v4
-        if: steps.check.outputs.skip == 'false'
-        with:
-          node-version: 20
-      # No `npm ci` needed - the verification steps below only use Node's
-      # built-in fs/crypto modules, no dependencies.
-      - name: Verify manifest hashes match committed vkeys
-        if: steps.check.outputs.skip == 'false'
-        run: |
-          node -e '
-            const fs = require("fs");
-            const crypto = require("crypto");
-            const manifest = JSON.parse(fs.readFileSync("keys/CEREMONY_MANIFEST.json", "utf8"));
-            let failed = false;
-            for (const [circuit, entry] of Object.entries(manifest)) {
-              const vkeyPath = `keys/${circuit}_vkey.json`;
-              if (!fs.existsSync(vkeyPath)) {
-                console.error(`ERROR: ${vkeyPath} referenced in manifest but not found`);
-                failed = true;
-                continue;
-              }
-              const actualHash = crypto.createHash("sha256").update(fs.readFileSync(vkeyPath)).digest("hex");
-              if (actualHash !== entry.vkey_sha256) {
-                console.error(`ERROR: ${vkeyPath} hash mismatch - manifest says ${entry.vkey_sha256}, actual is ${actualHash}`);
-                failed = true;
-              } else {
-                console.log(`  ✓ ${circuit}: vkey hash matches manifest`);
-              }
-              if (/dev/i.test(JSON.stringify(entry))) {
-                console.error(`ERROR: ${circuit}'s manifest entry references "dev" - refusing a development ceremony as production`);
-                failed = true;
-              }
-            }
-            if (failed) process.exit(1);
-          '
-      - name: Verify IC length matches zk-verifier expectations
-        if: steps.check.outputs.skip == 'false'
-        run: |
-          node -e '
-            const fs = require("fs");
-            const EXPECTED = { deposit: 7, borrow_repay: 11, liquidation: 6, zero_debt: 4, insert: 5 };
-            const manifest = JSON.parse(fs.readFileSync("keys/CEREMONY_MANIFEST.json", "utf8"));
-            let failed = false;
-            for (const [circuit, entry] of Object.entries(manifest)) {
-              const expected = EXPECTED[circuit];
-              if (expected === undefined) {
-                console.error(`ERROR: unknown circuit "${circuit}" in manifest`);
-                failed = true;
-                continue;
-              }
-              if (entry.ic_length !== expected) {
-                console.error(`ERROR: ${circuit} manifest ic_length=${entry.ic_length}, expected ${expected} - ` +
-                  "this must match privacy/contracts/zk-verifier/src/test_vectors.rs's public-signal counts");
-                failed = true;
-              } else {
-                console.log(`  ✓ ${circuit}: IC length matches expected (${expected})`);
-              }
-            }
-            if (failed) process.exit(1);
-          '
-
   ci-summary:
     name: CI summary
     if: always()
@@ -642,9 +395,6 @@ jobs:
       - relayer-docker-build
       - bitcoin-script
       - contracts
-      - privacy-contracts
-      - circuits
-      - circuits-ceremony-verify
       - e2e-local
       - sdk
       - examples

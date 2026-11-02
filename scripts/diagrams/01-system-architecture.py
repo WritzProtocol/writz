@@ -1,8 +1,7 @@
 """
 Writz Protocol - 01 System Architecture
 Writz v1: Bitcoin network, relayer, Soroban contracts (bitcoin-spv + writz-lend),
-and the browser. The privacy edition (in progress) is drawn as a separate group
-with no edge into writz-lend.
+and the browser.
 """
 import sys, os
 sys.path.insert(0, os.path.dirname(__file__))
@@ -62,16 +61,6 @@ with g.subgraph(name="cluster_frontend") as f:
     f.node("btc_lib", hl("Bitcoin (browser)", "bitcoinjs-lib · sats-connect", "P2WSH derivation · PSBT finalize"),
            fillcolor=F_BITCOIN, color=B_BITCOIN)
 
-# ── Privacy edition (separate, in progress) ───────────────────────────────────
-with g.subgraph(name="cluster_privacy") as p:
-    p.attr(**cluster_attr("Privacy edition (in progress)", B_DEFAULT,
-                          "Separate, opt-in · testnet only · not part of v1 · never called by writz-lend"))
-    p.attr(style="rounded,dashed")
-    p.node("commitment_tree", hl("commitment-tree", "Own pool · Poseidon Merkle tree", "privacy edition"),
-           fillcolor=F_DEFAULT, color=B_DEFAULT, style="filled,rounded,dashed")
-    p.node("zk_verifier", hl("zk-verifier", "Groth16 / BN254", "privacy edition"),
-           fillcolor=F_DEFAULT, color=B_DEFAULT, style="filled,rounded,dashed")
-
 # ── Bitcoin flow ──────────────────────────────────────────────────────────────
 g.edge("btc_wallet", "p2wsh", label="fund deposit", color=B_BITCOIN, fontcolor=B_BITCOIN, penwidth="2")
 g.edge("p2wsh", "btc_ledger", penwidth="2", color=B_BITCOIN)
@@ -97,9 +86,5 @@ g.edge("repay_watcher", "writz_lend", label="publish_release_psbt", color=B_RELA
 g.edge("writz_lend", "btc_lib", label="get_release_psbt", style="dashed", color=B_BITCOIN, fontcolor=B_BITCOIN)
 g.edge("btc_lib", "btc_wallet", label="signPsbt (Xverse)", color=B_BITCOIN, fontcolor=B_BITCOIN)
 g.edge("btc_lib", "btc_ledger", label="broadcast finalized tx", color=B_AMBER, fontcolor=B_AMBER, penwidth="2")
-
-# Privacy edition shares only the SPV deposit registry with v1.
-g.edge("commitment_tree", "bitcoin_spv", label="shared deposit registry", style="dotted", color=E_DEFAULT)
-g.edge("commitment_tree", "zk_verifier", style="dotted", color=E_DEFAULT)
 
 render(g, "01-system-architecture")

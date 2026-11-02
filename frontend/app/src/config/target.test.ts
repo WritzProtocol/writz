@@ -21,7 +21,6 @@ const validMainnet = {
     NEXT_PUBLIC_EARN_VAULT_ID: "CVAULTMAINNET",
   },
   lendingOnly: {
-    NEXT_PUBLIC_COMMITMENT_TREE_ID: undefined,
     NEXT_PUBLIC_WRITZ_LEND_ID: "",
   },
 };
@@ -160,10 +159,10 @@ describe("findTargetConflicts - mainnet", () => {
   it("refuses lending settings, since lending is off on mainnet", () => {
     const problems = findTargetConflicts({
       ...validMainnet,
-      lendingOnly: { NEXT_PUBLIC_COMMITMENT_TREE_ID: "CTESTNET", NEXT_PUBLIC_PROTOCOL_BTC_PUBKEY: "02ab" },
+      lendingOnly: { NEXT_PUBLIC_WRITZ_LEND_ID: "CTESTNET", NEXT_PUBLIC_PROTOCOL_BTC_PUBKEY: "02ab" },
     });
     expect(problems).toHaveLength(2);
-    expect(problems.join("\n")).toMatch(/NEXT_PUBLIC_COMMITMENT_TREE_ID is set/);
+    expect(problems.join("\n")).toMatch(/NEXT_PUBLIC_WRITZ_LEND_ID is set/);
     expect(problems.join("\n")).toMatch(/NEXT_PUBLIC_PROTOCOL_BTC_PUBKEY is set/);
   });
 
@@ -199,7 +198,7 @@ describe("findTargetConflicts - mainnet", () => {
       horizonUrl: "https://horizon-testnet.stellar.org",
       relayerUrl: "",
       required: { NEXT_PUBLIC_EARN_VAULT_ID: "" },
-      lendingOnly: { NEXT_PUBLIC_COMMITMENT_TREE_ID: "CTESTNET" },
+      lendingOnly: { NEXT_PUBLIC_WRITZ_LEND_ID: "CTESTNET" },
     });
     // Passphrase, test RPC, test Horizon, unset relayer URL, unset vault, a lending id.
     expect(problems).toHaveLength(6);

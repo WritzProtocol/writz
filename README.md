@@ -29,7 +29,7 @@ No bridge. No custodian. No wrapped tokens.
 
 ## This Is Not a Whitepaper
 
-As of October 2026, the protocol's two contracts (`bitcoin-spv` and `writz-lend`, redeployed on 25 October) are live on Stellar testnet, 623 tests pass, and Bitcoin Signet transactions have been verified on-chain.
+As of October 2026, the protocol's two contracts (`bitcoin-spv` and `writz-lend`, redeployed on 25 October) are live on Stellar testnet, 486 tests pass, and Bitcoin Signet transactions have been verified on-chain.
 
 | What | Status |
 |---|---|
@@ -37,7 +37,7 @@ As of October 2026, the protocol's two contracts (`bitcoin-spv` and `writz-lend`
 | `writz-lend` deposit, borrow, repay and release PSBT | ✓ Live on testnet |
 | P2WSH locking + co-signed BTC release | ✓ Broadcast on Bitcoin Signet |
 | Receive the loan as EURC, PYUSD or XLM (Soroswap) or as USDC on Base Sepolia (Circle CCTP V2) | ✓ Live on testnet |
-| 623 tests across all modules | ✓ All passing |
+| 486 tests across all modules | ✓ All passing |
 
 But a few months ago, it was a whitepaper. Version 1.0 (July 2026) is at [writz.xyz/whitepaper](https://writz.xyz/whitepaper) and archived on Zenodo with the DOI [10.5281/zenodo.23148520](https://doi.org/10.5281/zenodo.23148520).
 
@@ -49,13 +49,6 @@ But a few months ago, it was a whitepaper. Version 1.0 (July 2026) is at [writz.
 | `writz-lend` | `CC7XGEWAUNUHZYKM5CED6KQXGFS6UWVI5H6XOB76YTMZRWCEH6DKT62A` | 91.0 KB | 100 |
 
 Both were redeployed on 2026-10-25 because testnet rent rose sharply; positions on the previous contracts were closed and their BTC released. `writz-lend` was redeployed again on 2026-11-01 so its `supply` and `withdraw` events carry the scaled amount and the supply index (#257); `bitcoin-spv` was not. The storage windows that drive rent are now deployment parameters, see [Storage and TTL management](docs/how-it-works/stellar-side.md#storage-and-ttl-management).
-
-The privacy edition's contracts are also deployed on testnet, separately from the protocol (see [Privacy edition](#privacy-edition-in-progress)):
-
-| Contract | Address | WASM | Tests |
-|---|---|---|---|
-| `zk-verifier` | `CB5XAP6MF2GVVFATFTVCKVEXUODWWRQP4B3QFDMRTM55REP7N2YMXEUD` | 14.5 KB | 26 |
-| `commitment-tree` | `CAQBLCAPGXXCZTJDAJLY7E4PTJYGR6CY4YWH4JSJKFXYIHW3GANP6RFM` | 31.7 KB | 59 |
 
 Full deployment log, init transactions, and verified calls: [`contracts/deployments/testnet.md`](contracts/deployments/testnet.md)
 
@@ -106,12 +99,6 @@ When the loan is fully repaid, the relayer's repay watcher builds the release PS
 
 ---
 
-## Privacy edition (in progress)
-
-Writz v1 has no privacy layer: positions, amounts and collateral are public on chain. Privacy is not part of the protocol. It is being designed as a separate, opt-in edition with its own contracts (today `commitment-tree`, `zk-verifier` and the Circom circuits in [`privacy/circuits/`](privacy/circuits/), on testnet only), its own pool, its own audit and its own trusted-setup ceremony. It is planned for after v1 is live on mainnet, on its own subdomain, and has no date. Users who do not want privacy never interact with it. Design notes: [Privacy edition (in progress)](docs/how-it-works/privacy-edition.md).
-
----
-
 ## Smart Contract Architecture
 
 ![Contract Interactions](docs/diagrams/output/07-contract-interactions.png)
@@ -123,7 +110,7 @@ Writz v1 has no privacy layer: positions, amounts and collateral are public on c
 
 **Interest rate model** - kinked curve: base rate + linear slope up to 75% utilization, then a steep slope to discourage over-borrowing. Protocol captures the spread between borrow and supply rates.
 
-The privacy edition's `commitment-tree` and `zk-verifier` contracts are not called by `writz-lend` and are not part of the v1 protocol. Both lending contracts consume a deposit txid in the shared `bitcoin-spv` registry, so the same Bitcoin output cannot back two positions; see `docs/security/security-model.md` for how this also closes the Merkle duplicate-leaf ambiguity (CVE-2012-2459-class) at the deposit layer.
+`writz-lend` consumes each deposit txid in the `bitcoin-spv` registry, so the same Bitcoin output cannot back two positions; see `docs/security/security-model.md` for how this also closes the Merkle duplicate-leaf ambiguity (CVE-2012-2459-class) at the deposit layer.
 
 ---
 
@@ -157,7 +144,7 @@ See [`bitcoin-script/`](bitcoin-script/) for the full P2WSH builder, address der
 |---|---|---|
 | **Writz Lend** | Deposit BTC as collateral → borrow USDC. Lend USDC to the pool → earn the interest borrowers pay | Testnet. Mainnet planned for Q2 to Q3 2027 |
 
-Writz Lend is the only product. Features planned for later, such as privacy and ZK proof of reserve, are listed in [Vision](docs/roadmap/vision.md#planned-for-later) and are not products.
+Writz Lend is the only product. Possible future directions are listed in [Vision](docs/roadmap/vision.md#planned-for-later) and are not products.
 
 The **Bitcoin SPV SDK** is also open infrastructure. Any Stellar protocol that needs to verify a Bitcoin transaction on-chain can use `bitcoin-spv` with one call, through [`writz-spv-client`](https://crates.io/crates/writz-spv-client) or [`@writz/sdk`](https://www.npmjs.com/package/@writz/sdk). Verification is free today; no per-call fee exists.
 
@@ -174,16 +161,6 @@ writz/
 │   │   └── spv-types/       # Types shared by bitcoin-spv and its consumers
 │   └── deployments/
 │       └── testnet.md       # Live addresses · tx hashes · verified calls
-│
-├── privacy/                 # Privacy edition · in progress · testnet only · not part of v1
-│   ├── contracts/           # Its own Cargo workspace
-│   │   ├── zk-verifier/     # Groth16 BN254 · verification key store
-│   │   └── commitment-tree/ # Poseidon Merkle tree · ZK lending logic
-│   ├── circuits/            # ZK circuits (Circom 2.2.3 + snarkjs)
-│   │   ├── src/             # deposit · borrow_repay · liquidation · insert · zero_debt
-│   │   └── keys/            # Verification keys (committed to repo)
-│   └── packages/
-│       └── commitment-tree/ # Generated TypeScript bindings for commitment-tree
 │
 ├── relayer/                 # SPV Relayer service (TypeScript · Express · Bun)
 │   └── src/
@@ -229,7 +206,6 @@ writz/
 | Frontend | Next.js 16 · React 19 · TypeScript | App Router · Tailwind CSS 4 |
 | Stellar wallets | Stellar Wallets Kit · Pollar | Freighter · Lobstr · email and social login on testnet |
 | Relayer runtime | Bun · Express.js | Alpine Docker · Esplora-backed |
-| Privacy edition (in progress) | Circom 2.2.3 · snarkjs · Groth16 · Poseidon | BN254 via Protocol 26 host functions; not part of v1 |
 | CI | GitHub Actions | Per-module jobs plus docs sync · all must pass |
 
 ---
@@ -243,19 +219,10 @@ writz/
 rustup target add wasm32v1-none
 cargo install stellar-cli --locked --version 27  # or later
 
-# Node.js / Bun (for relayer, bitcoin-script, circuits, frontend)
+# Node.js / Bun (for relayer, bitcoin-script, frontend)
 node --version  # >= 20
 bun --version   # >= 1.1
 
-# For the privacy edition's ZK circuits only.
-# circom 2.x is a Rust binary - do NOT `npm install -g circom`, which installs
-# the legacy 1.x package and cannot compile `pragma circom 2.0.0`. Grab the
-# release binary (CI pins v2.2.3) or build it with cargo:
-curl -fL -o ~/.local/bin/circom \
-  https://github.com/iden3/circom/releases/download/v2.2.3/circom-linux-amd64
-chmod +x ~/.local/bin/circom   # macOS: use circom-macos-amd64
-circom --version               # expect: circom compiler 2.2.3
-# snarkjs needs no global install - it is already a dependency of privacy/circuits/
 ```
 
 ### Run All Tests
@@ -264,10 +231,9 @@ Each module has its own toolchain - there is no unifying root build, and the
 package manager is **not** the same everywhere. Run them from the repo root:
 
 ```bash
-# 1. Soroban contracts - 263 tests (v1, then the privacy edition's own workspace)
+# 1. Soroban contracts - 178 tests
 cd contracts && cargo test
-cd ../privacy/contracts && cargo test
-cd ../..
+cd ..
 
 # 2. Bitcoin script toolkit - 60 tests (Bun's own test runner)
 cd bitcoin-script && bun install && bun test
@@ -277,32 +243,12 @@ cd bitcoin-script && bun install && bun test
 #    be run through the package script - plain `bun test` picks Bun's runner
 #    instead and fails. The relayer also imports the local @writz/* packages
 #    via their built dist/ output, so build those first.
-cd ../privacy/packages/commitment-tree && bun install
-cd ../../../bitcoin-script && bun run build
+cd ../bitcoin-script && bun run build
 cd ../packages/writz-lend && bun install
 cd ../../relayer && bun install && bun run test
-
-# 4. Privacy edition ZK circuits - 52 tests (npm + Jest; needs circom on PATH)
-cd ../privacy/circuits && npm install && npm test
 ```
 
-All 623 tests pass. If anything fails, [open an issue](https://github.com/WritzProtocol/writz/issues).
-
-### Local End-to-End (Privacy Edition Contracts)
-
-Deploys all four contracts on a local network and runs deposit → borrow → repay → release through the privacy edition's `commitment-tree` with real Groth16 proofs, plus the closed attacks (including the cross-pool duplicate-deposit check against `writz-lend`):
-
-```bash
-docker run -d --rm --name writz-local-stellar -p 8000:8000 \
-  stellar/quickstart:latest --local --enable rpc
-(cd contracts && cargo build --release --target wasm32v1-none --locked)
-(cd privacy/contracts && cargo build --release --target wasm32v1-none --locked)
-(cd privacy/circuits && npm ci && npm run compile && npm run setup:dev)
-(cd scripts/deploy && bun install)
-node scripts/deploy/e2e_local.mjs
-```
-
-No testnet key needed. The [Testnet Runbook](docs/developers/runbook.md) covers the manual Signet walkthrough for the Bitcoin half.
+All 486 tests pass. If anything fails, [open an issue](https://github.com/WritzProtocol/writz/issues).
 
 ### Frontend Dev Server
 
@@ -332,14 +278,11 @@ python3 scripts/diagrams/render-all.py
 | Module | Language | Tests | How to run |
 |---|---|---|---|
 | `bitcoin-spv` contract | Rust | 68 | `cd contracts && cargo test -p bitcoin-spv` |
-| `zk-verifier` contract | Rust | 26 | `cd privacy/contracts && cargo test -p zk-verifier` |
-| `commitment-tree` contract | Rust | 59 | `cd privacy/contracts && cargo test -p commitment-tree` |
 | `writz-lend` contract | Rust | 100 |
 | `spv-types` | Rust | 10 | `cd contracts && cargo test -p spv-types` | `cd contracts && cargo test -p writz-lend` |
 | Relayer service | TypeScript | 248 | `cd relayer && bun run test` |
 | Bitcoin script toolkit | TypeScript | 60 | `cd bitcoin-script && bun test` |
-| ZK circuits | Circom / JS | 52 | `cd privacy/circuits && npm test` |
-| **Total** | | **623** | |
+| **Total** | | **486** | |
 
 ---
 
@@ -372,7 +315,6 @@ python3 scripts/diagrams/render-all.py
 |---|---|
 | Soroban contracts (`bitcoin-spv`, `writz-lend`) | Before mainnet |
 | Bitcoin P2WSH scripting | Internal, ongoing; external review before mainnet |
-| Privacy edition circuits and contracts | Its own audit, before that edition launches |
 
 Mainnet launch is gated on zero open critical/high findings from the external contract audit.
 
@@ -385,7 +327,7 @@ To report a security issue: open a private [GitHub Security Advisory](https://gi
 Full documentation lives in [`docs/`](docs/) and is published at **[docs.writz.xyz](https://docs.writz.xyz)**:
 
 **Start here:**
-- [Whitepaper](https://writz.xyz/whitepaper) - The technical paper (v1.0, July 2026): SPV verification and the lending market. The paper describes a stateless SPV design; the `bitcoin-spv` contract has since replaced it with an on-chain header light client. The Groth16 position privacy it describes is now planned as a separate edition, in progress. DOI [10.5281/zenodo.23148520](https://doi.org/10.5281/zenodo.23148520).
+- [Whitepaper](https://writz.xyz/whitepaper) - The technical paper (v1.0, July 2026): SPV verification and the lending market. The paper describes a stateless SPV design; the `bitcoin-spv` contract has since replaced it with an on-chain header light client. The Groth16 position privacy it describes is not part of Writz. DOI [10.5281/zenodo.23148520](https://doi.org/10.5281/zenodo.23148520).
 - [What is Writz?](docs/introduction/what-is-writz.md) - Plain English. No jargon. 5 minutes.
 - [The Problem](docs/introduction/the-problem.md) - Why public DeFi breaks BTC holders.
 - [How Writz Works](docs/introduction/how-writz-works.md) - Full flow for any reader.
@@ -398,7 +340,6 @@ Full documentation lives in [`docs/`](docs/) and is published at **[docs.writz.x
 - [Bitcoin Side](docs/how-it-works/bitcoin-side.md) - P2WSH locking, spending paths, CLTV.
 - [SPV Verification](docs/how-it-works/spv-verification.md) - Trustless Bitcoin tx verification on Soroban.
 - [Stellar Side](docs/how-it-works/stellar-side.md) - Contracts, interest model, USDC pool.
-- [Privacy edition (in progress)](docs/how-it-works/privacy-edition.md) - Design of the separate, opt-in privacy edition. Not part of v1.
 
 **Developers:**
 - [Build on Writz](docs/developers/integrate.md) - Prove a Bitcoin transaction from your contract or app, on testnet.
@@ -419,7 +360,7 @@ Full documentation lives in [`docs/`](docs/) and is published at **[docs.writz.x
 ## Contributing
 
 1. Fork the repo and create a branch from `main`.
-2. Run the full test suite before opening a PR - all 623 tests must pass.
+2. Run the full test suite before opening a PR - all 486 tests must pass.
 3. For new features, add tests. For bug fixes, add a regression test.
 4. Open a PR with a clear description of what changed and why.
 

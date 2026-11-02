@@ -61,7 +61,7 @@ When you repay the USDC loan plus interest in full, the Writz relayer co-signs t
 
 Writz Lend positions are plaintext, like in any other lending market. Your Stellar address, your Bitcoin deposit transaction, how much BTC you locked, how much USDC you borrowed and repaid, and whether a position was liquidated are all visible on chain.
 
-Privacy is not part of the protocol. It is being designed as a separate, opt-in edition, in progress and on testnet only, that Writz Lend users never touch: see [Privacy edition (in progress)](/how-it-works/privacy-edition).
+Privacy is not part of the protocol: positions are public on chain.
 
 ---
 
@@ -108,7 +108,7 @@ As of mid-2026:
 - A real Bitcoin Signet transaction was locked in a P2WSH script and co-signed released: [`11932100`](https://blockstream.info/signet/tx/119321009b2f92dac8f25f6bcddb2ed6a3ae778e8748ec52910cce90742e4098)
 - `bitcoin-spv` and `writz-lend` are deployed on Stellar testnet and verify Signet deposits against the header chain stored on Stellar. See `contracts/deployments/testnet.md` for the current contract IDs and verified calls, and `docs/developers/runbook.md` for the manual Signet walkthrough.
 
-What remains before mainnet is an external audit of the contracts, a formed legal entity and a second price source. No trusted-setup ceremony is on that path.
+What remains before mainnet is an external audit of the contracts, a formed legal entity and a second price source.
 
 ---
 

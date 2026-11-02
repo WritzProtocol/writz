@@ -139,12 +139,11 @@ describe('findTargetConflicts - mainnet', () => {
   test('refuses every lending secret and contract id, since lending is off on mainnet', () => {
     const problems = findTargetConflicts({
       ...validMainnet,
-      lending: { ADMIN_SECRET: 'SABC', RELAYER_SECRET: 'SDEF', COMMITMENT_TREE_ID: 'CTREE', WRITZ_LEND_ID: '', BITCOIN_SPV_ID: undefined },
+      lending: { ADMIN_SECRET: 'SABC', RELAYER_SECRET: 'SDEF', WRITZ_LEND_ID: '', BITCOIN_SPV_ID: undefined },
     });
     expect(problems).toEqual([
       expect.stringMatching(/ADMIN_SECRET is set/),
       expect.stringMatching(/RELAYER_SECRET is set/),
-      expect.stringMatching(/COMMITMENT_TREE_ID is set/),
     ]);
   });
 

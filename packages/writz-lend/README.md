@@ -30,7 +30,7 @@ stellar contract bindings typescript \
 and copies `<tmp>/writz-lend/src/index.ts` to both places. CI runs the
 `--check` form, so a contract change that is not regenerated fails the build.
 
-Like `privacy/packages/commitment-tree`, the package has its own dependencies:
+The package has its own dependencies:
 run `bun install --frozen-lockfile` here before installing the relayer.
 
 The client carries no contract ID: pass `contractId`, `networkPassphrase` and

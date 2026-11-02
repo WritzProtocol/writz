@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { config } from "@/config";
 import { fetchTipHeight } from "@/lib/bitcoin/timelock";
-import { getSupplyBalance } from "@/lib/contracts/commitmentTree";
+import { getSupplyBalance } from "@/lib/contracts/writzLend";
 import { earnApi } from "@/lib/earn/api";
 import type { Read } from "@/lib/loan/model";
 import type { MockWorld, Reading } from "@/lib/mock/types";

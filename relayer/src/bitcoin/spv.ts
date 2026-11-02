@@ -47,7 +47,7 @@ export interface SPVProofBundle {
 
   /**
    * Hash of the block that confirmed the transaction, internal byte order.
-   * Maps to the `block_hash` parameter of `commitment-tree::deposit`; the
+   * Maps to the `block_hash` parameter of `writz-lend::deposit`; the
    * header must already be in bitcoin-spv (see header-sync.ts).
    */
   blockHash: string;

@@ -49,7 +49,7 @@ That is a **28x growth in 18 months**. The market is expanding fast and still ea
 - **Solv Protocol** already runs an audited SolvBTC deployment on Soroban mainnet with real trading volume ($179K/day Q4 2025 → $372K/day Q1 2026 per Messari). It is fully custodial/wrapped, not privacy-preserving - it doesn't compete with Writz's trust model, but it kills the "we're the only BTCfi thing on Stellar" talking point.
 - **Templar Protocol** is the sharper risk: it already proved native-BTC lending *without wrapping* on NEAR (via Bitcoin light client + MPC chain signatures, $4M pre-seed, audited, mainnet), and separately already has a live, Halborn-audited Soroban vault on Stellar (via Blend, currently XLM-collateral only) plus a cross-chain bridge (`omni-sdk`) that explicitly lists Stellar among its supported chains. They have not yet connected native BTC collateral to the Stellar vault - but all the components exist in their own GitHub org today, and their core `contracts` repo is under active daily development.
 
-Neither currently offers **ZK-private** BTC-collateralized borrowing on Stellar - that claim still holds. But the clean "no BTCfi exists on Stellar" framing needs to retire; the differentiator has to be privacy + trustless SPV specifically, not first-to-Stellar.
+The clean "no BTCfi exists on Stellar" framing needs to retire; the differentiator has to be trustless SPV specifically, not being first on Stellar.
 
 ---
 
@@ -64,25 +64,14 @@ Public blockchain DeFi has a fundamental problem: every position, every trade, e
 - **Personal financial exposure:** Individuals don't want their net worth and borrowing behavior public
 - **Regulatory uncertainty:** Some jurisdictions treat DeFi activity differently based on public visibility
 
-### Privacy in crypto - 2026 state
-
-Zero-knowledge proofs have moved from experimental to practical infrastructure:
-- Proof generation is orders of magnitude faster than 2022 - GPU/FPGA-accelerated provers produce basic proofs in milliseconds
-- ZK has gone from research tool to production infrastructure (Starknet, zkSync, Aztec, etc.)
-- The regulatory conversation has shifted toward "selective transparency" - private by default, auditable on request
-
 ### Stellar's privacy position
 
 Stellar launched **Protocol X-Ray** in January 2026, making it uniquely positioned:
 
 | Feature | Detail |
 |---|---|
-| **ZK proof verification** | Noir circuit proofs verifiable inside Soroban smart contracts |
-| **Stellar Private Payments** | Open-source framework: private deposits, transfers, and withdrawals using Groth16 ZK proofs |
 | **Compliance hooks** | Association Set Providers (ASPs) enable selective disclosure to regulators - "open by default, private when needed" |
 | **Protocol 24 roadmap** | Confidential assets are the next milestone - Stellar views privacy as a multi-year buildout |
-
-Stellar is the only major blockchain with ZK privacy infrastructure that is simultaneously **compliance-friendly**. This is critical for institutional adoption.
 
 ---
 
@@ -127,7 +116,7 @@ Nobody is building exactly what Writz is building. The closest analogues are:
 
 **On privacy + DeFi:** Aztec Network (Ethereum), Penumbra (Cosmos) - but none handle BTC natively and none are on Stellar.
 
-**On BTCfi:** Stacks, RSK, Interlay - but none have ZK privacy and none are on Stellar.
+**On BTCfi:** Stacks, RSK, Interlay - but none are on Stellar.
 
 **On Stellar DeFi:** Blend - but no BTC support and no privacy.
 
@@ -136,17 +125,16 @@ Nobody is building exactly what Writz is building. The closest analogues are:
 | Competitor | Why they're indirect | Writz advantage |
 |---|---|---|
 | WBTC on Aave | Custodial bridge, no privacy, Ethereum fees | Trustless, private, Stellar low fees |
-| tBTC | Complex threshold bridge, no privacy | Simpler UX, ZK privacy |
+| tBTC | Complex threshold bridge, no privacy | Simpler UX, no bridge |
 | Blend | On Stellar, but no BTC | Same ecosystem + BTC + privacy |
-| Stacks sBTC | Bitcoin-native, but no privacy, no Stellar | ZK privacy, USDC output |
-| Solv Protocol (SolvBTC) | Live on Stellar, real volume, but fully custodial + no privacy - targets USDC holders wanting BTC yield, not BTC holders wanting private loans | Trustless custody (user's own P2WSH), ZK-private positions, opposite flow direction |
+| Stacks sBTC | Bitcoin-native, but no privacy, no Stellar | USDC output on Stellar |
+| Solv Protocol (SolvBTC) | Live on Stellar, real volume, but fully custodial + no privacy - targets USDC holders wanting BTC yield, not BTC holders wanting private loans | Trustless custody (user's own P2WSH), opposite flow direction |
 | Templar Protocol | Native-BTC-no-wrap tech proven on NEAR + live Soroban vault infra on Stellar already - closest thing to a credible fast-follower if they connect the two | Writz keeps BTC in the user's own script and verifies it with a light client on Stellar, where Templar relies on MPC threshold custody; the execution gap is smaller for Templar than for a from-scratch entrant |
 
 ### The competitive moat
 
 Writz's moat is **technical first-mover advantage in a specific niche**:
 1. First Bitcoin SPV client on Soroban - takes 12–18 months to build and audit
-2. First integration of Stellar's ZK privacy (Protocol X-Ray) with BTC collateral
 3. Open SDK creates ecosystem lock-in - once Stellar wallets/protocols build on Writz SPV, switching is costly
 
 ### Update - 2026-08-04: Solv Protocol + Templar Protocol findings
@@ -176,7 +164,6 @@ Deeper research (prompted by evaluating a potential Solv integration) surfaced t
 Near-term realistic targets:
 - Bitcoin holders on Stellar-adjacent ecosystems (existing Stellar users with BTC)
 - Privacy-conscious individuals in LATAM with BTC savings
-- Crypto-native companies needing ZK Proof of Reserve (post-FTX demand is structural)
 - Stellar DeFi protocols wanting BTC exposure
 
 ---
@@ -185,7 +172,6 @@ Near-term realistic targets:
 
 **Why now:**
 
-1. Protocol X-Ray launched January 2026 - the ZK infrastructure is production-ready TODAY
 2. BTCfi is in a growth phase - early but proven market
 3. Stellar has real USDC liquidity - not a chicken-and-egg problem on the output side
 4. Soroban has matured - Protocol 23 brought parallel execution; smart contracts are production-grade
