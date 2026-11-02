@@ -18,7 +18,7 @@ order and arguments).
 | Contract | Address |
 |---|---|
 | `bitcoin-spv` | `CBX23YKCCJMAMBMSCNP6YVKEXUIYK2CTKSR4TQ3RVBPAFYZFVCW7W4EO` |
-| `writz-lend` | `CC7XGEWAUNUHZYKM5CED6KQXGFS6UWVI5H6XOB76YTMZRWCEH6DKT62A` |
+| `writz-lend` | `CD3BRE32LDNDHAEVI6H35UC3NIRREW5BLH64AZMHSQY3LEKYDLKYWBXS` |
 
 `bitcoin-spv` is the instance from the 2026-10-25 redeploy and `writz-lend` the one
 from the 2026-11-01 redeploy (#257). See

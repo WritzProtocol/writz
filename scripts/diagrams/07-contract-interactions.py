@@ -37,7 +37,7 @@ with g.subgraph(name="cluster_actors") as a:
 with g.subgraph(name="cluster_v1") as v:
     v.attr(**cluster_attr("Writz v1", B_STELLAR, "Plaintext positions"))
     v.node("writz_lend",
-           hl("writz-lend", "CC7XGEWAUNUHZYKM… · deposit · supply_usdc · withdraw_supply · borrow · repay",
+           hl("writz-lend", "CD3BRE32LDNDHAEV… · deposit · supply_usdc · withdraw_supply · borrow · repay",
               "liquidate · publish_release_psbt · get_release_psbt"),
            fillcolor=F_STELLAR, color=B_STELLAR, penwidth="2.2")
     v.node("bitcoin_spv",

@@ -76,7 +76,7 @@ From a web page, with `@stellar/stellar-sdk` 16.x. Reads are simulated and need 
 ```ts
 import { Address, BASE_FEE, Contract, Networks, TransactionBuilder, nativeToScVal, rpc, scValToNative } from "@stellar/stellar-sdk";
 
-const LEND = "CC7XGEWAUNUHZYKM5CED6KQXGFS6UWVI5H6XOB76YTMZRWCEH6DKT62A"; // writz-lend, contracts/deployments/testnet.md
+const LEND = "CD3BRE32LDNDHAEVI6H35UC3NIRREW5BLH64AZMHSQY3LEKYDLKYWBXS"; // writz-lend, contracts/deployments/testnet.md
 const server = new rpc.Server("https://soroban-testnet.stellar.org");
 const lend = new Contract(LEND);
 
