@@ -93,6 +93,7 @@
       "pages": [
         "developers/quick-start",
         "developers/runbook",
+        "developers/relayer-recovery",
         "developers/spv-sdk",
         "developers/contract-reference",
         "developers/contribution-guide"

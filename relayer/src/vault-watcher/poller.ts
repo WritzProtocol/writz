@@ -142,7 +142,7 @@ export async function runVaultPollCycle(deps: PollCycleDeps): Promise<void> {
         filters,
         // First run ever: start from the current tip, not a historical
         // backfill. Unlike repay-watcher (see its own poller.ts comment and
-        // docs/developers/relayer-backfill-runbook.md), a gap here only
+        // docs/developers/relayer-recovery.md), a gap here only
         // undercounts metrics - no funds are at risk - so there's no
         // dedicated runbook. Recovery is simple and doesn't need one:
         // `insertVaultEvent` is idempotent (UNIQUE on tx_hash/depositor/

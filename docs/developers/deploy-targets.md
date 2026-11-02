@@ -127,13 +127,13 @@ POLLAR_APPLICATION_ID=<the same app's App ID, Pollar dashboard, Settings>
 
 The last three run the Signet faucet, which funds only accounts created through the testnet app's social login (one claim per Pollar account, Stellar address and Signet address). The relayer checks each claim's Pollar access token with Pollar's Server API, so without `POLLAR_SECRET_KEY` and `POLLAR_APPLICATION_ID` the faucet stays off (`503 faucet_disabled`); it never falls back to paying any address. The relayer refuses to start with a `sec_mainnet_` key, and the mainnet target refuses `POLLAR_SECRET_KEY` altogether.
 
-`RELAYER_SECRET` and a protocol signer run the repay watcher, which co-signs every release after a full repayment and publishes it on `writz-lend`. The relayer accepts either a KMS key id (`KMS_KEY_ID` with the AWS credentials) or a signing key via `PROTOCOL_SIGNING_KEY`, and prefers `KMS_KEY_ID` when both are set; see the signing policy in the [security model](/security/security-model). `PROTOCOL_SIGNING_KEY` is accepted on test networks only, and the mainnet target refuses both while it serves Earn only. Without `RELAYER_SECRET` and one of the two the relayer logs `auto-cosign watcher disabled` at startup and no testnet position can release its BTC. The key must be the one whose public key `writz-lend` was deployed with. The watcher starts from the latest ledger the first time it runs, so a position repaid before it was configured needs a manual backfill (`relayer-backfill-runbook.md`).
+`RELAYER_SECRET` and a protocol signer run the repay watcher, which co-signs every release after a full repayment and publishes it on `writz-lend`. The relayer accepts either a KMS key id (`KMS_KEY_ID` with the AWS credentials) or a signing key via `PROTOCOL_SIGNING_KEY`, and prefers `KMS_KEY_ID` when both are set; see the signing policy in the [security model](/security/security-model). `PROTOCOL_SIGNING_KEY` is accepted on test networks only, and the mainnet target refuses both while it serves Earn only. Without `RELAYER_SECRET` and one of the two the relayer logs `auto-cosign watcher disabled` at startup and no testnet position can release its BTC. The key must be the one whose public key `writz-lend` was deployed with. The watcher starts from the latest ledger the first time it runs, so a position repaid before it was configured needs a manual backfill (`relayer-recovery.md`).
 
 `DEFINDEX_VAULT_ID` is the piece this issue is really about: it is per-network, has no safe default, and a relayer without it serves errors from every `/defindex` route. The testnet vault address lives in [`contracts/deployments/defindex-vault-testnet.md`](https://github.com/WritzProtocol/writz/blob/main/contracts/deployments/defindex-vault-testnet.md) rather than being repeated here, so there is one place to change when it is redeployed.
 
 #### Persistence: mount a volume, or the metrics history is lost on every deploy
 
-The relayer keeps eight SQLite databases on local disk:
+The relayer keeps nine SQLite databases on local disk:
 
 | File | Written by | What is lost without it |
 |---|---|---|
@@ -146,7 +146,7 @@ The relayer keeps eight SQLite databases on local disk:
 
 The container image declares no `VOLUME`, so on a fresh service that directory is ephemeral and every redeploy starts empty.
 
-Most of these are recoverable. `vault-events.db` is not. Soroban RPC retains events for days, not indefinitely (see `relayer-backfill-runbook.md`), and this database is the only durable record beyond that window. The metrics deliverable reports 30-day retention cohorts, which is longer than RPC will serve. Lose the file after the window closes and the history cannot be rebuilt from chain at all.
+Most of these are recoverable. `vault-events.db` is not. Soroban RPC retains events for days, not indefinitely (see `relayer-recovery.md`), and this database is the only durable record beyond that window. The metrics deliverable reports 30-day retention cohorts, which is longer than RPC will serve. Lose the file after the window closes and the history cannot be rebuilt from chain at all.
 
 **Mount a persistent volume at `/app/data`.** All nine paths are overridable if the platform mounts elsewhere: `SQLITE_PATH`, `WATCHER_SQLITE_PATH`, `LEND_EVENTS_SQLITE_PATH`, `VAULT_EVENTS_SQLITE_PATH`, `VAULT_WATCHER_SQLITE_PATH`, `TREE_WATCHER_SQLITE_PATH`, `TREE_EVENTS_SQLITE_PATH`, `FAUCET_SQLITE_PATH`, `CCTP_RELAY_SQLITE_PATH`.
 

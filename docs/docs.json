@@ -134,6 +134,7 @@
               "developers/spv-sdk",
               "developers/quick-start",
               "developers/runbook",
+              "developers/relayer-recovery",
               "developers/contract-reference",
               "developers/contribution-guide"
             ]
@@ -243,6 +244,10 @@
     {
       "source": "/products/zk-proof-of-reserve",
       "destination": "/roadmap/vision"
+    },
+    {
+      "source": "/developers/relayer-backfill-runbook",
+      "destination": "/developers/relayer-recovery"
     }
   ]
 }
