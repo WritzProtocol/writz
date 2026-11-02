@@ -29,7 +29,8 @@ function Skeleton() {
         ],
       }}
       nowallet={{ hero: { label: "Available in pool", value: "122,820.00", unit: "USDC" }, tiles: [["Supply rate", "1.00%"], ["Supplied by lenders", "184,250.00 USDC"]] }}
-      risk={["How lending works"]}
+      risk={[]}
+      docs="How lending works"
       link="See pool stats"
       tabs={["Supply", "Withdraw"]}
       field="Supply USDC"

@@ -4,7 +4,7 @@ import { config } from "@/config";
 import { withdrawable } from "@/lib/funds/model";
 import type { Read } from "@/lib/loan/model";
 import { networkName } from "@/lib/wallet/precheck";
-import { ExternalLink, Notice } from "@/components/ui";
+import { Notice } from "@/components/ui";
 import { LENDING_DOCS_URL } from "@/lib/links";
 import { Enter } from "@/components/ui/entrance";
 import { FundsCard, NotConnected } from "@/components/funds/FundsCard";
@@ -97,11 +97,8 @@ export function LendView({ m }: { m: LendModel }) {
             </>
           )}
           <RiskNotes
-            lines={[
-              <ExternalLink key="docs" href={LENDING_DOCS_URL} className="wz-link fu-textlink">
-                How lending works
-              </ExternalLink>,
-            ]}
+            lines={[]}
+            docs={{ href: LENDING_DOCS_URL, label: "How lending works" }}
             link={{ href: "/protocol", label: "See pool stats" }}
           />
         </section>

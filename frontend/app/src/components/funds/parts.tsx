@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 import { formatUsdc } from "@/lib/borrow/journey";
 import type { Read } from "@/lib/loan/model";
+import { ExternalLink } from "@/components/ui";
 import { Enter } from "@/components/ui/entrance";
 
 function Amount({ value, unit, checking, decimals }: { value: Read<bigint>; unit: string; checking: string; decimals?: 2 | 7 }) {
@@ -75,13 +76,26 @@ export function Tile({ label, value, unit = "USDC", caption }: { label: string; 
   );
 }
 
-/** The risk lines under the figures, each after the gold tick, and the link to the pool or vault stats. */
-export function RiskNotes({ lines, link }: { lines: ReactNode[]; link: { href: string; label: string } }) {
+/** The risk lines under the figures, each after the gold tick, then an optional docs link and the link to the pool or vault stats. */
+export function RiskNotes({
+  lines,
+  docs,
+  link,
+}: {
+  lines: ReactNode[];
+  docs?: { href: string; label: string };
+  link: { href: string; label: string };
+}) {
   return (
     <Enter name="risk" step={4} className="fu-risk">
       {lines.map((line, i) => (
         <p key={i}>{line}</p>
       ))}
+      {docs ? (
+        <ExternalLink href={docs.href} className="wz-link fu-textlink">
+          {docs.label}
+        </ExternalLink>
+      ) : null}
       <Link href={link.href} className="wz-link fu-textlink">
         {link.label}
       </Link>
