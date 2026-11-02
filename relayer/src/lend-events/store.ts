@@ -35,6 +35,9 @@ export interface LendEventStore {
   commit(rows: LendEventRow[], cursor: string): void;
   list(contractId: string): LendEventRow[];
   lastLedger(contractId: string): number | null;
+  /** Writes a complete copy to `file`, ready to be moved into place. */
+  exportTo(file: string): void;
+  close(): void;
 }
 
 export function openLendEventStore(dbPath: string): LendEventStore {
@@ -98,15 +101,19 @@ export function openLendEventStore(dbPath: string): LendEventStore {
     },
     list: (contractId) => listQuery.all(contractId),
     lastLedger: (contractId) => lastLedgerQuery.get(contractId)?.ledger ?? null,
+    exportTo: (file) => {
+      db.prepare("VACUUM INTO ?").run(file);
+    },
+    close: () => db.close(),
   };
 }
 
-const DEFAULT_PATH =
-  process.env.LEND_EVENTS_SQLITE_PATH ?? path.join(process.cwd(), "data", "lend-events.db");
+export const lendEventsDbPath = () =>
+  process.env["LEND_EVENTS_SQLITE_PATH"] ?? path.join(process.cwd(), "data", "lend-events.db");
 
 let shared: LendEventStore | undefined;
 
 /** The relayer's archive, opened on first use. */
 export function lendEventStore(): LendEventStore {
-  return (shared ??= openLendEventStore(DEFAULT_PATH));
+  return (shared ??= openLendEventStore(lendEventsDbPath()));
 }

@@ -155,12 +155,12 @@ export function openReleaseStore(dbPath: string): ReleaseStore {
   };
 }
 
-const DEFAULT_PATH =
-  process.env.WATCHER_SQLITE_PATH ?? path.join(process.cwd(), "data", "watcher.db");
+export const watcherDbPath = () =>
+  process.env["WATCHER_SQLITE_PATH"] ?? path.join(process.cwd(), "data", "watcher.db");
 
 let shared: ReleaseStore | undefined;
 
 /** The relayer's store, opened on first use. */
 export function releaseStore(): ReleaseStore {
-  return (shared ??= openReleaseStore(DEFAULT_PATH));
+  return (shared ??= openReleaseStore(watcherDbPath()));
 }
