@@ -14,7 +14,7 @@ Positions and balances live in `writz-lend`. Losing the relayer's data loses no 
 | Repay watcher cursor | `data/watcher.db` | Its place in the event stream |
 | Pending releases | `data/watcher.db` | Full repayments whose co-signed release is not on chain yet |
 
-Without a cursor, the repay watcher starts from `WRITZ_LEND_DEPLOY_LEDGER`, never from the chain tip. A lost database therefore delays a borrower's release. It does not drop it, as long as that ledger is inside RPC retention.
+Without a cursor, the repay watcher starts from `WRITZ_LEND_DEPLOY_LEDGER`, never from the chain tip. A lost database therefore delays a borrower's release. It does not drop it, as long as that ledger is inside RPC retention, or an exported archive covers what RPC no longer holds ([Past RPC retention](#past-rpc-retention)).
 
 ## Diagnose
 
@@ -88,13 +88,38 @@ Then configure the rest of the relayer as in [Deploy targets](/developers/deploy
 
 ## Limits
 
-- **RPC retention.** Testnet RPC keeps 120,960 ledgers, 7 days. The rebuild reads from `WRITZ_LEND_DEPLOY_LEDGER`, so past that window it stops with `outside RPC retention`.
-- **The archive does not replace the rebuild yet.** The rebuild reads RPC only. Rebuilding from an archive file is tracked in #266.
+- **RPC retention.** Testnet RPC keeps 120,960 ledgers, 7 days. The rebuild reads from `WRITZ_LEND_DEPLOY_LEDGER`, so past that window it stops with `outside RPC retention`. Rebuild from an archive file instead.
+- **An archive file proves what it contains, not that nothing is missing.** The chain checks reject any event that disagrees with the contract, including a removed `supply`, `withdraw` or `repay_full` of a position the file still lists. The contract has no list of its positions, though, so a file that leaves out a position entirely, its `deposit` and everything after, passes. That position's release would not be queued. Use a file you exported yourself or one from a relayer you can name, and keep exporting on a schedule shorter than RPC retention. The borrower is never locked out: the timelock exit does not depend on the relayer.
 - **After each `writz-lend` redeploy,** update `WRITZ_LEND_ID` and `WRITZ_LEND_DEPLOY_LEDGER` together. Rows of the old contract stay in the tables, and the sweep ignores them.
 
 ### Past RPC retention
 
-Until #266 ships, a relayer that lost its data after the window recovers the releases by hand. Positions and balances are still safe on chain.
+Export the archive while the relayer is healthy, on a schedule shorter than RPC retention, and keep the newest file somewhere other than the relayer's disk. The export reads the rows and the cursor in one transaction and is safe while the relayer runs:
+
+```bash
+cd relayer
+WRITZ_LEND_ID=<contract> bun run export-lend-events --out lend-events.ndjson
+```
+
+The same file is served at `GET /lend-events/export`, so a relayer can also rebuild from another relayer's archive:
+
+```bash
+bun run rebuild-lend-state --source archive --file lend-events.ndjson --dry-run
+bun run rebuild-lend-state --source archive --file https://<relayer>/lend-events/export
+```
+
+The file is NDJSON: a header line with the network passphrase, the contract ID, the first and last event ledger, the event count and the archive's cursor, then one event per line. The rebuild refuses it, and changes nothing, if any of these fail:
+
+- The network and the contract are this relayer's.
+- Each event ID is in order, names the event's ledger and is not past the cursor, and the event count and ledgers match the header.
+- Each event's `rawXdr` decodes to exactly its `name`, `subject` and `data`, so a file whose columns were edited fails even when they look consistent.
+- The file's cursor is inside RPC retention and not past the chain tip. RPC then serves every event after the file, so nothing falls between the two. A file older than that fails with `before RPC retention`: use a newer one.
+
+It then replays the file, continues on RPC from the file's cursor, and runs the same chain checks and atomic swap as a rebuild from RPC. `WRITZ_LEND_DEPLOY_LEDGER` is not needed.
+
+Measured on 2026-11-02 with 10,000 events, a 4.1 MB file: parsing and checking the file took 57 ms, and the replay, the swap and the checks took 120 ms with the chain stubbed (`test/lend-archive-file.bun.test.ts`). A real rebuild adds one contract read per position, per supplier and per repaid position, plus one for the total, about 6,000 reads for that file, and those dominate: their time depends on the RPC provider.
+
+**With no archive at all,** recover the releases by hand. Positions and balances are still safe on chain.
 
 1. List the `repay_full` events from a source with longer history: a second RPC provider, Hubble or Galexie, or an explorer for a small gap. You need each position's txid in internal byte order, as in `topic[1]` of the event.
 2. Queue them. `handleRepayFull` is idempotent, so a txid that already has its release is harmless, and the sweep does the rest.
@@ -134,11 +159,14 @@ The borrower is not locked out meanwhile: the timelock exit does not depend on t
 |---|---|
 | `bun run rebuild-lend-state` | Rebuilds, verifies and swaps in |
 | `bun run rebuild-lend-state --dry-run` | The same, with no change |
+| `bun run rebuild-lend-state --source archive --file <path-or-url>` | Starts from an archive file, then continues on RPC |
+| `bun run export-lend-events --out <file>` | Writes the archive as an NDJSON file |
+| `GET /lend-events/export` | The same file over HTTP, 6 requests per hour per address |
 
 | Variable | Default | Used for |
 |---|---|---|
 | `WRITZ_LEND_ID` | none | The contract |
-| `WRITZ_LEND_DEPLOY_LEDGER` | none | Where the archive, the watcher and the rebuild start |
+| `WRITZ_LEND_DEPLOY_LEDGER` | none | Where the archive, the watcher and a rebuild from RPC start |
 | `LEND_EVENTS_POLL_INTERVAL_MS` | `30000` | How often the archive polls |
 | `REPAY_WATCHER_POLL_INTERVAL_MS` | `30000` | How often the watcher polls and sweeps |
 | `LEND_EVENTS_SQLITE_PATH` | `data/lend-events.db` | The archive |

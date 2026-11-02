@@ -12,12 +12,17 @@
  * be pinned to the replay's last ledger. Instead the replay is read again after
  * the views: if no new event arrived in between, the views and the replay
  * describe the same state. If one did, it verifies again.
+ *
+ * Past RPC retention the replay starts from an archive file instead (see
+ * ../lend-events/archive-file.ts) and continues on RPC from the file's cursor.
+ * The file gets no more trust than RPC: the same checks accept or reject it.
  */
 import fs from "fs";
 import path from "path";
 import { runLendEventsCycle, type LendEventsCycleDeps, type LendEventsServer } from "../lend-events/poller.js";
-import { openLendEventStore } from "../lend-events/store.js";
+import { openLendEventStore, type LendEventRow } from "../lend-events/store.js";
 import type { ReleaseStore } from "../repay-watcher/release-store.js";
+import { ledgerOfCursor } from "../rpc-cursor.js";
 import { replay } from "./replay.js";
 import { verifyAgainstChain, type LendChainReader } from "./verify.js";
 
@@ -27,7 +32,14 @@ const MAX_VERIFY_ROUNDS = 5;
 const MAX_CYCLES = 1_000;
 
 export interface RebuildServer extends LendEventsServer {
-  oldestLedger(): Promise<number>;
+  /** The ledgers RPC can serve events for. */
+  ledgerRange(): Promise<{ oldest: number; latest: number }>;
+}
+
+/** Events read from an archive file, replayed before RPC. */
+export interface ArchiveSource {
+  rows: LendEventRow[];
+  cursor: string;
 }
 
 export interface RebuildDeps {
@@ -40,6 +52,8 @@ export interface RebuildDeps {
   /** Opened only when the checks pass, so a failed rebuild touches nothing. */
   openReleases: () => ReleaseStore;
   decodeEvent: LendEventsCycleDeps["decodeEvent"];
+  /** Start from these events instead of `deployLedger`. */
+  archive?: ArchiveSource;
   dryRun: boolean;
   now?: () => number;
 }
@@ -58,11 +72,22 @@ export interface RebuildReport {
 export class RebuildMismatch extends Error {}
 
 export async function rebuildLendState(deps: RebuildDeps): Promise<RebuildReport> {
-  const { server, chain, contractId, deployLedger, archivePath, decodeEvent, dryRun } = deps;
+  const { server, chain, contractId, deployLedger, archivePath, decodeEvent, archive, dryRun } = deps;
   const now = deps.now ?? Date.now;
 
-  const oldest = await server.oldestLedger();
-  if (deployLedger < oldest) {
+  const { oldest, latest } = await server.ledgerRange();
+  if (archive) {
+    // RPC must serve everything after the file, or the events in between are in neither.
+    const resume = ledgerOfCursor(archive.cursor);
+    if (resume < oldest) {
+      throw new Error(
+        `the archive stops at ledger ${resume}, before RPC retention (oldest ledger ${oldest}), so the events in between are in neither: use a newer archive`,
+      );
+    }
+    if (resume > latest) {
+      throw new Error(`the archive's cursor points at ledger ${resume}, past the chain tip ${latest}`);
+    }
+  } else if (deployLedger < oldest) {
     throw new Error(
       `the deployment ledger ${deployLedger} is outside RPC retention (oldest ledger ${oldest}), so RPC cannot replay it`,
     );
@@ -74,6 +99,7 @@ export async function rebuildLendState(deps: RebuildDeps): Promise<RebuildReport
   const tempPath = path.join(workDir, "lend-events.db");
   const temp = openLendEventStore(tempPath);
   try {
+    if (archive) temp.commit(archive.rows, archive.cursor);
     const catchUp = async () => {
       for (let i = 0; i < MAX_CYCLES; i++) {
         if (await runLendEventsCycle({ server, contractId, store: temp, deployLedger, decodeEvent })) return;

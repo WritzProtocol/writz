@@ -44,7 +44,7 @@ function serverWith(events: LendEventRow[], later: LendEventRow[][] = []): Rebui
   const queue = [events, [], ...later.flatMap((page) => [page, []])];
   let call = 0;
   return {
-    oldestLedger: async () => 500,
+    ledgerRange: async () => ({ oldest: 500, latest: 1_000_000 }),
     getEvents: mock(async () => {
       call++;
       return { events: queue.shift() ?? [], cursor: cursorN(call) };
@@ -152,7 +152,7 @@ describe("rebuildLendState", () => {
 
   test("a deployment ledger outside retention fails with a clear message", async () => {
     const s = setup();
-    const server = { ...serverWith([]), oldestLedger: async () => DEPLOY + 1 };
+    const server = { ...serverWith([]), ledgerRange: async () => ({ oldest: DEPLOY + 1, latest: 1_000_000 }) };
     await expect(run(server, honestChain(), s)).rejects.toThrow("outside RPC retention");
     expect(server.getEvents).not.toHaveBeenCalled();
     noTemp(s.dir);
@@ -162,7 +162,7 @@ describe("rebuildLendState", () => {
     const s = setup();
     let calls = 0;
     const flaky: RebuildServer = {
-      oldestLedger: async () => 500,
+      ledgerRange: async () => ({ oldest: 500, latest: 1_000_000 }),
       getEvents: async () => {
         if (++calls === 2) throw new Error("rpc went away");
         return { events: calls === 1 ? history().slice(0, 2) : [], cursor: cursorN(calls) };
