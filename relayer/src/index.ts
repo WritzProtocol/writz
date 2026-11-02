@@ -11,6 +11,7 @@ import { startVaultWatcher } from "./vault-watcher/poller.js";
 import { startHeaderSync } from "./bitcoin/spv-submit.js";
 import { headerSyncStatus } from "./bitcoin/header-sync.js";
 import { lendingEnabled } from "./deploy-target.js";
+import { lendEventsStatus, startLendEventArchive } from "./lend-events/poller.js";
 import { createFaucetRouter } from "./routes/faucet.js";
 import { faucetFromConfig } from "./faucet/from-config.js";
 import { createCctpRouter } from "./routes/cctp.js";
@@ -137,7 +138,11 @@ app.get("/health", (_req, res) => {
     service: "writz-relayer",
     target: config.target,
     lending: LENDING,
-    ...(LENDING ? { headerSync: headerSyncStatus, releases: releaseStatus(config.writzLendId) } : {}),
+    ...(LENDING ? {
+          headerSync: headerSyncStatus,
+          releases: releaseStatus(config.writzLendId),
+          lendEvents: lendEventsStatus(config.writzLendId),
+        } : {}),
     bitcoinNetwork: config.bitcoinNetwork,
     esploraBaseUrl: config.esploraBaseUrl,
     defindex: vaultMetricsSnapshot(),
@@ -229,6 +234,9 @@ app.listen(config.port, () => {
 // Auto-cosign repay watcher - no-ops with a warning if its
 // required config isn't set, so this never blocks the HTTP API from starting.
 if (LENDING) startRepayWatcher();
+
+// Append-only record of writz-lend events, kept past RPC retention.
+if (LENDING) startLendEventArchive();
 
 // DeFindex vault event watcher (#114) - no-ops with a warning until #102
 // deploys the vault and DEFINDEX_VAULT_ID is configured.

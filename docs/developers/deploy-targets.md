@@ -138,6 +138,7 @@ The relayer keeps eight SQLite databases on local disk:
 | File | Written by | What is lost without it |
 |---|---|---|
 | `data/watcher.db` | `repay-watcher/release-store.ts` | The repay watcher's cursor and pending releases. Recovered by replaying from `WRITZ_LEND_DEPLOY_LEDGER` while it is inside RPC retention |
+| `data/lend-events.db` | `lend-events/store.ts` | The `writz-lend` event archive. RPC only keeps the last 7 days, so history older than that cannot be recovered from RPC |
 | `data/vault-events.db` | `vault-watcher/event-store.ts` | **Every indexed vault deposit and withdrawal** |
 | `data/vault-watcher.db` | `vault-watcher/cursor-store.ts` | The vault watcher's cursor |
 | `data/faucet.db` | `faucet/sqlite-store.ts` | Signet faucet claims: the one-claim-per-account rule and the daily count reset, so every social-login account could claim again (testnet only) |
@@ -147,7 +148,7 @@ The container image declares no `VOLUME`, so on a fresh service that directory i
 
 Most of these are recoverable. `vault-events.db` is not. Soroban RPC retains events for days, not indefinitely (see `relayer-backfill-runbook.md`), and this database is the only durable record beyond that window. The metrics deliverable reports 30-day retention cohorts, which is longer than RPC will serve. Lose the file after the window closes and the history cannot be rebuilt from chain at all.
 
-**Mount a persistent volume at `/app/data`.** All eight paths are overridable if the platform mounts elsewhere: `SQLITE_PATH`, `WATCHER_SQLITE_PATH`, `VAULT_EVENTS_SQLITE_PATH`, `VAULT_WATCHER_SQLITE_PATH`, `TREE_WATCHER_SQLITE_PATH`, `TREE_EVENTS_SQLITE_PATH`, `FAUCET_SQLITE_PATH`, `CCTP_RELAY_SQLITE_PATH`.
+**Mount a persistent volume at `/app/data`.** All nine paths are overridable if the platform mounts elsewhere: `SQLITE_PATH`, `WATCHER_SQLITE_PATH`, `LEND_EVENTS_SQLITE_PATH`, `VAULT_EVENTS_SQLITE_PATH`, `VAULT_WATCHER_SQLITE_PATH`, `TREE_WATCHER_SQLITE_PATH`, `TREE_EVENTS_SQLITE_PATH`, `FAUCET_SQLITE_PATH`, `CCTP_RELAY_SQLITE_PATH`.
 
 Both watchers are always-on polling loops started in `src/index.ts`, not request-driven handlers. A platform that suspends the container when idle produces silent gaps in the same data, so scale-to-zero tiers are not suitable regardless of the volume.
 

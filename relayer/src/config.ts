@@ -96,6 +96,7 @@ export interface Config {
   repayWatcherPollIntervalMs: number;
   /** Ledger `writz-lend` was deployed at, where a watcher with no cursor starts. */
   writzLendDeployLedger: number | undefined;
+  lendEventsPollIntervalMs: number;
   // DeFindex (Earn)
   /** DeFindex API key (`sk_...`), from console.defindex.io. Used by the
    * `defindex` router for both reads and (eventually) tx-building. */
@@ -344,6 +345,7 @@ function loadConfig(): Config {
     releaseFeeSat: parseInt(getEnv("RELEASE_FEE_SAT", "1500"), 10),
     repayWatcherPollIntervalMs: parseInt(getEnv("REPAY_WATCHER_POLL_INTERVAL_MS", "30000"), 10),
     writzLendDeployLedger: optionalLedger("WRITZ_LEND_DEPLOY_LEDGER"),
+    lendEventsPollIntervalMs: parseInt(getEnv("LEND_EVENTS_POLL_INTERVAL_MS", "30000"), 10),
     defindexApiKey: process.env["DEFINDEX_API_KEY"],
     defindexApiUrl: getEnv("DEFINDEX_API_URL", "https://api.defindex.io"),
     defindexVaultId,
