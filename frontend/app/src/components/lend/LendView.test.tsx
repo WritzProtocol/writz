@@ -89,3 +89,21 @@ describe("LendView", () => {
     expect(text(render("N1"))).toMatch(/Supply rate \d+\.\d\d%/);
   });
 });
+
+describe("Lend risk notes", () => {
+  test("no fixed risk line; the lending docs are linked instead", () => {
+    const html = render("N7");
+    expect(text(html)).not.toContain("credit risk");
+    expect(html).toContain("/products/writz-lend#for-usdc-lenders-earn");
+    expect(text(html)).toContain("How lending works");
+  });
+
+  test("the liquidity limit still shows on Withdraw when the pool is short", () => {
+    const sides = lendSides(
+      { kind: "ok", value: 0n },
+      { kind: "ok", value: 2_500n * STROOP },
+      { kind: "ok", value: { totalSupplied: 10_000n * STROOP, totalBorrowed: 9_200n * STROOP, available: 800n * STROOP, borrowRateBp: 0n } },
+    );
+    expect(text(renderToStaticMarkup(<>{sides.out.hint}</>))).toContain("Borrowers are using the rest of the pool");
+  });
+});
