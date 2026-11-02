@@ -29,7 +29,7 @@ No bridge. No custodian. No wrapped tokens.
 
 ## This Is Not a Whitepaper
 
-As of October 2026, the protocol's two contracts (`bitcoin-spv` and `writz-lend`, redeployed on 25 October) are live on Stellar testnet, 850 tests pass, and Bitcoin Signet transactions have been verified on-chain.
+As of October 2026, the protocol's two contracts (`bitcoin-spv` and `writz-lend`, redeployed on 25 October) are live on Stellar testnet, 839 tests pass, and Bitcoin Signet transactions have been verified on-chain.
 
 | What | Status |
 |---|---|
@@ -37,7 +37,7 @@ As of October 2026, the protocol's two contracts (`bitcoin-spv` and `writz-lend`
 | `writz-lend` deposit, borrow, repay and release PSBT | ✓ Live on testnet |
 | P2WSH locking + co-signed BTC release | ✓ Broadcast on Bitcoin Signet |
 | Receive the loan as EURC, PYUSD or XLM (Soroswap) or as USDC on Base Sepolia (Circle CCTP V2) | ✓ Live on testnet |
-| 850 tests across all modules | ✓ All passing |
+| 839 tests across all modules | ✓ All passing |
 
 But a few months ago, it was a whitepaper. Version 1.0 (July 2026) is at [writz.xyz/whitepaper](https://writz.xyz/whitepaper) and archived on Zenodo with the DOI [10.5281/zenodo.23148520](https://doi.org/10.5281/zenodo.23148520).
 
@@ -238,7 +238,7 @@ cd ..
 # 2. Bitcoin script toolkit - 72 tests (Bun's own test runner)
 cd bitcoin-script && bun install && bun test
 
-# 3. Relayer service - 523 tests
+# 3. Relayer service - 512 tests
 #    Deps install with Bun, but the suite itself is Jest (ts-jest), so it must
 #    be run through the package script - plain `bun test` picks Bun's runner
 #    instead and fails. The relayer also imports the local @writz/* packages
@@ -248,7 +248,7 @@ cd ../packages/writz-lend && bun install
 cd ../../relayer && bun install && bun run test
 ```
 
-All 850 tests pass. If anything fails, [open an issue](https://github.com/WritzProtocol/writz/issues).
+All 839 tests pass. If anything fails, [open an issue](https://github.com/WritzProtocol/writz/issues).
 
 ### Frontend Dev Server
 
@@ -360,7 +360,7 @@ Full documentation lives in [`docs/`](docs/) and is published at **[docs.writz.x
 ## Contributing
 
 1. Fork the repo and create a branch from `main`.
-2. Run the full test suite before opening a PR - all 850 tests must pass.
+2. Run the full test suite before opening a PR - all 839 tests must pass.
 3. For new features, add tests. For bug fixes, add a regression test.
 4. Open a PR with a clear description of what changed and why.
 

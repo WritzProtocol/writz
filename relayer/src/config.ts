@@ -94,6 +94,8 @@ export interface Config {
   releaseFeeSat: number;
   /** How often (ms) the repay watcher polls Soroban RPC for new events. */
   repayWatcherPollIntervalMs: number;
+  /** Ledger `writz-lend` was deployed at, where a watcher with no cursor starts. */
+  writzLendDeployLedger: number | undefined;
   // DeFindex (Earn)
   /** DeFindex API key (`sk_...`), from console.defindex.io. Used by the
    * `defindex` router for both reads and (eventually) tx-building. */
@@ -197,6 +199,17 @@ const TESTNET_SOROSWAP_ROUTER = "CCJUD55AG6W5HAI5LRVNKAE5WDP5XGZBUDS5WNTIVDU7O26
 const TESTNET_CCTP_TMM = "CDNG7HXAPBWICI2E3AUBP3YZWZELJLYSB6F5CC7WLDTLTHVM74SLRTHP";
 const TESTNET_PASSPHRASE = "Test SDF Network ; September 2015";
 
+/** A ledger sequence from the environment, or undefined when unset. */
+function optionalLedger(name: string): number | undefined {
+  const raw = process.env[name]?.trim();
+  if (!raw) return undefined;
+  const ledger = Number(raw);
+  if (!Number.isInteger(ledger) || ledger <= 0) {
+    throw new Error(`${name} must be a positive ledger sequence, got: ${raw}`);
+  }
+  return ledger;
+}
+
 function loadConfig(): Config {
   const rawNetwork = getEnv("BITCOIN_NETWORK", "mainnet");
   const network = (rawNetwork === "testnet" ? "signet" : rawNetwork) as BitcoinNetwork;
@@ -225,6 +238,7 @@ function loadConfig(): Config {
       ADMIN_SECRET: process.env["ADMIN_SECRET"],
       RELAYER_SECRET: process.env["RELAYER_SECRET"],
       WRITZ_LEND_ID: process.env["WRITZ_LEND_ID"] ?? process.env["PRIVATE_LEND_ID"],
+      WRITZ_LEND_DEPLOY_LEDGER: process.env["WRITZ_LEND_DEPLOY_LEDGER"],
       BITCOIN_SPV_ID: process.env["BITCOIN_SPV_ID"],
       FAUCET_SIGNET_WIF: process.env["FAUCET_SIGNET_WIF"],
       CCTP_RELAY_EVM_KEY: process.env["CCTP_RELAY_EVM_KEY"],
@@ -329,6 +343,7 @@ function loadConfig(): Config {
     protocolSigningKeyWif: process.env["PROTOCOL_SIGNING_KEY"],
     releaseFeeSat: parseInt(getEnv("RELEASE_FEE_SAT", "1500"), 10),
     repayWatcherPollIntervalMs: parseInt(getEnv("REPAY_WATCHER_POLL_INTERVAL_MS", "30000"), 10),
+    writzLendDeployLedger: optionalLedger("WRITZ_LEND_DEPLOY_LEDGER"),
     defindexApiKey: process.env["DEFINDEX_API_KEY"],
     defindexApiUrl: getEnv("DEFINDEX_API_URL", "https://api.defindex.io"),
     defindexVaultId,
