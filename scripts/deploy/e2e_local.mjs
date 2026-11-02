@@ -303,9 +303,9 @@ async function main() {
   step('Deposit: real SPV verification');
   const depositScript = bytes(writzScriptPubKey(PROTOCOL_PUBKEY, USER_PUBKEY, TIMELOCK));
   const signFor = (key, contractId, who = borrower.publicKey()) => signDeposit(key, contractId, who, txid);
-  const depositArgs = (contractId, { pubkey = USER_PUBKEY, timelock = TIMELOCK, keySig = signFor(USER_KEY, contractId) } = {}) => [
+  const depositArgs = (contractId, { pubkey = USER_PUBKEY, timelock = TIMELOCK, script = depositScript, keySig = signFor(USER_KEY, contractId) } = {}) => [
     addr(borrower.publicKey()), bytes(blockHash), xdr.ScVal.scvVec([]), u32(0), bytes(rawTx),
-    depositScript, u32(timelock), bytes(pubkey), bytes(keySig),
+    script, u32(timelock), bytes(pubkey), bytes(keySig),
   ];
   await expectError(borrower, lendId, 'deposit', depositArgs(lendId), ERR.NotConsumer,
     'a deposit into a lender bitcoin-spv has not registered');
@@ -317,7 +317,11 @@ async function main() {
     'a key proof replayed from another account');
   await expectError(borrower, lendId, 'deposit', depositArgs(lendId, { pubkey: OTHER_PUBKEY, keySig: signFor(OTHER_KEY, lendId) }), ERR.ScriptMismatch,
     'a deposit claiming an output locked to another Bitcoin key');
-  await expectError(borrower, lendId, 'deposit', depositArgs(lendId, { timelock: DEPOSIT_HEIGHT + 1_007 }), ERR.BadTimelock,
+  // The script commits to the same timelock, or the script check answers first.
+  const earlyTimelock = DEPOSIT_HEIGHT + 1_007;
+  await expectError(borrower, lendId, 'deposit', depositArgs(lendId, {
+    timelock: earlyTimelock, script: bytes(writzScriptPubKey(PROTOCOL_PUBKEY, USER_PUBKEY, earlyTimelock)),
+  }), ERR.BadTimelock,
     'a deposit whose timelock opens under 1,008 blocks after confirmation');
   await invoke(borrower, lendId, 'deposit', depositArgs(lendId));
   ok('deposit to the depositor\'s own Writz script accepted');
