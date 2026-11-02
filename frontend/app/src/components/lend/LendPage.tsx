@@ -26,7 +26,6 @@ function Skeleton() {
         tiles: [
           ["Supply rate", "1.00%"],
           ["Available in pool", "122,820.00 USDC"],
-          ["You can withdraw now", "2,500.00 USDC"],
         ],
       }}
       nowallet={{ hero: { label: "Available in pool", value: "122,820.00", unit: "USDC" }, tiles: [["Supply rate", "1.00%"], ["Supplied by lenders", "184,250.00 USDC"]] }}

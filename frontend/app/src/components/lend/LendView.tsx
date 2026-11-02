@@ -41,12 +41,7 @@ function SupplyRate({ pool }: { pool: LendModel["pool"] }) {
 export function LendView({ m }: { m: LendModel }) {
   const blocked = m.wrongNetwork !== null || m.unfunded;
   const available: Read<bigint> = m.pool.kind === "ok" ? { kind: "ok", value: m.pool.value.available } : m.pool;
-  const canWithdraw: Read<bigint> =
-    m.supplied.kind === "ok" && m.pool.kind === "ok"
-      ? { kind: "ok", value: withdrawable(m.supplied.value, m.pool.value.available).stroops }
-      : m.supplied.kind === "failed" || m.pool.kind === "failed"
-        ? { kind: "failed" }
-        : { kind: "checking" };
+  const out = m.balance.kind === "ok" && m.pool.kind === "ok" ? withdrawable(m.balance.value, m.pool.value.available) : null;
 
   return (
     <div className="fu-page">
@@ -85,7 +80,7 @@ export function LendView({ m }: { m: LendModel }) {
               <Tiles>
                 <SupplyRate pool={m.pool} />
                 <Tile label="Available in pool" value={available} />
-                <Tile label="You can withdraw now" value={canWithdraw} />
+                {out?.limitedByPool ? <Tile label="You can withdraw now" value={{ kind: "ok", value: out.stroops }} /> : null}
               </Tiles>
             </>
           ) : (

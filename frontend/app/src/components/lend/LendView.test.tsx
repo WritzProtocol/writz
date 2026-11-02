@@ -62,6 +62,12 @@ describe("LendView", () => {
     expect(t).not.toContain("You supplied");
   });
 
+  test("what can be withdrawn shows only when the pool limits it", () => {
+    expect(text(render("N7"))).not.toContain("You can withdraw now");
+    expect(text(render("N21"))).not.toContain("You can withdraw now");
+    expect(text(render("N10"))).toContain("You can withdraw now 800.00 USDC");
+  });
+
   test("rate 0: 0.00% and the balance in cents", () => {
     const t = text(render("N20"));
     expect(t).toContain("Supply rate 0.00%");
