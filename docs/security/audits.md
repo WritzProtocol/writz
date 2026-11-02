@@ -17,7 +17,7 @@ Writz uses the **Stellar Foundation's Audit Bank** program, which subsidizes the
 | Criterion | Status |
 |---|---|
 | SCF Build Award received | Pending |
-| Contracts deployed on testnet with passing tests | ✓ Done - 253/255 tests |
+| Contracts deployed on testnet with passing tests | ✓ Done - 255/255 tests |
 | STRIDE threat model completed | v0.1 draft complete - [`docs/security/stride-threat-model.md`](/security/stride-threat-model). Full revision planned before the audit |
 | Self-service security scan completed | Pending - Phase 2 task |
 | Integration tests covering all flows | ✓ Done - `scripts/deploy/e2e_local.mjs`, run in CI on a local network |
