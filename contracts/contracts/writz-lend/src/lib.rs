@@ -23,7 +23,7 @@ use soroban_sdk::{
 use spv_types::{btc_parser, key_proof, script, BestTip, HeaderEntry, SpvVerificationResult};
 use storage::{get_config, get_position, get_protocol, get_release_psbt, get_supply_balance,
                set_config, set_position, set_protocol, set_release_psbt, set_supply_balance};
-use types::{Config, Position, PositionStatus, ProtocolState};
+use types::{Config, PoolTotals, Position, PositionStatus, ProtocolState, SupplyPosition};
 
 /// Highest `min_confirmations` the constructor accepts (the relayer serves
 /// SPV proofs for 1 to 20 confirmations).
@@ -995,6 +995,36 @@ impl WritzLendContract {
     pub fn get_supply_balance(env: Env, lender: Address) -> i128 {
         let proto = projected(&env);
         storage::peek_supply_balance(&env, &lender).saturating_mul(proto.supply_index) / rates::INDEX_ONE
+    }
+
+    /// A lender's scaled units as stored, and their current value in USDC
+    /// stroops at the supply index projected to the current ledger.
+    pub fn get_supply_position(env: Env, lender: Address) -> SupplyPosition {
+        let proto = projected(&env);
+        let scaled = storage::peek_supply_balance(&env, &lender);
+        SupplyPosition { scaled, value: scaled.saturating_mul(proto.supply_index) / rates::INDEX_ONE }
+    }
+
+    /// The supply index projected to the current ledger, scaled by 1e18.
+    pub fn get_supply_index(env: Env) -> i128 {
+        projected(&env).supply_index
+    }
+
+    /// The borrow index projected to the current ledger, scaled by 1e18.
+    pub fn get_borrow_index(env: Env) -> i128 {
+        projected(&env).borrow_index
+    }
+
+    /// Pool totals projected to the current ledger, in USDC stroops.
+    pub fn get_pool_totals(env: Env) -> PoolTotals {
+        let proto = projected(&env);
+        let assets = total_supply_assets(&proto, proto.supply_index);
+        PoolTotals {
+            total_supply_assets: assets,
+            total_borrowed: proto.total_borrowed,
+            reserve_usdc: proto.reserve_usdc,
+            available: assets.saturating_sub(proto.total_borrowed).max(0),
+        }
     }
 
     // ── TTL refresh (permissionless) ──────────────────────────────────────────

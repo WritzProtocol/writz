@@ -2740,3 +2740,81 @@ fn the_rates_are_read_on_projected_totals() {
     assert_eq!(s.client.get_supply_rate_bp(), crate::rates::supply_rate_bp(borrow, total_borrowed, assets));
     assert!(s.client.get_supply_rate_bp() > 0);
 }
+
+#[test]
+fn the_new_views_match_the_stored_state_right_after_a_write() {
+    let (s, _) = pool_with_debt();
+    s.env.ledger().set_sequence_number(1_000 + YEAR / 2);
+    let pos = s.client.get_supply_position(&s.supplier);
+    let (supply_index, borrow_index, totals) =
+        (s.client.get_supply_index(), s.client.get_borrow_index(), s.client.get_pool_totals());
+
+    let other = Address::generate(&s.env);
+    StellarAssetClient::new(&s.env, &s.usdc).mint(&other, &1_000_000_i128);
+    s.client.supply_usdc(&other, &1_000_000_i128);
+    let p = s.client.get_protocol_state();
+
+    // The views had projected exactly what this write stored.
+    assert_eq!(supply_index, p.supply_index);
+    assert_eq!(borrow_index, p.borrow_index);
+    assert_eq!(pos.scaled, stored_scaled(&s, &s.supplier));
+    assert_eq!(pos.value, pos.scaled * p.supply_index / crate::rates::INDEX_ONE);
+    assert_eq!(totals.total_borrowed, p.total_borrowed);
+    assert_eq!(totals.reserve_usdc, p.reserve_usdc);
+    // The write added 0.1 USDC of supply at the same index, give or take a
+    // stroop of rounding.
+    let after = s.client.get_pool_totals();
+    assert!((after.total_supply_assets - totals.total_supply_assets - 1_000_000).abs() <= 1);
+}
+
+#[test]
+fn the_new_views_project_without_writing() {
+    let (s, _) = pool_with_debt();
+    let stored = s.client.get_protocol_state();
+    s.env.ledger().set_sequence_number(1_000 + YEAR);
+
+    assert!(s.client.get_supply_index() > stored.supply_index);
+    assert!(s.client.get_borrow_index() > stored.borrow_index);
+    let t = s.client.get_pool_totals();
+    assert!(t.total_borrowed > stored.total_borrowed);
+    assert!(t.reserve_usdc > stored.reserve_usdc);
+    assert_eq!(t.available, t.total_supply_assets - t.total_borrowed);
+    let pos = s.client.get_supply_position(&s.supplier);
+    assert_eq!(pos.value, s.client.get_supply_balance(&s.supplier));
+
+    assert_eq!(s.client.get_protocol_state().index_ledger, stored.index_ledger);
+}
+
+#[test]
+fn an_unknown_lender_has_an_empty_position_and_an_empty_pool_has_zero_totals() {
+    let s = setup();
+    let nobody = Address::generate(&s.env);
+    assert_eq!(s.client.get_supply_position(&nobody), crate::types::SupplyPosition { scaled: 0, value: 0 });
+    let t = s.client.get_pool_totals();
+    assert_eq!((t.total_supply_assets, t.total_borrowed, t.reserve_usdc, t.available), (0, 0, 0, 0));
+    assert_eq!(s.client.get_supply_index(), crate::rates::INDEX_ONE);
+    assert_eq!(s.client.get_borrow_index(), crate::rates::INDEX_ONE);
+}
+
+/// Prints each view's CPU instructions and ledger reads for the PR record
+/// (`cargo test -p writz-lend view_costs -- --nocapture`).
+#[test]
+fn view_costs() {
+    let (s, _) = pool_with_debt();
+    s.env.ledger().set_sequence_number(1_000 + YEAR);
+    let measure = |name: &str, call: &dyn Fn()| {
+        s.env.cost_estimate().budget().reset_default();
+        call();
+        let cpu = s.env.cost_estimate().budget().cpu_instruction_cost();
+        let reads = s.env.cost_estimate().resources().disk_read_entries
+            + s.env.cost_estimate().resources().memory_read_entries;
+        std::println!("{name:<22} cpu {cpu:>9}  ledger reads {reads}");
+    };
+    measure("get_supply_balance", &|| { s.client.get_supply_balance(&s.supplier); });
+    measure("get_supply_position", &|| { s.client.get_supply_position(&s.supplier); });
+    measure("get_supply_index", &|| { s.client.get_supply_index(); });
+    measure("get_borrow_index", &|| { s.client.get_borrow_index(); });
+    measure("get_pool_totals", &|| { s.client.get_pool_totals(); });
+    measure("get_supply_rate_bp", &|| { s.client.get_supply_rate_bp(); });
+    measure("get_borrow_rate_bp", &|| { s.client.get_borrow_rate_bp(); });
+}
