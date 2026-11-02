@@ -16,7 +16,7 @@ Carries the projected views of #256 (`get_pool_totals`, `get_supply_position`, a
 
 Built at `76bc557` (#381) with `cargo build --release --target wasm32v1-none --locked -p writz-lend`, deployed by `writz-deployer` with `stellar contract deploy`, which runs the same steps as `deploy_stack.mjs --lend-only`.
 
-The pool is seeded with 100 USDC, down from 989, so a Signet-funded loan moves the rate: at the Reflector price of about $78,000, 100,000 sats back about 52 USDC, which is 52% utilization. `CC7XGEWA…` had no open loans and an empty reserve at the switch.
+The pool is seeded with 100 USDC, down from 989, which keeps room for testers while small Signet loans still produce a rate. `CC7XGEWA…` had no open loans and an empty reserve at the switch.
 
 | Field | Value |
 |---|---|
