@@ -6,7 +6,7 @@ import { createTimelineRouter, mintFromRelayView } from "./routes/timeline.js";
 import { defindexRouter } from "./routes/defindex.js";
 import { metricsRouter } from "./routes/metrics.js";
 import { vaultMetricsSnapshot } from "./defindex/metrics.js";
-import { startRepayWatcher } from "./repay-watcher/poller.js";
+import { releaseStatus, startRepayWatcher } from "./repay-watcher/poller.js";
 import { startVaultWatcher } from "./vault-watcher/poller.js";
 import { startHeaderSync } from "./bitcoin/spv-submit.js";
 import { headerSyncStatus } from "./bitcoin/header-sync.js";
@@ -137,7 +137,7 @@ app.get("/health", (_req, res) => {
     service: "writz-relayer",
     target: config.target,
     lending: LENDING,
-    ...(LENDING ? { headerSync: headerSyncStatus } : {}),
+    ...(LENDING ? { headerSync: headerSyncStatus, releases: releaseStatus(config.writzLendId) } : {}),
     bitcoinNetwork: config.bitcoinNetwork,
     esploraBaseUrl: config.esploraBaseUrl,
     defindex: vaultMetricsSnapshot(),

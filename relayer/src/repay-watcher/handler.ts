@@ -188,4 +188,10 @@ export async function handleRepayFull(
   });
 }
 
+/** Whether the contract already holds the release for this position. */
+export async function isReleasePublished(txidInternal: Buffer): Promise<boolean> {
+  const { result } = await readOnlyClient().get_release_psbt({ txid: txidInternal });
+  return Boolean(result);
+}
+
 export type { Position };

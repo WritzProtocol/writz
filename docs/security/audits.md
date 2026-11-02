@@ -77,7 +77,7 @@ Before the formal Audit Bank engagement, Writz applies the following:
 - `cargo audit` - dependency vulnerability scanning of every Cargo workspace against the RustSec database, on manifest or lockfile changes and weekly (`.github/workflows/dependency-audit.yml`); any ignored advisory is listed in the workflow with its reason
 
 **Test coverage:**
-- 850 tests covering happy paths and error cases
+- 839 tests covering happy paths and error cases
 - End-to-end integration tests covering the full deposit→borrow→repay→liquidate cycle
 - Bitcoin transaction tests verifying witness construction against real Bitcoin script interpretation
 

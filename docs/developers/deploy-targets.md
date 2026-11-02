@@ -137,7 +137,7 @@ The relayer keeps eight SQLite databases on local disk:
 
 | File | Written by | What is lost without it |
 |---|---|---|
-| `data/watcher.db` | `repay-watcher/cursor-store.ts` | The repay watcher's cursor |
+| `data/watcher.db` | `repay-watcher/release-store.ts` | The repay watcher's cursor and pending releases. Recovered by replaying from `WRITZ_LEND_DEPLOY_LEDGER` while it is inside RPC retention |
 | `data/vault-events.db` | `vault-watcher/event-store.ts` | **Every indexed vault deposit and withdrawal** |
 | `data/vault-watcher.db` | `vault-watcher/cursor-store.ts` | The vault watcher's cursor |
 | `data/faucet.db` | `faucet/sqlite-store.ts` | Signet faucet claims: the one-claim-per-account rule and the daily count reset, so every social-login account could claim again (testnet only) |

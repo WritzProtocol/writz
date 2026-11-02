@@ -8,7 +8,7 @@ Until this runbook is rehearsed once against a real testnet outage, treat it as 
 
 ## Why this exists
 
-The watcher's cursor (`relayer/src/repay-watcher/cursor-store.ts`) is the only thing standing between a normal restart (safe - resumes exactly where it left off) and a silent gap (an outage that outlasts RPC's retention). When the gap exists, `runPollCycle`'s `getEvents({ cursor: persistedCursor })` call will fail or return nothing meaningful for the missing range - the code comment in `poller.ts` names this exact scenario as needing "a documented manual backfill." This is that document.
+The watcher's cursor (`relayer/src/repay-watcher/release-store.ts`) is the only thing standing between a normal restart (safe - resumes exactly where it left off) and a silent gap (an outage that outlasts RPC's retention). When the gap exists, `runPollCycle`'s `getEvents({ cursor: persistedCursor })` call will fail or return nothing meaningful for the missing range - the code comment in `poller.ts` names this exact scenario as needing "a documented manual backfill." This is that document.
 
 **What's actually at stake:** every `repay_full` event on `writz-lend` that fired during the gap corresponds to a user who fully repaid their USDC debt and is waiting for their BTC release PSBT to be co-signed and published. Missing one means that user's BTC stays locked until either (a) this backfill runs, or (b) the CLTV timelock expires and they use the manual emergency recovery path - a much worse experience for them, and avoidable.
 

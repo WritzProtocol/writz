@@ -1,14 +1,13 @@
 /**
  * Test-only stand-in for `bun:sqlite`, used exclusively under Jest (which
  * runs on Node, where `bun:sqlite` doesn't exist). Production code
- * (`cursor-store.ts`, `leaf-store.ts`, `vault-watcher/event-store.ts`) is
+ * (`vault-watcher/cursor-store.ts`, `vault-watcher/event-store.ts`) is
  * untouched and continues to use the real `bun:sqlite` when run under Bun
  * (`bun src/index.ts`, `bun test`) - this file is wired in only via
  * jest.config.js's `moduleNameMapper` for the `bun:sqlite` specifier.
  *
  * Implements just enough of the `Database` API surface for four fixed
- * shapes: the single-row `watcher_cursor` table (`cursor-store.ts`,
- * `vault-watcher/cursor-store.ts`), the append-only `vault_events` table
+ * shapes: the single-row `watcher_cursor` table (`vault-watcher/cursor-store.ts`), the append-only `vault_events` table
  * (`vault-watcher/event-store.ts`), the `leaves`/`notes` tables
  * (`leaf-store.ts`), and the append-only `tree_events` archive
  * (`tree-watcher/event-archive.ts`). State is persisted to a JSON sidecar
