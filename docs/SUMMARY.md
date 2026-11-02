@@ -48,6 +48,7 @@
 * [Bitcoin SPV SDK](/developers/spv-sdk)
 * [Contract Reference](/developers/contract-reference)
 * [Contributing](/developers/contribution-guide)
+* [Relayer recovery](/developers/relayer-recovery)
 
 ## Security
 
