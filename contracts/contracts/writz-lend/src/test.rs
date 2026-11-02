@@ -2944,26 +2944,36 @@ impl Pool<'_> {
         p
     }
 
+    /// Invariants 1, 2 and 4. Every broken one is reported, not just the first.
     fn check(&self, seq: u64, p: &Projection) {
+        let mut broken = std::vec::Vec::new();
         let assets = crate::rates::total_supply_assets(&p.stored, p.supply_index);
 
         // 1. Claims never exceed assets. A lender's claim is what
         // get_supply_balance returns: floor(scaled * supply_index / 1e18).
         let claims: i128 = self.lenders.iter().map(|l| l.scaled * p.supply_index / crate::rates::INDEX_ONE).sum();
-        assert!(claims <= assets, "seq {seq}: claims {claims} > assets {assets}");
+        if claims > assets {
+            broken.push(std::format!("1: claims {claims} > assets {assets}"));
+        }
 
         // 2. Solvency.
         let held = TokenClient::new(&self.s.env, &self.s.usdc).balance(&self.s.client.address);
         let owed = assets + p.reserve - p.total_borrowed;
-        assert!(owed <= held, "seq {seq}: assets + reserve - borrowed = {owed} > held {held}");
+        if owed > held {
+            broken.push(std::format!("2: assets + reserve - borrowed = {owed} > held {held}"));
+        }
 
-        // 4. No lender over-withdraws: what they took out is at most what they
-        // put in plus their share of the interest, give or take a stroop of
-        // rounding per operation.
+        // 4. No lender over-withdraws: the USDC they received is at most what
+        // they put in plus their share of the interest, give or take a stroop
+        // of rounding per operation.
         for l in self.lenders.iter() {
             let bound = l.supplied + l.earned_e18 / crate::rates::INDEX_ONE + self.ops;
-            assert!(l.withdrawn <= bound, "seq {seq}: lender withdrew {} > supplied + interest {bound}", l.withdrawn);
+            if l.withdrawn > bound {
+                broken.push(std::format!("4: lender received {} > supplied + interest {bound}", l.withdrawn));
+            }
         }
+
+        assert!(broken.is_empty(), "seq {seq}: invariants broken: {}", broken.join("; "));
     }
 
     fn refresh_scaled(&mut self) {
@@ -2976,7 +2986,7 @@ impl Pool<'_> {
 /// Runs one generated operation. Returns whether the contract accepted it.
 fn run_op(pool: &mut Pool, p: &Projection, rng: &mut Lcg) -> bool {
     let s = pool.s;
-    match rng.range(0, 6) {
+    match rng.range(0, 7) {
         0 => {
             let i = rng.range(0, pool.lenders.len() as u64 - 1) as usize;
             let amount = rng.range(1, 2_000 * STROOPS_PER_USDC) as i128;
@@ -2986,14 +2996,20 @@ fn run_op(pool: &mut Pool, p: &Projection, rng: &mut Lcg) -> bool {
             }
             ok
         }
-        k @ (1 | 2) => {
+        // Partial, full, and more than the balance is worth (which must be rejected).
+        k @ (1 | 2 | 6) => {
             let i = rng.range(0, pool.lenders.len() as u64 - 1) as usize;
             let value = pool.lenders[i].scaled * p.supply_index / crate::rates::INDEX_ONE;
-            let amount = if k == 2 { value } else { value * rng.range(1, 99) as i128 / 100 };
+            let amount = match k {
+                1 => value * rng.range(1, 99) as i128 / 100,
+                2 => value,
+                _ => value + 1 + value * rng.range(0, 10) as i128 / 100,
+            };
+            let token = TokenClient::new(&s.env, &s.usdc);
+            let before = token.balance(&pool.lenders[i].addr);
             let ok = s.client.try_withdraw_supply(&pool.lenders[i].addr, &amount).is_ok();
-            if ok {
-                pool.lenders[i].withdrawn += amount;
-            }
+            // What actually reached the lender, not what they asked for.
+            pool.lenders[i].withdrawn += token.balance(&pool.lenders[i].addr) - before;
             ok
         }
         3 => {
