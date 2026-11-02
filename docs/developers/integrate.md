@@ -49,7 +49,7 @@ Both are published: `npm install @writz/sdk` and `cargo add writz-spv-client`. T
 | Bitcoin network | Signet |
 | Writz relayer | `https://api.testnet.writz.xyz` |
 | `bitcoin-spv` | `CBX23YKCCJMAMBMSCNP6YVKEXUIYK2CTKSR4TQ3RVBPAFYZFVCW7W4EO` |
-| `writz-lend` | `CC7XGEWAUNUHZYKM5CED6KQXGFS6UWVI5H6XOB76YTMZRWCEH6DKT62A` |
+| `writz-lend` | `CD3BRE32LDNDHAEVI6H35UC3NIRREW5BLH64AZMHSQY3LEKYDLKYWBXS` |
 | Test USDC (Stellar Asset Contract for `USDC:GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5`) | `CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA` |
 | BTC price oracle read by `writz-lend` (Reflector) | `CCYOZJCOPG34LLQQ7N24YXBM7LL62R7ONMZ3G6WZAAYPB5OYKOMJRN63` |
 
@@ -168,7 +168,7 @@ console.log(result.isOk() ? result.unwrap() : result.unwrapErr());
 // { block_hash: <Buffer fe 32 ...>, block_height: 327928, confirmations: 7, txid: <Buffer 69 e2 ...> }
 ```
 
-The same command generates a client for `writz-lend` (`--contract-id CC7XGEWAUNUHZYKM5CED6KQXGFS6UWVI5H6XOB76YTMZRWCEH6DKT62A`). Generate bindings from the deployed contract ID, not from the source on `main`: the source can be ahead of what is deployed.
+The same command generates a client for `writz-lend` (`--contract-id CD3BRE32LDNDHAEVI6H35UC3NIRREW5BLH64AZMHSQY3LEKYDLKYWBXS`). Generate bindings from the deployed contract ID, not from the source on `main`: the source can be ahead of what is deployed.
 
 ## 5. From your Soroban contract
 
@@ -228,7 +228,7 @@ The complete contract, with tests, is [`examples/spv-payment-check`](https://git
 ## 6. Read the Writz lending pool
 
 ```bash
-LEND=CC7XGEWAUNUHZYKM5CED6KQXGFS6UWVI5H6XOB76YTMZRWCEH6DKT62A
+LEND=CD3BRE32LDNDHAEVI6H35UC3NIRREW5BLH64AZMHSQY3LEKYDLKYWBXS
 stellar contract invoke --id $LEND --network testnet --source-account $READER --send=no -- get_protocol_state
 stellar contract invoke --id $LEND --network testnet --source-account $READER --send=no -- get_borrow_rate_bp
 stellar contract invoke --id $LEND --network testnet --source-account $READER --send=no -- get_supply_balance --lender $READER
@@ -249,7 +249,7 @@ USDC amounts are in stroops (7 decimals: `10000000000` is 1,000 USDC). Rates are
 Yield on Writz is the lender side of `writz-lend`. Lenders supply USDC to the pool that Bitcoin borrowers draw from, and the interest those borrowers pay is the lenders' yield. You need no contract of your own: the user's wallet signs `supply_usdc` and `withdraw_supply`, and your app reads the balance and the rate by simulation. The asset is the same test USDC as the rest of this page (`USDC:GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5`), and the user's account needs a trustline to it.
 
 ```bash
-LEND=CC7XGEWAUNUHZYKM5CED6KQXGFS6UWVI5H6XOB76YTMZRWCEH6DKT62A
+LEND=CD3BRE32LDNDHAEVI6H35UC3NIRREW5BLH64AZMHSQY3LEKYDLKYWBXS
 stellar contract invoke --id $LEND --network testnet --source-account me --send=no -- get_supply_rate_bp
 stellar contract invoke --id $LEND --network testnet --source-account me -- supply_usdc --supplier $(stellar keys address me) --amount 100000000
 stellar contract invoke --id $LEND --network testnet --source-account me --send=no -- get_supply_balance --lender $(stellar keys address me)

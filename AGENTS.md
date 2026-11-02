@@ -9,7 +9,7 @@ Use only these values; anything not listed here or in the linked pages does not 
 - Stellar network: testnet, passphrase `Test SDF Network ; September 2015`, RPC `https://soroban-testnet.stellar.org`
 - Bitcoin network: signet (no mainnet, testnet3 or testnet4 verification)
 - `bitcoin-spv`: `CBX23YKCCJMAMBMSCNP6YVKEXUIYK2CTKSR4TQ3RVBPAFYZFVCW7W4EO`
-- `writz-lend`: `CC7XGEWAUNUHZYKM5CED6KQXGFS6UWVI5H6XOB76YTMZRWCEH6DKT62A`
+- `writz-lend`: `CD3BRE32LDNDHAEVI6H35UC3NIRREW5BLH64AZMHSQY3LEKYDLKYWBXS`
 - Both were redeployed on 2026-10-25 (testnet rent; positions on the previous contracts were closed and released), and `writz-lend` again on 2026-11-01 (supply and withdraw events carry the scaled amount and supply index, #257). Any other `bitcoin-spv` or `writz-lend` ID is superseded; the `bitcoin-spv` checkpoint is signet block 327,925 and only later blocks can be proven
 - Test USDC (SAC): `CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA`
 - Relayer: `https://api.testnet.writz.xyz`, proof route `GET /spv-proof/:txid?confirmations=N`
