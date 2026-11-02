@@ -19,6 +19,7 @@ use crate::{
 // ── Mock SPV contract ─────────────────────────────────────────────────────────
 // Returns the SHA256d of the raw_tx as the txid (mirroring the real contract),
 // using a fixed fake value so tests don't need real Bitcoin transactions.
+// `set_txid` changes that value, for tests that need several positions.
 
 #[contract]
 struct MockSpv;
@@ -34,12 +35,22 @@ impl MockSpv {
         min_confirmations: u32,
     ) -> SpvVerificationResult {
         env.storage().instance().set(&symbol_short!("min_conf"), &min_confirmations);
+        let txid = env
+            .storage()
+            .instance()
+            .get(&symbol_short!("txid"))
+            .unwrap_or(BytesN::from_array(&env, &[0xdeu8; 32]));
         SpvVerificationResult {
-            txid: BytesN::from_array(&env, &[0xdeu8; 32]),
+            txid,
             block_hash: BytesN::from_array(&env, &[0xadu8; 32]),
             block_height: 2_900_000,
             confirmations: 6,
         }
+    }
+
+    /// The txid the next `verify_transaction` calls return.
+    pub fn set_txid(env: Env, txid: BytesN<32>) {
+        env.storage().instance().set(&symbol_short!("txid"), &txid);
     }
 
     /// The `min_confirmations` the last `verify_transaction` call asked for.
@@ -427,6 +438,16 @@ fn initialize_sets_config() {
 }
 
 // ── deposit ───────────────────────────────────────────────────────────────────
+
+/// A deposit whose SPV proof yields `txid`, so one test can hold several positions.
+fn deposit_as(s: &Setup, txid: &BytesN<32>) -> BytesN<32> {
+    MockSpvClient::new(&s.env, &s.spv).set_txid(txid);
+    let sig = sign_with(&s.env, &user_signing_key(), &s.client.address, &s.depositor, txid);
+    s.client.deposit(
+        &s.depositor, &fake_block_hash(&s.env), &fake_proof(&s.env), &0u32, &s.raw_tx, &s.spk,
+        &TEST_TIMELOCK, &fake_user_pubkey(&s.env), &sig,
+    )
+}
 
 fn do_deposit(s: &Setup) -> BytesN<32> {
     s.client.deposit(
@@ -2817,4 +2838,256 @@ fn view_costs() {
     measure("get_pool_totals", &|| { s.client.get_pool_totals(); });
     measure("get_supply_rate_bp", &|| { s.client.get_supply_rate_bp(); });
     measure("get_borrow_rate_bp", &|| { s.client.get_borrow_rate_bp(); });
+}
+
+#[test]
+fn one_test_can_hold_several_positions() {
+    let s = setup();
+    s.client.supply_usdc(&s.supplier, &10_000_000_000_i128);
+    let a = deposit_as(&s, &BytesN::from_array(&s.env, &[1u8; 32]));
+    let b = deposit_as(&s, &BytesN::from_array(&s.env, &[2u8; 32]));
+    assert_ne!(a, b);
+    s.client.borrow(&s.depositor, &a, &100_000_000_i128);
+    s.client.borrow(&s.depositor, &b, &200_000_000_i128);
+    assert_eq!(s.client.get_protocol_state().total_borrowed, 300_000_000);
+}
+
+// ── Lender yield invariants, property test (#258) ─────────────────────────────
+//
+// Random sequences of supply, partial and full withdraw, borrow, partial and
+// full repay, and ledger advances, over 1 to 5 lenders and 1 to 3 positions.
+// After every call, five invariants must hold; a call the contract rejects
+// must leave them holding too. Fixed seeds, so a failure names its sequence.
+
+/// Sequences run by default; each has 1 to `MAX_OPS` operations. Every call
+/// runs on the real contract in the Soroban test host (about 2.5 ms per call
+/// unoptimized), so the default keeps CI under a minute. The full run is
+/// `WRITZ_LEND_INVARIANT_SEQUENCES=2000 cargo test --release -p writz-lend lender_yield_invariants`.
+const DEFAULT_INVARIANT_SEQUENCES: u64 = 120;
+const MAX_OPS: u64 = 200;
+/// USDC has 7 decimals.
+const STROOPS_PER_USDC: u64 = 10_000_000;
+
+fn invariant_sequences() -> u64 {
+    std::env::var("WRITZ_LEND_INVARIANT_SEQUENCES")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(DEFAULT_INVARIANT_SEQUENCES)
+}
+
+/// Deterministic 64-bit LCG, as in `rates.rs`, so cases reproduce without a dev-dependency.
+struct Lcg(u64);
+impl Lcg {
+    fn next(&mut self) -> u64 {
+        self.0 = self.0.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        self.0 >> 11
+    }
+    /// A value in [lo, hi].
+    fn range(&mut self, lo: u64, hi: u64) -> u64 {
+        lo + self.next() % (hi - lo + 1)
+    }
+}
+
+/// What the test knows about one lender, to bound what they may withdraw.
+struct LenderBook {
+    addr: Address,
+    supplied: i128,
+    withdrawn: i128,
+    /// Interest owed to them, times 1e18: scaled balance times each index step.
+    earned_e18: i128,
+    scaled: i128,
+}
+
+/// The pool as of the current ledger: the stored state projected with
+/// `rates::project`, the same function the views and every write use. Reading
+/// the stored state once per operation keeps 2,000 sequences fast.
+struct Projection {
+    stored: ProtocolStateT,
+    borrow_index: i128,
+    supply_index: i128,
+    total_borrowed: i128,
+    reserve: i128,
+}
+
+type ProtocolStateT = crate::types::ProtocolState;
+
+fn projection(s: &Setup) -> Projection {
+    let stored = s.client.get_protocol_state();
+    let (borrow_index, supply_index, total_borrowed, reserve) =
+        crate::rates::project(&stored, s.env.ledger().sequence());
+    Projection { stored, borrow_index, supply_index, total_borrowed, reserve }
+}
+
+struct Pool<'a> {
+    s: &'a Setup,
+    lenders: std::vec::Vec<LenderBook>,
+    positions: std::vec::Vec<BytesN<32>>,
+    /// Indexes at the last look, for monotonicity and lender interest.
+    supply_index: i128,
+    borrow_index: i128,
+    ops: i128,
+}
+
+impl Pool<'_> {
+    /// Credits each lender the interest of the index step since the last
+    /// look, at the scaled balance they held over it.
+    fn observe(&mut self, seq: u64) -> Projection {
+        let p = projection(self.s);
+        // 3. Monotone indexes.
+        assert!(p.supply_index >= self.supply_index, "seq {seq}: supply index fell {} -> {}", self.supply_index, p.supply_index);
+        assert!(p.borrow_index >= self.borrow_index, "seq {seq}: borrow index fell {} -> {}", self.borrow_index, p.borrow_index);
+        for l in self.lenders.iter_mut() {
+            l.earned_e18 += l.scaled * (p.supply_index - self.supply_index);
+        }
+        self.supply_index = p.supply_index;
+        self.borrow_index = p.borrow_index;
+        p
+    }
+
+    /// Invariants 1, 2 and 4. Every broken one is reported, not just the first.
+    fn check(&self, seq: u64, p: &Projection) {
+        let mut broken = std::vec::Vec::new();
+        let assets = crate::rates::total_supply_assets(&p.stored, p.supply_index);
+
+        // 1. Claims never exceed assets. A lender's claim is what
+        // get_supply_balance returns: floor(scaled * supply_index / 1e18).
+        let claims: i128 = self.lenders.iter().map(|l| l.scaled * p.supply_index / crate::rates::INDEX_ONE).sum();
+        if claims > assets {
+            broken.push(std::format!("1: claims {claims} > assets {assets}"));
+        }
+
+        // 2. Solvency.
+        let held = TokenClient::new(&self.s.env, &self.s.usdc).balance(&self.s.client.address);
+        let owed = assets + p.reserve - p.total_borrowed;
+        if owed > held {
+            broken.push(std::format!("2: assets + reserve - borrowed = {owed} > held {held}"));
+        }
+
+        // 4. No lender over-withdraws: the USDC they received is at most what
+        // they put in plus their share of the interest, give or take a stroop
+        // of rounding per operation.
+        for l in self.lenders.iter() {
+            let bound = l.supplied + l.earned_e18 / crate::rates::INDEX_ONE + self.ops;
+            if l.withdrawn > bound {
+                broken.push(std::format!("4: lender received {} > supplied + interest {bound}", l.withdrawn));
+            }
+        }
+
+        assert!(broken.is_empty(), "seq {seq}: invariants broken: {}", broken.join("; "));
+    }
+
+    fn refresh_scaled(&mut self) {
+        for l in self.lenders.iter_mut() {
+            l.scaled = stored_scaled(self.s, &l.addr);
+        }
+    }
+}
+
+/// Runs one generated operation. Returns whether the contract accepted it.
+fn run_op(pool: &mut Pool, p: &Projection, rng: &mut Lcg) -> bool {
+    let s = pool.s;
+    match rng.range(0, 7) {
+        0 => {
+            let i = rng.range(0, pool.lenders.len() as u64 - 1) as usize;
+            let amount = rng.range(1, 2_000 * STROOPS_PER_USDC) as i128;
+            let ok = s.client.try_supply_usdc(&pool.lenders[i].addr, &amount).is_ok();
+            if ok {
+                pool.lenders[i].supplied += amount;
+            }
+            ok
+        }
+        // Partial, full, and more than the balance is worth (which must be rejected).
+        k @ (1 | 2 | 6) => {
+            let i = rng.range(0, pool.lenders.len() as u64 - 1) as usize;
+            let value = pool.lenders[i].scaled * p.supply_index / crate::rates::INDEX_ONE;
+            let amount = match k {
+                1 => value * rng.range(1, 99) as i128 / 100,
+                2 => value,
+                _ => value + 1 + value * rng.range(0, 10) as i128 / 100,
+            };
+            let token = TokenClient::new(&s.env, &s.usdc);
+            let before = token.balance(&pool.lenders[i].addr);
+            let ok = s.client.try_withdraw_supply(&pool.lenders[i].addr, &amount).is_ok();
+            // What actually reached the lender, not what they asked for.
+            pool.lenders[i].withdrawn += token.balance(&pool.lenders[i].addr) - before;
+            ok
+        }
+        3 => {
+            let txid = pool.positions[rng.range(0, pool.positions.len() as u64 - 1) as usize].clone();
+            let amount = rng.range(1, 250 * STROOPS_PER_USDC) as i128;
+            s.client.try_borrow(&s.depositor, &txid, &amount).is_ok()
+        }
+        k @ (4 | 5) => {
+            let txid = pool.positions[rng.range(0, pool.positions.len() as u64 - 1) as usize].clone();
+            let pos = s.client.get_position(&txid).unwrap();
+            if pos.usdc_debt == 0 || pos.debt_index == 0 {
+                return false;
+            }
+            let debt = pos.usdc_debt * p.borrow_index / pos.debt_index;
+            let amount = if k == 5 { debt } else { (debt * rng.range(1, 99) as i128 / 100).max(1) };
+            s.client.try_repay(&s.depositor, &txid, &amount).is_ok()
+        }
+        _ => {
+            let seq = s.env.ledger().sequence();
+            s.env.ledger().set_sequence_number(seq + rng.range(0, 1_000_000) as u32);
+            true
+        }
+    }
+}
+
+#[test]
+fn lender_yield_invariants_hold_over_random_sequences() {
+    for seq in 0..invariant_sequences() {
+        let mut rng = Lcg(0x5eed_0000 + seq);
+        let s = setup();
+        s.env.cost_estimate().budget().reset_unlimited();
+        let usdc = StellarAssetClient::new(&s.env, &s.usdc);
+        usdc.mint(&s.depositor, &(1_000_000_000 * STROOPS_PER_USDC as i128));
+
+        let lenders = (0..rng.range(1, 5))
+            .map(|_| {
+                let addr = Address::generate(&s.env);
+                usdc.mint(&addr, &(1_000_000_000 * STROOPS_PER_USDC as i128));
+                LenderBook { addr, supplied: 0, withdrawn: 0, earned_e18: 0, scaled: 0 }
+            })
+            .collect();
+        let positions = (0..rng.range(1, 3))
+            .map(|i| deposit_as(&s, &BytesN::from_array(&s.env, &[0x40 + i as u8; 32])))
+            .collect();
+        let mut pool = Pool {
+            s: &s,
+            lenders,
+            positions,
+            supply_index: crate::rates::INDEX_ONE,
+            borrow_index: crate::rates::INDEX_ONE,
+            ops: 0,
+        };
+
+        let mut before = pool.observe(seq);
+        for _ in 0..rng.range(1, MAX_OPS) {
+            let ledger = s.env.ledger().sequence();
+            let accepted = run_op(&mut pool, &before, &mut rng);
+            pool.ops += 1;
+            pool.refresh_scaled();
+            let after = pool.observe(seq);
+
+            // 5. Exact fee: a write that accrues adds floor(15% of the
+            // interest) to the reserve, and nothing else touches it here.
+            let wrote = accepted && after.stored.index_ledger == ledger && before.stored.index_ledger != ledger;
+            if wrote {
+                let delta = before.total_borrowed - before.stored.total_borrowed;
+                assert_eq!(
+                    before.reserve - before.stored.reserve_usdc,
+                    delta * 1_500 / 10_000,
+                    "seq {seq}: fee is not 15% of {delta}",
+                );
+                assert_eq!(after.stored.reserve_usdc, before.reserve, "seq {seq}: stored reserve is not the accrued one");
+            } else if after.stored.index_ledger == before.stored.index_ledger {
+                assert_eq!(after.stored.reserve_usdc, before.stored.reserve_usdc, "seq {seq}: reserve moved without an accrual");
+            }
+
+            pool.check(seq, &after);
+            before = after;
+        }
+    }
 }
