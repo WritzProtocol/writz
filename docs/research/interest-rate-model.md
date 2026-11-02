@@ -98,7 +98,7 @@ Higher than Aave's 10%, justified by Writz's additional privacy infrastructure c
 | 75% (optimal) | 8% | 5.1% |
 | 80% | 48% | 32.6% |
 | 90% | 128% | 97.9% |
-| 95% | 168% | 134.7% |
+| 95% | 168% | 135.7% |
 
 The jump from 75% → 80% creates a powerful incentive (8% → 48%) that strongly discourages the pool from going above the optimal utilization point.
 
@@ -113,16 +113,15 @@ Interest accrues continuously on outstanding loans, calculated per Stellar ledge
 ### Implementation
 
 ```rust
-// Per-ledger interest calculation
-let blocks_elapsed = current_ledger - last_update_ledger;
-let ledger_rate = annual_borrow_rate / (365 * 24 * 720); // 720 ledgers per hour
-let interest_accrued = outstanding_debt × ledger_rate × blocks_elapsed;
-debt = outstanding_debt + interest_accrued;
+// Per-interval interest, as in rates.rs (5-second ledgers)
+let ledgers_elapsed = current_ledger - index_ledger;
+let interest = debt * rate_bp * ledgers_elapsed / (LEDGERS_PER_YEAR * BP_SCALE); // LEDGERS_PER_YEAR = 6_311_520
+debt = debt + interest;
 ```
 
 ### Compound interest
 
-Writz uses compound interest (interest on interest). This matches Aave/Compound behavior and simplifies the accounting model - the outstanding debt grows continuously, and the protocol fee is taken from the spread.
+Interest compounds at every state change. Within one interval it is simple interest at the rate that held during it; the next interval starts from the index the previous one left, so interest earns interest. A pool that is used often compounds close to continuously, and a quiet one compounds less often. The protocol fee is taken from each interval's interest.
 
 ---
 
@@ -137,7 +136,7 @@ Annual borrow rate at 75% util:   8%
 Annual interest generated:        $750,000 × 8% = $60,000
 
 Distribution:
-├── USDC lenders (85%):           $51,000/year → 5.1% APY on supplied capital
+├── USDC lenders (85%):           $51,000/year → 5.1% APR on supplied capital
 └── Writz Protocol (15%):         $9,000/year  → protocol revenue
 
 Protocol revenue breakdown:
