@@ -34,6 +34,8 @@ export interface LendEventStore {
   /** Writes `rows` and advances the cursor, atomically. */
   commit(rows: LendEventRow[], cursor: string): void;
   list(contractId: string): LendEventRow[];
+  /** The rows and the cursor read in one transaction, so they describe the same moment. */
+  snapshot(contractId: string): { rows: LendEventRow[]; cursor: string | null };
   lastLedger(contractId: string): number | null;
   /** Writes a complete copy to `file`, ready to be moved into place. */
   exportTo(file: string): void;
@@ -93,6 +95,10 @@ export function openLendEventStore(dbPath: string): LendEventStore {
     assertValidCursor(cursor);
     writeCursorStmt.run(cursor);
   });
+  const snapshot = db.transaction((contractId: string) => ({
+    rows: listQuery.all(contractId),
+    cursor: readCursorQuery.get()?.cursor ?? null,
+  }));
 
   return {
     readCursor: () => readCursorQuery.get()?.cursor ?? null,
@@ -100,6 +106,7 @@ export function openLendEventStore(dbPath: string): LendEventStore {
       commit(rows, cursor);
     },
     list: (contractId) => listQuery.all(contractId),
+    snapshot: (contractId) => snapshot(contractId),
     lastLedger: (contractId) => lastLedgerQuery.get(contractId)?.ledger ?? null,
     exportTo: (file) => {
       db.prepare("VACUUM INTO ?").run(file);

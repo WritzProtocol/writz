@@ -615,6 +615,19 @@ railway variables --service writz --set "CCTP_RELAY_EVM_KEY=$(bun scripts/cctp-r
 
 Fund that address with Base Sepolia ETH (a public Base Sepolia faucet, or a bridge from Sepolia); `receiveMessage` takes about 175,000 gas, around 0.000001 ETH at Base Sepolia's gas price in October 2026 plus the L1 data fee, so 0.01 ETH covers thousands of mints. After the redeploy, `GET /cctp/relay` shows the address and its balance. `bun run cctp-relay:keygen` prints a key and its address instead, for local development. The mainnet target refuses to boot with `CCTP_RELAY_EVM_KEY` set.
 
+### `GET /lend-events/export`
+
+The relayer's archive of `writz-lend` events as NDJSON, for another relayer to rebuild from past RPC retention with `bun run rebuild-lend-state --source archive --file <url>`. The first line is a header with the network passphrase, the contract ID, the first and last event ledger, the event count and the archive's cursor; each following line is one event with its `rawXdr`. Served only where lending is enabled, like `/spv-proof`.
+
+The file is not trusted by whoever reads it: the rebuild re-decodes every event, checks the result against the contract, and changes nothing if either fails. The format, the checks and their one limit are in [Relayer recovery](../docs/developers/relayer-recovery.md#past-rpc-retention). `bun run export-lend-events --out <file>` writes the same file from the command line.
+
+| Status | `error` | When |
+|---|---|---|
+| `200` | | The file, `Content-Type: application/x-ndjson` |
+| `429` | `rate_limited` | More than 6 requests in an hour from one address, with `retryAfterSeconds` and a `Retry-After` header |
+| `503` | `lending_not_configured` | `WRITZ_LEND_ID` is not set on this relayer |
+| `503` | `archive_empty` | The archive has not read the chain yet |
+
 ### `GET /health`
 
 Returns `{"status":"ok",...}` - used by load balancers.

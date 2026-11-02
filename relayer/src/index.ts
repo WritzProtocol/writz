@@ -4,6 +4,7 @@ import { config } from "./config.js";
 import { proofRouter } from "./routes/proof.js";
 import { createDepositStatusRouter } from "./routes/deposit-status.js";
 import { createTimelineRouter, mintFromRelayView } from "./routes/timeline.js";
+import { createLendEventsRouter } from "./routes/lend-events.js";
 import { defindexRouter } from "./routes/defindex.js";
 import { metricsRouter } from "./routes/metrics.js";
 import { vaultMetricsSnapshot } from "./defindex/metrics.js";
@@ -14,7 +15,7 @@ import { startHeaderSync } from "./bitcoin/spv-submit.js";
 import { headerSyncStatus } from "./bitcoin/header-sync.js";
 import { claimDataDir } from "./data-lock.js";
 import { lendingEnabled } from "./deploy-target.js";
-import { lendEventsDbPath } from "./lend-events/store.js";
+import { lendEventStore, lendEventsDbPath } from "./lend-events/store.js";
 import { lendEventsStatus, startLendEventArchive } from "./lend-events/poller.js";
 import { createFaucetRouter } from "./routes/faucet.js";
 import { faucetFromConfig } from "./faucet/from-config.js";
@@ -101,6 +102,7 @@ app.get("/", (_req, res) => {
             spvProof: "GET /spv-proof/:txid",
             depositStatus: "GET /deposit-status/:txid",
             timeline: "GET /timeline/:btcTxid",
+            lendEventsExport: "GET /lend-events/export",
           }
         : {}),
       ...(FAUCET
@@ -166,6 +168,13 @@ if (LENDING) {
     "/timeline",
     createTimelineRouter({
       mint: (burnHash) => mintFromRelayView(cctp?.relay?.lookup(burnHash)),
+    }),
+  );
+  app.use(
+    "/lend-events",
+    createLendEventsRouter({
+      target: { contractId: config.writzLendId, networkPassphrase: config.networkPassphrase },
+      snapshot: () => lendEventStore().snapshot(config.writzLendId),
     }),
   );
 }

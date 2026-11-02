@@ -41,6 +41,11 @@ export function cursorForLedger(ledger: number): string {
   return `${toid.toString().padStart(19, "0")}-${"0".repeat(10)}`;
 }
 
+/** The ledger a cursor or an RPC event ID points into, the high 32 bits of its TOID. */
+export function ledgerOfCursor(cursor: string): number {
+  return Number(BigInt(cursor.split("-")[0]!) >> 32n);
+}
+
 /** Throws with the format and a worked example, rather than storing a cursor that will stall the watcher. */
 export function assertValidCursor(cursor: string): void {
   if (!isValidCursor(cursor)) {
