@@ -31,8 +31,11 @@ export interface LendEventsCycleDeps {
   decodeEvent: (event: never, contractId: string) => LendEventRow | null;
 }
 
-/** Reads pages until the chain has nothing newer. Each page commits on its own. */
-export async function runLendEventsCycle(deps: LendEventsCycleDeps): Promise<void> {
+/**
+ * Reads pages until the chain has nothing newer. Each page commits on its own.
+ * Returns true once it reached the tip, false if it stopped at the page limit.
+ */
+export async function runLendEventsCycle(deps: LendEventsCycleDeps): Promise<boolean> {
   const { server, contractId, store, deployLedger, decodeEvent } = deps;
   const filters = [{ type: "contract" as const, contractIds: [contractId] }];
   for (let page = 0; page < MAX_PAGES_PER_POLL; page++) {
@@ -49,8 +52,9 @@ export async function runLendEventsCycle(deps: LendEventsCycleDeps): Promise<voi
       if (row) rows.push(row);
     }
     store.commit(rows, response.cursor);
-    if (response.events.length === 0) return;
+    if (response.events.length === 0) return true;
   }
+  return false;
 }
 
 let lastError: string | null = null;

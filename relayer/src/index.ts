@@ -1,3 +1,4 @@
+import path from "path";
 import express from "express";
 import { config } from "./config.js";
 import { proofRouter } from "./routes/proof.js";
@@ -7,10 +8,13 @@ import { defindexRouter } from "./routes/defindex.js";
 import { metricsRouter } from "./routes/metrics.js";
 import { vaultMetricsSnapshot } from "./defindex/metrics.js";
 import { releaseStatus, startRepayWatcher } from "./repay-watcher/poller.js";
+import { watcherDbPath } from "./repay-watcher/release-store.js";
 import { startVaultWatcher } from "./vault-watcher/poller.js";
 import { startHeaderSync } from "./bitcoin/spv-submit.js";
 import { headerSyncStatus } from "./bitcoin/header-sync.js";
+import { claimDataDir } from "./data-lock.js";
 import { lendingEnabled } from "./deploy-target.js";
+import { lendEventsDbPath } from "./lend-events/store.js";
 import { lendEventsStatus, startLendEventArchive } from "./lend-events/poller.js";
 import { createFaucetRouter } from "./routes/faucet.js";
 import { faucetFromConfig } from "./faucet/from-config.js";
@@ -230,6 +234,10 @@ app.listen(config.port, () => {
   console.log(`Esplora: ${config.esploraBaseUrl}`);
   console.log(`Stellar RPC: ${config.stellarRpcUrl}`);
 });
+
+if (LENDING) {
+  for (const db of [lendEventsDbPath(), watcherDbPath()]) claimDataDir(path.dirname(db));
+}
 
 // Auto-cosign repay watcher - no-ops with a warning if its
 // required config isn't set, so this never blocks the HTTP API from starting.
