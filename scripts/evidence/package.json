@@ -1,0 +1,11 @@
+{
+  "name": "@writz/evidence",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@stellar/stellar-sdk": "^16.0.1",
+    "@writz/bitcoin-script": "file:../../bitcoin-script",
+    "bitcoinjs-lib": "^6.1.7"
+  }
+}
