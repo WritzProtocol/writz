@@ -994,7 +994,7 @@ impl WritzLendContract {
     /// borrowed.
     pub fn get_supply_balance(env: Env, lender: Address) -> i128 {
         let proto = projected(&env);
-        get_supply_balance(&env, &lender, storage::entry_ttl(&env)).saturating_mul(proto.supply_index) / rates::INDEX_ONE
+        storage::peek_supply_balance(&env, &lender).saturating_mul(proto.supply_index) / rates::INDEX_ONE
     }
 
     // ── TTL refresh (permissionless) ──────────────────────────────────────────
