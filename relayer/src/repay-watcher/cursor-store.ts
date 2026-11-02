@@ -2,9 +2,7 @@
 /**
  * Persisted Soroban RPC events cursor for the repay watcher.
  *
- * Mirrors the bun:sqlite + WAL pattern already established in
- * `../leaf-store.ts`, in its own database file so the watcher's state is
- * independent of the Merkle leaf store's lifecycle.
+ * Keeps its state in its own bun:sqlite database file, in WAL mode.
  *
  * The cursor is what actually bounds the "stranded window" the fix is
  * meant to close: on restart, the poller resumes from here - never from

@@ -36,7 +36,7 @@ describe("isUserRejection", () => {
       "Relayer unreachable",
       "Transaction failed on-chain: InsufficientAmount",
       "fetch failed",
-      "Missing contract address for commitment-tree",
+      "Missing contract address for writz-lend",
       // The ambiguous verbs on their own describe things that break by
       // themselves. Reading these as a rejection sends the user to the wrong fix.
       "The connection was closed",

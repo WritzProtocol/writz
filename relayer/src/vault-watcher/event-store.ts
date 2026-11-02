@@ -2,8 +2,8 @@
 /**
  * Persisted DeFindex vault deposit/withdraw events.
  *
- * Separate database file from `cursor-store.ts`'s (mirrors the split
- * `../leaf-store.ts` and `../repay-watcher/cursor-store.ts` already use) so
+ * Separate database file from `cursor-store.ts`'s (mirrors
+ * `../repay-watcher/cursor-store.ts`) so
  * this watcher's event history is independent of its own cursor's lifecycle
  * and of every other watcher's storage.
  *

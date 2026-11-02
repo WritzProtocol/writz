@@ -35,7 +35,6 @@ jobs:
       matrix:
         workspace:
           - contracts
-          - privacy/contracts
           - examples/spv-payment-check
     defaults:
       run:

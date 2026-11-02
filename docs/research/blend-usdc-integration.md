@@ -52,7 +52,6 @@ Blend is Stellar's Aave equivalent - a lending protocol primitive that allows an
 
 Blend currently supports Stellar native assets and SAC tokens (Stellar Asset Contract). It does **not** support:
 - Bitcoin as collateral (no BTC on Stellar today)
-- Zero-knowledge position privacy
 
 **This is the gap Writz fills.**
 
@@ -63,7 +62,7 @@ Rather than competing with Blend for USDC liquidity, Writz can potentially co-ex
 - **Medium term:** Writz could integrate with Blend pools as a source of USDC liquidity for borrowers, acting as a BTC-collateral gateway
 - **Long term:** If Blend adds SPV verification support, Writz's open SDK provides the primitive
 
-**Why independent pools first:** The ZK privacy requirement means position state must be managed within Writz's own contracts. Blend's architecture doesn't accommodate ZK-private positions without significant modification.
+**Why independent pools first:** Bitcoin collateral is verified by Writz's own SPV contract, so position state is managed within Writz's own contracts.
 
 ---
 
@@ -129,7 +128,7 @@ For Phase 2+, Writz could offer multiple USDC pool tiers with different risk/rew
 3. **SEP-40 is the oracle standard** - align with the broader Stellar DeFi ecosystem; see `docs/research/oracle-design.md` for the corrected provider choice (Pyth + Reflector, not RedStone - Blend itself uses Reflector, not RedStone; DIA was parked, not chosen)
 4. **Protocol-owned liquidity is the best bootstrap mechanism** - use initial grants to seed the pool
 5. **Institutional USDC lenders are a realistic target** - compliance-friendly privacy attracts institutional capital
-6. **Independent pools required** - ZK position privacy cannot be retrofitted onto Blend's architecture
+6. **Independent pools required** - Blend's architecture has no way to take SPV-verified Bitcoin as collateral
 
 ---
 

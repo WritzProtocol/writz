@@ -4,7 +4,7 @@ status: "in-progress"
 created: "2026-07-19"
 updated: "2026-08-04"
 stage: "1-ignition"
-inputs: ["docs/roadmap/vision.md", "docs/research/market-landscape.md", "docs/research/growth-strategy.md", "docs/brainstorming/brainstorming-session-2026-06-22-1000.md"]
+inputs: ["docs/roadmap/vision.md", "docs/research/market-landscape.md", "docs/brainstorming/brainstorming-session-2026-06-22-1000.md"]
 ---
 
 {/* coaching-notes-stage-1 */}
@@ -59,9 +59,7 @@ Key subagent-equivalent findings (manual research this session, not from local D
     to do so already exists in their GitHub org, already shipped and audited.
     This is a materially shorter fast-follower window than the 12-18 months
     assumed for a from-scratch entrant - see market-landscape.md's revised timing
-    section. (Corrected 2026-10-26: this note used to call native-BTC verification
-    combined with ZK-private position sizes Writz's alone. Writz v1 has no
-    privacy, positions are public, and privacy is a separate later edition; the
+    section. (Corrected 2026-10-26. Positions are public; the
     cooperative release path uses a protocol co-signing key. The claim Writz
     makes is native BTC collateral without custody or wrapping, verified on
     Stellar by an SPV light client. Babylon also keeps Bitcoin in the owner's own
@@ -69,7 +67,7 @@ Key subagent-equivalent findings (manual research this session, not from local D
     changed is confidence in how long the lead lasts, specifically against
     Templar.
 
-Why this direction over alternatives: existing vision.md/growth-strategy.md already
+Why this direction over alternatives: existing vision.md already
 define a specific primary customer (Segment 1 - Sophisticated Bitcoin Holder, 0.5-10
 BTC, held 2+ years, DeFi-skeptical) with tested message-market-fit language. Fast-
 tracked past extended discovery on customer identity because this groundwork already

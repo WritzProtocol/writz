@@ -79,7 +79,6 @@ export interface Config {
   // Stellar / Soroban
   stellarRpcUrl: string;
   networkPassphrase: string;
-  commitmentTreeId: string;
   adminSecret: string | undefined;
   // Repay watcher
   writzLendId: string;
@@ -123,18 +122,6 @@ export interface Config {
   /** Relayer account balance, in stroops, below which every header-sync pass
    * logs an error-level alert. From RELAYER_MIN_BALANCE_XLM. */
   relayerMinBalanceStroops: bigint;
-  // ZK keeper (#212)
-  /** BabyJubJub scalar whose public key commitment-tree holds as its keeper
-   * key; opens the keeper note every borrow and repay publishes. */
-  keeperBabyjubSecret: bigint | undefined;
-  /** Stellar secret of the account that pays a liquidated position's debt. */
-  keeperSecret: string | undefined;
-  keeperPollIntervalMs: number;
-  /** Must equal commitment-tree's oracle price, or liquidation proofs fail
-   * with PriceMismatch. The contract's Phase 1 oracle is a fixed $60,000. */
-  btcPriceStroops: bigint;
-  /** Must equal commitment-tree's liquidation_threshold_bp. */
-  liquidationThresholdBp: bigint;
   /** Signet faucet (`/faucet/signet`). Off unless `wif` is set; signet only. */
   faucet: FaucetConfig;
   /** CCTP relay to Base Sepolia (`/cctp/relay`). Off unless `evmKey` is set; never on mainnet. */
@@ -237,11 +224,8 @@ function loadConfig(): Config {
     lending: {
       ADMIN_SECRET: process.env["ADMIN_SECRET"],
       RELAYER_SECRET: process.env["RELAYER_SECRET"],
-      COMMITMENT_TREE_ID: process.env["COMMITMENT_TREE_ID"],
       WRITZ_LEND_ID: process.env["WRITZ_LEND_ID"] ?? process.env["PRIVATE_LEND_ID"],
       BITCOIN_SPV_ID: process.env["BITCOIN_SPV_ID"],
-      KEEPER_SECRET: process.env["KEEPER_SECRET"],
-      KEEPER_BABYJUB_SECRET: process.env["KEEPER_BABYJUB_SECRET"],
       FAUCET_SIGNET_WIF: process.env["FAUCET_SIGNET_WIF"],
       CCTP_RELAY_EVM_KEY: process.env["CCTP_RELAY_EVM_KEY"],
       POLLAR_SECRET_KEY: process.env["POLLAR_SECRET_KEY"],
@@ -337,7 +321,6 @@ function loadConfig(): Config {
     onboardingEventsRateWindowMs: parseInt(getEnv("ONBOARDING_EVENTS_RATE_WINDOW_MS", "600000"), 10),
     stellarRpcUrl,
     networkPassphrase,
-    commitmentTreeId: getEnv("COMMITMENT_TREE_ID", ""),
     adminSecret: process.env["ADMIN_SECRET"],
     // PRIVATE_LEND_ID is the name the contract had before it was renamed to writz-lend.
     writzLendId: getEnv("WRITZ_LEND_ID", process.env["PRIVATE_LEND_ID"] ?? ""),
@@ -355,11 +338,6 @@ function loadConfig(): Config {
     spvSyncIntervalMs: parseInt(getEnv("SPV_SYNC_INTERVAL_MS", "60000"), 10),
     spvMaxFeeStroops: xlmToStroops(positiveNumberEnv("SPV_MAX_FEE_XLM", "5")),
     relayerMinBalanceStroops: xlmToStroops(positiveNumberEnv("RELAYER_MIN_BALANCE_XLM", "100")),
-    keeperBabyjubSecret: process.env["KEEPER_BABYJUB_SECRET"] ? BigInt(process.env["KEEPER_BABYJUB_SECRET"].trim()) : undefined,
-    keeperSecret: process.env["KEEPER_SECRET"],
-    keeperPollIntervalMs: parseInt(getEnv("KEEPER_POLL_INTERVAL_MS", "60000"), 10),
-    btcPriceStroops: BigInt(getEnv("BTC_PRICE_STROOPS", "600000000000")),
-    liquidationThresholdBp: BigInt(getEnv("LIQUIDATION_THRESHOLD_BP", "12000")),
     faucet,
     cctpRelay,
   };

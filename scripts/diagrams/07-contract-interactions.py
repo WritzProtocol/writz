@@ -1,7 +1,6 @@
 """
 Writz Protocol - 07 Contract Interactions
 Writz v1 contracts (bitcoin-spv + writz-lend) and how they call each other.
-The privacy edition (in progress) is a separate group with no edge into writz-lend.
 Contract IDs: contracts/deployments/testnet.md (2026-10-25 redeploy).
 """
 import sys, os
@@ -51,16 +50,6 @@ with g.subgraph(name="cluster_v1") as v:
            hl("Reflector Oracle", "SEP-40 · BTC/USD", "lastprice · decimals"),
            fillcolor=F_DEFAULT, color=B_DEFAULT)
 
-# ── Privacy edition (separate) ────────────────────────────────────────────────
-with g.subgraph(name="cluster_privacy") as p:
-    p.attr(**cluster_attr("Privacy edition (in progress)", B_DEFAULT,
-                          "Separate, opt-in · own pool · testnet only · not part of v1"))
-    p.attr(style="rounded,dashed")
-    p.node("commitment_tree", hl("commitment-tree", "CAQBLCAPGXXCZTJD…", "privacy edition"),
-           fillcolor=F_DEFAULT, color=B_DEFAULT, style="filled,rounded,dashed")
-    p.node("zk_verifier", hl("zk-verifier", "CB5XAP6MF2GVVFAT…", "privacy edition"),
-           fillcolor=F_DEFAULT, color=B_DEFAULT, style="filled,rounded,dashed")
-
 # ── Actor → contract ──────────────────────────────────────────────────────────
 g.edge("borrower", "writz_lend", label="deposit() · borrow() · repay()",
        color=B_STELLAR, fontcolor=B_STELLAR, penwidth="2")
@@ -79,9 +68,5 @@ g.edge("writz_lend", "oracle", label="lastprice()", color=B_DEFAULT)
 g.edge("writz_lend", "usdc_token", label="transfer()", color=B_DEFAULT)
 g.edge("usdc_token", "borrower", label="borrowed USDC", style="dashed",
        color=B_SUCCESS, fontcolor=B_SUCCESS)
-
-# ── Privacy edition internal (no edge into writz-lend) ────────────────────────
-g.edge("commitment_tree", "zk_verifier", style="dotted", color=E_DEFAULT)
-g.edge("commitment_tree", "bitcoin_spv", label="shared deposit registry", style="dotted", color=E_DEFAULT)
 
 render(g, "07-contract-interactions")

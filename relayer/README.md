@@ -777,8 +777,8 @@ deliberately, by a person, not on every push.
 
 ## Docker
 
-Build from the **repo root** (the image needs `privacy/packages/commitment-tree/`
-and `bitcoin-script/`, which live outside `relayer/`):
+Build from the **repo root** (the image needs `bitcoin-script/` and
+`packages/writz-lend/`, which live outside `relayer/`):
 
 ```bash
 docker build -f Dockerfile -t writz-relayer .
@@ -851,14 +851,14 @@ const { sorobanArgs } = proofBundle;
 
 #### 2. Submit the SPV Proof to the Soroban Contract
 
-Using the `@stellar/stellar-sdk`, format the values from `sorobanArgs` into Stellar/Soroban SCVals and submit them to your contract call (like the `deposit` function on the `CommitmentTree` contract or `verify_transaction` on the `BitcoinSPV` contract):
+Using the `@stellar/stellar-sdk`, format the values from `sorobanArgs` into Stellar/Soroban SCVals and submit them to your contract call (like the `deposit` function on `writz-lend` or `verify_transaction` on `bitcoin-spv`):
 
 ```typescript
 import { Contract, xdr, Address, nativeToScVal } from "@stellar/stellar-sdk";
 
 // Initialize contract instance
-const contractId = "CAQBLCAPGXXCZTJDAJLY7E4PTJYGR6CY4YWH4JSJKFXYIHW3GANP6RFM";
-const commitmentTreeContract = new Contract(contractId);
+const contractId = "CC7XGEWAUNUHZYKM5CED6KQXGFS6UWVI5H6XOB76YTMZRWCEH6DKT62A";
+const writzLend = new Contract(contractId);
 
 // Format the arguments retrieved from the relayer
 const headersScVal = xdr.ScVal.scvVec(
@@ -870,21 +870,18 @@ const merkleProofScVal = xdr.ScVal.scvVec(
 const txIndexScVal = nativeToScVal(sorobanArgs.tx_index, { type: "u32" });
 const rawTxScVal = xdr.ScVal.scvBytes(Buffer.from(sorobanArgs.raw_tx, "hex"));
 
-// Prepare other parameters needed for Writz deposit (ZK Proof and Public Signals)
-const zkProofScVal = ...; // Your generated ZK Proof ScVal
-const publicSignalsScVal = ...; // Your public signals ScVal
+// Prepare the other parameters `deposit` takes (see the contract reference)
 const depositorScVal = nativeToScVal(Address.fromString(depositorAddress));
 
 // Call the deposit function
-const tx = await commitmentTreeContract.call(
+const tx = await writzLend.call(
   "deposit",
   depositorScVal,
   headersScVal,
   merkleProofScVal,
   txIndexScVal,
   rawTxScVal,
-  zkProofScVal,
-  publicSignalsScVal
+  // user_pubkey, timelock_height, key_sig
 );
 
 // Sign and submit transaction to Soroban network...

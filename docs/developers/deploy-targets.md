@@ -40,7 +40,7 @@ Leaving the variable unset means `local` and validates nothing. That is delibera
 | `NEXT_PUBLIC_HORIZON_URL` set and not a test network (frontend) | - | yes |
 | `NEXT_PUBLIC_RELAYER_URL` set, https, and not a test deployment (frontend) | - | yes |
 | Earn mock forbidden (frontend) | - | yes |
-| No signing key or lending setting: `KMS_KEY_ID`, `PROTOCOL_SIGNING_KEY`, `ADMIN_SECRET`, `RELAYER_SECRET`, `COMMITMENT_TREE_ID`, `WRITZ_LEND_ID`, `BITCOIN_SPV_ID`, `FAUCET_SIGNET_WIF`, `CCTP_RELAY_EVM_KEY`, `POLLAR_SECRET_KEY` all unset (relayer) | - | yes |
+| No signing key or lending setting: `KMS_KEY_ID`, `PROTOCOL_SIGNING_KEY`, `ADMIN_SECRET`, `RELAYER_SECRET`, `WRITZ_LEND_ID`, `BITCOIN_SPV_ID`, `FAUCET_SIGNET_WIF`, `CCTP_RELAY_EVM_KEY`, `POLLAR_SECRET_KEY` all unset (relayer) | - | yes |
 | `CORS_ORIGIN` must name explicit origins, not `*` (relayer) | - | yes |
 
 Testnet is deliberately looser. It is allowed to run with the Earn mock and with pieces still missing while the epic is being built out; mainnet is allowed to inherit nothing by omission.
@@ -137,26 +137,15 @@ The relayer keeps eight SQLite databases on local disk:
 
 | File | Written by | What is lost without it |
 |---|---|---|
-| `data/merkle.db` | `leaf-store.ts` | Merkle leaves |
 | `data/watcher.db` | `repay-watcher/cursor-store.ts` | The repay watcher's cursor |
 | `data/vault-events.db` | `vault-watcher/event-store.ts` | **Every indexed vault deposit and withdrawal** |
 | `data/vault-watcher.db` | `vault-watcher/cursor-store.ts` | The vault watcher's cursor |
-| `data/tree-watcher.db` | `tree-watcher/cursor-store.ts` | The tree watcher's cursor |
-| `data/tree-events.db` | `tree-watcher/event-archive.ts` | **Every `insert_leaf`, `borrow` and `repay` the commitment tree emitted** |
 | `data/faucet.db` | `faucet/sqlite-store.ts` | Signet faucet claims: the one-claim-per-account rule and the daily count reset, so every social-login account could claim again (testnet only) |
 | `data/cctp-relay.db` | `cctp/sqlite-store.ts` | CCTP relay records: past transfers and their Base Sepolia mint hashes; the daily mint count resets (testnet only) |
 
 The container image declares no `VOLUME`, so on a fresh service that directory is ephemeral and every redeploy starts empty.
 
-Most of these are recoverable. `vault-events.db` and `tree-events.db` are not. Soroban RPC retains events for days, not indefinitely (see `relayer-backfill-runbook.md`), and this database is the only durable record beyond that window. The metrics deliverable reports 30-day retention cohorts, which is longer than RPC will serve. Lose the file after the window closes and the history cannot be rebuilt from chain at all. `tree-events.db` is the same for the commitment tree: it is the only record that lets a fresh relayer replay the tree's history and check each step against its root once RPC has dropped the events (#264). It only covers history from the moment it was first created, and the tree watcher logs a warning at startup when it is empty but the leaf store is not. `bun run check:tree-archive` in `relayer/` compares it with RPC while its first ledger is still in retention.
-
-If `merkle.db` is lost or wrong, `bun run rebuild-tree` in `relayer/` rebuilds the leaves and notes from the tree's events (#265). It replays them from an empty tree with the same root check the tree watcher applies, then requires the result to match the contract's `MerkleRoot` and `NextLeafIndex` at the ledger the replay ended on. Only after that does it swap the result in and point the tree watcher's cursor just after the last event it applied. Any failure exits non-zero, names the event that broke the replay, and leaves the live store as it was.
-
-- `--source rpc` (the default) replays RPC events from `--from-ledger`, or from `COMMITMENT_TREE_DEPLOY_LEDGER`, or else from the oldest ledger RPC still has. It refuses a start ledger outside RPC's event retention.
-- `--source archive --archive-db <file>` replays a `tree-events.db`, then RPC for what came after it.
-- `--dry-run` runs every check and swaps nothing.
-
-Stop the relayer before a swap: the command takes the tree lock of its own process only, so a tree watcher running in another process could write back the store it read before the swap.
+Most of these are recoverable. `vault-events.db` is not. Soroban RPC retains events for days, not indefinitely (see `relayer-backfill-runbook.md`), and this database is the only durable record beyond that window. The metrics deliverable reports 30-day retention cohorts, which is longer than RPC will serve. Lose the file after the window closes and the history cannot be rebuilt from chain at all.
 
 **Mount a persistent volume at `/app/data`.** All eight paths are overridable if the platform mounts elsewhere: `SQLITE_PATH`, `WATCHER_SQLITE_PATH`, `VAULT_EVENTS_SQLITE_PATH`, `VAULT_WATCHER_SQLITE_PATH`, `TREE_WATCHER_SQLITE_PATH`, `TREE_EVENTS_SQLITE_PATH`, `FAUCET_SQLITE_PATH`, `CCTP_RELAY_SQLITE_PATH`.
 

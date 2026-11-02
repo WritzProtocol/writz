@@ -42,7 +42,7 @@ There is currently no protocol that is simultaneously:
 - **Native** - real BTC that never leaves Bitcoin, verified on-chain by an SPV light client, with no bridge and no wrapped token
 - **On Stellar** - where native USDC lives
 
-Writz is built to be all three. Writz Lend positions are public on chain, like in any other lending market; privacy is being designed as a separate, opt-in edition, in progress (see [Privacy edition (in progress)](/how-it-works/privacy-edition)).
+Writz is built to be all three. Writz Lend positions are public on chain, like in any other lending market.
 
 ---
 

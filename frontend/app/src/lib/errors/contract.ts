@@ -1,8 +1,7 @@
-import { CommitmentTreeError } from "@/lib/contracts/generated";
 import { WritzLendError } from "@/lib/contracts/writzLendGenerated";
 import { config } from "@/config";
 
-export type ContractName = "writz-lend" | "commitment-tree" | "bitcoin-spv";
+export type ContractName = "writz-lend" | "bitcoin-spv";
 
 type ErrorTable = Readonly<Record<number, { message: string }>>;
 
@@ -29,12 +28,8 @@ export const BitcoinSpvError: ErrorTable = {
   14: { message: "DifficultyBelowCheckpointFloor" },
 };
 
-// The deployed commitment tree also has #16 Paused; the generated binding stops at 15.
-const DeployedCommitmentTreeError: ErrorTable = { ...CommitmentTreeError, 16: { message: "Paused" } };
-
 const TABLES: Record<ContractName, ErrorTable> = {
   "writz-lend": WritzLendError,
-  "commitment-tree": DeployedCommitmentTreeError,
   "bitcoin-spv": BitcoinSpvError,
 };
 
@@ -47,7 +42,6 @@ export interface ContractFailure {
 
 export interface ContractIds {
   writzLend: string;
-  commitmentTree: string;
   bitcoinSpv: string;
 }
 
@@ -77,7 +71,6 @@ export function resolveContractError(
     const [, id, code] = events[events.length - 1];
     if (id === ids.bitcoinSpv) return failure("bitcoin-spv", Number(code));
     if (id === ids.writzLend) return failure("writz-lend", Number(code));
-    if (id === ids.commitmentTree) return failure("commitment-tree", Number(code));
     return null;
   }
   const code = CODE.exec(message);

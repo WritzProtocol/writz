@@ -4,7 +4,7 @@ title: "Quick Start"
 
 > **Building on Writz from your own project?** This page is the contributor guide: it builds and tests this repository. To call the deployed contracts from your app or your Soroban contract, start with [Build on Writz](/developers/integrate). AI coding agents: [For AI Agents](/developers/for-ai-agents).
 
-The core lending and verification logic in this repository is working code, not a mockup: the contracts are deployed on Stellar testnet, and the tests pass (see `docs/developers/runbook.md`). Writz v1 is `bitcoin-spv` and `writz-lend`; `zk-verifier`, `commitment-tree` and the circuits, all under `privacy/`, belong to the separate privacy edition, in progress and testnet only. `writz-lend/src/oracle.rs`'s `get_btc_price_stroops` now calls a real Reflector oracle on testnet (see `docs/research/oracle-design.md`) - the privacy edition's `commitment-tree` still returns a hardcoded price; it is not part of v1. Start here and have something running in under 5 minutes.
+The core lending and verification logic in this repository is working code, not a mockup: the contracts are deployed on Stellar testnet, and the tests pass (see `docs/developers/runbook.md`). Writz v1 is `bitcoin-spv` and `writz-lend`. `writz-lend/src/oracle.rs`'s `get_btc_price_stroops` now calls a real Reflector oracle on testnet (see `docs/research/oracle-design.md`). Start here and have something running in under 5 minutes.
 
 ---
 
@@ -26,19 +26,8 @@ cargo install --locked stellar-cli
 # Node.js 20+
 # https://nodejs.org/
 
-# Bun 1.1+ - bitcoin-script, relayer, frontend and packages/* install with Bun,
-# not npm. Only privacy/circuits/ is npm-managed.
+# Bun 1.1+ - bitcoin-script, relayer, frontend and packages/* install with Bun.
 curl -fsSL https://bun.sh/install | bash
-
-# circom (for ZK circuit tests only).
-# circom 2.x is a Rust binary. `npm install -g circom` installs the legacy 1.x
-# package and CANNOT compile `pragma circom 2.0.0` - use the release binary:
-curl -fL -o ~/.local/bin/circom \
-  https://github.com/iden3/circom/releases/download/v2.2.3/circom-linux-amd64
-chmod +x ~/.local/bin/circom   # macOS: use circom-macos-amd64
-circom --version               # expect: circom compiler 2.2.3
-
-# snarkjs needs no global install - it is a dependency of privacy/circuits/
 ```
 
 ---
@@ -61,7 +50,7 @@ cd contracts
 cargo test
 ```
 
-Expected output: 263 tests pass across `bitcoin-spv` (68), `zk-verifier` (26), `commitment-tree` (59), `writz-lend` (100), and `spv-types` (10).
+Expected output: 253 tests pass across `bitcoin-spv` (80), `writz-lend` (163), and `spv-types` (10).
 
 ### Bitcoin script toolkit (TypeScript, Bun)
 
@@ -71,7 +60,7 @@ bun install
 bun test
 ```
 
-Expected output: 60 tests pass.
+Expected output: 72 tests pass.
 
 ### Relayer service (TypeScript, Bun install + Jest)
 
@@ -81,27 +70,14 @@ fails. It also imports the local `@writz/*` packages via their built `dist/`
 output, so build those first.
 
 ```bash
-cd privacy/packages/commitment-tree && bun install
-cd ../../../bitcoin-script && bun run build
+cd bitcoin-script && bun run build
 cd ../packages/writz-lend && bun install
 cd ../../relayer && bun install && bun run test
 ```
 
-Expected output: 248 tests pass.
+Expected output: 523 tests pass.
 
-### ZK circuits (Circom + snarkjs, npm)
-
-```bash
-cd privacy/circuits
-npm install
-npm test
-```
-
-Expected output: 52 tests pass (proof generation, commitment correctness, ratio enforcement, nullifiers).
-
-If `verify()` assertions fail here while `prove()` succeeds, your local `privacy/circuits/keys/*_final.zkey` (gitignored, regenerated locally) is out of sync with the committed `privacy/circuits/keys/*_vkey.json`. Run `bash scripts/compile_all.sh && bash scripts/setup_dev.sh` to regenerate both together from a fresh dev trusted setup, then re-run `npm test`.
-
-### All together: 623 tests, all passing.
+### All together: 848 tests, all passing.
 
 ---
 
@@ -110,23 +86,17 @@ If `verify()` assertions fail here while `prove()` succeeds, your local `privacy
 ```bash
 cd contracts
 stellar contract build
-cd ../privacy/contracts
-stellar contract build
 ```
 
 This produces Wasm artifacts in `contracts/target/wasm32v1-none/release/`:
 - `bitcoin_spv.wasm` - 28.4 KB
 - `writz_lend.wasm` - 23.7 KB
 
-and, for the privacy edition, in `privacy/contracts/target/wasm32v1-none/release/`:
-- `zk_verifier.wasm` - 11.8 KB
-- `commitment_tree.wasm` - ~38 KB
-
 ---
 
 ## Use the Testnet Deployments
 
-All four contracts are live on Stellar testnet. You can call them directly without deploying:
+Both contracts are live on Stellar testnet. You can call them directly without deploying:
 
 ```bash
 # Check the SPV contract is alive
@@ -135,38 +105,7 @@ stellar contract invoke \
   --network testnet \
   -- get_version
 
-# Check the Merkle root
-stellar contract invoke \
-  --id CAQBLCAPGXXCZTJDAJLY7E4PTJYGR6CY4YWH4JSJKFXYIHW3GANP6RFM \
-  --network testnet \
-  -- get_merkle_root
-# Returns: 0x2134e76ac74b4b8765b6e37992aa15f0... (Poseidon-2 empty tree root)
 ```
-
----
-
-## Run the Privacy Edition End-to-End Flow
-
-`scripts/deploy/e2e_local.mjs` deploys all four contracts through their
-constructors on a local Stellar network, registers the verification keys and
-runs deposit → borrow → repay → release with real Groth16 proofs. It also
-replays the closed attacks (a deposit claiming someone else's output, a
-redirected borrow, a re-borrow after release, the same txid in both lenders)
-and expects each to fail. CI runs it as the `e2e-local` job. No testnet
-account or real keys are involved.
-
-```bash
-docker run -d --rm --name writz-local-stellar -p 8000:8000 \
-  stellar/quickstart:latest --local --enable rpc
-(cd contracts && cargo build --release --target wasm32v1-none --locked)
-(cd privacy/contracts && cargo build --release --target wasm32v1-none --locked)
-(cd privacy/circuits && npm ci && npm run compile && npm run setup:dev)
-(cd scripts/deploy && bun install)
-node scripts/deploy/e2e_local.mjs
-```
-
-`npm run setup:dev` regenerates the development keys in `privacy/circuits/keys/`;
-restore the committed ones afterwards with `git checkout privacy/circuits/keys`.
 
 ---
 
@@ -200,17 +139,15 @@ Reference transactions (already executed on Bitcoin Signet):
 
 ## Deploy Your Own Contracts
 
-`scripts/deploy/deploy_stack.mjs` deploys and wires up all four contracts in
+`scripts/deploy/deploy_stack.mjs` deploys and wires up both contracts in
 the order they depend on each other. Without `--execute` it only validates its
 inputs and prints the plan. Set `STELLAR_NETWORK=local` to rehearse against the
 local network above. The inputs are listed in `scripts/deploy/.env.example`.
 
 ```bash
 (cd contracts && cargo build --release --target wasm32v1-none --locked)
-(cd privacy/contracts && cargo build --release --target wasm32v1-none --locked)
 cd scripts/deploy
 node deploy_stack.mjs             # validate and print the plan
-node deploy_stack.mjs --v1-only   # bitcoin-spv and writz-lend only
 node deploy_stack.mjs --execute   # deploy
 ```
 
@@ -231,26 +168,9 @@ contracts/
       crypto.rs     - SHA256d implementation in Soroban Wasm
       types.rs      - Config, Checkpoint (SpvVerificationResult now lives in the shared `spv-types` crate)
     writz-lend/src/
-      lib.rs        - non-ZK lending skeleton
+      lib.rs        - lending contract
       rates.rs      - kinked interest rate model
 
-privacy/contracts/
-  zk-verifier/src/
-    lib.rs        - verify_deposit(), verify_borrow_repay(), set_verification_key()
-  commitment-tree/src/
-    lib.rs        - deposit(), borrow(), repay(), liquidate()
-    oracle.rs     - SEP-40 oracle interface
-
-privacy/circuits/
-  src/
-    deposit.circom      - Deposit ZK circuit
-    borrow_repay.circom - Borrow/Repay ZK circuit
-    liquidation.circom  - Liquidation ZK circuit
-    merkle.circom       - Shared Poseidon Merkle components
-  keys/
-    deposit.vkey.json       - Deposit verification key
-    borrow_repay.vkey.json  - Borrow/Repay verification key
-    liquidation.vkey.json   - Liquidation verification key
 
 relayer/src/
   index.ts      - Express API: GET /spv-proof/:txid

@@ -134,14 +134,6 @@ Writz's frontend should include a "Manual proof submission" mode that walks tech
 
 ## Alternative: zkRelay (Phase 2+ Consideration)
 
-Research found **zkRelay** - a ZK-SNARK-based relay that batches Bitcoin header validation off-chain. Instead of submitting 6 raw headers, a prover submits one ZK proof that 6 (or 504) headers are all valid.
-
-**Cost reduction:** 187× cheaper than per-header verification (achieved in Ethereum research).
-
-**For Writz:** If the raw block header chain verification becomes a cost concern (especially for headers with very high difficulty requiring large PoW numbers), zkRelay-style header batching could significantly reduce the Soroban transaction cost of the SPV verification step.
-
-**Not for Phase 1.** zkRelay adds circuit complexity and a trusted setup. Start with raw header verification; switch to zkRelay batching if needed in Phase 2.
-
 ---
 
 ## Summary
@@ -158,4 +150,4 @@ Research found **zkRelay** - a ZK-SNARK-based relay that batches Bitcoin header 
 ---
 
 *Last updated: 2026-06-22*
-*Sources: [zkRelay paper](https://eprint.iacr.org/2020/433) · [BTC Relay GitHub](https://github.com/ethereum/btcrelay) · [Blockstream Esplora API](https://github.com/Blockstream/esplora) · [TrustBlink: zkSNARK relay](https://link.springer.com/chapter/10.1007/978-981-95-3543-9_7)*
+*Sources: [BTC Relay GitHub](https://github.com/ethereum/btcrelay) · [Blockstream Esplora API](https://github.com/Blockstream/esplora)*

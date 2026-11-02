@@ -8,6 +8,8 @@
 
 ---
 
+> **`zk-verifier` and `commitment-tree` were retired on 2026-11-02 and are not part of Writz.** Their code left this repository. The entries below that mention them are the historical record of past deployments; nothing in the app or the relayer calls them.
+
 ## `writz-lend` redeploy (2026-11-01)
 
 Carries #257 (`supply` and `withdraw` events with `scaled_amount`, `supply_index` and `total_supply_assets`) on top of #356 (#260). The relayer (`WRITZ_LEND_ID`) and the app (`NEXT_PUBLIC_WRITZ_LEND_ID`, `testnet.writz.xyz`) run on it from 2026-11-01; `bitcoin-spv` is unchanged. It replaces `CABF7VK7…` below and supersedes `CDKXFBHU…`, which was staged on 2026-10-26 without #257 and never activated.
@@ -39,7 +41,7 @@ Built at `9d9114e` (#370) with `cargo build --release --target wasm32v1-none --l
 
 ## `bitcoin-spv` and `writz-lend` redeploy (2026-10-25)
 
-Both protocol contracts redeployed together, built at `477788f` (`cargo build --release --target wasm32v1-none --locked -p bitcoin-spv -p writz-lend`) through `scripts/deploy/deploy_stack.mjs`, with the testnet storage windows from [Storage TTL parameters](#storage-ttl-parameters). The reason is testnet rent: testnet's live state is above its target size, so rent rose sharply, and the previous contracts gave every entry they created the long mainnet windows built in. A deposit on the previous contracts was charged about 428 XLM in fees; with the testnet windows it was charged about 89 XLM (measured 2026-10-25; the rate keeps moving). Positions on the previous contracts were closed and their BTC released before the switch (#307). The previous `bitcoin-spv` and `writz-lend` are kept below, marked superseded; the app and the relayer no longer use them. The privacy edition's `zk-verifier` and `commitment-tree` are not part of this redeploy.
+Both protocol contracts redeployed together, built at `477788f` (`cargo build --release --target wasm32v1-none --locked -p bitcoin-spv -p writz-lend`) through `scripts/deploy/deploy_stack.mjs`, with the testnet storage windows from [Storage TTL parameters](#storage-ttl-parameters). The reason is testnet rent: testnet's live state is above its target size, so rent rose sharply, and the previous contracts gave every entry they created the long mainnet windows built in. A deposit on the previous contracts was charged about 428 XLM in fees; with the testnet windows it was charged about 89 XLM (measured 2026-10-25; the rate keeps moving). Positions on the previous contracts were closed and their BTC released before the switch (#307). The previous `bitcoin-spv` and `writz-lend` are kept below, marked superseded; the app and the relayer no longer use them.
 
 The relayer and the app (`testnet.writz.xyz`) run on these contracts from the same day. Both instances and both wasm entries were extended to about 2026-11-15. The first deposit on them, [`eac0f95c…07e269`](https://mempool.space/signet/tx/eac0f95c531b4bd5307597f74bedd7379928539056b9a1467ea6d1159507e269) (6,000 sats, signet block 327,928), is the example transaction in the developer docs.
 
@@ -205,7 +207,7 @@ The coordinated redeploy of #177: every security-advisory fix merged in #171-#21
 | Submitter | `writz-deployer` only (signet blocks are signature-authenticated, which this contract does not check) - [`991882fd64…`](https://stellar.expert/explorer/testnet/tx/991882fd6469ae1052b1b00eb3a2d996cd7b2ce82c843d904c6511ffe8cb205e) |
 | Consumers | `commitment-tree` [`082f8a54c1…`](https://stellar.expert/explorer/testnet/tx/082f8a54c123a6a4b39c2242e6e67a324fb3c96a10d92bdeaad0881e76021fa1), `writz-lend` [`2f274e40fd…`](https://stellar.expert/explorer/testnet/tx/2f274e40fd8d64c18c16a0ca78d0ba098d86b7e129a7d0310e5c51ed20d05411) |
 
-### zk-verifier
+### zk-verifier (retired 2026-11-02, superseded)
 
 | Field | Value |
 |---|---|
@@ -213,7 +215,7 @@ The coordinated redeploy of #177: every security-advisory fix merged in #171-#21
 | `admin` | `writz-deployer` |
 | Verification keys | `Deposit` [`87105032b6…`](https://stellar.expert/explorer/testnet/tx/87105032b617bdc87721298864cdfe3d7bcc2a0eb0ac677313c32d28386306e0), `BorrowRepay` [`76bf639959…`](https://stellar.expert/explorer/testnet/tx/76bf63995932230dcdf8e3249b9d6052f110da4512bf70269ef5258606a2a5a2), `Liquidation` [`67f214a175…`](https://stellar.expert/explorer/testnet/tx/67f214a1756059e7dc956336e3dc8bcc649f7e36fb146e7aabc81b063bbe47a2), `ZeroDebt` [`78408d9deb…`](https://stellar.expert/explorer/testnet/tx/78408d9deb522dd15829f955af9cab158256a4529a74f1337ef27c834667bbaa), `Insert` [`5439ac3523…`](https://stellar.expert/explorer/testnet/tx/5439ac352383c36caab8238db1690d418d4fe1372c4baf0cf1237e62d76c1a58) |
 
-### commitment-tree
+### commitment-tree (retired 2026-11-02, superseded)
 
 | Field | Value |
 |---|---|
@@ -292,7 +294,7 @@ Checkpoint anchored to Bitcoin Signet tip at deploy time:
 
 **Verified:** `get_checkpoint` reads back exactly these values. ✓ The checkpoint must be refreshed periodically (recommended: weekly) - see `docs/security/security-model.md` for the full trust-model discussion. Before mainnet, convert the admin account to a multisig (2-of-3) rather than a single key.
 
-### zk-verifier
+### zk-verifier (retired 2026-11-02, superseded)
 
 | Field | Value |
 |---|---|
@@ -313,9 +315,9 @@ Verification keys set (regenerated from the range-checked circuits - IC lengths 
 
 **Verified:** `get_verification_key --circuit BorrowRepay` reads back IC length 9 with all four curve-point fields populated. ✓
 
-> **Note:** These keys are from the development trusted setup (`pot15`). They are for testnet only and will be replaced by the multi-party ceremony keys before mainnet.
+> **Note:** These keys are from the development trusted setup (`pot15`). They were for testnet only.
 
-### commitment-tree
+### commitment-tree (retired 2026-11-02, superseded)
 
 | Field | Value |
 |---|---|
@@ -478,7 +480,7 @@ stellar contract invoke \
 | BorrowRepay | 9 | [`2f7e21ab5b...`](https://stellar.expert/explorer/testnet/tx/2f7e21ab5b67a5aa98d3036bfac823c06f79095336439e4a61c20604ebdcb7b8) |
 | Liquidation | 6 | [`b5d6613498...`](https://stellar.expert/explorer/testnet/tx/b5d66134982611ffbdcba3b568de644698791c35ede4521f70469a66de043193) |
 
-> **[SUPERSEDED]** VKs here are from the pre-range-check circuits - proofs generated by the current `privacy/circuits/` tree will NOT verify against this instance. Use the "Current deployment" section above.
+> **[SUPERSEDED]** VKs here are from the pre-range-check circuits - proofs generated by later circuits did NOT verify against this instance. Use the "Current deployment" section above.
 
 ---
 

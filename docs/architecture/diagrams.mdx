@@ -5,7 +5,7 @@ description: "Visual reference for Writz Protocol v1 - from Bitcoin locking to S
 
 ## System Architecture
 
-End-to-end view of how Bitcoin, the relayer, the Writz v1 contracts (`bitcoin-spv`, `writz-lend`) and the browser interact. The privacy edition's contracts are drawn as a separate group: `writz-lend` never calls them.
+End-to-end view of how Bitcoin, the relayer, the Writz v1 contracts (`bitcoin-spv`, `writz-lend`) and the browser interact.
 
 ![Writz System Architecture](/diagrams/output/01-system-architecture.png)
 
@@ -65,42 +65,6 @@ How the Writz v1 testnet contracts call each other.
 |---|---|
 | `bitcoin-spv` | Verifies Bitcoin transactions against its stored header chain; shared deposit txid registry |
 | `writz-lend` | Deposits, USDC pool, interest, keeper liquidation, release PSBT storage |
-| `commitment-tree`, `zk-verifier` | Privacy edition (in progress), testnet only; not part of v1 and never called by `writz-lend` |
-
----
-
-## Privacy edition (in progress): ZK Circuits
-
-> These circuits belong to the separate, opt-in privacy edition, in progress and on testnet only. They are not part of Writz v1 and are not used by `writz-lend`. See [Privacy edition (in progress)](/how-it-works/privacy-edition).
-
-The main Groth16 circuits (Circom / BN254), their private inputs, public inputs, and public outputs.
-
-![ZK Circuits](/diagrams/output/05-zk-circuits.png)
-
-| Circuit | Purpose |
-|---|---|
-| `deposit.circom` | Binds a Poseidon commitment to a Bitcoin txid |
-| `borrow_repay.circom` | Proves Merkle inclusion + valid collateral ratio after state change |
-| `liquidation.circom` | Proves position is under-collateralized |
-
----
-
-## Privacy edition (in progress): Commitment State Machine
-
-> Privacy edition only. Writz Lend positions on `writz-lend` have no commitments: they are plaintext, keyed by the Bitcoin txid, with the statuses Active, Closed and Liquidated.
-
-Complete lifecycle of a privacy edition position from pending to BTC release (or liquidation).
-
-![Commitment State Machine](/diagrams/output/06-commitment-state-machine.png)
-
-| State | Description |
-|---|---|
-| **Pending** | `deposit()` verified, waiting for `insert_commitment()` |
-| **Active · debt=0** | Commitment in Merkle tree, no outstanding debt |
-| **Active · debt>0** | USDC borrowed; nonce rotates on every partial repay |
-| **Closed** | Full repayment done; old nullifier spent |
-| **Released** | Path A PSBT finalized; BTC returned on Bitcoin |
-| **Liquidated** | Ratio below 120%; keeper repaid debt |
 
 ---
 

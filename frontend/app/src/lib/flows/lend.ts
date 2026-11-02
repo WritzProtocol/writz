@@ -1,5 +1,4 @@
-import { Client } from "@/lib/contracts/generated";
-import { config, requireContract } from "@/config";
+import { writzLendClient } from "@/lib/contracts/writzLend";
 import { simulateWithRetry } from "./submit";
 import type { SignTransaction } from "@/lib/wallet/WalletProvider";
 import type { Emit } from "@/lib/flow/engine";
@@ -8,21 +7,10 @@ import { submitTrackedTx } from "./positionTx";
 /**
  * Lender-side flows: supply USDC to the pool and withdraw it later.
  *
- * Unlike borrow/repay these carry no ZK proof - they are plain authenticated
- * contract calls. The USDC token transfer happens inside the contract
+ * Plain authenticated contract calls. The USDC token transfer happens inside the contract
  * (`supply_usdc` pulls from the lender; `withdraw_supply` pays back), and the
  * wallet authorizes it as part of signing the transaction.
  */
-
-function lendClient(supplier: string): Client {
-  return new Client({
-    contractId: requireContract(config.contracts.commitmentTree, "commitment-tree"),
-    networkPassphrase: config.networkPassphrase,
-    rpcUrl: config.rpcUrl,
-    allowHttp: config.rpcUrl.startsWith("http://"),
-    publicKey: supplier,
-  });
-}
 
 export interface LendResult {
   txHash?: string;
@@ -36,7 +24,7 @@ export async function supply(params: {
   emit?: Emit;
 }): Promise<LendResult> {
   const { amountStroops, supplier, signTransaction, emit } = params;
-  const client = lendClient(supplier);
+  const client = writzLendClient(supplier);
 
   const tx = await simulateWithRetry(() =>
     client.supply_usdc({ supplier, amount: amountStroops }),
@@ -47,8 +35,8 @@ export async function supply(params: {
 
 /**
  * Withdraw previously supplied USDC. The contract enforces two limits:
- *   - the lender cannot withdraw more than their own supplied balance
- *     (`WithdrawExceedsBalance`), and
+ *   - the lender cannot withdraw more than their own balance
+ *     (`InsufficientSupply`), and
  *   - the pool must have enough undeployed liquidity (`InsufficientLiquidity`).
  */
 export async function withdraw(params: {
@@ -58,7 +46,7 @@ export async function withdraw(params: {
   emit?: Emit;
 }): Promise<LendResult> {
   const { amountStroops, supplier, signTransaction, emit } = params;
-  const client = lendClient(supplier);
+  const client = writzLendClient(supplier);
 
   const tx = await simulateWithRetry(() =>
     client.withdraw_supply({ supplier, amount: amountStroops }),

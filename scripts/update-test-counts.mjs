@@ -51,19 +51,10 @@ function parseJestResult(output) {
 }
 
 console.log("Running contracts (cargo test, per package)...");
-// v1 builds in contracts/, the privacy edition in its own workspace,
-// privacy/contracts/. The facts.json keys stay "contracts/<package>".
-const contractWorkspaces = {
-  "bitcoin-spv": "contracts",
-  "zk-verifier": "privacy/contracts",
-  "commitment-tree": "privacy/contracts",
-  "writz-lend": "contracts",
-  "spv-types": "contracts",
-};
-const contractPackages = Object.keys(contractWorkspaces);
+const contractPackages = ["bitcoin-spv", "writz-lend", "spv-types"];
 const modules = {};
 for (const pkg of contractPackages) {
-  const out = run("cargo", ["test", "-p", pkg, "--lib"], path.join(repoRoot, contractWorkspaces[pkg]));
+  const out = run("cargo", ["test", "-p", pkg, "--lib"], path.join(repoRoot, "contracts"));
   modules[`contracts/${pkg}`] = parseCargoResult(out);
   console.log(`  ${pkg}: ${modules[`contracts/${pkg}`]}`);
 }
@@ -79,12 +70,6 @@ modules["relayer"] = parseJestResult(
   run("bun", ["run", "test"], path.join(repoRoot, "relayer")),
 );
 console.log(`  relayer: ${modules["relayer"]}`);
-
-console.log("Running circuits (npm test)...");
-modules["circuits"] = parseJestResult(
-  run("npm", ["test"], path.join(repoRoot, "privacy/circuits")),
-);
-console.log(`  circuits: ${modules["circuits"]}`);
 
 const contractsTotal = contractPackages.reduce((sum, pkg) => sum + modules[`contracts/${pkg}`], 0);
 const totalTests = Object.values(modules).reduce((sum, n) => sum + n, 0);

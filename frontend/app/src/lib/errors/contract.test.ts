@@ -1,50 +1,29 @@
 import { describe, expect, it } from "bun:test";
-import { CommitmentTreeError } from "@/lib/contracts/generated";
 import { WritzLendError } from "@/lib/contracts/writzLendGenerated";
 import { BitcoinSpvError, resolveContractError } from "./contract";
 
-const TREE = "CDQCTFO3FK3M47QS47O2A4WLNPSQAQBSXBFPJ6RZEHFO5D7RY34FSBBP";
 const SPV = "CB2BD6QCSZVNZN5NLI7C5NF356WXVJDSXT6LVAQFWHHS4SZ4NCKKNIVA";
 const LEND = "CCMSOCBVX2S645MQFFXJRHVHRWH2NY62KLOJXNDYFOJRYHIC47EO6ZZK";
-const IDS = { writzLend: LEND, commitmentTree: TREE, bitcoinSpv: SPV };
-
-// Captured from a testnet simulation of withdraw_supply over the caller's balance.
-const WITHDRAW_OVER_BALANCE = `Transaction simulation failed: "HostError: Error(Contract, #15)
-
-Event log (newest first):
-   0: [Diagnostic Event] contract:${TREE}, topics:[error, Error(Contract, #15)], data:"escalating Ok(ScErrorType::Contract) frame-exit to Err"
-   1: [Diagnostic Event] topics:[fn_call, ${TREE}, withdraw_supply], data:[GAIAVCKZFTTIZZZJQIWYGIX73WQLKBLCJZKW6M4HSE7INYTQMQ5ABJFB, 1]
-"`;
+const IDS = { writzLend: LEND, bitcoinSpv: SPV };
 
 const SPV_THROUGH_DEPOSIT = `HostError: Error(Contract, #2)
 
 Event log (newest first):
-   0: [Diagnostic Event] contract:${TREE}, topics:[error, Error(Contract, #2)], data:"escalating error to panic"
+   0: [Diagnostic Event] contract:${LEND}, topics:[error, Error(Contract, #2)], data:"escalating error to panic"
    1: [Diagnostic Event] contract:${SPV}, topics:[error, Error(Contract, #2)], data:"escalating Ok(ScErrorType::Contract) frame-exit to Err"
-   2: [Diagnostic Event] contract:${TREE}, topics:[fn_call, ${SPV}, verify_tx], data:[]
-   3: [Diagnostic Event] topics:[fn_call, ${TREE}, deposit], data:[]`;
+   2: [Diagnostic Event] contract:${LEND}, topics:[fn_call, ${SPV}, verify_tx], data:[]
+   3: [Diagnostic Event] topics:[fn_call, ${LEND}, deposit], data:[]`;
 
 describe("resolveContractError", () => {
-  it("maps a bare commitment-tree code to its deployed variant", () => {
-    expect(resolveContractError(WITHDRAW_OVER_BALANCE, IDS)).toEqual({
-      contract: "commitment-tree",
-      code: 15,
-      variant: "WithdrawExceedsBalance",
-    });
-  });
-
   it("reads a bare code with the table of the contract the flow calls", () => {
     for (const [code, { message }] of Object.entries(WritzLendError)) {
       expect(resolveContractError(`HostError: Error(Contract, #${code})`, IDS)?.variant).toBe(message);
-    }
-    for (const [code, { message }] of Object.entries(CommitmentTreeError)) {
-      expect(resolveContractError(`HostError: Error(Contract, #${code})`, IDS, "commitment-tree")?.variant).toBe(message);
     }
   });
 
   it("attributes a writz-lend failure from its event log", () => {
     const msg = `HostError: Error(Contract, #10)\n   0: [Diagnostic Event] contract:${LEND}, topics:[error, Error(Contract, #10)], data:""`;
-    expect(resolveContractError(msg, IDS, "commitment-tree")).toEqual({
+    expect(resolveContractError(msg, IDS)).toEqual({
       contract: "writz-lend",
       code: 10,
       variant: "ExceedsCollateralRatio",

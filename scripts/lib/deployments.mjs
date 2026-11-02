@@ -14,7 +14,7 @@ import path from "node:path";
 export const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 export const testnetMdPath = path.join(repoRoot, "contracts/deployments/testnet.md");
 
-const CONTRACTS = ["bitcoin-spv", "writz-lend", "commitment-tree", "zk-verifier"];
+const CONTRACTS = ["bitcoin-spv", "writz-lend"];
 const ID = "C[A-Z2-7]{55}";
 
 function names(heading, contract) {

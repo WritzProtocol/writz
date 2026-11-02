@@ -127,7 +127,7 @@ Signet coins for an integration come from a public Signet faucet (for example [s
 
 `/cctp/relay` completes a Stellar to Base Sepolia CCTP V2 transfer so the recipient needs no wallet or gas on Base Sepolia: call `POST` once with the Stellar hash of the `deposit_for_burn`, then poll `GET /cctp/relay/:burnHash` every few seconds until `kind` is `arrived` (`mintHash` is the Base Sepolia transaction, `null` only while it is still being looked up) or `failed` (`reason`). Transient failures (an RPC outage, an empty gas account, the daily cap, Circle slow to confirm) are retried by the relay itself: the status then stays `confirming` or `confirmed` with `retrying: true`, `reason` and `nextRetryAt`; `failed` is final (a refused or invalid message, or 24 hours of retrying). Asking again never mints twice. Only burns from Stellar (domain 27) to Base Sepolia (domain 6) through Circle's TokenMessengerV2, with no destination caller and no hook, are relayed. Errors: 400 `invalid_burn_hash`, 404 `not_found` (on GET, before any POST), 429 `rate_limited` (30 per IP per 10 minutes), 503 `cctp_relay_disabled` or `relay_busy`.
 
-The other routes the index lists (`/merkle-path`, `/notes`, `/insert-commitment`, `/update-leaf`, `/metrics/*`) serve the Writz app and are not an integration surface. Yield on USDC is the `writz-lend` lender side, called on the contract directly (above), not through the relayer.
+The other routes the index lists (`/metrics/*`) serve the Writz app and are not an integration surface. Yield on USDC is the `writz-lend` lender side, called on the contract directly (above), not through the relayer.
 
 ---
 

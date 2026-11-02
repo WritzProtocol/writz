@@ -117,8 +117,7 @@
             "pages": [
               "how-it-works/bitcoin-side",
               "how-it-works/spv-verification",
-              "how-it-works/stellar-side",
-              "how-it-works/privacy-edition"
+              "how-it-works/stellar-side"
             ]
           }
         ]
@@ -164,18 +163,14 @@
             "pages": [
               "research/spv-implementations",
               "research/market-landscape",
-              "research/protocol-x-ray-capabilities",
-              "research/soroban-compute-benchmarks",
               "research/bitcoin-locking-script",
               "research/oracle-design",
               "research/interest-rate-model",
               "research/liquidation-mechanism",
-              "research/circom-circuit-design",
               "research/relayer-incentive-design",
               "research/blend-usdc-integration",
               "research/tokenomics-fee-model",
-              "research/security-audit-strategy",
-              "research/regulatory-landscape"
+              "research/security-audit-strategy"
             ]
           }
         ]
@@ -231,7 +226,11 @@
     },
     {
       "source": "/how-it-works/zk-privacy-layer",
-      "destination": "/how-it-works/privacy-edition"
+      "destination": "/products/writz-lend"
+    },
+    {
+      "source": "/how-it-works/privacy-edition",
+      "destination": "/products/writz-lend"
     },
     {
       "source": "/products/dark-swap",

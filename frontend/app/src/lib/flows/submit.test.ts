@@ -5,8 +5,6 @@ import { config } from "@/config";
 
 describe("isTransientSimulationError", () => {
   it("retries state lag and throttling", () => {
-    expect(isTransientSimulationError("HostError: Error(Contract, #5)")).toBe(true);
-    expect(isTransientSimulationError("HostError: Error(Contract, #5)", "writz-lend")).toBe(false);
     expect(isTransientSimulationError("TRY_AGAIN_LATER")).toBe(true);
     expect(isTransientSimulationError("txBadSeq")).toBe(true);
   });
@@ -28,10 +26,10 @@ describe("simulateWithRetry", () => {
     expect(calls).toBe(1);
   });
 
-  it("retries a RootMismatch until it clears", async () => {
+  it("retries a transient error until it clears", async () => {
     let calls = 0;
     const out = await simulateWithRetry(async () => {
-      if (++calls < 3) throw new Error("HostError: Error(Contract, #5)");
+      if (++calls < 3) throw new Error("TRY_AGAIN_LATER");
       return "ok";
     }, 8, 1, 1);
     expect(out).toBe("ok");
@@ -58,12 +56,12 @@ describe("simulateWithRetry error classes", () => {
     expect(calls).toBe(1);
   });
 
-  it("retries a transient RootMismatch (#5) until it succeeds", async () => {
+  it("retries a transient TRY_AGAIN_LATER until it succeeds", async () => {
     let calls = 0;
     const result = await simulateWithRetry(
       async () => {
         calls++;
-        if (calls < 3) throw new Error("HostError: Error(Contract, #5)");
+        if (calls < 3) throw new Error("TRY_AGAIN_LATER");
         return "ok";
       },
       5,
@@ -74,7 +72,7 @@ describe("simulateWithRetry error classes", () => {
     expect(calls).toBe(3);
   });
 
-  it("does not retry a permanent error (InvalidZkProof #4)", async () => {
+  it("does not retry a permanent contract error", async () => {
     let calls = 0;
     await expect(
       simulateWithRetry(
@@ -87,22 +85,6 @@ describe("simulateWithRetry error classes", () => {
         1,
       ),
     ).rejects.toThrow("#4");
-    expect(calls).toBe(1);
-  });
-
-  it("does not retry NullifierAlreadySpent (#6), the error a released leaf now hits", async () => {
-    let calls = 0;
-    await expect(
-      simulateWithRetry(
-        async () => {
-          calls++;
-          throw new Error("HostError: Error(Contract, #6)");
-        },
-        5,
-        1,
-        1,
-      ),
-    ).rejects.toThrow("#6");
     expect(calls).toBe(1);
   });
 

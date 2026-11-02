@@ -6,7 +6,7 @@ use crate::types::{BestTip, Checkpoint, Config, HeaderEntry};
 ///
 /// Using per-entry keying (not a single growing map) prevents unbounded
 /// instance storage growth, matching the convention already used in
-/// `writz-lend`/`commitment-tree`.
+/// `writz-lend`.
 #[contracttype]
 pub enum DataKey {
     /// Singleton: contract admin (set once at initialization).

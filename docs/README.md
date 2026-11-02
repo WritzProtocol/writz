@@ -37,7 +37,6 @@ Writz is a trustless Bitcoin lending protocol on Stellar. Lock real BTC. Borrow 
 - [Bitcoin Side](/how-it-works/bitcoin-side) - P2WSH script, spending paths, co-signing architecture.
 - [SPV Verification](/how-it-works/spv-verification) - Trustless Bitcoin transaction verification on Soroban.
 - [Stellar Side](/how-it-works/stellar-side) - `bitcoin-spv` and `writz-lend`, interest model, USDC pool, oracle.
-- [Privacy edition (in progress)](/how-it-works/privacy-edition) - Design of the separate, opt-in privacy edition. Testnet only, not part of v1.
 
 ### Developers
 - [Build on Writz](/developers/integrate) - Prove a Bitcoin transaction from your contract or app, on testnet, in 15 minutes.
@@ -60,18 +59,13 @@ Writz is a trustless Bitcoin lending protocol on Stellar. Lock real BTC. Borrow 
 ### Research (Internal Reference)
 - [Bitcoin SPV on Other Chains](/research/spv-implementations)
 - [Market Landscape](/research/market-landscape)
-- [Protocol X-Ray Capabilities](/research/protocol-x-ray-capabilities)
-- [Soroban Compute Benchmarks](/research/soroban-compute-benchmarks)
 - [Bitcoin Locking Script Design](/research/bitcoin-locking-script)
 - [Oracle Design](/research/oracle-design)
 - [Interest Rate Model](/research/interest-rate-model)
 - [Liquidation Mechanism](/research/liquidation-mechanism)
-- [Circom Circuit Design](/research/circom-circuit-design)
 - [Relayer Incentive Design](/research/relayer-incentive-design)
 - [Tokenomics & Fee Model](/research/tokenomics-fee-model)
 - [Security Audit Strategy](/research/security-audit-strategy)
-- [Regulatory Landscape](/research/regulatory-landscape)
-- [Growth Strategy](/research/growth-strategy) - June 2026 note, replaced by [Go-to-market strategy](/go-to-market/overview).
 
 ---
 
@@ -79,7 +73,7 @@ Writz is a trustless Bitcoin lending protocol on Stellar. Lock real BTC. Borrow 
 
 **Phase:** 1 - Foundation (in progress, August 2026)
 
-**The protocol's two contracts are deployed on Stellar testnet. 623 tests passing.** See `contracts/deployments/testnet.md` for verified calls and known gaps before further testing.
+**The protocol's two contracts are deployed on Stellar testnet. 848 tests passing.** See `contracts/deployments/testnet.md` for verified calls and known gaps before further testing.
 
 | Contract | Address |
 |---|---|
@@ -87,10 +81,3 @@ Writz is a trustless Bitcoin lending protocol on Stellar. Lock real BTC. Borrow 
 | `writz-lend` | `CC7XGEWAUNUHZYKM5CED6KQXGFS6UWVI5H6XOB76YTMZRWCEH6DKT62A` |
 
 Both were redeployed on 2026-10-25 because testnet rent rose sharply; positions on the previous contracts were closed and their BTC released. `writz-lend` was redeployed again on 2026-11-01 so its `supply` and `withdraw` events carry the scaled amount and the supply index (#257); `bitcoin-spv` was not. See [Storage and TTL management](/how-it-works/stellar-side#storage-and-ttl-management).
-
-The [privacy edition (in progress)](/how-it-works/privacy-edition) has its own testnet contracts, which `writz-lend` never calls:
-
-| Contract | Address |
-|---|---|
-| `zk-verifier` | `CB5XAP6MF2GVVFATFTVCKVEXUODWWRQP4B3QFDMRTM55REP7N2YMXEUD` |
-| `commitment-tree` | `CAQBLCAPGXXCZTJDAJLY7E4PTJYGR6CY4YWH4JSJKFXYIHW3GANP6RFM` |

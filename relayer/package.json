@@ -9,10 +9,8 @@
     "lint": "eslint .",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:bun": "bun test test/insert-auth.bun.test.ts test/tree-decode.bun.test.ts test/faucet-store.bun.test.ts test/deposit-reads.bun.test.ts test/deposit-submission.bun.test.ts test/cctp-relay-store.bun.test.ts test/timeline-reads.bun.test.ts test/soroban-fee.bun.test.ts test/onboarding-store.bun.test.ts",
+    "test:bun": "bun test test/faucet-store.bun.test.ts test/deposit-reads.bun.test.ts test/deposit-submission.bun.test.ts test/cctp-relay-store.bun.test.ts test/timeline-reads.bun.test.ts test/soroban-fee.bun.test.ts test/onboarding-store.bun.test.ts",
     "test:e2e": "bun test test/earn-cycle.e2e.test.ts",
-    "check:tree-archive": "bun scripts/check-tree-archive.ts",
-    "rebuild-tree": "bun src/tree-rebuild/cli.ts",
     "faucet:keygen": "bun scripts/faucet-keygen.ts",
     "cctp-relay:keygen": "bun scripts/cctp-relay-keygen.ts"
   },
@@ -20,11 +18,8 @@
     "@defindex/sdk": "^0.3.0",
     "@stellar/stellar-sdk": "^16.4.1",
     "@writz/bitcoin-script": "file:../bitcoin-script",
-    "commitment-tree": "file:../privacy/packages/commitment-tree",
     "express": "^4.19.2",
     "express-rate-limit": "^8.7.0",
-    "poseidon-lite": "^0.3.0",
-    "snarkjs": "0.7.6",
     "viem": "2.56.9",
     "writz-lend": "file:../packages/writz-lend"
   },

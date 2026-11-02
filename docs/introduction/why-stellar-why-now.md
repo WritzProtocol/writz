@@ -16,8 +16,6 @@ This was not possible until 2026. Here is why it is possible now - and why Stell
 
 Verifying a Bitcoin transaction on-chain means double-SHA256 over block headers, proof-of-work and difficulty checks, and a Merkle inclusion proof, all inside one Soroban transaction. Soroban's compute budget and Rust toolchain make that practical: `bitcoin-spv` keeps a compact header chain on Stellar and `writz-lend` verifies a deposit against it in a single call.
 
-Stellar's Protocol X-Ray (January 2026) and Protocol 26 also added BN254 host functions for Groth16 verification. Writz v1 does not use them; they matter only to the separate [privacy edition (in progress)](/how-it-works/privacy-edition).
-
 ### Native USDC - No Bridge Risk
 
 Circle issues USDC natively on Stellar. This is not bridged USDC, not a synthetic representation, not a wrapped token. When a Writz user borrows, they receive the same USDC used by cross-border payment networks, fintechs, and financial institutions worldwide.

@@ -41,7 +41,7 @@ wallet's loans from its own `deposit` calls in Horizon's history (see
 `src/lib/position/README.md`). A full repay closes the position, and the
 relayer's repay watcher publishes the co-signed release PSBT on chain
 (`get_release_psbt`), which the user signs in Xverse and broadcasts. The Lend tab
-still reads and writes the `commitment-tree` pool.
+reads and writes the `writz-lend` pool.
 
 ## Configuration
 
@@ -74,7 +74,7 @@ change, from the repo root:
 scripts/writz-lend-bindings.sh
 ```
 
-The app consumes them as `file:` dependencies (e.g. `commitment-tree`). Next
+The app consumes them as `file:` dependencies (e.g. `writz-lend`). Next
 transpiles each binding from TypeScript source (`transpilePackages` in
 `next.config.ts`, with the package `exports` pointing at `src/index.ts`), so no
 build step or committed `dist/` is needed. App helpers that wrap a binding live
@@ -122,10 +122,8 @@ src/
   components/shell/    # sidebar, bottom tabs, Activity tray, account sheet
   components/ui/       # shared primitives and hooks
   config.ts            # environment-driven configuration
-  lib/contracts/       # typed wrappers over the generated bindings (writz-lend, oracle, commitment-tree)
+  lib/contracts/       # typed wrappers over the generated bindings (writz-lend, oracle)
   lib/mock/            # UI mock harness fixtures (dev only)
-packages/
-  commitment-tree/     # generated TypeScript bindings (vendored)
 ```
 
 ## Troubleshooting

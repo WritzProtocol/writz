@@ -37,7 +37,7 @@
       "dependencyDashboardApproval": true
     },
     {
-      "description": "soroban-sdk is pinned to the contracts' protocol floor: a major also raises the required Stellar CLI version and can change bn254/Poseidon host-function behaviour, so it must be reviewed by hand alongside contracts/deployments.",
+      "description": "soroban-sdk is pinned to the contracts' protocol floor: a major also raises the required Stellar CLI version and can change host-function behaviour, so it must be reviewed by hand alongside contracts/deployments.",
       "matchManagers": ["cargo"],
       "matchPackageNames": ["soroban-sdk"],
       "dependencyDashboardApproval": true

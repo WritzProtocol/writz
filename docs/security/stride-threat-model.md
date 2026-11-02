@@ -144,7 +144,7 @@
 #### I1: On-chain position amounts are public
 **Threat:** `writz-lend` positions are plaintext: position amounts, debt sizes, health ratios, the depositor's Stellar address and the Bitcoin deposit are visible on-chain. This exposes users to front-running and competitive analysis, as in any public lending market.
 
-**Mitigation:** None in v1, by design. Writz v1 has no privacy layer, and this is disclosed in the user documentation. Privacy is being designed as a separate, opt-in edition with its own contracts, pool, audit and trusted-setup ceremony (see `docs/how-it-works/privacy-edition.md`); it is in progress, testnet only, not on the v1 mainnet plan and has no date.
+**Mitigation:** None in v1, by design. Writz v1 has no privacy layer, and this is disclosed in the user documentation.
 
 **Residual risk:** HIGH for users who need confidential positions; accepted for v1.
 
@@ -194,7 +194,7 @@
 | T3: Proof data in transit | Medium | User self-service | LOW |
 | R1: Protocol repudiation | High | CLTV timelock backstop | LOW |
 | R2: Keeper repudiation | Low | On-chain immutability | NONE |
-| I1: Public position amounts | High | None in v1 (by design); separate privacy edition in progress | HIGH (accepted for v1) |
+| I1: Public position amounts | High | None in v1 (by design) | HIGH (accepted for v1) |
 | I2: Relayer data collection | Medium | Self-service available | MEDIUM (P1), LOW (P2) |
 | D1: Relayer DoS | Low | Redundant relayers and a tip freshness rule planned (the header light client needs headers submitted continuously); the user's time-lock exit is unaffected | LOW |
 | D2: Compute spam | Low | Soroban fee model | LOW |
@@ -213,7 +213,6 @@ The external audit before mainnet should focus on, in priority order:
 2. **Interest rate model overflow** - are there edge cases in the kinked rate formula that could cause incorrect interest calculation at extreme values?
 3. **Cross-contract call trust** - can a malicious contract be registered as the SPV contract to bypass deposit verification?
 4. **Protocol key security** - the 2-of-3 protocol signers, their published signing policy, and key recovery procedures
-5. **ZK circuit soundness** - not part of v1; the privacy edition's circuits get their own audit before that edition launches
 
 ---
 

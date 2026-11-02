@@ -43,5 +43,5 @@ bun-debug.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# runtime state (merkle leaf store)
+# runtime state
 /data/

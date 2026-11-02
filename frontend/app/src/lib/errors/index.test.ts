@@ -1,5 +1,4 @@
 import { describe, expect, it } from "bun:test";
-import { CommitmentTreeError } from "@/lib/contracts/generated";
 import { WritzLendError } from "@/lib/contracts/writzLendGenerated";
 import { SignatureRejectedError } from "@/lib/wallet/rejection";
 import { AccountUnfundedError, LowXlmError, WrongNetworkError } from "@/lib/wallet/precheck";
@@ -15,7 +14,6 @@ function text(e: FriendlyError): string {
 
 const SAMPLES: [unknown, ErrorContext?][] = [
   ...Object.keys(WritzLendError).map((n) => [code(Number(n)), { flow: "borrow" }] as [unknown, ErrorContext]),
-  ...Object.keys(CommitmentTreeError).map((n) => [code(Number(n)), { flow: "lend" }] as [unknown, ErrorContext]),
   ...Object.values(BitcoinSpvError).map(({ message }) => [new Error(message), { flow: "deposit" }] as [unknown, ErrorContext]),
   [new SignatureRejectedError("stellar", "Freighter")],
   [new WrongNetworkError("Public Global Stellar Network ; September 2015", "Freighter")],
@@ -63,9 +61,9 @@ describe("contract codes route through the deployed variant", () => {
     expect(e.headline).toContain("150% borrow limit");
   });
 
-  it("maps #15 to the withdraw-limit message with the caller's balance on the Lend tab", () => {
-    const e = describeError(code(15), { flow: "withdraw", ownBalanceUsdc: "250" });
-    expect(e.contract).toEqual({ contract: "commitment-tree", code: 15, variant: "WithdrawExceedsBalance" });
+  it("maps #13 to the withdraw-limit message with the caller's balance on the Lend tab", () => {
+    const e = describeError(code(13), { flow: "withdraw", ownBalanceUsdc: "250" });
+    expect(e.contract).toEqual({ contract: "writz-lend", code: 13, variant: "InsufficientSupply" });
     expect(text(e)).toBe("You supplied 250 USDC. No USDC moved. Enter that or less.");
   });
 
@@ -73,7 +71,7 @@ describe("contract codes route through the deployed variant", () => {
     expect(describeError(code(11), { flow: "borrow", availableUsdc: "40" }).headline).toBe(
       "The pool has 40 USDC available right now.",
     );
-    expect(describeError(code(9), { flow: "withdraw", availableUsdc: "40" }).headline).toContain(
+    expect(describeError(code(11), { flow: "withdraw", availableUsdc: "40" }).headline).toContain(
       "Only 40 USDC can be withdrawn now",
     );
   });
@@ -94,9 +92,9 @@ describe("contract codes route through the deployed variant", () => {
     expect(e.contract?.code).toBe(99);
   });
 
-  it("names Paused on both contracts", () => {
+  it("names Paused on the borrower and the lender flows", () => {
     expect(describeError(code(17), { flow: "borrow" }).headline).toBe("Writz is paused for maintenance.");
-    const lend = describeError(code(16), { flow: "lend" });
+    const lend = describeError(code(17), { flow: "lend" });
     expect(lend.headline).toBe("Writz is paused for maintenance.");
     expect(lend.contract?.variant).toBe("Paused");
   });

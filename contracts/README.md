@@ -2,8 +2,6 @@
 
 The Writz v1 Soroban contracts: `bitcoin-spv`, `writz-lend` and the shared `spv-types` crate.
 
-The privacy edition's contracts (`zk-verifier`, `commitment-tree`) are not part of v1. They live in their own Cargo workspace under [`../privacy/contracts/`](../privacy/contracts/), so this workspace builds, tests and deploys without them. See [`../privacy/README.md`](../privacy/README.md).
-
 ## Contracts
 
 ### `bitcoin-spv`
@@ -14,9 +12,7 @@ Key functions: `verify_transaction(headers, merkle_proof, tx_index, raw_tx, min_
 
 ### `writz-lend`
 
-Phase 1, non-ZK lending contract: plaintext BTC-collateralized positions, USDC pool supply/withdraw, and its own liquidation logic. Calls `bitcoin-spv` directly to verify deposits.
-
-> **Note:** `writz-lend` does **not** call or compose the privacy edition's `commitment-tree` or `zk-verifier`. Both lenders register with `bitcoin-spv`'s consumed-txid registry, so one Bitcoin deposit cannot back a position in each; see `docs/security/security-model.md`.
+Lending contract: plaintext BTC-collateralized positions, USDC pool supply/withdraw, and its own liquidation logic. Calls `bitcoin-spv` directly to verify deposits.
 
 ### `spv-types`
 
