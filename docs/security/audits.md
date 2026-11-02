@@ -17,7 +17,7 @@ Writz uses the **Stellar Foundation's Audit Bank** program, which subsidizes the
 | Criterion | Status |
 |---|---|
 | SCF Build Award received | Pending |
-| Contracts deployed on testnet with passing tests | ✓ Done - 253/253 tests |
+| Contracts deployed on testnet with passing tests | ✓ Done - 253/255 tests |
 | STRIDE threat model completed | v0.1 draft complete - [`docs/security/stride-threat-model.md`](/security/stride-threat-model). Full revision planned before the audit |
 | Self-service security scan completed | Pending - Phase 2 task |
 | Integration tests covering all flows | ✓ Done - `scripts/deploy/e2e_local.mjs`, run in CI on a local network |
@@ -77,7 +77,7 @@ Before the formal Audit Bank engagement, Writz applies the following:
 - `cargo audit` - dependency vulnerability scanning of every Cargo workspace against the RustSec database, on manifest or lockfile changes and weekly (`.github/workflows/dependency-audit.yml`); any ignored advisory is listed in the workflow with its reason
 
 **Test coverage:**
-- 848 tests covering happy paths and error cases
+- 850 tests covering happy paths and error cases
 - End-to-end integration tests covering the full deposit→borrow→repay→liquidate cycle
 - Bitcoin transaction tests verifying witness construction against real Bitcoin script interpretation
 

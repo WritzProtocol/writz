@@ -76,7 +76,7 @@ Writz's competitive position compounds with time:
 As of June 2026, Writz has completed Phase 1 - Foundation:
 
 - `bitcoin-spv` and `writz-lend` deployed on testnet
-- 848 tests passing across all modules
+- 850 tests passing across all modules
 - Real Bitcoin transactions broadcast and confirmed on Bitcoin Signet
 
 The protocol is not yet available on mainnet. Mainnet launch is targeted for Q2 to Q3 2027 (Phase 2), starting with a gated, TVL-capped release of Writz Lend.
