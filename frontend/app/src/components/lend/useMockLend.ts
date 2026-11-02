@@ -46,6 +46,7 @@ export function useMockLend(world: MockWorld): LendModel {
     unfunded: Boolean(sw) && sw?.xlmStroops === null,
     pool: stale ? { kind: "ok", value: stale.pool } : pool,
     supplied: stale ? { kind: "ok", value: stale.supplied } : supplied,
+    balance: stale ? { kind: "ok", value: stale.supplied } : supplied,
     stale,
     retry: noop,
     funds: sw

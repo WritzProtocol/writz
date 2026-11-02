@@ -21,6 +21,7 @@ import {
   ok,
   stellarWallet,
 } from "./fixtures";
+import { borrowRateBp } from "@/lib/contracts/writzLend";
 import type {
   MockArea,
   MockEarn,
@@ -44,7 +45,7 @@ import type {
  *   B1-B37    deposit journey          /borrow/new
  *   L1-L28    loan detail              /loans/1
  *   E1-E11    earn                     /earn
- *   N1-N19    lend                     /lend
+ *   N1-N21    lend                     /lend
  *   P1-P5     protocol                 /protocol
  *   R1-R4     reclaim help             /help/reclaim
  *   tx.<id>   transaction lifecycle    draft, preparing, awaiting_signature, signature_cancelled,
@@ -103,11 +104,20 @@ const earnState = (over: Partial<MockEarn> = {}): MockEarn => ({
 const earn = (over: Partial<MockEarn> = {}, world: Partial<MockWorld> = {}) =>
   baseWorld({ route: "/earn", wallets: STELLAR_ONLY, earn: earnState(over), ...world });
 
+/** A lend pool with `borrowed` of `supplied` lent out, at the rate the contract would charge. */
+const lendPool = (supplied: bigint, borrowed: bigint) => ({
+  totalSupplied: supplied,
+  totalBorrowed: borrowed,
+  available: supplied - borrowed,
+  borrowRateBp: borrowRateBp(borrowed, supplied),
+});
+const LEND_POOL = lendPool(POOL.totalSupplied, POOL.totalBorrowed);
+
 const lendState = (over: Partial<MockLend> = {}): MockLend => ({
   trustline: ok(true),
   walletUsdcStroops: ok(usdc(1240)),
-  suppliedStroops: ok(usdc(2500)),
-  pool: ok(POOL),
+  suppliedStroops: ok(usdc(2500) + 412_337n),
+  pool: ok(LEND_POOL),
   ...over,
 });
 const lend = (over: Partial<MockLend> = {}, world: Partial<MockWorld> = {}) =>
@@ -408,9 +418,9 @@ const LEND: Scenario[] = [
   define("N8", "Supply over wallet balance", () => lend({ inputError: "over_wallet" })),
   define("N9", "Withdraw over supplied", () => lend({ inputError: "over_supply" })),
   define("N10", "Withdraw limited by pool liquidity", () =>
-    lend({ pool: ok({ ...POOL, available: usdc(800), totalBorrowed: POOL.totalSupplied - usdc(800) }) }),
+    lend({ pool: ok(lendPool(POOL.totalSupplied, POOL.totalSupplied - usdc(800))) }),
   ),
-  define("N11", "Pool liquidity 0", () => lend({ pool: ok({ ...POOL, available: 0n, totalBorrowed: POOL.totalSupplied }) })),
+  define("N11", "Pool liquidity 0", () => lend({ pool: ok(lendPool(POOL.totalSupplied, POOL.totalSupplied)) })),
   define("N12", "Awaiting signature", () => lend({}, { flow: flow("supply", "awaiting_signature") })),
   define("N13", "Signature cancelled", () => lend({}, { flow: flow("supply", "signature_cancelled") })),
   define("N14", "Submitted or confirming", () => lend({}, { flow: flow("supply", "confirming") })),
@@ -418,9 +428,13 @@ const LEND: Scenario[] = [
   define("N16", "Timed out", () => lend({}, { flow: flow("withdraw", "timed_out") })),
   define("N17", "Failed", () => lend({}, { flow: flow("withdraw", "failed") })),
   define("N18", "Read failure", (now) =>
-    lend({ suppliedStroops: failed(usdc(2500), now - 5 * 60_000), pool: failed(POOL, now - 5 * 60_000) }),
+    lend({ suppliedStroops: failed(usdc(2500) + 412_337n, now - 5 * 60_000), pool: failed(LEND_POOL, now - 5 * 60_000) }),
   ),
   define("N19", "Unfunded or wrong network", () => lend({}, { wallets: wrongNetwork })),
+  define("N20", "Nothing borrowed, rate 0", () => lend({ suppliedStroops: ok(usdc(2500)), pool: ok(lendPool(POOL.totalSupplied, 0n)) })),
+  define("N21", "Rate under 0.01%", () =>
+    lend({ suppliedStroops: ok(usdc(50) + 3_118n), pool: ok(lendPool(usdc(150), usdc(4))) }),
+  ),
 ];
 
 const PROTOCOL: Scenario[] = [

@@ -1,4 +1,4 @@
-import { writzLendClient } from "@/lib/contracts/writzLend";
+import { getLendPool, getSupplyValue, writzLendClient } from "@/lib/contracts/writzLend";
 import { simulateWithRetry } from "./submit";
 import type { SignTransaction } from "@/lib/wallet/WalletProvider";
 import type { Emit } from "@/lib/flow/engine";
@@ -44,8 +44,11 @@ export async function withdraw(params: {
   supplier: string;
   signTransaction: SignTransaction;
   emit?: Emit;
+  /** Withdraw the whole balance: read it again right before building, so the interest since the last read is included. */
+  all?: boolean;
 }): Promise<LendResult> {
-  const { amountStroops, supplier, signTransaction, emit } = params;
+  const { supplier, signTransaction, emit } = params;
+  const amountStroops = params.all ? await wholeBalance(supplier, params.amountStroops) : params.amountStroops;
   const client = writzLendClient(supplier);
 
   const tx = await simulateWithRetry(() =>
@@ -53,4 +56,10 @@ export async function withdraw(params: {
   );
   const { hash } = await submitTrackedTx({ kind: "withdraw", owner: supplier, tx, signTransaction, emit });
   return { txHash: hash };
+}
+
+async function wholeBalance(supplier: string, fallback: bigint): Promise<bigint> {
+  const [value, pool] = await Promise.all([getSupplyValue(supplier), getLendPool()]);
+  const amount = value < pool.available ? value : pool.available;
+  return amount > 0n ? amount : fallback;
 }

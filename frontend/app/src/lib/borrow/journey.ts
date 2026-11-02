@@ -41,11 +41,12 @@ export function formatBtc(sats: bigint): string {
   return `${neg ? "-" : ""}${abs / SATS_PER_BTC}.${(abs % SATS_PER_BTC).toString().padStart(8, "0")}`;
 }
 
-/** Stroops (7 decimals) to "2,000.00", rounded down. */
-export function formatUsdc(stroops: bigint): string {
-  const cents = stroops / (STROOPS_PER_UNIT / 100n);
-  const whole = (cents / 100n).toLocaleString("en-US");
-  return `${whole}.${(cents % 100n).toString().padStart(2, "0")}`;
+/** Stroops (7 decimals) to "2,000.00", or to `decimals` places, rounded down. */
+export function formatUsdc(stroops: bigint, decimals: 2 | 7 = 2): string {
+  const unit = 10n ** BigInt(decimals);
+  const units = stroops / (STROOPS_PER_UNIT / unit);
+  const whole = (units / unit).toLocaleString("en-US");
+  return `${whole}.${(units % unit).toString().padStart(decimals, "0")}`;
 }
 
 /** Stroops per BTC to "$60,000". */

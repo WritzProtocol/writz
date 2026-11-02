@@ -8,13 +8,34 @@ import { Notice } from "@/components/ui";
 import { Enter } from "@/components/ui/entrance";
 import { FundsCard, NotConnected } from "@/components/funds/FundsCard";
 import { Hero, RiskNotes, Tile, Tiles } from "@/components/funds/parts";
-import type { LendModel } from "./model";
+import { balanceDecimals, formatApr, poolSupplyRate, type LendModel } from "./model";
 
 const STELLAR = networkName(config.networkPassphrase);
 
 function clock(ms: number): string {
   const d = new Date(ms);
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
+function SupplyRate({ pool }: { pool: LendModel["pool"] }) {
+  return (
+    <div>
+      <dt>Supply rate</dt>
+      <dd className="fu-tile-v">
+        {pool.kind === "ok" ? (
+          <span className="mono">{formatApr(poolSupplyRate(pool.value))}</span>
+        ) : pool.kind === "failed" ? (
+          <span className="fu-na">Unavailable</span>
+        ) : (
+          <>
+            <span className="wz-skeleton fu-sk" aria-hidden="true" />
+            <span className="wz-sr">Checking...</span>
+          </>
+        )}
+      </dd>
+      <dd className="fu-caption">APR. Moves with how much of the pool is borrowed.</dd>
+    </div>
+  );
 }
 
 export function LendView({ m }: { m: LendModel }) {
@@ -55,12 +76,14 @@ export function LendView({ m }: { m: LendModel }) {
           {m.connected ? (
             <>
               <Hero
-                label="You supplied"
-                value={m.supplied}
+                label="Your balance"
+                value={m.balance}
                 unit="USDC"
+                decimals={m.balance.kind === "ok" && m.balance.value > 0n ? balanceDecimals(m.pool) : 2}
                 caption={m.supplied.kind === "ok" && m.supplied.value === 0n ? "You haven't supplied any USDC." : undefined}
               />
               <Tiles>
+                <SupplyRate pool={m.pool} />
                 <Tile label="Available in pool" value={available} />
                 <Tile label="You can withdraw now" value={canWithdraw} />
               </Tiles>
@@ -69,6 +92,7 @@ export function LendView({ m }: { m: LendModel }) {
             <>
               <Hero label="Available in pool" value={available} unit="USDC" />
               <Tiles>
+                <SupplyRate pool={m.pool} />
                 <Tile
                   label="Supplied by lenders"
                   value={m.pool.kind === "ok" ? { kind: "ok", value: m.pool.value.totalSupplied } : m.pool}

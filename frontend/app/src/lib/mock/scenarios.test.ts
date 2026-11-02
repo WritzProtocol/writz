@@ -50,7 +50,7 @@ const APPENDIX_A = [
   ...range("B", 37),
   ...range("L", 28),
   ...range("E", 11),
-  ...range("N", 19),
+  ...range("N", 21),
   ...range("P", 5),
   ...range("R", 4),
   ...LIFECYCLE.map((id) => `tx.${id}`),
@@ -71,7 +71,7 @@ describe("mock scenarios", () => {
     const ids = SCENARIOS.map((s) => s.id);
     expect(new Set(ids).size).toBe(ids.length);
     expect([...ids].sort()).toEqual([...APPENDIX_A].sort());
-    expect(APPENDIX_A.filter((id) => !id.includes(".")).length).toBe(144);
+    expect(APPENDIX_A.filter((id) => !id.includes(".")).length).toBe(146);
   });
 
   for (const scenario of SCENARIOS) {

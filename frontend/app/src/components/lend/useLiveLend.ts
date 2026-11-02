@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useWallet } from "@/lib/wallet/WalletProvider";
-import { getPoolState, getSupplyBalance } from "@/lib/contracts/writzLend";
+import { accrueBalance, getLendPool, getSupplyValue } from "@/lib/contracts/writzLend";
+import { withdrawable } from "@/lib/funds/model";
 import { usePolledValue } from "@/lib/earn/usePolledValue";
 import { supply, withdraw } from "@/lib/flows/lend";
 import { enableTrustline, getAssetBalance, POOL_ASSET } from "@/lib/flows/trustline";
@@ -14,9 +15,23 @@ import { recentActivity } from "@/lib/tray";
 import { currentRoute, notifySettled } from "@/lib/toast";
 import { formatUsdc } from "@/lib/borrow/journey";
 import { useShellAccount } from "@/components/shell/account";
-import { lendSides, type LendModel, type PoolTotals } from "./model";
+import { lendSides, poolSupplyRate, type LendModel, type PoolTotals } from "./model";
 
-const POLL_MS = 20_000;
+const POLL_MS = 15_000;
+const TICK_MS = 1_000;
+
+/** The chain-read balance, grown locally at the current rate until the next read replaces it. */
+function useAccruing(value: bigint | null, readAt: number | null, rate: number): bigint | null {
+  const [now, setNow] = useState(() => Date.now());
+  const active = value !== null && value > 0n && rate > 0;
+  useEffect(() => {
+    if (!active) return;
+    const t = setInterval(() => setNow(Date.now()), TICK_MS);
+    return () => clearInterval(t);
+  }, [active]);
+  if (value === null || readAt === null || !active) return value;
+  return accrueBalance(value, rate, now - readAt);
+}
 
 /** For a poll with no value yet. */
 const pending = (p: { loading: boolean }): Read<never> => (p.loading ? { kind: "checking" } : { kind: "failed" });
@@ -28,8 +43,8 @@ export function useLiveLend(): LendModel {
   const [nonce, setNonce] = useState(0);
   const refresh = useCallback(() => setNonce((n) => n + 1), []);
 
-  const readPool = useCallback(() => getPoolState(), []);
-  const readSupplied = useCallback((key: string) => getSupplyBalance(key.split(":")[0]!), []);
+  const readPool = useCallback(() => getLendPool(), []);
+  const readSupplied = useCallback((key: string) => getSupplyValue(key.split(":")[0]!), []);
   // -1 marks "no trustline" so one read answers both questions.
   const readWallet = useCallback(async (key: string) => (await getAssetBalance(key.split(":")[0]!, POOL_ASSET)) ?? -1n, []);
 
@@ -41,6 +56,9 @@ export function useLiveLend(): LendModel {
     ? { kind: "ok", value: poolPoll.value }
     : pending(poolPoll);
   const supplied: Read<bigint> = suppliedPoll.value !== null ? { kind: "ok", value: suppliedPoll.value } : pending(suppliedPoll);
+  const rate = poolPoll.value ? poolSupplyRate(poolPoll.value) : 0;
+  const accrued = useAccruing(suppliedPoll.value, suppliedPoll.updatedAt?.getTime() ?? null, suppliedPoll.error ? 0 : rate);
+  const balance: Read<bigint> = accrued !== null ? { kind: "ok", value: accrued } : supplied;
   const trustline: Read<boolean> = walletPoll.value !== null ? { kind: "ok", value: walletPoll.value >= 0n } : pending(walletPoll);
   const wallet: Read<bigint> =
     walletPoll.value !== null ? { kind: "ok", value: walletPoll.value < 0n ? 0n : walletPoll.value } : pending(walletPoll);
@@ -54,7 +72,9 @@ export function useLiveLend(): LendModel {
       setAction(side);
       setLastAmount(amountStroops);
       emit({ type: "start" });
-      const run = side === "in" ? supply : withdraw;
+      const out = suppliedPoll.value !== null ? withdrawable(suppliedPoll.value, poolPoll.value?.available ?? null) : null;
+      const all = side === "out" && out !== null && !out.limitedByPool && amountStroops === out.stroops;
+      const run = side === "in" ? supply : (p: Parameters<typeof withdraw>[0]) => withdraw({ ...p, all });
       const origin = currentRoute();
       const link = { href: origin, label: "Open Lend" };
       const amount = formatUsdc(amountStroops);
@@ -80,7 +100,7 @@ export function useLiveLend(): LendModel {
         })
         .finally(refresh);
     },
-    [address, w.signTransaction, emit, refresh],
+    [address, w.signTransaction, emit, refresh, suppliedPoll.value, poolPoll.value],
   );
 
   const [trustBusy, setTrustBusy] = useState(false);
@@ -106,6 +126,7 @@ export function useLiveLend(): LendModel {
     unfunded: funding.kind === "ok" && funding.value.kind === "unfunded",
     pool,
     supplied,
+    balance,
     stale:
       suppliedPoll.error && suppliedPoll.value !== null && poolPoll.value && suppliedPoll.updatedAt
         ? { supplied: suppliedPoll.value, pool: poolPoll.value, at: suppliedPoll.updatedAt.getTime() }

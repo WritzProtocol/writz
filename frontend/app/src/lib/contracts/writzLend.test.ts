@@ -2,6 +2,8 @@ import { describe, expect, it } from "bun:test";
 import type { Position as RawPosition } from "./writzLendGenerated";
 import {
   INDEX_ONE,
+  accrueBalance,
+  supplyRate,
   borrowRateBp,
   debtAt,
   displayTxid,
@@ -102,5 +104,51 @@ describe("poolStateAt", () => {
       totalBorrowed: 4_000n * STROOP,
       available: 6_000n * STROOP,
     });
+  });
+});
+
+describe("supplyRate, the lenders' share of the borrow rate", () => {
+  it("is borrow rate x utilization x 0.85", () => {
+    expect(supplyRate(800n, 7_500n * STROOP, 10_000n * STROOP)).toBeCloseTo(0.08 * 0.75 * 0.85, 12);
+  });
+
+  it("is above 0 where get_supply_rate_bp rounds to 0", () => {
+    const supplied = 150n * STROOP;
+    const borrowed = 4n * STROOP;
+    const rate = supplyRate(borrowRateBp(borrowed, supplied), borrowed, supplied);
+    expect(rate).toBeGreaterThan(0);
+    expect(rate).toBeLessThan(0.0001);
+  });
+
+  it("is 0 with nothing borrowed or nothing supplied", () => {
+    expect(supplyRate(0n, 0n, 100n * STROOP)).toBe(0);
+    expect(supplyRate(800n, 0n, 100n * STROOP)).toBe(0);
+    expect(supplyRate(800n, 10n, 0n)).toBe(0);
+  });
+});
+
+describe("accrueBalance", () => {
+  const YEAR_MS = 6_311_520 * 5_000;
+
+  it("grows a balance by the rate over the elapsed time, rounded down", () => {
+    expect(accrueBalance(1_000n * STROOP, 0.05, YEAR_MS)).toBe(1_050n * STROOP);
+    expect(accrueBalance(1_000n * STROOP, 0.05, YEAR_MS / 2)).toBe(1_025n * STROOP);
+  });
+
+  it("matches the supply index growth the contract credits a sole lender", () => {
+    const p = state(5_000n * STROOP);
+    const ledgers = 17_280;
+    const { supplyIndex } = projectRates(p, 1_000 + ledgers);
+    const chain = (10_000n * STROOP * supplyIndex) / INDEX_ONE;
+    const rate = supplyRate(borrowRateBp(p.total_borrowed, 10_000n * STROOP), p.total_borrowed, 10_000n * STROOP);
+    const local = accrueBalance(10_000n * STROOP, rate, ledgers * 5_000);
+    expect(local <= chain).toBe(true);
+    expect(chain - local <= 1n).toBe(true);
+  });
+
+  it("leaves the balance alone at rate 0, no elapsed time or a zero balance", () => {
+    expect(accrueBalance(10n, 0, 60_000)).toBe(10n);
+    expect(accrueBalance(10n, 0.05, 0)).toBe(10n);
+    expect(accrueBalance(0n, 0.05, 60_000)).toBe(0n);
   });
 });

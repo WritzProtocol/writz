@@ -120,7 +120,7 @@ export interface MockLend {
   trustline: Reading<boolean>;
   walletUsdcStroops: Reading<bigint>;
   suppliedStroops: Reading<bigint>;
-  pool: Reading<{ totalSupplied: bigint; totalBorrowed: bigint; available: bigint }>;
+  pool: Reading<{ totalSupplied: bigint; totalBorrowed: bigint; available: bigint; borrowRateBp: bigint }>;
   inputError?: "over_wallet" | "over_supply";
 }
 
