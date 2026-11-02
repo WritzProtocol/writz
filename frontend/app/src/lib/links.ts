@@ -1,4 +1,5 @@
 export const DOCS_URL = "https://docs.writz.xyz";
+export const LENDING_DOCS_URL = `${DOCS_URL}/products/writz-lend#for-usdc-lenders-earn`;
 export const LIQUIDATION_DOCS_URL = `${DOCS_URL}/products/writz-lend#liquidation`;
 export const RECLAIM_DOCS_URL = `${DOCS_URL}/how-it-works/manual-emergency-recovery`;
 export const GITHUB_ISSUES_URL = "https://github.com/WritzProtocol/writz/issues";

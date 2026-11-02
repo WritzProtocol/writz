@@ -421,12 +421,12 @@ const RULES: Rule[] = [
     build: (ctx) =>
       ctx.ownBalanceUsdc
         ? {
-            headline: `You supplied ${ctx.ownBalanceUsdc} USDC.`,
+            headline: `Your balance is ${ctx.ownBalanceUsdc} USDC.`,
             safety: "No USDC moved.",
             action: "Enter that or less.",
           }
         : {
-            headline: "That's more than you supplied.",
+            headline: "That's more than your balance.",
             safety: "No USDC moved.",
             action: "Enter a smaller amount.",
           },

@@ -42,7 +42,18 @@ export function formatApr(rate: number): string {
 /** While anything is borrowed a minute of interest is under 0.00001 USDC, so the balance shows every stroop. */
 export const balanceDecimals = (pool: Read<PoolTotals>): 2 | 7 => (pool.kind === "ok" && pool.value.totalBorrowed > 0n ? 7 : 2);
 
-/** Supply is capped by the wallet; withdraw by what you supplied and what the pool hasn't lent out. */
+export const NOT_EARNING = "No one is borrowing right now, so the pool is not earning.";
+
+/** Decided by `totalBorrowed`, not the supply rate, which reads 0 at low utilization while the balance still grows. */
+export function balanceCaption(supplied: Read<bigint>, pool: Read<PoolTotals>): string | undefined {
+  if (supplied.kind !== "ok" || pool.kind !== "ok") return undefined;
+  const earning = pool.value.totalBorrowed > 0n;
+  const apr = formatApr(poolSupplyRate(pool.value));
+  if (supplied.value === 0n) return earning ? `Lenders earn ${apr} APR right now.` : NOT_EARNING;
+  return earning ? "Earning interest." : `${NOT_EARNING} Your balance is safe to withdraw.`;
+}
+
+/** Supply is capped by the wallet; withdraw by the balance and what the pool hasn't lent out. */
 export function lendSides(
   wallet: Read<bigint>,
   supplied: Read<bigint>,
@@ -76,11 +87,11 @@ export function lendSides(
           ? "Checking your balance..."
           : out.limitedByPool
             ? `You can withdraw ${formatUsdc(out.stroops)} USDC now. Borrowers are using the rest of the pool.`
-            : `You supplied ${formatUsdc(out.stroops)} USDC.`,
+            : `Your balance is ${formatUsdc(out.stroops)} USDC.`,
       over: (max) =>
         out?.limitedByPool
           ? `You can withdraw ${formatUsdc(max)} USDC now. Enter that or less.`
-          : `You supplied ${formatUsdc(max)} USDC. Enter that or less.`,
+          : `Your balance is ${formatUsdc(max)} USDC. Enter that or less.`,
       blocked:
         s === 0n
           ? "You haven't supplied any USDC."

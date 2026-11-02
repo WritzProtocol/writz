@@ -13,6 +13,7 @@ export function FundsSkeleton({
   wallet,
   nowallet,
   risk,
+  docs,
   link,
   tabs,
   field,
@@ -24,6 +25,7 @@ export function FundsSkeleton({
   wallet: Figures;
   nowallet: Figures;
   risk: string[];
+  docs?: string;
   link: string;
   tabs: [string, string];
   field: string;
@@ -74,6 +76,11 @@ export function FundsSkeleton({
             <T>{r}</T>
           </p>
         ))}
+        {docs ? (
+          <span className="wz-link fu-textlink">
+            <T>{docs}</T>
+          </span>
+        ) : null}
         <span className="wz-link fu-textlink">
           <T>{link}</T>
         </span>

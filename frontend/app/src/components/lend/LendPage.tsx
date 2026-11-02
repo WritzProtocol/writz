@@ -20,7 +20,7 @@ function Skeleton() {
   return (
     <FundsSkeleton
       title="Lend USDC"
-      lede="Supply USDC to the pool borrowers draw from. You can withdraw what you supplied."
+      lede="Supply USDC to the lending pool and earn interest from borrowers. The rate moves with how much of the pool is borrowed. Stellar testnet, test USDC."
       wallet={{
         hero: { label: "Your balance", value: "2,500.00", unit: "USDC" },
         tiles: [
@@ -29,7 +29,8 @@ function Skeleton() {
         ],
       }}
       nowallet={{ hero: { label: "Available in pool", value: "122,820.00", unit: "USDC" }, tiles: [["Supply rate", "1.00%"], ["Supplied by lenders", "184,250.00 USDC"]] }}
-      risk={["Suppliers carry Bitcoin credit risk. When borrowers are using the pool, you may have to wait to withdraw."]}
+      risk={[]}
+      docs="How lending works"
       link="See pool stats"
       tabs={["Supply", "Withdraw"]}
       field="Supply USDC"

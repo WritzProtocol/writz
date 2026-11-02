@@ -58,7 +58,8 @@ describe("LendView", () => {
     const t = text(render("N7"));
     expect(t).toContain("Your balance");
     expect(t).toContain("2,500.0412337 USDC");
-    expect(t).toMatch(/Supply rate \d+\.\d\d% APR/);
+    expect(t).toMatch(/Supply rate \d+\.\d\d% Variable APR/);
+    expect(t).toContain("Earning interest.");
     expect(t).not.toContain("You supplied");
   });
 
@@ -68,10 +69,18 @@ describe("LendView", () => {
     expect(text(render("N10"))).toContain("You can withdraw now 800.00 USDC");
   });
 
+  test("nothing supplied: the rate is the reason to supply", () => {
+    const t = text(render("N6"));
+    expect(t).toMatch(/Lenders earn \d+\.\d\d% APR right now\./);
+    expect(t).not.toContain("Earning");
+  });
+
   test("rate 0: 0.00% and the balance in cents", () => {
     const t = text(render("N20"));
     expect(t).toContain("Supply rate 0.00%");
     expect(t).toContain("2,500.00 USDC");
+    expect(t).toContain("No one is borrowing right now, so the pool is not earning. Your balance is safe to withdraw.");
+    expect(t).not.toContain("Earning");
   });
 
   test("a rate too small for two decimals reads under 0.01%", () => {
@@ -85,7 +94,30 @@ describe("LendView", () => {
     expect(t).toMatch(/Supply rate \d+\.\d\d%/);
   });
 
+  test("the lede says the pool pays interest at a moving rate, on testnet", () => {
+    const t = text(render("N1"));
+    expect(t).toContain("earn interest from borrowers. The rate moves with how much of the pool is borrowed. Stellar testnet, test USDC.");
+  });
+
   test("disconnected: the rate is shown next to the pool", () => {
     expect(text(render("N1"))).toMatch(/Supply rate \d+\.\d\d%/);
+  });
+});
+
+describe("Lend risk notes", () => {
+  test("no fixed risk line; the lending docs are linked instead", () => {
+    const html = render("N7");
+    expect(text(html)).not.toContain("credit risk");
+    expect(html).toContain("/products/writz-lend#for-usdc-lenders-earn");
+    expect(text(html)).toContain("How lending works");
+  });
+
+  test("the liquidity limit still shows on Withdraw when the pool is short", () => {
+    const sides = lendSides(
+      { kind: "ok", value: 0n },
+      { kind: "ok", value: 2_500n * STROOP },
+      { kind: "ok", value: { totalSupplied: 10_000n * STROOP, totalBorrowed: 9_200n * STROOP, available: 800n * STROOP, borrowRateBp: 0n } },
+    );
+    expect(text(renderToStaticMarkup(<>{sides.out.hint}</>))).toContain("Borrowers are using the rest of the pool");
   });
 });
