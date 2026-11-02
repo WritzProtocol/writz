@@ -73,7 +73,7 @@ Writz is a trustless Bitcoin lending protocol on Stellar. Lock real BTC. Borrow 
 
 **Phase:** 1 - Foundation (in progress, August 2026)
 
-**The protocol's two contracts are deployed on Stellar testnet. 486 tests passing.** See `contracts/deployments/testnet.md` for verified calls and known gaps before further testing.
+**The protocol's two contracts are deployed on Stellar testnet. 848 tests passing.** See `contracts/deployments/testnet.md` for verified calls and known gaps before further testing.
 
 | Contract | Address |
 |---|---|
