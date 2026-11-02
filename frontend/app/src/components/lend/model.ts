@@ -50,7 +50,7 @@ export function balanceCaption(supplied: Read<bigint>, pool: Read<PoolTotals>): 
   const earning = pool.value.totalBorrowed > 0n;
   const apr = formatApr(poolSupplyRate(pool.value));
   if (supplied.value === 0n) return earning ? `Lenders earn ${apr} APR right now.` : NOT_EARNING;
-  return earning ? `Earning ${apr} APR.` : `${NOT_EARNING} Your balance is safe to withdraw.`;
+  return earning ? "Earning interest." : `${NOT_EARNING} Your balance is safe to withdraw.`;
 }
 
 /** Supply is capped by the wallet; withdraw by the balance and what the pool hasn't lent out. */

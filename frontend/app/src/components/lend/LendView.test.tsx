@@ -59,7 +59,7 @@ describe("LendView", () => {
     expect(t).toContain("Your balance");
     expect(t).toContain("2,500.0412337 USDC");
     expect(t).toMatch(/Supply rate \d+\.\d\d% Variable APR/);
-    expect(t).toMatch(/Earning \d+\.\d\d% APR\./);
+    expect(t).toContain("Earning interest.");
     expect(t).not.toContain("You supplied");
   });
 
