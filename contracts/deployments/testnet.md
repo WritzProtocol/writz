@@ -16,7 +16,7 @@ Carries the projected views of #256 (`get_pool_totals`, `get_supply_position`, a
 
 Built at `76bc557` (#381) with `cargo build --release --target wasm32v1-none --locked -p writz-lend`, deployed by `writz-deployer` with `stellar contract deploy`, which runs the same steps as `deploy_stack.mjs --lend-only`.
 
-The pool is seeded with 100 USDC, down from 989, which keeps room for testers while small Signet loans still produce a rate. `CC7XGEWA…` had no open loans and an empty reserve at the switch.
+The pool was seeded with 100 USDC, down from 989. `CC7XGEWA…` had no open loans and an empty reserve at the switch. On 2026-11-02 the deployer supply was reduced to 5 USDC ([`72456533…`](https://stellar.expert/explorer/testnet/tx/72456533715dcf0ae4bccd6a9e3c245dbe7ac36425c30985a90ca9ec2da28318)), so that small Signet loans move the rate visibly. After the lender yield run ([evidence](../../docs/developers/evidence/lender-yield-testnet.md)) the pool holds about 5 USDC supplied and 2 borrowed, about 40% utilization and a 426 bp borrow rate.
 
 | Field | Value |
 |---|---|

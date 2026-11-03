@@ -254,6 +254,8 @@ async function close(borrower) {
   const position = await read('get_supply_position', [addr(lender.publicKey())]);
   const label = 'lender withdrawal';
   const value = state.done?.[`step:${label}`] ? BigInt(state.withdrawn) : position.value;
+  // A withdrawal that landed before the state was saved leaves nothing to withdraw.
+  if (value === 0n) fail(`${lender.publicKey()} holds no supply; record the landed withdrawal in the state file`);
   state.withdrawn = value.toString();
   save();
   await step(label, lender, 'withdraw_supply', [addr(lender.publicKey()), i128(value)], value);
