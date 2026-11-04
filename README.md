@@ -201,7 +201,7 @@ writz/
 | Layer | Technology | Notes |
 |---|---|---|
 | Smart contracts | Soroban · Rust | Protocol 26 · `soroban-sdk = "26"` |
-| Bitcoin scripting | P2WSH (Phase 1) → Taproot (Phase 3) | `bitcoinjs-lib` · `ecpair` |
+| Bitcoin scripting | P2WSH · absolute CLTV time-lock | `bitcoinjs-lib` · `ecpair` |
 | Bitcoin wallets | Xverse · sats-connect | PSBT standard |
 | Frontend | Next.js 16 · React 19 · TypeScript | App Router · Tailwind CSS 4 |
 | Stellar wallets | Stellar Wallets Kit · Pollar | Freighter · Lobstr · email and social login on testnet |
