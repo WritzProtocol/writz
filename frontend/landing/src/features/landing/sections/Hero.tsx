@@ -22,8 +22,8 @@ export function Hero() {
               Lock Bitcoin. Borrow dollars. <span className="tell">Tell no one.</span>
             </h1>
             <p className="lead">
-              Get dollars without selling your Bitcoin. It stays locked on Bitcoin by a script, not with a company, and
-              never becomes a wrapped token.
+              Writz Protocol is a Bitcoin lending protocol on Stellar. Get dollars without selling your Bitcoin: a script
+              holds it on Bitcoin, not a company, and it never becomes a wrapped token.
             </p>
             <div className="ctas">
               <a className="btn btn-gold" href={APP_ROUTE}>
