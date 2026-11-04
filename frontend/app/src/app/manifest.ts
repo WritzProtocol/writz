@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "Writz Protocol",
     short_name: "Writz",
     description:
-      "Borrow dollars against native BTC, without a custodian holding it and without anyone seeing the amount.",
+      "Borrow dollars against native BTC, without a custodian holding it and without wrapping it.",
     start_url: "/",
     display: "standalone",
     background_color: "#0C0E12",

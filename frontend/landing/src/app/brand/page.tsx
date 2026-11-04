@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { OG_IMAGE, SITE_NAME } from "@/config/site";
 import { workSans } from "@/features/landing/fonts";
 import { Navbar } from "@/features/landing/sections/Navbar";
 import { Footer } from "@/features/landing/sections/Closing";
@@ -6,11 +7,29 @@ import { CopyButton } from "./CopyButton";
 import "@/features/landing/landing.css";
 import "./press.css";
 
+const META_TITLE = "Writz Protocol brand assets and press kit";
+const META_DESCRIPTION =
+  "Official Writz Protocol logos, colours and approved descriptions, for press, listings and ecosystem directories.";
+
 export const metadata: Metadata = {
-  title: "Brand assets - Writz",
-  description:
-    "Logos, colours and approved descriptions of Writz, for press, listings and ecosystem directories.",
+  title: META_TITLE,
+  description: META_DESCRIPTION,
   alternates: { canonical: "/brand" },
+  openGraph: {
+    type: "website",
+    siteName: SITE_NAME,
+    title: META_TITLE,
+    description: META_DESCRIPTION,
+    url: "/brand",
+    images: [OG_IMAGE],
+  },
+  twitter: {
+    card: "summary_large_image",
+    site: "@WritzProtocol",
+    title: META_TITLE,
+    description: META_DESCRIPTION,
+    images: [OG_IMAGE.url],
+  },
 };
 
 /**

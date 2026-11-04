@@ -3,6 +3,7 @@ import Link from "next/link";
 import { statSync } from "node:fs";
 import { join } from "node:path";
 import { env } from "@/config/env";
+import { OG_IMAGE, ORGANIZATION_ID, SITE_NAME, WEBSITE_ID } from "@/config/site";
 import { workSans } from "@/features/landing/fonts";
 import { DOCS_URL, GITHUB_URL } from "@/features/landing/constants";
 import { CopyButton } from "../brand/CopyButton";
@@ -31,18 +32,18 @@ export const metadata: Metadata = {
   alternates: { canonical: "/whitepaper" },
   openGraph: {
     type: "article",
-    siteName: "Writz",
+    siteName: SITE_NAME,
     title: `${TITLE}: ${SUBTITLE}`,
     description: DESCRIPTION,
     url: "/whitepaper",
-    images: [{ url: "/og.png", width: 1200, height: 630, alt: "Writz Protocol" }],
+    images: [OG_IMAGE],
   },
   twitter: {
     card: "summary_large_image",
     site: "@WritzProtocol",
     title: TITLE,
     description: DESCRIPTION,
-    images: ["/og.png"],
+    images: [OG_IMAGE.url],
   },
 };
 
@@ -116,12 +117,8 @@ export default function WhitepaperPage() {
     identifier: { "@type": "PropertyValue", propertyID: "DOI", value: DOI },
     sameAs: [DOI_URL, ZENODO_URL],
     author: { "@type": "Person", name: AUTHOR },
-    publisher: {
-      "@type": "Organization",
-      name: "Writz Protocol",
-      url: env.siteUrl,
-      sameAs: [GITHUB_URL, "https://x.com/WritzProtocol"],
-    },
+    publisher: { "@id": ORGANIZATION_ID, "@type": "Organization", name: SITE_NAME, url: env.siteUrl },
+    isPartOf: { "@id": WEBSITE_ID },
     isAccessibleForFree: true,
     encoding: {
       "@type": "MediaObject",

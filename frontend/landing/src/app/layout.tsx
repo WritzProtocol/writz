@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import { Geist_Mono } from "next/font/google";
 import { env } from "@/config/env";
+import { OG_IMAGE, SITE_NAME } from "@/config/site";
 import { workSans } from "@/features/landing/fonts";
 import "./globals.css";
 
@@ -14,12 +15,10 @@ const mono = Geist_Mono({
   fallback: ["Geist Mono Fallback", "ui-monospace", "monospace"],
 });
 
-const TITLE = "Writz - Lock Bitcoin. Borrow dollars. Tell no one.";
+const TITLE = "Writz Protocol - Bitcoin Lending on Stellar, No Bridge";
 
-// The published social bio, plus the network status any description of the
-// product has to carry.
 const DESCRIPTION =
-  "Lock real BTC. Borrow USDC on Stellar. No bridge, no custodian, no wrapped token. Live on testnet.";
+  "Writz Protocol lets you lock native BTC on Bitcoin and borrow USDC on Stellar. No bridge, no custodian, no wrapped token. Open source, live on testnet.";
 
 export const viewport: Viewport = {
   viewportFit: "cover",
@@ -31,37 +30,31 @@ export const metadata: Metadata = {
   metadataBase: new URL(env.siteUrl),
   title: TITLE,
   description: DESCRIPTION,
-  applicationName: "Writz",
+  applicationName: SITE_NAME,
   alternates: { canonical: "/" },
   icons: {
     icon: [
       { url: "/brand/writz-icon.svg?v=5", type: "image/svg+xml", sizes: "any" },
       { url: "/favicon.ico?v=4", sizes: "32x32" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
     ],
     apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
   },
   manifest: "/manifest.webmanifest",
   openGraph: {
     type: "website",
-    siteName: "Writz",
+    siteName: SITE_NAME,
     title: TITLE,
     description: DESCRIPTION,
     url: "/",
-    images: [
-      {
-        url: "/og.png?v=3",
-        width: 2400,
-        height: 1260,
-        alt: "Writz. Lock Bitcoin. Borrow dollars. Tell no one. No bridge, no custodian, no wrapped token.",
-      },
-    ],
+    images: [OG_IMAGE],
   },
   twitter: {
     card: "summary_large_image",
     site: "@WritzProtocol",
     title: TITLE,
     description: DESCRIPTION,
-    images: ["/og.png?v=3"],
+    images: [OG_IMAGE.url],
   },
 };
 
