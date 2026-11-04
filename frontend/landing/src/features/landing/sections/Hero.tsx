@@ -22,8 +22,8 @@ export function Hero() {
               Native Bitcoin lending <span className="accent">on Stellar.</span>
             </h1>
             <p className="lead">
-              Writz Protocol lets you borrow USDC without selling your Bitcoin. A script holds it on Bitcoin, not a company,
-              and it never becomes a wrapped token.
+              Writz Protocol lets you borrow USDC without selling your Bitcoin. Your BTC stays on the Bitcoin network, with
+              no custodian and no bridge.
             </p>
             <div className="ctas">
               <a className="btn btn-gold" href={APP_ROUTE}>
