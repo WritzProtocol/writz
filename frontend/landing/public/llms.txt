@@ -1,0 +1,19 @@
+# Writz Protocol
+
+> Writz is a lending protocol on Stellar backed by native BTC. A Bitcoin Script holds the collateral on Bitcoin itself rather than a company, and it never becomes a wrapped token. Borrow USDC against it, repay on your own schedule, and recover your Bitcoin even if Writz disappears. Live on Stellar testnet.
+
+Every position is public on chain. Writz has no token.
+
+## Official links
+
+- [Website](https://writz.xyz): the official site
+- [Docs](https://docs.writz.xyz): how Writz works, products, security model, developer reference
+- [Docs for AI agents](https://docs.writz.xyz/llms.txt): the documentation index
+- [Testnet app](https://testnet.writz.xyz): test BTC and test USDC, no real funds
+- [GitHub](https://github.com/WritzProtocol/writz): source code, Apache 2.0
+- [X](https://x.com/WritzProtocol): the official account
+
+## Reference
+
+- [Whitepaper](https://writz.xyz/whitepaper): version 1.0, July 2026. The position privacy it describes is not part of Writz.
+- [Brand assets](https://writz.xyz/brand): logos, colours and approved descriptions
