@@ -19,7 +19,7 @@ export function Hero() {
               Live on Stellar testnet
             </span>
             <h1 id="hero-h">
-              Lock Bitcoin. Borrow dollars. <span className="tell">Tell no one.</span>
+              Lock Bitcoin. Borrow dollars. <span className="tell">No bridge.</span>
             </h1>
             <p className="lead">
               Writz Protocol is a Bitcoin lending protocol on Stellar. Get dollars without selling your Bitcoin: a script
