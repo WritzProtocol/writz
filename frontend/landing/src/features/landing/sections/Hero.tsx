@@ -19,11 +19,11 @@ export function Hero() {
               Live on Stellar testnet
             </span>
             <h1 id="hero-h">
-              Lock Bitcoin. Borrow dollars. <span className="tell">No bridge.</span>
+              Native Bitcoin lending <span className="accent">on Stellar.</span>
             </h1>
             <p className="lead">
-              Writz Protocol is a Bitcoin lending protocol on Stellar. Get dollars without selling your Bitcoin: a script
-              holds it on Bitcoin, not a company, and it never becomes a wrapped token.
+              Writz Protocol lets you borrow USDC without selling your Bitcoin. A script holds it on Bitcoin, not a company,
+              and it never becomes a wrapped token.
             </p>
             <div className="ctas">
               <a className="btn btn-gold" href={APP_ROUTE}>

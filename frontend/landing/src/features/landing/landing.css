@@ -629,7 +629,7 @@ html:has(.landing) body {
   line-height: 1.02;
 }
 
-.home .hero h1 .tell {
+.home .hero h1 .accent {
   display: block;
   color: var(--link);
 }
