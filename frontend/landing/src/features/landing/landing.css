@@ -1358,6 +1358,12 @@ html:has(.landing) body {
   }
 }
 
+@keyframes landing-rise-opaque {
+  from {
+    transform: translateY(20px);
+  }
+}
+
 @keyframes landing-field {
   from {
     opacity: 0;
@@ -1375,6 +1381,12 @@ html:has(.landing) body {
   .home .hero-copy > *,
   .home .facts li {
     animation: landing-rise var(--dur-section) var(--ease-enter) backwards;
+  }
+
+  /* LCP is the h1 or the lead depending on viewport; starting them at opacity 0 delays the metric. */
+  .home .hero-copy > h1,
+  .home .hero-copy > .lead {
+    animation-name: landing-rise-opaque;
   }
 
   .home .hero-copy > :nth-child(1) { animation-delay: 40ms; }
