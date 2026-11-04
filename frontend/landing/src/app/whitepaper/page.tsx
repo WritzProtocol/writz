@@ -13,7 +13,7 @@ const TITLE = "Writz Protocol whitepaper";
 const SUBTITLE =
   "Trustless Bitcoin Lending with Zero-Knowledge Position Privacy on Stellar";
 const DESCRIPTION =
-  "The technical whitepaper for Writz Protocol: stateless Bitcoin SPV verification, Groth16 position privacy and a Bitcoin lending market on Stellar Soroban.";
+  "The v1.0 technical whitepaper for Writz Protocol: Bitcoin SPV verification and a lending market on Stellar, published in July 2026 and archived on Zenodo.";
 
 const PDF_PATH = "/whitepaper/writz-protocol-whitepaper.pdf";
 const PAGES = 21;
@@ -27,13 +27,13 @@ const DOI_URL = `https://doi.org/${DOI}`;
 const ZENODO_URL = "https://zenodo.org/records/23148521";
 
 export const metadata: Metadata = {
-  title: `${TITLE} - Writz`,
+  title: TITLE,
   description: DESCRIPTION,
   alternates: { canonical: "/whitepaper" },
   openGraph: {
     type: "article",
     siteName: SITE_NAME,
-    title: `${TITLE}: ${SUBTITLE}`,
+    title: TITLE,
     description: DESCRIPTION,
     url: "/whitepaper",
     images: [OG_IMAGE],
@@ -141,7 +141,7 @@ export default function WhitepaperPage() {
             <div className="lockup" role="img" aria-label="Writz" />
           </Link>
           <h1>{TITLE}</h1>
-          <p className="lead">{SUBTITLE}.</p>
+          <p className="lead">Version {VERSION}, as published in {DATE_LABEL}.</p>
 
           <ul className="doc-meta">
             <li>
@@ -182,13 +182,14 @@ export default function WhitepaperPage() {
         <section>
           <p className="label">Abstract</p>
           <h2>What the paper argues</h2>
+          <p className="caption">
+            This page is the record of version {VERSION}. The position privacy the paper describes is
+            not part of Writz: every position is public on chain. Bitcoin verification has since moved
+            to an on-chain header light client.
+          </p>
           {ABSTRACT.map((p) => (
             <p key={p.slice(0, 24)}>{p}</p>
           ))}
-          <p className="caption">
-            Since this version, the position privacy described in the paper is planned as a
-            separate, opt-in edition, in progress. Writz v1 positions are public on chain.
-          </p>
           <p className="caption">
             Writz Protocol is live on Stellar testnet, not mainnet. The paper is informational and is
             not financial advice or an offer of any security.
