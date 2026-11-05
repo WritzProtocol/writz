@@ -30,30 +30,31 @@
   z-index: -1;
   top: 72px;
   bottom: 0;
-  left: calc(50% + 40px);
+  /* Bottom of the cut sits in the column gap; the -16deg lean then clears the text above it. */
+  left: calc((100% - min(100% - 2 * var(--gut), var(--max))) / 2 + min(100% - 2 * var(--gut), var(--max)) - 420px - 200px);
   right: -40%;
   background: var(--surface);
   transform: skewX(-16deg);
-  transform-origin: top left;
+  transform-origin: bottom left;
 }
 
 .about .mast-in {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 420px;
-  gap: 96px;
+  gap: 220px;
   align-items: center;
 }
 
 .about .masthead h1 {
   margin-bottom: 28px;
-  font-size: clamp(48px, 6vw, 84px);
+  font-size: clamp(48px, 5.4vw, 76px);
   letter-spacing: -0.035em;
   line-height: 1;
   text-wrap: balance;
 }
 
 .about .masthead .lead {
-  max-width: 34em;
+  max-width: 26em;
 }
 
 .about .masthead section.status {
