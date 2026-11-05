@@ -41,7 +41,7 @@ The relayer's state is rebuilt from public Stellar data and checked against the 
 | Append-only archive of `writz-lend` events | #378, PR #385 |
 | `rebuild-lend-state`: replay from RPC, verified against the chain, swapped in only if every check passes | #380, PR #386 |
 | Archive export, and rebuild from the export past RPC retention | #266, PR #393 |
-| Recovery runbook and command reference | #268, PR #387, [`relayer-recovery.md`](../relayer-recovery.md) |
+| Recovery runbook and command reference, followed from a fresh clone and an empty data directory | #268, PRs #387 and #404, [`relayer-recovery.md`](../relayer-recovery.md) |
 | Live relayer health, with `lendEvents` and `releases` | [`api.testnet.writz.xyz/health`](https://api.testnet.writz.xyz/health) |
 | Recovery drill on testnet, recorded | #273. **Pending** |
 
@@ -58,11 +58,11 @@ The relayer's state is rebuilt from public Stellar data and checked against the 
 
 ## Review pass
 
-#275 ran before the evidence was recorded: contract, relayer and app suites, clippy, lint and builds; the property test at 10 times its CI case count; the Lend tab at 360, 768 and 1280 px with no console errors; keyboard-only wallet connection; and the deployment record against every environment.
+#275 ran before the evidence was recorded, and is closed: contract, relayer and app suites, clippy, lint and builds; the property test at 10 times its CI case count; the Lend tab at 360, 768 and 1280 px with no console errors; keyboard-only wallet connection; and the deployment record against every environment.
 
 ## Not done
 
 - **Recovery drill video (#273)** and **Lend tab video (#274)**: not recorded yet. This file links them when they are.
 - **Light theme**: the app ships a dark theme only (`color-scheme: dark`), so there is no light theme to check.
-- **Forced publish failure on the live relayer**: covered by the tests of PR #384, not yet forced on testnet.
+- **Forced publish failure on the live relayer**: covered by the tests of PR #384. The live relayer published the release of the repaid loan above, but a failure was not forced on testnet.
 - **Bitcoin release of the repaid loan**: the repayment is on Stellar. Releasing the 5,000 sats on signet is a step the borrower signs and is not part of this run.
