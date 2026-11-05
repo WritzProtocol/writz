@@ -32,12 +32,8 @@ export const metadata: Metadata = {
   },
 };
 
-/**
- * Not an email. writz.xyz has no MX record and mail to it does not arrive,
- * which already cost the project one lost security disclosure. See
- * docs/security/bug-bounty.md. Swap this for a mailbox once one exists.
- */
-const CONTACT = "https://x.com/WritzProtocol";
+const CONTACT_EMAIL = "contact@writz.xyz";
+const X_URL = "https://x.com/WritzProtocol";
 
 const INK = "#15181E";
 const GOLD = "#FFC300";
@@ -175,7 +171,6 @@ function Head({ id, title }: { id: string; title: string }) {
 
 const TINTS = [1, 0.72, 0.44, 0.2, 0.1];
 // Pitch 46, bar 18. Generated past any cell width, the strip clips the rest.
-const BARS = Array.from({ length: 24 }, (_, i) => -12 + i * 46);
 
 /** A parallelogram at the brand's one angle. The offset is height dependent. */
 function shear(w: number, h: number) {
@@ -200,8 +195,9 @@ export default function BrandPage() {
           <p className="eyebrow">Press and partners</p>
           <h1>Brand assets</h1>
           <p className="lead">
-            Free to use to refer to us. The rules are at the bottom. Anything else, ask on{" "}
-            <a href={CONTACT} rel="me noreferrer">
+            Free to use to refer to us. The rules are at the bottom. Anything else, write to{" "}
+            <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a> or ask on{" "}
+            <a href={X_URL} rel="me noreferrer">
               X
             </a>
             .
@@ -450,19 +446,6 @@ export default function BrandPage() {
               </div>
             </div>
 
-            <div className="cell">
-              <div className="cap">Shard rule</div>
-              <div className="shard" style={{ background: GRAPHITE, marginBottom: 8 }}>
-                {BARS.map((x) => (
-                  <span key={x} style={{ left: x, background: GOLD }} />
-                ))}
-              </div>
-              <div className="shard" style={{ background: PAPER }}>
-                {BARS.map((x) => (
-                  <span key={x} style={{ left: x, background: DEEP }} />
-                ))}
-              </div>
-            </div>
 
             <div className="cell">
               <div className="cap">Redaction bar</div>
@@ -621,10 +604,11 @@ export default function BrandPage() {
       <div className="colophon">
         <div className="wrap">
           Questions, or a use not covered here:{" "}
-          <a href={CONTACT} rel="me noreferrer">
+          <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>,{" "}
+          <a href={X_URL} rel="me noreferrer">
             @WritzProtocol
           </a>{" "}
-          or{" "}
+          on X, or{" "}
           <a href="https://github.com/WritzProtocol/writz/issues" rel="noreferrer">
             GitHub
           </a>

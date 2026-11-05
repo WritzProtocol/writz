@@ -431,22 +431,6 @@
   color: var(--muted);
 }
 
-.press-root .shard {
-  position: relative;
-  height: 54px;
-  overflow: hidden;
-  border-radius: 6px;
-}
-
-.press-root .shard span {
-  position: absolute;
-  top: -12px;
-  width: 18px;
-  height: 80px;
-  opacity: 0.5;
-  transform: skewX(-16deg);
-}
-
 .press-root .tints {
   display: flex;
   gap: 5px;
