@@ -5,6 +5,7 @@ const PAGES = [
   { path: "/", lastModified: "2026-11-03" },
   { path: "/whitepaper", lastModified: "2026-11-03" },
   { path: "/brand", lastModified: "2026-11-03" },
+  { path: "/about", lastModified: "2026-11-04" },
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {
