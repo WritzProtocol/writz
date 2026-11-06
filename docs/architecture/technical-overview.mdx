@@ -74,7 +74,7 @@ Testnet deployment: `writz-lend` `CD3BRE32LDNDHAEVI6H35UC3NIRREW5BLH64AZMHSQY3LE
 | Storage and TTL | Positions and balances in persistent storage with deployment-set lifetimes, and `refresh_*` functions anyone can call to keep entries alive ([details](/how-it-works/stellar-side#storage-and-ttl-management)) |
 | Authorization | `require_auth` on every state change; the borrower's Stellar account owns the position |
 | Multisig accounts | Admin and operational accounts as 2-of-3 Stellar multisig (designed) |
-| SEP-40 oracle interface | Reflector BTC/USD through `lastprice` |
+| Price feeds on Soroban | Reflector BTC/USD through its SEP-40 `lastprice` (live); RedStone's BTC/USD push feed through `read_price_and_timestamp` (designed) |
 
 Positions, amounts and collateral are public on chain, as in any open lending market.
 
