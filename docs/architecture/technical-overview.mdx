@@ -124,6 +124,8 @@ A keeper repays the debt of an unhealthy or matured loan into escrow. `writz-len
 
 ## Composability
 
+Writz is built so that other Stellar protocols can use native Bitcoin without rebuilding what makes it safe. The hard part, proving a Bitcoin lock and enforcing a default through pre-signed transactions, lives in one audited core; everything that touches another protocol is a thin piece on top of it. Lending markets can accept the Bitcoin as collateral, savings vaults can supply the USDC that borrowers draw, and any project can verify Bitcoin payments and locks on Soroban. Each of these is built and audited by Writz; the protocol on the other side decides whether to use it.
+
 <img className="block dark:hidden" src="/diagrams/composability.svg" alt="How other protocols build on Writz" />
 <img className="hidden dark:block" src="/diagrams/composability-dark.svg" alt="How other protocols build on Writz" />
 
