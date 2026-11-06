@@ -39,7 +39,7 @@ The BTCfi market grew 28x in 18 months - from $304M to $8.6B TVL between January
 There is currently no protocol that is simultaneously:
 
 - **Trustless** - BTC secured by Bitcoin Script itself, not by any human or committee
-- **Native** - real BTC that never leaves Bitcoin, verified on-chain by an SPV light client, with no bridge and no wrapped token
+- **Native** - real BTC that never leaves Bitcoin, verified on-chain by an SPV light client, with no bridge and no wrapped Bitcoin
 - **On Stellar** - where native USDC lives
 
 Writz is built to be all three. Writz Lend positions are public on chain, like in any other lending market.

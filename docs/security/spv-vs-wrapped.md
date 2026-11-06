@@ -5,7 +5,7 @@ description: "Where an SPV light client differs from wrapped Bitcoin and bridges
 
 **Wrapped Bitcoin, bridges and SPV: what actually differs.**
 
-Writz never wraps Bitcoin. Your BTC stays on Bitcoin, in a script that only your key can spend alone after the time-lock, and Stellar learns about it through an SPV light client: a Soroban contract (`bitcoin-spv`) that checks Bitcoin block headers and Merkle proofs. People sometimes ask whether an SPV light client is "just another bridge". It is not, but it is not free of trust either. The tables below say exactly where the difference lies.
+Writz never wraps Bitcoin: no token anyone can hold, trade or redeem stands for it. Your BTC stays on Bitcoin, in a script that only your key can spend alone after the time-lock, and Stellar learns about it through an SPV light client: a Soroban contract (`bitcoin-spv`) that checks Bitcoin block headers and Merkle proofs. People sometimes ask whether an SPV light client is "just another bridge". It is not, but it is not free of trust either. The tables below say exactly where the difference lies.
 
 Items marked **planned** are not built yet. They stay marked until they ship. The mechanisms that are live today are described in the [Security Model](/security/security-model) and in [How SPV Verification Works](/how-it-works/spv-verification).
 
@@ -13,13 +13,13 @@ Items marked **planned** are not built yet. They stay marked until they ship. Th
 
 ## Who holds the Bitcoin, and who can move it
 
-| | Custodial wrapped BTC | Multisig or federated bridge | Bitcoin staking with slashing (Babylon-style) | Writz (SPV light client) |
+| | Custodial wrapped BTC | Multisig or federated bridge | Bitcoin staking with slashing | Writz (SPV light client) |
 |---|---|---|---|---|
 | Where the BTC sits | With a custodian | In an address controlled by a group of signers | In the staker's own script | In the user's own script, one output per position |
 | Who can move it | The custodian | Any quorum of the signers | Only the script's paths; slashing needs proof of misbehaviour | Only the script's paths: user and protocol together, or the user alone after the time-lock |
 | Can the operator take the BTC | Yes | Yes, with a quorum | No | No |
 | Is there a pooled reserve to steal | Yes | Yes | No | No |
-| What represents the BTC on the other chain | A token, transferable | A token, transferable | A staking position | A loan position; no Bitcoin token is minted |
+| What represents the BTC on the other chain | A token, transferable | A token, transferable | A staking position | A loan position. Through a lending-market adapter, a Writz Vault Unit: not transferable, not redeemable, burned on release |
 | If the operator disappears | Token holders hold an unbacked claim | Token holders hold an unbacked claim | The staker unbonds through the script | The user spends the time-lock path with their own key |
 
 ## Trust assumptions
