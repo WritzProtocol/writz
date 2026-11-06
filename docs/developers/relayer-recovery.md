@@ -77,8 +77,12 @@ Contract views can only be read at the current ledger, so the command reads the 
 
 The rebuild needs public RPC access only, with no copy of anyone's database, and a source of events never has to be trusted, because the chain proves or rejects the result.
 
+The relayer depends on two packages of this repository through `file:` paths, and Bun resolves them in place, so each needs its own install first, as the relayer's `Dockerfile` does. Without them the command stops with `Cannot find module`.
+
 ```bash
-cd relayer
+(cd bitcoin-script && bun install --frozen-lockfile && bun run build)
+(cd packages/writz-lend && bun install --frozen-lockfile)
+cd relayer && bun install --frozen-lockfile
 export WRITZ_LEND_ID=<the current writz-lend, from contracts/deployments/testnet.md>
 export WRITZ_LEND_DEPLOY_LEDGER=<its deployment ledger, from the same file>
 bun run rebuild-lend-state

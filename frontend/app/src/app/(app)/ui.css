@@ -29,6 +29,8 @@
 body:has(.app) { background: var(--bg); }
 .app *, .app *::before, .app *::after { box-sizing: border-box; }
 .app :focus-visible { outline: 2px solid var(--mark); outline-offset: 2px; }
+/* The wallet kit mounts on <body>, outside .app; lib/wallet/kitA11y.ts makes its items focusable. */
+.stellar-wallets-kit :focus-visible { outline: 2px solid var(--mark); outline-offset: 2px; }
 .app ::selection { background: var(--gold); color: var(--ink); }
 .app :where(h1, h2, h3, p, dl, dd, ol, ul) { margin: 0; }
 .app :where(h1, h2, h3) { color: var(--heading); }

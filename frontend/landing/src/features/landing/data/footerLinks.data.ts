@@ -20,6 +20,7 @@ export const footerLinkGroups: FooterLinkGroup[] = [
       { label: "How it works", href: `${DOCS_URL}/introduction/how-writz-works` },
       { label: "Security model", href: `${DOCS_URL}/security/security-model` },
       { label: "Whitepaper", href: "/whitepaper" },
+      { label: "About", href: "/about" },
       { label: "Brand assets", href: "/brand" },
     ],
   },

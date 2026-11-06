@@ -1,0 +1,453 @@
+.about h2 {
+  margin: 0;
+}
+
+.about .sec-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px 32px;
+  margin-bottom: 40px;
+}
+
+.about .sec-head p {
+  margin: 0;
+  color: var(--muted);
+}
+
+/* ── Masthead ───────────────────────────────────────────────────────── */
+
+.about .masthead {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  padding: calc(72px + 88px) 0 96px;
+}
+
+.about .masthead .field {
+  position: absolute;
+  z-index: -1;
+  top: 72px;
+  bottom: 0;
+  /* Bottom of the cut sits in the column gap; the -16deg lean then clears the text above it. */
+  left: calc((100% - min(100% - 2 * var(--gut), var(--max))) / 2 + min(100% - 2 * var(--gut), var(--max)) - 420px - 200px);
+  right: -40%;
+  background: var(--surface);
+  transform: skewX(-16deg);
+  transform-origin: bottom left;
+}
+
+.about .mast-in {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 420px;
+  gap: 220px;
+  align-items: center;
+}
+
+.about .masthead h1 {
+  margin-bottom: 28px;
+  font-size: clamp(48px, 5.4vw, 76px);
+  letter-spacing: -0.035em;
+  line-height: 1;
+  text-wrap: balance;
+}
+
+.about .masthead .lead {
+  max-width: 26em;
+}
+
+.about .masthead section.status {
+  padding: 0;
+  border: 0;
+}
+
+.about .status h2 {
+  margin-bottom: 20px;
+  font-size: 21px;
+  letter-spacing: -0.014em;
+}
+
+.about .status dl {
+  margin: 0;
+}
+
+.about .status dl > div {
+  padding: 16px 0;
+  border-top: 1px solid var(--line-strong);
+}
+
+.about .status dt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--heading);
+}
+
+.about .status .tick {
+  width: 6px;
+  height: 12px;
+}
+
+.about .status dd {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.5;
+  text-wrap: pretty;
+}
+
+/* ── Team ───────────────────────────────────────────────────────────── */
+
+.about .team {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* 20 / 70 is tan(16deg): the notch runs at the mark's angle. */
+.about .team li {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 32px 24px 20px;
+  background: var(--surface);
+  clip-path: polygon(20px 0, 100% 0, 100% 100%, 0 100%, 0 70px);
+}
+
+.about .team li:nth-child(even) {
+  background: var(--deep);
+}
+
+/* 84px tall, so the parallelogram offset is 84 * tan(16deg) = 24px. */
+.about .avatar {
+  position: relative;
+  width: 112px;
+  height: 84px;
+  margin: 0 0 28px 8px;
+  background: var(--bg);
+  clip-path: polygon(24px 0, 100% 0, calc(100% - 24px) 100%, 0 100%);
+}
+
+.about .avatar span {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--accent);
+}
+
+.about .avatar i {
+  position: absolute;
+  inset: 0;
+  background: center 30% / cover no-repeat;
+  filter: grayscale(1) contrast(1.05);
+}
+
+.about .team h3 {
+  margin: 0;
+  font-size: 21px;
+  letter-spacing: -0.014em;
+  line-height: 1.25;
+}
+
+.about .team .role {
+  margin: 6px 0 0;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--accent);
+}
+
+.about .team .scope {
+  margin: 8px 0 0;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.about .team .links {
+  display: flex;
+  gap: 4px 16px;
+  margin: auto 0 0;
+  padding-top: 20px;
+  font-size: 14px;
+}
+
+.about .team .links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--body);
+}
+
+/* ── Proof ──────────────────────────────────────────────────────────── */
+
+.about .proof {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-bottom: 1px solid var(--line);
+}
+
+.about .proof li {
+  border-top: 1px solid var(--line);
+}
+
+.about section .proof a {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr) auto;
+  gap: 24px;
+  align-items: baseline;
+  padding: 20px 16px;
+  color: var(--body);
+  text-decoration: none;
+  transition: background-color var(--dur-micro) var(--ease-enter);
+}
+
+.about .proof .nm {
+  font-size: 17px;
+  font-weight: 500;
+  color: var(--heading);
+}
+
+.about .proof .nm.mono {
+  font-family: var(--font-mono);
+  font-size: 16px;
+}
+
+.about .proof .note {
+  font-size: 16px;
+}
+
+.about .proof .where {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--muted);
+  white-space: nowrap;
+  transition: color var(--dur-micro) var(--ease-enter);
+}
+
+.about .proof .arrow {
+  transition: transform var(--dur-micro) var(--ease-enter);
+}
+
+/* 40 / 139.5 is tan(16deg). */
+/* ── Contact ────────────────────────────────────────────────────────── */
+
+.about #contact {
+  padding: 112px 0 136px;
+  text-align: center;
+}
+
+.about #contact h2 {
+  margin-bottom: 20px;
+  font-size: 17px;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+
+.about section a.email {
+  display: inline-block;
+  font-size: clamp(32px, 6vw, 72px);
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  line-height: 1.1;
+  color: var(--heading);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.16em;
+  text-decoration-color: var(--accent);
+  overflow-wrap: anywhere;
+}
+
+.about #contact p {
+  max-width: 36em;
+  margin: 28px auto 0;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .about section .proof a:hover {
+    background: var(--surface);
+  }
+
+  .about .proof a:hover .where {
+    color: var(--accent);
+  }
+
+  .about .proof a:hover .arrow {
+    transform: translate(2px, -2px);
+  }
+
+  .about .team .links a:hover {
+    color: var(--heading);
+  }
+
+  .about section a.email:hover {
+    color: var(--accent);
+  }
+
+}
+
+.about section .proof a:focus-visible {
+  outline-offset: -2px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .about .masthead .field {
+    animation: landing-field var(--dur-signature) var(--ease-enter) 120ms backwards;
+  }
+}
+
+@media (max-width: 1100px) {
+  .about .masthead .field {
+    display: none;
+  }
+
+  .about .mast-in {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 48px;
+  }
+
+  .about .masthead section.status {
+    margin: 0 calc(-1 * var(--gut));
+    padding: 72px var(--gut) 32px;
+    background: var(--surface);
+    clip-path: polygon(40px 0, 100% 0, 100% 100%, 0 100%, 0 139.5px);
+  }
+
+  .about .status dl {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0 32px;
+  }
+
+  .about .team {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+}
+
+@media (max-width: 720px) {
+  .about .masthead {
+    padding: calc(72px + 40px) 0 0;
+  }
+
+  .about .masthead section.status {
+    padding: 64px var(--gut) 24px;
+    clip-path: polygon(24px 0, 100% 0, 100% 100%, 0 100%, 0 83.7px);
+  }
+
+  .about .status dl {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .about .team {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .about .team li {
+    padding: 28px 20px 12px;
+  }
+
+  /* 63px tall: offset 63 * tan(16deg) = 18px. */
+  .about .avatar {
+    width: 84px;
+    height: 63px;
+    margin-bottom: 20px;
+    clip-path: polygon(18px 0, 100% 0, calc(100% - 18px) 100%, 0 100%);
+  }
+
+  .about .team .links {
+    padding-top: 8px;
+  }
+
+  .about section .proof a {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 4px 16px;
+    padding: 16px 0;
+  }
+
+  .about .proof .note {
+    grid-row: 2;
+    grid-column: 1 / -1;
+    font-size: 15px;
+  }
+
+      .about #contact {
+    padding: 72px 0 96px;
+  }
+}
+
+.about section#check {
+  border-bottom: 0;
+}
+
+/* ── Recognition ────────────────────────────────────────────────────── */
+
+.about .awards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.about .awards li {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 40px 32px 32px;
+  background: var(--surface);
+  border-top: 2px solid var(--accent);
+}
+
+.about .awards .kind {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.about .awards .what {
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: var(--heading);
+  text-wrap: balance;
+}
+
+.about .awards .detail {
+  font-size: 16px;
+  color: var(--muted);
+}
+
+.about section .awards a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  font-size: 15px;
+}
+
+@media (max-width: 720px) {
+  .about .awards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .about .awards .what {
+    font-size: 24px;
+  }
+}

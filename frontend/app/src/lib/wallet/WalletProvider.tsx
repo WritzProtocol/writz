@@ -11,6 +11,7 @@ import {
 } from "react";
 import { Horizon, NotFoundError } from "@stellar/stellar-sdk";
 import { ensureKit } from "@/lib/wallet/kit";
+import { installKitA11y } from "@/lib/wallet/kitA11y";
 import { config } from "@/config";
 import { pollarClient, signMessageWithPollar, signTransactionWithPollar } from "@/lib/wallet/pollar";
 import { usePollarSession, type PollarSession } from "@/lib/wallet/pollarSession";
@@ -109,6 +110,9 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const creatingPollarWallet = useRef(false);
 
   const address = backend === "pollar" ? pollarSession.address : kitAddress;
+
+  // Before the first connect, so the patch knows which control opened the kit.
+  useEffect(installKitA11y, []);
 
   // ── Kit session restore on mount ──
   useEffect(() => {

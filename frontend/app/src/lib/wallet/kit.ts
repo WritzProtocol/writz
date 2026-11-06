@@ -5,6 +5,7 @@ import { LobstrModule } from "@creit.tech/stellar-wallets-kit/modules/lobstr";
 import { AlbedoModule } from "@creit.tech/stellar-wallets-kit/modules/albedo";
 import { RabetModule } from "@creit.tech/stellar-wallets-kit/modules/rabet";
 import { config } from "@/config";
+import { installKitA11y } from "./kitA11y";
 
 // The kit writes these onto <html> as --swk-* properties, so they resolve against the shared brand tokens.
 const WRITZ_WALLET_THEME = {
@@ -50,6 +51,7 @@ export function ensureKit(): typeof StellarWalletsKit {
         new RabetModule(),
       ],
     });
+    installKitA11y();
     initialized = true;
   }
   return StellarWalletsKit;
