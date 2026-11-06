@@ -7,7 +7,7 @@ export function Evidence() {
       <div className="wrap board">
         <div className="ptile head" data-reveal>
           <h2 id="proof-h">The protocol runs on contracts you can read.</h2>
-          <a className="textlink" href={GITHUB_URL}>
+          <a className="textlink" href={GITHUB_URL} data-umami-event="read-source" data-umami-event-where="evidence">
             Read the source
           </a>
         </div>
@@ -18,6 +18,8 @@ export function Evidence() {
             <a
               className="addr"
               href={explorerUrl(c.address)}
+              data-umami-event="contract-explorer"
+              data-umami-event-label={c.name}
               target="_blank"
               rel="noreferrer"
               aria-label={`${c.name} on Stellar Expert, address ${c.address}`}
@@ -29,7 +31,7 @@ export function Evidence() {
         <div className="ptile facts2" data-reveal>
           <p>Open source under Apache 2.0.</p>
           <p>
-            Not audited yet. <a href={`${DOCS_URL}/security/security-model`}>Read the security model</a>
+            Not audited yet. <a href={`${DOCS_URL}/security/security-model`} data-umami-event="security-model" data-umami-event-where="evidence">Read the security model</a>
           </p>
           <p>Live on Stellar testnet. Not on mainnet yet.</p>
         </div>

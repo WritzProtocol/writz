@@ -32,7 +32,13 @@ export function Navbar() {
         <div className="nav-end">
           <nav className="nav-links">
             {navItems.map((item) => (
-              <a key={item.label} href={item.href} className={item.keepOnMobile ? "keep" : undefined}>
+              <a
+                key={item.label}
+                href={item.href}
+                className={item.keepOnMobile ? "keep" : undefined}
+                data-umami-event="nav-link"
+                data-umami-event-label={item.label}
+              >
                 {item.label}
               </a>
             ))}
@@ -41,7 +47,7 @@ export function Navbar() {
             <span className="dot" />
             Live on Stellar testnet
           </span>
-          <a className="btn btn-gold" href={APP_ROUTE}>
+          <a className="btn btn-gold" href={APP_ROUTE} data-umami-event="open-app" data-umami-event-where="nav">
             Open app
           </a>
         </div>

@@ -11,10 +11,10 @@ export function ClosingCard() {
         </h2>
         <p>Test funds only. Writz never asks for your keys.</p>
         <div className="ctas">
-          <a className="btn btn-gold" href={APP_ROUTE}>
+          <a className="btn btn-gold" href={APP_ROUTE} data-umami-event="open-app" data-umami-event-where="closing">
             Open app
           </a>
-          <a className="btn" href={DOCS_URL}>
+          <a className="btn" href={DOCS_URL} data-umami-event="read-docs" data-umami-event-where="closing">
             Read the docs
           </a>
         </div>
@@ -40,7 +40,9 @@ export function Footer() {
               <ul>
                 {g.links.map((l) => (
                   <li key={l.label}>
-                    <a href={l.href}>{l.label}</a>
+                    <a href={l.href} data-umami-event="footer-link" data-umami-event-label={l.label}>
+                      {l.label}
+                    </a>
                   </li>
                 ))}
               </ul>

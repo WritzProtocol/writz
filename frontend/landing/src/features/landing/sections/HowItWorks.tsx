@@ -33,7 +33,7 @@ export function HowItWorks() {
     <section id="how" className="how" aria-labelledby="how-h">
       <div className="wrap sec-head" data-reveal>
         <h2 id="how-h">Your Bitcoin never leaves Bitcoin.</h2>
-        <a className="textlink" href={`${DOCS_URL}/introduction/how-writz-works`}>
+        <a className="textlink" href={`${DOCS_URL}/introduction/how-writz-works`} data-umami-event="read-docs" data-umami-event-where="how-it-works">
           Read the details
         </a>
       </div>
