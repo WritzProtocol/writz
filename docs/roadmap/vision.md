@@ -2,49 +2,47 @@
 title: "Vision"
 ---
 
-**In 2028, any Bitcoin holder in the world will be able to borrow USDC against real BTC, in minutes, without giving up custody - from their phone.**
+**By 2028, any Bitcoin holder should be able to borrow USDC against real BTC in minutes, from a phone, without giving up custody.**
 
-That is the Writz vision. No custodian. No bridge. No wrapped BTC. A transaction that starts with Bitcoin in your wallet and ends with USDC in your account, enforced entirely by math.
+That is the Writz vision. No custodian, no bridge, no wrapped BTC: a loan that starts with Bitcoin in your wallet and ends with USDC in your account, enforced by a Bitcoin script and Stellar smart contracts.
 
 ---
 
 ## Why This Vision Is Worth Building
 
-Bitcoin is the world's largest crypto asset by market cap. Over 900 million people own it. The vast majority of them - 77% by most estimates - have never used it in DeFi.
-
-Not because they don't want to. Because every option today requires one of two concessions: give your BTC to a custodian or signer set (WBTC, tBTC), or bridge it onto another chain as a wrapped token.
+Bitcoin is the largest crypto asset by market capitalization, and most of it has never been used in DeFi. Every option today requires one of two concessions: give your BTC to a custodian or signer set (WBTC, tBTC), or bridge it onto another chain as a wrapped token.
 
 Writz removes both.
 
-The BTC stays on Bitcoin - secured by Bitcoin Script, accessible only by the user. The loan happens on Stellar - where native USDC lives - and the deposit is verified there by an on-chain Bitcoin light client, not by a bridge or an oracle. If Writz disappears, a timelock in the Bitcoin script lets the user take the BTC back alone.
+The BTC stays on Bitcoin, in a script that cannot move it without the user's signature. The loan happens on Stellar, where native USDC lives, and the deposit is verified there by an on-chain Bitcoin light client, not by a bridge or an oracle. If Writz disappears, a timelock in the Bitcoin script lets the user take the BTC back alone.
 
-This is not an incremental improvement on existing BTCfi. It is a different category.
+It is a different category from wrapped BTC, not a better wrapper.
 
 ---
 
 ## The Two-Layer Moat
 
-Writz's competitive position is not built on branding or funding. It is built on compounding technical depth.
+Writz's position rests on technical depth that compounds over time.
 
-### Layer 1 - Time
+### Layer 1: Time
 
-Building a Bitcoin SPV client on Soroban from scratch and getting it audited takes 12–18 months. A well-funded team starting today arrives in late 2027 - by which time Writz will have:
+Building a Bitcoin light client on Soroban, getting it audited and running it on mainnet takes time. A team starting now would also have to earn what Writz aims to have by then:
 
-- Over a year of mainnet operation with no security incidents
-- Real TVL, organic user growth, and verifiable on-chain metrics
-- An open-source SPV SDK integrated into the Stellar ecosystem
+- A mainnet record with no security incidents
+- Real TVL and on-chain metrics anyone can verify
+- An open-source SPV SDK used by other Stellar projects
 
-The first-mover in a technical niche this specific tends to hold the position. The cost of switching from an established, audited protocol to an unproven one is too high for rational users.
+In a niche this specific, users have little reason to move from an audited protocol with a track record to an unproven one.
 
-### Layer 2 - Ecosystem Lock-in
+### Layer 2: Ecosystem Lock-in
 
-The Writz Bitcoin SPV SDK is free infrastructure for the Stellar ecosystem. Every Stellar wallet that integrates it, every protocol that builds on it, every developer who ships a product using it: these are switching costs that accumulate invisibly.
+The Writz Bitcoin SPV SDK is free infrastructure for the Stellar ecosystem. Every wallet that integrates it and every protocol that builds on it adds to the cost of switching away.
 
-By the time there are 5 integrations, Writz is load-bearing infrastructure for Stellar's Bitcoin-awareness. By 10 integrations, Writz is the canonical answer to "how does Bitcoin work on Stellar?" Replacing it requires not just building a better contract - it requires convincing every integration partner to migrate simultaneously.
+By the time there are 5 integrations, Writz is load-bearing infrastructure for Stellar's Bitcoin-awareness. By 10 integrations, Writz is the canonical answer to "how does Bitcoin work on Stellar?" Replacing it would take more than a better contract: every integration would have to migrate.
 
 ---
 
-## Writz in 2028 - The Full Picture
+## Writz in 2028
 
 ### $100M+ TVL in Writz Lend
 
@@ -73,11 +71,11 @@ The Writz Bitcoin SPV SDK is integrated into:
 - Lobstr (BTC yield product in the savings section)
 - 7+ Stellar DeFi protocols using the SDK for Bitcoin verification
 
-Writz has proposed and is co-authoring a Stellar SEP (Standards Evolution Proposal) for Bitcoin SPV on Stellar - establishing the verification interface as a standard across the ecosystem.
+A Stellar SEP (Stellar Ecosystem Proposal) for Bitcoin SPV, co-authored by Writz, makes the verification interface a standard across the ecosystem.
 
 ### Institutional Presence
 
-Writz has 5+ institutional deposits of $100K+ each - crypto funds, family offices, and mining companies using the protocol for treasury management.
+Five or more institutions, such as crypto funds, family offices and mining companies, each deposit $100K or more and use the protocol for treasury management.
 
 ---
 
@@ -95,12 +93,8 @@ The features below are directions we want to explore after Writz Lend is live on
 
 ## The Bigger Picture
 
-Writz is not just a product. It is the protocol that connects the world's largest crypto asset to the world's most compliance-friendly blockchain.
-
-Bitcoin is the foundation. Stellar is the network. The house is where the financial future lives.
+Writz connects the largest crypto asset to a network built for payments and regulated stablecoins.
 
 What starts as a lending protocol becomes infrastructure. The SPV SDK becomes the standard. The USDC loans become a gateway for BTC holders who have never touched DeFi.
 
-That is the 2028 vision. The first step is a single Bitcoin transaction, verified by a Soroban contract, followed by the first USDC loan issued against real BTC collateral on mainnet.
-
-That step is months away.
+That is the 2028 vision. Bitcoin deposits are already verified by a Soroban contract on testnet. The next step is the first USDC loan against real BTC on mainnet, targeted for Q2 to Q3 2027.

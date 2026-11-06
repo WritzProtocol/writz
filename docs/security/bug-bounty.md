@@ -25,8 +25,11 @@ before it becomes a problem.
 The following are in-scope for the bug bounty program:
 
 **Soroban contracts (high priority):**
-- `bitcoin-spv` - SPV verification, SHA256d implementation, Merkle proofs
+- `bitcoin-spv` - header validation, difficulty, reorgs, Merkle proofs
 - `writz-lend` - Lending mechanics, interest accrual, liquidation
+
+**Bitcoin scripts:**
+- `bitcoin-script` - P2WSH script construction and the spending paths
 
 **Relayer service:**
 - SPV proof assembly correctness
@@ -69,15 +72,11 @@ these are payable during the testnet phase**; see the notice at the top.
 [github.com/WritzProtocol/writz/security/advisories/new](https://github.com/WritzProtocol/writz/security/advisories/new)
 
 Only you and the maintainers can see it, and it gives us a thread to coordinate
-the fix and the reward in. See [`SECURITY.md`](https://github.com/WritzProtocol/writz/blob/main/SECURITY.md)
+the fix in. See [`SECURITY.md`](https://github.com/WritzProtocol/writz/blob/main/SECURITY.md)
 for the full policy.
 
-> **There is no security mailbox yet.** Earlier versions of this page pointed at
-> `security@writz.io`, a domain with no DNS at all - mail to it bounced, and at
-> least one researcher's disclosure was lost that way. The project has since
-> moved to `writz.xyz`, which is registered but has no MX record yet, so email
-> there does not arrive either. Use the private advisory link above; this note
-> goes away once a mailbox is live.
+> **There is no security mailbox.** The private advisory is the only supported
+> channel. Do not email the addresses that appear in older documents.
 
 **Include in your report:**
 1. A description of the vulnerability
@@ -85,7 +84,7 @@ for the full policy.
 3. Step-by-step reproduction instructions
 4. Proof of concept code or test case (if available)
 5. Your assessment of impact and severity
-6. Your Stellar wallet address for the reward payment
+6. Your Stellar wallet address, for a reward once the paid program is active
 
 ---
 
@@ -95,9 +94,9 @@ for the full policy.
 2. **We acknowledge** within 48 hours
 3. **We assess** the report and confirm the severity within 7 business days
 4. **We fix** the issue; Critical/High findings are patched within 14 days
-5. **We pay** the reward upon fix deployment
+5. **We pay** the reward upon fix deployment (paid program only, from mainnet)
 6. **We publish** a post-mortem (for Critical/High findings) after the fix is live and users are safe
-7. **You can disclose** publicly after the fix is live and 30 days have passed - we will coordinate with you
+7. **You can disclose** publicly once the fix is live, 30 days after the report - we will coordinate with you
 
 We do not pursue legal action against researchers who follow this responsible disclosure process.
 

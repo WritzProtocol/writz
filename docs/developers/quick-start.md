@@ -4,7 +4,7 @@ title: "Quick Start"
 
 > **Building on Writz from your own project?** This page is the contributor guide: it builds and tests this repository. To call the deployed contracts from your app or your Soroban contract, start with [Build on Writz](/developers/integrate). AI coding agents: [For AI Agents](/developers/for-ai-agents).
 
-The core lending and verification logic in this repository is working code, not a mockup: the contracts are deployed on Stellar testnet, and the tests pass (see `docs/developers/runbook.md`). Writz v1 is `bitcoin-spv` and `writz-lend`. `writz-lend/src/oracle.rs`'s `get_btc_price_stroops` calls a real Reflector oracle on testnet (see [The Stellar Side](/how-it-works/stellar-side#oracle-design)). Start here and have something running in under 5 minutes.
+Writz v1 is two Soroban contracts, `bitcoin-spv` and `writz-lend`, both deployed on Stellar testnet. `writz-lend` reads the BTC price from the Reflector oracle on testnet (`get_btc_price_stroops` in `writz-lend/src/oracle.rs`, see [The Stellar Side](/how-it-works/stellar-side#oracle-design)). This page gets the test suites running in a few minutes; the [Testnet Runbook](/developers/runbook) runs the protocol itself.
 
 ---
 
@@ -17,16 +17,16 @@ Install the following before proceeding:
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 rustup target add wasm32v1-none
 
-# Stellar CLI (version 27 or later)
+# Stellar CLI (CI uses 28.1.0)
 # macOS
 brew install stellar-cli
 # Linux
 cargo install --locked stellar-cli
 
-# Node.js 20+
+# Node.js 22 (CI version)
 # https://nodejs.org/
 
-# Bun 1.1+ - bitcoin-script, relayer, frontend and packages/* install with Bun.
+# Bun (CI uses 1.3.14). bitcoin-script, relayer, frontend and packages/* install with Bun.
 curl -fsSL https://bun.sh/install | bash
 ```
 
@@ -65,9 +65,9 @@ Expected output: 72 tests pass.
 ### Relayer service (TypeScript, Bun install + Jest)
 
 The relayer installs with Bun but its suite is Jest (ts-jest), so it must run
-through the package script - plain `bun test` selects Bun's own runner and
-fails. It also imports the local `@writz/*` packages via their built `dist/`
-output, so build those first.
+through the package script: plain `bun test` selects Bun's own runner and
+fails. It also imports the local `@writz/*` packages, so install and build
+those first.
 
 ```bash
 cd bitcoin-script && bun run build
@@ -88,23 +88,22 @@ cd contracts
 stellar contract build
 ```
 
-This produces Wasm artifacts in `contracts/target/wasm32v1-none/release/`:
-- `bitcoin_spv.wasm` - 28.4 KB
-- `writz_lend.wasm` - 23.7 KB
+This produces `bitcoin_spv.wasm` and `writz_lend.wasm` in `contracts/target/wasm32v1-none/release/`. The deployed builds are 45,230 and 94,648 bytes; their sha256 hashes are in [`contracts/deployments/testnet.md`](https://github.com/WritzProtocol/writz/blob/main/contracts/deployments/testnet.md).
 
 ---
 
 ## Use the Testnet Deployments
 
-Both contracts are live on Stellar testnet. You can call them directly without deploying:
+Both contracts are live on Stellar testnet. You can call them directly without deploying. Reads are simulated, so the source account can be any valid address and is not charged:
 
 ```bash
-# Check the SPV contract is alive
+# Read the light client's Bitcoin tip
 stellar contract invoke \
   --id CBX23YKCCJMAMBMSCNP6YVKEXUIYK2CTKSR4TQ3RVBPAFYZFVCW7W4EO \
   --network testnet \
-  -- get_version
-
+  --source-account GB2BSYQS3FRJ5LZSSIDF3ZCSG5MKWJT5SZ3OZO4QRCAMCR357YAVPTWT \
+  --send=no \
+  -- get_best_tip
 ```
 
 ---
@@ -115,13 +114,13 @@ This script tests the Bitcoin locking and release flow on Bitcoin Signet. No fun
 
 ```bash
 cd bitcoin-script
-npm run build
+bun install && bun run build
 
-# Dry run - builds and inspects the P2WSH transaction without broadcasting
-node scripts/e2e_testnet.mjs --dry-run
+# Dry run: builds and inspects the P2WSH transaction without broadcasting
+bun run e2e:dryrun
 
-# Live broadcast (requires Signet BTC - get from a Signet faucet)
-node scripts/e2e_testnet.mjs
+# Live broadcast (requires Signet BTC from a Signet faucet)
+bun run e2e:testnet
 ```
 
 The live broadcast will:
@@ -141,8 +140,9 @@ Reference transactions (already executed on Bitcoin Signet):
 
 `scripts/deploy/deploy_stack.mjs` deploys and wires up both contracts in
 the order they depend on each other. Without `--execute` it only validates its
-inputs and prints the plan. Set `STELLAR_NETWORK=local` to rehearse against the
-local network above. The inputs are listed in `scripts/deploy/.env.example`.
+inputs and prints the plan. Set `STELLAR_NETWORK=local` to rehearse against a
+local Stellar network (`stellar/quickstart --local`). The inputs are listed in
+`scripts/deploy/.env.example`.
 
 ```bash
 (cd contracts && cargo build --release --target wasm32v1-none --locked)
@@ -166,22 +166,28 @@ contracts/
       header.rs     - Bitcoin block header parsing + PoW verification
       merkle.rs     - Merkle proof verification
       crypto.rs     - SHA256d implementation in Soroban Wasm
-      types.rs      - Config, Checkpoint (SpvVerificationResult now lives in the shared `spv-types` crate)
+      types.rs      - Config, Checkpoint, BestTip, HeaderEntry
+    spv-types/src/  - shared types, the on-chain transaction parser, the deposit key proof
     writz-lend/src/
       lib.rs        - lending contract
+      oracle.rs     - Reflector BTC price read
       rates.rs      - kinked interest rate model
-
+    writz-spv-client/src/ - the published Soroban client for bitcoin-spv
 
 relayer/src/
-  index.ts      - Express API: GET /spv-proof/:txid
-  spv.ts        - SPV proof assembly (Esplora + Merkle computation)
-  bitcoin.ts    - Bitcoin types and parsing
+  index.ts          - Express API
+  routes/proof.ts   - GET /spv-proof/:txid
+  bitcoin/spv.ts    - SPV proof assembly (Esplora + Merkle computation)
+  bitcoin/spv-submit.ts - header sync into bitcoin-spv
+  repay-watcher/    - co-signed releases after full repayment
 
 bitcoin-script/src/
   script.ts     - P2WSH redeem script builder
   address.ts    - Deposit address derivation
   spend.ts      - Path A/B PSBT signing
   keys.ts       - Key management utilities
+
+packages/sdk/   - @writz/sdk, the published TypeScript SDK
 ```
 
 ---

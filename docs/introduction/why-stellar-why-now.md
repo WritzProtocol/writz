@@ -2,63 +2,58 @@
 title: "Why Stellar, Why Now"
 ---
 
-Writz is not bringing Bitcoin to DeFi. Writz is making Bitcoin verifiable on Stellar, where native USDC already lives.
+Writz does not bring Bitcoin to another chain. It makes a Bitcoin transaction verifiable on Stellar, where native USDC already lives.
 
-That distinction matters. "Bringing Bitcoin to DeFi" is what every wrapped-token protocol tries to do - WBTC, tBTC, sBTC. They all require trusting someone to hold the real BTC. Writz makes the Bitcoin transaction itself verifiable on Stellar, without moving the BTC or trusting anyone. The BTC stays on Bitcoin. Only the proof crosses chains.
+The difference matters. Wrapped-token systems such as WBTC, tBTC and sBTC move BTC into the hands of a custodian or a signer set and issue a token on another chain in its place. Writz leaves the BTC on Bitcoin, locked in a script the borrower holds a key to. Only the proof that the BTC is locked crosses to Stellar.
 
-This was not possible until 2026. Here is why it is possible now - and why Stellar is the right chain.
+This page explains what makes that practical today, and why Stellar is the chain for it.
 
 ---
 
-## The Infrastructure That Had to Exist First
+## What Writz Builds On
 
 ### Soroban compute for Bitcoin verification
 
-Verifying a Bitcoin transaction on-chain means double-SHA256 over block headers, proof-of-work and difficulty checks, and a Merkle inclusion proof, all inside one Soroban transaction. Soroban's compute budget and Rust toolchain make that practical: `bitcoin-spv` keeps a compact header chain on Stellar and `writz-lend` verifies a deposit against it in a single call.
+Verifying a Bitcoin transaction on chain means double-SHA256 over block headers, proof-of-work and difficulty checks, and a Merkle inclusion proof. Soroban's compute budget fits that work: `bitcoin-spv` keeps a compact Bitcoin header chain on Stellar, and `writz-lend` verifies a deposit against it in a single contract call. The verification code is written in Rust on the Soroban SDK alone, with no external Bitcoin library.
 
-### Native USDC - No Bridge Risk
+### Native USDC
 
-Circle issues USDC natively on Stellar. This is not bridged USDC, not a synthetic representation, not a wrapped token. When a Writz user borrows, they receive the same USDC used by cross-border payment networks, fintechs, and financial institutions worldwide.
+Circle issues USDC natively on Stellar. It is not bridged and not wrapped. A Writz borrower receives the same USDC that payment companies and wallets on Stellar already use, so there is no bridge to break and no peg to maintain.
 
-The output of Writz has real-world utility from day one. There is no bridge to break, no peg to maintain, no synthetic to redeem. The USDC simply exists on Stellar because Stellar is one of Circle's native USDC chains.
+About $327 million of USDC circulates on Stellar (DefiLlama, November 2026).
 
-Stellar processes over $500 million in USDC volume per month. That is real liquidity, not speculative volume.
+### A mature smart contract platform
 
-### Soroban - Production-Grade Smart Contracts
+Soroban has run on Stellar mainnet since 2024. Protocol 23 (Whisk, mainnet September 2025) added parallel transaction execution, unified events and changes to state archival. Writz builds on:
 
-Stellar's Soroban smart contract platform reached production grade with Protocol 23 (September 2025), which introduced parallel transaction execution. By the time Writz began building, Soroban had:
+- A Rust SDK and a CLI that follow each protocol release
+- Published resource limits and fees, so the cost of a verification can be measured before deployment
+- Active lending and liquidity protocols. Blend, the largest lending protocol on Stellar, holds about $120 million in its V2 pools; Aquarius, a liquidity network, about $38 million; DeFindex, a vault protocol, about $19 million (DefiLlama, November 2026)
 
-- A mature Rust SDK with comprehensive documentation
-- Billions of operations processed on mainnet
-- Known compute costs and resource limits (benchmarked and published)
-- A growing ecosystem of DeFi protocols (Blend, Phoenix DEX, and others)
+### Protocol signers
 
-Writz's Soroban contracts are written in Rust - the same language as the best Bitcoin SPV library in existence (`summa-tx/bitcoin-spv`). Porting the Bitcoin verification logic to Soroban was a natural fit.
-
-### Protocol 27 - Delegation Infrastructure
-
-Protocol 27 (Zipper) introduced `delegate_account_auth`, which lets authority on the Stellar side be distributed across delegated accounts. On the Bitcoin side, Writz plans a 2-of-3 protocol side written into the P2WSH script itself, so no single key can co-sign a release; the signing policy will be published.
+Today one protocol key co-signs Bitcoin releases. Writz plans a 2-of-3 protocol side written into the P2WSH script itself, so no single key can co-sign a release. The signing policy will be published.
 
 ---
 
 ## Why Not Ethereum?
 
-The natural question is: why build on Stellar rather than Ethereum, where the existing BTCfi ecosystem lives?
+The natural question is why build on Stellar rather than Ethereum, where most Bitcoin in DeFi sits today.
 
 | Factor | Ethereum | Stellar |
 |---|---|---|
-| Fees | Variable, often high | Low per transaction |
-| Bitcoin lending today | Wrapped BTC in established markets | No trustless native-BTC lending yet |
-| Bitcoin verification on chain | Possible, gas-heavy | Feasible within Soroban's compute budget |
+| Native USDC | Yes | Yes |
+| Bitcoin lending today | Wrapped BTC in established markets | No lending against native BTC yet |
+| Bitcoin verification on chain | Possible, costly in gas | Fits Soroban's compute budget |
 
-Stellar is not the obvious choice. It is the *correct* choice for Writz specifically: a chain with native USDC, low fees, and no trustless native-BTC lending yet.
+Ethereum already has deep markets for wrapped BTC. Stellar has native USDC and no lending against native BTC yet. That gap is the one Writz fills.
 
 ---
 
 ## The Timing Argument in One Sentence
 
-The compute budget for on-chain Bitcoin verification was confirmed feasible. The Rust SPV library exists. Native USDC is live. No protocol on Stellar offers trustless native BTC collateral yet.
+On-chain Bitcoin verification fits Soroban's compute budget, native USDC is live on Stellar, and no protocol on Stellar offers native BTC as collateral yet.
 
 ---
 
-**Next:** [Writz Lend - the flagship product →](/products/writz-lend)
+**Next:** [Writz Lend, the lending product →](/products/writz-lend)

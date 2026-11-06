@@ -32,8 +32,8 @@ The review covers, at least:
 
 | Item | Status |
 |---|---|
-| Contracts deployed on testnet with passing tests | Done: 839 tests |
-| Integration tests covering all flows | Done: `scripts/deploy/e2e_local.mjs`, run in CI on a local network |
+| Contracts deployed on testnet with passing tests | Done: 839 tests across the contracts, `bitcoin-script` and the relayer (255 in the contracts) |
+| Integration tests covering all flows | Partial: `scripts/deploy/e2e_local.mjs` runs in CI on a local Stellar network and covers deployment, header submission, supply and withdrawal, and deposits with real SPV verification. Borrow, repay and liquidation are covered by `writz-lend`'s unit tests |
 | STRIDE threat model | Draft published: [STRIDE threat model](/security/stride-threat-model). Full revision before the audit |
 | Dataflow diagram | Published in the [STRIDE threat model](/security/stride-threat-model#data-flow-diagram) |
 | Self-service security scan | Pending |
@@ -56,8 +56,8 @@ Before the audit, Writz applies the following:
 
 **Test coverage:**
 - 839 tests covering happy paths and error cases
-- End-to-end integration tests covering the full deposit→borrow→repay→liquidate cycle
-- Bitcoin transaction tests verifying witness construction against real Bitcoin script interpretation
+- A local-network integration test of deployment, header submission, supply and deposit with real SPV verification
+- Tests of the witness each spending path builds, and a Path A release confirmed on Bitcoin Signet
 
 **Known limitations before audit:**
 - No penetration testing of the relayer API

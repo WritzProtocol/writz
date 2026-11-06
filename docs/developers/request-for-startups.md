@@ -7,10 +7,6 @@ Writz lets Stellar know what happened on Bitcoin. A Soroban contract can check t
 
 This page lists products we would like to see built on top of that. Each idea is meant to work twice: as a demo a small team can ship in a weekend hackathon, and as a business someone would pay for once it is real. Every idea names the Writz piece it uses, and only pieces that are live on Stellar testnet today. Anything that is not live yet is in [Not available yet](#not-available-yet), so you do not plan a weekend around it.
 
-<Tip>
-Building at the Pura Vida Ideathon (23 to 26 October 2026)? Any idea on this page, or your own, is eligible for the Writz integration bounties. The event page has the rules and the deadline.
-</Tip>
-
 Not a Soroban developer? Start with [No Soroban needed: build on Writz yield](#no-soroban-needed-build-on-writz-yield). Those ideas lend USDC to Writz Lend, let it earn the interest Bitcoin borrowers pay and take it out, from a web page or a bot, with no contract of your own.
 
 ---
@@ -54,7 +50,7 @@ The yield is not a subsidy. It is the interest that people who lock BTC and borr
 Before you design around it:
 
 - **Test money, not real money.** Writz Lend holds Circle's testnet USDC (issuer `GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5`), which has no value. The user's account needs a trustline to it first; swap testnet XLM for it on the DEX or use Circle's faucet.
-- **No promised rate.** The rate is variable and comes only from borrowers. While nothing is borrowed it is zero, and with very little borrowed `get_supply_rate_bp` still reads `0` (it counts whole basis points: `500` is 5% a year). On 2026-10-25 it read `0` with 2 USDC borrowed from a 1,000 USDC pool. Read it live, label it as variable, and design the screen for the zero case. Do not put a fixed APY in your pitch or your UI.
+- **No promised rate.** The rate is variable and comes only from borrowers. While nothing is borrowed it is zero, and with very little borrowed `get_supply_rate_bp` still reads `0` (it counts whole basis points: `500` is 5% a year). On 2026-11-06 it read `144` (1.44% a year) with about 2 USDC borrowed from a pool of about 5 USDC; with 2 USDC borrowed from a 1,000 USDC pool it read `0`. Read it live, label it as variable, and design the screen for the zero case. Do not put a fixed APY in your pitch or your UI.
 - **Withdrawals depend on free liquidity.** A lender can always withdraw up to their balance, as long as that USDC is not lent out at that moment. When borrowers hold most of the pool, a large withdrawal fails with `InsufficientLiquidity` (#11) until they repay or new lenders supply. Show that state instead of a generic error.
 - **The user keeps the keys.** Your page builds the transaction; the user's wallet signs it. Let users sign in their own wallet ([Stellar Wallets Kit](https://stellarwalletskit.dev) covers Freighter, xBull, Lobstr and others). If your app collects users' USDC into an account you control, you have become a custodian, and you should say so in your pitch.
 - **One balance per Stellar account.** Writz Lend tracks one supply balance per account. Goals, sub-accounts and "money for the trip" versus "money for school" live in your app's own database, not on chain.
@@ -115,7 +111,7 @@ export const takeOut = (address: string, usdc: number) => send(address, "withdra
 
 With `@writz/sdk` (`npm install @writz/sdk`, see [Build on Writz](/developers/integrate#packages)) the same calls are `lend.getSupplyRateBp()`, `lend.getSupplyBalance(address)`, `lend.buildSupplyUsdc(address, stroops)` and `lend.buildWithdrawSupply(address, stroops)`, which return the unsigned transaction for the wallet.
 
-Checked on 2026-10-25 against Stellar testnet and the live `writz-lend` contract, with the TypeScript above: `get_supply_rate_bp` returned `0` and `get_supply_balance` the supplier's 1,000 USDC; `supply_usdc` and `withdraw_supply` of 10 USDC were prepared by simulation for an account that holds the test USDC, a `withdraw_supply` above its balance failed with `#13`, and `supply_usdc` from an account without a trustline failed inside the token contract. Nothing was submitted, so these checks left no deposits behind.
+The TypeScript above was checked on 2026-10-25 against the `writz-lend` contract live then, by simulation only: `supply_usdc` and `withdraw_supply` of 10 USDC were prepared for an account that holds the test USDC, a `withdraw_supply` above its balance failed with `#13`, and `supply_usdc` from an account without a trustline failed inside the token contract. On 2026-11-06 the reads and the `#13` case were simulated again with the Stellar CLI against the current contract, with the same results.
 
 ### A. Dollar savings with goals
 
@@ -246,7 +242,7 @@ High means it clearly passes; Medium means it passes with a caveat named in the 
 
 **Writz primitive.** BTC-collateralized USDC credit. The sender borrows USDC on Writz Lend against BTC that never leaves Bitcoin, and the USDC is sent on Stellar to the recipient or to an anchor that pays out locally.
 
-**48h scope.** A mobile-first web app: show an existing Writz Lend position and how much can be borrowed safely, borrow, send the USDC to a recipient address, and show the repayment schedule. Use the [Stellar test anchor](https://testanchor.stellar.org) (SEP-24) to show a local cash-out step. Create the Bitcoin deposit on day one; it needs six Signet confirmations.
+**48h scope.** A mobile-first web app: show an existing Writz Lend position and how much can be borrowed safely, borrow, send the USDC to a recipient address, and show the repayment schedule. Use the [Stellar test anchor](https://testanchor.stellar.org) (SEP-24) to show a local cash-out step. Create the Bitcoin deposit on day one: Signet confirmations take about 10 minutes each, and the faucets can be slow.
 
 **Stretch.** Recipient onboarding without a wallet (claimable balances or a passkey wallet), reminders before a position gets close to liquidation, a real anchor partner per corridor.
 
@@ -321,7 +317,7 @@ These are on the Writz roadmap or in progress. Do not depend on them this weeken
 | Writz lending on mainnet | Testnet only; mainnet target Q2 to Q3 2027 |
 | Privacy for positions | Not part of the protocol. Positions are public on chain |
 | A liquidator receiving Bitcoin | Not how liquidation works today: it clears the debt on Stellar and no BTC moves to the liquidator (see [Writz Lend](/products/writz-lend)). Do not design a product that assumes it |
-| Proof of Bitcoin reserves, private conversion, automatic yield | Planned features listed in Vision, not built |
+| Private conversion, automatic yield | Directions listed in [Vision](/roadmap/vision), not built |
 | Submitting Bitcoin headers yourself | On testnet, only the Writz relayer submits Signet headers to `bitcoin-spv` |
 
 ---

@@ -19,7 +19,7 @@ Items marked **planned** are not built yet. They stay marked until they ship. Th
 | Who can move it | The custodian | Any quorum of the signers | Only the script's paths; slashing needs proof of misbehaviour | Only the script's paths: user and protocol together, or the user alone after the time-lock |
 | Can the operator take the BTC | Yes | Yes, with a quorum | No | No |
 | Is there a pooled reserve to steal | Yes | Yes | No | No |
-| What represents the BTC on the other chain | A token, transferable | A token, transferable | A staking position | A loan position. Through a lending-market adapter, a Writz Vault Unit: not transferable, not redeemable, burned on release |
+| What represents the BTC on the other chain | A token, transferable | A token, transferable | A staking position | A loan position. Through a lending-market adapter (designed), a Writz Vault Unit: not transferable, not redeemable, burned on release |
 | If the operator disappears | Token holders hold an unbacked claim | Token holders hold an unbacked claim | The staker unbonds through the script | The user spends the time-lock path with their own key |
 
 ## Trust assumptions
@@ -29,7 +29,7 @@ Items marked **planned** are not built yet. They stay marked until they ship. Th
 | Honest custodian or signers | Required | Required (k of n) | Not required for custody |
 | Bitcoin proof of work | Not used | Not used | Required: headers must carry real work, and the most-work chain wins |
 | Data delivery | The custodian attests | Signers watch Bitcoin | At least one honest relayer submits headers in time. Relayers cannot forge mainnet headers, only delay them |
-| Verifier code is correct | Minting logic | Bridge verifier (where Wormhole and Nomad failed) | Light client: headers, difficulty, chainwork, Merkle proofs. Open source, with no upgrade entry point, tested against real Bitcoin headers |
+| Verifier code is correct | Minting logic | Bridge verifier (where Wormhole and Nomad failed) | Light client: headers, difficulty, chainwork, Merkle proofs. Open source, with no upgrade entry point, tested against the real genesis header and synthetic chains, and run against Bitcoin signet on testnet |
 | Starting point | None | None | A checkpoint block, set once and never changed afterwards, publicly checkable against any Bitcoin node |
 | Price oracle | For lending use | For lending use | For lending use (the same as any lending protocol) |
 
@@ -41,7 +41,7 @@ On testnet the light client follows Bitcoin signet. Signet blocks are authentica
 |---|---|---|---|
 | Keys stolen | All reserves at risk | All reserves at risk once a quorum is stolen | No key can spend a user's script alone. The protocol co-signing key can only refuse to co-sign, and the user still exits after the time-lock |
 | Verifier bug | Unbacked tokens minted, redeemable for real BTC | Unbacked tokens minted, redeemable for real BTC | Collateral that does not exist could be credited, so lenders' USDC is at risk, bounded by the global borrow cap (a per-borrower cap is planned). Users' BTC is not touched |
-| Relayers stop | Not applicable | Peg-ins and peg-outs stop | The light client's view of Bitcoin stops advancing. New loans should stop until it catches up (planned: an on-chain freshness rule). Existing BTC stays where it is |
+| Relayers stop | Not applicable | Peg-ins and peg-outs stop | The light client's view of Bitcoin stops advancing. Once its tip header is more than six hours old, borrows and liquidations fail until it catches up. Existing BTC stays where it is |
 | Deep Bitcoin reorg | The custodian absorbs or socialises it | The bridge may have minted against reorged deposits | A deposit confirmed by fewer blocks than the reorg could be undone. Writz plans 6 confirmations on mainnet; the deepest mainnet reorgs on record are from 2010 and 2013 |
 | Operator shuts down | Redemption depends on the custodian | Redemption depends on the signers | Users recover their BTC with their own key after the time-lock |
 
@@ -51,7 +51,7 @@ On testnet the light client follows Bitcoin signet. Signet blocks are authentica
 |---|---|---|
 | Verification code can have bugs | A light client is code that decides what counts as a confirmed Bitcoin payment | A small, open-source verifier with no upgrade path, so code cannot be swapped under users (a fix ships as a new deployment). Planned: an independent audit before mainnet, and hardening of proof-depth binding and median-time-past |
 | Someone must deliver data | Headers have to be submitted to Stellar | Planned: permissionless submission on mainnet, several independent relayers, and a monitor that compares the on-chain tip with several Bitcoin sources and pauses new loans if it falls behind |
-| Privileged roles | Whoever configures the verifier is trusted for what that role can do | No role can rewrite stored headers or the checkpoint once it is set. The admin can still choose who may submit headers and which lending contracts may consume deposits, and the lending contract's admin can point it at a different verifier or pause new loans. Planned: these admin accounts move to a 2-of-3 multisig before mainnet |
+| Privileged roles | Whoever configures the verifier is trusted for what that role can do | No role can rewrite stored headers or the checkpoint once it is set. The admin can still choose who may submit headers and which lending contracts may consume deposits, and the lending contract's admin can point it at a different verifier or price source, change the keeper and the relayer, or pause new loans. Planned: these admin accounts move to a 2-of-3 multisig before mainnet |
 | Starting point | The checkpoint is trusted once | It is public, and anyone can compare it with a Bitcoin node |
 
 ## What it costs to attack each model
@@ -61,7 +61,7 @@ On testnet the light client follows Bitcoin signet. Signet blocks are authentica
 | Custodial wrapped BTC | Compromise or coerce one custodian | One organisation |
 | Multisig or federated bridge | Compromise k of n signers, or find a verifier bug | Ronin: 5 of 9 keys. Harmony Horizon: two keys |
 | Writz (SPV light client), relayers live | Out-mine the Bitcoin network | Majority hash power |
-| Writz (SPV light client), relayers stalled, mainnet with open submission | Mine the required confirmations privately at full difficulty | About six blocks of mainnet work, worth roughly 18.8 BTC in forgone rewards at the time of writing (October 2026). This is why new loans must stop when the light client falls behind, and why exposure caps stay far below that figure |
+| Writz (SPV light client), relayers stalled, mainnet with open submission | Mine the required confirmations privately at full difficulty | About six blocks of mainnet work, at least 18.75 BTC in forgone block subsidy (3.125 BTC per block) plus fees. This is why new loans stop when the light client falls behind, and why exposure caps stay far below that figure |
 
 ## Track record
 
@@ -87,7 +87,7 @@ Figures are as reported by the linked post-mortems, announcements and press cove
 | Confirmation depth | Live, set per deployment | 6 confirmations planned on mainnet |
 | Exposure caps | Global cap live, per-borrower cap planned | Bound what any verification failure could cost lenders |
 | Proof-depth binding, median-time-past | Planned | Close known SPV edge cases |
-| On-chain freshness rule | Planned | Loans that depend on the Bitcoin tip are refused when the tip is too old |
+| On-chain freshness rule | Live | Borrows and liquidations are refused when the light client's tip header is older than six hours (admin-set, 1 to 48 hours) |
 | Multiple relayers, permissionless submission | Planned for mainnet | Any honest relayer keeps the light client live |
 | Independent monitor with automatic pause of new loans | Planned for mainnet | Compares the on-chain tip with several Bitcoin sources; can only pause new deposits and borrows, never move funds |
 | Zero-knowledge proof of the Bitcoin header chain as a second check | Researching | An independent cryptographic check that needs no trusted signer; it could only refuse a tip, never credit value |

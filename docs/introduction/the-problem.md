@@ -2,47 +2,47 @@
 title: "The Problem"
 ---
 
-## Bitcoin in DeFi Requires Trusting Someone With Your BTC
+## Borrowing Against Bitcoin Means Trusting Someone With It
 
-Bitcoin is the world's largest crypto asset by market cap. Yet borrowing against it in DeFi almost always means handing it to someone else first:
+Bitcoin is the largest crypto asset by market capitalization. Yet borrowing against it in DeFi almost always means handing it to someone else first.
 
 ### Give your BTC to a custodian or a signer set
 
-**WBTC** is held by BitGo. One company controls the keys. BitGo can be hacked, regulated, or go bankrupt.
+**WBTC** is backed by BTC held by custodians: BitGo, with BiT Global holding one of three keys since 2024. They can be hacked, regulated or fail.
 
-**tBTC** uses a threshold signature network. A sufficient coalition of signers could theoretically collude. The trust assumption is distributed, but it is still a trust assumption.
+**tBTC** uses a threshold signature network. Enough signers acting together could move the BTC. The trust is spread out, but it is still trust.
 
-**Stacks sBTC** uses a committee of signers to peg and unpeg BTC. The peg mechanism relies on off-chain coordination that must be trusted.
+**Stacks sBTC** uses a set of signers to peg BTC in and out. The peg depends on those signers coordinating off chain.
 
-In every case, you are trusting humans with your Bitcoin.
+In every case, people other than you control your Bitcoin.
 
 ### Or leave Bitcoin altogether
 
-The alternative is to sell or bridge BTC onto another chain, which turns it into a different asset with a different set of risks: bridge contracts, peg mechanisms and the custody behind them. Every bridge adds a place where the BTC can be lost.
+The alternative is to sell BTC or bridge it onto another chain, which turns it into a different asset with different risks: bridge contracts, peg mechanisms and the custody behind them. Every bridge adds a place where the BTC can be lost.
 
 ---
 
 ## Most Bitcoin Holders Stay Out of DeFi
 
-Most Bitcoin is never used as collateral on chain. Not because holders don't want to borrow against it. Because:
+Most Bitcoin is never used as collateral on chain. Holders who would borrow against it hold back because:
 
-1. They don't want to give up custody.
-2. They don't want to trust a bridge or a wrapped token.
-3. The UX of wrapped BTC across multiple chains is too complex.
+1. They do not want to give up custody.
+2. They do not want to trust a bridge or a wrapped token.
+3. Moving wrapped BTC across chains is complex.
 
-The Bitcoin that does reach DeFi today goes through those barriers, almost always as a wrapped token. The holders who refuse them have had no alternative.
+The Bitcoin that does reach DeFi goes through those barriers, almost always as a wrapped token. Holders who refuse them have had no alternative.
 
 ---
 
-## What Doesn't Exist Yet
+## What Does Not Exist Yet
 
-There is currently no protocol that is simultaneously:
+No protocol is at once:
 
-- **Trustless** - BTC secured by Bitcoin Script itself, not by any human or committee
-- **Native** - real BTC that never leaves Bitcoin, verified on-chain by an SPV light client, with no bridge and no wrapped Bitcoin
-- **On Stellar** - where native USDC lives
+- **Without custody**: BTC secured by a Bitcoin Script that needs the owner's key to move, not held by a custodian or a committee
+- **Native**: real BTC that never leaves Bitcoin, verified on chain by an SPV light client, with no bridge and no wrapped token
+- **On Stellar**: where native USDC lives
 
-Writz is built to be all three. Writz Lend positions are public on chain, like in any other lending market.
+Writz is built to be all three. Writz Lend positions are public on chain, as in any other lending market.
 
 ---
 

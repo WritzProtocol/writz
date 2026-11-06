@@ -6,7 +6,7 @@ title: "Writz Lend"
 
 Writz Lend is the lending product of Writz Protocol. Bitcoin is the collateral and USDC is the borrowed asset. The BTC never leaves Bitcoin: it is locked in a script that you co-own with the protocol, and the `writz-lend` contract on Stellar recognizes it through `bitcoin-spv`, an on-chain Bitcoin header light client. There is no bridge, no custodian and no wrapped BTC.
 
-Positions are plaintext. Your collateral amount, debt, health ratio, Stellar address and Bitcoin deposit transaction are public on chain, like in any other lending market.
+Positions are public. Your collateral amount, debt, health ratio, Stellar address and Bitcoin deposit transaction are public on chain, like in any other lending market.
 
 ---
 
@@ -31,9 +31,11 @@ These are the values set by the `writz-lend` constructor today.
 | Minimum deposit | 0.001 BTC (100,000 sats); 0.00005 BTC (5,000 sats) on testnet |
 | Minimum confirmations | 6 Bitcoin blocks (~60 minutes); 1 on testnet |
 | Timelock window | 1,008 to 105,000 blocks above the deposit block (about 7 days to 2 years) |
+| Borrow timelock margin | Borrowing needs the timelock at least 4,320 blocks (about 30 days) above the latest Bitcoin block known on Stellar |
+| Liquidation cutoff | No liquidation within 288 blocks (about 2 days) of the timelock |
 | Total borrow cap | 50,000 USDC across the pool (admin-set) |
 | Protocol fee | 15% of interest, kept as the protocol reserve |
-| Price source | Reflector BTC/USD oracle (single source today) |
+| Price source | Reflector BTC/USD oracle, rejected if older than 1 hour (single source today) |
 
 ---
 
@@ -53,49 +55,49 @@ Supply rate:          borrow rate x utilization x 0.85
 
 **What this means in practice** (from `contracts/contracts/writz-lend/src/rates.rs`):
 
-- At 50% utilization: ~5.3% APR borrow rate, ~2.3% APR supply rate
-- At 75% utilization: 8% APR borrow rate, ~5.1% APR supply rate
+- At 50% utilization: about 5.3% APR borrow rate, about 2.3% APR supply rate
+- At 75% utilization: 8% APR borrow rate, about 5.1% APR supply rate
 - Above 75%: rates rise steeply to incentivize repayment and new USDC supply
 
-The model is designed to keep utilization near 75% - the point where lenders earn competitive yield and borrowers pay reasonable rates.
+The steep slope above 75% pulls utilization back toward that point: it pushes borrowers to repay and draws new USDC supply.
 
 ---
 
-## Step-by-Step: Borrowing Against Your BTC
+## Step by Step: Borrowing Against Your BTC
 
 ### Prerequisites
 
-- A Bitcoin wallet (Xverse recommended)
-- A Stellar wallet (Freighter, Lobstr, or any wallet compatible with Stellar Wallets Kit)
+- Xverse, the Bitcoin wallet the app supports
+- A Stellar wallet the app supports (Freighter, xBull, Lobstr, Albedo or Rabet), or on testnet a Google, GitHub or email sign-in
 - BTC to deposit (minimum 0.001 BTC; 0.00005 BTC on testnet, which one Signet faucet payout covers)
-- A small amount of XLM for Stellar transaction fees (~1 XLM)
+- XLM for Stellar fees (free test XLM from Friendbot on testnet)
 
 You don't need to understand SPV or Merkle proofs to use Writz Lend. The steps below tell you what to click and what to expect; each step also has an optional "How this works" note for anyone who wants the technical detail.
 
 For a click-by-click walkthrough with screenshots, including wallet setup and test funds, see the [Guides](/guides/start-here).
 
-### Step 1 - Connect Your Wallets
+### Step 1: Connect Your Wallets
 
-Open the Writz app at [testnet.writz.xyz](https://testnet.writz.xyz). Connect your Bitcoin wallet (Xverse, on Bitcoin signet) and your Stellar wallet (Freighter, Lobstr, or a Google, GitHub or email sign-in on testnet). The wallet connections happen in your browser - no private keys leave your device.
+Open the Writz app at [testnet.writz.xyz](https://testnet.writz.xyz). Connect your Bitcoin wallet (Xverse, on Bitcoin signet) and your Stellar wallet (Freighter, xBull, Lobstr, Albedo, Rabet, or a Google, GitHub or email sign-in on testnet). Your wallets sign in your browser; Writz never receives your private keys.
 
-### Step 2 - Choose Your Deposit Amount
+### Step 2: Choose Your Deposit Amount
 
 Select how much BTC you want to deposit as collateral. Writz shows you the maximum USDC you can borrow at the current BTC price (up to 66.7% of the BTC value in USD), and generates a Bitcoin deposit address for you to send to.
 
 <details>
 <summary>How this works technically</summary>
 
-The generated address is a P2WSH (Pay-to-Witness-Script-Hash) address. Its script holds your Bitcoin public key, the protocol's co-signing key and a CLTV timelock height - see [Bitcoin Side](/how-it-works/bitcoin-side) for the full script design.
+The generated address is a P2WSH (Pay-to-Witness-Script-Hash) address. Its script holds your Bitcoin public key, the protocol's co-signing key and a CLTV timelock height. See [Bitcoin Side](/how-it-works/bitcoin-side) for the full script design.
 
 </details>
 
-### Step 3 - Send BTC to the Deposit Address
+### Step 3: Send BTC to the Deposit Address
 
-Send the BTC to the generated address from your Bitcoin wallet. Double-check the address before sending - this is a standard Bitcoin transaction.
+Send the BTC to the generated address from your Bitcoin wallet. Double-check the address before sending: this is a standard Bitcoin transaction and cannot be reversed.
 
-Wait for 6 confirmations (~60 minutes; 1 on testnet). The Writz app shows a live confirmation count while you wait.
+Wait for 6 confirmations (about 60 minutes; 1 on testnet). The Writz app shows a live confirmation count while you wait.
 
-### Step 4 - Register the Deposit
+### Step 4: Register the Deposit
 
 Once your transaction has the confirmations it needs, the app asks your Bitcoin wallet to sign a short message and your Stellar wallet to approve one transaction. That transaction registers the deposit with `writz-lend`, and your position appears in the app.
 
@@ -105,7 +107,7 @@ Once your transaction has the confirmations it needs, the app asks your Bitcoin 
 The app fetches an SPV proof (the block hash, the Merkle inclusion path and the raw transaction) from the relayer and calls `writz-lend.deposit`. The contract:
 
 1. Rebuilds the Writz redeem script from the protocol key in its config, your Bitcoin public key and the timelock height, and requires the deposit output to be exactly that P2WSH. An output you could spend alone, or someone else's output, cannot match.
-2. Calls `bitcoin-spv.verify_transaction`, which checks proof of work, Merkle inclusion and 6 confirmations against the header chain stored on Stellar. No oracle and no third party vouches for the deposit.
+2. Calls `bitcoin-spv.verify_transaction`, which checks Merkle inclusion and the required confirmations (6 on mainnet, 1 on testnet) against the proof-of-work-checked header chain stored on Stellar. No oracle and no third party vouches for the deposit.
 3. Requires the timelock to lie 1,008 to 105,000 blocks above the block that confirmed the deposit.
 4. Checks the signed message (a standard Bitcoin "sign message" signature by the key in the script, bound to this contract, your Stellar address and the txid), so nobody watching Bitcoin can register your deposit as their own.
 5. Consumes the txid in `bitcoin-spv`'s shared registry, so the same output can never back two positions, reads the deposited amount from the raw transaction and records the position, keyed by the Bitcoin txid.
@@ -114,28 +116,28 @@ See [SPV Verification](/how-it-works/spv-verification) for the full mechanics.
 
 </details>
 
-### Step 5 - Borrow USDC
+### Step 5: Borrow USDC
 
 Choose how much USDC to borrow (up to 66.7% of your BTC's current value). USDC arrives in your Stellar wallet within seconds of the Soroban transaction confirming.
 
 <details>
 <summary>How this works technically</summary>
 
-`writz-lend.borrow` accrues interest on the position, prices the collateral with the Reflector BTC/USD oracle and refuses any borrow that would leave the collateral ratio below 150%, that exceeds the pool's available liquidity, or that would take total borrowing above the 50,000 USDC cap. Only the Stellar address that registered the deposit can borrow against it.
+`writz-lend.borrow` accrues interest on the position, prices the collateral with the Reflector BTC/USD oracle and refuses any borrow that would leave the collateral ratio below 150%, that exceeds the pool's available liquidity, or that would take total borrowing above the 50,000 USDC cap. It also refuses a borrow when the timelock is less than 4,320 blocks above the latest Bitcoin block in `bitcoin-spv`, or when that block was mined more than 6 hours ago, so the borrower's own exit cannot open while the loan is fresh. Only the Stellar address that registered the deposit can borrow against it.
 
 </details>
 
-### Step 6 - Monitor Your Health Factor
+### Step 6: Monitor Your Health Factor
 
-Your position has a **health factor** - the ratio of your collateral value to your debt. Above 1.5 you are safe. Below 1.2, your position is eligible for liquidation. The contract exposes it as `get_health_ratio_bp`, and the app shows it on your position.
+Your position has a **health factor**: the ratio of your collateral value to your debt. Above 1.5 you are safe. Below 1.2, your position is eligible for liquidation. The contract exposes it as `get_health_ratio_bp`, and the app shows it on your position.
 
 Watch the BTC/USD price. If BTC drops significantly, repay part of your loan to restore your health factor.
 
-### Step 7 - Repay
+### Step 7: Repay
 
 Repay your USDC loan plus accrued interest at any time. Partial repayment is supported. A repayment that clears the whole debt closes the position.
 
-### Step 8 - Release Your BTC
+### Step 8: Release Your BTC
 
 After a full repayment, the protocol co-signs the transaction that returns your BTC, and the app asks your Bitcoin wallet to sign and broadcast it. Your BTC arrives in your wallet once the transaction confirms on Bitcoin.
 
@@ -163,10 +165,10 @@ The liquidator pays the full outstanding USDC debt and receives a 10% USDC bonus
 **No BTC moves in a liquidation today.** The protocol never takes or sells your BTC, and it does not hand BTC to the liquidator. The relayer only co-signs a release after a full repayment, so a liquidated position's BTC stays in its script until the timelock height, when the key in the script can spend it alone. The protocol's exposure from this is bounded by the 50,000 USDC total borrow cap.
 
 **Protecting yourself from liquidation:**
-- Keep your health factor above 1.5 - the app color-codes it (green above 150%, amber 120 to 150%, red below 120%)
+- Keep your health factor above 1.5. The app shows it in four bands: healthy at 150% or more, below the borrow limit from 130%, at risk from 120%, and liquidatable below 120%
 - Watch the BTC/USD price
 - Maintain USDC to repay quickly if needed
-- Borrow conservatively - taking 50% LTV instead of 66.7% gives you a significant buffer
+- Borrow conservatively: 50% LTV instead of 66.7% leaves a wide buffer
 
 ---
 
@@ -236,8 +238,8 @@ Writz Lend is targeted for mainnet in Q2 to Q3 2027, starting with conservative 
 - **Open access under caps:** open to outside lenders and borrowers, with no whitelist, under a global and a per-borrower limit
 - **Protocol fee:** the launch value is not decided yet (the contract charges 15% of interest today)
 
-The date is a target, not a commitment. It depends on gates that are not yet closed, including a formed legal entity, an external audit of the contracts, a second price source cross-checking Reflector, and Bitcoin collateral that answers for a default. None of this blocks using Writz Lend on testnet today.
+The date is a target, not a commitment. It depends on gates that are not yet closed, including a formed legal entity, an external audit of the contracts, a second price source (RedStone) cross-checking Reflector, and Bitcoin collateral that answers for a default. None of this blocks using Writz Lend on testnet today.
 
 ---
 
-**Deeper reading:** [The Bitcoin Side →](/how-it-works/bitcoin-side) · [The Stellar Side →](/how-it-works/stellar-side)
+**Deeper reading:** [The Bitcoin Side →](/how-it-works/bitcoin-side) and [The Stellar Side →](/how-it-works/stellar-side)

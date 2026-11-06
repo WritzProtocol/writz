@@ -3,11 +3,11 @@
 > **Bitcoin was built to be yours. Your loans should be too.**
 
 [![CI](https://github.com/WritzProtocol/writz/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/WritzProtocol/writz/actions/workflows/ci.yml?query=branch%3Amain)
-[![Tests](https://img.shields.io/badge/tests-623%20passing-brightgreen)](https://github.com/WritzProtocol/writz/actions)
+[![Tests](https://img.shields.io/badge/tests-839%20passing-brightgreen)](https://github.com/WritzProtocol/writz/actions)
 [![Network](https://img.shields.io/badge/network-Stellar%20Testnet-blue)](https://stellar.expert/explorer/testnet)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
-**[Website](https://writz.xyz)** · **[Live App (testnet)](https://testnet.writz.xyz)** · **[Docs](https://docs.writz.xyz)** · **[Relayer API](https://api.testnet.writz.xyz)**
+**[Website](https://writz.xyz)** | **[Live App (testnet)](https://testnet.writz.xyz)** | **[Docs](https://docs.writz.xyz)** | **[Relayer API](https://api.testnet.writz.xyz)**
 
 > **HackMeridian 2026 judges:** the event work, goals, demo steps and prior-work disclosure are in [HACKMERIDIAN.md](HACKMERIDIAN.md).
 
@@ -19,7 +19,7 @@ No bridge. No custodian. No wrapped tokens.
 
 ## What Makes Writz Different
 
-| | Writz | Every other lending protocol |
+| | Writz | Custodial lenders and wrapped-BTC protocols |
 |---|---|---|
 | **Custodian** | Bitcoin Script is the custodian | A company holds your BTC |
 | **BTC** | Native on-chain BTC | Wrapped token (WBTC, tBTC…) |
@@ -29,15 +29,15 @@ No bridge. No custodian. No wrapped tokens.
 
 ## This Is Not a Whitepaper
 
-As of October 2026, the protocol's two contracts (`bitcoin-spv` and `writz-lend`, redeployed on 25 October) are live on Stellar testnet, 839 tests pass, and Bitcoin Signet transactions have been verified on-chain.
+As of November 2026, the protocol's two contracts (`bitcoin-spv`, deployed on 25 October, and `writz-lend`, deployed on 2 November) are live on Stellar testnet, 839 tests pass, and Bitcoin Signet transactions have been verified on-chain.
 
 | What | Status |
 |---|---|
-| Bitcoin SPV verification on Soroban | ✓ Live on testnet |
-| `writz-lend` deposit, borrow, repay and release PSBT | ✓ Live on testnet |
-| P2WSH locking + co-signed BTC release | ✓ Broadcast on Bitcoin Signet |
-| Receive the loan as EURC, PYUSD or XLM (Soroswap) or as USDC on Base Sepolia (Circle CCTP V2) | ✓ Live on testnet |
-| 839 tests across all modules | ✓ All passing |
+| Bitcoin SPV verification on Soroban | Live on testnet |
+| `writz-lend` deposit, borrow, repay and release PSBT | Live on testnet |
+| P2WSH locking + co-signed BTC release | Broadcast on Bitcoin Signet |
+| Receive the loan as EURC, PYUSD or XLM (Soroswap) or as USDC on Base Sepolia (Circle CCTP V2) | Live on testnet |
+| 839 tests across all modules | All passing |
 
 But a few months ago, it was a whitepaper. Version 1.0 (July 2026) is at [writz.xyz/whitepaper](https://writz.xyz/whitepaper) and archived on Zenodo with the DOI [10.5281/zenodo.23148520](https://doi.org/10.5281/zenodo.23148520).
 
@@ -45,10 +45,10 @@ But a few months ago, it was a whitepaper. Version 1.0 (July 2026) is at [writz.
 
 | Contract | Address | WASM | Tests |
 |---|---|---|---|
-| `bitcoin-spv` | `CBX23YKCCJMAMBMSCNP6YVKEXUIYK2CTKSR4TQ3RVBPAFYZFVCW7W4EO` | 45.2 KB | 68 |
+| `bitcoin-spv` | `CBX23YKCCJMAMBMSCNP6YVKEXUIYK2CTKSR4TQ3RVBPAFYZFVCW7W4EO` | 45.2 KB | 80 |
 | `writz-lend` | `CD3BRE32LDNDHAEVI6H35UC3NIRREW5BLH64AZMHSQY3LEKYDLKYWBXS` | 94.6 KB | 165 |
 
-Both were redeployed on 2026-10-25 because testnet rent rose sharply; positions on the previous contracts were closed and their BTC released. `writz-lend` was redeployed again on 2026-11-01 so its `supply` and `withdraw` events carry the scaled amount and the supply index (#257); `bitcoin-spv` was not. The storage windows that drive rent are now deployment parameters, see [Storage and TTL management](docs/how-it-works/stellar-side.md#storage-and-ttl-management).
+Both were redeployed on 2026-10-25 because testnet rent rose sharply; positions on the previous contracts were closed and their BTC released. `writz-lend` was redeployed again on 2026-11-01, so its `supply` and `withdraw` events carry the scaled amount and the supply index (#257), and on 2026-11-02 for the projected pool and supply views (#256, #377); `bitcoin-spv` was not. The storage windows that drive rent are now deployment parameters, see [Storage and TTL management](docs/how-it-works/stellar-side.md#storage-and-ttl-management).
 
 Full deployment log, init transactions, and verified calls: [`contracts/deployments/testnet.md`](contracts/deployments/testnet.md)
 
@@ -63,7 +63,7 @@ Full deployment log, init transactions, and verified calls: [`contracts/deployme
 
 The diagrams show the protocol as designed; what runs on testnet today is listed in the [technical architecture](https://docs.writz.xyz/architecture/technical-overview).
 
-The protocol operates across two blockchains. Bitcoin is the custody layer - BTC never leaves the Bitcoin network. Stellar is the execution layer - SPV verification, loan logic, and USDC flows run on Soroban.
+The protocol operates across two blockchains. Bitcoin is the custody layer: BTC never leaves the Bitcoin network. Stellar is the execution layer: SPV verification, loan logic, and USDC flows run on Soroban.
 
 **Four layers, each with a clear boundary:**
 
@@ -85,12 +85,12 @@ Positions, amounts and collateral are public on chain, like any other lending ma
   <img alt="From a Bitcoin deposit to a USDC loan" src="docs/diagrams/deposit-and-borrow.svg">
 </picture>
 
-1. User connects their Bitcoin wallet (Xverse) and a Stellar wallet (Freighter) to the Writz UI.
+1. User connects their Bitcoin wallet (Xverse) and a Stellar wallet (Freighter) to the Writz UI. On testnet, an email or social sign-in with a Signet test key kept in the browser replaces both.
 2. The frontend derives a unique P2WSH address for this deposit (user public key + protocol public key + timelock).
 3. User sends BTC to that address on Bitcoin. The script is now live on-chain.
 4. After the required confirmations (1 on this testnet deployment, 6 on mainnet), the SPV Relayer assembles a proof bundle: raw transaction, block headers, and Merkle inclusion path.
 5. The user signs a key-control message with the Bitcoin key in the script, and calls `writz-lend.deposit` with the proof bundle and the signature.
-6. `writz-lend` rebuilds the expected P2WSH script, asks `bitcoin-spv` to verify the transaction's inclusion and confirmations cryptographically - no oracle, no trust - and records the position.
+6. `writz-lend` rebuilds the expected P2WSH script, asks `bitcoin-spv` to verify the transaction's inclusion and confirmations cryptographically, with no oracle and no trusted party, and records the position.
 7. The user can now borrow USDC from the `writz-lend` pool while keeping a collateral ratio of at least 150% (debt up to about two thirds of the BTC value). After borrowing, the user can keep USDC, convert it through the Soroswap router (EURC, PYUSD, XLM), or send it as native USDC to Base Sepolia with Circle CCTP V2 (testnet).
 
 ### 2 - Borrow & Repay
@@ -115,7 +115,7 @@ When the loan is fully repaid, the relayer's repay watcher builds the release PS
 | `bitcoin-spv` | SHA256d, PoW validation, checkpoint-anchored difficulty check, Merkle inclusion, block header chain, deposit txid registry | - |
 | `writz-lend` | Deposit registration, USDC lending pool (supply, withdraw, borrow, repay), interest rate model, keeper liquidation, release PSBT publication; plaintext positions | `bitcoin-spv`, USDC, Reflector oracle |
 
-**Interest rate model** - kinked curve: base rate + linear slope up to 75% utilization, then a steep slope to discourage over-borrowing. Protocol captures the spread between borrow and supply rates.
+**Interest rate model:** a kinked curve, base rate + linear slope up to 75% utilization, then a steep slope to discourage over-borrowing. Protocol captures the spread between borrow and supply rates.
 
 `writz-lend` consumes each deposit txid in the `bitcoin-spv` registry, so the same Bitcoin output cannot back two positions; see `docs/security/security-model.md` for how this also closes the Merkle duplicate-leaf ambiguity (CVE-2012-2459-class) at the deposit layer.
 
@@ -166,19 +166,21 @@ The **Bitcoin SPV SDK** is also open infrastructure. Any Stellar protocol that n
 writz/
 ├── contracts/               # Writz v1 Soroban contracts (Rust)
 │   ├── contracts/
-│   │   ├── bitcoin-spv/     # SHA256d · PoW · Merkle inclusion · block headers
-│   │   ├── writz-lend/      # Deposits · USDC pool · interest model · liquidation
-│   │   └── spv-types/       # Types shared by bitcoin-spv and its consumers
+│   │   ├── bitcoin-spv/     # SHA256d, PoW, Merkle inclusion, block headers
+│   │   ├── writz-lend/      # Deposits, USDC pool, interest model, liquidation
+│   │   ├── spv-types/       # Types shared by bitcoin-spv and its consumers
+│   │   └── writz-spv-client/ # Rust client crate for bitcoin-spv
 │   └── deployments/
-│       └── testnet.md       # Live addresses · tx hashes · verified calls
+│       └── testnet.md       # Live addresses, tx hashes, verified calls
 │
-├── relayer/                 # SPV Relayer service (TypeScript · Express · Bun)
+├── relayer/                 # SPV Relayer service (TypeScript, Express, Bun)
 │   └── src/
 │       ├── routes/proof.ts  # GET /spv-proof/:txid
 │       ├── routes/deposit-status.ts  # GET /deposit-status/:txid
 │       ├── routes/timeline.ts  # GET /timeline/:btcTxid
 │       ├── routes/cctp.ts  # POST /cctp/relay, GET /cctp/relay/:burnHash
-│       └── bitcoin/         # Esplora client · header fetching · proof assembly
+│       ├── routes/faucet.ts  # Signet faucet for social sign-in accounts (testnet)
+│       └── bitcoin/         # Esplora client, header fetching, proof assembly
 │
 ├── bitcoin-script/          # Bitcoin locking script toolkit (TypeScript)
 │   └── src/
@@ -188,17 +190,19 @@ writz/
 │       └── keys.ts          # Key management
 │
 ├── frontend/
-│   ├── app/src/             # Next.js testnet app (React 19 · TypeScript)
-│   │   ├── components/      # borrow · loan · lend · earn · reclaim
-│   │   ├── lib/flows/       # deposit · borrow · repay · release · lend
-│   │   └── lib/receive/     # Soroswap swap · Circle CCTP burn and relay status
+│   ├── app/src/             # Next.js testnet app (React 19, TypeScript)
+│   │   ├── components/      # borrow, loan, lend, earn, reclaim
+│   │   ├── lib/flows/       # deposit, borrow, repay, release, lend
+│   │   └── lib/receive/     # Soroswap swap, Circle CCTP burn and relay status
 │   └── landing/             # writz.xyz
 │
 ├── packages/
+│   ├── sdk/                 # @writz/sdk, TypeScript client with the testnet preset
+│   ├── writz-lend/          # Generated TypeScript bindings for writz-lend
 │   └── brand/               # Graphite & Gold design tokens
 │
 ├── scripts/
-│   └── deploy/              # Deployment scripts · deploy_stack.mjs · e2e_local.mjs
+│   └── deploy/              # Deployment scripts: deploy_stack.mjs, e2e_local.mjs
 │
 └── docs/                    # Full documentation (Mintlify)
 ```
@@ -209,13 +213,13 @@ writz/
 
 | Layer | Technology | Notes |
 |---|---|---|
-| Smart contracts | Soroban · Rust | Protocol 26 · `soroban-sdk = "26"` |
-| Bitcoin scripting | P2WSH · absolute CLTV time-lock | `bitcoinjs-lib` · `ecpair` |
-| Bitcoin wallets | Xverse · sats-connect | PSBT standard |
-| Frontend | Next.js 16 · React 19 · TypeScript | App Router · Tailwind CSS 4 |
-| Stellar wallets | Stellar Wallets Kit · Pollar | Freighter · Lobstr · email and social login on testnet |
-| Relayer runtime | Bun · Express.js | Alpine Docker · Esplora-backed |
-| CI | GitHub Actions | Per-module jobs plus docs sync · all must pass |
+| Smart contracts | Soroban, Rust | Protocol 26, `soroban-sdk = "26"` |
+| Bitcoin scripting | P2WSH, absolute CLTV timelock | `bitcoinjs-lib`, `ecpair` |
+| Bitcoin wallets | Xverse (sats-connect), Signet test key in the browser on testnet | PSBT standard |
+| Frontend | Next.js 16, React 19, TypeScript | App Router, Tailwind CSS 4 |
+| Stellar wallets | Stellar Wallets Kit, Pollar | Freighter, Lobstr, email and social login on testnet |
+| Relayer runtime | Bun, Express.js | Alpine Docker, Esplora-backed |
+| CI | GitHub Actions | Per-module jobs plus docs sync, all must pass |
 
 ---
 
@@ -236,18 +240,18 @@ bun --version   # >= 1.1
 
 ### Run All Tests
 
-Each module has its own toolchain - there is no unifying root build, and the
+Each module has its own toolchain. There is no unifying root build, and the
 package manager is **not** the same everywhere. Run them from the repo root:
 
 ```bash
-# 1. Soroban contracts - 255 tests
+# 1. Soroban contracts: 255 tests in bitcoin-spv, writz-lend and spv-types
 cd contracts && cargo test
 cd ..
 
-# 2. Bitcoin script toolkit - 72 tests (Bun's own test runner)
+# 2. Bitcoin script toolkit: 72 tests (Bun's own test runner)
 cd bitcoin-script && bun install && bun test
 
-# 3. Relayer service - 512 tests
+# 3. Relayer service: 512 tests
 #    Deps install with Bun, but the suite itself is Jest (ts-jest), so it must
 #    be run through the package script - plain `bun test` picks Bun's runner
 #    instead and fails. The relayer also imports the local @writz/* packages
@@ -282,12 +286,12 @@ The diagrams are drawn as HTML and SVG in `docs/diagrams/source/`; each `build_*
 
 | Module | Language | Tests | How to run |
 |---|---|---|---|
-| `bitcoin-spv` contract | Rust | 68 | `cd contracts && cargo test -p bitcoin-spv` |
-| `writz-lend` contract | Rust | 100 |
-| `spv-types` | Rust | 10 | `cd contracts && cargo test -p spv-types` | `cd contracts && cargo test -p writz-lend` |
-| Relayer service | TypeScript | 248 | `cd relayer && bun run test` |
-| Bitcoin script toolkit | TypeScript | 60 | `cd bitcoin-script && bun test` |
-| **Total** | | **486** | |
+| `bitcoin-spv` contract | Rust | 80 | `cd contracts && cargo test -p bitcoin-spv` |
+| `writz-lend` contract | Rust | 165 | `cd contracts && cargo test -p writz-lend` |
+| `spv-types` | Rust | 10 | `cd contracts && cargo test -p spv-types` |
+| Relayer service | TypeScript | 512 | `cd relayer && bun run test` |
+| Bitcoin script toolkit | TypeScript | 72 | `cd bitcoin-script && bun test` |
+| **Total** | | **839** | |
 
 ---
 
@@ -365,7 +369,7 @@ Full documentation lives in [`docs/`](docs/) and is published at **[docs.writz.x
 ## Contributing
 
 1. Fork the repo and create a branch from `main`.
-2. Run the full test suite before opening a PR - all 839 tests must pass.
+2. Run the full test suite before opening a PR. All 839 tests must pass.
 3. For new features, add tests. For bug fixes, add a regression test.
 4. Open a PR with a clear description of what changed and why.
 
