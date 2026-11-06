@@ -311,7 +311,7 @@ The diagrams are drawn as HTML and SVG in `docs/diagrams/source/`; each `build_*
 | P2WSH script bug | Formal review; emergency timelock protects users regardless |
 | Protocol key compromise | The protocol key cannot move BTC without the user's key; a 2-of-3 protocol side in the P2WSH script is planned, with a published signing policy |
 | SPV contract exploit | Header light client anchored to a public checkpoint, with proof-of-work, exact difficulty and chainwork checks; no upgrade path; independent audit planned before mainnet. See [SPV vs Wrapped Bitcoin](docs/security/spv-vs-wrapped.md) |
-| Oracle manipulation | Reflector SEP-40 feed with a one-hour staleness check; a second source (Pyth) with a deviation guard is planned |
+| Oracle manipulation | Reflector SEP-40 feed with a one-hour staleness check; a second source (RedStone) with a divergence guard is planned |
 | Mass liquidation (BTC crash) | Conservative 150% collateral ratio, liquidation below 120%; a designated keeper liquidates, and liquidation opens to anyone if the keeper goes stale |
 
 ### Audit Roadmap
