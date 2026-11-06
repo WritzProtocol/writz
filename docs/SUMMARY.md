@@ -38,16 +38,20 @@
 * [The Bitcoin Side](/how-it-works/bitcoin-side)
 * [SPV Verification](/how-it-works/spv-verification)
 * [The Stellar Side](/how-it-works/stellar-side)
+* [Manual Proof Submission](/how-it-works/manual-proof-submission)
+* [Manual Emergency Recovery](/how-it-works/manual-emergency-recovery)
 
 ## Developers
 
 * [Build on Writz](/developers/integrate)
 * [For AI Agents](/developers/for-ai-agents)
-* [Quick Start](/developers/quick-start)
+* [What to build on Writz](/developers/request-for-startups)
 * [Bitcoin SPV SDK](/developers/spv-sdk)
+* [Quick Start](/developers/quick-start)
+* [Testnet Runbook](/developers/runbook)
+* [Relayer recovery](/developers/relayer-recovery)
 * [Contract Reference](/developers/contract-reference)
 * [Contributing](/developers/contribution-guide)
-* [Relayer recovery](/developers/relayer-recovery)
 
 ## Security
 

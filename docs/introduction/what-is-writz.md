@@ -2,7 +2,7 @@
 title: "What is Writz?"
 ---
 
-Bitcoin is where wealth lives. It is the foundation - scarce, reliable, and built to hold value through anything. USDC is where wealth moves - the stablecoin that pays invoices, covers expenses, and flows through the real economy.
+Bitcoin is where many people keep their savings. USDC is a dollar stablecoin used to pay and to move money.
 
 **Writz connects the two on Stellar, without moving your Bitcoin off Bitcoin.**
 
@@ -18,19 +18,19 @@ Writz lets Bitcoin holders borrow USDC without:
 - Wrapping their BTC into a synthetic token
 - Trusting a bridge or a federation
 
-The BTC stays on Bitcoin, locked by a Bitcoin Script that nobody but the user controls. The USDC arrives on Stellar, native and real. The position lives in the `writz-lend` contract and is public on chain, like any other lending market.
+The BTC stays on Bitcoin, locked by a Bitcoin Script that cannot move it without the user's signature. The USDC arrives on Stellar. The position lives in the `writz-lend` contract and is public on chain, as in any other lending market.
 
 ---
 
 ## Why This Hasn't Existed Before
 
-Two technologies had to converge before Writz was possible:
+Writz depends on two things that exist on Stellar today:
 
-**1. Bitcoin SPV on Soroban.** A Soroban smart contract can now verify that a Bitcoin transaction happened - cryptographically, without trusting anyone - using Simplified Payment Verification. This was technically possible only after Soroban matured enough to handle the compute (Protocol 23, September 2025) and after the right Rust libraries existed to port the verification logic.
+**1. Bitcoin SPV on Soroban.** A Soroban smart contract can check that a Bitcoin transaction happened, using Simplified Payment Verification: proof of work over a chain of Bitcoin block headers stored on Stellar, and a Merkle proof that places the transaction in a block. The work fits within Soroban's compute budget.
 
-**2. Native USDC on Stellar.** Circle issues USDC natively on Stellar - not bridged, not synthetic. Writz borrowers receive the same USDC used by banks and fintechs worldwide. The output has real-world utility from day one.
+**2. Native USDC on Stellar.** Circle issues USDC natively on Stellar, not bridged and not synthetic. Writz borrowers receive the same USDC that payment apps and wallets on Stellar already use.
 
-Both are production-ready. Writz combines them: native BTC collateral verified on Stellar, borrowed against in native USDC.
+Writz combines them: native BTC collateral verified on Stellar, borrowed against in native USDC.
 
 ---
 
@@ -38,11 +38,11 @@ Both are production-ready. Writz combines them: native BTC collateral verified o
 
 ### Writz Lend *(on testnet today, mainnet planned for Q2 to Q3 2027)*
 
-Deposit BTC as collateral. Borrow USDC up to 66% of your BTC's value. Interest accrues at market rates. Repay anytime and get your BTC back.
+Deposit BTC as collateral. Borrow USDC up to about 66.7% of your BTC's value. Interest accrues at a variable rate set by how much of the pool is borrowed. Repay at any time and get your BTC back.
 
 This is a loan against your Bitcoin savings, taken without giving up custody of your Bitcoin.
 
-### Earn *(lender side of Writz Lend, live on testnet)*
+### Lend USDC *(lender side of Writz Lend, on testnet today)*
 
 Lend USDC to the Writz Lend pool and earn the interest Bitcoin borrowers pay. The rate is variable and follows how much of the pool is borrowed, so it is zero while nothing is borrowed. Withdraw your USDC and its interest at any time, up to what is not lent out at that moment. See [Writz Lend, For USDC Lenders](/products/writz-lend#for-usdc-lenders-earn).
 
@@ -52,13 +52,10 @@ Writz Lend is the only product today. Features planned for later are listed in [
 
 ## How Writz Compares
 
-| | WBTC / tBTC | Stacks sBTC | Blend | **Writz** |
+| | WBTC | tBTC | Stacks sBTC | **Writz** |
 |---|---|---|---|---|
-| Needs a custodian | Yes | Partial | N/A | **No** |
-| Wraps your BTC | Yes | Yes | N/A | **No** |
-| Works with real BTC | No | Partial | No | **Yes** |
-| On Stellar | No | No | Yes | **Yes** |
-| Native USDC output | No | No | Yes | **Yes** |
+| Who controls the BTC | Custodians | A threshold signer network | A signer set | **The script: the borrower's key plus the protocol key, or the borrower alone after the timelock** |
+| Turns your BTC into a token on another chain | Yes | Yes | Yes | **No** |
 
 ---
 
@@ -66,14 +63,14 @@ Writz Lend is the only product today. Features planned for later are listed in [
 
 Writz runs on Stellar testnet today:
 
-- `bitcoin-spv` and `writz-lend` deployed on testnet (current contracts since October 2026)
+- `bitcoin-spv` deployed on testnet since 2026-10-25, the current `writz-lend` since 2026-11-02
 - 839 tests passing across all modules
-- Real Bitcoin transactions broadcast and confirmed on Bitcoin Signet
+- Deposits and releases broadcast and confirmed on Bitcoin signet
 
-The protocol is not yet available on mainnet. Mainnet launch is targeted for Q2 to Q3 2027, starting with a gated, TVL-capped release of Writz Lend.
+Writz Lend is not on mainnet. The mainnet launch is targeted for Q2 to Q3 2027, starting with low borrowing caps.
 
-**Privacy** is not part of the protocol: positions are public on chain.
+Positions are public on chain. Privacy is not part of the protocol.
 
 ---
 
-**Next:** [How Writz Works →](/introduction/how-writz-works) - A plain-English explanation anyone can follow.
+**Next:** [How Writz Works →](/introduction/how-writz-works), a plain-English walkthrough.
