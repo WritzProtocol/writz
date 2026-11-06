@@ -1,6 +1,5 @@
 # Contract Migration Runbook
 
-**Author:** Tyler (Architecture)
 **Status:** Written, not yet rehearsed - see the checklist at the end. This is the required follow-up to `docs/architecture/adr/0001-contract-immutability.md` (Accepted: contracts stay immutable). Immutability without this document is not actually safer than upgradeability with a weak key - it just moves the risk to an unplanned, panicked migration. This is the plan for it to be planned instead.
 
 ---
@@ -19,8 +18,8 @@ This is the common case: something needs to change that isn't security-critical 
 
 1. Deploy the new contract version. Run the full test suite and a testnet soak period before mainnet deployment - same bar as the original launch.
 2. **`bitcoin-spv` first, since it has no user state:**
-   - `bitcoin-spv`: `initialize(admin)`, then `set_checkpoint` with a current checkpoint (see `contracts/scripts/check-checkpoint-age.sh` for how to check the old one's freshness before copying it forward - don't copy a stale checkpoint into a fresh deployment).
-3. **Repoint the lending contracts' dependencies**, using the setters added alongside this runbook (`set_spv_contract`, `set_oracle`): if only `bitcoin-spv` changed, the lending contract themselves don't need to redeploy at all - just repoint them at the new dependency address. This is the case the Fase 1 setter work was specifically for.
+   - `bitcoin-spv`: deploy with its constructor arguments (admin, PoW limit, TTLs), then `set_checkpoint` with a current checkpoint (see `contracts/scripts/check-checkpoint-age.sh` for how to check the old one's freshness before copying it forward - don't copy a stale checkpoint into a fresh deployment).
+3. **Repoint the lending contract's dependencies**, using the setters added alongside this runbook (`set_spv_contract`, `set_oracle`): if only `bitcoin-spv` changed, `writz-lend` does not need to redeploy at all - just repoint it at the new dependency address. This is the case those setters exist for.
 4. **If `writz-lend` itself is what's changing:** deploy the new lending contract, point it at the (possibly unchanged) `bitcoin-spv`/oracle/USDC token addresses, and update the frontend/relayer configuration (`NEXT_PUBLIC_WRITZ_LEND_ID` and the relayer's `WRITZ_LEND_ID`) to send **new** deposits to the new contract. Do not attempt to move existing positions. They stay on the old contract, which keeps functioning:
    - Existing borrowers can still repay and get their BTC released (the co-signing backend's protocol Bitcoin key is not tied to any specific Soroban contract address - the P2WSH script only references the protocol's Bitcoin pubkey and the user's, never the Soroban contract - so releases keep working regardless of which Soroban contract is doing the accounting).
    - Existing lenders can still withdraw from the old contract's pool.
