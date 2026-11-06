@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg viewBox="0 0 1080 784" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="repay-and-release-title repay-and-release-desc" id="repay-and-release-root">
+<svg viewBox="0 0 960 784" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="repay-and-release-title repay-and-release-desc" id="repay-and-release-root">
 <title id="repay-and-release-title">Repaying a loan and releasing the Bitcoin</title>
 <desc id="repay-and-release-desc">After a full repayment writz-lend emits an event, the protocol signers check the position on Stellar and publish their co-signature, and the borrower signs and broadcasts the release; if the signers are unavailable, the borrower spends alone after the timelock.</desc>
 <defs>
@@ -8,53 +8,53 @@
       #repay-and-release-root .diagram-container { width:100%;overflow-x:auto }
       #repay-and-release-root .diagram-container { overflow-x:visible }</style><marker id="repay-and-release-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4B515B"/></marker><marker id="repay-and-release-arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#15181E"/></marker><marker id="repay-and-release-arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#2A303A"/></marker><marker id="repay-and-release-arrow-open" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polyline points="0 0, 8 3, 0 6" fill="none" stroke="#4B515B" stroke-width="1.2"/></marker></defs>
 <rect width="100%" height="100%" fill="#F6F7F8"/>
-<rect x="112" y="536" width="316" height="88" rx="4" fill="#15181e" stroke="#15181e" stroke-width="1" fill-opacity="0.02" stroke-opacity="0.22"/>
-<rect x="112" y="536" width="40" height="16" rx="2" fill="#F6F7F8" stroke="#15181e" stroke-width="1" stroke-opacity="0.22"/>
-<text x="132" y="548" fill="#4B515B" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.12em">OPT</text>
-<text x="164" y="548" fill="#4B515B" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.04em">[signers unavailable, after height H]</text>
-<line x1="140" y1="112" x2="140" y2="640" stroke="#15181e" stroke-width="1" stroke-dasharray="3,3" stroke-opacity="0.22"/>
-<line x1="400" y1="112" x2="400" y2="640" stroke="#15181e" stroke-width="1" stroke-dasharray="3,3" stroke-opacity="0.22"/>
-<line x1="660" y1="112" x2="660" y2="640" stroke="#15181e" stroke-width="1" stroke-dasharray="3,3" stroke-opacity="0.22"/>
-<line x1="920" y1="112" x2="920" y2="640" stroke="#15181e" stroke-width="1" stroke-dasharray="3,3" stroke-opacity="0.22"/>
-<rect x="656" y="176" width="8" height="40" fill="#15181e" stroke="#4B515B" stroke-width="0.8" fill-opacity="0.06"/>
-<rect x="656" y="408" width="8" height="40" fill="#15181e" stroke="#4B515B" stroke-width="0.8" fill-opacity="0.06"/>
-<line x1="144" y1="176" x2="654" y2="176" stroke="#4B515B" stroke-width="1.2" marker-end="url(#repay-and-release-arrow)"/>
-<rect x="232.0" y="156" width="76" height="12" rx="2" fill="#F6F7F8"/><text x="270.0" y="165" fill="#646A73" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">REPAY IN FULL</text>
-<line x1="656" y1="216" x2="146" y2="216" stroke="#4B515B" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#repay-and-release-arrow)"/>
-<rect x="494.0" y="196" width="72" height="12" rx="2" fill="#F6F7F8"/><text x="530.0" y="205" fill="#646A73" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">DEBT CLEARED</text>
-<line x1="664" y1="264" x2="914" y2="264" stroke="#4B515B" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#repay-and-release-arrow-open)"/>
-<rect x="754.0" y="244" width="72" height="12" rx="2" fill="#F6F7F8"/><text x="790.0" y="253" fill="#646A73" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">REPAID EVENT</text>
-<path d="M924,292 H956 Q964,292 964,300 V308 Q964,316 956,316 H926" fill="none" stroke="#4B515B" stroke-width="1.2" marker-end="url(#repay-and-release-arrow)"/>
-<rect x="972" y="298" width="64" height="12" rx="2" fill="#F6F7F8"/><text x="1004.0" y="307" fill="#646A73" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">CHECK STATE</text>
-<line x1="916" y1="360" x2="666" y2="360" stroke="#4B515B" stroke-width="1.2" marker-end="url(#repay-and-release-arrow)"/>
-<rect x="750.0" y="340" width="80" height="12" rx="2" fill="#F6F7F8"/><text x="790.0" y="349" fill="#646A73" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">PUBLISH CO-SIG</text>
-<line x1="144" y1="408" x2="654" y2="408" stroke="#4B515B" stroke-width="1.2" marker-end="url(#repay-and-release-arrow)"/>
-<rect x="238.0" y="388" width="64" height="12" rx="2" fill="#F6F7F8"/><text x="270.0" y="397" fill="#646A73" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">GET RELEASE</text>
-<line x1="656" y1="448" x2="146" y2="448" stroke="#4B515B" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#repay-and-release-arrow)"/>
-<rect x="500.0" y="428" width="60" height="12" rx="2" fill="#F6F7F8"/><text x="530.0" y="437" fill="#646A73" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">RELEASE TX</text>
-<line x1="144" y1="496" x2="394" y2="496" stroke="#15181E" stroke-width="1.6" marker-end="url(#repay-and-release-arrow-accent)"/>
-<rect x="228.0" y="476" width="84" height="12" rx="2" fill="#F6F7F8"/><text x="270.0" y="485" fill="#646A73" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">SIGN, BROADCAST</text>
-<line x1="144" y1="600" x2="394" y2="600" stroke="#4B515B" stroke-width="1.2" marker-end="url(#repay-and-release-arrow)"/>
-<rect x="230.0" y="580" width="80" height="12" rx="2" fill="#F6F7F8"/><text x="270.0" y="589" fill="#646A73" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">TIMELOCK SPEND</text>
-<rect x="48" y="64" width="184" height="48" rx="6" fill="#F6F7F8"/>
-<rect x="48" y="64" width="184" height="48" rx="6" fill="#ECEEF1" stroke="#4B515B" stroke-width="1"/>
-<text x="140.0" y="92.0" fill="#15181E" font-size="13" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">Borrower</text>
-<rect x="308" y="64" width="184" height="48" rx="6" fill="#F6F7F8"/>
-<rect x="308" y="64" width="184" height="48" rx="6" fill="#F6F7F8" stroke="#15181E" stroke-width="1"/>
-<text x="400.0" y="92.0" fill="#15181E" font-size="13" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">Bitcoin</text>
-<rect x="568" y="64" width="184" height="48" rx="6" fill="#F6F7F8"/>
-<rect x="568" y="64" width="184" height="48" rx="6" fill="#FFC300" stroke="#15181E" stroke-width="1.4"/>
-<text x="660.0" y="92.0" fill="#15181E" font-size="13" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">writz-lend</text>
-<rect x="828" y="64" width="184" height="48" rx="6" fill="#F6F7F8"/>
-<rect x="828" y="64" width="184" height="48" rx="6" fill="#F6F7F8" stroke="#15181E" stroke-width="1"/>
-<text x="920.0" y="92.0" fill="#15181E" font-size="13" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">Protocol signers</text>
-<text x="40" y="684" fill="#4B515B" font-size="13" font-style="italic" font-family="'Work Sans', system-ui, sans-serif">Each signer service reads Stellar state on its own and co-signs a release only for a repaid position.</text>
-<line x1="32" y1="720" x2="1048" y2="720" stroke="#15181e" stroke-width="0.8" stroke-opacity="0.12"/>
-<text x="32" y="748" fill="#4B515B" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.14em">LEGEND</text>
-<line x1="112" y1="745" x2="132" y2="745" stroke="#4B515B" stroke-width="1.2"/>
-<text x="140" y="749" fill="#15181E" font-size="10" font-family="'Work Sans', system-ui, sans-serif">Call</text>
-<line x1="204" y1="745" x2="224" y2="745" stroke="#4B515B" stroke-width="1.2" stroke-dasharray="5,4"/>
-<text x="232" y="749" fill="#15181E" font-size="10" font-family="'Work Sans', system-ui, sans-serif">Return or event</text>
-<line x1="365" y1="745" x2="385" y2="745" stroke="#15181E" stroke-width="1.6"/>
-<text x="393" y="749" fill="#15181E" font-size="10" font-family="'Work Sans', system-ui, sans-serif">Bitcoin back to the borrower</text>
+<rect x="82" y="536" width="292" height="88" rx="4" fill="#15181e" stroke="#15181e" stroke-width="1" fill-opacity="0.02" stroke-opacity="0.22"/>
+<rect x="82" y="536" width="40" height="16" rx="2" fill="#F6F7F8" stroke="#15181e" stroke-width="1" stroke-opacity="0.22"/>
+<text x="102" y="548" fill="#4B515B" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.12em">OPT</text>
+<text x="134" y="548" fill="#4B515B" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.04em">[signers unavailable, after height H]</text>
+<line x1="110" y1="112" x2="110" y2="640" stroke="#15181e" stroke-width="1" stroke-dasharray="3,3" stroke-opacity="0.22"/>
+<line x1="330" y1="112" x2="330" y2="640" stroke="#15181e" stroke-width="1" stroke-dasharray="3,3" stroke-opacity="0.22"/>
+<line x1="550" y1="112" x2="550" y2="640" stroke="#15181e" stroke-width="1" stroke-dasharray="3,3" stroke-opacity="0.22"/>
+<line x1="760" y1="112" x2="760" y2="640" stroke="#15181e" stroke-width="1" stroke-dasharray="3,3" stroke-opacity="0.22"/>
+<rect x="546" y="176" width="8" height="40" fill="#15181e" stroke="#4B515B" stroke-width="0.8" fill-opacity="0.06"/>
+<rect x="546" y="408" width="8" height="40" fill="#15181e" stroke="#4B515B" stroke-width="0.8" fill-opacity="0.06"/>
+<line x1="114" y1="176" x2="544" y2="176" stroke="#4B515B" stroke-width="1.2" marker-end="url(#repay-and-release-arrow)"/>
+<rect x="174.0" y="152" width="92" height="16" rx="2" fill="#F6F7F8"/><text x="220.0" y="164" fill="#646A73" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">REPAY IN FULL</text>
+<line x1="546" y1="216" x2="116" y2="216" stroke="#4B515B" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#repay-and-release-arrow)"/>
+<rect x="398.0" y="192" width="84" height="16" rx="2" fill="#F6F7F8"/><text x="440.0" y="204" fill="#646A73" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">DEBT CLEARED</text>
+<line x1="554" y1="264" x2="754" y2="264" stroke="#4B515B" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#repay-and-release-arrow-open)"/>
+<rect x="613.0" y="240" width="84" height="16" rx="2" fill="#F6F7F8"/><text x="655.0" y="252" fill="#646A73" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">REPAID EVENT</text>
+<path d="M764,292 H796 Q804,292 804,300 V308 Q804,316 796,316 H766" fill="none" stroke="#4B515B" stroke-width="1.2" marker-end="url(#repay-and-release-arrow)"/>
+<rect x="812" y="296" width="80" height="16" rx="2" fill="#F6F7F8"/><text x="852.0" y="308" fill="#646A73" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">CHECK STATE</text>
+<line x1="756" y1="360" x2="556" y2="360" stroke="#4B515B" stroke-width="1.2" marker-end="url(#repay-and-release-arrow)"/>
+<rect x="607.0" y="336" width="96" height="16" rx="2" fill="#F6F7F8"/><text x="655.0" y="348" fill="#646A73" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">PUBLISH CO-SIG</text>
+<line x1="114" y1="408" x2="544" y2="408" stroke="#4B515B" stroke-width="1.2" marker-end="url(#repay-and-release-arrow)"/>
+<rect x="180.0" y="384" width="80" height="16" rx="2" fill="#F6F7F8"/><text x="220.0" y="396" fill="#646A73" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">GET RELEASE</text>
+<line x1="546" y1="448" x2="116" y2="448" stroke="#4B515B" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#repay-and-release-arrow)"/>
+<rect x="404.0" y="424" width="72" height="16" rx="2" fill="#F6F7F8"/><text x="440.0" y="436" fill="#646A73" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">RELEASE TX</text>
+<line x1="114" y1="496" x2="324" y2="496" stroke="#15181E" stroke-width="1.6" marker-end="url(#repay-and-release-arrow-accent)"/>
+<rect x="168.0" y="472" width="104" height="16" rx="2" fill="#F6F7F8"/><text x="220.0" y="484" fill="#646A73" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">SIGN, BROADCAST</text>
+<line x1="114" y1="600" x2="324" y2="600" stroke="#4B515B" stroke-width="1.2" marker-end="url(#repay-and-release-arrow)"/>
+<rect x="172.0" y="576" width="96" height="16" rx="2" fill="#F6F7F8"/><text x="220.0" y="588" fill="#646A73" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">TIMELOCK SPEND</text>
+<rect x="30.0" y="64" width="160" height="48" rx="6" fill="#F6F7F8"/>
+<rect x="30.0" y="64" width="160" height="48" rx="6" fill="#ECEEF1" stroke="#4B515B" stroke-width="1"/>
+<text x="110.0" y="94.0" fill="#15181E" font-size="16" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">Borrower</text>
+<rect x="250.0" y="64" width="160" height="48" rx="6" fill="#F6F7F8"/>
+<rect x="250.0" y="64" width="160" height="48" rx="6" fill="#F6F7F8" stroke="#15181E" stroke-width="1"/>
+<text x="330.0" y="94.0" fill="#15181E" font-size="16" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">Bitcoin</text>
+<rect x="470.0" y="64" width="160" height="48" rx="6" fill="#F6F7F8"/>
+<rect x="470.0" y="64" width="160" height="48" rx="6" fill="#FFC300" stroke="#15181E" stroke-width="1.4"/>
+<text x="550.0" y="94.0" fill="#15181E" font-size="16" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">writz-lend</text>
+<rect x="680.0" y="64" width="160" height="48" rx="6" fill="#F6F7F8"/>
+<rect x="680.0" y="64" width="160" height="48" rx="6" fill="#F6F7F8" stroke="#15181E" stroke-width="1"/>
+<text x="760.0" y="94.0" fill="#15181E" font-size="16" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">Protocol signers</text>
+<text x="24" y="684" fill="#4B515B" font-size="15" font-style="italic" font-family="'Work Sans', system-ui, sans-serif">Each protocol signer checks Stellar on its own and co-signs only a repaid position.</text>
+<line x1="32" y1="720" x2="928" y2="720" stroke="#15181e" stroke-width="0.8" stroke-opacity="0.12"/>
+<text x="32" y="748" fill="#4B515B" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.14em">LEGEND</text>
+<line x1="96" y1="745" x2="116" y2="745" stroke="#4B515B" stroke-width="1.2"/>
+<text x="124" y="750" fill="#15181E" font-size="12" font-family="'Work Sans', system-ui, sans-serif">Call</text>
+<line x1="184" y1="745" x2="204" y2="745" stroke="#4B515B" stroke-width="1.2" stroke-dasharray="5,4"/>
+<text x="212" y="750" fill="#15181E" font-size="12" font-family="'Work Sans', system-ui, sans-serif">Return or event</text>
+<line x1="352" y1="745" x2="372" y2="745" stroke="#15181E" stroke-width="1.6"/>
+<text x="380" y="750" fill="#15181E" font-size="12" font-family="'Work Sans', system-ui, sans-serif">Bitcoin back to the borrower</text>
 </svg>

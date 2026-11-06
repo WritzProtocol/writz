@@ -10,6 +10,7 @@ SK = {
               focal_text="#F6F7F8", focal_sub="#FFC300", frame="rgba(246,247,248,0.04)", frame_stroke="rgba(246,247,248,0.22)"),
 }
 SANS = "'Work Sans', system-ui, sans-serif"
+F_NAME, F_SUB, F_TAG, F_LBL, F_LEG, F_NOTE = 16, 12, 8, 10, 12, 15
 MONO = "'Geist Mono', ui-monospace, monospace"
 
 def esc(t): return t.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
@@ -26,29 +27,29 @@ def node(c, x, y, w, h, tag, name, sub="", kind="default", sub2=""):
     out = [f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="6" fill="{c["paper"]}"/>',
            f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="6" fill="{fill}" stroke="{stroke}" stroke-width="{sw}"{dash}/>']
     if tag:
-        tw = max(36, int(len(tag) * 0.62 * 7) + 12)
-        out += [f'<rect x="{x+8}" y="{y+8}" width="{tw}" height="12" rx="2" fill="none" stroke="{sc}" stroke-opacity="0.5" stroke-width="0.8"/>',
-                f'<text x="{x+8+tw/2}" y="{y+17}" fill="{sc}" font-size="7" font-family="{MONO}" text-anchor="middle" letter-spacing="0.08em">{esc(tag)}</text>']
+        tw = max(40, int(len(tag) * 0.62 * F_TAG) + 14)
+        out += [f'<rect x="{x+8}" y="{y+8}" width="{tw}" height="14" rx="2" fill="none" stroke="{sc}" stroke-opacity="0.5" stroke-width="0.8"/>',
+                f'<text x="{x+8+tw/2}" y="{y+18}" fill="{sc}" font-size="{F_TAG}" font-family="{MONO}" text-anchor="middle" letter-spacing="0.08em">{esc(tag)}</text>']
     cx = x + w / 2
     lines = [s for s in (sub, sub2) if s]
-    base = y + h / 2 + (6 if tag else 4) - 8 * (len(lines) - 1)
-    if not lines: base = y + h / 2 + (8 if tag else 4)
-    out.append(f'<text x="{cx}" y="{base}" fill="{tc}" font-size="13" font-weight="600" font-family="{SANS}" text-anchor="middle">{esc(name)}</text>')
+    base = y + h / 2 + (6 if tag else 2) - 9 * (len(lines) - 1)
+    if not lines: base = y + h / 2 + (10 if tag else 6)
+    out.append(f'<text x="{cx}" y="{base}" fill="{tc}" font-size="{F_NAME}" font-weight="600" font-family="{SANS}" text-anchor="middle">{esc(name)}</text>')
     for i, s in enumerate(lines):
-        out.append(f'<text x="{cx}" y="{base+16+14*i}" fill="{sc}" font-size="9" font-family="{MONO}" text-anchor="middle">{esc(s)}</text>')
+        out.append(f'<text x="{cx}" y="{base+19+16*i}" fill="{sc}" font-size="{F_SUB}" font-family="{MONO}" text-anchor="middle">{esc(s)}</text>')
     return "\n".join(out)
 
 def label(c, x, y, w, text, anchor="middle"):
-    return (f'<rect x="{x}" y="{y}" width="{w}" height="12" rx="2" fill="{c["paper"]}"/>'
-            f'<text x="{x+w/2}" y="{y+9}" fill="{c["soft"]}" font-size="8" font-family="{MONO}" text-anchor="middle" letter-spacing="0.06em">{esc(text)}</text>')
+    return (f'<rect x="{x}" y="{y}" width="{w}" height="16" rx="2" fill="{c["paper"]}"/>'
+            f'<text x="{x+w/2}" y="{y+12}" fill="{c["soft"]}" font-size="{F_LBL}" font-family="{MONO}" text-anchor="middle" letter-spacing="0.06em">{esc(text)}</text>')
 
-def lw(text, size=8): return int(len(text) * 0.62 * size) + 10 + (4 - (int(len(text) * 0.62 * size) + 10) % 4) % 4
+def lw(text, size=F_LBL): return int(len(text) * 0.62 * size) + 10 + (4 - (int(len(text) * 0.62 * size) + 10) % 4) % 4
 
 def zone(c, x, y, w, h, text, off=16):
-    l = int(len(text) * 0.62 * 7) + 16
+    l = int(len(text) * 0.62 * 9) + 18
     return (f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="8" fill="{c["zone_fill"]}" stroke="{c["zone_stroke"]}" stroke-width="0.8"/>'
-            f'<rect x="{x+off}" y="{y-6}" width="{l}" height="12" rx="2" fill="{c["paper"]}"/>'
-            f'<text x="{x+off+l/2}" y="{y+3}" fill="{c["soft"]}" font-size="7" font-family="{MONO}" text-anchor="middle" letter-spacing="0.14em">{esc(text)}</text>')
+            f'<rect x="{x+off}" y="{y-8}" width="{l}" height="16" rx="2" fill="{c["paper"]}"/>'
+            f'<text x="{x+off+l/2}" y="{y+4}" fill="{c["soft"]}" font-size="9" font-family="{MONO}" text-anchor="middle" letter-spacing="0.14em">{esc(text)}</text>')
 
 def arrow(c, d, kind="default", dash=False):
     col = {"default": c["muted"], "accent": c["accent"]}[kind]
@@ -65,8 +66,8 @@ def defs(c):
 
 def legend(c, y, items, width):
     out = [f'<line x1="32" y1="{y-24}" x2="{width-32}" y2="{y-24}" stroke="{c["rule"]}" stroke-width="0.8"/>',
-           f'<text x="32" y="{y+4}" fill="{c["muted"]}" font-size="8" font-family="{MONO}" letter-spacing="0.14em">LEGEND</text>']
-    x = 112
+           f'<text x="32" y="{y+4}" fill="{c["muted"]}" font-size="9" font-family="{MONO}" letter-spacing="0.14em">LEGEND</text>']
+    x = 96
     for kind, text in items:
         if kind == "focal": sw = f'<rect x="{x}" y="{y-6}" width="20" height="14" rx="3" fill="{c["tint"]}" stroke="{c["accent"]}" stroke-width="1.2"/>'
         elif kind == "external": sw = f'<rect x="{x}" y="{y-6}" width="20" height="14" rx="3" fill="{c["paper"]}" stroke="{c["muted"]}" stroke-width="1" stroke-dasharray="4,3"/>'
@@ -75,8 +76,8 @@ def legend(c, y, items, width):
         elif kind == "dashed": sw = f'<line x1="{x}" y1="{y+1}" x2="{x+20}" y2="{y+1}" stroke="{c["muted"]}" stroke-width="1.2" stroke-dasharray="5,4"/>'
         elif kind == "accentline": sw = f'<line x1="{x}" y1="{y+1}" x2="{x+20}" y2="{y+1}" stroke="{c["accent"]}" stroke-width="1.6"/>'
         else: sw = f'<rect x="{x}" y="{y-6}" width="20" height="14" rx="3" fill="{c["paper"]}" stroke="{c["ink"]}" stroke-width="1"/>'
-        out += [sw, f'<text x="{x+28}" y="{y+5}" fill="{c["ink"]}" font-size="10" font-family="{SANS}">{esc(text)}</text>']
-        x += 28 + int(len(text) * 6.2) + 40
+        out += [sw, f'<text x="{x+28}" y="{y+6}" fill="{c["ink"]}" font-size="{F_LEG}" font-family="{SANS}">{esc(text)}</text>']
+        x += 28 + int(len(text) * 7.2) + 32
     return "\n".join(out)
 
 def page(slug_base, skin, title, desc, w, h, body, eyebrow="Architecture"):
@@ -101,7 +102,7 @@ svg{{width:100%;min-width:{w}px;display:block}}@media print{{.diagram-container{
 </div></div></body></html>'''
     open(f"{slug}.html", "w").write(html)
 
-def seq(c, actors, msgs, top=64, bottom=None, act_bars=(), frames=(), width=1280):
+def seq(c, actors, msgs, top=64, bottom=None, act_bars=(), frames=(), width=960, aw=160):
     """actors: [(x, name, sub, kind)]; msgs: [(y, from_x, to_x, text, style)] style in call|return|async|accent|self|selfaccent."""
     p = []
     bottom = bottom or max(m[0] for m in msgs) + 48
@@ -109,7 +110,7 @@ def seq(c, actors, msgs, top=64, bottom=None, act_bars=(), frames=(), width=1280
         p += [f'<rect x="{fx}" y="{fy}" width="{fw}" height="{fh}" rx="4" fill="{c["frame"]}" stroke="{c["frame_stroke"]}" stroke-width="1"/>',
               f'<rect x="{fx}" y="{fy}" width="40" height="16" rx="2" fill="{c["paper"]}" stroke="{c["frame_stroke"]}" stroke-width="1"/>',
               f'<text x="{fx+20}" y="{fy+12}" fill="{c["muted"]}" font-size="8" font-family="{MONO}" text-anchor="middle" letter-spacing="0.12em">{op}</text>',
-              f'<text x="{fx+52}" y="{fy+12}" fill="{c["muted"]}" font-size="8" font-family="{MONO}" letter-spacing="0.04em">{esc(guard)}</text>']
+              f'<text x="{fx+52}" y="{fy+12}" fill="{c["muted"]}" font-size="10" font-family="{MONO}" letter-spacing="0.04em">{esc(guard)}</text>']
     for (x, name, sub, kind) in actors:
         p.append(f'<line x1="{x}" y1="{top+48}" x2="{x}" y2="{bottom}" stroke="{c["life"]}" stroke-width="1" stroke-dasharray="3,3"/>')
     for (x, y1, y2) in act_bars:
@@ -120,7 +121,7 @@ def seq(c, actors, msgs, top=64, bottom=None, act_bars=(), frames=(), width=1280
             mk = "arrow-accent" if style == "selfaccent" else "arrow"
             p.append(f'<path d="M{a+4},{y} H{a+36} Q{a+44},{y} {a+44},{y+8} V{y+16} Q{a+44},{y+24} {a+36},{y+24} H{a+6}" fill="none" stroke="{col}" stroke-width="{1.6 if style=="selfaccent" else 1.2}" marker-end="url(#{mk})"/>')
             w = lw(text)
-            p.append(label(c, a + 52, y + 6, w, text))
+            p.append(label(c, a + 52, y + 4, w, text))
             continue
         d = 1 if b > a else -1
         x1, x2 = a + 4 * d, b - 6 * d
@@ -137,7 +138,7 @@ def seq(c, actors, msgs, top=64, bottom=None, act_bars=(), frames=(), width=1280
         xs = sorted(x for x, *_ in actors)
         nxt = min((xx for xx in xs if (xx - a) * d > 0), key=lambda xx: abs(xx - a))
         mid = (a + nxt) / 2
-        p.append(label(c, mid - w / 2, y - 20, w, text))
+        p.append(label(c, mid - w / 2, y - 24, w, text))
     for (x, name, sub, kind) in actors:
-        p.append(node(c, x - 92, top, 184, 48, "", name, sub, kind))
+        p.append(node(c, x - aw / 2, top, aw, 48, "", name, sub, kind))
     return "\n".join(p)

@@ -1,5 +1,5 @@
 from wz import *
-B, BTC, L, SG = 140, 400, 660, 920
+B, BTC, L, SG = 110, 330, 550, 760
 A = [(B, "Borrower", "", "user"), (BTC, "Bitcoin", "", "default"), (L, "writz-lend", "", "focal"), (SG, "Protocol signers", "", "default")]
 M = [(176, B, L, "REPAY IN FULL", "call"),
      (216, L, B, "DEBT CLEARED", "return"),
@@ -13,10 +13,10 @@ M = [(176, B, L, "REPAY IN FULL", "call"),
 def body(skin):
     c = SK[skin]
     s = seq(c, A, M, act_bars=[(L, 176, 216), (L, 408, 448)], bottom=640,
-            frames=[(112, 536, 316, 88, "OPT", "[signers unavailable, after height H]")])
-    note = f'<text x="40" y="684" fill="{c["muted"]}" font-size="13" font-style="italic" font-family="{SANS}">Each signer service reads Stellar state on its own and co-signs a release only for a repaid position.</text>'
-    return s + "\n" + note + "\n" + legend(c, 744, [("line", "Call"), ("dashed", "Return or event"), ("accentline", "Bitcoin back to the borrower")], 1080)
+            frames=[(82, 536, 292, 88, "OPT", "[signers unavailable, after height H]")])
+    note = f'<text x="24" y="684" fill="{c["muted"]}" font-size="{F_NOTE}" font-style="italic" font-family="{SANS}">Each protocol signer checks Stellar on its own and co-signs only a repaid position.</text>'
+    return s + "\n" + note + "\n" + legend(c, 744, [("line", "Call"), ("dashed", "Return or event"), ("accentline", "Bitcoin back to the borrower")], 960)
 for sk in ("light", "dark"):
     page("repay-and-release", sk, "Repaying a loan and releasing the Bitcoin",
          "After a full repayment writz-lend emits an event, the protocol signers check the position on Stellar and publish their co-signature, and the borrower signs and broadcasts the release; if the signers are unavailable, the borrower spends alone after the timelock.",
-         1080, 784, body(sk), eyebrow="Sequence")
+         960, 784, body(sk), eyebrow="Sequence")
