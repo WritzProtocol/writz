@@ -36,6 +36,24 @@ export function StatusProvider({
 
 export const DEFAULT_POLL_MS = 30_000;
 
+const hidden = () => typeof document !== "undefined" && document.hidden;
+
+/** Runs `tick` now and every `ms` while the tab is visible, and again when it comes back. */
+export function pollWhileVisible(tick: () => void, ms: number): () => void {
+  tick();
+  const id = setInterval(() => {
+    if (!hidden()) tick();
+  }, ms);
+  const onVisible = () => {
+    if (!hidden()) tick();
+  };
+  if (typeof document !== "undefined") document.addEventListener("visibilitychange", onVisible);
+  return () => {
+    clearInterval(id);
+    if (typeof document !== "undefined") document.removeEventListener("visibilitychange", onVisible);
+  };
+}
+
 /** Re-reads one position's status now, for a "Check again" action. */
 export function useRefreshStatus(): (local: LocalInputs | null) => void {
   const store = useContext(StatusContext);
@@ -67,9 +85,7 @@ export function usePositionStatus(local: LocalInputs | null, pollMs = DEFAULT_PO
     const tick = () => {
       if (latest.current) void store.refresh(key, latest.current);
     };
-    tick();
-    const id = setInterval(tick, pollMs);
-    return () => clearInterval(id);
+    return pollWhileVisible(tick, pollMs);
   }, [store, key, pollMs]);
 
   return status;
@@ -102,9 +118,7 @@ export function usePositionStatuses(locals: readonly LocalInputs[], pollMs = DEF
         const key = statusKey(local);
         if (key) void store.refresh(key, local);
       });
-    tick();
-    const id = setInterval(tick, pollMs);
-    return () => clearInterval(id);
+    return pollWhileVisible(tick, pollMs);
   }, [store, sig, pollMs]);
 
   return statuses;

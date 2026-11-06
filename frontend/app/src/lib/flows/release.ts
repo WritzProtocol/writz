@@ -20,6 +20,7 @@ import { savePosition, type Position } from "@/lib/position";
 import type { SignTransaction } from "@/lib/wallet/WalletProvider";
 import { simulateWritzLend } from "./submit";
 import { submitTrackedTx } from "./positionTx";
+import { esploraFetch } from "@/lib/bitcoin/esplora";
 
 export type ReleaseBlocker = "missing_details" | "no_wallet" | "wrong_account" | "wrong_network";
 
@@ -127,7 +128,7 @@ export const releaseDeps: ReleaseDeps = {
   getReleasePsbt,
   close: closeUnborrowed,
   async broadcast(txHex) {
-    const res = await fetch(`${config.bitcoin.apiUrl}/tx`, { method: "POST", body: txHex });
+    const res = await esploraFetch(`${config.bitcoin.apiUrl}/tx`, { method: "POST", body: txHex });
     if (!res.ok) {
       const errText = await res.text().catch(() => String(res.status));
       throw new Error(`Broadcast failed: ${errText}`);

@@ -14,6 +14,7 @@ import { getTxStatus, signAndSubmit, TxTimedOutError } from "@/lib/flow/stellarT
 import { fetchTipHeight, findDepositOutput } from "@/lib/bitcoin/timelock";
 import { deriveP2WSH } from "@/lib/bitcoin/address";
 import { MIN_DEPOSIT_SATS } from "@/lib/borrow/journey";
+import { esploraFetch } from "@/lib/bitcoin/esplora";
 
 const POLL_MS = 10_000;
 const MAX_BACKOFF_MS = 60_000;
@@ -185,7 +186,7 @@ export const depositDeps: DepositDeps = {
   async findOutput(txid, address) {
     let res: Response;
     try {
-      res = await fetch(`${config.bitcoin.apiUrl}/tx/${txid}`);
+      res = await esploraFetch(`${config.bitcoin.apiUrl}/tx/${txid}`);
     } catch {
       return "unseen";
     }
@@ -196,7 +197,7 @@ export const depositDeps: DepositDeps = {
   },
   async locateDeposit(txid, btcPubkey) {
     const api = config.bitcoin.apiUrl;
-    const res = await fetch(`${api}/tx/${txid}/hex`).catch(() => null);
+    const res = await esploraFetch(`${api}/tx/${txid}/hex`).catch(() => null);
     if (!res?.ok) return "unseen";
     const rawTxHex = (await res.text()).trim();
     const protocolPubkeyHex = requireProtocolPubkey();

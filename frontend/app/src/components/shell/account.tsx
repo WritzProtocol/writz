@@ -24,6 +24,7 @@ import { usePositionStatuses } from "@/lib/status/provider";
 import type { LocalInputs } from "@/lib/status/types";
 import type { HomeDeposit, HomeLoan } from "@/lib/home/model";
 import { useMounted, useRead, useMockWorld } from "@/components/ui/hooks";
+import { esploraFetch } from "@/lib/bitcoin/esplora";
 
 export type LoansState = "disconnected" | "finding" | "found" | "failed";
 
@@ -181,7 +182,7 @@ function useLiveAccount(): BaseAccount {
   const usdcAdded: Read<boolean> = trust.kind === "ok" ? { kind: "ok", value: trust.value !== null } : trust;
   const btcAddress = b.btcAddress;
   const balance = useRead(btcAddress ? `btc:${btcAddress}:${nonce}` : null, async () => {
-    const r = await fetch(`${config.bitcoin.apiUrl}/address/${btcAddress}`);
+    const r = await esploraFetch(`${config.bitcoin.apiUrl}/address/${btcAddress}`);
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     return btcBalanceOf(await r.json());
   });

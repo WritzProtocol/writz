@@ -4,6 +4,7 @@ import { getBtcPriceStroops } from "@/lib/contracts/oracle";
 import { getReleasePsbt, internalTxid, readPosition, writzLendId } from "@/lib/contracts/writzLend";
 import type { RelayerSource, StatusSource } from "./source";
 import type { BtcTxView, LiquidationLookup, Outspend } from "./types";
+import { esploraFetch } from "@/lib/bitcoin/esplora";
 
 type Fetch = (url: string) => Promise<Response>;
 
@@ -107,25 +108,13 @@ export function clientRelayerSource(deps: {
   };
 }
 
-/** Retries a read on `fallback` when `primary` fails or answers with a server error. */
-export const withFallback =
-  (primary: string, fallback: string, get: Fetch): Fetch =>
-  async (url) => {
-    if (!fallback || fallback === primary || !url.startsWith(primary)) return get(url);
-    try {
-      const res = await get(url);
-      if (res.status < 500) return res;
-    } catch {}
-    return get(fallback + url.slice(primary.length));
-  };
-
 /** Today's reads: `writz-lend`, the oracle, Esplora, and the client relayer fallbacks. */
 export function createClientStatusSource(get: Fetch = timedFetch()): StatusSource {
   return {
     getPosition: readPosition,
     hasReleasePsbt: async (txid) => (await getReleasePsbt(txid)) !== null,
     getOraclePrice: getBtcPriceStroops,
-    ...esploraReads(config.bitcoin.apiUrl, withFallback(config.bitcoin.apiUrl, config.bitcoin.fallbackApiUrl, get)),
+    ...esploraReads(config.bitcoin.apiUrl, esploraFetch),
     relayer: clientRelayerSource({
       relayerUrl: config.services.relayerUrl,
       get,
