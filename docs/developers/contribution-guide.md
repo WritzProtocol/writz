@@ -106,7 +106,6 @@ The following areas are actively looking for contributors:
 | Area | Description | Skill needed |
 |---|---|---|
 | Frontend (app.writz.xyz) | React/Next.js frontend for Writz Lend | React, TypeScript, Stellar Wallets Kit |
-| Taproot migration | Upgrade P2WSH to P2TR for Phase 2 | Bitcoin Script, bitcoinjs-lib |
 | SDK npm package | `writz-sdk` TypeScript package for SPV proof assembly | TypeScript, npm |
 | Oracle integration | Integrate Pyth + Reflector SEP-40 adapters | Rust, Soroban |
 
