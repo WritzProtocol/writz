@@ -159,4 +159,24 @@ describe("createStatusStore", () => {
     await slow;
     expect(store.get("k").status.kind).toBe("liquidated");
   });
+
+  test("an earlier refresh still lands while a newer one hangs", async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    let calls = 0;
+    const source = fakeSource({
+      getPosition: mock(async () => {
+        const call = ++calls;
+        if (call === 1) await gate;
+        else await new Promise(() => {});
+        return chainPosition();
+      }),
+    });
+    const store = createStatusStore(source, { minConfirmations: 1, now: () => NOW });
+    const first = store.refresh("k", { position, pendingDeposit: null });
+    void store.refresh("k", { position, pendingDeposit: null });
+    release();
+    await first;
+    expect(store.get("k").status.kind).toBe("active");
+  });
 });

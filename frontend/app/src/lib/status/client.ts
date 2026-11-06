@@ -7,6 +7,14 @@ import type { BtcTxView, LiquidationLookup, Outspend } from "./types";
 
 type Fetch = (url: string) => Promise<Response>;
 
+const READ_TIMEOUT_MS = 10_000;
+
+/** `fetch` that rejects once `ms` pass, so an unreachable host fails the read instead of stalling it. */
+export const timedFetch =
+  (ms: number = READ_TIMEOUT_MS, base: typeof fetch = fetch): Fetch =>
+  (url) =>
+    base(url, { signal: AbortSignal.timeout(ms) });
+
 /** The slice of `rpc.Server` the liquidation fallback needs. */
 export interface LiquidationEventsServer {
   getHealth(): Promise<{ oldestLedger: number }>;
@@ -99,13 +107,25 @@ export function clientRelayerSource(deps: {
   };
 }
 
+/** Retries a read on `fallback` when `primary` fails or answers with a server error. */
+export const withFallback =
+  (primary: string, fallback: string, get: Fetch): Fetch =>
+  async (url) => {
+    if (!fallback || fallback === primary || !url.startsWith(primary)) return get(url);
+    try {
+      const res = await get(url);
+      if (res.status < 500) return res;
+    } catch {}
+    return get(fallback + url.slice(primary.length));
+  };
+
 /** Today's reads: `writz-lend`, the oracle, Esplora, and the client relayer fallbacks. */
-export function createClientStatusSource(get: Fetch = (url) => fetch(url)): StatusSource {
+export function createClientStatusSource(get: Fetch = timedFetch()): StatusSource {
   return {
     getPosition: readPosition,
     hasReleasePsbt: async (txid) => (await getReleasePsbt(txid)) !== null,
     getOraclePrice: getBtcPriceStroops,
-    ...esploraReads(config.bitcoin.apiUrl, get),
+    ...esploraReads(config.bitcoin.apiUrl, withFallback(config.bitcoin.apiUrl, config.bitcoin.fallbackApiUrl, get)),
     relayer: clientRelayerSource({
       relayerUrl: config.services.relayerUrl,
       get,
