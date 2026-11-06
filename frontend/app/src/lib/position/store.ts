@@ -1,11 +1,15 @@
+import { config } from "@/config";
 import type { Position, PositionsBackup } from "./types";
 
 /**
- * Local persistence for positions, keyed by owner address, in `localStorage`.
- * Storage key: `writz.positions.<address>`.
+ * Local persistence for positions, keyed by lending contract and owner address, in `localStorage`.
+ * Storage key: `writz.positions.<writz-lend contract id>.<address>`.
  */
-const KEY_PREFIX = "writz.positions.";
-const keyFor = (owner: string) => `${KEY_PREFIX}${owner}`;
+export const POSITIONS_KEY_PREFIX = "writz.positions.";
+
+// A redeploy gets fresh contract IDs; keying by contract keeps loans the new contract cannot read off the list.
+export const storageKey = (contract: string, owner: string) => `${POSITIONS_KEY_PREFIX}${contract}.${owner}`;
+const keyFor = (owner: string) => storageKey(config.contracts.writzLend, owner);
 
 /**
  * Records saved before the app moved to `writz-lend` are keyed by a

@@ -15,7 +15,7 @@ derived from `get_position` (see `lib/status`).
 
 ## Storage (`store.ts`)
 
-`localStorage`, keyed per owner address: **`writz.positions.<address>`**.
+`localStorage`, keyed per lending contract and owner address: **`writz.positions.<writz-lend contract id>.<address>`**. After a redeploy the list starts empty and the wallet's loans on the new contract are found again from the chain.
 CRUD: `listPositions`, `getPosition`, `savePosition`, `removePosition`.
 Backup: `exportPositions` / `importPositions` (versioned envelope).
 
