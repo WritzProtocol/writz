@@ -18,6 +18,8 @@ const BTC_NETWORK = ((n) => (n === "testnet" ? "signet" : n))(
   process.env.NEXT_PUBLIC_BITCOIN_NETWORK ?? "signet",
 );
 
+const BLOCKSTREAM_API = BTC_NETWORK === "mainnet" ? "https://blockstream.info/api" : `https://blockstream.info/${BTC_NETWORK}/api`;
+
 /** How the Bitcoin network is named in the UI. */
 export const BTC_NETWORK_LABEL = BTC_NETWORK === "mainnet" ? "Bitcoin" : `Bitcoin ${BTC_NETWORK}`;
 
@@ -183,11 +185,8 @@ export const config = {
   bitcoin: {
     network: BTC_NETWORK,
     protocolPubkey: process.env.NEXT_PUBLIC_PROTOCOL_BTC_PUBKEY ?? "",
-    apiUrl:
-      process.env.NEXT_PUBLIC_BITCOIN_API_URL ??
-      (BTC_NETWORK === "mainnet"
-        ? "https://blockstream.info/api"
-        : `https://blockstream.info/${BTC_NETWORK}/api`),
+    apiUrl: process.env.NEXT_PUBLIC_BITCOIN_API_URL ?? BLOCKSTREAM_API,
+    fallbackApiUrl: BLOCKSTREAM_API,
     /**
      * Confirmations required before a deposit's SPV proof is accepted. Must
      * match the contract's own `min_confirmations` for this deployment: 6 on

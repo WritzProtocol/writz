@@ -35,7 +35,7 @@ export function createStatusStore(
   opts: { minConfirmations: number; now?: () => number },
 ): StatusStore {
   const cache = new Map<string, DerivedStatus>();
-  const latest = new Map<string, number>();
+  const applied = new Map<string, number>();
   const listeners = new Set<() => void>();
   let seq = 0;
 
@@ -43,13 +43,14 @@ export function createStatusStore(
     get: (key) => cache.get(key) ?? CHECKING,
     async refresh(key, local) {
       const mine = ++seq;
-      latest.set(key, mine);
       const inputs = await readStatusInputs(local, source, {
         minConfirmations: opts.minConfirmations,
         now: (opts.now ?? Date.now)(),
       });
       const derived = derivePositionStatus(inputs);
-      if (latest.get(key) === mine) {
+      // Waiting for the newest read instead would leave the status stuck while reads keep hanging.
+      if (mine > (applied.get(key) ?? 0)) {
+        applied.set(key, mine);
         cache.set(key, derived);
         for (const l of listeners) l();
       }
