@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lifecycle of a Writz position</title>
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Work Sans', system-ui, sans-serif;background:#0C0E12;color:#F6F7F8;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:3rem 2rem}
+.frame{max-width:1000px;width:100%}.diagram-container{width:100%;overflow-x:auto}
+.eyebrow{font-family:'Geist Mono', ui-monospace, monospace;font-size:.66rem;font-weight:500;letter-spacing:.18em;text-transform:uppercase;color:#B6BBC4;margin-bottom:.5rem}
+h1{font-family:'Work Sans', system-ui, sans-serif;font-size:1.75rem;font-weight:600;letter-spacing:-.02em;line-height:1.15;margin-bottom:1.5rem}
+svg{width:100%;min-width:960px;display:block}@media print{.diagram-container{overflow-x:visible}svg{min-width:0}}</style></head>
+<body><div class="frame"><p class="eyebrow">Architecture</p><h1>Lifecycle of a Writz position</h1>
+<div class="diagram-container">
+<svg viewBox="0 0 960 608" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="position-states-dark-title position-states-dark-desc">
+<title id="position-states-dark-title">Lifecycle of a Writz position</title>
+<desc id="position-states-dark-desc">A position starts when a Bitcoin deposit is verified, moves between no debt and an open loan as the borrower borrows and repays, ends released, liquidated by a keeper when unhealthy or unpaid at maturity, or reclaimed by the borrower after the timelock, in which case an unpaid loan becomes a loss for lenders.</desc>
+<defs><marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#B6BBC4"/></marker><marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#FFC300"/></marker><marker id="arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#8FB0D8"/></marker><marker id="arrow-open" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polyline points="0 0, 8 3, 0 6" fill="none" stroke="#B6BBC4" stroke-width="1.2"/></marker></defs>
+<rect width="100%" height="100%" fill="#0C0E12"/>
+<path d="M168,58 V94" fill="none" stroke="#B6BBC4" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M240,96 V64 Q240,56 248,56 H784 Q792,56 792,64 V94" fill="none" stroke="#B6BBC4" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M280,120 H366" fill="none" stroke="#B6BBC4" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M368,152 H282" fill="none" stroke="#B6BBC4" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M448,176 V342" fill="none" stroke="#B6BBC4" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M528,344 V178" fill="none" stroke="#B6BBC4" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M592,384 H678" fill="none" stroke="#B6BBC4" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M120,176 V342" fill="none" stroke="#B6BBC4" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+<path d="M400,176 V296 Q400,304 392,304 H176 Q168,304 168,312 V342" fill="none" stroke="#B6BBC4" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+<path d="M904,136 H922" fill="none" stroke="#B6BBC4" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M904,384 H922" fill="none" stroke="#B6BBC4" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M280,384 H298" fill="none" stroke="#B6BBC4" stroke-width="1.2" marker-end="url(#arrow)"/>
+<rect x="176" y="64" width="60" height="16" rx="2" fill="#0C0E12"/><text x="206.0" y="76" fill="#8B919B" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">DEPOSIT</text>
+<rect x="456" y="28" width="64" height="16" rx="2" fill="#0C0E12"/><text x="488.0" y="40" fill="#8B919B" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">RELEASE</text>
+<rect x="298" y="96" width="52" height="16" rx="2" fill="#0C0E12"/><text x="324.0" y="108" fill="#8B919B" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">BORROW</text>
+<rect x="290" y="160" width="68" height="16" rx="2" fill="#0C0E12"/><text x="324.0" y="172" fill="#8B919B" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">REPAY ALL</text>
+<rect x="460" y="232" width="56" height="16" rx="2" fill="#0C0E12"/><text x="488.0" y="244" fill="#8B919B" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">TRIGGER</text>
+<rect x="536" y="232" width="72" height="16" rx="2" fill="#0C0E12"/><text x="572.0" y="244" fill="#8B919B" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">RECOVERED</text>
+<rect x="604" y="360" width="60" height="16" rx="2" fill="#0C0E12"/><text x="634.0" y="372" fill="#8B919B" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">SETTLED</text>
+<rect x="128" y="232" width="56" height="16" rx="2" fill="#0C0E12"/><text x="156.0" y="244" fill="#8B919B" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">AFTER H</text>
+<rect x="216" y="280" width="84" height="16" rx="2" fill="#0C0E12"/><text x="258.0" y="292" fill="#8B919B" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">UNPAID AT H</text>
+<circle cx="168" cy="52" r="6" fill="#F6F7F8"/>
+<rect x="56" y="96" width="224" height="80" rx="6" fill="#0C0E12"/>
+<rect x="56" y="96" width="224" height="80" rx="6" fill="#0C0E12" stroke="#F6F7F8" stroke-width="1"/>
+<text x="168.0" y="138.0" fill="#F6F7F8" font-size="16" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">Collateral, no debt</text>
+<text x="168.0" y="157.0" fill="#B6BBC4" font-size="12" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">BTC verified, can borrow</text>
+<rect x="368" y="96" width="224" height="80" rx="6" fill="#0C0E12"/>
+<rect x="368" y="96" width="224" height="80" rx="6" fill="rgba(255,195,0,0.12)" stroke="#FFC300" stroke-width="1.4"/>
+<text x="480.0" y="138.0" fill="#F6F7F8" font-size="16" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">Loan open</text>
+<text x="480.0" y="157.0" fill="#FFC300" font-size="12" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">USDC debt, maturity set</text>
+<rect x="680" y="96" width="224" height="80" rx="6" fill="#0C0E12"/>
+<rect x="680" y="96" width="224" height="80" rx="6" fill="#0C0E12" stroke="#F6F7F8" stroke-width="1"/>
+<text x="792.0" y="138.0" fill="#F6F7F8" font-size="16" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">Released</text>
+<text x="792.0" y="157.0" fill="#B6BBC4" font-size="12" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">BTC back to borrower</text>
+<rect x="368" y="344" width="224" height="80" rx="6" fill="#0C0E12"/>
+<rect x="368" y="344" width="224" height="80" rx="6" fill="#0C0E12" stroke="#F6F7F8" stroke-width="1"/>
+<text x="480.0" y="386.0" fill="#F6F7F8" font-size="16" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">Liquidatable</text>
+<text x="480.0" y="405.0" fill="#B6BBC4" font-size="12" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">unhealthy or past maturity</text>
+<rect x="680" y="344" width="224" height="80" rx="6" fill="#0C0E12"/>
+<rect x="680" y="344" width="224" height="80" rx="6" fill="#0C0E12" stroke="#F6F7F8" stroke-width="1"/>
+<text x="792.0" y="386.0" fill="#F6F7F8" font-size="16" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">Liquidated</text>
+<text x="792.0" y="405.0" fill="#B6BBC4" font-size="12" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">debt repaid by a keeper</text>
+<rect x="56" y="344" width="224" height="80" rx="6" fill="#0C0E12"/>
+<rect x="56" y="344" width="224" height="80" rx="6" fill="#0C0E12" stroke="#F6F7F8" stroke-width="1"/>
+<text x="168.0" y="386.0" fill="#F6F7F8" font-size="16" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">Timelock recovery</text>
+<text x="168.0" y="405.0" fill="#B6BBC4" font-size="12" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">borrower reclaims alone</text>
+<circle cx="936" cy="136" r="8" fill="none" stroke="#F6F7F8" stroke-width="1.2"/><circle cx="936" cy="136" r="5" fill="#F6F7F8"/>
+<circle cx="936" cy="384" r="8" fill="none" stroke="#F6F7F8" stroke-width="1.2"/><circle cx="936" cy="384" r="5" fill="#F6F7F8"/>
+<circle cx="312" cy="384" r="8" fill="none" stroke="#F6F7F8" stroke-width="1.2"/><circle cx="312" cy="384" r="5" fill="#F6F7F8"/>
+<text x="24" y="476" fill="#B6BBC4" font-size="15" font-style="italic" font-family="'Work Sans', system-ui, sans-serif">Liquidation stops 288 blocks before H; a loan unpaid by then is a loss for the reserve, then lenders.</text>
+<text x="24" y="500" fill="#B6BBC4" font-size="15" font-style="italic" font-family="'Work Sans', system-ui, sans-serif">Designed: maturity, and borrowing again after repaying. Today, repaying in full closes the position.</text>
+<line x1="32" y1="544" x2="928" y2="544" stroke="rgba(246,247,248,0.12)" stroke-width="0.8"/>
+<text x="32" y="572" fill="#B6BBC4" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.14em">LEGEND</text>
+<rect x="96" y="562" width="20" height="14" rx="3" fill="rgba(255,195,0,0.12)" stroke="#FFC300" stroke-width="1.2"/>
+<text x="124" y="574" fill="#F6F7F8" font-size="12" font-family="'Work Sans', system-ui, sans-serif">Active loan</text>
+<rect x="235" y="562" width="20" height="14" rx="3" fill="#0C0E12" stroke="#F6F7F8" stroke-width="1"/>
+<text x="263" y="574" fill="#F6F7F8" font-size="12" font-family="'Work Sans', system-ui, sans-serif">Position state</text>
+<line x1="395" y1="569" x2="415" y2="569" stroke="#B6BBC4" stroke-width="1.2"/>
+<text x="423" y="574" fill="#F6F7F8" font-size="12" font-family="'Work Sans', system-ui, sans-serif">Transition</text>
+<line x1="527" y1="569" x2="547" y2="569" stroke="#B6BBC4" stroke-width="1.2" stroke-dasharray="5,4"/>
+<text x="555" y="574" fill="#F6F7F8" font-size="12" font-family="'Work Sans', system-ui, sans-serif">Borrower alone, after H</text>
+</svg>
+</div></div></body></html>

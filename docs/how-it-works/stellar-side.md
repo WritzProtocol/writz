@@ -112,16 +112,14 @@ Interest accrues continuously. Every position-touching call (borrow, repay, liqu
 
 ## Oracle Design
 
-Writz uses a multi-oracle approach for BTC/USD price feeds, with a **median aggregation** strategy to resist price manipulation.
+Writz prices BTC/USD from two independent sources, so a single bad feed cannot move a loan on its own.
 
-**Primary oracle:** Pyth Network (pull model, verifier contract - real cross-exchange BTC/USD)
-**Secondary oracle:** Reflector's external-prices instance (SEP-40 interface, `lastprice({"Other":"BTC"})`) - confirmed live on testnet with a real, updating BTC/USD price
+**Reflector:** the external-prices instance (SEP-40, `lastprice({"Other":"BTC"})`), live in `writz-lend` today.
+**RedStone:** its BTC/USD push feed on Stellar (`read_price_and_timestamp`), planned as the second source.
 
-*(Corrected 2026-09-16, then re-verified by directly calling both contracts on testnet - see `docs/research/oracle-design.md`. RedStone was dropped: it doesn't list Stellar among its supported chains. DIA was parked: its documented testnet contract address returns "contract not found" when queried.)*
+**Rules (planned):** a new borrow uses the lower of the two prices and is refused when they disagree beyond a set threshold; a liquidation by price needs the position to be unhealthy at both prices; when either source is stale, borrows and price-based liquidations pause, while repayments, withdrawals and liquidations at maturity continue. The thresholds are set from measured data on both feeds. See [Technical architecture](/architecture/technical-overview#price-oracles).
 
-**Staleness check:** Price data older than 60 minutes is rejected (corrected - previously stated 90 seconds; see `docs/research/oracle-design.md` for rationale). At full design maturity, borrowing and liquidation pause when both oracles are stale.
-
-**Interim status (2026-09-17):** only Reflector is wired into `writz-lend` today - see `contracts/contracts/writz-lend/src/oracle.rs`. There is no median yet, so "both oracles stale" does not apply; a stale or unavailable Reflector price alone currently blocks the calling operation (`OraclePriceStale`/`OraclePriceUnavailable`) rather than silently mispricing. Do not treat this as the finished manipulation-resistance story until Pyth is also wired - see `docs/security/security-model.md` for the same caveat.
+**Today:** only Reflector is wired into `writz-lend` (`contracts/contracts/writz-lend/src/oracle.rs`), and a price older than 60 minutes is rejected, so a stale or unavailable feed blocks the call (`OraclePriceStale`, `OraclePriceUnavailable`) instead of mispricing it. Until the second source is wired, the feed cannot be cross-checked.
 
 **Manipulation resistance:**
 - Median of two oracles: a single oracle manipulation requires moving the median

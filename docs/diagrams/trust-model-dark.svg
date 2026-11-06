@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 960 728" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="trust-model-dark-title trust-model-dark-desc" id="trust-model-dark-root">
+<title id="trust-model-dark-title">Who can do what in Writz</title>
+<desc id="trust-model-dark-desc">A matrix of what each role in Writz can and cannot do, today and as planned: no role can redirect the borrower's Bitcoin, two signers with a keeper could force a liquidation, a loan left unpaid at the timelock becomes a lender loss, the admin can change caps, keepers and the price source and pause new loans, and the contracts are immutable.</desc>
+<defs>
+      <style>@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&amp;family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500;600&amp;family=Noto+Serif:ital@0;1&amp;family=Noto+Sans+KR:wght@400;500;600&amp;family=Noto+Serif+KR:wght@400&amp;family=Noto+Sans+TC:wght@400;500;600&amp;family=Noto+Serif+TC:wght@400&amp;display=swap');
+      #trust-model-dark-root { font-family: 'Work Sans', system-ui, sans-serif; color: #F6F7F8; }
+      #trust-model-dark-root .diagram-container { width:100%;overflow-x:auto }
+      #trust-model-dark-root .diagram-container { overflow-x:visible }</style><marker id="trust-model-dark-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#B6BBC4"/></marker><marker id="trust-model-dark-arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#FFC300"/></marker><marker id="trust-model-dark-arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#8FB0D8"/></marker><marker id="trust-model-dark-arrow-open" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polyline points="0 0, 8 3, 0 6" fill="none" stroke="#B6BBC4" stroke-width="1.2"/></marker></defs>
+<rect width="100%" height="100%" fill="#0C0E12"/>
+<rect x="178" y="32" width="126" height="60" rx="4" fill="#F6F7F8"/>
+<text x="241.0" y="56" fill="#0C0E12" font-size="13" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">Borrower</text>
+<text x="241.0" y="72" fill="#0C0E12" fill-opacity="0.8" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">own position</text>
+<rect x="308" y="32" width="126" height="60" rx="4" fill="#F6F7F8"/>
+<text x="371.0" y="56" fill="#0C0E12" font-size="13" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">Protocol signers</text>
+<text x="371.0" y="72" fill="#0C0E12" fill-opacity="0.8" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">2 of 3 designed</text>
+<rect x="438" y="32" width="126" height="60" rx="4" fill="#F6F7F8"/>
+<text x="501.0" y="56" fill="#0C0E12" font-size="13" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">Keepers</text>
+<text x="501.0" y="72" fill="#0C0E12" fill-opacity="0.8" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">open after 24 h</text>
+<rect x="568" y="32" width="126" height="60" rx="4" fill="#F6F7F8"/>
+<text x="631.0" y="56" fill="#0C0E12" font-size="13" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">Admin</text>
+<text x="631.0" y="72" fill="#0C0E12" fill-opacity="0.8" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">multisig designed</text>
+<rect x="698" y="32" width="126" height="60" rx="4" fill="#F6F7F8"/>
+<text x="761.0" y="56" fill="#0C0E12" font-size="13" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">Relayer</text>
+<text x="761.0" y="72" fill="#0C0E12" fill-opacity="0.8" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">headers, proofs</text>
+<rect x="828" y="32" width="126" height="60" rx="4" fill="#F6F7F8"/>
+<text x="891.0" y="56" fill="#0C0E12" font-size="13" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">Price oracles</text>
+<text x="891.0" y="72" fill="#0C0E12" fill-opacity="0.8" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">RedStone designed</text>
+<rect x="16" y="102" width="152" height="52" rx="4" fill="#15181E" stroke="#f6f7f8" stroke-width="0.8" stroke-opacity="0.12"/>
+<text x="28" y="133.0" fill="#F6F7F8" font-size="13" font-weight="600" font-family="'Work Sans', system-ui, sans-serif">Take the Bitcoin</text>
+<rect x="178" y="102" width="126" height="52" rx="4" fill="#0C0E12" stroke="#F6F7F8" stroke-width="1"/>
+<text x="241.0" y="128.0" fill="#F6F7F8" font-size="13" font-weight="500" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">After H</text>
+<text x="241.0" y="144.0" fill="#B6BBC4" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">own BTC only</text>
+<rect x="308" y="102" width="126" height="52" rx="4" fill="#0C0E12" stroke="#f6f7f8" stroke-width="1" stroke-opacity="0.12"/>
+<text x="371.0" y="132.0" fill="#8B919B" font-size="13" font-weight="500" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">No</text>
+<rect x="438" y="102" width="126" height="52" rx="4" fill="#0C0E12" stroke="#B6BBC4" stroke-width="1" stroke-dasharray="4,3"/>
+<text x="501.0" y="128.0" fill="#F6F7F8" font-size="13" font-weight="500" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">Keeper share</text>
+<text x="501.0" y="144.0" fill="#B6BBC4" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">designed</text>
+<rect x="568" y="102" width="126" height="52" rx="4" fill="#0C0E12" stroke="#f6f7f8" stroke-width="1" stroke-opacity="0.12"/>
+<text x="631.0" y="132.0" fill="#8B919B" font-size="13" font-weight="500" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">No</text>
+<rect x="698" y="102" width="126" height="52" rx="4" fill="#0C0E12" stroke="#f6f7f8" stroke-width="1" stroke-opacity="0.12"/>
+<text x="761.0" y="132.0" fill="#8B919B" font-size="13" font-weight="500" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">No</text>
+<rect x="828" y="102" width="126" height="52" rx="4" fill="#0C0E12" stroke="#f6f7f8" stroke-width="1" stroke-opacity="0.12"/>
+<text x="891.0" y="132.0" fill="#8B919B" font-size="13" font-weight="500" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">No</text>
+<rect x="16" y="158" width="152" height="52" rx="4" fill="#15181E" stroke="#f6f7f8" stroke-width="0.8" stroke-opacity="0.12"/>
+<text x="28" y="189.0" fill="#F6F7F8" font-size="13" font-weight="600" font-family="'Work Sans', system-ui, sans-serif">Take lenders' USDC</text>
+<rect x="178" y="158" width="126" height="52" rx="4" fill="#0C0E12" stroke="#F6F7F8" stroke-width="1"/>
+<text x="241.0" y="184.0" fill="#F6F7F8" font-size="13" font-weight="500" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">If unpaid at H</text>
+<text x="241.0" y="200.0" fill="#B6BBC4" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">not liquidated</text>
+<rect x="308" y="158" width="126" height="52" rx="4" fill="#0C0E12" stroke="#f6f7f8" stroke-width="1" stroke-opacity="0.12"/>
+<text x="371.0" y="188.0" fill="#8B919B" font-size="13" font-weight="500" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">No</text>
+<rect x="438" y="158" width="126" height="52" rx="4" fill="#0C0E12" stroke="#f6f7f8" stroke-width="1" stroke-opacity="0.12"/>
+<text x="501.0" y="188.0" fill="#8B919B" font-size="13" font-weight="500" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">No</text>
+<rect x="568" y="158" width="126" height="52" rx="4" fill="#0C0E12" stroke="#B6BBC4" stroke-width="1" stroke-dasharray="4,3"/>
+<text x="631.0" y="184.0" fill="#F6F7F8" font-size="13" font-weight="500" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">Indirectly</text>
+<text x="631.0" y="200.0" fill="#B6BBC4" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">via SPV, oracle</text>
+<rect x="698" y="158" width="126" height="52" rx="4" fill="#0C0E12" stroke="#B6BBC4" stroke-width="1" stroke-dasharray="4,3"/>
+<text x="761.0" y="184.0" fill="#F6F7F8" font-size="13" font-weight="500" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">Signet only</text>
+<text x="761.0" y="200.0" fill="#B6BBC4" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">trusted headers</text>
+<rect x="828" y="158" width="126" height="52" rx="4" fill="#0C0E12" stroke="#B6BBC4" stroke-width="1" stroke-dasharray="4,3"/>
+<text x="891.0" y="184.0" fill="#F6F7F8" font-size="13" font-weight="500" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">If feed wrong</text>
+<text x="891.0" y="200.0" fill="#B6BBC4" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">both, designed</text>
+<rect x="16" y="214" width="152" height="52" rx="4" fill="#15181E" stroke="#f6f7f8" stroke-width="0.8" stroke-opacity="0.12"/>
+<text x="28" y="245.0" fill="#F6F7F8" font-size="13" font-weight="600" font-family="'Work Sans', system-ui, sans-serif">Force a liquidation</text>
+<rect x="178" y="214" width="126" height="52" rx="4" fill="#0C0E12" stroke="#f6f7f8" stroke-width="1" stroke-opacity="0.12"/>
+<text x="241.0" y="244.0" fill="#8B919B" font-size="13" font-weight="500" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">No</text>
+<rect x="308" y="214" width="126" height="52" rx="4" fill="rgba(255,195,0,0.12)" stroke="#FFC300" stroke-width="1.4"/>
+<text x="371.0" y="240.0" fill="#F6F7F8" font-size="13" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">With a keeper</text>
+<text x="371.0" y="256.0" fill="#FFC300" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">one keeper share</text>
+<rect x="438" y="214" width="126" height="52" rx="4" fill="#0C0E12" stroke="#B6BBC4" stroke-width="1" stroke-dasharray="4,3"/>
+<text x="501.0" y="240.0" fill="#F6F7F8" font-size="13" font-weight="500" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">Unhealthy, due</text>
+<text x="501.0" y="256.0" fill="#B6BBC4" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">only then</text>
+<rect x="568" y="214" width="126" height="52" rx="4" fill="#0C0E12" stroke="#f6f7f8" stroke-width="1" stroke-opacity="0.12"/>
+<text x="631.0" y="244.0" fill="#8B919B" font-size="13" font-weight="500" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">No</text>
+<rect x="698" y="214" width="126" height="52" rx="4" fill="#0C0E12" stroke="#f6f7f8" stroke-width="1" stroke-opacity="0.12"/>
+<text x="761.0" y="244.0" fill="#8B919B" font-size="13" font-weight="500" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">No</text>
+<rect x="828" y="214" width="126" height="52" rx="4" fill="#0C0E12" stroke="#F6F7F8" stroke-width="1"/>
+<text x="891.0" y="240.0" fill="#F6F7F8" font-size="13" font-weight="500" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">If feed wrong</text>
+<text x="891.0" y="256.0" fill="#B6BBC4" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">both, designed</text>
+<rect x="16" y="270" width="152" height="52" rx="4" fill="#15181E" stroke="#f6f7f8" stroke-width="0.8" stroke-opacity="0.12"/>
+<text x="28" y="301.0" fill="#F6F7F8" font-size="13" font-weight="600" font-family="'Work Sans', system-ui, sans-serif">Delay a release</text>
+<rect x="178" y="270" width="126" height="52" rx="4" fill="#0C0E12" stroke="#f6f7f8" stroke-width="1" stroke-opacity="0.12"/>
+<text x="241.0" y="300.0" fill="#8B919B" font-size="13" font-weight="500" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">No</text>
+<rect x="308" y="270" width="126" height="52" rx="4" fill="#0C0E12" stroke="#F6F7F8" stroke-width="1"/>
+<text x="371.0" y="300.0" fill="#F6F7F8" font-size="13" font-weight="500" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">Until H</text>
+<rect x="438" y="270" width="126" height="52" rx="4" fill="#0C0E12" stroke="#f6f7f8" stroke-width="1" stroke-opacity="0.12"/>
+<text x="501.0" y="300.0" fill="#8B919B" font-size="13" font-weight="500" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">No</text>
+<rect x="568" y="270" width="126" height="52" rx="4" fill="#0C0E12" stroke="#f6f7f8" stroke-width="1" stroke-opacity="0.12"/>
+<text x="631.0" y="300.0" fill="#8B919B" font-size="13" font-weight="500" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">No</text>
+<rect x="698" y="270" width="126" height="52" rx="4" fill="#0C0E12" stroke="#F6F7F8" stroke-width="1"/>
+<text x="761.0" y="296.0" fill="#F6F7F8" font-size="13" font-weight="500" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">Until H</text>
+<text x="761.0" y="312.0" fill="#B6BBC4" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">publishes today</text>
+<rect x="828" y="270" width="126" height="52" rx="4" fill="#0C0E12" stroke="#f6f7f8" stroke-width="1" stroke-opacity="0.12"/>
+<text x="891.0" y="300.0" fill="#8B919B" font-size="13" font-weight="500" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">No</text>
+<rect x="16" y="326" width="152" height="52" rx="4" fill="#15181E" stroke="#f6f7f8" stroke-width="0.8" stroke-opacity="0.12"/>
+<text x="28" y="357.0" fill="#F6F7F8" font-size="13" font-weight="600" font-family="'Work Sans', system-ui, sans-serif">Move the price</text>
+<rect x="178" y="326" width="126" height="52" rx="4" fill="#0C0E12" stroke="#f6f7f8" stroke-width="1" stroke-opacity="0.12"/>
+<text x="241.0" y="356.0" fill="#8B919B" font-size="13" font-weight="500" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">No</text>
+<rect x="308" y="326" width="126" height="52" rx="4" fill="#0C0E12" stroke="#f6f7f8" stroke-width="1" stroke-opacity="0.12"/>
+<text x="371.0" y="356.0" fill="#8B919B" font-size="13" font-weight="500" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">No</text>
+<rect x="438" y="326" width="126" height="52" rx="4" fill="#0C0E12" stroke="#f6f7f8" stroke-width="1" stroke-opacity="0.12"/>
+<text x="501.0" y="356.0" fill="#8B919B" font-size="13" font-weight="500" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">No</text>
+<rect x="568" y="326" width="126" height="52" rx="4" fill="#0C0E12" stroke="#F6F7F8" stroke-width="1"/>
+<text x="631.0" y="352.0" fill="#F6F7F8" font-size="13" font-weight="500" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">Change source</text>
+<text x="631.0" y="368.0" fill="#B6BBC4" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">delay designed</text>
+<rect x="698" y="326" width="126" height="52" rx="4" fill="#0C0E12" stroke="#f6f7f8" stroke-width="1" stroke-opacity="0.12"/>
+<text x="761.0" y="356.0" fill="#8B919B" font-size="13" font-weight="500" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">No</text>
+<rect x="828" y="326" width="126" height="52" rx="4" fill="#0C0E12" stroke="#F6F7F8" stroke-width="1"/>
+<text x="891.0" y="352.0" fill="#F6F7F8" font-size="13" font-weight="500" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">Bounded</text>
+<text x="891.0" y="368.0" fill="#B6BBC4" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">divergence check</text>
+<rect x="16" y="382" width="152" height="52" rx="4" fill="#15181E" stroke="#f6f7f8" stroke-width="0.8" stroke-opacity="0.12"/>
+<text x="28" y="413.0" fill="#F6F7F8" font-size="13" font-weight="600" font-family="'Work Sans', system-ui, sans-serif">Set caps, keepers</text>
+<rect x="178" y="382" width="126" height="52" rx="4" fill="#0C0E12" stroke="#f6f7f8" stroke-width="1" stroke-opacity="0.12"/>
+<text x="241.0" y="412.0" fill="#8B919B" font-size="13" font-weight="500" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">No</text>
+<rect x="308" y="382" width="126" height="52" rx="4" fill="#0C0E12" stroke="#f6f7f8" stroke-width="1" stroke-opacity="0.12"/>
+<text x="371.0" y="412.0" fill="#8B919B" font-size="13" font-weight="500" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">No</text>
+<rect x="438" y="382" width="126" height="52" rx="4" fill="#0C0E12" stroke="#f6f7f8" stroke-width="1" stroke-opacity="0.12"/>
+<text x="501.0" y="412.0" fill="#8B919B" font-size="13" font-weight="500" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">No</text>
+<rect x="568" y="382" width="126" height="52" rx="4" fill="#F6F7F8" stroke="#F6F7F8" stroke-width="1"/>
+<text x="631.0" y="412.0" fill="#0C0E12" font-size="13" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">Yes</text>
+<rect x="698" y="382" width="126" height="52" rx="4" fill="#0C0E12" stroke="#f6f7f8" stroke-width="1" stroke-opacity="0.12"/>
+<text x="761.0" y="412.0" fill="#8B919B" font-size="13" font-weight="500" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">No</text>
+<rect x="828" y="382" width="126" height="52" rx="4" fill="#0C0E12" stroke="#f6f7f8" stroke-width="1" stroke-opacity="0.12"/>
+<text x="891.0" y="412.0" fill="#8B919B" font-size="13" font-weight="500" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">No</text>
+<rect x="16" y="438" width="152" height="52" rx="4" fill="#15181E" stroke="#f6f7f8" stroke-width="0.8" stroke-opacity="0.12"/>
+<text x="28" y="469.0" fill="#F6F7F8" font-size="13" font-weight="600" font-family="'Work Sans', system-ui, sans-serif">Pause new loans</text>
+<rect x="178" y="438" width="126" height="52" rx="4" fill="#0C0E12" stroke="#f6f7f8" stroke-width="1" stroke-opacity="0.12"/>
+<text x="241.0" y="468.0" fill="#8B919B" font-size="13" font-weight="500" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">No</text>
+<rect x="308" y="438" width="126" height="52" rx="4" fill="#0C0E12" stroke="#f6f7f8" stroke-width="1" stroke-opacity="0.12"/>
+<text x="371.0" y="468.0" fill="#8B919B" font-size="13" font-weight="500" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">No</text>
+<rect x="438" y="438" width="126" height="52" rx="4" fill="#0C0E12" stroke="#f6f7f8" stroke-width="1" stroke-opacity="0.12"/>
+<text x="501.0" y="468.0" fill="#8B919B" font-size="13" font-weight="500" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">No</text>
+<rect x="568" y="438" width="126" height="52" rx="4" fill="#F6F7F8" stroke="#F6F7F8" stroke-width="1"/>
+<text x="631.0" y="464.0" fill="#0C0E12" font-size="13" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">Yes</text>
+<text x="631.0" y="480.0" fill="#0C0E12" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">exits stay open</text>
+<rect x="698" y="438" width="126" height="52" rx="4" fill="#0C0E12" stroke="#f6f7f8" stroke-width="1" stroke-opacity="0.12"/>
+<text x="761.0" y="468.0" fill="#8B919B" font-size="13" font-weight="500" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">No</text>
+<rect x="828" y="438" width="126" height="52" rx="4" fill="#0C0E12" stroke="#f6f7f8" stroke-width="1" stroke-opacity="0.12"/>
+<text x="891.0" y="468.0" fill="#8B919B" font-size="13" font-weight="500" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">No</text>
+<rect x="16" y="494" width="152" height="52" rx="4" fill="#15181E" stroke="#f6f7f8" stroke-width="0.8" stroke-opacity="0.12"/>
+<text x="28" y="525.0" fill="#F6F7F8" font-size="13" font-weight="600" font-family="'Work Sans', system-ui, sans-serif">Change the code</text>
+<rect x="178" y="494" width="126" height="52" rx="4" fill="#0C0E12" stroke="#f6f7f8" stroke-width="1" stroke-opacity="0.12"/>
+<text x="241.0" y="524.0" fill="#8B919B" font-size="13" font-weight="500" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">No</text>
+<rect x="308" y="494" width="126" height="52" rx="4" fill="#0C0E12" stroke="#f6f7f8" stroke-width="1" stroke-opacity="0.12"/>
+<text x="371.0" y="524.0" fill="#8B919B" font-size="13" font-weight="500" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">No</text>
+<rect x="438" y="494" width="126" height="52" rx="4" fill="#0C0E12" stroke="#f6f7f8" stroke-width="1" stroke-opacity="0.12"/>
+<text x="501.0" y="524.0" fill="#8B919B" font-size="13" font-weight="500" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">No</text>
+<rect x="568" y="494" width="126" height="52" rx="4" fill="#0C0E12" stroke="#f6f7f8" stroke-width="1" stroke-opacity="0.12"/>
+<text x="631.0" y="520.0" fill="#8B919B" font-size="13" font-weight="500" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">No</text>
+<text x="631.0" y="536.0" fill="#8B919B" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">immutable</text>
+<rect x="698" y="494" width="126" height="52" rx="4" fill="#0C0E12" stroke="#f6f7f8" stroke-width="1" stroke-opacity="0.12"/>
+<text x="761.0" y="524.0" fill="#8B919B" font-size="13" font-weight="500" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">No</text>
+<rect x="828" y="494" width="126" height="52" rx="4" fill="#0C0E12" stroke="#f6f7f8" stroke-width="1" stroke-opacity="0.12"/>
+<text x="891.0" y="524.0" fill="#8B919B" font-size="13" font-weight="500" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">No</text>
+<rect x="16" y="550" width="152" height="52" rx="4" fill="#15181E" stroke="#f6f7f8" stroke-width="0.8" stroke-opacity="0.12"/>
+<text x="28" y="581.0" fill="#F6F7F8" font-size="13" font-weight="600" font-family="'Work Sans', system-ui, sans-serif">Stall by stopping</text>
+<rect x="178" y="550" width="126" height="52" rx="4" fill="#0C0E12" stroke="#f6f7f8" stroke-width="1" stroke-opacity="0.12"/>
+<text x="241.0" y="580.0" fill="#8B919B" font-size="13" font-weight="500" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">No</text>
+<rect x="308" y="550" width="126" height="52" rx="4" fill="#0C0E12" stroke="#B6BBC4" stroke-width="1" stroke-dasharray="4,3"/>
+<text x="371.0" y="580.0" fill="#F6F7F8" font-size="13" font-weight="500" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">Releases wait</text>
+<rect x="438" y="550" width="126" height="52" rx="4" fill="#0C0E12" stroke="#B6BBC4" stroke-width="1" stroke-dasharray="4,3"/>
+<text x="501.0" y="580.0" fill="#F6F7F8" font-size="13" font-weight="500" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">If all stop</text>
+<rect x="568" y="550" width="126" height="52" rx="4" fill="#0C0E12" stroke="#f6f7f8" stroke-width="1" stroke-opacity="0.12"/>
+<text x="631.0" y="580.0" fill="#8B919B" font-size="13" font-weight="500" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">No</text>
+<rect x="698" y="550" width="126" height="52" rx="4" fill="#0C0E12" stroke="#F6F7F8" stroke-width="1"/>
+<text x="761.0" y="576.0" fill="#F6F7F8" font-size="13" font-weight="500" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">Headers stop</text>
+<text x="761.0" y="592.0" fill="#B6BBC4" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">borrows fail</text>
+<rect x="828" y="550" width="126" height="52" rx="4" fill="#0C0E12" stroke="#F6F7F8" stroke-width="1"/>
+<text x="891.0" y="576.0" fill="#F6F7F8" font-size="13" font-weight="500" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">If stale</text>
+<text x="891.0" y="592.0" fill="#B6BBC4" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">price pauses</text>
+<text x="16" y="644" fill="#B6BBC4" font-size="15" font-style="italic" font-family="'Work Sans', system-ui, sans-serif">No role can redirect the Bitcoin: every spend was pre-signed by the borrower.</text>
+<line x1="32" y1="684" x2="944" y2="684" stroke="#f6f7f8" stroke-width="0.8" stroke-opacity="0.12"/>
+<text x="32" y="712" fill="#B6BBC4" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.14em">LEGEND</text>
+<rect x="96" y="702" width="20" height="14" rx="3" fill="#F6F7F8"/>
+<text x="124" y="714" fill="#F6F7F8" font-size="12" font-family="'Work Sans', system-ui, sans-serif">Can</text>
+<rect x="169" y="702" width="20" height="14" rx="3" fill="#0C0E12" stroke="#F6F7F8"/>
+<text x="197" y="714" fill="#F6F7F8" font-size="12" font-family="'Work Sans', system-ui, sans-serif">Can, within limits</text>
+<rect x="347" y="702" width="20" height="14" rx="3" fill="#0C0E12" stroke="#B6BBC4" stroke-dasharray="4,3"/>
+<text x="375" y="714" fill="#F6F7F8" font-size="12" font-family="'Work Sans', system-ui, sans-serif">Conditional</text>
+<rect x="476" y="702" width="20" height="14" rx="3" fill="#0C0E12" stroke="#f6f7f8" stroke-opacity="0.12"/>
+<text x="504" y="714" fill="#F6F7F8" font-size="12" font-family="'Work Sans', system-ui, sans-serif">Cannot</text>
+<rect x="570" y="702" width="20" height="14" rx="3" fill="rgba(255,195,0,0.12)" stroke="#FFC300" stroke-width="1.2"/>
+<text x="598" y="714" fill="#F6F7F8" font-size="12" font-family="'Work Sans', system-ui, sans-serif">Main residual trust</text>
+</svg>

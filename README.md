@@ -56,7 +56,12 @@ Full deployment log, init transactions, and verified calls: [`contracts/deployme
 
 ## System Architecture
 
-![System Architecture](docs/diagrams/output/01-system-architecture.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/system-architecture-dark.svg">
+  <img alt="Writz Protocol system architecture" src="docs/diagrams/system-architecture.svg">
+</picture>
+
+The diagrams show the protocol as designed; what runs on testnet today is listed in the [technical architecture](https://docs.writz.xyz/architecture/technical-overview).
 
 The protocol operates across two blockchains. Bitcoin is the custody layer - BTC never leaves the Bitcoin network. Stellar is the execution layer - SPV verification, loan logic, and USDC flows run on Soroban.
 
@@ -75,7 +80,10 @@ Positions, amounts and collateral are public on chain, like any other lending ma
 
 ### 1 - Deposit & Borrow
 
-![Deposit Flow](docs/diagrams/output/02-deposit-flow.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/deposit-and-borrow-dark.svg">
+  <img alt="From a Bitcoin deposit to a USDC loan" src="docs/diagrams/deposit-and-borrow.svg">
+</picture>
 
 1. User connects their Bitcoin wallet (Xverse) and a Stellar wallet (Freighter) to the Writz UI.
 2. The frontend derives a unique P2WSH address for this deposit (user public key + protocol public key + timelock).
@@ -87,21 +95,20 @@ Positions, amounts and collateral are public on chain, like any other lending ma
 
 ### 2 - Borrow & Repay
 
-![Borrow / Repay Flow](docs/diagrams/output/03-borrow-repay-flow.png)
-
 `writz-lend.borrow` checks the post-borrow collateral ratio against the BTC/USD oracle price and refuses anything below 150%, or a borrow when the position's Bitcoin timelock is less than 4,320 blocks above the `bitcoin-spv` tip. Interest accrues on a utilization-based curve. `repay` accepts partial or full repayment; a full repayment closes the position and emits a `repay_full` event.
 
 ### 3 - BTC Release
 
-![BTC Release](docs/diagrams/output/04-btc-release-flow.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/repay-and-release-dark.svg">
+  <img alt="Repaying a loan and releasing the Bitcoin" src="docs/diagrams/repay-and-release.svg">
+</picture>
 
 When the loan is fully repaid, the relayer's repay watcher builds the release PSBT (Partially Signed Bitcoin Transaction), co-signs it with the protocol key, and publishes it on `writz-lend` with `publish_release_psbt`, so it can be fetched even if the rest of the Writz stack is down. The user countersigns with their Bitcoin wallet and broadcasts. BTC arrives back in their wallet. The protocol never held custody at any point.
 
 ---
 
 ## Smart Contract Architecture
-
-![Contract Interactions](docs/diagrams/output/07-contract-interactions.png)
 
 | Contract | Purpose | Depends on |
 |---|---|---|
@@ -116,7 +123,10 @@ When the loan is fully repaid, the relayer's repay watcher builds the release PS
 
 ## Bitcoin Script Design
 
-![Bitcoin P2WSH Script](docs/diagrams/output/09-bitcoin-script.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/vault-spending-paths-dark.svg">
+  <img alt="Writz vault spending paths" src="docs/diagrams/vault-spending-paths.svg">
+</picture>
 
 The BTC locking mechanism lives entirely on Bitcoin. The P2WSH redeem script encodes two spending paths:
 
@@ -188,8 +198,7 @@ writz/
 │   └── brand/               # Graphite & Gold design tokens
 │
 ├── scripts/
-│   ├── deploy/              # Deployment scripts · deploy_stack.mjs · e2e_local.mjs
-│   └── diagrams/            # Graphviz architecture diagrams (Python)
+│   └── deploy/              # Deployment scripts · deploy_stack.mjs · e2e_local.mjs
 │
 └── docs/                    # Full documentation (Mintlify)
 ```
@@ -263,13 +272,9 @@ bun install && bun dev
 
 The testnet app is live at **[testnet.writz.xyz](https://testnet.writz.xyz)**.
 
-### Generate Architecture Diagrams
+### Architecture diagrams
 
-```bash
-pip install graphviz
-python3 scripts/diagrams/render-all.py
-# → docs/diagrams/output/*.png + *.svg
-```
+The diagrams are drawn as HTML and SVG in `docs/diagrams/source/`; each `build_*.py` writes a light and a dark variant, and the SVGs in `docs/diagrams/` are exported from them.
 
 ---
 
@@ -306,7 +311,7 @@ python3 scripts/diagrams/render-all.py
 | P2WSH script bug | Formal review; emergency timelock protects users regardless |
 | Protocol key compromise | The protocol key cannot move BTC without the user's key; a 2-of-3 protocol side in the P2WSH script is planned, with a published signing policy |
 | SPV contract exploit | Header light client anchored to a public checkpoint, with proof-of-work, exact difficulty and chainwork checks; no upgrade path; independent audit planned before mainnet. See [SPV vs Wrapped Bitcoin](docs/security/spv-vs-wrapped.md) |
-| Oracle manipulation | Reflector SEP-40 feed with a one-hour staleness check; a second source (Pyth) with a deviation guard is planned |
+| Oracle manipulation | Reflector SEP-40 feed with a one-hour staleness check; a second source (RedStone) with a divergence guard is planned |
 | Mass liquidation (BTC crash) | Conservative 150% collateral ratio, liquidation below 120%; a designated keeper liquidates, and liquidation opens to anyone if the keeper goes stale |
 
 ### Audit Roadmap

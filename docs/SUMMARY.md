@@ -15,7 +15,6 @@
 ## Architecture
 
 * [Technical Overview](/architecture/technical-overview)
-* [Diagrams](/architecture/diagrams)
 
 ## Guides
 

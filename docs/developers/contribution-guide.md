@@ -107,6 +107,6 @@ The following areas are actively looking for contributors:
 |---|---|---|
 | Frontend (app.writz.xyz) | React/Next.js frontend for Writz Lend | React, TypeScript, Stellar Wallets Kit |
 | SDK npm package | `writz-sdk` TypeScript package for SPV proof assembly | TypeScript, npm |
-| Oracle integration | Integrate Pyth + Reflector SEP-40 adapters | Rust, Soroban |
+| Oracle integration | Add RedStone's BTC/USD feed beside Reflector, with a divergence guard | Rust, Soroban |
 
 If you want to work on any of these, open an issue first to discuss the approach before writing code.

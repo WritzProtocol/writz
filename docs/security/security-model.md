@@ -165,10 +165,10 @@ If the BTC/USD price is manipulated downward:
 - Healthy positions could appear undercollateralized and be liquidated (their debt is cleared in USDC; no BTC moves in a `writz-lend` liquidation)
 
 **Mitigations:**
-- Planned: a median of two independent oracles (Reflector plus Pyth, with a deviation guard - corrected 2026-09-16, then re-verified on-chain; RedStone dropped, DIA parked, see `docs/research/oracle-design.md`) - manipulating the median requires moving both
+- Planned: two independent sources, Reflector and RedStone, with a divergence guard: a borrow uses the lower price and a price-based liquidation needs the position to be unhealthy at both, so moving one feed is not enough ([Technical architecture](/architecture/technical-overview#price-oracles))
 
-**Interim status (2026-09-17):** only Reflector is wired into `writz-lend` today - see `contracts/contracts/writz-lend/src/oracle.rs`. There is no median yet; a single misbehaving or unavailable Reflector feed currently blocks (via `OraclePriceStale`/`OraclePriceUnavailable`) rather than silently mispricing, but it cannot yet be cross-checked against a second source the way the target design requires. Do not treat this as the finished manipulation-resistance story until Pyth is also wired.
-- Staleness check: price data older than 60 minutes is rejected; liquidations are paused (aligned with `docs/research/oracle-design.md` - Pyth is a pull oracle, not a continuous push feed, so the threshold accounts for time between pulls, not just publish latency)
+**Interim status (2026-09-17):** only Reflector is wired into `writz-lend` today - see `contracts/contracts/writz-lend/src/oracle.rs`. A single misbehaving or unavailable Reflector feed currently blocks (via `OraclePriceStale`/`OraclePriceUnavailable`) rather than silently mispricing, but it cannot yet be cross-checked against a second source. Do not treat this as the finished manipulation-resistance story until RedStone is also wired.
+- Staleness check: a price older than 60 minutes is rejected today; with two sources, the limit for each is set from its measured update cadence
 - Progressive TVL caps limit the maximum exposure during early operation
 
 ### "A bug exists in the Soroban contracts"

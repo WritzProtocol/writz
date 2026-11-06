@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 960 864" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="liquidation-dark-title liquidation-dark-desc" id="liquidation-dark-root">
+<title id="liquidation-dark-title">Liquidation, settled on Bitcoin and proven on Stellar</title>
+<desc id="liquidation-dark-desc">A keeper repays an unhealthy or matured loan into escrow, writz-lend selects the pre-signed step and the protocol signers co-sign it, the keeper broadcasts it on Bitcoin and proves its confirmation through bitcoin-spv, and writz-lend settles the escrow.</desc>
+<defs>
+      <style>@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&amp;family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500;600&amp;family=Noto+Serif:ital@0;1&amp;family=Noto+Sans+KR:wght@400;500;600&amp;family=Noto+Serif+KR:wght@400&amp;family=Noto+Sans+TC:wght@400;500;600&amp;family=Noto+Serif+TC:wght@400&amp;display=swap');
+      #liquidation-dark-root { font-family: 'Work Sans', system-ui, sans-serif; color: #F6F7F8; }
+      #liquidation-dark-root .diagram-container { width:100%;overflow-x:auto }
+      #liquidation-dark-root .diagram-container { overflow-x:visible }</style><marker id="liquidation-dark-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#B6BBC4"/></marker><marker id="liquidation-dark-arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#FFC300"/></marker><marker id="liquidation-dark-arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#8FB0D8"/></marker><marker id="liquidation-dark-arrow-open" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polyline points="0 0, 8 3, 0 6" fill="none" stroke="#B6BBC4" stroke-width="1.2"/></marker></defs>
+<rect width="100%" height="100%" fill="#0C0E12"/>
+<line x1="96" y1="112" x2="96" y2="720" stroke="#f6f7f8" stroke-width="1" stroke-dasharray="3,3" stroke-opacity="0.22"/>
+<line x1="288" y1="112" x2="288" y2="720" stroke="#f6f7f8" stroke-width="1" stroke-dasharray="3,3" stroke-opacity="0.22"/>
+<line x1="480" y1="112" x2="480" y2="720" stroke="#f6f7f8" stroke-width="1" stroke-dasharray="3,3" stroke-opacity="0.22"/>
+<line x1="672" y1="112" x2="672" y2="720" stroke="#f6f7f8" stroke-width="1" stroke-dasharray="3,3" stroke-opacity="0.22"/>
+<line x1="864" y1="112" x2="864" y2="720" stroke="#f6f7f8" stroke-width="1" stroke-dasharray="3,3" stroke-opacity="0.22"/>
+<rect x="284" y="176" width="8" height="56" fill="#f6f7f8" stroke="#B6BBC4" stroke-width="0.8" fill-opacity="0.08"/>
+<rect x="284" y="544" width="8" height="136" fill="#f6f7f8" stroke="#B6BBC4" stroke-width="0.8" fill-opacity="0.08"/>
+<line x1="100" y1="176" x2="282" y2="176" stroke="#B6BBC4" stroke-width="1.2" marker-end="url(#liquidation-dark-arrow)"/>
+<rect x="156.0" y="152" width="72" height="16" rx="2" fill="#0C0E12"/><text x="192.0" y="164" fill="#8B919B" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">REPAY DEBT</text>
+<path d="M292,204 H324 Q332,204 332,212 V220 Q332,228 324,228 H294" fill="none" stroke="#B6BBC4" stroke-width="1.2" marker-end="url(#liquidation-dark-arrow)"/>
+<rect x="340" y="208" width="92" height="16" rx="2" fill="#0C0E12"/><text x="386.0" y="220" fill="#8B919B" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">TRIGGER, STEP</text>
+<line x1="292" y1="272" x2="474" y2="272" stroke="#B6BBC4" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#liquidation-dark-arrow-open)"/>
+<rect x="338.0" y="248" width="92" height="16" rx="2" fill="#0C0E12"/><text x="384.0" y="260" fill="#8B919B" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">STEP SELECTED</text>
+<line x1="476" y1="320" x2="294" y2="320" stroke="#B6BBC4" stroke-width="1.2" marker-end="url(#liquidation-dark-arrow)"/>
+<rect x="342.0" y="296" width="84" height="16" rx="2" fill="#0C0E12"/><text x="384.0" y="308" fill="#8B919B" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">CO-SIGNATURE</text>
+<line x1="100" y1="368" x2="282" y2="368" stroke="#B6BBC4" stroke-width="1.2" marker-end="url(#liquidation-dark-arrow)"/>
+<rect x="152.0" y="344" width="80" height="16" rx="2" fill="#0C0E12"/><text x="192.0" y="356" fill="#8B919B" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">GET STEP TX</text>
+<line x1="284" y1="408" x2="102" y2="408" stroke="#B6BBC4" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#liquidation-dark-arrow)"/>
+<rect x="152.0" y="384" width="80" height="16" rx="2" fill="#0C0E12"/><text x="192.0" y="396" fill="#8B919B" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">SIGNED STEP</text>
+<line x1="100" y1="456" x2="666" y2="456" stroke="#B6BBC4" stroke-width="1.2" marker-end="url(#liquidation-dark-arrow)"/>
+<rect x="158.0" y="432" width="68" height="16" rx="2" fill="#0C0E12"/><text x="192.0" y="444" fill="#8B919B" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">BROADCAST</text>
+<line x1="668" y1="496" x2="102" y2="496" stroke="#B6BBC4" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#liquidation-dark-arrow)"/>
+<rect x="534.0" y="472" width="84" height="16" rx="2" fill="#0C0E12"/><text x="576.0" y="484" fill="#8B919B" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">KEEPER SHARE</text>
+<line x1="100" y1="544" x2="282" y2="544" stroke="#B6BBC4" stroke-width="1.2" marker-end="url(#liquidation-dark-arrow)"/>
+<rect x="158.0" y="520" width="68" height="16" rx="2" fill="#0C0E12"/><text x="192.0" y="532" fill="#8B919B" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">SPV PROOF</text>
+<line x1="292" y1="584" x2="858" y2="584" stroke="#B6BBC4" stroke-width="1.2" marker-end="url(#liquidation-dark-arrow)"/>
+<rect x="350.0" y="560" width="68" height="16" rx="2" fill="#0C0E12"/><text x="384.0" y="572" fill="#8B919B" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">VERIFY TX</text>
+<line x1="860" y1="624" x2="294" y2="624" stroke="#B6BBC4" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#liquidation-dark-arrow)"/>
+<rect x="734.0" y="600" width="68" height="16" rx="2" fill="#0C0E12"/><text x="768.0" y="612" fill="#8B919B" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">CONFIRMED</text>
+<path d="M292,652 H324 Q332,652 332,660 V668 Q332,676 324,676 H294" fill="none" stroke="#FFC300" stroke-width="1.6" marker-end="url(#liquidation-dark-arrow-accent)"/>
+<rect x="340" y="656" width="48" height="16" rx="2" fill="#0C0E12"/><text x="364.0" y="668" fill="#8B919B" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">SETTLE</text>
+<rect x="16.0" y="64" width="160" height="48" rx="6" fill="#0C0E12"/>
+<rect x="16.0" y="64" width="160" height="48" rx="6" fill="#0C0E12" stroke="#F6F7F8" stroke-width="1"/>
+<text x="96.0" y="94.0" fill="#F6F7F8" font-size="16" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">Keeper</text>
+<rect x="208.0" y="64" width="160" height="48" rx="6" fill="#0C0E12"/>
+<rect x="208.0" y="64" width="160" height="48" rx="6" fill="#ffc300" stroke="#FFC300" stroke-width="1.4" fill-opacity="0.12"/>
+<text x="288.0" y="94.0" fill="#F6F7F8" font-size="16" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">writz-lend</text>
+<rect x="400.0" y="64" width="160" height="48" rx="6" fill="#0C0E12"/>
+<rect x="400.0" y="64" width="160" height="48" rx="6" fill="#0C0E12" stroke="#F6F7F8" stroke-width="1"/>
+<text x="480.0" y="94.0" fill="#F6F7F8" font-size="16" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">Protocol signers</text>
+<rect x="592.0" y="64" width="160" height="48" rx="6" fill="#0C0E12"/>
+<rect x="592.0" y="64" width="160" height="48" rx="6" fill="#0C0E12" stroke="#F6F7F8" stroke-width="1"/>
+<text x="672.0" y="94.0" fill="#F6F7F8" font-size="16" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">Bitcoin</text>
+<rect x="784.0" y="64" width="160" height="48" rx="6" fill="#0C0E12"/>
+<rect x="784.0" y="64" width="160" height="48" rx="6" fill="#0C0E12" stroke="#F6F7F8" stroke-width="1"/>
+<text x="864.0" y="94.0" fill="#F6F7F8" font-size="16" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">bitcoin-spv</text>
+<text x="24" y="764" fill="#B6BBC4" font-size="15" font-style="italic" font-family="'Work Sans', system-ui, sans-serif">The keeper's USDC waits in escrow until the proof; the rest of the BTC goes back to the borrower.</text>
+<line x1="32" y1="800" x2="928" y2="800" stroke="#f6f7f8" stroke-width="0.8" stroke-opacity="0.12"/>
+<text x="32" y="828" fill="#B6BBC4" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.14em">LEGEND</text>
+<line x1="96" y1="825" x2="116" y2="825" stroke="#B6BBC4" stroke-width="1.2"/>
+<text x="124" y="830" fill="#F6F7F8" font-size="12" font-family="'Work Sans', system-ui, sans-serif">Call</text>
+<line x1="184" y1="825" x2="204" y2="825" stroke="#B6BBC4" stroke-width="1.2" stroke-dasharray="5,4"/>
+<text x="212" y="830" fill="#F6F7F8" font-size="12" font-family="'Work Sans', system-ui, sans-serif">Return or event</text>
+<line x1="352" y1="825" x2="372" y2="825" stroke="#FFC300" stroke-width="1.6"/>
+<text x="380" y="830" fill="#F6F7F8" font-size="12" font-family="'Work Sans', system-ui, sans-serif">Lenders repaid</text>
+</svg>

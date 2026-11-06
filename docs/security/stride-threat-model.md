@@ -46,7 +46,7 @@
         │         │         │
         │         │         │ BTC/USD price feed (SEP-40)
         │         │         ▼
-        │         │    [Pyth / Reflector Oracle] ─────────────────── PARTIALLY TRUSTED
+        │         │    [Reflector / RedStone Oracle] ─────────────── PARTIALLY TRUSTED
         │         │
         │    USDC transfer (Stellar Asset Contract)
         ▼         ▼
@@ -86,7 +86,7 @@
 
 **Mitigation:**
 - `writz-lend` reads Reflector's external-prices SEP-40 feed (CEX and DEX aggregation), which an on-chain flash loan cannot move. A price older than one hour is rejected, so a stale or unavailable feed blocks price-dependent calls rather than mispricing them.
-- Planned: a second source (Pyth, pull model) with a deviation guard, so a single bad feed is caught by the other. (RedStone dropped: Stellar is not in its supported-chain list. DIA parked: its documented testnet contract address returns "contract not found". See `docs/research/oracle-design.md`.)
+- Planned: a second source (RedStone's BTC/USD push feed on Stellar) with a divergence guard, so a single bad feed is caught by the other.
 - TWAP (time-weighted average price) delays are considered as additional manipulation resistance.
 
 **Residual risk:** LOW for retail manipulation. Theoretical risk from compromised institutional publishers - mitigated by publisher diversity.
