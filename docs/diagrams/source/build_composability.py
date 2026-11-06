@@ -21,11 +21,11 @@ def body(skin):
           node(c, 280, 32, 216, 72, "CONTRACT", "Vault strategy", "no fee, immutable"),
           node(c, 704, 32, 224, 72, "CONNECTOR", "Writz Lend pool", "USDC from lenders"),
           node(c, 360, 184, 224, 96, "CORE", "Writz core", "lock proof, steps,", "focal", sub2="maturity, signers"),
-          node(c, 704, 184, 224, 96, "CONNECTOR", "Lending-market adapter", "non-transferable unit", sub2="one per market"),
+          node(c, 704, 184, 224, 96, "CONNECTOR", "Lending-market adapter", "non-transferable unit", sub2="one per locked sat"),
           node(c, 24, 360, 200, 72, "EXTERNAL", "Stellar projects", "payments, locks", "external"),
           node(c, 280, 360, 196, 72, "SDK", "Verification SDK", "TypeScript and Rust"),
-          node(c, 528, 360, 192, 72, "CONTRACT", "bitcoin-spv", "light client"),
-          node(c, 744, 360, 184, 72, "EXTERNAL", "Host market", "e.g. XOXNO", "external")]
+          node(c, 528, 360, 176, 72, "CONTRACT", "bitcoin-spv", "light client"),
+          node(c, 728, 360, 200, 72, "EXTERNAL", "Other lending market", "e.g. XOXNO", "external")]
     p.append(legend(c, 512, [("focal", "Core in writz-lend"), ("default", "Writz component"), ("external", "Another protocol")], 960))
     return "\n".join(p)
 for sk in ("light", "dark"):

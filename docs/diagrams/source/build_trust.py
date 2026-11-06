@@ -1,13 +1,13 @@
 from wz import *
-ROLES = [("Borrower", "own position"), ("Protocol signers", "2 of 3 planned"), ("Keepers", "open after 24 h"),
-         ("Admin", "multisig planned"), ("Relayer", "headers, proofs"), ("Price oracles", "RedStone planned")]
+ROLES = [("Borrower", "own position"), ("Protocol signers", "2 of 3 designed"), ("Keepers", "open after 24 h"),
+         ("Admin", "multisig designed"), ("Relayer", "headers, proofs"), ("Price oracles", "RedStone designed")]
 N = ("No", "none")
 POWERS = [
- ("Take the Bitcoin", [("After H", "rw", "own BTC only"), N, ("Keeper share", "read", "planned"), N, N, N]),
- ("Take lenders' USDC", [("If unpaid at H", "rw", "not liquidated"), N, N, ("Indirectly", "read", "via SPV, oracle"), N, ("If both wrong", "read")]),
- ("Force a liquidation", [N, ("With a keeper", "focal", "one keeper share"), ("Unhealthy, due", "read", "only then"), N, N, ("If both wrong", "rw")]),
+ ("Take the Bitcoin", [("After H", "rw", "own BTC only"), N, ("Keeper share", "read", "designed"), N, N, N]),
+ ("Take lenders' USDC", [("If unpaid at H", "rw", "not liquidated"), N, N, ("Indirectly", "read", "via SPV, oracle"), ("Signet only", "read", "trusted headers"), ("If feed wrong", "read", "both, designed")]),
+ ("Force a liquidation", [N, ("With a keeper", "focal", "one keeper share"), ("Unhealthy, due", "read", "only then"), N, N, ("If feed wrong", "rw", "both, designed")]),
  ("Delay a release", [N, ("Until H", "rw"), N, N, ("Until H", "rw", "publishes today"), N]),
- ("Move the price", [N, N, N, ("Change source", "rw", "delay planned"), N, ("Bounded", "rw", "divergence check")]),
+ ("Move the price", [N, N, N, ("Change source", "rw", "delay designed"), N, ("Bounded", "rw", "divergence check")]),
  ("Set caps, keepers", [N, N, N, ("Yes", "full"), N, N]),
  ("Pause new loans", [N, N, N, ("Yes", "full", "exits stay open"), N, N]),
  ("Change the code", [N, N, N, ("No", "none", "immutable"), N, N]),

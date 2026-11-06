@@ -23,7 +23,7 @@
 <line x1="546" y1="216" x2="116" y2="216" stroke="#4B515B" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#repay-and-release-arrow)"/>
 <rect x="398.0" y="192" width="84" height="16" rx="2" fill="#F6F7F8"/><text x="440.0" y="204" fill="#646A73" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">DEBT CLEARED</text>
 <line x1="554" y1="264" x2="754" y2="264" stroke="#4B515B" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#repay-and-release-arrow-open)"/>
-<rect x="613.0" y="240" width="84" height="16" rx="2" fill="#F6F7F8"/><text x="655.0" y="252" fill="#646A73" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">REPAID EVENT</text>
+<rect x="619.0" y="240" width="72" height="16" rx="2" fill="#F6F7F8"/><text x="655.0" y="252" fill="#646A73" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">REPAY_FULL</text>
 <path d="M764,292 H796 Q804,292 804,300 V308 Q804,316 796,316 H766" fill="none" stroke="#4B515B" stroke-width="1.2" marker-end="url(#repay-and-release-arrow)"/>
 <rect x="812" y="296" width="80" height="16" rx="2" fill="#F6F7F8"/><text x="852.0" y="308" fill="#646A73" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">CHECK STATE</text>
 <line x1="756" y1="360" x2="556" y2="360" stroke="#4B515B" stroke-width="1.2" marker-end="url(#repay-and-release-arrow)"/>

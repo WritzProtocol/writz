@@ -17,7 +17,7 @@
 <rect x="668" y="576" width="8" height="88" fill="#f6f7f8" stroke="#B6BBC4" stroke-width="0.8" fill-opacity="0.08"/>
 <line x1="100" y1="176" x2="282" y2="176" stroke="#B6BBC4" stroke-width="1.2" marker-end="url(#deposit-and-borrow-dark-arrow)"/>
 <rect x="162.0" y="152" width="60" height="16" rx="2" fill="#0C0E12"/><text x="192.0" y="164" fill="#8B919B" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">LOCK BTC</text>
-<line x1="484" y1="224" x2="858" y2="224" stroke="#B6BBC4" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#deposit-and-borrow-dark-arrow-open)"/>
+<line x1="484" y1="224" x2="858" y2="224" stroke="#B6BBC4" stroke-width="1.2" marker-end="url(#deposit-and-borrow-dark-arrow)"/>
 <rect x="548.0" y="200" width="56" height="16" rx="2" fill="#0C0E12"/><text x="576.0" y="212" fill="#8B919B" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">HEADERS</text>
 <line x1="100" y1="272" x2="474" y2="272" stroke="#B6BBC4" stroke-width="1.2" marker-end="url(#deposit-and-borrow-dark-arrow)"/>
 <rect x="146.0" y="248" width="92" height="16" rx="2" fill="#0C0E12"/><text x="192.0" y="260" fill="#8B919B" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">REQUEST PROOF</text>
@@ -54,7 +54,7 @@
 <rect x="784.0" y="64" width="160" height="48" rx="6" fill="#0C0E12"/>
 <rect x="784.0" y="64" width="160" height="48" rx="6" fill="#0C0E12" stroke="#F6F7F8" stroke-width="1"/>
 <text x="864.0" y="94.0" fill="#F6F7F8" font-size="16" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">bitcoin-spv</text>
-<text x="24" y="748" fill="#B6BBC4" font-size="15" font-style="italic" font-family="'Work Sans', system-ui, sans-serif">The deposit carries the pre-signed liquidation steps; borrow sets a maturity in blocks.</text>
+<text x="24" y="748" fill="#B6BBC4" font-size="15" font-style="italic" font-family="'Work Sans', system-ui, sans-serif">Designed: the deposit carries pre-signed liquidation steps; borrow sets a maturity.</text>
 <line x1="32" y1="784" x2="928" y2="784" stroke="#f6f7f8" stroke-width="0.8" stroke-opacity="0.12"/>
 <text x="32" y="812" fill="#B6BBC4" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.14em">LEGEND</text>
 <line x1="96" y1="809" x2="116" y2="809" stroke="#B6BBC4" stroke-width="1.2"/>

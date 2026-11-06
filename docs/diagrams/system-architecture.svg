@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg viewBox="0 0 960 712" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="system-architecture-title system-architecture-desc" id="system-architecture-root">
+<svg viewBox="0 0 960 720" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="system-architecture-title system-architecture-desc" id="system-architecture-root">
 <title id="system-architecture-title">Writz Protocol system architecture</title>
 <desc id="system-architecture-desc">Borrowers lock Bitcoin in a Writz vault and borrow USDC from writz-lend on Stellar, which verifies the lock through the bitcoin-spv light client, prices it with two oracles, and is served by keepers, protocol signers and a relayer.</desc>
 <defs>
@@ -81,14 +81,15 @@
 <text x="712.0" y="506" fill="#4B515B" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">SERVICE</text>
 <text x="796.0" y="534.0" fill="#15181E" font-size="16" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">Relayer</text>
 <text x="796.0" y="553.0" fill="#4B515B" font-size="12" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">headers and proofs</text>
-<line x1="32" y1="648" x2="928" y2="648" stroke="rgba(21,24,30,0.12)" stroke-width="0.8"/>
-<text x="32" y="676" fill="#4B515B" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.14em">LEGEND</text>
-<rect x="96" y="666" width="20" height="14" rx="3" fill="#FFC300" stroke="#15181E" stroke-width="1.2"/>
-<text x="124" y="678" fill="#15181E" font-size="12" font-family="'Work Sans', system-ui, sans-serif">Lending contract</text>
-<rect x="271" y="666" width="20" height="14" rx="3" fill="#F6F7F8" stroke="#15181E" stroke-width="1"/>
-<text x="299" y="678" fill="#15181E" font-size="12" font-family="'Work Sans', system-ui, sans-serif">Writz component</text>
-<rect x="439" y="666" width="20" height="14" rx="3" fill="#F6F7F8" stroke="#4B515B" stroke-width="1" stroke-dasharray="4,3"/>
-<text x="467" y="678" fill="#15181E" font-size="12" font-family="'Work Sans', system-ui, sans-serif">Price source</text>
-<rect x="585" y="666" width="20" height="14" rx="3" fill="#ECEEF1" stroke="#4B515B" stroke-width="1"/>
-<text x="613" y="678" fill="#15181E" font-size="12" font-family="'Work Sans', system-ui, sans-serif">User</text>
+<text x="24" y="636" fill="#4B515B" font-size="15" font-style="italic" font-family="'Work Sans', system-ui, sans-serif">Drawn as designed: 2 of 3 signers, RedStone and settlement by proof are not on testnet yet.</text>
+<line x1="32" y1="656" x2="928" y2="656" stroke="rgba(21,24,30,0.12)" stroke-width="0.8"/>
+<text x="32" y="684" fill="#4B515B" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.14em">LEGEND</text>
+<rect x="96" y="674" width="20" height="14" rx="3" fill="#FFC300" stroke="#15181E" stroke-width="1.2"/>
+<text x="124" y="686" fill="#15181E" font-size="12" font-family="'Work Sans', system-ui, sans-serif">Lending contract</text>
+<rect x="271" y="674" width="20" height="14" rx="3" fill="#F6F7F8" stroke="#15181E" stroke-width="1"/>
+<text x="299" y="686" fill="#15181E" font-size="12" font-family="'Work Sans', system-ui, sans-serif">Writz component</text>
+<rect x="439" y="674" width="20" height="14" rx="3" fill="#F6F7F8" stroke="#4B515B" stroke-width="1" stroke-dasharray="4,3"/>
+<text x="467" y="686" fill="#15181E" font-size="12" font-family="'Work Sans', system-ui, sans-serif">Price source</text>
+<rect x="585" y="674" width="20" height="14" rx="3" fill="#ECEEF1" stroke="#4B515B" stroke-width="1"/>
+<text x="613" y="686" fill="#15181E" font-size="12" font-family="'Work Sans', system-ui, sans-serif">User</text>
 </svg>

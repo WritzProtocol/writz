@@ -27,9 +27,10 @@ def body(skin):
           node(c, 48, 488, 232, 80, "SERVICE", "Keepers", "liquidate, settle by proof"),
           node(c, 364, 488, 232, 80, "SERVICE", "Protocol signers", "2-of-3 protocol keys"),
           node(c, 680, 488, 232, 80, "SERVICE", "Relayer", "headers and proofs")]
-    p.append(legend(c, 672, [("focal", "Lending contract"), ("default", "Writz component"), ("external", "Price source"), ("user", "User")], 960))
+    p.append(f'<text x="24" y="636" fill="{c["muted"]}" font-size="{F_NOTE}" font-style="italic" font-family="{SANS}">Drawn as designed: 2 of 3 signers, RedStone and settlement by proof are not on testnet yet.</text>')
+    p.append(legend(c, 680, [("focal", "Lending contract"), ("default", "Writz component"), ("external", "Price source"), ("user", "User")], 960))
     return "\n".join(p)
 for s in ("light", "dark"):
     page("system-architecture", s, "Writz Protocol system architecture",
          "Borrowers lock Bitcoin in a Writz vault and borrow USDC from writz-lend on Stellar, which verifies the lock through the bitcoin-spv light client, prices it with two oracles, and is served by keepers, protocol signers and a relayer.",
-         960, 712, body(s))
+         960, 720, body(s))

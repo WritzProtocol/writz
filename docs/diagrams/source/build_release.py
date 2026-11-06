@@ -3,7 +3,7 @@ B, BTC, L, SG = 110, 330, 550, 760
 A = [(B, "Borrower", "", "user"), (BTC, "Bitcoin", "", "default"), (L, "writz-lend", "", "focal"), (SG, "Protocol signers", "", "default")]
 M = [(176, B, L, "REPAY IN FULL", "call"),
      (216, L, B, "DEBT CLEARED", "return"),
-     (264, L, SG, "REPAID EVENT", "async"),
+     (264, L, SG, "REPAY_FULL", "async"),
      (292, SG, SG, "CHECK STATE", "self"),
      (360, SG, L, "PUBLISH CO-SIG", "call"),
      (408, B, L, "GET RELEASE", "call"),

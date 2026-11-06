@@ -30,8 +30,8 @@ def body(skin):
           node(c, 680, 344, 224, 80, "", "Liquidated", "debt repaid by a keeper"),
           node(c, 56, 344, 224, 80, "", "Timelock recovery", "borrower reclaims alone")]
     p += [endmark(c, 936, 136), endmark(c, 936, 384), endmark(c, 312, 384)]
-    p.append(f'<text x="24" y="476" fill="{c["muted"]}" font-size="{F_NOTE}" font-style="italic" font-family="{SANS}">Liquidation stops 288 blocks before H; a loan unpaid by then is a loss for lenders.</text>')
-    p.append(f'<text x="24" y="500" fill="{c["muted"]}" font-size="{F_NOTE}" font-style="italic" font-family="{SANS}">Planned: maturity, and borrowing again after repaying. Today, repaying in full closes the position.</text>')
+    p.append(f'<text x="24" y="476" fill="{c["muted"]}" font-size="{F_NOTE}" font-style="italic" font-family="{SANS}">Liquidation stops 288 blocks before H; a loan unpaid by then is a loss for the reserve, then lenders.</text>')
+    p.append(f'<text x="24" y="500" fill="{c["muted"]}" font-size="{F_NOTE}" font-style="italic" font-family="{SANS}">Designed: maturity, and borrowing again after repaying. Today, repaying in full closes the position.</text>')
     p.append(legend(c, 568, [("focal", "Active loan"), ("default", "Position state"), ("line", "Transition"), ("dashed", "Borrower alone, after H")], 960))
     return "\n".join(p)
 for s in ("light", "dark"):
