@@ -33,7 +33,7 @@ Every security system has trust assumptions. Writz's are:
 | User's private keys | User's Bitcoin and Stellar keys are not compromised | Critical - user responsibility |
 | All of the above | No large-scale quantum computer capable of running Shor's algorithm exists | Catastrophic if it does, but this breaks Bitcoin's ECDSA and Stellar's Ed25519 simultaneously. Not a Writz-specific risk, and not one Writz can mitigate unilaterally |
 
-Every trust assumption above except the Bitcoin/Stellar signature schemes themselves rests on elliptic curve discrete log hardness. A cryptographically relevant quantum computer would break secp256k1 (Bitcoin) and Ed25519 (Stellar) at once. This is not something Writz can fix by itself: the protocol's BTC custody depends on Bitcoin's own signature scheme remaining secure, and its USDC settlement depends on Stellar's. No BTCfi competitor surveyed in `docs/research/market-landscape.md` is post-quantum either, for the same structural reason. This is tracked as an acknowledged, industry-wide limitation, not a roadmap item.
+Every trust assumption above except the Bitcoin/Stellar signature schemes themselves rests on elliptic curve discrete log hardness. A cryptographically relevant quantum computer would break secp256k1 (Bitcoin) and Ed25519 (Stellar) at once. This is not something Writz can fix by itself: the protocol's BTC custody depends on Bitcoin's own signature scheme remaining secure, and its USDC settlement depends on Stellar's. No Bitcoin lending protocol we know of is post-quantum either, for the same structural reason. This is tracked as an acknowledged, industry-wide limitation, not a roadmap item.
 
 ---
 
