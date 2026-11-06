@@ -62,24 +62,15 @@ Writz Lend is the only product today. Features planned for later are listed in [
 
 ---
 
-## The Moat
-
-Writz's competitive position compounds with time:
-
-- **Technical depth:** A Bitcoin SPV client on Soroban takes 12–18 months to build, audit, and deploy safely. A competitor starting today arrives after Writz is established with real TVL and ecosystem integrations.
-- **SDK ecosystem lock-in:** The Writz Bitcoin SPV SDK is free for any Stellar protocol. Once wallets and protocols build on it, switching costs compound. Writz becomes load-bearing infrastructure for the entire Stellar ecosystem.
-
----
-
 ## Current Status
 
-As of June 2026, Writz has completed Phase 1 - Foundation:
+Writz runs on Stellar testnet today:
 
-- `bitcoin-spv` and `writz-lend` deployed on testnet
+- `bitcoin-spv` and `writz-lend` deployed on testnet (current contracts since October 2026)
 - 839 tests passing across all modules
 - Real Bitcoin transactions broadcast and confirmed on Bitcoin Signet
 
-The protocol is not yet available on mainnet. Mainnet launch is targeted for Q2 to Q3 2027 (Phase 2), starting with a gated, TVL-capped release of Writz Lend.
+The protocol is not yet available on mainnet. Mainnet launch is targeted for Q2 to Q3 2027, starting with a gated, TVL-capped release of Writz Lend.
 
 **Privacy** is not part of the protocol: positions are public on chain.
 
