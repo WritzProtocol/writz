@@ -26,10 +26,10 @@ export function Hero() {
               no custodian and no bridge.
             </p>
             <div className="ctas">
-              <a className="btn btn-gold" href={APP_ROUTE}>
+              <a className="btn btn-gold" href={APP_ROUTE} data-umami-event="open-app" data-umami-event-where="hero">
                 Open app
               </a>
-              <a className="btn" href="#how">
+              <a className="btn" href="#how" data-umami-event="see-how-it-works" data-umami-event-where="hero">
                 See how it works
               </a>
             </div>

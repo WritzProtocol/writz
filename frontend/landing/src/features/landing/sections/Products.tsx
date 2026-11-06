@@ -28,7 +28,7 @@ export function Products() {
             </div>
             <p className="sub">Borrowing less leaves more room before liquidation.</p>
             <div className="tfoot">
-              <a className="btn btn-gold" href={APP_ROUTE}>
+              <a className="btn btn-gold" href={APP_ROUTE} data-umami-event="start-borrowing" data-umami-event-where="products">
                 Start borrowing
               </a>
               <span>No wrapped token</span>
@@ -43,7 +43,7 @@ export function Products() {
             </p>
             <p className="sub">Variable, shown live in the app.</p>
             <div className="tfoot">
-              <a className="btn" href={`${APP_ROUTE.replace(/\/$/, "")}/lend`}>
+              <a className="btn" href={`${APP_ROUTE.replace(/\/$/, "")}/lend`} data-umami-event="start-lending" data-umami-event-where="products">
                 Start lending
               </a>
               <span>No lock-up</span>
