@@ -25,36 +25,8 @@
 
 ## Data flow diagram
 
-```
-[User Bitcoin Wallet]
-        │
-        │ BTC → P2WSH address (on Bitcoin)
-        ▼
-[Bitcoin Network] ──────────────────────────────────────────────
-        │
-        │ block headers + Merkle proof (via relayer or self-serve)
-        ▼
-[SPV Relayer] ─────────────────────────────────────────────── UNTRUSTED
-        │
-        │ headers + proof + raw_tx (user submits directly to Soroban)
-        ▼
-[bitcoin-spv contract] ─────────────────────────────────────── TRUSTLESS
-        │
-        │ SpvVerificationResult { txid, block_hash, confirmations }
-        ▼
-[writz-lend contract] ────────────────────────────────────── TRUSTLESS
-        │         │         │
-        │         │         │ BTC/USD price feed (SEP-40)
-        │         │         ▼
-        │         │    [Reflector / RedStone Oracle] ─────────────── PARTIALLY TRUSTED
-        │         │
-        │    USDC transfer (Stellar Asset Contract)
-        ▼         ▼
-[User Stellar Wallet]     [Protocol Treasury / USDC Pool]
-
-[Protocol Co-signing Key] ─────── co-signs P2WSH release on Bitcoin
-[Liquidation Keeper] ─────────── calls liquidate() on Writz Lend
-```
+<img className="block dark:hidden" src="/diagrams/data-flow.svg" alt="Data flow and trust boundaries: untrusted wallets and relayer, trustless vault and contracts, trusted protocol key and keeper, partially trusted oracle" />
+<img className="hidden dark:block" src="/diagrams/data-flow-dark.svg" alt="Data flow and trust boundaries: untrusted wallets and relayer, trustless vault and contracts, trusted protocol key and keeper, partially trusted oracle" />
 
 ---
 

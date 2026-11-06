@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 960 504" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="stellar-contracts-dark-title stellar-contracts-dark-desc" id="stellar-contracts-dark-root">
+<title id="stellar-contracts-dark-title">The contracts on Stellar</title>
+<desc id="stellar-contracts-dark-desc">writz-lend reads the BTC/USD price from Reflector, moves USDC through the Stellar Asset Contract and asks bitcoin-spv to verify Bitcoin transactions; the relayer submits Bitcoin headers to bitcoin-spv and publishes release PSBTs to writz-lend.</desc>
+<defs>
+      <style>@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&amp;family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500;600&amp;family=Noto+Serif:ital@0;1&amp;family=Noto+Sans+KR:wght@400;500;600&amp;family=Noto+Serif+KR:wght@400&amp;family=Noto+Sans+TC:wght@400;500;600&amp;family=Noto+Serif+TC:wght@400&amp;display=swap');
+      #stellar-contracts-dark-root { font-family: 'Work Sans', system-ui, sans-serif; color: #F6F7F8; }
+      #stellar-contracts-dark-root .diagram-container { width:100%;overflow-x:auto }
+      #stellar-contracts-dark-root .diagram-container { overflow-x:visible }</style><marker id="stellar-contracts-dark-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#B6BBC4"/></marker><marker id="stellar-contracts-dark-arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#FFC300"/></marker><marker id="stellar-contracts-dark-arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#8FB0D8"/></marker><marker id="stellar-contracts-dark-arrow-open" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polyline points="0 0, 8 3, 0 6" fill="none" stroke="#B6BBC4" stroke-width="1.2"/></marker></defs>
+<rect width="100%" height="100%" fill="#0C0E12"/>
+<path d="M168,112 V172 Q168,180 176,180 H358" fill="none" stroke="#B6BBC4" stroke-width="1.2" marker-end="url(#stellar-contracts-dark-arrow)"/>
+<path d="M480,112 V142" fill="none" stroke="#B6BBC4" stroke-width="1.2" marker-end="url(#stellar-contracts-dark-arrow)"/>
+<path d="M600,180 H670" fill="none" stroke="#B6BBC4" stroke-width="1.2" marker-end="url(#stellar-contracts-dark-arrow)"/>
+<path d="M560,280 V218" fill="none" stroke="#B6BBC4" stroke-width="1.2" marker-end="url(#stellar-contracts-dark-arrow)"/>
+<path d="M720,280 V218" fill="none" stroke="#B6BBC4" stroke-width="1.2" marker-end="url(#stellar-contracts-dark-arrow)"/>
+<rect x="176" y="128" width="56" height="16" rx="2" fill="#0C0E12"/><text x="204.0" y="140" fill="#8B919B" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">BTC/USD</text>
+<rect x="488" y="120" width="68" height="16" rx="2" fill="#0C0E12"/><text x="522.0" y="132" fill="#8B919B" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">TRANSFER</text>
+<rect x="611" y="156" width="48" height="16" rx="2" fill="#0C0E12"/><text x="635.0" y="168" fill="#8B919B" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">VERIFY</text>
+<rect x="464" y="240" width="88" height="16" rx="2" fill="#0C0E12"/><text x="508.0" y="252" fill="#8B919B" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">RELEASE PSBT</text>
+<rect x="728" y="240" width="56" height="16" rx="2" fill="#0C0E12"/><text x="756.0" y="252" fill="#8B919B" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">HEADERS</text>
+<rect x="48" y="40" width="240" height="72" rx="6" fill="#0C0E12"/>
+<rect x="48" y="40" width="240" height="72" rx="6" fill="#0C0E12" stroke="#B6BBC4" stroke-width="1" stroke-dasharray="4,3"/>
+<rect x="56" y="48" width="43" height="14" rx="2" fill="none" stroke="#B6BBC4" stroke-opacity="0.5" stroke-width="0.8"/>
+<text x="77.5" y="58" fill="#B6BBC4" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">ORACLE</text>
+<text x="168.0" y="82.0" fill="#F6F7F8" font-size="16" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">Reflector</text>
+<text x="168.0" y="101.0" fill="#B6BBC4" font-size="12" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">BTC/USD, SEP-40</text>
+<rect x="360" y="40" width="240" height="72" rx="6" fill="#0C0E12"/>
+<rect x="360" y="40" width="240" height="72" rx="6" fill="#0C0E12" stroke="#B6BBC4" stroke-width="1" stroke-dasharray="4,3"/>
+<rect x="368" y="48" width="40" height="14" rx="2" fill="none" stroke="#B6BBC4" stroke-opacity="0.5" stroke-width="0.8"/>
+<text x="388.0" y="58" fill="#B6BBC4" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">TOKEN</text>
+<text x="480.0" y="82.0" fill="#F6F7F8" font-size="16" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">USDC</text>
+<text x="480.0" y="101.0" fill="#B6BBC4" font-size="12" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">Stellar Asset Contract</text>
+<rect x="360" y="144" width="240" height="72" rx="6" fill="#0C0E12"/>
+<rect x="360" y="144" width="240" height="72" rx="6" fill="#ffc300" stroke="#FFC300" stroke-width="1.4" fill-opacity="0.12"/>
+<rect x="368" y="152" width="53" height="14" rx="2" fill="none" stroke="#FFC300" stroke-opacity="0.5" stroke-width="0.8"/>
+<text x="394.5" y="162" fill="#FFC300" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">CONTRACT</text>
+<text x="480.0" y="186.0" fill="#F6F7F8" font-size="16" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">writz-lend</text>
+<text x="480.0" y="205.0" fill="#FFC300" font-size="12" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">positions, USDC pool</text>
+<rect x="672" y="144" width="240" height="72" rx="6" fill="#0C0E12"/>
+<rect x="672" y="144" width="240" height="72" rx="6" fill="#0C0E12" stroke="#F6F7F8" stroke-width="1"/>
+<rect x="680" y="152" width="53" height="14" rx="2" fill="none" stroke="#B6BBC4" stroke-opacity="0.5" stroke-width="0.8"/>
+<text x="706.5" y="162" fill="#B6BBC4" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">CONTRACT</text>
+<text x="792.0" y="186.0" fill="#F6F7F8" font-size="16" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">bitcoin-spv</text>
+<text x="792.0" y="205.0" fill="#B6BBC4" font-size="12" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">header chain, proofs</text>
+<rect x="528" y="280" width="224" height="72" rx="6" fill="#0C0E12"/>
+<rect x="528" y="280" width="224" height="72" rx="6" fill="#0C0E12" stroke="#F6F7F8" stroke-width="1"/>
+<rect x="536" y="288" width="48" height="14" rx="2" fill="none" stroke="#B6BBC4" stroke-opacity="0.5" stroke-width="0.8"/>
+<text x="560.0" y="298" fill="#B6BBC4" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">SERVICE</text>
+<text x="640.0" y="322.0" fill="#F6F7F8" font-size="16" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">Relayer</text>
+<text x="640.0" y="341.0" fill="#B6BBC4" font-size="12" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">off-chain</text>
+<text x="24" y="400" fill="#B6BBC4" font-size="15" font-style="italic" font-family="'Work Sans', system-ui, sans-serif">A second price source, RedStone, is planned next to Reflector.</text>
+<line x1="32" y1="440" x2="928" y2="440" stroke="rgba(246,247,248,0.12)" stroke-width="0.8"/>
+<text x="32" y="468" fill="#B6BBC4" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.14em">LEGEND</text>
+<rect x="96" y="458" width="20" height="14" rx="3" fill="#ffc300" stroke="#FFC300" stroke-width="1.2" fill-opacity="0.12"/>
+<text x="124" y="470" fill="#F6F7F8" font-size="12" font-family="'Work Sans', system-ui, sans-serif">Lending contract</text>
+<rect x="271" y="458" width="20" height="14" rx="3" fill="#0C0E12" stroke="#F6F7F8" stroke-width="1"/>
+<text x="299" y="470" fill="#F6F7F8" font-size="12" font-family="'Work Sans', system-ui, sans-serif">Writz contract or service</text>
+<rect x="511" y="458" width="20" height="14" rx="3" fill="#0C0E12" stroke="#B6BBC4" stroke-width="1" stroke-dasharray="4,3"/>
+<text x="539" y="470" fill="#F6F7F8" font-size="12" font-family="'Work Sans', system-ui, sans-serif">External contract</text>
+</svg>
