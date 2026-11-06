@@ -116,7 +116,7 @@ Writz prices BTC/USD from two independent sources, so a single bad feed cannot m
 **Today:** only Reflector is wired into `writz-lend` (`contracts/contracts/writz-lend/src/oracle.rs`), and a price older than 60 minutes is rejected, so a stale or unavailable feed blocks the call (`OraclePriceStale`, `OraclePriceUnavailable`) instead of mispricing it. Until the second source is wired, the feed cannot be cross-checked.
 
 **Manipulation resistance:**
-- Median of two oracles: a single oracle manipulation requires moving the median
+- Two sources (planned): a borrow uses the lower price and a price-based liquidation needs the position to be unhealthy at both, so moving one feed is not enough
 - Liquidation smoothing (design): large liquidations could be executed in parts to blunt single-block oracle manipulation; not implemented in `writz-lend` today
 
 **SEP-40 interface:** `writz-lend` calls a real Reflector oracle live over the Stellar SEP-40 standard interface (`contracts/contracts/writz-lend/src/oracle.rs`). For `writz-lend`, switching oracle providers requires only updating the oracle contract address - no changes to lending logic.
