@@ -20,7 +20,7 @@ def body(skin):
           label(c, 112, 580, 56, "CO-SIGN")]
     p += [node(c, 96, 24, 256, 72, "USER", "Borrower", "BTC + Stellar wallets", "user"),
           node(c, 520, 24, 256, 72, "USER", "Lender", "Stellar wallet, USDC", "user"),
-          node(c, 96, 160, 256, 80, "SCRIPT", "Writz vault", "user + 2-of-3, or timelock"),
+          node(c, 96, 160, 256, 80, "SCRIPT", "Writz vault", "borrower + 2 of 3 signers"),
           node(c, 48, 320, 232, 80, "EXTERNAL", "Price oracles", "Reflector + RedStone", "external"),
           node(c, 364, 320, 232, 80, "CONTRACT", "writz-lend", "positions, USDC pool", "focal"),
           node(c, 680, 320, 232, 80, "CONTRACT", "bitcoin-spv", "Bitcoin light client"),

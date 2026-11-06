@@ -27,13 +27,13 @@
 <rect x="312" y="112" width="43" height="14" rx="2" fill="none" stroke="#4B515B" stroke-opacity="0.5" stroke-width="0.8"/>
 <text x="333.5" y="122" fill="#4B515B" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">PATH A</text>
 <text x="432.0" y="150.0" fill="#15181E" font-size="16" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">Cooperative path</text>
-<text x="432.0" y="169.0" fill="#4B515B" font-size="12" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">user key + 2 of 3 protocol</text>
+<text x="432.0" y="169.0" fill="#4B515B" font-size="12" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">borrower + 2 of 3 signers</text>
 <rect x="304" y="328" width="256" height="80" rx="6" fill="#F6F7F8"/>
 <rect x="304" y="328" width="256" height="80" rx="6" fill="#F6F7F8" stroke="#15181E" stroke-width="1"/>
 <rect x="312" y="336" width="43" height="14" rx="2" fill="none" stroke="#4B515B" stroke-opacity="0.5" stroke-width="0.8"/>
 <text x="333.5" y="346" fill="#4B515B" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">PATH B</text>
 <text x="432.0" y="374.0" fill="#15181E" font-size="16" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">Timelock path</text>
-<text x="432.0" y="393.0" fill="#4B515B" font-size="12" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">user key alone, after H</text>
+<text x="432.0" y="393.0" fill="#4B515B" font-size="12" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">borrower alone, after H</text>
 <rect x="704" y="40" width="232" height="72" rx="6" fill="#F6F7F8"/>
 <rect x="704" y="40" width="232" height="72" rx="6" fill="#F6F7F8" stroke="#15181E" stroke-width="1"/>
 <rect x="712" y="48" width="40" height="14" rx="2" fill="none" stroke="#4B515B" stroke-opacity="0.5" stroke-width="0.8"/>

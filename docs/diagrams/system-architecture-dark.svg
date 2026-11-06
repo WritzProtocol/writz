@@ -44,7 +44,7 @@
 <rect x="104" y="168" width="43" height="14" rx="2" fill="none" stroke="#B6BBC4" stroke-opacity="0.5" stroke-width="0.8"/>
 <text x="125.5" y="178" fill="#B6BBC4" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">SCRIPT</text>
 <text x="224.0" y="206.0" fill="#F6F7F8" font-size="16" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">Writz vault</text>
-<text x="224.0" y="225.0" fill="#B6BBC4" font-size="12" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">user + 2-of-3, or timelock</text>
+<text x="224.0" y="225.0" fill="#B6BBC4" font-size="12" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">borrower + 2 of 3 signers</text>
 <rect x="48" y="320" width="232" height="80" rx="6" fill="#0C0E12"/>
 <rect x="48" y="320" width="232" height="80" rx="6" fill="#0C0E12" stroke="#B6BBC4" stroke-width="1" stroke-dasharray="4,3"/>
 <rect x="56" y="328" width="53" height="14" rx="2" fill="none" stroke="#B6BBC4" stroke-opacity="0.5" stroke-width="0.8"/>

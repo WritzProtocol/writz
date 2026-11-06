@@ -10,8 +10,8 @@ def body(skin):
           label(c, 620, 176, 80, "LIQUIDATION"),
           label(c, 581, 344, 100, "AFTER HEIGHT H")]
     p += [node(c, 24, 200, 216, 80, "P2WSH", "Writz vault", "locked by the borrower", "focal"),
-          node(c, 304, 104, 256, 80, "PATH A", "Cooperative path", "user key + 2 of 3 protocol"),
-          node(c, 304, 328, 256, 80, "PATH B", "Timelock path", "user key alone, after H"),
+          node(c, 304, 104, 256, 80, "PATH A", "Cooperative path", "borrower + 2 of 3 signers"),
+          node(c, 304, 328, 256, 80, "PATH B", "Timelock path", "borrower alone, after H"),
           node(c, 704, 40, 232, 72, "TX", "Release", "all BTC to the borrower"),
           node(c, 704, 152, 232, 96, "TX", "Liquidation step", "pre-signed at deposit", sub2="keeper share, rest back"),
           node(c, 704, 330, 232, 76, "TX", "Timelock recovery", "borrower takes it all")]
