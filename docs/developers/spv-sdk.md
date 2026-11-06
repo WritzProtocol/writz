@@ -7,7 +7,7 @@ description: "Reference for verify_transaction on the Writz bitcoin-spv contract
 
 `bitcoin-spv` is a Bitcoin light client that runs as a Soroban contract. It stores Bitcoin block headers that descend from a fixed checkpoint, checks each header's proof-of-work and difficulty, and follows the most-work chain. Any Soroban contract can then ask it whether a Bitcoin transaction is in a block of that chain, with a given number of confirmations. Writz Lend uses it to verify BTC deposits; you can use it for anything that should react to a Bitcoin transaction.
 
-The SDK is the deployed contract, the relayer proof route, and two packages whose first release is pending: [`@writz/sdk`](https://github.com/WritzProtocol/writz/tree/main/packages/sdk) for TypeScript and [`writz-spv-client`](https://github.com/WritzProtocol/writz/tree/main/contracts/contracts/writz-spv-client) for Soroban contracts (see [Packages](#packages)). Until they are published, the snippets below need only `soroban-sdk` or `@stellar/stellar-sdk`. For a step-by-step walkthrough with commands that were run against testnet, start with [Build on Writz](/developers/integrate).
+The SDK is the deployed contract, the relayer proof route, and two published packages: [`@writz/sdk`](https://www.npmjs.com/package/@writz/sdk) on npm for TypeScript and [`writz-spv-client`](https://crates.io/crates/writz-spv-client) on crates.io for Soroban contracts (see [Packages](#packages)). The snippets below also work without them, with only `soroban-sdk` or `@stellar/stellar-sdk`. For a step-by-step walkthrough with commands that were run against testnet, start with [Build on Writz](/developers/integrate).
 
 ---
 
@@ -24,7 +24,7 @@ The SDK is the deployed contract, the relayer proof route, and two packages whos
 
 Source: [`contracts/contracts/bitcoin-spv/src/lib.rs`](https://github.com/WritzProtocol/writz/blob/main/contracts/contracts/bitcoin-spv/src/lib.rs). Deployment record: [`contracts/deployments/testnet.md`](https://github.com/WritzProtocol/writz/blob/main/contracts/deployments/testnet.md).
 
-This contract was redeployed on 2026-10-25, with a new checkpoint, because testnet rent rose sharply; the storage windows of headers and consumed deposits are now deployment parameters (`header_ttl_ledgers`, `consumed_ttl_ledgers`, see the [Contract reference](/developers/contract-reference)). Blocks at or below the new checkpoint can no longer be proven against it.
+This instance was deployed on 2026-10-25. How long it keeps headers and consumed deposits is set at deployment (`header_ttl_ledgers`, `consumed_ttl_ledgers`, see the [Contract reference](/developers/contract-reference)).
 
 ---
 
@@ -104,8 +104,8 @@ The full list, including the codes of `submit_headers` and the admin functions, 
 
 | Package | Registry | For | Status |
 |---|---|---|---|
-| [`@writz/sdk`](https://github.com/WritzProtocol/writz/tree/main/packages/sdk) | npm | TypeScript in the browser, Node or Bun: testnet preset, relayer client with typed errors and `Retry-After`, `bitcoin-spv` and `writz-lend` clients | Published: [`npm install @writz/sdk`](https://www.npmjs.com/package/@writz/sdk) |
-| [`writz-spv-client`](https://github.com/WritzProtocol/writz/tree/main/contracts/contracts/writz-spv-client) | crates.io | Soroban contracts: `BitcoinSpvClient`, the result and error types, the on-chain output parser `find_output_value` | Published: [`cargo add writz-spv-client`](https://crates.io/crates/writz-spv-client) |
+| [`@writz/sdk`](https://github.com/WritzProtocol/writz/tree/main/packages/sdk) | npm | TypeScript in the browser, Node or Bun: testnet preset, relayer client with typed errors and `Retry-After`, `bitcoin-spv` and `writz-lend` clients | 0.1.3: [`npm install @writz/sdk`](https://www.npmjs.com/package/@writz/sdk) |
+| [`writz-spv-client`](https://github.com/WritzProtocol/writz/tree/main/contracts/contracts/writz-spv-client) | crates.io | Soroban contracts: `BitcoinSpvClient`, the result and error types, the on-chain output parser `find_output_value` | 0.1.1: [`cargo add writz-spv-client`](https://crates.io/crates/writz-spv-client) |
 
 With `writz-spv-client` the contract below shrinks to the call itself:
 
@@ -197,7 +197,7 @@ Pass the scriptPubKey as bytes (for example `0014...` for P2WPKH; mempool.space 
 GET https://api.testnet.writz.xyz/spv-proof/:txid?confirmations=6
 ```
 
-`txid` is in display byte order (as explorers show it). `confirmations` is optional, 1 to 20, default 6. Response (200), shortened:
+`txid` is in display byte order (as explorers show it). `confirmations` is optional, 1 to 20, default 6. Rate limit: 60 requests per minute per IP. Response (200), shortened:
 
 ```json
 {

@@ -3,15 +3,13 @@ title: "Contract Reference"
 ---
 
 The public interface of the two Soroban contracts of Writz, `bitcoin-spv` and `writz-lend`, as defined on `main`.
-Every function below is copied from the contract source, with the first
-paragraph of its doc comment; `env: Env` is omitted. The source is the
-authority: `contracts/contracts/<name>/src/lib.rs`, and the generated
-TypeScript bindings in `packages/` and `frontend/app/src/lib/contracts/`.
+Every signature below is copied from the contract source, with a short
+description; `env: Env` is omitted. The source is the authority:
+`contracts/contracts/<name>/src/lib.rs`.
 
 Every contract is configured by its `__constructor`, which runs inside the
 deploy transaction. There is no separate `initialize` call. To deploy and
-wire up all four, use `scripts/deploy/deploy_stack.mjs` (see #177 for the
-order and arguments).
+wire up both, use `scripts/deploy/deploy_stack.mjs`.
 
 **Testnet addresses:**
 
@@ -20,11 +18,11 @@ order and arguments).
 | `bitcoin-spv` | `CBX23YKCCJMAMBMSCNP6YVKEXUIYK2CTKSR4TQ3RVBPAFYZFVCW7W4EO` |
 | `writz-lend` | `CD3BRE32LDNDHAEVI6H35UC3NIRREW5BLH64AZMHSQY3LEKYDLKYWBXS` |
 
-`bitcoin-spv` is the instance from the 2026-10-25 redeploy and `writz-lend` the one
-from the 2026-11-02 redeploy (#377), which carries the projected views below. See
-`contracts/deployments/testnet.md`.
+`bitcoin-spv` was deployed on 2026-10-25 and `writz-lend` on 2026-11-02; the
+deployment record, with superseded IDs, is `contracts/deployments/testnet.md`.
 
-Testnet `bitcoin-spv` and `writz-lend` were redeployed on 2026-10-25 because testnet rent rose sharply: testnet's live state is above its target size, and the previous contracts gave every entry they created the long mainnet storage windows, so a deposit was charged about 428 XLM in fees. The new contracts take those windows as deployment parameters and run testnet-length ones (a deposit was charged about 89 XLM, measured 2026-10-25). Positions on the previous contracts were closed and their BTC released; their IDs are recorded as superseded in `contracts/deployments/testnet.md`. `writz-lend` was redeployed again on 2026-11-01 so its `supply` and `withdraw` events carry the scaled amount and the supply index (#257); `bitcoin-spv` was not. The windows are the `header_ttl_ledgers` and `consumed_ttl_ledgers` arguments of
+Storage windows are deployment parameters, so testnet runs short ones and
+mainnet long ones. They are the `header_ttl_ledgers` and `consumed_ttl_ledgers` arguments of
 `bitcoin-spv`'s `__constructor` and the `entry_ttl_ledgers` argument of
 `writz-lend`'s (both below); what each entry keeps and when it is extended is in
 [Storage and TTL management](/how-it-works/stellar-side#storage-and-ttl-management).
@@ -51,7 +49,7 @@ pub fn set_checkpoint(caller: Address, height: u32, block_hash: BytesN<32>, bits
 
 ### `set_consumer`
 
-Registers (or removes) a lending contract allowed to consume deposit txids. Admin-only. Both lending contracts share one txid registry so the same Bitcoin output cannot back loans from both pools (GHSA-2975-ggwh-pxw5).
+Registers (or removes) a lending contract allowed to consume deposit txids. Admin-only. Every registered consumer shares one txid registry, so the same Bitcoin output cannot back two loans, even across two `writz-lend` instances (GHSA-2975-ggwh-pxw5).
 
 ```rust
 pub fn set_consumer(caller: Address, consumer: Address, allowed: bool) -> Result<(), SPVError>
@@ -59,7 +57,7 @@ pub fn set_consumer(caller: Address, consumer: Address, allowed: bool) -> Result
 
 ### `consume_deposit`
 
-Marks a deposit txid as consumed by a lending contract. Fails if the caller is not a registered consumer or the txid was already consumed. Called by each lending contract's `deposit` after its own checks.
+Marks a deposit txid as consumed by a lending contract. Fails if the caller is not a registered consumer or the txid was already consumed. Called by `writz-lend`'s `deposit` after its own checks.
 
 ```rust
 pub fn consume_deposit(consumer: Address, txid: BytesN<32>) -> Result<(), SPVError>
@@ -131,7 +129,7 @@ pub fn get_canonical_hash(height: u32) -> Option<BytesN<32>>
 
 ### `refresh_ttl`
 
-Extends the TTL of the Config, Checkpoint and best-tip entries. Permissionless - anyone can call this to keep an inactive deployment from expiring.
+Extends the TTL of the Config, Checkpoint and best-tip entries. Permissionless: anyone can call this to keep an inactive deployment from expiring.
 
 ```rust
 pub fn refresh_ttl()
@@ -215,13 +213,15 @@ pub fn liquidate(keeper: Address, txid: BytesN<32>) -> Result<(), WritzLendError
 
 ### `set_max_total_borrowed`
 
-Update the keeper address.  Admin only.
+Sets the pool's exposure cap, the most USDC that can be borrowed in total (`max_total_borrowed`, 50,000 USDC by default); a borrow past it fails with `ExposureCapExceeded`. Admin only.
 
 ```rust
 pub fn set_max_total_borrowed(caller: Address, max: i128) -> Result<(), WritzLendError>
 ```
 
 ### `set_keeper`
+
+Updates the keeper address. Admin only.
 
 ```rust
 pub fn set_keeper(caller: Address, new_keeper: Address) -> Result<(), WritzLendError>
@@ -237,7 +237,7 @@ pub fn keeper_heartbeat(keeper: Address) -> Result<(), WritzLendError>
 
 ### `set_keeper_stale_window`
 
-Updates how many seconds of keeper inactivity before liquidation opens to any caller.  Admin only.
+Updates how many seconds of keeper inactivity before liquidation opens to any caller. Admin only.
 
 ```rust
 pub fn set_keeper_stale_window(caller: Address, secs: u64) -> Result<(), WritzLendError>
@@ -285,7 +285,7 @@ pub fn set_entry_ttl(caller: Address, entry_ttl_ledgers: u32) -> Result<(), Writ
 
 ### `set_spv_contract`
 
-Updates the bitcoin-spv contract address used for deposit verification. Admin only. Changing this mid-flight affects only deposits submitted after the change - an in-flight deposit's SPV proof was already verified against the previous contract by the time this would run.
+Updates the `bitcoin-spv` contract address used for deposit verification. Admin only. It affects only deposits submitted after the change: an earlier deposit's SPV proof was already verified against the previous contract.
 
 ```rust
 pub fn set_spv_contract(caller: Address, new_spv_contract: Address) -> Result<(), WritzLendError>
@@ -479,7 +479,7 @@ Topic fields are in **bold**.
 | 14 | `PositionHealthy` | The position is healthy and cannot be liquidated yet. |
 | 15 | `Overflow` | An integer overflow or underflow was detected. |
 | 16 | `InvalidScriptPubKey` | The provided scriptPubKey is not a valid 34-byte P2WSH scriptPubKey. |
-| 17 | `Paused` | The contract is paused - new deposits, borrows, and USDC supply are refused. Existing positions can still repay, withdraw, liquidate, and release BTC; a pause only blocks new risk-taking. |
+| 17 | `Paused` | The contract is paused: new deposits, borrows, and USDC supply are refused. Existing positions can still repay, withdraw, liquidate, and release BTC; a pause only blocks new risk-taking. |
 | 18 | `OraclePriceUnavailable` | The oracle returned no price for BTC/USD, or its raw price converted to a zero or negative USDC-stroops value. |
 | 19 | `OraclePriceStale` | The oracle's last price update is older than `oracle::MAX_PRICE_STALENESS_SECS`. |
 | 20 | `InvalidUserPubkey` | `user_pubkey` is not a compressed secp256k1 public key encoding. |

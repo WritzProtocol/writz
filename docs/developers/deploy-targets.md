@@ -2,13 +2,13 @@
 
 **Audience:** whoever operates the Writz deployments. **When to use:** provisioning, changing, or auditing a deploy target's configuration.
 
-Writz runs the same two applications - the Next.js app in `frontend/app` and the relayer - once per network. A *deploy target* is one such pairing plus the domain it answers on. The targets never share configuration, and this page is the contract that says so.
+Writz runs the same two applications, the Next.js app in `frontend/app` and the relayer, once per network. A *deploy target* is one such pairing plus the domain it answers on. The targets never share configuration, and this page is the contract that says so.
 
 | Target | Frontend origin | Stellar network | Bitcoin network | Status |
 |---|---|---|---|---|
 | `local` | `http://localhost:3000` | Testnet | Signet | Developer machines. Validates nothing. |
-| `testnet` | `testnet.writz.xyz` | Testnet | Signet | Live. Earn plus the existing dashboard. |
-| `mainnet` | `app.writz.xyz` | Public | Mainnet | Earn only (#122). Lending stays off until the audit. |
+| `testnet` | `testnet.writz.xyz` | Testnet | Signet | Live: borrow and lend, plus the separate Earn product. |
+| `mainnet` | `app.writz.xyz` | Public | Mainnet | Not deployed. The code serves Earn only on this target (#122); lending stays off until the audit. |
 
 The apex `writz.xyz` serves the marketing site and press page from a separate Next.js app, `frontend/landing`. It is not a deploy target in this sense: it has no chain configuration and never reads `NEXT_PUBLIC_WRITZ_ENV`. Its only link to a target is `NEXT_PUBLIC_APP_URL`, where its "Launch App" buttons point.
 
@@ -16,12 +16,12 @@ The apex `writz.xyz` serves the marketing site and press page from a separate Ne
 
 ## Why targets are declared rather than inferred
 
-Both applications read flat, independently-set environment variables. Nothing in that shape prevents a mainnet deployment from running with testnet contract addresses, the testnet Soroban RPC, the testnet vault, or the Earn mock left switched on - and none of those mistakes announce themselves. The realistic failure is not a typo; it is a **copy**: cloning the testnet service to create the mainnet one and changing nine of the twelve variables.
+Both applications read flat, independently-set environment variables. Nothing in that shape prevents a mainnet deployment from running with testnet contract addresses, the testnet Soroban RPC, the testnet vault, or the Earn mock left switched on, and none of those mistakes announce themselves. The realistic failure is not a typo; it is a **copy**: cloning the testnet service to create the mainnet one and changing nine of the twelve variables.
 
 So each target declares itself, and the declaration is checked against everything around it:
 
-- **Frontend** - `NEXT_PUBLIC_WRITZ_ENV`, validated at build time in [`frontend/app/src/config/target.ts`](https://github.com/WritzProtocol/writz/blob/main/frontend/app/src/config/target.ts). A contradiction fails the build.
-- **Relayer** - `WRITZ_ENV`, validated at startup in [`relayer/src/deploy-target.ts`](https://github.com/WritzProtocol/writz/blob/main/relayer/src/deploy-target.ts). A contradiction refuses to boot, before anything binds a port.
+- **Frontend**: `NEXT_PUBLIC_WRITZ_ENV`, validated at build time in [`frontend/app/src/config/target.ts`](https://github.com/WritzProtocol/writz/blob/main/frontend/app/src/config/target.ts). A contradiction fails the build.
+- **Relayer**: `WRITZ_ENV`, validated at startup in [`relayer/src/deploy-target.ts`](https://github.com/WritzProtocol/writz/blob/main/relayer/src/deploy-target.ts). A contradiction refuses to boot, before anything binds a port.
 
 Both report every conflict at once rather than one per failed attempt, because these values are edited on a hosting dashboard where a one-variable-per-build loop is miserable.
 
@@ -43,17 +43,17 @@ Leaving the variable unset means `local` and validates nothing. That is delibera
 | No signing key or lending setting: `KMS_KEY_ID`, `PROTOCOL_SIGNING_KEY`, `ADMIN_SECRET`, `RELAYER_SECRET`, `WRITZ_LEND_ID`, `BITCOIN_SPV_ID`, `FAUCET_SIGNET_WIF`, `CCTP_RELAY_EVM_KEY`, `POLLAR_SECRET_KEY` all unset (relayer) | - | yes |
 | `CORS_ORIGIN` must name explicit origins, not `*` (relayer) | - | yes |
 
-Testnet is deliberately looser. It is allowed to run with the Earn mock and with pieces still missing while the epic is being built out; mainnet is allowed to inherit nothing by omission.
+Testnet is deliberately looser: it may run with the Earn mock and with optional pieces missing. Mainnet inherits nothing by omission.
 
 ---
 
 ## Provisioning `testnet.writz.xyz`
 
-Steps 1 and 2 are dashboard and registrar actions - they cannot be done from this repository.
+Steps 1 and 2 are dashboard and registrar actions; they cannot be done from this repository.
 
 ### 1. Frontend (Vercel)
 
-1. Create a Vercel project from this repository, separate from the one serving the apex domain. Root directory `frontend/app`; framework preset Next.js. The Ignored Build Step lives in `frontend/app/vercel.json` and takes precedence over the dashboard setting, so a push that only touches the landing does not rebuild this project. It is `git diff --quiet ${VERCEL_GIT_PREVIOUS_SHA:-HEAD^} HEAD -- . 2>/dev/null && exit 0 || exit 1`. The `|| exit 1` matters: Vercel only understands exit 0 (skip) and exit 1 (build), and `VERCEL_GIT_PREVIOUS_SHA` is the last commit this project deployed, which a shallow clone may not contain. Without it, `git diff` fails with `bad object` (exit 128) and the deployment errors instead of building.
+1. Create a Vercel project from this repository, separate from the one serving the apex domain. Root directory `frontend/app`; framework preset Next.js. The Ignored Build Step lives in `frontend/app/vercel.json` and takes precedence over the dashboard setting, so a push that touches neither `frontend/app` nor `packages/brand` does not rebuild this project. It is `git diff --quiet ${VERCEL_GIT_PREVIOUS_SHA:-HEAD^} HEAD -- . ../../packages/brand 2>/dev/null && exit 0 || exit 1`. The `|| exit 1` matters: Vercel only understands exit 0 (skip) and exit 1 (build), and `VERCEL_GIT_PREVIOUS_SHA` is the last commit this project deployed, which a shallow clone may not contain. Without it, `git diff` fails with `bad object` (exit 128) and the deployment errors instead of building.
 2. Under **Settings → Domains**, add `testnet.writz.xyz`.
 3. Under **Settings → Environment Variables**, set the target's variables for the Production environment. At minimum:
 
@@ -69,7 +69,7 @@ Steps 1 and 2 are dashboard and registrar actions - they cannot be done from thi
 
    The app holds no signing key: the protocol's co-signature on a release comes from the relayer (section 3). `NEXT_PUBLIC_POLLAR_API_KEY` enables email, Google and GitHub sign-in through Pollar; add `https://testnet.writz.xyz` to the app's allowed domains in the Pollar dashboard, or login fails on this domain.
 
-4. Set the production branch to `main`. Pushes to `main` then deploy to `testnet.writz.xyz`; pull requests get preview URLs, which build with the same `testnet` target.
+4. Set the production branch to `main`. Pushes to `main` then deploy to `testnet.writz.xyz`. `vercel.json` turns off deployments for every other branch, so pull requests get no preview build.
 
 Builds outside `mainnet` serve a `robots.txt` that disallows everything and a `noindex` meta tag, so the testnet app never competes with the landing in search results.
 
@@ -96,7 +96,7 @@ The subdomain is scoped to the deploy target on purpose, for the same reason
 to inherit the testnet host by omission, which is the exact class of mistake
 target validation was added to prevent.
 
-Leave the apex `writz.xyz` records untouched - they serve the marketing site. Do not create `app.writz.xyz` yet; it is reserved for Milestone 2 and an unconfigured host answering on it is worse than one that does not resolve.
+Leave the apex `writz.xyz` records untouched; they serve the marketing site. Do not create `app.writz.xyz` until the mainnet target is provisioned: an unconfigured host answering on it is worse than one that does not resolve.
 
 Verify:
 
@@ -127,13 +127,13 @@ POLLAR_APPLICATION_ID=<the same app's App ID, Pollar dashboard, Settings>
 
 The last three run the Signet faucet, which funds only accounts created through the testnet app's social login (one claim per Pollar account, Stellar address and Signet address). The relayer checks each claim's Pollar access token with Pollar's Server API, so without `POLLAR_SECRET_KEY` and `POLLAR_APPLICATION_ID` the faucet stays off (`503 faucet_disabled`); it never falls back to paying any address. The relayer refuses to start with a `sec_mainnet_` key, and the mainnet target refuses `POLLAR_SECRET_KEY` altogether.
 
-`RELAYER_SECRET` and a protocol signer run the repay watcher, which co-signs every release after a full repayment and publishes it on `writz-lend`. The relayer accepts either a KMS key id (`KMS_KEY_ID` with the AWS credentials) or a signing key via `PROTOCOL_SIGNING_KEY`, and prefers `KMS_KEY_ID` when both are set; see the signing policy in the [security model](/security/security-model). `PROTOCOL_SIGNING_KEY` is accepted on test networks only, and the mainnet target refuses both while it serves Earn only. Without `RELAYER_SECRET` and one of the two the relayer logs `auto-cosign watcher disabled` at startup and no testnet position can release its BTC. The key must be the one whose public key `writz-lend` was deployed with. The watcher starts from the latest ledger the first time it runs, so a position repaid before it was configured needs a manual backfill (`relayer-recovery.md`).
+`RELAYER_SECRET` and a protocol signer run the repay watcher, which co-signs every release after a full repayment and publishes it on `writz-lend`. The relayer accepts either a KMS key id (`KMS_KEY_ID` with the AWS credentials) or a signing key via `PROTOCOL_SIGNING_KEY`, and prefers `KMS_KEY_ID` when both are set; see the signing policy in the [security model](/security/security-model). `PROTOCOL_SIGNING_KEY` is accepted on test networks only, and the mainnet target refuses both while it serves Earn only. Without `RELAYER_SECRET` and one of the two the relayer logs `auto-cosign watcher disabled` at startup and no testnet position can release its BTC. The key must be the one whose public key `writz-lend` was deployed with. With no cursor, the watcher starts from `WRITZ_LEND_DEPLOY_LEDGER` and refuses to start without it, so a position repaid before the watcher was configured is still released as long as that ledger is inside RPC retention ([Relayer recovery](/developers/relayer-recovery)).
 
-`DEFINDEX_VAULT_ID` is the piece this issue is really about: it is per-network, has no safe default, and a relayer without it serves errors from every `/defindex` route. The testnet vault address lives in [`contracts/deployments/defindex-vault-testnet.md`](https://github.com/WritzProtocol/writz/blob/main/contracts/deployments/defindex-vault-testnet.md) rather than being repeated here, so there is one place to change when it is redeployed.
+`DEFINDEX_VAULT_ID` is per network, has no safe default, and a relayer without it serves errors from every `/defindex` route. The testnet vault address lives in [`contracts/deployments/defindex-vault-testnet.md`](https://github.com/WritzProtocol/writz/blob/main/contracts/deployments/defindex-vault-testnet.md) rather than being repeated here, so there is one place to change when it is redeployed.
 
 #### Persistence: mount a volume, or the metrics history is lost on every deploy
 
-The relayer keeps nine SQLite databases on local disk:
+The relayer keeps seven SQLite databases on local disk:
 
 | File | Written by | What is lost without it |
 |---|---|---|
@@ -143,14 +143,15 @@ The relayer keeps nine SQLite databases on local disk:
 | `data/vault-watcher.db` | `vault-watcher/cursor-store.ts` | The vault watcher's cursor |
 | `data/faucet.db` | `faucet/sqlite-store.ts` | Signet faucet claims: the one-claim-per-account rule and the daily count reset, so every social-login account could claim again (testnet only) |
 | `data/cctp-relay.db` | `cctp/sqlite-store.ts` | CCTP relay records: past transfers and their Base Sepolia mint hashes; the daily mint count resets (testnet only) |
+| `data/onboarding.db` | `onboarding/sqlite-store.ts` | Onboarding funnel events behind `/metrics/onboarding` (testnet only) |
 
 The container image declares no `VOLUME`, so on a fresh service that directory is ephemeral and every redeploy starts empty.
 
-Most of these are recoverable. `vault-events.db` is not. Soroban RPC retains events for days, not indefinitely (see `relayer-recovery.md`), and this database is the only durable record beyond that window. The metrics deliverable reports 30-day retention cohorts, which is longer than RPC will serve. Lose the file after the window closes and the history cannot be rebuilt from chain at all.
+Most of these are recoverable. `vault-events.db` is not. Soroban RPC retains events for days, not indefinitely (see `relayer-recovery.md`), and this database is the only durable record beyond that window. The relayer's metrics report 30-day retention cohorts, which is longer than RPC will serve. Lose the file after the window closes and the history cannot be rebuilt from chain at all.
 
-**Mount a persistent volume at `/app/data`.** All nine paths are overridable if the platform mounts elsewhere: `SQLITE_PATH`, `WATCHER_SQLITE_PATH`, `LEND_EVENTS_SQLITE_PATH`, `VAULT_EVENTS_SQLITE_PATH`, `VAULT_WATCHER_SQLITE_PATH`, `TREE_WATCHER_SQLITE_PATH`, `TREE_EVENTS_SQLITE_PATH`, `FAUCET_SQLITE_PATH`, `CCTP_RELAY_SQLITE_PATH`.
+**Mount a persistent volume at `/app/data`.** All seven paths are overridable if the platform mounts elsewhere: `WATCHER_SQLITE_PATH`, `LEND_EVENTS_SQLITE_PATH`, `VAULT_EVENTS_SQLITE_PATH`, `VAULT_WATCHER_SQLITE_PATH`, `FAUCET_SQLITE_PATH`, `CCTP_RELAY_SQLITE_PATH`, `ONBOARDING_SQLITE_PATH`.
 
-Both watchers are always-on polling loops started in `src/index.ts`, not request-driven handlers. A platform that suspends the container when idle produces silent gaps in the same data, so scale-to-zero tiers are not suitable regardless of the volume.
+The watchers are always-on polling loops started in `src/index.ts`, not request-driven handlers. A platform that suspends the container when idle produces silent gaps in the same data, so scale-to-zero tiers are not suitable regardless of the volume.
 
 #### After the first deploy: rewind the cursor to capture existing history
 
@@ -213,8 +214,8 @@ When mainnet goes live, `NEXT_PUBLIC_APP_URL` moves to `https://app.writz.xyz`.
 
 Mainnet serves Earn alone (#122). Lending is a property of the target, not a variable: on `mainnet`, `lendingEnabled()` is false in both apps, so
 
-- the app's `proxy.ts` answers 404 on `/borrow`, `/loans`, `/lend`, `/help/reclaim`, `/dev` and `/api/cosign`, and sends `/` to `/earn`;
-- the relayer mounts no SPV, Merkle or insertion routes and starts neither the header sync nor the repay watcher;
+- the app's `proxy.ts` answers 404 on `/borrow`, `/loans`, `/lend`, `/help/reclaim` and `/dev`, and sends `/` to `/earn`;
+- the relayer mounts none of the lending routes (`/spv-proof`, `/deposit-status`, `/timeline`, `/lend-events`, `/faucet`, `/cctp`) and starts neither the header sync, the repay watcher nor the event archive;
 - both refuse to start with any lending setting or signing key present, so the mainnet services hold no Bitcoin or admin key at all.
 
 Turning lending on is a reviewed code change after the audit, not a dashboard edit.

@@ -3,7 +3,7 @@ title: "For AI Agents"
 description: "Compact, exact integration facts for AI coding agents: Writz testnet contract IDs, network passphrase, RPC URL, function signatures, the relayer proof route, verified examples, and what does not exist."
 ---
 
-This page is written for AI coding agents (and the people who prompt them). Everything here is exact and was checked against Stellar testnet on 2026-10-23. If something you need is not on this page or in [Build on Writz](/developers/integrate), it probably does not exist: do not invent it.
+This page is written for AI coding agents (and the people who prompt them). Everything here is exact and was checked against Stellar testnet on 2026-11-06. If something you need is not on this page or in [Build on Writz](/developers/integrate), it probably does not exist: do not invent it.
 
 Machine-readable entry points: [docs.writz.xyz/llms.txt](https://docs.writz.xyz/llms.txt) (index), [docs.writz.xyz/llms-full.txt](https://docs.writz.xyz/llms-full.txt) (all pages), and any page as Markdown by adding `.md` to its URL, for example [docs.writz.xyz/developers/for-ai-agents.md](https://docs.writz.xyz/developers/for-ai-agents.md).
 
@@ -34,13 +34,13 @@ SOROBAN_SDK            soroban-sdk = "26"
 
 Source of truth for IDs: [`contracts/deployments/testnet.md`](https://github.com/WritzProtocol/writz/blob/main/contracts/deployments/testnet.md), machine-readable in [`contracts/deployments/testnet.json`](https://github.com/WritzProtocol/writz/blob/main/contracts/deployments/testnet.json). The contracts are immutable; a new version gets a new ID there.
 
-Testnet `bitcoin-spv` and `writz-lend` were redeployed on 2026-10-25 because testnet rent rose sharply: testnet's live state is above its target size, and the previous contracts gave every entry they created the long mainnet storage windows, so a deposit was charged about 428 XLM in fees. The new contracts take those windows as deployment parameters and run testnet-length ones (a deposit was charged about 89 XLM, measured 2026-10-25). Positions on the previous contracts were closed and their BTC released; their IDs are recorded as superseded in `contracts/deployments/testnet.md`. `writz-lend` was redeployed again on 2026-11-01 so its `supply` and `withdraw` events carry the scaled amount and the supply index (#257); `bitcoin-spv` was not. Any other `bitcoin-spv` or `writz-lend` ID is superseded; do not use it. How the storage windows work: [Contract reference](/developers/contract-reference) and [Storage and TTL management](/how-it-works/stellar-side#storage-and-ttl-management).
+The current `bitcoin-spv` was deployed on 2026-10-25 and the current `writz-lend` on 2026-11-02. Any other `bitcoin-spv` or `writz-lend` ID is superseded; do not use it. How the storage windows work: [Contract reference](/developers/contract-reference) and [Storage and TTL management](/how-it-works/stellar-side#storage-and-ttl-management).
 
 ## Packages
 
 ```text
-NPM_PACKAGE     @writz/sdk         source packages/sdk                         PUBLISHED, npm install @writz/sdk
-CRATE           writz-spv-client   source contracts/contracts/writz-spv-client PUBLISHED, cargo add writz-spv-client
+NPM_PACKAGE     @writz/sdk         0.1.3   source packages/sdk                         npm install @writz/sdk
+CRATE           writz-spv-client   0.1.1   source contracts/contracts/writz-spv-client cargo add writz-spv-client
 ```
 
 `npm install @writz/sdk` and `cargo add writz-spv-client` both work. The surface:
@@ -121,13 +121,13 @@ GET  /cctp/relay/:burnHash              transfer status: kind (sent|confirming|c
 
 `/spv-proof` 200 body: `{ txid, rawTxNoWitness, blockHash, txIndex, merkleProof[], headers[], blockHeight, confirmations, sorobanArgs: { block_hash, merkle_proof[], tx_index, raw_tx, min_confirmations } }`. Hex strings. `sorobanArgs` is already in internal byte order and maps one to one onto `verify_transaction`. Errors: 400 `invalid_txid` or `invalid_confirmations`, 404 `unconfirmed`, 404 `tx_not_found` (txid not on signet), 409 `insufficient_confirmations` (`requested`, `available`), 409 `light_client_behind` (block not yet in `bitcoin-spv`; calling the contract now fails with #22 or #2), 429 `rate_limited` (60 per minute per IP), 502 `upstream_error`, 503 `upstream_unavailable`. On 409, 429 and 503, wait `retryAfterSeconds` (body) or `Retry-After` (header) before retrying; never retry in a tight loop. CORS is open.
 
-Signet coins for an integration come from a public Signet faucet (for example [signetfaucet.com](https://signetfaucet.com) or [bitcoinsignetfaucet.com](https://bitcoinsignetfaucet.com)); claim them by hand and never automate around a faucet's captcha. The relayer's `/faucet/signet` route is not for agents or builders: it only funds accounts created through the Writz testnet app's social login, needs that login's session token, and refuses every other request.
+Signet coins for an integration come from a public Signet faucet (for example [bitcoinsignetfaucet.com](https://bitcoinsignetfaucet.com) or [signet.dcorral.com](https://signet.dcorral.com)); claim them by hand and never automate around a faucet's captcha. The relayer's `/faucet/signet` route is not for agents or builders: it only funds accounts created through the Writz testnet app's social login, needs that login's session token, and refuses every other request.
 
 `/timeline` lists one event per transaction of a writz-lend position, in chain order: `btc_lock` and `released` on `bitcoin`, `verified`, `borrowed`, `received` and `repaid` on `stellar`, and a `received` mint on `base-sepolia`. `at` is Unix ms or null; `url` is the mempool.space, stellar.expert or Basescan page. A `received` event (a swap to a stablecoin or XLM, or a CCTP burn) is linked to the loan by a rule, not by the chain: it belongs to the owner's most recent borrow before it, with no borrow or repay by the owner in between. `complete: false` with `gaps` means a source could not be read in full; the events listed are still real. Errors: 400 `invalid_txid`, 404 `position_not_found` (use `/deposit-status` before the deposit is verified), 429 `rate_limited` (60 per minute per IP), 503 `stellar_unavailable` or `lending_not_configured`.
 
 `/cctp/relay` completes a Stellar to Base Sepolia CCTP V2 transfer so the recipient needs no wallet or gas on Base Sepolia: call `POST` once with the Stellar hash of the `deposit_for_burn`, then poll `GET /cctp/relay/:burnHash` every few seconds until `kind` is `arrived` (`mintHash` is the Base Sepolia transaction, `null` only while it is still being looked up) or `failed` (`reason`). Transient failures (an RPC outage, an empty gas account, the daily cap, Circle slow to confirm) are retried by the relay itself: the status then stays `confirming` or `confirmed` with `retrying: true`, `reason` and `nextRetryAt`; `failed` is final (a refused or invalid message, or 24 hours of retrying). Asking again never mints twice. Only burns from Stellar (domain 27) to Base Sepolia (domain 6) through Circle's TokenMessengerV2, with no destination caller and no hook, are relayed. Errors: 400 `invalid_burn_hash`, 404 `not_found` (on GET, before any POST), 429 `rate_limited` (30 per IP per 10 minutes), 503 `cctp_relay_disabled` or `relay_busy`.
 
-The other routes the index lists (`/metrics/*`) serve the Writz app and are not an integration surface. Yield on USDC is the `writz-lend` lender side, called on the contract directly (above), not through the relayer.
+The other routes the index lists (`/faucet/*`, `/defindex/*`, `/metrics/*`) serve the Writz app and are not an integration surface; `/lend-events/export` is for relayer operators ([Relayer recovery](/developers/relayer-recovery)). Yield on USDC is the `writz-lend` lender side, called on the contract directly (above), not through the relayer.
 
 ---
 
@@ -147,7 +147,7 @@ stellar contract invoke --id $SPV --network testnet --source-account $READER --s
   --tx_index "$(jq -r .sorobanArgs.tx_index proof.json)" \
   --raw_tx "$(jq -r .sorobanArgs.raw_tx proof.json)" \
   --min_confirmations 6
-# {"block_hash":"fe324a44...02000000","block_height":327928,"confirmations":7,"txid":"69e20795...5cf9c0ea"}
+# {"block_hash":"fe324a44...02000000","block_height":327928,"confirmations":1796,"txid":"69e20795...5cf9c0ea"}
 ```
 
 **TypeScript** (`@stellar/stellar-sdk` 16.x, read-only):

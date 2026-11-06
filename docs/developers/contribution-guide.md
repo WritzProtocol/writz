@@ -2,7 +2,7 @@
 title: "Contributing to Writz"
 ---
 
-Writz is open source. Contributions - bug reports, code improvements, documentation, and security research - are welcome. This page explains how to contribute effectively.
+Writz is open source. Bug reports, code, documentation and security research are welcome. This page explains how to contribute.
 
 ---
 
@@ -63,11 +63,11 @@ Two habits the hook does not replace:
 
 ## Keeping the docs in sync
 
-Contract addresses and test counts are quoted in a lot of places (README, docs, community posts) and drift easily after a redeploy or when tests are added. Two scripts guard against that:
+Contract addresses and test counts are quoted in many places and drift after a redeploy or when tests are added. Scripts guard against that:
 
-- After a redeploy, update `contracts/deployments/testnet.md` - it's the source of truth every other doc is checked against.
+- After a redeploy, update `contracts/deployments/testnet.md` first: it is the source of truth every other doc is checked against. Then run `node scripts/sync-deployments.mjs` to regenerate `contracts/deployments/testnet.json` and the `@writz/sdk` network preset.
 - After adding/removing tests, run `node scripts/update-test-counts.mjs` to regenerate `docs/_data/facts.json` from the real test suites.
-- Before opening a PR that touches deployments or docs, run `node scripts/check-docs-sync.mjs` - it scans every `.md` file for contract addresses and "N tests" mentions that don't match the current truth, and CI runs it on every PR regardless.
+- Before opening a PR that touches deployments or docs, run `node scripts/check-docs-sync.mjs`. It scans every `.md` file for contract addresses and "N tests" mentions that do not match the current truth, and CI runs it on every PR.
 
 ---
 
@@ -77,23 +77,23 @@ Contract addresses and test counts are quoted in a lot of places (README, docs, 
 
 - Run `cargo fmt` and `cargo clippy` before committing
 - Every public function must have a test
-- Use `#[contractevent]` for all events - no deprecated `Events` API
-- Per-entry persistent storage only - no growing `Vec` or `Map` in instance storage
+- Use `#[contractevent]` for all events, not the deprecated `Events` API
+- Per-entry persistent storage only: no growing `Vec` or `Map` in instance storage
 - Manage TTL: every write to persistent storage must set TTL thresholds
-- No `unwrap()` on user inputs - return errors via `Result` or panic with descriptive messages
+- No `unwrap()` on user inputs: return errors via `Result` or panic with descriptive messages
 
 ### TypeScript (Relayer + Bitcoin Script)
 
 - Run `bun run lint` before committing
 - Every function must have a test covering the happy path and at least one error case
-- No `any` types - explicit type annotations required
+- No `any` types; use explicit type annotations
 - Use the `Result<T, E>` pattern for operations that can fail
 
 ## Pull Request Process
 
 1. Fork the repository and create a feature branch (`feature/your-feature`)
 2. Make your changes with tests
-3. Run `cargo test` (contracts), `bun test` (bitcoin-script), `bun run test` (relayer) - all must pass
+3. Run `cargo test` (contracts), `bun test` (bitcoin-script) and `bun run test` (relayer); all must pass
 4. Open a PR with a clear description of what changed and why
 5. A maintainer will review within 5 business days
 

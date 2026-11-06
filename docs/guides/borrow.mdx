@@ -98,6 +98,8 @@ When it finishes, the app shows your BTC as locked and **Your loan is ready**. S
   </Step>
   <Step title="Choose an amount">
     On the **Borrow more** tab, enter how much USDC to borrow, or use **25%**, **50%** or **Max safe**. The app shows the collateral ratio the loan would have and the BTC price at which it could be liquidated.
+
+    Under **Receive as**, keep **USDC** on Stellar testnet to follow this guide. The other options take a second signature after the borrow, to convert the USDC to another asset or send it to another network.
   </Step>
   <Step title="Borrow">
     Select **Borrow** and confirm in your wallet. The USDC arrives in your Stellar wallet within seconds.
@@ -117,7 +119,7 @@ The **collateral ratio** is the value of your locked BTC divided by what you owe
 | 150% and above | **Healthy** | You can borrow more, as long as the ratio stays at 150% or above. |
 | 130% to 150% | **Below borrow limit** | You can't borrow more. Repay some to get back above 150%. |
 | 120% to 130% | **Close to liquidation** | Repay now, or the next price drop can make the loan liquidatable. |
-| Below 120% | **Can be liquidated now** | Anyone running a liquidator can repay your debt and close the loan. |
+| Below 120% | **Can be liquidated now** | The Writz keeper can repay your debt and close the loan. If the keeper has been inactive for 24 hours, anyone can. |
 
 The ratio moves with the BTC price. Borrowing less than the maximum gives you room if the price drops. The page also states the BTC price at which your loan would become liquidatable.
 
@@ -131,4 +133,4 @@ Loans are recorded on Stellar, so they load on any device where you connect the 
 
 [Repay and release your BTC](/guides/repay-and-release).
 
-*Last checked against the app on 2026-10-25.*
+*Last checked against the app on 2026-11-06.*

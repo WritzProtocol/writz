@@ -7,7 +7,7 @@ description: "Integrate Writz in 15 minutes: prove a Bitcoin transaction from yo
 
 This page is for builders who want to use Writz from their own project. If you want to build and test this repository instead, see [Quick Start](/developers/quick-start), the contributor guide. If you are an AI coding agent, [For AI Agents](/developers/for-ai-agents) has the same facts in a compact form.
 
-Every command and response on this page was run against Stellar testnet and Bitcoin signet on 2026-10-23. Values that change over time (the Bitcoin tip, confirmation counts) will differ when you run them.
+The read commands and responses on this page were run against Stellar testnet and Bitcoin signet on 2026-11-06. Values that change over time (the Bitcoin tip, confirmation counts, pool balances and rates) will differ when you run them.
 
 ---
 
@@ -35,7 +35,7 @@ Ideas that fit in a weekend: a Soroban contract that releases something (an NFT,
 | [`@writz/sdk`](https://github.com/WritzProtocol/writz/tree/main/packages/sdk) | npm | TypeScript in the browser, Node or Bun: testnet preset, relayer client with typed errors and `Retry-After`, `bitcoin-spv` and `writz-lend` clients | Published: [`npm install @writz/sdk`](https://www.npmjs.com/package/@writz/sdk) |
 | [`writz-spv-client`](https://github.com/WritzProtocol/writz/tree/main/contracts/contracts/writz-spv-client) | crates.io | Soroban contracts: `BitcoinSpvClient`, the result and error types, the on-chain output parser `find_output_value` | Published: [`cargo add writz-spv-client`](https://crates.io/crates/writz-spv-client) |
 
-Both are published: `npm install @writz/sdk` and `cargo add writz-spv-client`. The snippets on this page also work without them, with only `@stellar/stellar-sdk` or `soroban-sdk`. The package code and its tests are in the repository either way.
+Current versions: `@writz/sdk` 0.1.3 and `writz-spv-client` 0.1.1. The snippets on this page also work without them, with only `@stellar/stellar-sdk` or `soroban-sdk`.
 
 ---
 
@@ -57,7 +57,7 @@ The source of truth for every ID, with deploy transactions and wasm hashes, is [
 
 The `bitcoin-spv` checkpoint is signet block **327,925**. Only blocks after it can be proven.
 
-Testnet `bitcoin-spv` and `writz-lend` were redeployed on 2026-10-25 because testnet rent rose sharply: testnet's live state is above its target size, and the previous contracts gave every entry they created the long mainnet storage windows, so a deposit was charged about 428 XLM in fees. The new contracts take those windows as deployment parameters and run testnet-length ones (a deposit was charged about 89 XLM, measured 2026-10-25). Positions on the previous contracts were closed and their BTC released; their IDs are recorded as superseded in `contracts/deployments/testnet.md`. `writz-lend` was redeployed again on 2026-11-01 so its `supply` and `withdraw` events carry the scaled amount and the supply index (#257); `bitcoin-spv` was not. A transaction in a block at or below the new checkpoint can no longer be proven; pick one above it. How the storage windows work: [Contract reference](/developers/contract-reference) and [Storage and TTL management](/how-it-works/stellar-side#storage-and-ttl-management).
+The current `bitcoin-spv` was deployed on 2026-10-25 and the current `writz-lend` on 2026-11-02. Both take their storage windows as deployment parameters and run testnet-length ones, so testnet rent stays low. Earlier IDs are recorded as superseded in `contracts/deployments/testnet.md`; do not use them. How the storage windows work: [Contract reference](/developers/contract-reference) and [Storage and TTL management](/how-it-works/stellar-side#storage-and-ttl-management).
 
 ---
 
@@ -73,7 +73,7 @@ stellar contract invoke --id $SPV --network testnet --source-account $READER --s
 ```
 
 ```json
-{"chainwork":"1813841685","hash":"64460cd64bcb2b7b89262a51c5a913520670b55c00a590760848bdde12000000","height":327934}
+{"chainwork":"367859271038","hash":"4d09ddcf4191518f7ae8b386f608d4c745d3f6ab5a7c0d4f141c499414000000","height":329723}
 ```
 
 `height` should be at or near the signet tip on [mempool.space/signet](https://mempool.space/signet). The Writz relayer submits new signet headers to the contract as they are mined.
@@ -114,7 +114,7 @@ stellar contract invoke --id $SPV --network testnet --source-account $READER --s
 ```
 
 ```json
-{"block_hash":"fe324a4450cea25959ed180d312172c8484e8e08837b75835d3ec48f02000000","block_height":327928,"confirmations":7,"txid":"69e2079515d1a67e46a1b9569053289937d7ed4bf7977530d54b1b535cf9c0ea"}
+{"block_hash":"fe324a4450cea25959ed180d312172c8484e8e08837b75835d3ec48f02000000","block_height":327928,"confirmations":1796,"txid":"69e2079515d1a67e46a1b9569053289937d7ed4bf7977530d54b1b535cf9c0ea"}
 ```
 
 That is the whole primitive. `confirmations` is the block's real depth below the light client's tip. Note that `txid` comes back reversed compared to the `TXID` you passed in: see [Byte order](#byte-order).
@@ -165,7 +165,7 @@ const { result } = await spv.verify_transaction({
   min_confirmations: 6,
 });
 console.log(result.isOk() ? result.unwrap() : result.unwrapErr());
-// { block_hash: <Buffer fe 32 ...>, block_height: 327928, confirmations: 7, txid: <Buffer 69 e2 ...> }
+// { block_hash: <Buffer fe 32 ...>, block_height: 327928, confirmations: 1796, txid: <Buffer 69 e2 ...> }
 ```
 
 The same command generates a client for `writz-lend` (`--contract-id CD3BRE32LDNDHAEVI6H35UC3NIRREW5BLH64AZMHSQY3LEKYDLKYWBXS`). Generate bindings from the deployed contract ID, not from the source on `main`: the source can be ahead of what is deployed.
@@ -235,12 +235,12 @@ stellar contract invoke --id $LEND --network testnet --source-account $READER --
 ```
 
 ```json
-{"borrow_index":"1000000000000000000","index_ledger":5352956,"last_keeper_heartbeat":1792788367,"reserve_usdc":"0","supply_index":"1000000000000000000","total_borrowed":"0","total_scaled_supply":"10000000000"}
-"0"
-"10000000000"
+{"borrow_index":"1000015863736667140","index_ledger":5536108,"last_keeper_heartbeat":1793608550,"reserve_usdc":"94","supply_index":"1000000830302919432","total_borrowed":"20000316","total_scaled_supply":"50000082"}
+"426"
+"50007069"
 ```
 
-USDC amounts are in stroops (7 decimals: `10000000000` is 1,000 USDC). Rates are annual basis points (`800` is 8%). Indexes are scaled by 10^18. `get_position` and `get_health_ratio_bp` take a deposit txid in internal byte order; `get_health_ratio_bp` returns basis points (`15000` is 150%, liquidation at `12000`). Full interface: [Contract Reference](/developers/contract-reference).
+`READER` here is the deployer account, which supplies the testnet pool, so its balance is not zero. USDC amounts are in stroops (7 decimals: `50007069` is 5.0007069 USDC). Rates are annual basis points (`800` is 8%). Indexes are scaled by 10^18. `get_position` and `get_health_ratio_bp` take a deposit txid in internal byte order; `get_health_ratio_bp` returns basis points (`15000` is 150%, liquidation at `12000`). Full interface: [Contract Reference](/developers/contract-reference).
 
 `supply_usdc` and `withdraw_supply` are permissionless writes signed by the supplier; [section 7](#7-earn-yield-on-usdc-as-a-lender) covers them. Borrowing needs a real signet deposit to the Writz script, which is what the [testnet app](https://testnet.writz.xyz) does for you.
 
@@ -313,7 +313,7 @@ Other frequent mistakes:
 
 - **Stellar testnet XLM:** `stellar keys generate me --network testnet --fund`, or Friendbot in [Stellar Lab](https://lab.stellar.org) or in the Freighter wallet on testnet.
 - **Test USDC:** add a trustline to `USDC:GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5`, then swap testnet XLM for it in Freighter, or use [faucet.circle.com](https://faucet.circle.com) (Stellar Testnet). This is the USDC the Writz pool uses.
-- **Bitcoin signet coins:** a signet wallet (Xverse and Sparrow support signet) and its `tb1q...` or `tb1p...` address, then a public Signet faucet such as [signetfaucet.com](https://signetfaucet.com), [bitcoinsignetfaucet.com](https://bitcoinsignetfaucet.com) or [signet.dcorral.com](https://signet.dcorral.com). Their amounts, captchas and limits are set by their operators. The relayer's `/faucet/signet` route is not a builder faucet: it only funds accounts created through the Writz testnet app's social login, once each, and refuses any other request. Coins from a faucet are unconfirmed at first; wait for a block (about 10 minutes) before building a proof.
+- **Bitcoin signet coins:** a signet wallet (Xverse and Sparrow support signet) and its `tb1q...` or `tb1p...` address, then a public Signet faucet such as [bitcoinsignetfaucet.com](https://bitcoinsignetfaucet.com) or [signet.dcorral.com](https://signet.dcorral.com). Their amounts, captchas and limits are set by their operators. The relayer's `/faucet/signet` route is not a builder faucet: it only funds accounts created through the Writz testnet app's social login, once each, and refuses any other request. Coins from a faucet are unconfirmed at first; wait for a block (about 10 minutes) before building a proof.
 - **Explorers:** [mempool.space/signet](https://mempool.space/signet) for Bitcoin, [stellar.expert/explorer/testnet](https://stellar.expert/explorer/testnet) for Stellar.
 
 ## Limits to know
