@@ -3,7 +3,7 @@ title: "What to build on Writz"
 description: "Startup ideas that use the Writz primitives live on Stellar testnet today, scoped for a weekend and for a business after it, plus the showcase of projects built on Writz."
 ---
 
-Writz lets Stellar know what happened on Bitcoin. A Soroban contract can check that a Bitcoin transaction is buried in the Bitcoin chain, and a borrower can lock native BTC on Bitcoin and take USDC on Stellar against it, with no bridge, no custodian and no wrapped token.
+Writz lets Stellar know what happened on Bitcoin. A Soroban contract can check that a Bitcoin transaction is buried in the Bitcoin chain, and a borrower can lock native BTC on Bitcoin and take USDC on Stellar against it, with no bridge, no custodian and no wrapped Bitcoin.
 
 This page lists products we would like to see built on top of that. Each idea is meant to work twice: as a demo a small team can ship in a weekend hackathon, and as a business someone would pay for once it is real. Every idea names the Writz piece it uses, and only pieces that are live on Stellar testnet today. Anything that is not live yet is in [Not available yet](#not-available-yet), so you do not plan a weekend around it.
 
@@ -320,7 +320,6 @@ These are on the Writz roadmap or in progress. Do not depend on them this weeken
 |---|---|
 | Writz lending on mainnet | Testnet only; mainnet target Q2 to Q3 2027 |
 | Privacy for positions | Not part of the protocol. Positions are public on chain |
-| An SDK on npm or crates.io | Not published; use `@writz/bitcoin-script` and `spv-types` from the repository |
 | A liquidator receiving Bitcoin | Not how liquidation works today: it clears the debt on Stellar and no BTC moves to the liquidator (see [Writz Lend](/products/writz-lend)). Do not design a product that assumes it |
 | Proof of Bitcoin reserves, private conversion, automatic yield | Planned features listed in Vision, not built |
 | Submitting Bitcoin headers yourself | On testnet, only the Writz relayer submits Signet headers to `bitcoin-spv` |

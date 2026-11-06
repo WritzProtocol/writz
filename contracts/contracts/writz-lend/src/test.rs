@@ -130,7 +130,7 @@ impl MockSpv {
 
 // ── Mock Reflector oracle ──────────────────────────────────────────────────
 // Mirrors the real Reflector external-prices instance's confirmed shape
-// (decimals=14, see docs/research/oracle-design.md and
+// (decimals=14, see docs/how-it-works/stellar-side.md and
 // contracts/scripts/verify-oracles.sh). The price is scaled so it converts
 // to exactly 600_000_000_000 USDC-stroops-per-BTC -
 // 6_000_000_000_000_000_000 / 10^(14-7) = 600_000_000_000 - the same value

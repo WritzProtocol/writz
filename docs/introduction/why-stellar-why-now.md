@@ -47,33 +47,17 @@ The natural question is: why build on Stellar rather than Ethereum, where the ex
 
 | Factor | Ethereum | Stellar |
 |---|---|---|
-| Native USDC | No (bridged) | Yes (Circle native issuance) |
 | Fees | Variable, often high | Low per transaction |
-| BTC DeFi competition | Saturated (WBTC, Aave, Compound) | Zero - the category doesn't exist on Stellar |
-| Regulatory posture | Uncertain | Clear - Stellar SDF has regulatory relationships |
+| Bitcoin lending today | Wrapped BTC in established markets | No trustless native-BTC lending yet |
+| Bitcoin verification on chain | Possible, gas-heavy | Feasible within Soroban's compute budget |
 
 Stellar is not the obvious choice. It is the *correct* choice for Writz specifically: a chain with native USDC, low fees, and no trustless native-BTC lending yet.
 
 ---
 
-## The First-Mover Window
-
-*(Updated 2026-08-04 - see `docs/research/market-landscape.md` for the full competitive picture.)* The BTCfi category on Stellar is not empty anymore: Solv Protocol runs an audited, custodial wrapped-BTC deployment with real trading volume, and Templar Protocol has a live, audited Soroban vault plus native-BTC-without-wrapping lending tech already proven on NEAR. Neither offers what Writz does: **trustless, SPV-verified native BTC collateral that never leaves Bitcoin, with a timelock exit the user controls alone.** That is still open on Stellar today.
-
-The window for a from-scratch entrant to replicate that combination is 12 to 18 months wide - building a Bitcoin SPV client on Soroban, getting audited, and launching mainnet is not a weekend project. But for Templar specifically, that window is materially shorter: their Stellar infrastructure and native-BTC tech already exist separately, so connecting them is integration work, not a from-scratch build. Testnet-to-mainnet speed is a real competitive variable against Templar, not just a generic risk. A well-funded team starting today would arrive in early-to-mid 2028 - by which time Writz will have:
-
-- Established TVL and organic user growth
-- An open-source SPV SDK integrated into Stellar wallets and protocols
-- A completed external audit with zero open critical findings
-- A community that has been using the protocol for over a year
-
-The first protocol to make Bitcoin natively verifiable on Stellar will hold that position for years - not because of lock-in mechanics, but because infrastructure compounds. Every wallet that integrates the Writz SPV SDK, every protocol that builds on it, every user who has a working position: these are switching costs that accumulate with each passing month.
-
----
-
 ## The Timing Argument in One Sentence
 
-The compute budget for on-chain Bitcoin verification was confirmed feasible. The Rust SPV library exists. Native USDC is live. No protocol on Stellar offers trustless native BTC collateral yet - but Templar Protocol already has the adjacent infrastructure live and in active development. The window is open right now, and it will not stay open forever.
+The compute budget for on-chain Bitcoin verification was confirmed feasible. The Rust SPV library exists. Native USDC is live. No protocol on Stellar offers trustless native BTC collateral yet.
 
 ---
 

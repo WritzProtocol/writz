@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>How a Writz loan works</title>
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Work Sans', system-ui, sans-serif;background:#0C0E12;color:#F6F7F8;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:3rem 2rem}
+.frame{max-width:1000px;width:100%}.diagram-container{width:100%;overflow-x:auto}
+.eyebrow{font-family:'Geist Mono', ui-monospace, monospace;font-size:.66rem;font-weight:500;letter-spacing:.18em;text-transform:uppercase;color:#B6BBC4;margin-bottom:.5rem}
+h1{font-family:'Work Sans', system-ui, sans-serif;font-size:1.75rem;font-weight:600;letter-spacing:-.02em;line-height:1.15;margin-bottom:1.5rem}
+svg{width:100%;min-width:960px;display:block}@media print{.diagram-container{overflow-x:visible}svg{min-width:0}}</style></head>
+<body><div class="frame"><p class="eyebrow">How Writz works</p><h1>How a Writz loan works</h1>
+<div class="diagram-container">
+<svg viewBox="0 0 960 504" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="full-picture-dark-title full-picture-dark-desc">
+<title id="full-picture-dark-title">How a Writz loan works</title>
+<desc id="full-picture-dark-desc">You lock Bitcoin in your own vault on Bitcoin, Stellar verifies the lock with an SPV proof after six confirmations, you borrow USDC from writz-lend, repay it with interest, and Writz co-signs so you can release your Bitcoin; if Writz stops, you can take it back alone after the timelock height.</desc>
+<defs><marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#B6BBC4"/></marker><marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#FFC300"/></marker><marker id="arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#8FB0D8"/></marker><marker id="arrow-open" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polyline points="0 0, 8 3, 0 6" fill="none" stroke="#B6BBC4" stroke-width="1.2"/></marker></defs>
+<rect width="100%" height="100%" fill="#0C0E12"/>
+<rect x="24" y="40" width="912" height="136" rx="8" fill="rgba(246,247,248,0.02)" stroke="rgba(246,247,248,0.14)" stroke-width="0.8"/><rect x="40" y="32" width="57" height="16" rx="2" fill="#0C0E12"/><text x="68.5" y="44" fill="#8B919B" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.14em">BITCOIN</text>
+<rect x="24" y="216" width="912" height="136" rx="8" fill="rgba(246,247,248,0.02)" stroke="rgba(246,247,248,0.14)" stroke-width="0.8"/><rect x="224" y="208" width="112" height="16" rx="2" fill="#0C0E12"/><text x="280.0" y="220" fill="#8B919B" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.14em">STELLAR (SOROBAN)</text>
+<path d="M120,144 V276 Q120,284 128,284 H222" fill="none" stroke="#B6BBC4" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M384,284 H406" fill="none" stroke="#B6BBC4" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M568,284 H590" fill="none" stroke="#B6BBC4" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M752,284 H848 Q856,284 856,276 V146" fill="none" stroke="#B6BBC4" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M200,108 H406" fill="none" stroke="#B6BBC4" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+<rect x="128" y="184" width="104" height="16" rx="2" fill="#0C0E12"/><text x="180.0" y="196" fill="#8B919B" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">6 CONFIRMATIONS</text>
+<rect x="748" y="184" width="100" height="16" rx="2" fill="#0C0E12"/><text x="798.0" y="196" fill="#8B919B" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">WRITZ CO-SIGNS</text>
+<rect x="254" y="84" width="100" height="16" rx="2" fill="#0C0E12"/><text x="304.0" y="96" fill="#8B919B" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">AFTER HEIGHT H</text>
+<rect x="40" y="72" width="160" height="72" rx="6" fill="#0C0E12"/>
+<rect x="40" y="72" width="160" height="72" rx="6" fill="#0C0E12" stroke="#F6F7F8" stroke-width="1"/>
+<rect x="48" y="80" width="43" height="14" rx="2" fill="none" stroke="#B6BBC4" stroke-opacity="0.5" stroke-width="0.8"/>
+<text x="69.5" y="90" fill="#B6BBC4" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">STEP 1</text>
+<text x="120.0" y="114.0" fill="#F6F7F8" font-size="16" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">Lock BTC</text>
+<text x="120.0" y="133.0" fill="#B6BBC4" font-size="12" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">into your vault</text>
+<rect x="224" y="248" width="160" height="72" rx="6" fill="#0C0E12"/>
+<rect x="224" y="248" width="160" height="72" rx="6" fill="#0C0E12" stroke="#F6F7F8" stroke-width="1"/>
+<rect x="232" y="256" width="43" height="14" rx="2" fill="none" stroke="#B6BBC4" stroke-opacity="0.5" stroke-width="0.8"/>
+<text x="253.5" y="266" fill="#B6BBC4" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">STEP 2</text>
+<text x="304.0" y="290.0" fill="#F6F7F8" font-size="16" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">Prove the lock</text>
+<text x="304.0" y="309.0" fill="#B6BBC4" font-size="12" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">bitcoin-spv</text>
+<rect x="408" y="248" width="160" height="72" rx="6" fill="#0C0E12"/>
+<rect x="408" y="248" width="160" height="72" rx="6" fill="rgba(255,195,0,0.12)" stroke="#FFC300" stroke-width="1.4"/>
+<rect x="416" y="256" width="43" height="14" rx="2" fill="none" stroke="#FFC300" stroke-opacity="0.5" stroke-width="0.8"/>
+<text x="437.5" y="266" fill="#FFC300" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">STEP 3</text>
+<text x="488.0" y="290.0" fill="#F6F7F8" font-size="16" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">Borrow USDC</text>
+<text x="488.0" y="309.0" fill="#FFC300" font-size="12" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">writz-lend</text>
+<rect x="592" y="248" width="160" height="72" rx="6" fill="#0C0E12"/>
+<rect x="592" y="248" width="160" height="72" rx="6" fill="#0C0E12" stroke="#F6F7F8" stroke-width="1"/>
+<rect x="600" y="256" width="43" height="14" rx="2" fill="none" stroke="#B6BBC4" stroke-opacity="0.5" stroke-width="0.8"/>
+<text x="621.5" y="266" fill="#B6BBC4" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">STEP 4</text>
+<text x="672.0" y="290.0" fill="#F6F7F8" font-size="16" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">Repay</text>
+<text x="672.0" y="309.0" fill="#B6BBC4" font-size="12" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">USDC + interest</text>
+<rect x="776" y="72" width="160" height="72" rx="6" fill="#0C0E12"/>
+<rect x="776" y="72" width="160" height="72" rx="6" fill="#0C0E12" stroke="#F6F7F8" stroke-width="1"/>
+<rect x="784" y="80" width="43" height="14" rx="2" fill="none" stroke="#B6BBC4" stroke-opacity="0.5" stroke-width="0.8"/>
+<text x="805.5" y="90" fill="#B6BBC4" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">STEP 5</text>
+<text x="856.0" y="114.0" fill="#F6F7F8" font-size="16" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">Release BTC</text>
+<text x="856.0" y="133.0" fill="#B6BBC4" font-size="12" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">you sign, broadcast</text>
+<rect x="408" y="72" width="160" height="72" rx="6" fill="#0C0E12"/>
+<rect x="408" y="72" width="160" height="72" rx="6" fill="#0C0E12" stroke="#B6BBC4" stroke-width="1" stroke-dasharray="4,3"/>
+<rect x="416" y="80" width="53" height="14" rx="2" fill="none" stroke="#B6BBC4" stroke-opacity="0.5" stroke-width="0.8"/>
+<text x="442.5" y="90" fill="#B6BBC4" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">FALLBACK</text>
+<text x="488.0" y="114.0" fill="#F6F7F8" font-size="16" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">Timelock exit</text>
+<text x="488.0" y="133.0" fill="#B6BBC4" font-size="12" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">you alone</text>
+<text x="24" y="400" fill="#B6BBC4" font-size="15" font-style="italic" font-family="'Work Sans', system-ui, sans-serif">Your Bitcoin never leaves Bitcoin: Stellar only checks a proof that it is locked.</text>
+<line x1="32" y1="440" x2="928" y2="440" stroke="rgba(246,247,248,0.12)" stroke-width="0.8"/>
+<text x="32" y="468" fill="#B6BBC4" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.14em">LEGEND</text>
+<rect x="96" y="458" width="20" height="14" rx="3" fill="rgba(255,195,0,0.12)" stroke="#FFC300" stroke-width="1.2"/>
+<text x="124" y="470" fill="#F6F7F8" font-size="12" font-family="'Work Sans', system-ui, sans-serif">The loan</text>
+<rect x="213" y="458" width="20" height="14" rx="3" fill="#0C0E12" stroke="#F6F7F8" stroke-width="1"/>
+<text x="241" y="470" fill="#F6F7F8" font-size="12" font-family="'Work Sans', system-ui, sans-serif">Step</text>
+<line x1="301" y1="465" x2="321" y2="465" stroke="#B6BBC4" stroke-width="1.2" stroke-dasharray="5,4"/>
+<text x="329" y="470" fill="#F6F7F8" font-size="12" font-family="'Work Sans', system-ui, sans-serif">Fallback if Writz stops</text>
+</svg>
+</div></div></body></html>

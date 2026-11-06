@@ -3,8 +3,7 @@
 # Verifies, by calling the deployed contracts directly, which oracle
 # providers actually expose a real (non-wrapped) BTC/USD feed on Stellar -
 # rather than trusting provider docs/blog posts, which turned out to be
-# wrong or stale for more than one provider during this research (see
-# docs/research/oracle-design.md, "on-chain verification pass").
+# wrong or stale for more than one provider.
 #
 # This is a read-only diligence tool, not part of the oracle integration
 # itself: it does not touch get_btc_price_stroops or any contract state.
@@ -121,7 +120,7 @@ if check_exists "Reflector (external CEXs & DEXs)" "$REFLECTOR_EXTERNAL_PRICES";
     echo "  decimals: $(stellar contract invoke --id "$id" --source "$SOURCE_ACCOUNT" --network "$NETWORK" -- decimals 2>&1 | tail -1)"
     echo "  resolution (seconds): $(stellar contract invoke --id "$id" --source "$SOURCE_ACCOUNT" --network "$NETWORK" -- resolution 2>&1 | tail -1)"
   else
-    echo "WARNING: no plain BTC ticker in assets() - re-check docs/research/oracle-design.md, something changed."
+    echo "WARNING: no plain BTC ticker in assets() - re-check the oracle wiring, something changed."
     fail=$((fail + 1))
   fi
 fi
@@ -131,26 +130,26 @@ if check_exists "Reflector (Stellar assets - expect SolvBTC, not BTC)" "$REFLECT
   id="$REFLECTOR_STELLAR_ASSETS"
   echo "Listing assets() (expect Stellar contract addresses, not plain tickers):"
   stellar contract invoke --id "$id" --source "$SOURCE_ACCOUNT" --network "$NETWORK" -- assets 2>&1 | grep -v "^ℹ️\|^⚠️"
-  echo "  (Do not wire this instance in as 'the BTC price' - see oracle-design.md for why.)"
+  echo "  (Do not wire this instance in as 'the BTC price' - it prices a wrapped token, not BTC.)"
 fi
 
 # --- DIA: documented address, expected to fail per the 2026-09-16 finding ---
 check_exists "DIA (documented testnet address)" "$DIA_TESTNET" || \
-  echo "  Expected per docs/research/oracle-design.md as of 2026-09-16. If this now succeeds, DIA is un-parked - update the docs."
+  echo "  Expected as of 2026-09-16. If this now succeeds, DIA is un-parked - update the docs."
 
 # --- Pyth: verifier contract, no direct price read possible ---
 if check_exists "Pyth (verifier)" "$PYTH_VERIFIER"; then
   echo "  Pyth's contract only verifies a caller-supplied signed Hermes payload"
   echo "  (verify_update(data: Bytes)) - there is nothing to read here without"
   echo "  first fetching a live update from Hermes off-chain. Not automated by"
-  echo "  this script; see docs/research/oracle-design.md, 'Before wiring this in'."
+  echo "  this script."
 fi
 
 section "Summary"
 echo "Checks passed: $pass"
 echo "Checks failed: $fail"
 if [ "$fail" -gt 0 ]; then
-  echo "One or more contracts did not resolve as expected - see above before trusting docs/research/oracle-design.md's claims."
+  echo "One or more contracts did not resolve as expected - see above before trusting the documented oracle addresses."
   exit 1
 fi
 echo "All checked contracts resolved as expected."

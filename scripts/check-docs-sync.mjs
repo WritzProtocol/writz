@@ -114,12 +114,6 @@ for (const record of [defindexVaultMdPath, defindexVaultMainnetMdPath]) {
   }
 }
 
-// oracle-design.md and blend-usdc-integration.md document third-party price
-// oracle contracts (Reflector, Pyth, DIA) verified on-chain via
-// contracts/scripts/verify-oracles.sh - same "external addresses" situation
-// as the DeFindex file above, not Writz-authored deployments.
-const oracleDesignMdPath = path.join(repoRoot, "docs/research/oracle-design.md");
-const blendUsdcIntegrationMdPath = path.join(repoRoot, "docs/research/blend-usdc-integration.md");
 // HACKMERIDIAN.md is a dated event record that also cites the Soroswap router
 // and pair and Circle's CCTP contracts.
 const hackmeridianMdPath = path.join(repoRoot, "HACKMERIDIAN.md");
@@ -129,8 +123,6 @@ const skipForAddresses = new Set([
   testnetMdPath,
   defindexVaultMdPath,
   defindexVaultMainnetMdPath,
-  oracleDesignMdPath,
-  blendUsdcIntegrationMdPath,
   hackmeridianMdPath,
 ]); // testnetMd IS the source of truth; these others record external addresses
 

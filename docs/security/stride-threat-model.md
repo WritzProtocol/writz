@@ -1,8 +1,8 @@
 # STRIDE Threat Model - Writz Protocol
 
-**Version:** 0.1 (Draft)
-**Date:** June 2026
-**Scope:** Phase 1 architecture (SPV contract + Writz Lend + P2WSH locking script + relayer)
+**Version:** 0.2 (Draft)
+**Date:** November 2026
+**Scope:** the testnet architecture today (SPV contract + Writz Lend + P2WSH locking script + relayer)
 **Methodology:** Microsoft STRIDE (Spoofing, Tampering, Repudiation, Information Disclosure, Denial of Service, Elevation of Privilege)
 
 ---
@@ -17,7 +17,7 @@
 | Writz SPV relayer | Off-chain service | Untrusted - convenience only |
 | Reflector oracle (a second source planned) | Off-chain + on-chain | Partially trusted |
 | Protocol co-signing key | Off-chain | Trusted - Writz operator |
-| Liquidation keeper | Off-chain | Trusted - Phase 1 |
+| Liquidation keeper | Off-chain | Trusted - a designated keeper today; anyone may liquidate once it is stale (24 h) |
 | User Bitcoin wallet (Xverse) | Client-side | Untrusted |
 | User Stellar wallet (Freighter) | Client-side | Untrusted |
 
@@ -25,36 +25,8 @@
 
 ## Data flow diagram
 
-```
-[User Bitcoin Wallet]
-        │
-        │ BTC → P2WSH address (on Bitcoin)
-        ▼
-[Bitcoin Network] ──────────────────────────────────────────────
-        │
-        │ block headers + Merkle proof (via relayer or self-serve)
-        ▼
-[SPV Relayer] ─────────────────────────────────────────────── UNTRUSTED
-        │
-        │ headers + proof + raw_tx (user submits directly to Soroban)
-        ▼
-[bitcoin-spv contract] ─────────────────────────────────────── TRUSTLESS
-        │
-        │ SpvVerificationResult { txid, block_hash, confirmations }
-        ▼
-[writz-lend contract] ────────────────────────────────────── TRUSTLESS
-        │         │         │
-        │         │         │ BTC/USD price feed (SEP-40)
-        │         │         ▼
-        │         │    [Reflector / RedStone Oracle] ─────────────── PARTIALLY TRUSTED
-        │         │
-        │    USDC transfer (Stellar Asset Contract)
-        ▼         ▼
-[User Stellar Wallet]     [Protocol Treasury / USDC Pool]
-
-[Protocol Co-signing Key] ─────── co-signs P2WSH release on Bitcoin
-[Liquidation Keeper] ─────────── calls liquidate() on Writz Lend
-```
+<img className="block dark:hidden" src="/diagrams/data-flow.svg" alt="Data flow and trust boundaries: untrusted wallets and relayer, trustless vault and contracts, trusted protocol key and keeper, partially trusted oracle" />
+<img className="hidden dark:block" src="/diagrams/data-flow-dark.svg" alt="Data flow and trust boundaries: untrusted wallets and relayer, trustless vault and contracts, trusted protocol key and keeper, partially trusted oracle" />
 
 ---
 
@@ -216,4 +188,4 @@ The external audit before mainnet should focus on, in priority order:
 
 ---
 
-*Last updated: June 2026 - v0.1 draft. Full revision planned before the external audit.*
+*Last updated: November 2026 - v0.2 draft. Full revision planned before the external audit.*

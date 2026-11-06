@@ -8,7 +8,7 @@ Writz is open source. Contributions - bug reports, code improvements, documentat
 
 ## Ways to Contribute
 
-**Bug reports:** If you find a bug in any of the contracts, circuits, relayer, or bitcoin-script toolkit, open a GitHub issue with a minimal reproduction. Include the test case if possible.
+**Bug reports:** If you find a bug in any of the contracts, the relayer, or the bitcoin-script toolkit, open a GitHub issue with a minimal reproduction. Include the test case if possible.
 
 **Code contributions:** See the open issues tagged `good first issue` or `help wanted` on GitHub. All contributions require tests. The CI must pass before merge.
 
@@ -63,7 +63,7 @@ Two habits the hook does not replace:
 
 ## Keeping the docs in sync
 
-Contract addresses and test counts are quoted in a lot of places (README, SCF docs, community posts) and drift easily after a redeploy or when tests are added. Two scripts guard against that:
+Contract addresses and test counts are quoted in a lot of places (README, docs, community posts) and drift easily after a redeploy or when tests are added. Two scripts guard against that:
 
 - After a redeploy, update `contracts/deployments/testnet.md` - it's the source of truth every other doc is checked against.
 - After adding/removing tests, run `node scripts/update-test-counts.mjs` to regenerate `docs/_data/facts.json` from the real test suites.
@@ -93,7 +93,7 @@ Contract addresses and test counts are quoted in a lot of places (README, SCF do
 
 1. Fork the repository and create a feature branch (`feature/your-feature`)
 2. Make your changes with tests
-3. Run `cargo test` (contracts), `bun test` (bitcoin-script), `bun run test` (relayer), `npm test` (circuits) - all must pass
+3. Run `cargo test` (contracts), `bun test` (bitcoin-script), `bun run test` (relayer) - all must pass
 4. Open a PR with a clear description of what changed and why
 5. A maintainer will review within 5 business days
 
@@ -105,8 +105,8 @@ The following areas are actively looking for contributors:
 
 | Area | Description | Skill needed |
 |---|---|---|
-| Frontend (app.writz.xyz) | React/Next.js frontend for Writz Lend | React, TypeScript, Stellar Wallets Kit |
-| SDK npm package | `writz-sdk` TypeScript package for SPV proof assembly | TypeScript, npm |
+| Frontend (testnet.writz.xyz) | The Next.js app for Writz Lend, on testnet | React, TypeScript, Stellar Wallets Kit |
+| `@writz/sdk` | Examples and integrations for the published TypeScript SDK | TypeScript, npm |
 | Oracle integration | Add RedStone's BTC/USD feed beside Reflector, with a divergence guard | Rust, Soroban |
 
 If you want to work on any of these, open an issue first to discuss the approach before writing code.

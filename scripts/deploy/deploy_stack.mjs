@@ -115,7 +115,7 @@ const adminSecret = env('ADMIN_SECRET', (v) => StrKey.isValidEd25519SecretSeed(v
 const relayer = env('RELAYER_ADDRESS', isAccount, "G... account of the relayer's RELAYER_SECRET");
 const keeper = env('KEEPER_ADDRESS', isAccount, 'G... liquidation keeper');
 const usdc = env('USDC_TOKEN', isContract, 'C... USDC Stellar Asset Contract');
-const oracle = env('ORACLE', isContract, "C... Reflector oracle (docs/research/oracle-design.md)");
+const oracle = env('ORACLE', isContract, "C... Reflector oracle (docs/how-it-works/stellar-side.md)");
 const protocolPubkey = env('PROTOCOL_PUBKEY', (v) => /^0[23][0-9a-f]{64}$/i.test(v),
   'compressed 33-byte hex key matching the relayer KMS key or PROTOCOL_SIGNING_KEY');
 // --lend-only wires writz-lend to this bitcoin-spv instead of deploying one,

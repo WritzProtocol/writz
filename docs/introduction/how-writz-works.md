@@ -67,37 +67,8 @@ Privacy is not part of the protocol: positions are public on chain.
 
 ## The Full Picture
 
-```
-                          BITCOIN NETWORK
-                ─────────────────────────────────────────
-                Your Wallet
-                     │
-                     │   Send BTC to P2WSH address
-                     ▼
-                P2WSH Script Address
-                ┌──────────────────────────────────┐
-                │  NORMAL:  You + Writz co-sign    │
-                │  EMERGENCY: Timelock → you alone │
-                └──────────────────────────────────┘
-                     │
-                     │  6 confirmations (~1 hour)
-                     │
-          ───────────┼─────────────────────────────────────
-                     │       STELLAR / SOROBAN
-                     │
-                     ▼
-              writz-lend contract
-              (checks the script, records the position)
-                     │
-                     ▼
-              bitcoin-spv contract
-              (verifies block headers + Merkle proof)
-                     │
-                     ▼
-              Borrow: USDC lands in your Stellar wallet
-
-     When you repay ──► relayer co-signs, PSBT on Stellar ──► you sign, BTC released
-```
+<img className="block dark:hidden" src="/diagrams/full-picture.svg" alt="How a Writz loan works: lock BTC, prove the lock on Stellar, borrow USDC, repay, release BTC, with a timelock exit" />
+<img className="hidden dark:block" src="/diagrams/full-picture-dark.svg" alt="How a Writz loan works: lock BTC, prove the lock on Stellar, borrow USDC, repay, release BTC, with a timelock exit" />
 
 ---
 

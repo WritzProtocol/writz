@@ -33,7 +33,7 @@ Every security system has trust assumptions. Writz's are:
 | User's private keys | User's Bitcoin and Stellar keys are not compromised | Critical - user responsibility |
 | All of the above | No large-scale quantum computer capable of running Shor's algorithm exists | Catastrophic if it does, but this breaks Bitcoin's ECDSA and Stellar's Ed25519 simultaneously. Not a Writz-specific risk, and not one Writz can mitigate unilaterally |
 
-Every trust assumption above except the Bitcoin/Stellar signature schemes themselves rests on elliptic curve discrete log hardness. A cryptographically relevant quantum computer would break secp256k1 (Bitcoin) and Ed25519 (Stellar) at once. This is not something Writz can fix by itself: the protocol's BTC custody depends on Bitcoin's own signature scheme remaining secure, and its USDC settlement depends on Stellar's. No BTCfi competitor surveyed in `docs/research/market-landscape.md` is post-quantum either, for the same structural reason. This is tracked as an acknowledged, industry-wide limitation, not a roadmap item.
+Every trust assumption above except the Bitcoin/Stellar signature schemes themselves rests on elliptic curve discrete log hardness. A cryptographically relevant quantum computer would break secp256k1 (Bitcoin) and Ed25519 (Stellar) at once. This is not something Writz can fix by itself: the protocol's BTC custody depends on Bitcoin's own signature scheme remaining secure, and its USDC settlement depends on Stellar's. No Bitcoin lending protocol we know of is post-quantum either, for the same structural reason. This is tracked as an acknowledged, industry-wide limitation, not a roadmap item.
 
 ---
 
@@ -145,7 +145,7 @@ Repayment isn't atomic across Stellar and Bitcoin: a user repays USDC on Soroban
 
 **Impact on USDC lenders:**
 - If borrowers do not repay before Writz shuts down, and liquidations cannot occur, USDC lenders may face losses
-- This risk is mitigated by conservative TVL caps, insurance fund accumulation, and progressive decentralization
+- This risk is mitigated by conservative TVL caps and the protocol reserve
 
 ### "The protocol co-signing key is compromised"
 
@@ -167,7 +167,7 @@ If the BTC/USD price is manipulated downward:
 **Mitigations:**
 - Planned: two independent sources, Reflector and RedStone, with a divergence guard: a borrow uses the lower price and a price-based liquidation needs the position to be unhealthy at both, so moving one feed is not enough ([Technical architecture](/architecture/technical-overview#price-oracles))
 
-**Interim status (2026-09-17):** only Reflector is wired into `writz-lend` today - see `contracts/contracts/writz-lend/src/oracle.rs`. A single misbehaving or unavailable Reflector feed currently blocks (via `OraclePriceStale`/`OraclePriceUnavailable`) rather than silently mispricing, but it cannot yet be cross-checked against a second source. Do not treat this as the finished manipulation-resistance story until RedStone is also wired.
+**Today:** only Reflector is wired into `writz-lend` - see `contracts/contracts/writz-lend/src/oracle.rs`. A single misbehaving or unavailable Reflector feed currently blocks (via `OraclePriceStale`/`OraclePriceUnavailable`) rather than silently mispricing, but it cannot yet be cross-checked against a second source. Do not treat this as the finished manipulation-resistance story until RedStone is also wired.
 - Staleness check: a price older than 60 minutes is rejected today; with two sources, the limit for each is set from its measured update cadence
 - Progressive TVL caps limit the maximum exposure during early operation
 
@@ -177,17 +177,11 @@ If the BTC/USD price is manipulated downward:
 
 **After audit, pre-mainnet:** All findings are remediated before mainnet launch. The external audit before v1 mainnet covers the Soroban contracts (`bitcoin-spv`, `writz-lend`).
 
-**Post-mainnet:** A whitehat bug bounty program is active with up to $50,000 in rewards for critical findings. TVL caps limit damage during early operation. An on-chain insurance fund (seeded from protocol fees) provides backstop coverage.
+**Post-mainnet:** A whitehat bug bounty program is active with up to $50,000 in rewards for critical findings. TVL caps limit damage during early operation, and the protocol reserve is the first buffer for losses.
 
-## The Insurance Fund
+## The Protocol Reserve
 
-Starting from mainnet launch, 5% of all protocol fee revenue is automatically routed to an on-chain insurance fund. This fund is:
-
-- Controlled by a multi-sig (Writz team + community representatives)
-- Used only to compensate users for verified smart contract exploits
-- Not used for operational expenses or token liquidity
-
-As the fund grows and protocol governance decentralizes, the insurance fund allocation and payout criteria will be managed by WRTZ token holders.
+15% of the interest borrowers pay goes to the protocol reserve in `writz-lend` (`reserve_usdc`). Today the reserve pays liquidation bonuses. Planned: a position that ends underwater is covered first by the reserve, and any remainder is shared by lenders pro rata, bounded by the launch caps. There is no separate insurance fund.
 
 ---
 

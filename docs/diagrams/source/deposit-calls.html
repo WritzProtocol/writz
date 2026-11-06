@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>What happens inside a deposit</title>
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Work Sans', system-ui, sans-serif;background:#F6F7F8;color:#15181E;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:3rem 2rem}
+.frame{max-width:1000px;width:100%}.diagram-container{width:100%;overflow-x:auto}
+.eyebrow{font-family:'Geist Mono', ui-monospace, monospace;font-size:.66rem;font-weight:500;letter-spacing:.18em;text-transform:uppercase;color:#4B515B;margin-bottom:.5rem}
+h1{font-family:'Work Sans', system-ui, sans-serif;font-size:1.75rem;font-weight:600;letter-spacing:-.02em;line-height:1.15;margin-bottom:1.5rem}
+svg{width:100%;min-width:960px;display:block}@media print{.diagram-container{overflow-x:visible}svg{min-width:0}}</style></head>
+<body><div class="frame"><p class="eyebrow">Sequence</p><h1>What happens inside a deposit</h1>
+<div class="diagram-container">
+<svg viewBox="0 0 960 792" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="deposit-calls-title deposit-calls-desc">
+<title id="deposit-calls-title">What happens inside a deposit</title>
+<desc id="deposit-calls-desc">The user gets an SPV proof from the relayer, signs a key-control message with the Bitcoin wallet and calls writz-lend deposit; writz-lend checks the script, asks bitcoin-spv to verify the transaction, checks the timelock height and the signature, consumes the txid in bitcoin-spv and stores the position.</desc>
+<defs><marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4B515B"/></marker><marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#15181E"/></marker><marker id="arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#2A303A"/></marker><marker id="arrow-open" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polyline points="0 0, 8 3, 0 6" fill="none" stroke="#4B515B" stroke-width="1.2"/></marker></defs>
+<rect width="100%" height="100%" fill="#F6F7F8"/>
+<line x1="112" y1="112" x2="112" y2="648" stroke="rgba(21,24,30,0.22)" stroke-width="1" stroke-dasharray="3,3"/>
+<line x1="336" y1="112" x2="336" y2="648" stroke="rgba(21,24,30,0.22)" stroke-width="1" stroke-dasharray="3,3"/>
+<line x1="576" y1="112" x2="576" y2="648" stroke="rgba(21,24,30,0.22)" stroke-width="1" stroke-dasharray="3,3"/>
+<line x1="816" y1="112" x2="816" y2="648" stroke="rgba(21,24,30,0.22)" stroke-width="1" stroke-dasharray="3,3"/>
+<rect x="572" y="272" width="8" height="336" fill="rgba(21,24,30,0.06)" stroke="#4B515B" stroke-width="0.8"/>
+<rect x="812" y="368" width="8" height="40" fill="rgba(21,24,30,0.06)" stroke="#4B515B" stroke-width="0.8"/>
+<line x1="116" y1="176" x2="330" y2="176" stroke="#4B515B" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+<rect x="190.0" y="152" width="68" height="16" rx="2" fill="#F6F7F8"/><text x="224.0" y="164" fill="#646A73" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">SPV PROOF</text>
+<path d="M340,204 H372 Q380,204 380,212 V220 Q380,228 372,228 H342" fill="none" stroke="#4B515B" stroke-width="1.2" marker-end="url(#arrow)"/>
+<rect x="388" y="208" width="96" height="16" rx="2" fill="#F6F7F8"/><text x="436.0" y="220" fill="#646A73" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">SIGN (BIP-137)</text>
+<line x1="340" y1="272" x2="570" y2="272" stroke="#4B515B" stroke-width="1.2" marker-end="url(#arrow)"/>
+<rect x="428.0" y="248" width="56" height="16" rx="2" fill="#F6F7F8"/><text x="456.0" y="260" fill="#646A73" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">DEPOSIT</text>
+<path d="M580,300 H612 Q620,300 620,308 V316 Q620,324 612,324 H582" fill="none" stroke="#4B515B" stroke-width="1.2" marker-end="url(#arrow)"/>
+<rect x="628" y="304" width="84" height="16" rx="2" fill="#F6F7F8"/><text x="670.0" y="316" fill="#646A73" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">CHECK SCRIPT</text>
+<line x1="580" y1="368" x2="810" y2="368" stroke="#4B515B" stroke-width="1.2" marker-end="url(#arrow)"/>
+<rect x="662.0" y="344" width="68" height="16" rx="2" fill="#F6F7F8"/><text x="696.0" y="356" fill="#646A73" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">VERIFY TX</text>
+<line x1="812" y1="408" x2="582" y2="408" stroke="#4B515B" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+<rect x="672.0" y="384" width="48" height="16" rx="2" fill="#F6F7F8"/><text x="696.0" y="396" fill="#646A73" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">RESULT</text>
+<path d="M580,436 H612 Q620,436 620,444 V452 Q620,460 612,460 H582" fill="none" stroke="#4B515B" stroke-width="1.2" marker-end="url(#arrow)"/>
+<rect x="628" y="440" width="84" height="16" rx="2" fill="#F6F7F8"/><text x="670.0" y="452" fill="#646A73" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">CHECK H, SIG</text>
+<line x1="580" y1="504" x2="810" y2="504" stroke="#4B515B" stroke-width="1.2" marker-end="url(#arrow)"/>
+<rect x="654.0" y="480" width="84" height="16" rx="2" fill="#F6F7F8"/><text x="696.0" y="492" fill="#646A73" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">CONSUME TXID</text>
+<path d="M580,532 H612 Q620,532 620,540 V548 Q620,556 612,556 H582" fill="none" stroke="#15181E" stroke-width="1.6" marker-end="url(#arrow-accent)"/>
+<rect x="628" y="536" width="80" height="16" rx="2" fill="#F6F7F8"/><text x="668.0" y="548" fill="#646A73" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">STORE, EMIT</text>
+<line x1="572" y1="608" x2="342" y2="608" stroke="#4B515B" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+<rect x="410.0" y="584" width="92" height="16" rx="2" fill="#F6F7F8"/><text x="456.0" y="596" fill="#646A73" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">POSITION OPEN</text>
+<rect x="24.0" y="64" width="176" height="48" rx="6" fill="#F6F7F8"/>
+<rect x="24.0" y="64" width="176" height="48" rx="6" fill="#F6F7F8" stroke="#15181E" stroke-width="1"/>
+<text x="112.0" y="94.0" fill="#15181E" font-size="16" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">Relayer</text>
+<rect x="248.0" y="64" width="176" height="48" rx="6" fill="#F6F7F8"/>
+<rect x="248.0" y="64" width="176" height="48" rx="6" fill="#ECEEF1" stroke="#4B515B" stroke-width="1"/>
+<text x="336.0" y="90.0" fill="#15181E" font-size="16" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">User</text>
+<text x="336.0" y="109.0" fill="#4B515B" font-size="12" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">browser</text>
+<rect x="488.0" y="64" width="176" height="48" rx="6" fill="#F6F7F8"/>
+<rect x="488.0" y="64" width="176" height="48" rx="6" fill="#FFC300" stroke="#15181E" stroke-width="1.4"/>
+<text x="576.0" y="94.0" fill="#15181E" font-size="16" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">writz-lend</text>
+<rect x="728.0" y="64" width="176" height="48" rx="6" fill="#F6F7F8"/>
+<rect x="728.0" y="64" width="176" height="48" rx="6" fill="#F6F7F8" stroke="#15181E" stroke-width="1"/>
+<text x="816.0" y="94.0" fill="#15181E" font-size="16" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">bitcoin-spv</text>
+<text x="24" y="692" fill="#4B515B" font-size="15" font-style="italic" font-family="'Work Sans', system-ui, sans-serif">One call does it all: if any check fails, the deposit reverts and nothing is stored.</text>
+<line x1="32" y1="728" x2="928" y2="728" stroke="rgba(21,24,30,0.12)" stroke-width="0.8"/>
+<text x="32" y="756" fill="#4B515B" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.14em">LEGEND</text>
+<line x1="96" y1="753" x2="116" y2="753" stroke="#4B515B" stroke-width="1.2"/>
+<text x="124" y="758" fill="#15181E" font-size="12" font-family="'Work Sans', system-ui, sans-serif">Call</text>
+<line x1="184" y1="753" x2="204" y2="753" stroke="#4B515B" stroke-width="1.2" stroke-dasharray="5,4"/>
+<text x="212" y="758" fill="#15181E" font-size="12" font-family="'Work Sans', system-ui, sans-serif">Return</text>
+<line x1="287" y1="753" x2="307" y2="753" stroke="#15181E" stroke-width="1.6"/>
+<text x="315" y="758" fill="#15181E" font-size="12" font-family="'Work Sans', system-ui, sans-serif">Position recorded</text>
+</svg>
+</div></div></body></html>

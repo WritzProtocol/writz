@@ -4,7 +4,6 @@
 
 Writz is a trustless Bitcoin lending protocol on Stellar. Lock real BTC. Borrow real USDC. No bridge, no custodian, no wrapped BTC.
 
-*(Not a "first on Stellar" claim: Solv Protocol and Templar Protocol both have live BTC infrastructure on Stellar. Writz's differentiator is trustless, SPV-verified native BTC collateral that never leaves Bitcoin and carries a timelock exit the user controls alone. See `docs/research/market-landscape.md` for the current competitive picture.)*
 
 ---
 
@@ -18,7 +17,7 @@ Writz is a trustless Bitcoin lending protocol on Stellar. Lock real BTC. Borrow 
 | A developer building on Stellar | [Build on Writz →](/developers/integrate) |
 | A Stellar protocol that needs Bitcoin verification | [SPV SDK →](/developers/spv-sdk) |
 | A USDC holder who wants to supply the lending pool | [Lend USDC →](/products/writz-lend#for-usdc-lenders-earn) |
-| An investor or grant reviewer | [Vision →](/roadmap/vision) |
+| Want to know where Writz is going | [Vision →](/roadmap/vision) |
 
 ---
 
@@ -49,29 +48,16 @@ Writz is a trustless Bitcoin lending protocol on Stellar. Lock real BTC. Borrow 
 ### Security
 - [Security Model](/security/security-model) - Trust assumptions, failure scenarios, what Writz can't do.
 - [SPV vs Wrapped Bitcoin](/security/spv-vs-wrapped) - Where a light client differs from wrapped BTC and bridges, and where it shares their risks.
-- [Audits](/security/audits) - Audit roadmap, target firms, Audit Bank process.
+- [Audits](/security/audits) - Audit scope, readiness and how reports will be published.
 - [Bug Bounty](/security/bug-bounty) - Responsible disclosure. Up to $50,000 for critical findings.
 - [STRIDE Threat Model](/security/stride-threat-model) - Threats by component, trust boundaries, mitigations.
 
 ### Roadmap
 - [Vision](/roadmap/vision) - Where Writz goes by 2028.
 
-### Research (Internal Reference)
-- [Bitcoin SPV on Other Chains](/research/spv-implementations)
-- [Market Landscape](/research/market-landscape)
-- [Bitcoin Locking Script Design](/research/bitcoin-locking-script)
-- [Oracle Design](/research/oracle-design)
-- [Interest Rate Model](/research/interest-rate-model)
-- [Liquidation Mechanism](/research/liquidation-mechanism)
-- [Relayer Incentive Design](/research/relayer-incentive-design)
-- [Tokenomics & Fee Model](/research/tokenomics-fee-model)
-- [Security Audit Strategy](/research/security-audit-strategy)
-
 ---
 
 ## Current Status
-
-**Phase:** 1 - Foundation (in progress, August 2026)
 
 **The protocol's two contracts are deployed on Stellar testnet. 839 tests passing.** See `contracts/deployments/testnet.md` for verified calls and known gaps before further testing.
 

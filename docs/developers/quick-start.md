@@ -4,7 +4,7 @@ title: "Quick Start"
 
 > **Building on Writz from your own project?** This page is the contributor guide: it builds and tests this repository. To call the deployed contracts from your app or your Soroban contract, start with [Build on Writz](/developers/integrate). AI coding agents: [For AI Agents](/developers/for-ai-agents).
 
-The core lending and verification logic in this repository is working code, not a mockup: the contracts are deployed on Stellar testnet, and the tests pass (see `docs/developers/runbook.md`). Writz v1 is `bitcoin-spv` and `writz-lend`. `writz-lend/src/oracle.rs`'s `get_btc_price_stroops` now calls a real Reflector oracle on testnet (see `docs/research/oracle-design.md`). Start here and have something running in under 5 minutes.
+The core lending and verification logic in this repository is working code, not a mockup: the contracts are deployed on Stellar testnet, and the tests pass (see `docs/developers/runbook.md`). Writz v1 is `bitcoin-spv` and `writz-lend`. `writz-lend/src/oracle.rs`'s `get_btc_price_stroops` calls a real Reflector oracle on testnet (see [The Stellar Side](/how-it-works/stellar-side#oracle-design)). Start here and have something running in under 5 minutes.
 
 ---
 

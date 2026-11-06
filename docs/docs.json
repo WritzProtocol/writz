@@ -96,8 +96,7 @@
             "pages": [
               "guides/borrow",
               "guides/repay-and-release",
-              "guides/lend",
-              "products/earn"
+              "guides/lend"
             ]
           },
           {
@@ -116,7 +115,9 @@
             "pages": [
               "how-it-works/bitcoin-side",
               "how-it-works/spv-verification",
-              "how-it-works/stellar-side"
+              "how-it-works/stellar-side",
+              "how-it-works/manual-proof-submission",
+              "how-it-works/manual-emergency-recovery"
             ]
           }
         ]
@@ -151,26 +152,6 @@
               "go-to-market/step-by-step",
               "go-to-market/channels",
               "go-to-market/measuring-progress"
-            ]
-          }
-        ]
-      },
-      {
-        "tab": "Research",
-        "groups": [
-          {
-            "group": "Research",
-            "pages": [
-              "research/spv-implementations",
-              "research/market-landscape",
-              "research/bitcoin-locking-script",
-              "research/oracle-design",
-              "research/interest-rate-model",
-              "research/liquidation-mechanism",
-              "research/relayer-incentive-design",
-              "research/blend-usdc-integration",
-              "research/tokenomics-fee-model",
-              "research/security-audit-strategy"
             ]
           }
         ]
@@ -251,6 +232,34 @@
     {
       "source": "/architecture/diagrams",
       "destination": "/architecture/technical-overview"
+    },
+    {
+      "source": "/research/oracle-design",
+      "destination": "/how-it-works/stellar-side"
+    },
+    {
+      "source": "/research/interest-rate-model",
+      "destination": "/how-it-works/stellar-side"
+    },
+    {
+      "source": "/research/spv-implementations",
+      "destination": "/security/spv-vs-wrapped"
+    },
+    {
+      "source": "/research/bitcoin-locking-script",
+      "destination": "/how-it-works/bitcoin-side"
+    },
+    {
+      "source": "/research/liquidation-mechanism",
+      "destination": "/products/writz-lend"
+    },
+    {
+      "source": "/research/:slug*",
+      "destination": "/"
+    },
+    {
+      "source": "/design/:slug*",
+      "destination": "/"
     }
   ]
 }

@@ -32,10 +32,6 @@
     {
       "name": "Developers",
       "url": "developers"
-    },
-    {
-      "name": "Research",
-      "url": "research"
     }
   ],
   "anchors": [
@@ -114,31 +110,10 @@
       ]
     },
     {
-      "group": "Use the app",
-      "pages": [
-        "products/earn"
-      ]
-    },
-    {
       "group": "Legal",
       "pages": [
         "legal/terms-of-service",
         "legal/privacy-policy"
-      ]
-    },
-    {
-      "group": "Research",
-      "pages": [
-        "research/spv-implementations",
-        "research/market-landscape",
-        "research/bitcoin-locking-script",
-        "research/oracle-design",
-        "research/interest-rate-model",
-        "research/liquidation-mechanism",
-        "research/relayer-incentive-design",
-        "research/blend-usdc-integration",
-        "research/tokenomics-fee-model",
-        "research/security-audit-strategy"
       ]
     }
   ],

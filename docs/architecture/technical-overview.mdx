@@ -1,7 +1,7 @@
 ---
 title: "Technical Architecture"
 sidebarTitle: "Technical Overview"
-description: "How Writz lets Bitcoin holders borrow USDC on Stellar against native Bitcoin, with no custodian, no bridge and no wrapped asset."
+description: "How Writz lets Bitcoin holders borrow USDC on Stellar against native Bitcoin, with no custodian, no bridge and no wrapped Bitcoin."
 ---
 
 Writz lets a Bitcoin holder borrow USDC on Stellar against Bitcoin that never leaves the Bitcoin network. The Bitcoin stays in a script the borrower controls, a light client on Soroban verifies it, and a lending contract on Soroban issues and settles the loan. If a loan defaults, the lenders are repaid from the Bitcoin through transactions the borrower signed in advance. If Writz disappears, the borrower can still take the Bitcoin back alone after a timelock.
@@ -11,7 +11,7 @@ This page describes the protocol as designed. Each component is marked **Live on
 ## Principles
 
 - **No custodian.** Writz never holds the Bitcoin. Every transaction that can move it is either signed by the borrower or pre-signed by the borrower with fixed outputs.
-- **No bridge and no wrapped asset.** Collateral is native Bitcoin in the borrower's own script. Nothing is minted against it in the Writz pool.
+- **No bridge and no wrapped Bitcoin.** Collateral is native Bitcoin in the borrower's own script; no transferable or redeemable token stands for it. The Writz Lend pool mints nothing. The one exception is the Writz Vault Unit, used only by the lending-market adapter: a non-transferable accounting unit with no claim on Bitcoin, whose supply always equals the satoshis in active locks.
 - **Verification, not attestation.** Soroban verifies Bitcoin proof of work and transaction inclusion itself. No oracle or committee reports what happened on Bitcoin.
 - **Immutable contracts.** Neither contract can be upgraded ([ADR 0001](/architecture/adr/0001-contract-immutability)). A change is a new deployment and a migration.
 
@@ -132,7 +132,7 @@ Writz is built so that other Stellar protocols can use native Bitcoin without re
 The Bitcoin side (lock proof, pre-signed steps, maturity, signer policy) is written once in `writz-lend`, and the source of USDC sits behind an interface with one connector per market. **Designed.**
 
 - **Writz Lend pool:** the first connector, USDC from Writz lenders.
-- **Lending-market adapter:** lets another Stellar lending market accept native Bitcoin as collateral through a non-transferable accounting unit, one per locked satoshi, backed only by verified locks, with liquidation settled through the pre-signed steps.
+- **Lending-market adapter:** lets another Stellar lending market accept native Bitcoin as collateral through the Writz Vault Unit: an accounting unit, not a wrapped Bitcoin. One unit per locked satoshi is minted only by the adapter when a lock is proven and burned on release or liquidation; it moves only between the adapter and the market's contracts, never to the borrower or anyone else, has no admin and gives no claim on Bitcoin, and its supply equals the locked satoshis on a public reserve page. Liquidation settles through the pre-signed steps.
 - **Vault strategy:** lets DeFindex vaults supply USDC to the Writz Lend pool.
 - **Bitcoin verification SDK:** lets any Stellar project verify Bitcoin payments and time locks on Soroban through `bitcoin-spv` ([SPV SDK](/developers/spv-sdk)).
 

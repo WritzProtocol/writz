@@ -11,9 +11,9 @@ title: "Bug Bounty"
 > **planned** bands for that program, not offers we can honour right now.
 >
 > **Please still report findings.** During testnet we acknowledge, fix, and
-> credit them, and a finding reported now is honoured at mainnet launch under
-> the bands below. What we cannot do today is pay on receipt - we would rather
-> say so plainly than have you assume otherwise.
+> credit them. Cash rewards start with the mainnet program; a report made during
+> testnet is not a claim on a reward. We would rather say so plainly than have
+> you assume otherwise.
 
 If you find a security vulnerability in Writz Protocol, we want to hear from you
 before it becomes a problem.
@@ -81,7 +81,7 @@ for the full policy.
 
 **Include in your report:**
 1. A description of the vulnerability
-2. The affected component (contract name, circuit name, function name)
+2. The affected component (contract name, function name)
 3. Step-by-step reproduction instructions
 4. Proof of concept code or test case (if available)
 5. Your assessment of impact and severity
@@ -117,4 +117,4 @@ Researchers who responsibly disclose valid vulnerabilities will be acknowledged 
 
 The bug bounty program is active from mainnet launch (Q2 to Q3 2027). During the testnet phase, reports are accepted and recognized, but cash rewards are not yet active - the protocol does not hold user funds until mainnet.
 
-If you find a critical issue during the testnet phase, report it anyway. We will honor the reward when mainnet launches.
+If you find a critical issue during the testnet phase, report it anyway: it is fixed before real funds are at stake, and you are credited for it.

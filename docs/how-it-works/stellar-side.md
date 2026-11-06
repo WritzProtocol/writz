@@ -10,14 +10,8 @@ The Stellar side of Writz v1 consists of two Soroban smart contracts (`bitcoin-s
 
 ## The Contracts
 
-```
-      Reflector oracle        USDC (SAC)
-             │                    │
-             └────────┬───────────┘
-                      │
-   relayer  ──►  writz-lend  ──►  bitcoin-spv  ◄──  relayer
- (release PSBT)                                  (header submission)
-```
+<img className="block dark:hidden" src="/diagrams/stellar-contracts.svg" alt="The contracts on Stellar: writz-lend, bitcoin-spv, Reflector, USDC and the relayer" />
+<img className="hidden dark:block" src="/diagrams/stellar-contracts-dark.svg" alt="The contracts on Stellar: writz-lend, bitcoin-spv, Reflector, USDC and the relayer" />
 
 ### 1. bitcoin-spv
 
@@ -122,7 +116,7 @@ Writz prices BTC/USD from two independent sources, so a single bad feed cannot m
 **Today:** only Reflector is wired into `writz-lend` (`contracts/contracts/writz-lend/src/oracle.rs`), and a price older than 60 minutes is rejected, so a stale or unavailable feed blocks the call (`OraclePriceStale`, `OraclePriceUnavailable`) instead of mispricing it. Until the second source is wired, the feed cannot be cross-checked.
 
 **Manipulation resistance:**
-- Median of two oracles: a single oracle manipulation requires moving the median
+- Two sources (planned): a borrow uses the lower price and a price-based liquidation needs the position to be unhealthy at both, so moving one feed is not enough
 - Liquidation smoothing (design): large liquidations could be executed in parts to blunt single-block oracle manipulation; not implemented in `writz-lend` today
 
 **SEP-40 interface:** `writz-lend` calls a real Reflector oracle live over the Stellar SEP-40 standard interface (`contracts/contracts/writz-lend/src/oracle.rs`). For `writz-lend`, switching oracle providers requires only updating the oracle contract address - no changes to lending logic.
@@ -192,30 +186,20 @@ Events are the primary mechanism for the Writz backend to detect loan repayments
 
 ## Contract Interactions: Full Deposit Flow
 
-```
-User (browser)
-    │
-    │  1. fetch the SPV proof bundle (relayer API or Esplora)
-    │  2. sign the key-control message with the Bitcoin wallet (BIP-137)
-    │
-    ▼
-writz-lend.deposit(spv_proof, p2wsh_script_pubkey, timelock_height, user_pubkey, key_sig)
-    │
-    ├── check: p2wsh_script_pubkey == P2WSH(protocol key, user_pubkey, timelock_height)
-    ├──► bitcoin-spv.verify_transaction(block_hash, merkle_proof, tx_index, raw_tx, min_confirmations)
-    │         returns: SpvVerificationResult { txid, block_hash, block_height, confirmations }
-    ├── check: timelock_height within 1,008..=105,000 blocks above block_height
-    ├── check: key_sig is user_pubkey's signature over (contract, depositor, txid)
-    ├──► bitcoin-spv.consume_deposit(writz-lend, txid)   (shared registry: one position per output)
-    ├── read: amount paid to the P2WSH output in raw_tx; require >= min_deposit_satoshis
-    │
-    ├── store: position[txid] = { depositor, btc_satoshis, user_pubkey, timelock_height, debt: 0 }
-    └── emit: DepositEvent { txid, btc_satoshis, timelock_height }
+<img className="block dark:hidden" src="/diagrams/deposit-calls.svg" alt="What happens inside a deposit: proof, deposit call, verification in bitcoin-spv, checks and the stored position" />
+<img className="hidden dark:block" src="/diagrams/deposit-calls-dark.svg" alt="What happens inside a deposit: proof, deposit call, verification in bitcoin-spv, checks and the stored position" />
 
-On full repayment:
-writz-lend.repay(...)  ──►  emit: RepayFullEvent { txid, repayer, p2wsh_script_pubkey }
-relayer repay watcher  ──►  build + co-sign Path A PSBT  ──►  writz-lend.publish_release_psbt(txid, psbt)
-User                   ──►  writz-lend.get_release_psbt(txid), sign with Bitcoin wallet, broadcast
-```
+`writz-lend.deposit(spv_proof, p2wsh_script_pubkey, timelock_height, user_pubkey, key_sig)` runs these checks in one call, and reverts if any fails:
+
+1. `p2wsh_script_pubkey` equals `P2WSH(protocol key, user_pubkey, timelock_height)`.
+2. `bitcoin-spv.verify_transaction(block_hash, merkle_proof, tx_index, raw_tx, min_confirmations)` returns a `SpvVerificationResult { txid, block_hash, block_height, confirmations }`.
+3. `timelock_height` is within 1,008..=105,000 blocks above `block_height`.
+4. `key_sig` is `user_pubkey`'s signature over `(contract, depositor, txid)`, made with the Bitcoin wallet (BIP-137).
+5. `bitcoin-spv.consume_deposit(writz-lend, txid)` records the txid in the shared registry, so one output backs one position.
+6. The amount paid to the P2WSH output in `raw_tx` is at least `min_deposit_satoshis`.
+
+It then stores `position[txid] = { depositor, btc_satoshis, user_pubkey, timelock_height, debt: 0 }` and emits `DepositEvent { txid, btc_satoshis, timelock_height }`.
+
+On full repayment, `writz-lend.repay(...)` emits `RepayFullEvent { txid, repayer, p2wsh_script_pubkey }`. The relayer's repay watcher builds and co-signs the Path A PSBT and calls `writz-lend.publish_release_psbt(txid, psbt)`. The user reads it with `writz-lend.get_release_psbt(txid)`, signs it with the Bitcoin wallet and broadcasts it.
 
 ---

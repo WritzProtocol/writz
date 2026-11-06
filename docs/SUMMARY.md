@@ -61,10 +61,6 @@
 
 * [Vision](/roadmap/vision)
 
-## Use the app
-
-* [USDC Vault](/products/earn)
-
 ## Legal
 
 * [Terms of Service](/legal/terms-of-service)
@@ -77,17 +73,3 @@
 * [The Plan, Step by Step](/go-to-market/step-by-step)
 * [Channels](/go-to-market/channels)
 * [How We Measure Progress](/go-to-market/measuring-progress)
-
-## Research
-
-* [Bitcoin SPV on Other Chains](/research/spv-implementations)
-* [Market Landscape](/research/market-landscape)
-* [Bitcoin Locking Script Design](/research/bitcoin-locking-script)
-* [Oracle Design](/research/oracle-design)
-* [Interest Rate Model](/research/interest-rate-model)
-* [Liquidation Mechanism](/research/liquidation-mechanism)
-* [Relayer Incentive Design](/research/relayer-incentive-design)
-* [Blend & USDC Integration](/research/blend-usdc-integration)
-* [Tokenomics & Fee Model](/research/tokenomics-fee-model)
-* [Security Audit Strategy](/research/security-audit-strategy)
-

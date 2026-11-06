@@ -8,7 +8,7 @@ Bitcoin is the world's largest crypto asset by market cap. Yet borrowing against
 
 ### Give your BTC to a custodian or a signer set
 
-**WBTC** is held by BitGo. One company controls the keys. BitGo can be hacked, regulated, or go bankrupt. In 2023, concerns about custodianship triggered $1B+ in WBTC redemptions in a single week.
+**WBTC** is held by BitGo. One company controls the keys. BitGo can be hacked, regulated, or go bankrupt.
 
 **tBTC** uses a threshold signature network. A sufficient coalition of signers could theoretically collude. The trust assumption is distributed, but it is still a trust assumption.
 
@@ -22,15 +22,15 @@ The alternative is to sell or bridge BTC onto another chain, which turns it into
 
 ---
 
-## The Market Left 900 Million People Behind
+## Most Bitcoin Holders Stay Out of DeFi
 
-An estimated 77% of Bitcoin holders have never participated in DeFi. Not because they don't want yield on their BTC. Because:
+Most Bitcoin is never used as collateral on chain. Not because holders don't want to borrow against it. Because:
 
 1. They don't want to give up custody.
 2. They don't want to trust a bridge or a wrapped token.
 3. The UX of wrapped BTC across multiple chains is too complex.
 
-The BTCfi market grew 28x in 18 months - from $304M to $8.6B TVL between January 2024 and mid-2025. That growth happened despite these barriers. The market is still in early innings because the fundamental problems have never been solved.
+The Bitcoin that does reach DeFi today goes through those barriers, almost always as a wrapped token. The holders who refuse them have had no alternative.
 
 ---
 
@@ -39,7 +39,7 @@ The BTCfi market grew 28x in 18 months - from $304M to $8.6B TVL between January
 There is currently no protocol that is simultaneously:
 
 - **Trustless** - BTC secured by Bitcoin Script itself, not by any human or committee
-- **Native** - real BTC that never leaves Bitcoin, verified on-chain by an SPV light client, with no bridge and no wrapped token
+- **Native** - real BTC that never leaves Bitcoin, verified on-chain by an SPV light client, with no bridge and no wrapped Bitcoin
 - **On Stellar** - where native USDC lives
 
 Writz is built to be all three. Writz Lend positions are public on chain, like in any other lending market.

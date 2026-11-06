@@ -8,69 +8,47 @@ Writz will not launch on mainnet with real funds until an independent security a
 
 ---
 
-## Audit Strategy
+## Scope
 
-Writz uses the **Stellar Foundation's Audit Bank** program, which subsidizes the cost of smart contract audits for qualifying Soroban projects. This is a separate program from the SCF Build Award - the Audit Bank covers up to 100% of audit costs for projects that meet the readiness criteria.
+The audit covers what holds user funds:
 
-### Audit Readiness Criteria (Writz's current status)
+- `bitcoin-spv`, the Bitcoin light client, and `writz-lend`, the lending contract, with the shared `spv-types` crate
+- As related infrastructure: the script construction in `bitcoin-script` and the protocol signer policy (what the protocol signers will and will not co-sign)
 
-| Criterion | Status |
+The scope is frozen once every piece in it is built and running on testnet. After the freeze, these contracts change only to fix findings.
+
+The review covers, at least:
+
+- Storage growth and TTL handling
+- Cross-contract calls between `writz-lend` and `bitcoin-spv`
+- Integer overflow and rounding in interest and index calculations
+- Access control: admin-only functions and keeper permissions
+- Oracle manipulation and stale prices
+- Light-client rules: header chain, proof of work, reorgs and Merkle proofs
+
+---
+
+## Readiness
+
+| Item | Status |
 |---|---|
-| SCF Build Award received | Pending |
-| Contracts deployed on testnet with passing tests | ✓ Done - 255/255 tests |
-| STRIDE threat model completed | v0.1 draft complete - [`docs/security/stride-threat-model.md`](/security/stride-threat-model). Full revision planned before the audit |
-| Self-service security scan completed | Pending - Phase 2 task |
-| Integration tests covering all flows | ✓ Done - `scripts/deploy/e2e_local.mjs`, run in CI on a local network |
-| Dataflow diagram produced | Pending - Phase 2 task |
+| Contracts deployed on testnet with passing tests | Done: 839 tests |
+| Integration tests covering all flows | Done: `scripts/deploy/e2e_local.mjs`, run in CI on a local network |
+| STRIDE threat model | Draft published: [STRIDE threat model](/security/stride-threat-model). Full revision before the audit |
+| Dataflow diagram | Published in the [STRIDE threat model](/security/stride-threat-model#data-flow-diagram) |
+| Self-service security scan | Pending |
 
 ---
 
-## Target Audit Firms
+## Auditor
 
-### Soroban Contracts - OtterSec or Zellic
-
-For the Soroban contracts, Writz will engage either OtterSec or Zellic - both are Audit Bank approved firms with Soroban-specific experience.
-
-**Scope:** All four Soroban contracts, focusing on:
-- Storage growth vulnerabilities (the #1 Soroban vulnerability class)
-- Cross-contract call security
-- Integer overflow/underflow in interest calculations
-- Access control: admin-only functions, keeper permissions
-- Oracle manipulation vectors
-- Re-entrancy (less common in Soroban but must be checked)
-
-**Target timeline:** before mainnet.
-
----
-
-## Audit Bank Process
-
-1. Submit Audit Bank intake form (provided by SCF upon Build Award approval)
-2. Readiness review by SDF security expert (< 4 weeks)
-3. Audit scheduled with approved firm
-4. Audit completed; findings categorized as Critical, High, Medium, Low, Informational
-5. All Critical/High/Medium findings remediated within 20 business days (required for Audit Bank subsidy)
-6. Audit report published publicly
-7. Co-payment: 5% of audit cost (refunded if remediation deadline met)
-
----
-
-## Post-Audit Audits (Growth and Scale)
-
-Stellar's Audit Bank provides additional free audits at TVL milestones:
-
-| Program | Trigger | Cost to Writz |
-|---|---|---|
-| Growth Audit | > $10M TVL | Free (no co-payment) |
-| Scale Audit | > $100M TVL | Free (no co-payment) |
-
-These audits are re-assessments as the codebase and TVL grow. Writz intends to apply for both as the protocol scales.
+An independent firm with Soroban experience, engaged once the scope above is complete. The firm will be named here when it is engaged. Findings are classified as Critical, High, Medium, Low or Informational; Critical, High and Medium findings are fixed before mainnet, and the final report is published.
 
 ---
 
 ## Current Security Posture
 
-Before the formal Audit Bank engagement, Writz applies the following:
+Before the audit, Writz applies the following:
 
 **Automated tooling:**
 - `cargo clippy` with warnings treated as errors, apart from a short documented allow-list of pre-existing lints
@@ -83,7 +61,7 @@ Before the formal Audit Bank engagement, Writz applies the following:
 
 **Known limitations before audit:**
 - No penetration testing of the relayer API
-- Oracle integration is stubbed in the current testnet deployment (real oracle integration in Phase 2)
+- One price source today (Reflector); the second source, RedStone, is planned
 
 ---
 

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Data flow and trust boundaries</title>
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Work Sans', system-ui, sans-serif;background:#F6F7F8;color:#15181E;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:3rem 2rem}
+.frame{max-width:1000px;width:100%}.diagram-container{width:100%;overflow-x:auto}
+.eyebrow{font-family:'Geist Mono', ui-monospace, monospace;font-size:.66rem;font-weight:500;letter-spacing:.18em;text-transform:uppercase;color:#4B515B;margin-bottom:.5rem}
+h1{font-family:'Work Sans', system-ui, sans-serif;font-size:1.75rem;font-weight:600;letter-spacing:-.02em;line-height:1.15;margin-bottom:1.5rem}
+svg{width:100%;min-width:960px;display:block}@media print{.diagram-container{overflow-x:visible}svg{min-width:0}}</style></head>
+<body><div class="frame"><p class="eyebrow">Threat model</p><h1>Data flow and trust boundaries</h1>
+<div class="diagram-container">
+<svg viewBox="0 0 960 664" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="data-flow-title data-flow-desc">
+<title id="data-flow-title">Data flow and trust boundaries</title>
+<desc id="data-flow-desc">User wallets and the relayer are untrusted; the Writz vault on Bitcoin and the writz-lend and bitcoin-spv contracts on Soroban are trustless; the protocol co-signing key and the liquidation keeper are trusted Writz-operated components; the Reflector price feed is partially trusted.</desc>
+<defs><marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4B515B"/></marker><marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#15181E"/></marker><marker id="arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#2A303A"/></marker><marker id="arrow-open" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polyline points="0 0, 8 3, 0 6" fill="none" stroke="#4B515B" stroke-width="1.2"/></marker></defs>
+<rect width="100%" height="100%" fill="#F6F7F8"/>
+<rect x="24" y="40" width="912" height="120" rx="8" fill="rgba(21,24,30,0.02)" stroke="rgba(21,24,30,0.14)" stroke-width="0.8"/><rect x="40" y="32" width="68" height="16" rx="2" fill="#F6F7F8"/><text x="74.0" y="44" fill="#646A73" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.14em">UNTRUSTED</text>
+<rect x="24" y="216" width="296" height="120" rx="8" fill="rgba(21,24,30,0.02)" stroke="rgba(21,24,30,0.14)" stroke-width="0.8"/><rect x="40" y="208" width="118" height="16" rx="2" fill="#F6F7F8"/><text x="99.0" y="220" fill="#646A73" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.14em">TRUSTLESS, BITCOIN</text>
+<rect x="344" y="216" width="592" height="120" rx="8" fill="rgba(21,24,30,0.02)" stroke="rgba(21,24,30,0.14)" stroke-width="0.8"/><rect x="560" y="208" width="118" height="16" rx="2" fill="#F6F7F8"/><text x="619.0" y="220" fill="#646A73" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.14em">TRUSTLESS, SOROBAN</text>
+<rect x="24" y="392" width="600" height="120" rx="8" fill="rgba(21,24,30,0.02)" stroke="rgba(21,24,30,0.14)" stroke-width="0.8"/><rect x="240" y="384" width="146" height="16" rx="2" fill="#F6F7F8"/><text x="313.0" y="396" fill="#646A73" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.14em">TRUSTED, WRITZ OPERATOR</text>
+<rect x="640" y="392" width="296" height="120" rx="8" fill="rgba(21,24,30,0.02)" stroke="rgba(21,24,30,0.14)" stroke-width="0.8"/><rect x="800" y="384" width="112" height="16" rx="2" fill="#F6F7F8"/><text x="856.0" y="396" fill="#646A73" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.14em">PARTIALLY TRUSTED</text>
+<path d="M176,136 V238" fill="none" stroke="#4B515B" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M468,136 V238" fill="none" stroke="#4B515B" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M492,240 V138" fill="none" stroke="#15181E" stroke-width="1.6" marker-end="url(#arrow-accent)"/>
+<path d="M664,100 H602" fill="none" stroke="#4B515B" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M784,136 V238" fill="none" stroke="#4B515B" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M600,276 H662" fill="none" stroke="#4B515B" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M704,416 V368 Q704,360 696,360 H568 Q560,360 560,352 V314" fill="none" stroke="#4B515B" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M176,416 V314" fill="none" stroke="#4B515B" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M480,416 V314" fill="none" stroke="#4B515B" stroke-width="1.2" marker-end="url(#arrow)"/>
+<rect x="184" y="172" width="64" height="16" rx="2" fill="#F6F7F8"/><text x="216.0" y="184" fill="#646A73" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">LOCK BTC</text>
+<rect x="356" y="172" width="104" height="16" rx="2" fill="#F6F7F8"/><text x="408.0" y="184" fill="#646A73" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">DEPOSIT, BORROW</text>
+<rect x="500" y="172" width="36" height="16" rx="2" fill="#F6F7F8"/><text x="518.0" y="184" fill="#646A73" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">USDC</text>
+<rect x="611" y="76" width="44" height="16" rx="2" fill="#F6F7F8"/><text x="633.0" y="88" fill="#646A73" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">PROOF</text>
+<rect x="792" y="172" width="56" height="16" rx="2" fill="#F6F7F8"/><text x="820.0" y="184" fill="#646A73" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">HEADERS</text>
+<rect x="608" y="252" width="48" height="16" rx="2" fill="#F6F7F8"/><text x="632.0" y="264" fill="#646A73" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">VERIFY</text>
+<rect x="604" y="336" width="56" height="16" rx="2" fill="#F6F7F8"/><text x="632.0" y="348" fill="#646A73" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">BTC/USD</text>
+<rect x="184" y="356" width="56" height="16" rx="2" fill="#F6F7F8"/><text x="212.0" y="368" fill="#646A73" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">CO-SIGN</text>
+<rect x="404" y="356" width="68" height="16" rx="2" fill="#F6F7F8"/><text x="438.0" y="368" fill="#646A73" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">LIQUIDATE</text>
+<rect x="56" y="64" width="240" height="72" rx="6" fill="#F6F7F8"/>
+<rect x="56" y="64" width="240" height="72" rx="6" fill="#ECEEF1" stroke="#4B515B" stroke-width="1"/>
+<rect x="64" y="72" width="40" height="14" rx="2" fill="none" stroke="#4B515B" stroke-opacity="0.5" stroke-width="0.8"/>
+<text x="84.0" y="82" fill="#4B515B" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">USER</text>
+<text x="176.0" y="106.0" fill="#15181E" font-size="16" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">Bitcoin wallet</text>
+<text x="176.0" y="125.0" fill="#4B515B" font-size="12" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">Xverse</text>
+<rect x="360" y="64" width="240" height="72" rx="6" fill="#F6F7F8"/>
+<rect x="360" y="64" width="240" height="72" rx="6" fill="#ECEEF1" stroke="#4B515B" stroke-width="1"/>
+<rect x="368" y="72" width="40" height="14" rx="2" fill="none" stroke="#4B515B" stroke-opacity="0.5" stroke-width="0.8"/>
+<text x="388.0" y="82" fill="#4B515B" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">USER</text>
+<text x="480.0" y="106.0" fill="#15181E" font-size="16" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">Stellar wallet</text>
+<text x="480.0" y="125.0" fill="#4B515B" font-size="12" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">Freighter</text>
+<rect x="664" y="64" width="240" height="72" rx="6" fill="#F6F7F8"/>
+<rect x="664" y="64" width="240" height="72" rx="6" fill="#F6F7F8" stroke="#15181E" stroke-width="1"/>
+<rect x="672" y="72" width="48" height="14" rx="2" fill="none" stroke="#4B515B" stroke-opacity="0.5" stroke-width="0.8"/>
+<text x="696.0" y="82" fill="#4B515B" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">SERVICE</text>
+<text x="784.0" y="106.0" fill="#15181E" font-size="16" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">Relayer</text>
+<text x="784.0" y="125.0" fill="#4B515B" font-size="12" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">headers, proofs</text>
+<rect x="56" y="240" width="240" height="72" rx="6" fill="#F6F7F8"/>
+<rect x="56" y="240" width="240" height="72" rx="6" fill="#F6F7F8" stroke="#15181E" stroke-width="1"/>
+<rect x="64" y="248" width="40" height="14" rx="2" fill="none" stroke="#4B515B" stroke-opacity="0.5" stroke-width="0.8"/>
+<text x="84.0" y="258" fill="#4B515B" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">P2WSH</text>
+<text x="176.0" y="282.0" fill="#15181E" font-size="16" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">Writz vault</text>
+<text x="176.0" y="301.0" fill="#4B515B" font-size="12" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">locks the BTC</text>
+<rect x="360" y="240" width="240" height="72" rx="6" fill="#F6F7F8"/>
+<rect x="360" y="240" width="240" height="72" rx="6" fill="#FFC300" stroke="#15181E" stroke-width="1.4"/>
+<rect x="368" y="248" width="53" height="14" rx="2" fill="none" stroke="#2A303A" stroke-opacity="0.5" stroke-width="0.8"/>
+<text x="394.5" y="258" fill="#2A303A" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">CONTRACT</text>
+<text x="480.0" y="282.0" fill="#15181E" font-size="16" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">writz-lend</text>
+<text x="480.0" y="301.0" fill="#2A303A" font-size="12" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">positions, USDC pool</text>
+<rect x="664" y="240" width="240" height="72" rx="6" fill="#F6F7F8"/>
+<rect x="664" y="240" width="240" height="72" rx="6" fill="#F6F7F8" stroke="#15181E" stroke-width="1"/>
+<rect x="672" y="248" width="53" height="14" rx="2" fill="none" stroke="#4B515B" stroke-opacity="0.5" stroke-width="0.8"/>
+<text x="698.5" y="258" fill="#4B515B" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">CONTRACT</text>
+<text x="784.0" y="282.0" fill="#15181E" font-size="16" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">bitcoin-spv</text>
+<text x="784.0" y="301.0" fill="#4B515B" font-size="12" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">header chain, proofs</text>
+<rect x="56" y="416" width="240" height="72" rx="6" fill="#F6F7F8"/>
+<rect x="56" y="416" width="240" height="72" rx="6" fill="#F6F7F8" stroke="#15181E" stroke-width="1"/>
+<rect x="64" y="424" width="40" height="14" rx="2" fill="none" stroke="#4B515B" stroke-opacity="0.5" stroke-width="0.8"/>
+<text x="84.0" y="434" fill="#4B515B" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">KEY</text>
+<text x="176.0" y="458.0" fill="#15181E" font-size="16" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">Protocol key</text>
+<text x="176.0" y="477.0" fill="#4B515B" font-size="12" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">co-signs releases</text>
+<rect x="360" y="416" width="240" height="72" rx="6" fill="#F6F7F8"/>
+<rect x="360" y="416" width="240" height="72" rx="6" fill="#F6F7F8" stroke="#15181E" stroke-width="1"/>
+<rect x="368" y="424" width="48" height="14" rx="2" fill="none" stroke="#4B515B" stroke-opacity="0.5" stroke-width="0.8"/>
+<text x="392.0" y="434" fill="#4B515B" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">SERVICE</text>
+<text x="480.0" y="458.0" fill="#15181E" font-size="16" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">Keeper</text>
+<text x="480.0" y="477.0" fill="#4B515B" font-size="12" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">calls liquidate()</text>
+<rect x="664" y="416" width="240" height="72" rx="6" fill="#F6F7F8"/>
+<rect x="664" y="416" width="240" height="72" rx="6" fill="#F6F7F8" stroke="#4B515B" stroke-width="1" stroke-dasharray="4,3"/>
+<rect x="672" y="424" width="43" height="14" rx="2" fill="none" stroke="#4B515B" stroke-opacity="0.5" stroke-width="0.8"/>
+<text x="693.5" y="434" fill="#4B515B" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">ORACLE</text>
+<text x="784.0" y="458.0" fill="#15181E" font-size="16" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">Reflector</text>
+<text x="784.0" y="477.0" fill="#4B515B" font-size="12" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">second source planned</text>
+<text x="24" y="560" fill="#4B515B" font-size="15" font-style="italic" font-family="'Work Sans', system-ui, sans-serif">The relayer is untrusted: a false header or proof fails the checks in bitcoin-spv.</text>
+<line x1="32" y1="600" x2="928" y2="600" stroke="rgba(21,24,30,0.12)" stroke-width="0.8"/>
+<text x="32" y="628" fill="#4B515B" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.14em">LEGEND</text>
+<rect x="96" y="618" width="20" height="14" rx="3" fill="#FFC300" stroke="#15181E" stroke-width="1.2"/>
+<text x="124" y="630" fill="#15181E" font-size="12" font-family="'Work Sans', system-ui, sans-serif">Lending contract</text>
+<rect x="271" y="618" width="20" height="14" rx="3" fill="#ECEEF1" stroke="#4B515B" stroke-width="1"/>
+<text x="299" y="630" fill="#15181E" font-size="12" font-family="'Work Sans', system-ui, sans-serif">User wallet</text>
+<rect x="410" y="618" width="20" height="14" rx="3" fill="#F6F7F8" stroke="#15181E" stroke-width="1"/>
+<text x="438" y="630" fill="#15181E" font-size="12" font-family="'Work Sans', system-ui, sans-serif">Component</text>
+<rect x="534" y="618" width="20" height="14" rx="3" fill="#F6F7F8" stroke="#4B515B" stroke-width="1" stroke-dasharray="4,3"/>
+<text x="562" y="630" fill="#15181E" font-size="12" font-family="'Work Sans', system-ui, sans-serif">Price source</text>
+</svg>
+</div></div></body></html>
