@@ -19,10 +19,10 @@ Bitcoin Script allows more complex rules. Writz uses a P2WSH - Pay to Witness Sc
 Writz's P2WSH script has exactly two conditions:
 
 **Condition A (normal - loan repaid):**  
-The BTC can be spent only if both the user's signature AND Writz's protocol signature are present. This is the cooperative release - it happens automatically when a loan is repaid and the Stellar contract generates the co-signature.
+The BTC can be spent only if both the user's signature AND Writz's protocol signature are present. This is the cooperative release: when a loan is fully repaid on Stellar, the Writz relayer co-signs the release with the protocol key and the user adds their signature.
 
 **Condition B (emergency - timelock expiry):**  
-After a defined time-lock (loan duration + a 7-day safety buffer), the user can spend the BTC alone - no Writz signature required. This protects users if the protocol becomes unavailable, goes offline, or ceases to exist.
+After the time-lock height H, the user can spend the BTC alone - no Writz signature required. This protects users if the protocol becomes unavailable, goes offline, or ceases to exist.
 
 The critical property: **neither Writz alone nor the user alone can move the BTC during the active loan period**. Both signatures are required for Condition A. The time-lock enforces Condition B.
 
@@ -47,11 +47,11 @@ OP_ENDIF
 - Both must be present. Either alone is insufficient.
 
 **Spending Condition B** (OP_ELSE branch):
-- Requires the block height to exceed `<locktime>` (`OP_CHECKLOCKTIMEVERIFY`)
+- Requires the transaction's `nLockTime` to be at least `<locktime>` (`OP_CHECKLOCKTIMEVERIFY`), so it can be mined from block `locktime + 1`
 - Then requires only the user signature
 - No protocol involvement needed after the time-lock expires
 
-The script is 114 bytes. Each deposit gets a **unique address** derived from the protocol key, the user key, and the time-lock value - ensuring no two deposits share an address.
+The script is 114 bytes for any height below 8,388,608. Each deposit gets a **unique address** derived from the protocol key, the user key, and the time-lock value - ensuring no two deposits share an address.
 
 ---
 
@@ -63,17 +63,18 @@ deposit_address = P2WSH(
 )
 ```
 
-The `locktime` is calculated as:
+The Writz app sets `locktime` about one year ahead: the current tip plus 52,560 blocks, rounded up to the next multiple of 1,000.
+
 ```
-locktime = current_block_height + loan_duration_blocks + safety_buffer_blocks
+locktime = ceil((tip_height + 52,560) / 1,000) × 1,000
 ```
 
-For a 90-day loan starting at block 900,000:
-- Loan duration: ~12,960 blocks (90 days × 144 blocks/day)
-- Safety buffer: ~1,008 blocks (7 days)
-- `locktime` = 900,000 + 12,960 + 1,008 = 913,968
+For a deposit made at tip 900,000: `locktime` = ceil(952,560 / 1,000) × 1,000 = 953,000. From block 953,001 the user can spend the locked BTC alone.
 
-After Bitcoin block 913,968, the user can spend the locked BTC alone.
+`writz-lend` bounds this value on Stellar:
+- At deposit, `locktime` must lie 1,008 to 105,000 blocks (about 7 days to 2 years) above the block that confirmed the deposit.
+- Every borrow requires `locktime` to be at least 4,320 blocks (about 30 days) above the light client's tip.
+- No liquidation is accepted within 288 blocks (about 2 days) of `locktime`.
 
 ---
 
@@ -85,17 +86,17 @@ When a user repays their USDC loan, the following happens:
 2. The relayer's repay watcher sees the event, builds the release PSBT (Partially Signed Bitcoin Transaction) paying the user's own key, signs it with the protocol key, and publishes the half-signed PSBT on `writz-lend` with `publish_release_psbt`.
 3. The Writz UI fetches it with `get_release_psbt` and the user's Bitcoin wallet adds the user signature.
 4. The PSBT is finalized and broadcast to the Bitcoin network.
-5. The BTC arrives in the user's wallet after 1–6 confirmations.
+5. The BTC arrives at the user's address once the transaction confirms.
 
 The witness structure for Condition A:
 ```
-[user_sig (71 bytes), protocol_sig (72 bytes), 0x01, redeemScript (114 bytes)]
+[user_sig (about 72 bytes), protocol_sig (about 72 bytes), 0x01, redeemScript (114 bytes)]
 ```
 
 This produces a transaction of ~149 vbytes - efficient and inexpensive.
 
 **Verified on Bitcoin Signet:**  
-A real Path A release transaction was broadcast and accepted by the Bitcoin Signet mempool: [`11932100`](https://blockstream.info/signet/tx/119321009b2f92dac8f25f6bcddb2ed6a3ae778e8748ec52910cce90742e4098)  
+A real Path A release transaction was broadcast and confirmed on Bitcoin Signet (block 310,147): [`11932100`](https://blockstream.info/signet/tx/119321009b2f92dac8f25f6bcddb2ed6a3ae778e8748ec52910cce90742e4098)  
 - 89,631 satoshis locked; 88,131 satoshis released (Path A co-signed release)
 - 149 vbytes at 10.1 sat/vbyte
 - Both keys signed the PSBT independently (multi-party flow)
@@ -128,10 +129,10 @@ This ensures that user funds are never permanently inaccessible, even in a worst
 **What Writz cannot do:**
 - Move the BTC unilaterally (no user signature = no valid Condition A spend)
 - Prevent the user from recovering BTC after the time-lock (Condition B requires no protocol involvement)
-- Access the BTC if both the user key and protocol key are lost (standard key management risk)
+- Recover the BTC if the user loses their own key: every spending path needs it (standard key management risk)
 
 **What happens if Writz disappears:**
-- Active loans: Users wait for the time-lock expiry, then claim BTC via Condition B. They keep their USDC. The protocol absorbs the loss.
+- Active loans: Users wait for the time-lock expiry, then claim BTC via Condition B. They keep their USDC. The unpaid debt is a loss for the protocol reserve and then for lenders.
 - No active loans: No locked BTC exists; nothing is at risk.
 
 ---

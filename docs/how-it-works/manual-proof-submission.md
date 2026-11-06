@@ -2,7 +2,9 @@
 
 **What to do if the Writz relayer is unavailable and you need to submit an SPV proof yourself.**
 
-`bitcoin-spv::verify_transaction` (see [SPV Verification](/how-it-works/spv-verification)) takes `raw_tx` as the **non-witness serialization** of a Bitcoin transaction - the txid is `SHA256d(raw_tx)`, and Bitcoin's block Merkle tree is built from non-witness txids. The Writz relayer strips SegWit witness data automatically before submitting a proof. This document explains that step so a technical user can reproduce it manually if the relayer is down.
+`bitcoin-spv::verify_transaction` (see [SPV Verification](/how-it-works/spv-verification)) takes `raw_tx` as the **non-witness serialization** of a Bitcoin transaction - the txid is `SHA256d(raw_tx)`, and Bitcoin's block Merkle tree is built from non-witness txids. The Writz relayer strips SegWit witness data automatically before serving a proof. This document explains that step so a technical user can reproduce it manually if the relayer is down.
+
+A proof only verifies against a block header `bitcoin-spv` already stores, with enough stored blocks above it for the required confirmations. On testnet, header submission is restricted to the relayer account, so a manual proof works only for blocks the relayer submitted before it went down.
 
 This is a **liveness** concern only: if the raw transaction bytes are stripped incorrectly, `verify_transaction` simply fails with `MerkleProofInvalid` and your deposit is rejected - it can be retried with correct bytes. No funds are ever at risk from a stripping mistake.
 
@@ -36,8 +38,9 @@ The result is the non-witness serialization - pass this as `raw_tx` to `verify_t
 ## Reference implementation
 
 ```ts
-// See relayer/src/bitcoin/tx.ts for the canonical, tested implementation.
-import { stripWitness, isSegwit } from "@writz/relayer/bitcoin/tx";
+// relayer/src/bitcoin/tx.ts is the canonical, tested implementation. It is not
+// published as a package: run this from a checkout of this repo.
+import { stripWitness, isSegwit } from "./relayer/src/bitcoin/tx";
 
 const rawTxHex = "..."; // full serialization, as returned by your Bitcoin node/wallet
 const nonWitnessHex = stripWitness(rawTxHex); // safe no-op for legacy transactions

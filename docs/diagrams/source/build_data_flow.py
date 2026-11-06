@@ -1,7 +1,8 @@
 from wz import *
 def body(skin):
     c = SK[skin]
-    p = [zone(c, 24, 40, 912, 120, "UNTRUSTED"),
+    p = [zone(c, 24, 40, 600, 120, "UNTRUSTED"),
+         zone(c, 640, 40, 296, 120, "TRUSTED ON TESTNET", off=136),
          zone(c, 24, 216, 296, 120, "TRUSTLESS, BITCOIN"),
          zone(c, 344, 216, 592, 120, "TRUSTLESS, SOROBAN", off=216),
          zone(c, 24, 392, 600, 120, "TRUSTED, WRITZ OPERATOR", off=216),
@@ -26,17 +27,17 @@ def body(skin):
           label(c, 404, 356, 68, "LIQUIDATE")]
     p += [node(c, 56, 64, 240, 72, "USER", "Bitcoin wallet", "Xverse", "user"),
           node(c, 360, 64, 240, 72, "USER", "Stellar wallet", "Freighter", "user"),
-          node(c, 664, 64, 240, 72, "SERVICE", "Relayer", "headers, proofs"),
+          node(c, 664, 64, 240, 72, "SERVICE", "Relayer", "only header submitter"),
           node(c, 56, 240, 240, 72, "P2WSH", "Writz vault", "locks the BTC"),
           node(c, 360, 240, 240, 72, "CONTRACT", "writz-lend", "positions, USDC pool", "focal"),
           node(c, 664, 240, 240, 72, "CONTRACT", "bitcoin-spv", "header chain, proofs"),
           node(c, 56, 416, 240, 72, "KEY", "Protocol key", "co-signs releases"),
           node(c, 360, 416, 240, 72, "SERVICE", "Keeper", "calls liquidate()"),
           node(c, 664, 416, 240, 72, "ORACLE", "Reflector", "second source planned", "external")]
-    p.append(f'<text x="24" y="560" fill="{c["muted"]}" font-size="{F_NOTE}" font-style="italic" font-family="{SANS}">The relayer is untrusted: a false header or proof fails the checks in bitcoin-spv.</text>')
+    p.append(f'<text x="24" y="560" fill="{c["muted"]}" font-size="{F_NOTE}" font-style="italic" font-family="{SANS}">On testnet the relayer is the only header submitter and runs the protocol key.</text>')
     p.append(legend(c, 624, [("focal", "Lending contract"), ("user", "User wallet"), ("default", "Component"), ("external", "Price source")], 960))
     return "\n".join(p)
 for s in ("light", "dark"):
     page("data-flow", s, "Data flow and trust boundaries",
-         "User wallets and the relayer are untrusted; the Writz vault on Bitcoin and the writz-lend and bitcoin-spv contracts on Soroban are trustless; the protocol co-signing key and the liquidation keeper are trusted Writz-operated components; the Reflector price feed is partially trusted.",
+         "User wallets are untrusted; on testnet the relayer is trusted as the only Bitcoin header submitter; the Writz vault on Bitcoin and the writz-lend and bitcoin-spv contracts on Soroban are trustless; the protocol co-signing key and the liquidation keeper are trusted Writz-operated components; the Reflector price feed is partially trusted.",
          960, 664, body(s), eyebrow="Threat model")

@@ -11,7 +11,7 @@ This page describes the protocol as designed. Each component is marked **Live on
 ## Principles
 
 - **No custodian.** Writz never holds the Bitcoin. Every transaction that can move it is either signed by the borrower or pre-signed by the borrower with fixed outputs.
-- **No bridge and no wrapped Bitcoin.** Collateral is native Bitcoin in the borrower's own script; no transferable or redeemable token stands for it. The Writz Lend pool mints nothing. The one exception is the Writz Vault Unit, used only by the lending-market adapter: a non-transferable accounting unit with no claim on Bitcoin, whose supply always equals the satoshis in active locks.
+- **No bridge and no wrapped Bitcoin.** Collateral is native Bitcoin in the borrower's own script; no transferable or redeemable token stands for it. The Writz Lend pool mints nothing. The one exception is the Writz Vault Unit, designed for the lending-market adapter only: a non-transferable accounting unit with no claim on Bitcoin, whose supply equals the satoshis in active locks.
 - **Verification, not attestation.** Soroban verifies Bitcoin proof of work and transaction inclusion itself. No oracle or committee reports what happened on Bitcoin.
 - **Immutable contracts.** Neither contract can be upgraded ([ADR 0001](/architecture/adr/0001-contract-immutability)). A change is a new deployment and a migration.
 
@@ -105,8 +105,8 @@ Every loan has a maturity in Bitcoin blocks, set well before the vault's timeloc
 
 1. The borrower locks Bitcoin in a vault output and, as designed, pre-signs the liquidation steps.
 2. After the required confirmations (1 on testnet, 6 on mainnet), the relayer serves the SPV proof: raw transaction, Merkle path and block hash.
-3. `writz-lend.deposit` rebuilds the expected script, asks `bitcoin-spv` to verify inclusion and depth, checks the borrower's key signature and the timelock margin, consumes the deposit txid so it cannot back two positions, and opens the position.
-4. `writz-lend.borrow` checks the price and the post-borrow health and pays USDC.
+3. `writz-lend.deposit` rebuilds the expected script, asks `bitcoin-spv` to verify inclusion and depth, checks that H lies 1,008 to 105,000 blocks above the confirming block and that the borrower signed with the deposit key, consumes the deposit txid so it cannot back two positions, and opens the position.
+4. `writz-lend.borrow` checks the timelock margin against the light client's tip, pool liquidity, the global cap, the price and the post-borrow health, and pays USDC.
 
 ### Repay and release
 
@@ -120,7 +120,7 @@ A full repayment emits `repay_full`. The protocol signers check the position on 
 <img className="block dark:hidden" src="/diagrams/liquidation.svg" alt="Liquidation, settled on Bitcoin and proven on Stellar" />
 <img className="hidden dark:block" src="/diagrams/liquidation-dark.svg" alt="Liquidation, settled on Bitcoin and proven on Stellar" />
 
-A keeper repays the debt of an unhealthy or matured loan into an escrow held by `writz-lend`. `writz-lend` checks the trigger and selects the smallest pre-signed step that covers the debt and the bonus; the protocol signers co-sign that step; the keeper broadcasts it on Bitcoin, receives its share, and proves the confirmation through `bitcoin-spv`. `writz-lend` then settles the escrow to lenders, and the borrower receives the rest of the Bitcoin in the same transaction. Liquidation is open to a designated keeper and to anyone after the keeper has been inactive for 24 hours. **Settlement by proof is designed;** on testnet today a liquidation settles the USDC side only.
+A keeper repays the debt of an unhealthy or matured loan into an escrow held by `writz-lend`. `writz-lend` checks the trigger and selects the smallest pre-signed step that covers the debt and the bonus; the protocol signers co-sign that step; the keeper broadcasts it on Bitcoin, receives its share, and proves the confirmation through `bitcoin-spv`. `writz-lend` then settles the escrow to lenders, and the borrower receives the rest of the Bitcoin in the same transaction. Liquidation is open to a designated keeper and to anyone after the keeper has been inactive for 24 hours. **Settlement by proof is designed.** On testnet today a liquidation settles the USDC side only: the keeper pays the debt into the pool and receives a 10% bonus in USDC from the protocol reserve, capped at what the reserve holds. No Bitcoin moves; it stays in the borrower's script, which the borrower can spend alone after H.
 
 ## Composability
 
@@ -145,7 +145,7 @@ What remains trusted, stated plainly:
 
 - **Protocol signers and keepers.** Two signers acting with a keeper could force the liquidation of a healthy position and take the keeper share of one step; the borrower's remainder is paid in every case.
 - **An unpaid loan at the timelock.** Liquidation closes 288 blocks before H. A loan still unpaid then is reclaimed by the borrower, and the loss falls on the reserve and then on lenders. Maturity and keepers exist to make this rare; caps bound it.
-- **The admin.** It can change caps, keepers and the price source and pause new loans; it cannot change contract code. Address changes take effect after a public delay (designed); today they are immediate.
+- **The admin.** On `writz-lend` it can change the borrow cap, the keeper and its inactivity window, the relayer, the price source, the `bitcoin-spv` address, the storage windows and the tip-age limit, raise the borrow timelock margin, and pause new loans. On `bitcoin-spv` it sets the checkpoint once, chooses the header submitter and the lending contracts allowed to consume deposits, and can hand the role to another account. It cannot change contract code. Address changes take effect after a public delay (designed); today they are immediate.
 - **The light client.** `bitcoin-spv` checks proof of work against a checkpoint, limits reorganizations to 20 blocks and rejects headers more than two hours in the future. Header submission is restricted to a designated submitter today and permissionless as designed. On Signet the designated submitter is trusted for header validity, since Signet block signatures are not checked; on mainnet, proof of work carries that weight. More: [SPV verification](/how-it-works/spv-verification) and [Security model](/security/security-model).
 
 Threat model: [STRIDE threat model](/security/stride-threat-model).
@@ -171,5 +171,5 @@ Mainnet is planned for Q2 to Q3 2027, after an external audit.
 | Contracts | Rust, `soroban-sdk`, compiled to `wasm32v1-none` |
 | Bitcoin | P2WSH, BIP-137 signatures, PSBT; `bitcoinjs-lib` in the browser |
 | Relayer | Bun, TypeScript, Esplora, Stellar RPC |
-| App | Next.js, Stellar Wallets Kit (Freighter and others), Xverse |
+| App | Next.js, Stellar Wallets Kit (Freighter and others), Pollar sign-in, Xverse |
 | SDK | `@writz/sdk` (TypeScript), `writz-spv-client` (Rust) |

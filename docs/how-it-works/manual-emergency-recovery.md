@@ -2,7 +2,7 @@
 
 **A safe, copy-pasteable reference for reclaiming BTC via the CLTV timelock, without relying on the Writz frontend.**
 
-Path B lets a user recover their locked BTC unilaterally once the CLTV timelock has expired - no Writz co-signature needed (see [Bitcoin Side](/how-it-works/bitcoin-side#spending-path-b-the-emergency-release)). `bitcoin-script`'s `buildEmergencyTransaction`/`finalizePathB` build this transaction correctly and are tested. The app's [reclaim help page](https://testnet.writz.xyz/help/reclaim) explains the steps, but no button in the app builds this transaction for you: you run the Node.js script below yourself. This document is not a fallback for when the frontend is unavailable, it is the path.
+Path B lets a user recover their locked BTC unilaterally once the CLTV timelock has expired - no Writz co-signature needed (see [Bitcoin Side](/how-it-works/bitcoin-side#spending-path-b-the-emergency-release)). `bitcoin-script`'s `buildEmergencyTransaction`/`finalizePathB` build this transaction correctly and are tested. The app's [reclaim help page](https://testnet.writz.xyz/help/reclaim) explains the steps, but no button in the app builds this transaction for you: you run the script below yourself. This document is not a fallback for when the frontend is unavailable, it is the path.
 
 **Do not build this transaction by hand in a generic wallet UI.** The most common way to get this wrong is `nSequence`: many wallets default to `0xFFFFFFFF`, which silently disables `OP_CHECKLOCKTIMEVERIFY` - your transaction will be rejected by the network with no clear error, and it's easy to mistakenly conclude the timelock hasn't expired when it actually has. `bitcoin-script`'s `buildEmergencyTransaction`/`finalizePathB` already set this correctly and - unlike a hand-built PSBT - make it **impossible to override**: `SpendParams` has no caller-settable `sequence` field for this path, so there is no way to accidentally regress this into `0xFFFFFFFF`. Use the canonical implementation below instead of a generic wallet.
 
@@ -10,7 +10,7 @@ Path B lets a user recover their locked BTC unilaterally once the CLTV timelock 
 
 ## What you need
 
-- Your deposit's redeem script and P2WSH scriptPubKey (derivable from your BTC pubkey, the protocol pubkey, and the CLTV `timelockHeight` - see `bitcoin-script/src/address.ts`'s `deriveDepositAddress`, or read them back from `PositionDashboard`/your original deposit record).
+- Your deposit's redeem script and P2WSH scriptPubKey (derivable from your BTC pubkey, the protocol pubkey, and the CLTV `timelockHeight` - see `bitcoin-script/src/address.ts`'s `deriveDepositAddress`, or take them from your loan backup in the app, listed on the reclaim help page).
 - The funding transaction's txid and output index (`vout`), and the amount locked (satoshis).
 - Your own Bitcoin private key (the one that derived your deposit).
 - Confirmation that the current Bitcoin block height has passed `timelockHeight`.
@@ -19,8 +19,8 @@ Path B lets a user recover their locked BTC unilaterally once the CLTV timelock 
 
 ```js
 // Requires: bun add bitcoinjs-lib @bitcoinerlab/secp256k1 ecpair
-// Run from a checkout of this repo so the local bitcoin-script package resolves,
-// or `bun add file:./bitcoin-script` from elsewhere in this monorepo.
+// @writz/bitcoin-script is not on npm: build it from a checkout of this repo
+// (`cd bitcoin-script && bun install && bun run build`), then `bun add file:<path>/bitcoin-script`.
 import * as bitcoin from 'bitcoinjs-lib';
 import {
   buildEmergencyTransaction,
@@ -28,7 +28,7 @@ import {
   keyPairFromPrivkey,
 } from '@writz/bitcoin-script';
 
-const network = bitcoin.networks.testnet; // or bitcoin.networks.bitcoin for mainnet
+const network = bitcoin.networks.testnet; // Signet uses the testnet parameters; bitcoin.networks.bitcoin for mainnet
 
 const userKey = keyPairFromPrivkey(
   Buffer.from('<your 32-byte private key, hex>', 'hex'),
@@ -61,4 +61,4 @@ Broadcast the resulting hex via any Bitcoin node or block explorer's "broadcast 
 ## Verifying before you broadcast
 
 - Decode the raw tx (e.g. `bitcoin-cli decoderawtransaction <hex>`) and confirm `locktime` equals your `timelockHeight`, and the input's `sequence` is `4294967294` (`0xfffffffe`) - **not** `4294967295`.
-- Confirm the current chain tip height is `>= timelockHeight`. If it isn't yet, the transaction will be rejected regardless of `nSequence` - this is expected, not a bug.
+- Confirm the current chain tip height is `>= timelockHeight`, so the next block is above it. If it isn't yet, the transaction will be rejected regardless of `nSequence` - this is expected, not a bug.

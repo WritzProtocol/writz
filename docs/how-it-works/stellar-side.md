@@ -38,13 +38,15 @@ pub fn deposit(depositor: Address, /* SPV proof args */, p2wsh_script_pubkey: By
 pub fn supply_usdc(supplier: Address, amount: i128) -> Result<(), WritzLendError>
 pub fn withdraw_supply(supplier: Address, amount: i128) -> Result<(), WritzLendError>
 
-// Borrow: checks the 150% collateral ratio at the current oracle price, pool liquidity and the total borrow cap.
+// Borrow: checks the timelock is at least 4,320 blocks above a fresh light-client tip, pool liquidity,
+// the total borrow cap and the 150% collateral ratio at the current oracle price.
 pub fn borrow(borrower: Address, txid: BytesN<32>, usdc_amount: i128) -> Result<(), WritzLendError>
 
 // Repay: reduces outstanding debt. Emits `repay`, or `repay_full` and closes the position when the debt reaches zero.
 pub fn repay(repayer: Address, txid: BytesN<32>, usdc_amount: i128) -> Result<(), WritzLendError>
 
-// Liquidate: the designated keeper, or anyone once the keeper is stale (24h) - checks oracle undercollateralization (< 120%).
+// Liquidate: the designated keeper, or anyone once the keeper is stale (24h). Refused within 288 blocks of the
+// timelock; checks oracle undercollateralization (< 120%).
 pub fn liquidate(keeper: Address, txid: BytesN<32>) -> Result<(), WritzLendError>
 
 // Relayer only: store the co-signed Path A release PSBT for a repaid position; anyone can read it back.
@@ -59,7 +61,7 @@ pub fn get_release_psbt(txid: BytesN<32>) -> Option<Bytes>
 - Liquidation pays the liquidator a USDC bonus from the protocol reserve and never moves BTC (GHSA-5rxp-7f9g-r66x)
 - A pause (`set_paused`) stops new deposits, borrows and supply, never `repay`, `withdraw_supply`, `liquidate` or `publish_release_psbt`
 
-**Events emitted** (topic strings, matching `contracts/contracts/writz-lend/src/events.rs` exactly): `deposit`, `borrow`, `repay`, `repay_full` (emitted instead of `repay` when a repayment fully closes the debt), `liquidate`, `supply`, `withdraw`, `paused_set`, `oracle_set`.
+**Events emitted** (topic strings, matching `contracts/contracts/writz-lend/src/events.rs` exactly): `deposit`, `borrow`, `repay`, `repay_full` (emitted instead of `repay` when a repayment fully closes the debt), `liquidate`, `supply`, `withdraw`, `paused_set`, `oracle_set`, `entry_ttl_set`.
 
 **Deployed:** `CD3BRE32LDNDHAEVI6H35UC3NIRREW5BLH64AZMHSQY3LEKYDLKYWBXS`
 
@@ -100,7 +102,7 @@ else:
 
 Supply APR = borrow APR x utilization x (1 - 15%), as in `contracts/contracts/writz-lend/src/rates.rs`.
 
-Interest accrues continuously. Every position-touching call (borrow, repay, liquidate) applies accrued interest before processing the action.
+Interest accrues per ledger through a global borrow index. Every call that changes the pool (supply, withdraw, borrow, repay, liquidate) first brings the index up to date, so each interval is priced at the utilization that held during it.
 
 ---
 
@@ -145,7 +147,7 @@ Testnet runs short windows because its live state is above the network's target 
 
 The admin can change these windows without a redeploy (`set_entry_ttl` on writz-lend, `set_ttls` on bitcoin-spv, same bounds as the constructors), so they can follow the rent rate. A change applies to entries written or touched after it; existing entries keep their TTL until a call tops them up or refreshes them.
 
-**Permissionless refresh:** every entry above has a public `refresh_*` function (or is covered by a contract-wide `refresh_ttl`/`refresh_instance_ttl`) that extends its TTL. Any keeper - including Writz's own keeper, a third-party keeper, or even the user themselves - can call these to prevent expiry. No permission required. This is a genuinely load-bearing safety net, not a nice-to-have: none of these entries auto-renews just from being read by an unrelated call, and an idle deployment (low traffic, or a position nobody touches for months) is exactly the case these functions exist for.
+**Permissionless refresh:** positions, supply balances, release PSBTs, the protocol accounting and `bitcoin-spv`'s singletons each have a public `refresh_*` function that extends their TTL to the full window. Anyone (Writz's keeper, a third party, or the user) can call them; no permission is required. A position, balance or PSBT is also topped up when a call that uses it reads or writes it, but an idle entry (a position nobody touches for months) is only kept live by these functions. Stored headers other than the tip, and consumed-deposit markers, have no refresh function: once archived they are restored when next read.
 
 ```rust
 // writz-lend
@@ -158,13 +160,11 @@ pub fn refresh_release_psbt_ttl(env: Env, txid: BytesN<32>) -> bool
 pub fn refresh_ttl(env: Env)  // extends Config, Checkpoint, the best tip and its header
 ```
 
-`writz-lend`'s `refresh_release_psbt_ttl` is a recent addition - before it, a published release PSBT could only have its TTL bumped as a side effect of fetching or re-publishing it, with no standalone way to keep it alive.
-
 ---
 
 ## Events
 
-Contract state changes emit structured events using Soroban's `#[contractevent]` annotation. Topic strings below match `events.rs` in each contract exactly - an indexer or the relayer's event watcher must filter on these, not on invented names.
+Contract state changes emit structured events using Soroban's `#[contractevent]` annotation. Topic strings below match the contracts' `#[contractevent]` definitions exactly - an indexer or the relayer's event watcher must filter on these, not on invented names.
 
 | Topic | Contract | When emitted |
 |---|---|---|
@@ -177,8 +177,10 @@ Contract state changes emit structured events using Soroban's `#[contractevent]`
 | `withdraw` | writz-lend | Lender withdrew USDC from the pool |
 | `paused_set` | writz-lend | Admin paused or unpaused new deposits/borrows/supply |
 | `oracle_set` | writz-lend | Admin changed the oracle address |
+| `entry_ttl_set` | writz-lend | Admin changed `entry_ttl_ledgers` |
+| `ttls_set` | bitcoin-spv | Admin changed the header and consumed-marker windows |
 
-`supply`/`withdraw` carry `supplier`, `usdc_amount`, the `scaled_amount` minted or burned, the `supply_index` it was scaled at and the resulting `total_supply_assets` - enough to enumerate every lender and rebuild each scaled balance from events alone, the same way `deposit` events let you enumerate borrowers (see `docs/architecture/contract-migration-runbook.md`).
+`supply`/`withdraw` carry `supplier`, `usdc_amount`, the `scaled_amount` minted or burned, the `supply_index` it was scaled at and the resulting `total_supply_assets` - enough to enumerate every lender and rebuild each scaled balance from events alone, the same way `deposit` events let you enumerate borrowers (see the [Contract migration runbook](/architecture/contract-migration-runbook)).
 
 Events are the primary mechanism for the Writz backend to detect loan repayments (`repay_full` on `writz-lend`) and trigger the BTC co-signing release on the Bitcoin side - see `relayer/src/repay-watcher/`.
 
