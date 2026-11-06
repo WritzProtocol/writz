@@ -25,10 +25,23 @@ export function skeletonHints(): Record<string, string> {
   return Object.fromEntries(SCENARIOS.map((s) => [s.id, skeletonHint(s.build(now))]));
 }
 
+const UNSAFE_IN_SCRIPT: Record<string, string> = {
+  "<": "\\u003c",
+  ">": "\\u003e",
+  "&": "\\u0026",
+  "\u2028": "\\u2028",
+  "\u2029": "\\u2029",
+};
+
+/** JSON for an inline `<script>`: still a valid JS literal, with nothing that could close the tag. */
+export function scriptLiteral(value: unknown): string {
+  return JSON.stringify(value).replace(/[<>&\u2028\u2029]/g, (c) => UNSAFE_IN_SCRIPT[c]);
+}
+
 /**
  * Runs before first paint so each skeleton can take the layout the page will settle into.
  * Without a scenario it guesses from what this browser remembers: a wallet and its loans, or a deposit in progress.
  */
 export function skeletonScript(hints: Record<string, string> | null): string {
-  return `(function(){try{var d=document.documentElement,m=${JSON.stringify(hints)},q=new URLSearchParams(location.search).get("scenario"),h=m&&q?m[q]:null;if(!h){var s=localStorage,w=s.getItem("writz.walletBackend")?"1":"0",l="0",st="amount";for(var i=0;i<s.length;i++){var k=s.key(i)||"",v=s.getItem(k);if(w==="1"&&k.indexOf(${JSON.stringify(storageKey(config.contracts.writzLend, ""))})===0&&v&&v!=="[]")l="1";if(k.indexOf("writz.pendingDeposit.")===0&&v&&v!=="null")st="other";}h=w+l+st;}d.setAttribute("data-wz-wallet",h.charAt(0));d.setAttribute("data-wz-loans",h.charAt(1));d.setAttribute("data-wz-step",h.slice(2));}catch(e){}})();`;
+  return `(function(){try{var d=document.documentElement,m=${scriptLiteral(hints)},q=new URLSearchParams(location.search).get("scenario"),h=m&&q?m[q]:null;if(!h){var s=localStorage,w=s.getItem("writz.walletBackend")?"1":"0",l="0",st="amount";for(var i=0;i<s.length;i++){var k=s.key(i)||"",v=s.getItem(k);if(w==="1"&&k.indexOf(${scriptLiteral(storageKey(config.contracts.writzLend, ""))})===0&&v&&v!=="[]")l="1";if(k.indexOf("writz.pendingDeposit.")===0&&v&&v!=="null")st="other";}h=w+l+st;}d.setAttribute("data-wz-wallet",h.charAt(0));d.setAttribute("data-wz-loans",h.charAt(1));d.setAttribute("data-wz-step",h.slice(2));}catch(e){}})();`;
 }
