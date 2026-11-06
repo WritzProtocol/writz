@@ -1,18 +1,18 @@
 # Terms of Service
 
-Effective date: August 17, 2026
+Effective date: November 6, 2026
 
-Status: Writz is currently deployed on Soroban Testnet and Bitcoin Signet only. No mainnet deployment with real user funds exists at the time of writing. These terms apply to the testnet application, the public website, and will continue to apply once a mainnet deployment goes live, subject to the update process described below.
+Status: Writz is currently deployed on Stellar testnet and Bitcoin Signet only. No mainnet deployment with real user funds exists at the time of writing. These terms apply to the testnet application, the public website, and will continue to apply once a mainnet deployment goes live, subject to the update process described below.
 
 ## 1. What Writz Is
 
-Writz Protocol is open source smart contract software deployed on the Stellar network (Soroban) and secured in part by Bitcoin Script on the Bitcoin network. Writz is not a company offering financial services, not a bank, not a broker, and not a custodian. Nobody at Writz holds, controls, or has access to user funds at any point. Collateral is locked by a Bitcoin Script (P2WSH) that only the depositing user and the protocol's verification logic can act on, under the conditions encoded in that script.
+Writz Protocol is open source smart contract software deployed on the Stellar network (Soroban) and secured in part by Bitcoin Script on the Bitcoin network. Writz is not a company offering financial services, not a bank, not a broker, and not a custodian. Nobody at Writz holds, controls, or has access to user funds at any point. Collateral is locked by a Bitcoin Script (P2WSH) that requires the depositing user's key on every spending path: a cooperative release also needs the protocol's signature, and after the timelock the user can spend alone, under the conditions encoded in that script.
 
 References to "Writz," "the protocol," or "we" in this document mean the open source software and the individuals contributing to its development, not a registered financial institution, unless a specific legal entity is named in a future revision of this document.
 
 ## 2. No Custody, No Intermediary
 
-Writz does not take custody of Bitcoin, USDC, or any other asset. All actions (depositing collateral, borrowing, repaying, and withdrawing) are executed directly by the user through their own Bitcoin and Stellar wallets, verified on-chain by public smart contract logic. There is no step in the protocol where a Writz-controlled account can unilaterally move user funds outside the rules encoded in the contracts.
+Writz does not take custody of Bitcoin, USDC, or any other asset. All actions (depositing collateral, borrowing, repaying, and withdrawing) are executed directly by the user through their own Bitcoin and Stellar wallets, verified on-chain by public smart contract logic. On testnet only, a user who signs in with an email or social account instead uses a Stellar test account whose key is held by Pollar, a third-party service, not by Writz. There is no step in the protocol where a Writz-controlled account can unilaterally move user funds outside the rules encoded in the contracts.
 
 ## 3. Eligibility and Prohibited Use
 
