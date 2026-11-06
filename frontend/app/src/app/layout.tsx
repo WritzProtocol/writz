@@ -62,10 +62,10 @@ export const metadata: Metadata = {
     url: "/",
     images: [
       {
-        url: "/og.png?v=3",
+        url: "/og.png?v=4",
         width: 2400,
         height: 1260,
-        alt: "Writz. Lock Bitcoin. Borrow dollars. Tell no one. No bridge, no custodian, no wrapped token.",
+        alt: "Writz Protocol. Native Bitcoin lending on Stellar. No bridge, no custodian, no wrapped token.",
       },
     ],
   },
@@ -74,7 +74,7 @@ export const metadata: Metadata = {
     site: "@WritzProtocol",
     title: TITLE,
     description: DESCRIPTION,
-    images: ["/og.png?v=3"],
+    images: ["/og.png?v=4"],
   },
 };
 

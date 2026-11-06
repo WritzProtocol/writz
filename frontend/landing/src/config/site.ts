@@ -7,8 +7,8 @@ export const ORGANIZATION_ID = `${env.siteUrl}/#organization`;
 export const WEBSITE_ID = `${env.siteUrl}/#website`;
 
 export const OG_IMAGE = {
-  url: "/og.png?v=3",
+  url: "/og.png?v=4",
   width: 2400,
   height: 1260,
-  alt: "Writz. Lock Bitcoin. Borrow dollars. Tell no one. No bridge, no custodian, no wrapped token.",
+  alt: "Writz Protocol. Native Bitcoin lending on Stellar. No bridge, no custodian, no wrapped token.",
 };
