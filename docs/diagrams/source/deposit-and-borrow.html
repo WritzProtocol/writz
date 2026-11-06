@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>From a Bitcoin deposit to a USDC loan</title>
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Work Sans', system-ui, sans-serif;background:#F6F7F8;color:#15181E;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:3rem 2rem}
+.frame{max-width:1320px;width:100%}.diagram-container{width:100%;overflow-x:auto}
+.eyebrow{font-family:'Geist Mono', ui-monospace, monospace;font-size:.66rem;font-weight:500;letter-spacing:.18em;text-transform:uppercase;color:#4B515B;margin-bottom:.5rem}
+h1{font-family:'Work Sans', system-ui, sans-serif;font-size:1.75rem;font-weight:600;letter-spacing:-.02em;line-height:1.15;margin-bottom:1.5rem}
+svg{width:100%;min-width:1280px;display:block}@media print{.diagram-container{overflow-x:visible}svg{min-width:0}}</style></head>
+<body><div class="frame"><p class="eyebrow">Sequence</p><h1>From a Bitcoin deposit to a USDC loan</h1>
+<div class="diagram-container">
+<svg viewBox="0 0 1280 848" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="deposit-and-borrow-title deposit-and-borrow-desc">
+<title id="deposit-and-borrow-title">From a Bitcoin deposit to a USDC loan</title>
+<desc id="deposit-and-borrow-desc">The borrower locks Bitcoin, gets an SPV proof from the relayer, deposits it to writz-lend, which verifies the transaction through bitcoin-spv and opens the position, then borrows USDC after a price and health check.</desc>
+<defs><marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4B515B"/></marker><marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#15181E"/></marker><marker id="arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#2A303A"/></marker><marker id="arrow-open" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polyline points="0 0, 8 3, 0 6" fill="none" stroke="#4B515B" stroke-width="1.2"/></marker></defs>
+<rect width="100%" height="100%" fill="#F6F7F8"/>
+<line x1="140" y1="112" x2="140" y2="704" stroke="rgba(21,24,30,0.22)" stroke-width="1" stroke-dasharray="3,3"/>
+<line x1="390" y1="112" x2="390" y2="704" stroke="rgba(21,24,30,0.22)" stroke-width="1" stroke-dasharray="3,3"/>
+<line x1="640" y1="112" x2="640" y2="704" stroke="rgba(21,24,30,0.22)" stroke-width="1" stroke-dasharray="3,3"/>
+<line x1="890" y1="112" x2="890" y2="704" stroke="rgba(21,24,30,0.22)" stroke-width="1" stroke-dasharray="3,3"/>
+<line x1="1140" y1="112" x2="1140" y2="704" stroke="rgba(21,24,30,0.22)" stroke-width="1" stroke-dasharray="3,3"/>
+<rect x="886" y="360" width="8" height="168" fill="rgba(21,24,30,0.06)" stroke="#4B515B" stroke-width="0.8"/>
+<rect x="886" y="576" width="8" height="88" fill="rgba(21,24,30,0.06)" stroke="#4B515B" stroke-width="0.8"/>
+<line x1="144" y1="176" x2="384" y2="176" stroke="#4B515B" stroke-width="1.2" marker-end="url(#arrow)"/>
+<rect x="239.0" y="156" width="52" height="12" rx="2" fill="#F6F7F8"/><text x="265.0" y="165" fill="#646A73" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">LOCK BTC</text>
+<line x1="644" y1="224" x2="1134" y2="224" stroke="#4B515B" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#arrow-open)"/>
+<rect x="743.0" y="204" width="44" height="12" rx="2" fill="#F6F7F8"/><text x="765.0" y="213" fill="#646A73" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">HEADERS</text>
+<line x1="144" y1="272" x2="634" y2="272" stroke="#4B515B" stroke-width="1.2" marker-end="url(#arrow)"/>
+<rect x="227.0" y="252" width="76" height="12" rx="2" fill="#F6F7F8"/><text x="265.0" y="261" fill="#646A73" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">REQUEST PROOF</text>
+<line x1="636" y1="312" x2="146" y2="312" stroke="#4B515B" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+<rect x="487.0" y="292" width="56" height="12" rx="2" fill="#F6F7F8"/><text x="515.0" y="301" fill="#646A73" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">SPV PROOF</text>
+<line x1="144" y1="360" x2="884" y2="360" stroke="#4B515B" stroke-width="1.2" marker-end="url(#arrow)"/>
+<rect x="223.0" y="340" width="84" height="12" rx="2" fill="#F6F7F8"/><text x="265.0" y="349" fill="#646A73" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">DEPOSIT + PROOF</text>
+<line x1="894" y1="400" x2="1134" y2="400" stroke="#4B515B" stroke-width="1.2" marker-end="url(#arrow)"/>
+<rect x="987.0" y="380" width="56" height="12" rx="2" fill="#F6F7F8"/><text x="1015.0" y="389" fill="#646A73" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">VERIFY TX</text>
+<line x1="1136" y1="440" x2="896" y2="440" stroke="#4B515B" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+<rect x="987.0" y="420" width="56" height="12" rx="2" fill="#F6F7F8"/><text x="1015.0" y="429" fill="#646A73" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">CONFIRMED</text>
+<path d="M894,468 H926 Q934,468 934,476 V484 Q934,492 926,492 H896" fill="none" stroke="#4B515B" stroke-width="1.2" marker-end="url(#arrow)"/>
+<rect x="942" y="474" width="96" height="12" rx="2" fill="#F6F7F8"/><text x="990.0" y="483" fill="#646A73" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">CHECK SCRIPT, KEY</text>
+<line x1="886" y1="528" x2="146" y2="528" stroke="#4B515B" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+<rect x="727.0" y="508" width="76" height="12" rx="2" fill="#F6F7F8"/><text x="765.0" y="517" fill="#646A73" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">POSITION OPEN</text>
+<line x1="144" y1="576" x2="884" y2="576" stroke="#4B515B" stroke-width="1.2" marker-end="url(#arrow)"/>
+<rect x="233.0" y="556" width="64" height="12" rx="2" fill="#F6F7F8"/><text x="265.0" y="565" fill="#646A73" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">BORROW USDC</text>
+<path d="M894,604 H926 Q934,604 934,612 V620 Q934,628 926,628 H896" fill="none" stroke="#4B515B" stroke-width="1.2" marker-end="url(#arrow)"/>
+<rect x="942" y="610" width="76" height="12" rx="2" fill="#F6F7F8"/><text x="980.0" y="619" fill="#646A73" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">PRICE, HEALTH</text>
+<line x1="886" y1="664" x2="146" y2="664" stroke="#15181E" stroke-width="1.6" marker-end="url(#arrow-accent)"/>
+<rect x="749.0" y="644" width="32" height="12" rx="2" fill="#F6F7F8"/><text x="765.0" y="653" fill="#646A73" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">USDC</text>
+<rect x="48" y="64" width="184" height="48" rx="6" fill="#F6F7F8"/>
+<rect x="48" y="64" width="184" height="48" rx="6" fill="#ECEEF1" stroke="#4B515B" stroke-width="1"/>
+<text x="140.0" y="92.0" fill="#15181E" font-size="13" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">Borrower</text>
+<rect x="298" y="64" width="184" height="48" rx="6" fill="#F6F7F8"/>
+<rect x="298" y="64" width="184" height="48" rx="6" fill="#F6F7F8" stroke="#15181E" stroke-width="1"/>
+<text x="390.0" y="92.0" fill="#15181E" font-size="13" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">Bitcoin</text>
+<rect x="548" y="64" width="184" height="48" rx="6" fill="#F6F7F8"/>
+<rect x="548" y="64" width="184" height="48" rx="6" fill="#F6F7F8" stroke="#15181E" stroke-width="1"/>
+<text x="640.0" y="92.0" fill="#15181E" font-size="13" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">Relayer</text>
+<rect x="798" y="64" width="184" height="48" rx="6" fill="#F6F7F8"/>
+<rect x="798" y="64" width="184" height="48" rx="6" fill="#FFC300" stroke="#15181E" stroke-width="1.4"/>
+<text x="890.0" y="92.0" fill="#15181E" font-size="13" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">writz-lend</text>
+<rect x="1048" y="64" width="184" height="48" rx="6" fill="#F6F7F8"/>
+<rect x="1048" y="64" width="184" height="48" rx="6" fill="#F6F7F8" stroke="#15181E" stroke-width="1"/>
+<text x="1140.0" y="92.0" fill="#15181E" font-size="13" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">bitcoin-spv</text>
+<text x="40" y="748" fill="#4B515B" font-size="13" font-style="italic" font-family="'Work Sans', system-ui, sans-serif">The deposit also carries the pre-signed liquidation steps; borrow sets a maturity in Bitcoin blocks.</text>
+<line x1="32" y1="784" x2="1248" y2="784" stroke="rgba(21,24,30,0.12)" stroke-width="0.8"/>
+<text x="32" y="812" fill="#4B515B" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.14em">LEGEND</text>
+<line x1="112" y1="809" x2="132" y2="809" stroke="#4B515B" stroke-width="1.2"/>
+<text x="140" y="813" fill="#15181E" font-size="10" font-family="'Work Sans', system-ui, sans-serif">Call</text>
+<line x1="204" y1="809" x2="224" y2="809" stroke="#4B515B" stroke-width="1.2" stroke-dasharray="5,4"/>
+<text x="232" y="813" fill="#15181E" font-size="10" font-family="'Work Sans', system-ui, sans-serif">Return or event</text>
+<line x1="365" y1="809" x2="385" y2="809" stroke="#15181E" stroke-width="1.6"/>
+<text x="393" y="813" fill="#15181E" font-size="10" font-family="'Work Sans', system-ui, sans-serif">USDC to the borrower</text>
+</svg>
+</div></div></body></html>

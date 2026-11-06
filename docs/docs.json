@@ -50,8 +50,7 @@
           {
             "group": "Architecture",
             "pages": [
-              "architecture/technical-overview",
-              "architecture/diagrams"
+              "architecture/technical-overview"
             ]
           },
           {
@@ -248,6 +247,10 @@
     {
       "source": "/developers/relayer-backfill-runbook",
       "destination": "/developers/relayer-recovery"
+    },
+    {
+      "source": "/architecture/diagrams",
+      "destination": "/architecture/technical-overview"
     }
   ]
 }

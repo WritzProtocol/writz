@@ -1,0 +1,174 @@
+---
+title: "Technical Architecture"
+sidebarTitle: "Technical Overview"
+mode: "wide"
+description: "How Writz lets Bitcoin holders borrow USDC on Stellar against native Bitcoin, with no custodian, no bridge and no wrapped asset."
+---
+
+Writz lets a Bitcoin holder borrow USDC on Stellar against Bitcoin that never leaves the Bitcoin network. The Bitcoin stays in a script the borrower controls, a light client on Soroban verifies it, and a lending contract on Soroban issues and settles the loan. If a loan defaults, the lenders are repaid from the Bitcoin through transactions the borrower signed in advance.
+
+This page describes the protocol as designed. Each component is marked **Live on testnet** or **Designed**, and [Status](#status) lists what runs today.
+
+## Principles
+
+- **No custodian.** Writz never holds the Bitcoin. Every transaction that can move it is either signed by the borrower or pre-signed by the borrower with fixed outputs.
+- **No bridge and no wrapped asset.** Collateral is native Bitcoin in the borrower's own script. Nothing is minted against it in the Writz pool.
+- **Verification, not attestation.** Soroban verifies Bitcoin proof of work and transaction inclusion itself. No oracle or committee reports what happened on Bitcoin.
+- **Immutable contracts.** Neither contract can be upgraded ([ADR 0001](/architecture/adr/0001-contract-immutability)). A change is a new deployment and a migration.
+
+## System overview
+
+<img className="block dark:hidden" src="/diagrams/system-architecture.svg" alt="Writz Protocol system architecture" />
+<img className="hidden dark:block" src="/diagrams/system-architecture-dark.svg" alt="Writz Protocol system architecture" />
+
+| Layer | Component | Role | Status |
+|---|---|---|---|
+| Bitcoin | Writz vault | P2WSH script holding the borrower's Bitcoin, with a cooperative path and a timelock path | Live on testnet (one protocol key); 2-of-3 designed |
+| Stellar | `bitcoin-spv` | Bitcoin light client: header chain, proof of work, Merkle inclusion, deposit registry | Live on testnet |
+| Stellar | `writz-lend` | Positions, USDC pool, interest, liquidation, release publication | Live on testnet |
+| Stellar | Price oracles | BTC/USD from Reflector, with RedStone as a second source | Reflector live on testnet; RedStone designed |
+| Off-chain | Relayer | Submits Bitcoin headers to `bitcoin-spv` and serves proofs | Live on testnet |
+| Off-chain | Protocol signers | Hold the protocol keys and co-sign only what `writz-lend` authorizes | One key live on testnet; three independent signers designed |
+| Off-chain | Keepers | Liquidate unhealthy or matured loans and settle them by proof | Designated keeper live on testnet; settlement by proof designed |
+
+## The Bitcoin side
+
+### The vault script
+
+<img className="block dark:hidden" src="/diagrams/vault-spending-paths.svg" alt="Writz vault spending paths" />
+<img className="hidden dark:block" src="/diagrams/vault-spending-paths-dark.svg" alt="Writz vault spending paths" />
+
+Each deposit pays a P2WSH output derived from the borrower's key, the protocol keys and a timelock height H. It has two spending paths:
+
+- **Path A, cooperative:** the borrower's key plus two of three protocol keys. It releases a repaid loan, or executes a liquidation step.
+- **Path B, timelock:** the borrower's key alone, after Bitcoin height H. It guarantees the borrower can always recover the Bitcoin if the protocol disappears.
+
+The designed script is the miniscript `wsh(and_v(v:pk(U),or_i(multi(2,K1,K2,K3),after(H))))`, so policy-aware hardware wallets can sign it. On testnet today the cooperative path uses a single protocol key. Details: [Bitcoin side](/how-it-works/bitcoin-side).
+
+### Pre-signed liquidation steps
+
+At deposit the borrower pre-signs a small set of liquidation transactions on Path A. Each step pays a keeper an amount sized to the debt, returns the remainder to the borrower in the same transaction, and carries a fee anchor. The outputs are fixed by the borrower's signature, so no one can redirect the Bitcoin; the protocol signers can only add their co-signatures to the step `writz-lend` selected. **Designed.**
+
+### Protocol signers
+
+Three independent services, each holding one protocol key, co-sign only a full-repayment release or the liquidation step `writz-lend` selected. Each reads Stellar state on its own before signing and publishes every signature on Stellar. They can refuse but never redirect Bitcoin, and if they refuse, the borrower spends Path B after H. **One key live on testnet; three designed.**
+
+## The Stellar side
+
+### Contracts
+
+| Contract | Main entry points | State | Depends on |
+|---|---|---|---|
+| `bitcoin-spv` | `submit_headers`, `verify_transaction`, `consume_deposit`, `get_best_tip`, `get_header` | Header chain from a checkpoint, canonical hashes, consumed deposit txids | none |
+| `writz-lend` | `deposit`, `borrow`, `repay`, `liquidate`, `supply_usdc`, `withdraw_supply`, `publish_release_psbt`, `get_release_psbt` | Positions keyed by deposit txid, lender balances as scaled shares, supply and borrow indexes, protocol reserve | `bitcoin-spv`, USDC (SAC), price oracles |
+
+Testnet deployment: `writz-lend` `CD3BRE32LDNDHAEVI6H35UC3NIRREW5BLH64AZMHSQY3LEKYDLKYWBXS`, `bitcoin-spv` `CBX23YKCCJMAMBMSCNP6YVKEXUIYK2CTKSR4TQ3RVBPAFYZFVCW7W4EO`. Full log: [`contracts/deployments/testnet.md`](https://github.com/WritzProtocol/writz/blob/main/contracts/deployments/testnet.md).
+
+### How Stellar is used
+
+| Stellar feature | How Writz uses it |
+|---|---|
+| Soroban `sha256` host function | Double SHA-256 of Bitcoin headers and transactions, Merkle inclusion, proof of work |
+| Soroban `secp256k1_recover` | Verifies the borrower's BIP-137 key-control signature and pre-signed Bitcoin signatures on chain |
+| Stellar Asset Contract (USDC) | Native Circle USDC through its SEP-41 interface: supply, borrow, repay and liquidation move real USDC |
+| Contract events | `deposit`, `borrow`, `repay`, `repay_full`, `liquidate`, `supply` and `withdraw` events let the relayer, the app and anyone rebuild every position from the chain |
+| Storage and TTL | Positions and balances in persistent storage with deployment-set lifetimes, and `refresh_*` functions anyone can call to keep entries alive ([details](/how-it-works/stellar-side#storage-and-ttl-management)) |
+| Authorization | `require_auth` on every state change; the borrower's Stellar account owns the position |
+| Multisig accounts | Admin and operational accounts as 2-of-3 Stellar multisig (designed) |
+| SEP-40 oracle interface | Reflector BTC/USD through `lastprice` |
+
+Positions, amounts and collateral are public on chain, as in any open lending market.
+
+### Lending model
+
+- **Collateral:** a borrow must leave the position at or above 150% collateral; a position becomes liquidatable below 120%, with a 10% liquidation bonus.
+- **Interest:** a kinked curve on utilization, linear up to 75% and steep above it. 15% of borrower interest goes to the protocol reserve; the rest accrues to lenders through a supply index, so a lender's balance grows without any transaction.
+- **Losses:** a shortfall is covered first by the protocol reserve, then shared by lenders pro rata. **Designed.**
+- **Caps:** a global borrow cap (live) and a per-borrower cap (designed), both set by the admin without a redeploy.
+
+### Time ordering
+
+Every loan has a maturity in Bitcoin blocks, set well before the vault's timelock H. A borrow is refused unless H is at least 4,320 blocks above the light client's tip, liquidation is refused within 288 blocks of H, and borrows and liquidations fail when the light client's tip is older than six hours. An unpaid loan therefore becomes liquidatable at maturity, long before the borrower can reclaim the Bitcoin alone. The timelock margins and the tip-age check are live on testnet; maturity is designed.
+
+### Price oracles
+
+`writz-lend` reads BTC/USD from Reflector and, as designed, from RedStone as an independent second source. New borrows use the lower of the two prices and are refused when the sources disagree beyond a set threshold; a liquidation by price requires the position to be unhealthy at both prices; a stale source pauses borrows and price-based liquidations, while repayments, withdrawals and liquidations at maturity continue. The thresholds come from measured data on both feeds. Today only Reflector is wired, and a price older than one hour is rejected.
+
+## Lifecycle of a position
+
+<img className="block dark:hidden" src="/diagrams/position-states.svg" alt="Lifecycle of a Writz position" />
+<img className="hidden dark:block" src="/diagrams/position-states-dark.svg" alt="Lifecycle of a Writz position" />
+
+### Deposit and borrow
+
+<img className="block dark:hidden" src="/diagrams/deposit-and-borrow.svg" alt="From a Bitcoin deposit to a USDC loan" />
+<img className="hidden dark:block" src="/diagrams/deposit-and-borrow-dark.svg" alt="From a Bitcoin deposit to a USDC loan" />
+
+1. The borrower locks Bitcoin in a vault output and, as designed, pre-signs the liquidation steps.
+2. After the required confirmations (1 on testnet, 6 on mainnet), the relayer serves the SPV proof: raw transaction, Merkle path and block hash.
+3. `writz-lend.deposit` rebuilds the expected script, asks `bitcoin-spv` to verify inclusion and depth, checks the borrower's key signature and the timelock margin, consumes the deposit txid so it cannot back two positions, and opens the position.
+4. `writz-lend.borrow` checks the price and the post-borrow health and pays USDC.
+
+### Repay and release
+
+<img className="block dark:hidden" src="/diagrams/repay-and-release.svg" alt="Repaying a loan and releasing the Bitcoin" />
+<img className="hidden dark:block" src="/diagrams/repay-and-release-dark.svg" alt="Repaying a loan and releasing the Bitcoin" />
+
+A full repayment emits `repay_full`. The protocol signers check the position on Stellar and publish their co-signature of the release with `publish_release_psbt`, so the release can be fetched even if the rest of the Writz stack is down. The borrower signs and broadcasts it. If the signers are unavailable, the borrower spends Path B after H. On testnet today the relayer holds the single protocol key and publishes the release.
+
+### Liquidation
+
+<img className="block dark:hidden" src="/diagrams/liquidation.svg" alt="Liquidation, settled on Bitcoin and proven on Stellar" />
+<img className="hidden dark:block" src="/diagrams/liquidation-dark.svg" alt="Liquidation, settled on Bitcoin and proven on Stellar" />
+
+A keeper repays the debt of an unhealthy or matured loan into escrow. `writz-lend` checks the trigger and selects the smallest pre-signed step that covers the debt and the bonus; the protocol signers co-sign that step; the keeper broadcasts it on Bitcoin, receives its share, and proves the confirmation through `bitcoin-spv`. `writz-lend` then settles the escrow to lenders, and the borrower receives the rest of the Bitcoin in the same transaction. Liquidation is open to a designated keeper and to anyone after the keeper has been inactive for 24 hours. **Settlement by proof is designed;** on testnet today a liquidation settles the USDC side only.
+
+## Composability
+
+<img className="block dark:hidden" src="/diagrams/composability.svg" alt="How other protocols build on Writz" />
+<img className="hidden dark:block" src="/diagrams/composability-dark.svg" alt="How other protocols build on Writz" />
+
+The Bitcoin side (lock proof, pre-signed steps, maturity, signer policy) is written once in `writz-lend`, and the source of USDC sits behind an interface with one connector per market. **Designed.**
+
+- **Writz Lend pool:** the first connector, USDC from Writz lenders.
+- **Lending-market adapter:** lets another Stellar lending market accept native Bitcoin as collateral through a non-transferable accounting unit, one per locked satoshi, backed only by verified locks, with liquidation settled through the pre-signed steps.
+- **Vault strategy:** lets DeFindex vaults supply USDC to the Writz Lend pool.
+- **Bitcoin verification SDK:** lets any Stellar project verify Bitcoin payments and time locks on Soroban through `bitcoin-spv` ([SPV SDK](/developers/spv-sdk)).
+
+## Trust model
+
+<img className="block dark:hidden" src="/diagrams/trust-model.svg" alt="Who can do what in Writz" />
+<img className="hidden dark:block" src="/diagrams/trust-model-dark.svg" alt="Who can do what in Writz" />
+
+What remains trusted, stated plainly:
+
+- **Protocol signers and keepers.** Two signers acting with a keeper could force the liquidation of a healthy position and take the keeper share of one step; the borrower's remainder is paid in every case.
+- **An unpaid loan at the timelock.** Liquidation closes 288 blocks before H. A loan still unpaid then is reclaimed by the borrower, and the loss falls on the reserve and then on lenders. Maturity and keepers exist to make this rare; caps bound it.
+- **The admin.** It can change caps, keepers and the price source and pause new loans; it cannot change contract code. Address changes take effect after a public delay (designed); today they are immediate.
+- **The light client.** `bitcoin-spv` checks proof of work against a checkpoint, limits reorganizations to 20 blocks and rejects headers more than two hours in the future. Header submission is restricted to a designated submitter today and permissionless as designed. More: [SPV verification](/how-it-works/spv-verification) and [Security model](/security/security-model).
+
+Threat model: [STRIDE threat model](/security/stride-threat-model).
+
+## Status
+
+| Component | Live on testnet | Designed |
+|---|---|---|
+| Vault script | P2WSH, one protocol key, timelock path | 2-of-3 protocol keys, miniscript |
+| Liquidation | Keeper liquidation of the USDC side below 120% | Pre-signed steps, maturity, settlement by SPV proof |
+| `bitcoin-spv` | Header chain, proof of work, inclusion, deposit registry | Permissionless header submission, at least two relayers, watchtower |
+| `writz-lend` | Deposits, USDC pool, interest, supply index, global cap, timelock margins, tip-age check | Per-borrower cap, loss sharing, delayed address changes |
+| Price | Reflector, one-hour staleness | RedStone as second source, divergence guard |
+| Signers | One key held by the relayer | Three independent protocol signers |
+| Composability | SPV SDK pre-release | Lending-market adapter, vault strategy, SDK 1.0 |
+
+Mainnet is planned for Q2 to Q3 2027, after an external audit.
+
+## Technology
+
+| Area | Stack |
+|---|---|
+| Contracts | Rust, `soroban-sdk`, compiled to `wasm32v1-none` |
+| Bitcoin | P2WSH, BIP-137 signatures, PSBT; `bitcoinjs-lib` in the browser |
+| Relayer | Bun, TypeScript, Esplora, Stellar RPC |
+| App | Next.js, Stellar Wallets Kit (Freighter and others), Xverse |
+| SDK | `@writz/sdk` (TypeScript), `writz-spv-client` (Rust) |

@@ -59,8 +59,7 @@
     {
       "group": "Architecture",
       "pages": [
-        "architecture/technical-overview",
-        "architecture/diagrams"
+        "architecture/technical-overview"
       ]
     },
     {
