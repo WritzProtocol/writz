@@ -1,5 +1,6 @@
 import * as bitcoin from "bitcoinjs-lib";
 import { deriveP2WSH } from "./address";
+import { esploraFetch } from "./esplora";
 
 /**
  * Deposit timelock policy.
@@ -23,7 +24,7 @@ export function chooseDepositTimelock(tipHeight: number): number {
 
 /** Current Bitcoin tip height from an Esplora API. */
 export async function fetchTipHeight(apiUrl: string): Promise<number> {
-  const res = await fetch(`${apiUrl}/blocks/tip/height`);
+  const res = await esploraFetch(`${apiUrl}/blocks/tip/height`);
   if (!res.ok) throw new Error(`Could not read the Bitcoin tip height (${res.status})`);
   const height = Number((await res.text()).trim());
   if (!Number.isInteger(height) || height <= 0) {

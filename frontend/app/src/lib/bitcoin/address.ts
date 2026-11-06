@@ -1,6 +1,7 @@
 import * as bitcoin from "bitcoinjs-lib";
 import type { PsbtInput } from "bip174/src/lib/interfaces";
 import * as ecc from "@bitcoinerlab/secp256k1";
+import { esploraFetch } from "./esplora";
 
 bitcoin.initEccLib(ecc);
 
@@ -175,7 +176,7 @@ export async function estimateReleaseFee(
   // negative output. Cap the rate so the fee stays sane on signet/testnet.
   const MAX_SAT_PER_VBYTE = 2;
   try {
-    const res = await fetch(`${apiUrl}/fee-estimates`);
+    const res = await esploraFetch(`${apiUrl}/fee-estimates`);
     if (res.ok) {
       const estimates = (await res.json()) as Record<string, number>;
       const rate = estimates[String(confirmationTarget)] ?? estimates["6"] ?? fallbackSatPerVbyte;

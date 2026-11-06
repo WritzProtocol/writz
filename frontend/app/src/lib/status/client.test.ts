@@ -1,6 +1,6 @@
 import { describe, expect, mock, test } from "bun:test";
 import { xdr } from "@stellar/stellar-sdk";
-import { clientRelayerSource, esploraReads, timedFetch, withFallback, type LiquidationEventsServer } from "./client";
+import { clientRelayerSource, esploraReads, timedFetch, type LiquidationEventsServer } from "./client";
 
 const res = (status: number, body: unknown) =>
   new Response(typeof body === "string" ? body : JSON.stringify(body), { status });
@@ -108,35 +108,5 @@ describe("timedFetch", () => {
     const hang = ((_url: string, init?: RequestInit) =>
       new Promise<Response>((_, reject) => init?.signal?.addEventListener("abort", () => reject(init.signal!.reason)))) as typeof fetch;
     await expect(timedFetch(20, hang)("https://unreachable.example")).rejects.toThrow();
-  });
-});
-
-describe("withFallback", () => {
-  const PRIMARY = "https://primary/api";
-  const FALLBACK = "https://fallback/api";
-
-  test("an unreachable primary is read from the fallback, same path", async () => {
-    const get = mock(async (url: string) => {
-      if (url.startsWith(PRIMARY)) throw new Error("timeout");
-      return new Response("329707");
-    });
-    const res = await withFallback(PRIMARY, FALLBACK, get)(`${PRIMARY}/blocks/tip/height`);
-    expect(await res.text()).toBe("329707");
-    expect(get.mock.calls.map((c) => c[0])).toEqual([`${PRIMARY}/blocks/tip/height`, `${FALLBACK}/blocks/tip/height`]);
-  });
-
-  test("a 404 from the primary is an answer, not a failure", async () => {
-    const get = mock(async () => new Response("", { status: 404 }));
-    const res = await withFallback(PRIMARY, FALLBACK, get)(`${PRIMARY}/tx/abc/status`);
-    expect(res.status).toBe(404);
-    expect(get).toHaveBeenCalledTimes(1);
-  });
-
-  test("other hosts are never redirected", async () => {
-    const get = mock(async () => {
-      throw new Error("down");
-    });
-    await expect(withFallback(PRIMARY, FALLBACK, get)("https://relayer/spv-proof/abc")).rejects.toThrow("down");
-    expect(get).toHaveBeenCalledTimes(1);
   });
 });

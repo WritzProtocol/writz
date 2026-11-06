@@ -37,6 +37,7 @@ import {
 import { useOnboarding } from "@/lib/onboarding/OnboardingProvider";
 import { suggestDepositSats, satsToBtcInput } from "@/lib/onboarding/defaults";
 import { confirmedSats, route, useJourneyUi, type BitcoinError, type JourneyModel, type Reading } from "./model";
+import { esploraFetch } from "@/lib/bitcoin/esplora";
 
 const ON_TESTNET = config.target !== "mainnet";
 const TXID = /^[0-9a-f]{64}$/i;
@@ -70,7 +71,7 @@ function bitcoinError(message: string | null): BitcoinError | null {
   return { kind: "other", raw: message };
 }
 
-const esplora = () => esploraReads(config.bitcoin.apiUrl, (url) => fetch(url));
+const esplora = () => esploraReads(config.bitcoin.apiUrl, esploraFetch);
 
 function notifyRegistered(origin: string, index: number) {
   notifySettled(origin, { href: loanHref(index, "borrow"), label: "Borrow now" }, { ok: true, text: `Deposit registered on Stellar. Loan ${index + 1} is ready.` });
@@ -234,7 +235,7 @@ export function useLiveJourney(): JourneyModel {
     if (!btcAddress) return;
     let live = true;
     const key = `${btcAddress}:${balanceNonce}`;
-    fetch(`${config.bitcoin.apiUrl}/address/${btcAddress}`)
+    esploraFetch(`${config.bitcoin.apiUrl}/address/${btcAddress}`)
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then((a) => live && setBalanceRead({ key, value: { kind: "ok", value: btcBalanceOf(a) } }))
       .catch(() => live && setBalanceRead({ key, value: { kind: "failed" } }));
@@ -269,7 +270,7 @@ export function useLiveJourney(): JourneyModel {
     let live = true;
     void Promise.all([
       esplora().getBtcTipHeight().catch(() => null),
-      fetch(`${config.bitcoin.apiUrl}/fee-estimates`)
+      esploraFetch(`${config.bitcoin.apiUrl}/fee-estimates`)
         .then((r) => (r.ok ? (r.json() as Promise<Record<string, number>>) : null))
         .then((f) => (f ? (f["6"] ?? f["3"] ?? null) : null))
         .catch(() => null),

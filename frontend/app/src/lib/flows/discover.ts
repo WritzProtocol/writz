@@ -5,6 +5,7 @@ import { config } from "@/config";
 import { readPosition, writzLendId, type ChainPosition } from "@/lib/contracts/writzLend";
 import { pendingDeposits } from "@/lib/flow/pendingDeposit";
 import { listPositions, savePosition, type Position } from "@/lib/position";
+import { esploraFetch } from "@/lib/bitcoin/esplora";
 
 /**
  * Finds a wallet's `writz-lend` loans from the chain, so they are the same on
@@ -95,7 +96,7 @@ export async function horizonDepositCalls(
 
 /** The output of a Bitcoin transaction paying `scriptPubKeyHex`, from Esplora. */
 export async function findVout(txid: string, scriptPubKeyHex: string): Promise<number | undefined> {
-  const res = await fetch(`${config.bitcoin.apiUrl}/tx/${txid}`).catch(() => null);
+  const res = await esploraFetch(`${config.bitcoin.apiUrl}/tx/${txid}`).catch(() => null);
   if (!res?.ok) return undefined;
   const tx = (await res.json()) as { vout: { scriptpubkey: string }[] };
   const vout = tx.vout.findIndex((o) => o.scriptpubkey.toLowerCase() === scriptPubKeyHex.toLowerCase());

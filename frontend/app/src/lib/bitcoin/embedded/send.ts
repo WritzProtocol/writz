@@ -1,4 +1,5 @@
 import { buildPayment, type SignetKey, type Utxo } from "./key";
+import { esploraFetch } from "../esplora";
 
 /** Signet's relay floor is 1 sat/vB; 2 confirms in the next block or two without overpaying. */
 export const MIN_FEE_RATE = 2;
@@ -13,7 +14,7 @@ const base = (apiUrl: string) => apiUrl.replace(/\/+$/, "");
 
 /** Coins at `address`, confirmed or not: Signet coins are spendable from the mempool. */
 export async function addressUtxos(address: string, io: EsploraIo): Promise<Utxo[]> {
-  const doFetch = io.fetch ?? fetch;
+  const doFetch = io.fetch ?? esploraFetch;
   const res = await doFetch(`${base(io.apiUrl)}/address/${address}/utxo`);
   if (!res.ok) throw new Error(`Bitcoin API error ${res.status}`);
   const list = (await res.json()) as { txid: string; vout: number; value: number }[];
@@ -22,7 +23,7 @@ export async function addressUtxos(address: string, io: EsploraIo): Promise<Utxo
 
 /** Esplora's estimate for a confirmation within 3 blocks, kept between the Signet floor and a ceiling. */
 export async function feeRate(io: EsploraIo): Promise<number> {
-  const doFetch = io.fetch ?? fetch;
+  const doFetch = io.fetch ?? esploraFetch;
   try {
     const res = await doFetch(`${base(io.apiUrl)}/fee-estimates`);
     if (!res.ok) return MIN_FEE_RATE;
@@ -35,7 +36,7 @@ export async function feeRate(io: EsploraIo): Promise<number> {
 }
 
 export async function broadcast(txHex: string, io: EsploraIo): Promise<string> {
-  const doFetch = io.fetch ?? fetch;
+  const doFetch = io.fetch ?? esploraFetch;
   const res = await doFetch(`${base(io.apiUrl)}/tx`, { method: "POST", body: txHex });
   const text = (await res.text()).trim();
   if (!res.ok) throw new Error(`The Bitcoin network refused the transaction: ${text.slice(0, 160)}`);
@@ -52,7 +53,7 @@ export async function sendFromKey(key: SignetKey, to: string, amountSats: number
 
 /** Spendable sats at `address` from Esplora's address summary, unconfirmed included. */
 export async function addressBalance(address: string, io: EsploraIo): Promise<number> {
-  const doFetch = io.fetch ?? fetch;
+  const doFetch = io.fetch ?? esploraFetch;
   const res = await doFetch(`${base(io.apiUrl)}/address/${address}`);
   if (!res.ok) throw new Error(`Bitcoin API error ${res.status}`);
   const a = (await res.json()) as {
@@ -65,7 +66,7 @@ export async function addressBalance(address: string, io: EsploraIo): Promise<nu
 
 /** True once `txid` has at least one confirmation. */
 export async function isConfirmed(txid: string, io: EsploraIo): Promise<boolean> {
-  const doFetch = io.fetch ?? fetch;
+  const doFetch = io.fetch ?? esploraFetch;
   const res = await doFetch(`${base(io.apiUrl)}/tx/${txid}/status`);
   if (res.status === 404) return false;
   if (!res.ok) throw new Error(`Bitcoin API error ${res.status}`);
