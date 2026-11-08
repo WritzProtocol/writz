@@ -73,7 +73,7 @@
 ## Go-to-Market
 
 * [Overview](/go-to-market/overview)
-* [Customers and Message](/go-to-market/customers-and-message)
-* [The Plan, Step by Step](/go-to-market/step-by-step)
-* [Channels](/go-to-market/channels)
-* [How We Measure Progress](/go-to-market/measuring-progress)
+* [Positioning and Message](/go-to-market/customers-and-message)
+* [Channels and Owners](/go-to-market/channels)
+* [The Plan by Phase](/go-to-market/phases)
+* [Metrics and Review](/go-to-market/measuring-progress)
