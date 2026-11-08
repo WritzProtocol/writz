@@ -114,16 +114,11 @@ for (const record of [defindexVaultMdPath, defindexVaultMainnetMdPath]) {
   }
 }
 
-// HACKMERIDIAN.md is a dated event record that also cites the Soroswap router
-// and pair and Circle's CCTP contracts.
-const hackmeridianMdPath = path.join(repoRoot, "HACKMERIDIAN.md");
-
 const skipForCounts = new Set([testnetMdPath]); // deployment log has no test-count claims to check
 const skipForAddresses = new Set([
   testnetMdPath,
   defindexVaultMdPath,
   defindexVaultMainnetMdPath,
-  hackmeridianMdPath,
 ]); // testnetMd IS the source of truth; these others record external addresses
 
 // docs/superpowers/plans/ holds point-in-time implementation plans, not

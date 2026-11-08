@@ -90,7 +90,6 @@ Figures are as reported by the linked post-mortems, announcements and press cove
 | On-chain freshness rule | Live | Borrows and liquidations are refused when the light client's tip header is older than six hours (admin-set, 1 to 48 hours) |
 | Multiple relayers, permissionless submission | Planned for mainnet | Any honest relayer keeps the light client live |
 | Independent monitor with automatic pause of new loans | Planned for mainnet | Compares the on-chain tip with several Bitcoin sources; can only pause new deposits and borrows, never move funds |
-| Zero-knowledge proof of the Bitcoin header chain as a second check | Researching | An independent cryptographic check that needs no trusted signer; it could only refuse a tip, never credit value |
 
 ---
 
