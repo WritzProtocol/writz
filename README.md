@@ -3,13 +3,10 @@
 > **Bitcoin was built to be yours. Your loans should be too.**
 
 [![CI](https://github.com/WritzProtocol/writz/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/WritzProtocol/writz/actions/workflows/ci.yml?query=branch%3Amain)
-[![Tests](https://img.shields.io/badge/tests-839%20passing-brightgreen)](https://github.com/WritzProtocol/writz/actions)
 [![Network](https://img.shields.io/badge/network-Stellar%20Testnet-blue)](https://stellar.expert/explorer/testnet)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
-**[Website](https://writz.xyz)** | **[Live App (testnet)](https://testnet.writz.xyz)** | **[Docs](https://docs.writz.xyz)** | **[Relayer API](https://api.testnet.writz.xyz)**
-
-> **HackMeridian 2026 judges:** the event work, goals, demo steps and prior-work disclosure are in [HACKMERIDIAN.md](HACKMERIDIAN.md).
+**[Website](https://writz.xyz)** | **[Live App (testnet)](https://testnet.writz.xyz)** | **[Docs](https://docs.writz.xyz)** | **[Technical architecture](https://docs.writz.xyz/architecture/technical-overview)** | **[Relayer API](https://api.testnet.writz.xyz)**
 
 **Writz** is a Bitcoin lending protocol on Stellar where the collateral never leaves Bitcoin. Lock native BTC directly from your Bitcoin wallet (Signet coins on today's testnet), borrow USDC on Stellar, and take it back alone if Writz ever disappears.
 
@@ -29,24 +26,26 @@ No bridge. No custodian. No wrapped tokens.
 
 ## This Is Not a Whitepaper
 
-As of November 2026, the protocol's two contracts (`bitcoin-spv`, deployed on 25 October, and `writz-lend`, deployed on 2 November) are live on Stellar testnet, 839 tests pass, and Bitcoin Signet transactions have been verified on-chain.
+As of November 2026, the protocol's two contracts (`bitcoin-spv`, deployed on 25 October, and `writz-lend`, deployed on 2 November) are live on Stellar testnet, and Bitcoin Signet transactions have been verified on-chain.
 
 | What | Status |
 |---|---|
 | Bitcoin SPV verification on Soroban | Live on testnet |
 | `writz-lend` deposit, borrow, repay and release PSBT | Live on testnet |
 | P2WSH locking + co-signed BTC release | Broadcast on Bitcoin Signet |
+| USDC lenders earn the interest borrowers pay ([evidence](docs/developers/evidence/lender-yield-testnet.md)) | Live on testnet |
 | Receive the loan as EURC, PYUSD or XLM (Soroswap) or as USDC on Base Sepolia (Circle CCTP V2) | Live on testnet |
-| 839 tests across all modules | All passing |
 
-But a few months ago, it was a whitepaper. Version 1.0 (July 2026) is at [writz.xyz/whitepaper](https://writz.xyz/whitepaper) and archived on Zenodo with the DOI [10.5281/zenodo.23148520](https://doi.org/10.5281/zenodo.23148520).
+Before mainnet, Writz adds default enforcement through Bitcoin transactions the borrower pre-signs at deposit, a 2-of-3 protocol signer set, a second price source (RedStone) and an external audit. What is live and what is designed is set out in the [technical architecture](https://docs.writz.xyz/architecture/technical-overview).
+
+A few months ago it was a whitepaper (v1.0, July 2026, DOI [10.5281/zenodo.23148520](https://doi.org/10.5281/zenodo.23148520)). The design has moved on since; the [technical architecture](https://docs.writz.xyz/architecture/technical-overview) is the current reference.
 
 ### Live Testnet Contracts
 
-| Contract | Address | WASM | Tests |
-|---|---|---|---|
-| `bitcoin-spv` | `CBX23YKCCJMAMBMSCNP6YVKEXUIYK2CTKSR4TQ3RVBPAFYZFVCW7W4EO` | 45.2 KB | 80 |
-| `writz-lend` | `CD3BRE32LDNDHAEVI6H35UC3NIRREW5BLH64AZMHSQY3LEKYDLKYWBXS` | 94.6 KB | 165 |
+| Contract | Address | WASM |
+|---|---|---|
+| `bitcoin-spv` | `CBX23YKCCJMAMBMSCNP6YVKEXUIYK2CTKSR4TQ3RVBPAFYZFVCW7W4EO` | 45.2 KB |
+| `writz-lend` | `CD3BRE32LDNDHAEVI6H35UC3NIRREW5BLH64AZMHSQY3LEKYDLKYWBXS` | 94.6 KB |
 
 Both were redeployed on 2026-10-25 because testnet rent rose sharply; positions on the previous contracts were closed and their BTC released. `writz-lend` was redeployed again on 2026-11-01, so its `supply` and `withdraw` events carry the scaled amount and the supply index (#257), and on 2026-11-02 for the projected pool and supply views (#256, #377); `bitcoin-spv` was not. The storage windows that drive rent are now deployment parameters, see [Storage and TTL management](docs/how-it-works/stellar-side.md#storage-and-ttl-management).
 
@@ -61,7 +60,7 @@ Full deployment log, init transactions, and verified calls: [`contracts/deployme
   <img alt="Writz Protocol system architecture" src="docs/diagrams/system-architecture.svg">
 </picture>
 
-The diagrams show the protocol as designed; what runs on testnet today is listed in the [technical architecture](https://docs.writz.xyz/architecture/technical-overview).
+The diagrams show the protocol as designed; what runs on testnet today, the trust model and what is planned before mainnet are in the [technical architecture](https://docs.writz.xyz/architecture/technical-overview) ([source](docs/architecture/technical-overview.mdx)).
 
 The protocol operates across two blockchains. Bitcoin is the custody layer: BTC never leaves the Bitcoin network. Stellar is the execution layer: SPV verification, loan logic, and USDC flows run on Soroban.
 
@@ -244,14 +243,14 @@ Each module has its own toolchain. There is no unifying root build, and the
 package manager is **not** the same everywhere. Run them from the repo root:
 
 ```bash
-# 1. Soroban contracts: 255 tests in bitcoin-spv, writz-lend and spv-types
+# 1. Soroban contracts: bitcoin-spv, writz-lend and spv-types
 cd contracts && cargo test
 cd ..
 
-# 2. Bitcoin script toolkit: 72 tests (Bun's own test runner)
+# 2. Bitcoin script toolkit (Bun's own test runner)
 cd bitcoin-script && bun install && bun test
 
-# 3. Relayer service: 512 tests
+# 3. Relayer service
 #    Deps install with Bun, but the suite itself is Jest (ts-jest), so it must
 #    be run through the package script - plain `bun test` picks Bun's runner
 #    instead and fails. The relayer also imports the local @writz/* packages
@@ -261,7 +260,7 @@ cd ../packages/writz-lend && bun install
 cd ../../relayer && bun install && bun run test
 ```
 
-All 839 tests pass. If anything fails, [open an issue](https://github.com/WritzProtocol/writz/issues).
+CI runs every suite on each pull request. If anything fails locally, [open an issue](https://github.com/WritzProtocol/writz/issues).
 
 ### Frontend Dev Server
 
@@ -282,16 +281,15 @@ The diagrams are drawn as HTML and SVG in `docs/diagrams/source/`; each `build_*
 
 ---
 
-## Test Coverage
+## Tests
 
-| Module | Language | Tests | How to run |
-|---|---|---|---|
-| `bitcoin-spv` contract | Rust | 80 | `cd contracts && cargo test -p bitcoin-spv` |
-| `writz-lend` contract | Rust | 165 | `cd contracts && cargo test -p writz-lend` |
-| `spv-types` | Rust | 10 | `cd contracts && cargo test -p spv-types` |
-| Relayer service | TypeScript | 512 | `cd relayer && bun run test` |
-| Bitcoin script toolkit | TypeScript | 72 | `cd bitcoin-script && bun test` |
-| **Total** | | **839** | |
+| Module | Language | How to run |
+|---|---|---|
+| `bitcoin-spv` contract | Rust | `cd contracts && cargo test -p bitcoin-spv` |
+| `writz-lend` contract | Rust | `cd contracts && cargo test -p writz-lend` |
+| `spv-types` | Rust | `cd contracts && cargo test -p spv-types` |
+| Relayer service | TypeScript | `cd relayer && bun run test` |
+| Bitcoin script toolkit | TypeScript | `cd bitcoin-script && bun test` |
 
 ---
 
@@ -336,7 +334,7 @@ To report a security issue: open a private [GitHub Security Advisory](https://gi
 Full documentation lives in [`docs/`](docs/) and is published at **[docs.writz.xyz](https://docs.writz.xyz)**:
 
 **Start here:**
-- [Whitepaper](https://writz.xyz/whitepaper) - The technical paper (v1.0, July 2026): SPV verification and the lending market. The paper describes a stateless SPV design; the `bitcoin-spv` contract has since replaced it with an on-chain header light client. The Groth16 position privacy it describes is not part of Writz. DOI [10.5281/zenodo.23148520](https://doi.org/10.5281/zenodo.23148520).
+- [Technical architecture](https://docs.writz.xyz/architecture/technical-overview) - Components, trust model, what is live and what is designed, the Stellar features used.
 - [What is Writz?](docs/introduction/what-is-writz.md) - Plain English. No jargon. 5 minutes.
 - [The Problem](docs/introduction/the-problem.md) - Why public DeFi breaks BTC holders.
 - [How Writz Works](docs/introduction/how-writz-works.md) - Full flow for any reader.
@@ -369,7 +367,7 @@ Full documentation lives in [`docs/`](docs/) and is published at **[docs.writz.x
 ## Contributing
 
 1. Fork the repo and create a branch from `main`.
-2. Run the full test suite before opening a PR. All 839 tests must pass.
+2. Run the test suites of the modules you touched before opening a PR; CI must pass.
 3. For new features, add tests. For bug fixes, add a regression test.
 4. Open a PR with a clear description of what changed and why.
 
