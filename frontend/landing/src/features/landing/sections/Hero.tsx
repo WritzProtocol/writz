@@ -19,7 +19,7 @@ export function Hero() {
               Live on Stellar testnet
             </span>
             <h1 id="hero-h">
-              Native Bitcoin lending <span className="accent">on Stellar.</span>
+              Native Bitcoin lending protocol <span className="accent">on Stellar.</span>
             </h1>
             <p className="lead">
               Writz Protocol lets you borrow USDC without selling your Bitcoin. Your BTC stays on the Bitcoin network, with

@@ -65,7 +65,7 @@ export const metadata: Metadata = {
         url: "/og.png?v=4",
         width: 2400,
         height: 1260,
-        alt: "Writz Protocol. Native Bitcoin lending on Stellar. No bridge, no custodian, no wrapped token.",
+        alt: "Writz Protocol. Native Bitcoin lending protocol on Stellar. No bridge, no custodian, no wrapped token.",
       },
     ],
   },
