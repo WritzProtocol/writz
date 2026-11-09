@@ -1,75 +1,75 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg viewBox="0 0 960 436" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="gtm-phases-dark-title gtm-phases-dark-desc" id="gtm-phases-dark-root">
+<svg viewBox="0 0 960 440" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="gtm-phases-dark-title gtm-phases-dark-desc" id="gtm-phases-dark-root">
 <title id="gtm-phases-dark-title">Writz go-to-market phases, November 2026 to mainnet</title>
 <desc id="gtm-phases-dark-desc">Four phases: validation from 4 to 30 November 2026, with 10 named holders, 5 interviews and 2 full testnet cycles; early users from 1 December 2026 to 29 January 2027, with 10 full cycles, 3 lenders with written terms and 1 institution evaluating; pre-launch from February 2027 to mainnet, with a launch list, lender commitments subject to audit and a public liquidation walkthrough; and launch in Q2 to Q3 2027 under a 50,000 USDC pool cap and a planned 5,000 USDC per borrower, raised after 30 days without incident.</desc>
 <defs><style>#gtm-phases-dark-root { font-family: 'Work Sans', system-ui, sans-serif; color: #F6F7F8; }</style></defs>
 <rect width="100%" height="100%" fill="#0C0E12"/>
-<path d="M52,52 H908" stroke="#4B515B" stroke-width="1.2"/>
-<circle cx="60.0" cy="52" r="6" fill="#0C0E12" stroke="#F6F7F8" stroke-width="1.2"/>
-<text x="74.0" y="56" fill="#8B919B" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.06em">4 TO 30 NOV 2026</text>
-<rect x="40.0" y="84" width="208.0" height="320" rx="6" fill="#15181E" stroke="#F6F7F8" stroke-width="1"/>
-<text x="56.0" y="112" fill="#8B919B" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.06em">PHASE 1</text>
-<text x="56.0" y="138" fill="#F6F7F8" font-size="20" font-weight="600" font-family="'Work Sans', system-ui, sans-serif">Validation</text>
-<text x="56.0" y="164" fill="#B6BBC4" font-size="13" font-family="'Work Sans', system-ui, sans-serif">Find who borrows first and</text>
-<text x="56.0" y="182" fill="#B6BBC4" font-size="13" font-family="'Work Sans', system-ui, sans-serif">what stops them.</text>
-<path d="M56.0,212 H232.0" stroke="#4B515B" stroke-width="1"/>
-<text x="56.0" y="232" fill="#FFC300" font-size="10" font-weight="600" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.06em">GOAL BY 30 NOV</text>
-<rect x="56.0" y="248" width="6" height="6" fill="#FFC300"/>
-<text x="70.0" y="256" fill="#F6F7F8" font-size="13" font-family="'Work Sans', system-ui, sans-serif">10 named holders</text>
-<rect x="56.0" y="274" width="6" height="6" fill="#FFC300"/>
-<text x="70.0" y="282" fill="#F6F7F8" font-size="13" font-family="'Work Sans', system-ui, sans-serif">5 interviews</text>
-<rect x="56.0" y="300" width="6" height="6" fill="#FFC300"/>
-<text x="70.0" y="308" fill="#F6F7F8" font-size="13" font-family="'Work Sans', system-ui, sans-serif">2 full testnet cycles</text>
-<circle cx="284.0" cy="52" r="6" fill="#0C0E12" stroke="#F6F7F8" stroke-width="1.2"/>
-<text x="298.0" y="56" fill="#8B919B" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.06em">1 DEC 2026 TO 29 JAN 2027</text>
-<rect x="264.0" y="84" width="208.0" height="320" rx="6" fill="#15181E" stroke="#F6F7F8" stroke-width="1"/>
-<text x="280.0" y="112" fill="#8B919B" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.06em">PHASE 2</text>
-<text x="280.0" y="138" fill="#F6F7F8" font-size="20" font-weight="600" font-family="'Work Sans', system-ui, sans-serif">Early users</text>
-<text x="280.0" y="164" fill="#B6BBC4" font-size="13" font-family="'Work Sans', system-ui, sans-serif">Small guided cohorts of</text>
-<text x="280.0" y="182" fill="#B6BBC4" font-size="13" font-family="'Work Sans', system-ui, sans-serif">holders, one to one.</text>
-<path d="M280.0,212 H456.0" stroke="#4B515B" stroke-width="1"/>
-<text x="280.0" y="232" fill="#FFC300" font-size="10" font-weight="600" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.06em">GOAL BY 29 JAN</text>
-<rect x="280.0" y="248" width="6" height="6" fill="#FFC300"/>
-<text x="294.0" y="256" fill="#F6F7F8" font-size="13" font-family="'Work Sans', system-ui, sans-serif">10 full testnet cycles</text>
-<rect x="280.0" y="274" width="6" height="6" fill="#FFC300"/>
-<text x="294.0" y="282" fill="#F6F7F8" font-size="13" font-family="'Work Sans', system-ui, sans-serif">3 lenders with written</text>
-<text x="294.0" y="300" fill="#F6F7F8" font-size="13" font-family="'Work Sans', system-ui, sans-serif">terms</text>
-<rect x="280.0" y="318" width="6" height="6" fill="#FFC300"/>
-<text x="294.0" y="326" fill="#F6F7F8" font-size="13" font-family="'Work Sans', system-ui, sans-serif">1 institution evaluating</text>
-<circle cx="508.0" cy="52" r="6" fill="#0C0E12" stroke="#F6F7F8" stroke-width="1.2"/>
-<text x="522.0" y="56" fill="#8B919B" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.06em">FEB 2027 TO MAINNET</text>
-<rect x="488.0" y="84" width="208.0" height="320" rx="6" fill="#15181E" stroke="#F6F7F8" stroke-width="1"/>
-<text x="504.0" y="112" fill="#8B919B" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.06em">PHASE 3</text>
-<text x="504.0" y="138" fill="#F6F7F8" font-size="20" font-weight="600" font-family="'Work Sans', system-ui, sans-serif">Pre-launch</text>
-<text x="504.0" y="164" fill="#B6BBC4" font-size="13" font-family="'Work Sans', system-ui, sans-serif">Users and USDC ready for</text>
-<text x="504.0" y="182" fill="#B6BBC4" font-size="13" font-family="'Work Sans', system-ui, sans-serif">day one.</text>
-<path d="M504.0,212 H680.0" stroke="#4B515B" stroke-width="1"/>
-<text x="504.0" y="232" fill="#FFC300" font-size="10" font-weight="600" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.06em">READY FOR LAUNCH</text>
-<rect x="504.0" y="248" width="6" height="6" fill="#FFC300"/>
-<text x="518.0" y="256" fill="#F6F7F8" font-size="13" font-family="'Work Sans', system-ui, sans-serif">Launch list from testnet</text>
-<text x="518.0" y="274" fill="#F6F7F8" font-size="13" font-family="'Work Sans', system-ui, sans-serif">cycles</text>
-<rect x="504.0" y="292" width="6" height="6" fill="#FFC300"/>
-<text x="518.0" y="300" fill="#F6F7F8" font-size="13" font-family="'Work Sans', system-ui, sans-serif">Lender terms become</text>
-<text x="518.0" y="318" fill="#F6F7F8" font-size="13" font-family="'Work Sans', system-ui, sans-serif">commitments, subject to</text>
-<text x="518.0" y="336" fill="#F6F7F8" font-size="13" font-family="'Work Sans', system-ui, sans-serif">audit</text>
-<rect x="504.0" y="354" width="6" height="6" fill="#FFC300"/>
-<text x="518.0" y="362" fill="#F6F7F8" font-size="13" font-family="'Work Sans', system-ui, sans-serif">Public liquidation</text>
-<text x="518.0" y="380" fill="#F6F7F8" font-size="13" font-family="'Work Sans', system-ui, sans-serif">walkthrough</text>
-<circle cx="732.0" cy="52" r="6" fill="#FFC300" stroke="#FFC300" stroke-width="1.2"/>
-<text x="746.0" y="56" fill="#8B919B" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.06em">Q2 TO Q3 2027</text>
-<rect x="712.0" y="84" width="208.0" height="320" rx="6" fill="#15181E" stroke="#FFC300" stroke-width="1"/>
-<text x="728.0" y="112" fill="#8B919B" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.06em">PHASE 4</text>
-<text x="728.0" y="138" fill="#F6F7F8" font-size="20" font-weight="600" font-family="'Work Sans', system-ui, sans-serif">Launch</text>
-<text x="728.0" y="164" fill="#B6BBC4" font-size="13" font-family="'Work Sans', system-ui, sans-serif">Open mainnet, first loans</text>
-<text x="728.0" y="182" fill="#B6BBC4" font-size="13" font-family="'Work Sans', system-ui, sans-serif">from the launch list.</text>
-<path d="M728.0,212 H904.0" stroke="#4B515B" stroke-width="1"/>
-<text x="728.0" y="232" fill="#FFC300" font-size="10" font-weight="600" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.06em">UNDER CAPS</text>
-<rect x="728.0" y="248" width="6" height="6" fill="#FFC300"/>
-<text x="742.0" y="256" fill="#F6F7F8" font-size="13" font-family="'Work Sans', system-ui, sans-serif">50,000 USDC pool cap</text>
-<rect x="728.0" y="274" width="6" height="6" fill="#FFC300"/>
-<text x="742.0" y="282" fill="#F6F7F8" font-size="13" font-family="'Work Sans', system-ui, sans-serif">5,000 USDC per borrower,</text>
-<text x="742.0" y="300" fill="#F6F7F8" font-size="13" font-family="'Work Sans', system-ui, sans-serif">planned</text>
-<rect x="728.0" y="318" width="6" height="6" fill="#FFC300"/>
-<text x="742.0" y="326" fill="#F6F7F8" font-size="13" font-family="'Work Sans', system-ui, sans-serif">Caps rise after 30 days</text>
-<text x="742.0" y="344" fill="#F6F7F8" font-size="13" font-family="'Work Sans', system-ui, sans-serif">without incident</text>
+<path d="M52,36 H908" stroke="#4B515B" stroke-width="1.2"/>
+<circle cx="60.0" cy="36" r="6" fill="#0C0E12" stroke="#F6F7F8" stroke-width="1.2"/>
+<text x="54.0" y="66" fill="#8B919B" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.06em">4 TO 30 NOV 2026</text>
+<rect x="40.0" y="88" width="208.0" height="320" rx="6" fill="#15181E" stroke="#F6F7F8" stroke-width="1"/>
+<text x="56.0" y="116" fill="#8B919B" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.06em">PHASE 1</text>
+<text x="56.0" y="142" fill="#F6F7F8" font-size="20" font-weight="600" font-family="'Work Sans', system-ui, sans-serif">Validation</text>
+<text x="56.0" y="168" fill="#B6BBC4" font-size="13" font-family="'Work Sans', system-ui, sans-serif">Find who borrows first and</text>
+<text x="56.0" y="186" fill="#B6BBC4" font-size="13" font-family="'Work Sans', system-ui, sans-serif">what stops them.</text>
+<path d="M56.0,216 H232.0" stroke="#4B515B" stroke-width="1"/>
+<text x="56.0" y="236" fill="#FFC300" font-size="10" font-weight="600" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.06em">GOAL BY 30 NOV</text>
+<rect x="56.0" y="252" width="6" height="6" fill="#FFC300"/>
+<text x="70.0" y="260" fill="#F6F7F8" font-size="13" font-family="'Work Sans', system-ui, sans-serif">10 named holders</text>
+<rect x="56.0" y="278" width="6" height="6" fill="#FFC300"/>
+<text x="70.0" y="286" fill="#F6F7F8" font-size="13" font-family="'Work Sans', system-ui, sans-serif">5 interviews</text>
+<rect x="56.0" y="304" width="6" height="6" fill="#FFC300"/>
+<text x="70.0" y="312" fill="#F6F7F8" font-size="13" font-family="'Work Sans', system-ui, sans-serif">2 full testnet cycles</text>
+<circle cx="284.0" cy="36" r="6" fill="#0C0E12" stroke="#F6F7F8" stroke-width="1.2"/>
+<text x="278.0" y="66" fill="#8B919B" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.06em">1 DEC 2026 TO 29 JAN 2027</text>
+<rect x="264.0" y="88" width="208.0" height="320" rx="6" fill="#15181E" stroke="#F6F7F8" stroke-width="1"/>
+<text x="280.0" y="116" fill="#8B919B" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.06em">PHASE 2</text>
+<text x="280.0" y="142" fill="#F6F7F8" font-size="20" font-weight="600" font-family="'Work Sans', system-ui, sans-serif">Early users</text>
+<text x="280.0" y="168" fill="#B6BBC4" font-size="13" font-family="'Work Sans', system-ui, sans-serif">Small guided cohorts of</text>
+<text x="280.0" y="186" fill="#B6BBC4" font-size="13" font-family="'Work Sans', system-ui, sans-serif">holders, one to one.</text>
+<path d="M280.0,216 H456.0" stroke="#4B515B" stroke-width="1"/>
+<text x="280.0" y="236" fill="#FFC300" font-size="10" font-weight="600" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.06em">GOAL BY 29 JAN</text>
+<rect x="280.0" y="252" width="6" height="6" fill="#FFC300"/>
+<text x="294.0" y="260" fill="#F6F7F8" font-size="13" font-family="'Work Sans', system-ui, sans-serif">10 full testnet cycles</text>
+<rect x="280.0" y="278" width="6" height="6" fill="#FFC300"/>
+<text x="294.0" y="286" fill="#F6F7F8" font-size="13" font-family="'Work Sans', system-ui, sans-serif">3 lenders with written</text>
+<text x="294.0" y="304" fill="#F6F7F8" font-size="13" font-family="'Work Sans', system-ui, sans-serif">terms</text>
+<rect x="280.0" y="322" width="6" height="6" fill="#FFC300"/>
+<text x="294.0" y="330" fill="#F6F7F8" font-size="13" font-family="'Work Sans', system-ui, sans-serif">1 institution evaluating</text>
+<circle cx="508.0" cy="36" r="6" fill="#0C0E12" stroke="#F6F7F8" stroke-width="1.2"/>
+<text x="502.0" y="66" fill="#8B919B" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.06em">FEB 2027 TO MAINNET</text>
+<rect x="488.0" y="88" width="208.0" height="320" rx="6" fill="#15181E" stroke="#F6F7F8" stroke-width="1"/>
+<text x="504.0" y="116" fill="#8B919B" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.06em">PHASE 3</text>
+<text x="504.0" y="142" fill="#F6F7F8" font-size="20" font-weight="600" font-family="'Work Sans', system-ui, sans-serif">Pre-launch</text>
+<text x="504.0" y="168" fill="#B6BBC4" font-size="13" font-family="'Work Sans', system-ui, sans-serif">Users and USDC ready for</text>
+<text x="504.0" y="186" fill="#B6BBC4" font-size="13" font-family="'Work Sans', system-ui, sans-serif">day one.</text>
+<path d="M504.0,216 H680.0" stroke="#4B515B" stroke-width="1"/>
+<text x="504.0" y="236" fill="#FFC300" font-size="10" font-weight="600" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.06em">READY FOR LAUNCH</text>
+<rect x="504.0" y="252" width="6" height="6" fill="#FFC300"/>
+<text x="518.0" y="260" fill="#F6F7F8" font-size="13" font-family="'Work Sans', system-ui, sans-serif">Launch list from testnet</text>
+<text x="518.0" y="278" fill="#F6F7F8" font-size="13" font-family="'Work Sans', system-ui, sans-serif">cycles</text>
+<rect x="504.0" y="296" width="6" height="6" fill="#FFC300"/>
+<text x="518.0" y="304" fill="#F6F7F8" font-size="13" font-family="'Work Sans', system-ui, sans-serif">Lender terms become</text>
+<text x="518.0" y="322" fill="#F6F7F8" font-size="13" font-family="'Work Sans', system-ui, sans-serif">commitments, subject to</text>
+<text x="518.0" y="340" fill="#F6F7F8" font-size="13" font-family="'Work Sans', system-ui, sans-serif">audit</text>
+<rect x="504.0" y="358" width="6" height="6" fill="#FFC300"/>
+<text x="518.0" y="366" fill="#F6F7F8" font-size="13" font-family="'Work Sans', system-ui, sans-serif">Public liquidation</text>
+<text x="518.0" y="384" fill="#F6F7F8" font-size="13" font-family="'Work Sans', system-ui, sans-serif">walkthrough</text>
+<circle cx="732.0" cy="36" r="6" fill="#FFC300" stroke="#FFC300" stroke-width="1.2"/>
+<text x="726.0" y="66" fill="#8B919B" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.06em">Q2 TO Q3 2027</text>
+<rect x="712.0" y="88" width="208.0" height="320" rx="6" fill="#15181E" stroke="#FFC300" stroke-width="1"/>
+<text x="728.0" y="116" fill="#8B919B" font-size="10" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.06em">PHASE 4</text>
+<text x="728.0" y="142" fill="#F6F7F8" font-size="20" font-weight="600" font-family="'Work Sans', system-ui, sans-serif">Launch</text>
+<text x="728.0" y="168" fill="#B6BBC4" font-size="13" font-family="'Work Sans', system-ui, sans-serif">Open mainnet, first loans</text>
+<text x="728.0" y="186" fill="#B6BBC4" font-size="13" font-family="'Work Sans', system-ui, sans-serif">from the launch list.</text>
+<path d="M728.0,216 H904.0" stroke="#4B515B" stroke-width="1"/>
+<text x="728.0" y="236" fill="#FFC300" font-size="10" font-weight="600" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.06em">UNDER CAPS</text>
+<rect x="728.0" y="252" width="6" height="6" fill="#FFC300"/>
+<text x="742.0" y="260" fill="#F6F7F8" font-size="13" font-family="'Work Sans', system-ui, sans-serif">50,000 USDC pool cap</text>
+<rect x="728.0" y="278" width="6" height="6" fill="#FFC300"/>
+<text x="742.0" y="286" fill="#F6F7F8" font-size="13" font-family="'Work Sans', system-ui, sans-serif">5,000 USDC per borrower,</text>
+<text x="742.0" y="304" fill="#F6F7F8" font-size="13" font-family="'Work Sans', system-ui, sans-serif">planned</text>
+<rect x="728.0" y="322" width="6" height="6" fill="#FFC300"/>
+<text x="742.0" y="330" fill="#F6F7F8" font-size="13" font-family="'Work Sans', system-ui, sans-serif">Caps rise after 30 days</text>
+<text x="742.0" y="348" fill="#F6F7F8" font-size="13" font-family="'Work Sans', system-ui, sans-serif">without incident</text>
 </svg>
