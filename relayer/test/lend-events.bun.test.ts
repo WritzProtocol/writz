@@ -6,6 +6,7 @@ import { Address, Keypair, nativeToScVal, xdr } from "@stellar/stellar-sdk";
 import { decodeLendEvent, decodeRawXdr, type RawLendEvent } from "../src/lend-events/decode";
 import { runLendEventsCycle, type LendEventsCycleDeps } from "../src/lend-events/poller";
 import { openLendEventStore } from "../src/lend-events/store";
+import { cursorForLedger } from "../src/rpc-cursor";
 
 const CONTRACT = "CCONTRACT";
 const DEPLOY_LEDGER = 5_516_974;
@@ -44,7 +45,7 @@ const paused = (n: number): RawLendEvent => ({
   value: map({ paused: xdr.ScVal.scvBool(true) }),
 });
 
-const pages = (...list: { events: unknown[]; cursor: string }[]) => {
+const pages = (...list: { events: unknown[]; cursor: string; latestLedger?: number }[]) => {
   let i = 0;
   return {
     getEvents: mock(async () => list[Math.min(i++, list.length - 1)]!),
@@ -125,6 +126,20 @@ describe("runLendEventsCycle", () => {
     expect(store.list(CONTRACT).map((r) => r.name)).toEqual(["repay_full", "supply"]);
     expect(store.readCursor()).toBe(cursorN(3));
     expect(store.lastLedger(CONTRACT)).toBe(103);
+    expect(server.getEvents).toHaveBeenCalledTimes(3);
+  });
+
+  test("an empty page short of the latest ledger is not the tip", async () => {
+    const store = fresh();
+    // RPC scans at most a fixed ledger window per request: a quiet stretch
+    // longer than that answers an empty page with the cursor partway.
+    const server = pages(
+      { events: [], cursor: cursorForLedger(10_000), latestLedger: 30_000 },
+      { events: [supply(1)], cursor: cursorForLedger(20_000), latestLedger: 30_000 },
+      { events: [], cursor: cursorForLedger(30_000), latestLedger: 30_000 },
+    );
+    expect(await cycle(store, server)).toBe(true);
+    expect(store.list(CONTRACT).map((r) => r.name)).toEqual(["supply"]);
     expect(server.getEvents).toHaveBeenCalledTimes(3);
   });
 
