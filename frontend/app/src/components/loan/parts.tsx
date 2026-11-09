@@ -17,6 +17,7 @@ import {
   parseUsdcAmount,
   readValue,
   releaseStepOf,
+  toExactFieldValue,
   toFieldValue,
   type ActivityItem,
   type Available,
@@ -714,10 +715,10 @@ export function RepayPanel({
   const wallet = readValue(m.walletUsdc);
   const all = wallet !== null && wallet < debt ? wallet : debt;
   const [typed, setValue] = useState<string | null>(() =>
-    initial && initial > 0n ? toFieldValue(initial < all || all === 0n ? initial : all) : null,
+    initial && initial > 0n ? (initial < all || all === 0n ? toFieldValue(initial) : toExactFieldValue(all)) : null,
   );
   // The guided loop follows "Repay all" until the user types, so a top up shows at once.
-  const value = typed ?? (m.guided && all > 0n ? toFieldValue(all) : "");
+  const value = typed ?? (m.guided && all > 0n ? toExactFieldValue(all) : "");
   const id = useId();
   const mine = m.action === "repay";
   const shortfall = wallet !== null && debt > 0n ? repayShortfallStroops(debt, wallet) : 0n;
@@ -758,7 +759,8 @@ export function RepayPanel({
         value={value}
         onChange={setValue}
         maxLabel={wallet !== null && wallet < debt ? "Max" : "Repay all"}
-        onMax={() => setValue(toFieldValue(all))}
+        // Every stroop: interest leaves the debt past the cents, and a repay short of it keeps the loan open.
+        onMax={() => setValue(toExactFieldValue(all))}
         error={error}
         hint={
           <>
