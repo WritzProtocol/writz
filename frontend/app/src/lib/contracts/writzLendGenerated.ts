@@ -836,7 +836,9 @@ export interface Client {
 
   /**
    * Construct and simulate a refresh_protocol_ttl transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
-   * Extend the TTL of the global protocol accounting entry.
+   * Extend the TTL of the global protocol accounting entry, the
+   * configuration, and the contract instance and code to their full
+   * window (90 days).
    */
   refresh_protocol_ttl: (options?: MethodOptions) => Promise<AssembledTransaction<null>>
 
