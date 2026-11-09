@@ -129,7 +129,7 @@ pub fn get_canonical_hash(height: u32) -> Option<BytesN<32>>
 
 ### `refresh_ttl`
 
-Extends the TTL of the Config, Checkpoint and best-tip entries. Permissionless: anyone can call this to keep an inactive deployment from expiring.
+Extends the TTL of the Config, Checkpoint and best-tip entries, and of the contract instance and code. Permissionless: anyone can call this to keep an inactive deployment from expiring.
 
 ```rust
 pub fn refresh_ttl()

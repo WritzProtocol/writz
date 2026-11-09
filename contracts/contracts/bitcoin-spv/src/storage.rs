@@ -75,6 +75,19 @@ pub fn header_ttl(env: &Env) -> u32 {
     get_config(env).map_or(0, |c| c.header_ttl_ledgers)
 }
 
+// The contract instance and its wasm code entry have TTLs of their own. No
+// state lives in the instance, but if either is archived every call fails
+// until someone restores it. They are kept on the Config window, and since
+// every call that ingests or verifies reads Config, any activity keeps the
+// contract live. `instance().extend_ttl` extends the instance and the code
+// entry together.
+
+fn touch_instance(env: &Env) {
+    env.storage()
+        .instance()
+        .extend_ttl(PERSISTENT_THRESHOLD, PERSISTENT_BUMP);
+}
+
 // ── Config ────────────────────────────────────────────────────────────────────
 
 pub fn get_config(env: &Env) -> Option<Config> {
@@ -84,6 +97,7 @@ pub fn get_config(env: &Env) -> Option<Config> {
         env.storage()
             .persistent()
             .extend_ttl(&key, PERSISTENT_THRESHOLD, PERSISTENT_BUMP);
+        touch_instance(env);
     }
     result
 }
@@ -94,6 +108,7 @@ pub fn set_config(env: &Env, config: &Config) {
     env.storage()
         .persistent()
         .extend_ttl(&key, PERSISTENT_THRESHOLD, PERSISTENT_BUMP);
+    touch_instance(env);
 }
 
 // ── Checkpoint ────────────────────────────────────────────────────────────────
@@ -168,13 +183,17 @@ pub fn set_best_tip(env: &Env, tip: &BestTip) {
         .extend_ttl(&key, PERSISTENT_THRESHOLD, PERSISTENT_BUMP);
 }
 
-/// Extends the TTL of Config, Checkpoint and the best tip to their full
-/// window. Permissionless - mirrors `writz-lend::refresh_protocol_ttl`. An
+/// Extends the TTL of Config, Checkpoint, the best tip, and the contract
+/// instance and code to their full window. Permissionless - mirrors `writz-lend::refresh_protocol_ttl`. An
 /// inactive deployment would otherwise let these expire and need a restore
 /// before `NotInitialized`/`CheckpointNotSet` stop being the answer. The
 /// tip's header is extended to the header window: it is the parent the next
 /// submitted header needs.
 pub fn refresh_ttl(env: &Env) {
+    // The instance and code, which no other entry point refreshes in full.
+    env.storage()
+        .instance()
+        .extend_ttl(PERSISTENT_BUMP, PERSISTENT_BUMP);
     let config_key = DataKey::Config;
     let header_ttl = header_ttl(env);
     if env.storage().persistent().has(&config_key) {

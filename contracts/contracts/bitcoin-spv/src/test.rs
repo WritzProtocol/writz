@@ -1681,3 +1681,50 @@ fn set_ttls_applies_to_the_next_header_and_marker() {
     light.client.consume_deposit(&lend, &txid);
     assert_eq!(spv_ttl(&env, &id, &crate::storage::DataKey::Consumed(txid)), window);
 }
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Contract instance and code TTL
+// ══════════════════════════════════════════════════════════════════════════════
+//
+// All state lives in persistent entries, but the contract instance and its
+// wasm code entry have their own TTLs. If either is archived, every call
+// fails until someone restores it. They are kept on the Config window.
+
+const CONFIG_WINDOW: u32 = 90 * crate::LEDGERS_PER_DAY;
+const CONFIG_THRESHOLD: u32 = 30 * crate::LEDGERS_PER_DAY;
+
+fn instance_ttl(env: &Env, id: &Address) -> u32 {
+    use soroban_sdk::testutils::Deployer as _;
+    env.deployer().get_contract_instance_ttl(id)
+}
+
+#[test]
+fn constructor_extends_the_instance_to_the_config_window() {
+    let env = Env::default();
+    testnet_ledger(&env);
+    let (client, _) = register_with_ttls(&env, TESTNET_TTL, TESTNET_TTL);
+    assert_eq!(instance_ttl(&env, &client.address), CONFIG_WINDOW);
+}
+
+#[test]
+fn submitting_headers_keeps_the_instance_live() {
+    let env = Env::default();
+    testnet_ledger(&env);
+    let light = light_with_ttls(&env, TESTNET_TTL, TESTNET_TTL);
+    let id = light.client.address.clone();
+    advance_ledgers(&env, CONFIG_WINDOW - CONFIG_THRESHOLD + 1);
+    assert!(instance_ttl(&env, &id) < CONFIG_THRESHOLD);
+    submit_single_block(&env, &light, [3u8; 32]);
+    assert_eq!(instance_ttl(&env, &id), CONFIG_WINDOW);
+}
+
+#[test]
+fn refresh_ttl_extends_the_instance_to_the_full_window() {
+    let env = Env::default();
+    testnet_ledger(&env);
+    let (client, _) = register_with_ttls(&env, TESTNET_TTL, TESTNET_TTL);
+    advance_ledgers(&env, 100_000);
+    assert!(instance_ttl(&env, &client.address) > CONFIG_THRESHOLD);
+    client.refresh_ttl();
+    assert_eq!(instance_ttl(&env, &client.address), CONFIG_WINDOW);
+}

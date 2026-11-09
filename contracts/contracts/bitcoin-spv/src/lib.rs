@@ -308,8 +308,8 @@ impl BitcoinSpvContract {
         get_canonical(&env, height, header_ttl(&env))
     }
 
-    /// Extends the TTL of the Config, Checkpoint and best-tip entries.
-    /// Permissionless - anyone can call this to keep an inactive deployment
+    /// Extends the TTL of the Config, Checkpoint and best-tip entries, and
+    /// of the contract instance and code. Permissionless - anyone can call this to keep an inactive deployment
     /// from expiring.
     pub fn refresh_ttl(env: Env) {
         storage::refresh_ttl(&env)
