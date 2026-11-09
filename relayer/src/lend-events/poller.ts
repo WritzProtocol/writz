@@ -10,6 +10,7 @@
  * ../repay-watcher/poller.ts.
  */
 import { lendEventStore, type LendEventRow, type LendEventStore } from "./store.js";
+import { ledgerOfCursor } from "../rpc-cursor.js";
 
 /** Pages read per poll, so catching up cannot starve the rest of the loop. */
 const MAX_PAGES_PER_POLL = 20;
@@ -19,7 +20,7 @@ export interface LendEventsServer {
     request:
       | { filters: { type: "contract"; contractIds: string[] }[]; cursor: string }
       | { filters: { type: "contract"; contractIds: string[] }[]; startLedger: number },
-  ): Promise<{ events: unknown[]; cursor: string }>;
+  ): Promise<{ events: unknown[]; cursor: string; latestLedger?: number }>;
 }
 
 export interface LendEventsCycleDeps {
@@ -30,6 +31,10 @@ export interface LendEventsCycleDeps {
   deployLedger: number | undefined;
   decodeEvent: (event: never, contractId: string) => LendEventRow | null;
 }
+
+/** RPC scans a bounded ledger window per request, so an empty page is the tip only once its cursor reaches the latest ledger. */
+const reachedTip = (response: { cursor: string; latestLedger?: number }) =>
+  response.latestLedger === undefined || ledgerOfCursor(response.cursor) >= response.latestLedger;
 
 /**
  * Reads pages until the chain has nothing newer. Each page commits on its own.
@@ -52,7 +57,7 @@ export async function runLendEventsCycle(deps: LendEventsCycleDeps): Promise<boo
       if (row) rows.push(row);
     }
     store.commit(rows, response.cursor);
-    if (response.events.length === 0) return true;
+    if (response.events.length === 0 && reachedTip(response)) return true;
   }
   return false;
 }
