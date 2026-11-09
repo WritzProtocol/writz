@@ -50,7 +50,7 @@ cd contracts
 cargo test
 ```
 
-Expected output: 255 tests pass across `bitcoin-spv` (80), `writz-lend` (165), and `spv-types` (10).
+Expected output: 261 tests pass across `bitcoin-spv` (83), `writz-lend` (168), and `spv-types` (10).
 
 ### Bitcoin script toolkit (TypeScript, Bun)
 
@@ -77,7 +77,7 @@ cd ../../relayer && bun install && bun run test
 
 Expected output: 512 tests pass.
 
-### All together: 839 tests, all passing.
+### All together: 845 tests, all passing.
 
 ---
 

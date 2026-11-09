@@ -32,7 +32,7 @@ The review covers, at least:
 
 | Item | Status |
 |---|---|
-| Contracts deployed on testnet with passing tests | Done: 839 tests across the contracts, `bitcoin-script` and the relayer (255 in the contracts) |
+| Contracts deployed on testnet with passing tests | Done: 845 tests across the contracts, `bitcoin-script` and the relayer (261 in the contracts) |
 | Integration tests covering all flows | Partial: `scripts/deploy/e2e_local.mjs` runs in CI on a local Stellar network and covers deployment, header submission, supply and withdrawal, and deposits with real SPV verification. Borrow, repay and liquidation are covered by `writz-lend`'s unit tests |
 | STRIDE threat model | Draft published: [STRIDE threat model](/security/stride-threat-model). Full revision before the audit |
 | Dataflow diagram | Published in the [STRIDE threat model](/security/stride-threat-model#data-flow-diagram) |
@@ -55,7 +55,7 @@ Before the audit, Writz applies the following:
 - `cargo audit` - dependency vulnerability scanning of every Cargo workspace against the RustSec database, on manifest or lockfile changes and weekly (`.github/workflows/dependency-audit.yml`); any ignored advisory is listed in the workflow with its reason
 
 **Test coverage:**
-- 839 tests covering happy paths and error cases
+- 845 tests covering happy paths and error cases
 - A local-network integration test of deployment, header submission, supply and deposit with real SPV verification
 - Tests of the witness each spending path builds, and a Path A release confirmed on Bitcoin Signet
 
