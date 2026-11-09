@@ -43,7 +43,8 @@ The relayer's state is rebuilt from public Stellar data and checked against the 
 | Archive export, and rebuild from the export past RPC retention | #266, PR #393 |
 | Recovery runbook and command reference, followed from a fresh clone and an empty data directory | #268, PRs #387 and #404, [`relayer-recovery.md`](../relayer-recovery.md) |
 | Live relayer health, with `lendEvents` and `releases` | [`api.testnet.writz.xyz/health`](https://api.testnet.writz.xyz/health) |
-| Recovery on video: relayer data deleted, a `repay_full` while it is down, rebuild matching the chain, release recovered | #274, [demo video](#demo-video) |
+| Replay from RPC reads past long quiet stretches: an empty page short of the latest ledger no longer ends it | PR #425 |
+| Recovery on video: relayer data deleted, a repayment while it is down, rebuild from the exported archive matching the chain, both releases co-signed after the restart | #274, [demo video](#demo-video), part 2, [`demo-testnet.md`](demo-testnet.md#relayer-recovery-as-filmed) |
 
 ## Lend tab (#279)
 
@@ -54,13 +55,16 @@ The relayer's state is rebuilt from public Stellar data and checked against the 
 | Copy, states and tests for an interest-bearing pool | #272, PR #390 |
 | Wallet picker usable from the keyboard | PR #402 |
 | Live Lend tab, open to anyone | [testnet.writz.xyz/lend](https://testnet.writz.xyz/lend) |
-| Supply, wait and withdraw more than supplied, from the browser | #274, [demo video](#demo-video) |
+| Supply, wait and withdraw more than supplied, from the browser: 8 USDC in, 8.0000213 USDC out | #274, [demo video](#demo-video), part 3, [`demo-testnet.md`](demo-testnet.md) |
 
 ## Demo video
 
-One video, #274, shows all three on testnet in the order a user meets them: a Bitcoin borrower and a lender on the Lend tab, a day of interest, the relayer recovering from a deleted database while the borrower repays, and the lender withdrawing more than they supplied. Every hash in it is listed in [`demo-testnet.md`](demo-testnet.md).
+One session, #274, recorded on 2026-11-09, shows all three on testnet in the order a user meets them: a lender and a Bitcoin borrower on the Lend tab, the interest arriving, the relayer recovering from a deleted database while the borrower repays, and the lender withdrawing more than they supplied. Every hash in it is listed in [`demo-testnet.md`](demo-testnet.md), with what it does not show.
 
-**Pending:** video link and record.
+| Video | Link |
+|---|---|
+| Full session, 6:14: lender yield (0:08), relayer recovery (2:10), Lend tab (4:30) | [Google Drive](https://drive.google.com/file/d/18sCNGmoquCxf8Gln8J0hW1aOEn09WCPk/view?usp=sharing) |
+| Product walkthrough, 2:31 | [youtu.be/aFWK09AYcuU](https://youtu.be/aFWK09AYcuU) |
 
 ## Review pass
 
@@ -68,7 +72,7 @@ One video, #274, shows all three on testnet in the order a user meets them: a Bi
 
 ## Not done
 
-- **Demo video (#274)**: not recorded yet. This file links it when it is.
+- **Demo video (#274), against its plan**: the repayment made while the relayer was down was not a full repayment (it left 0.0000055 USDC of accrued interest), so the session shows no missing release being recovered; that path is covered by the tests of PRs #384 and #386. The rebuild filmed reads the exported archive, because the RPC replay stopped early during the session; fixed in PR #425 and verified from RPC afterwards. The contract's views are not shown next to the rebuilt values; the rebuild checks them itself. Details in [`demo-testnet.md`](demo-testnet.md#what-the-session-does-not-show).
 - **Light theme**: the app ships a dark theme only (`color-scheme: dark`), so there is no light theme to check.
 - **Forced publish failure on the live relayer**: covered by the tests of PR #384. The live relayer published the release of the repaid loan above, but a failure was not forced on testnet.
-- **Bitcoin release of the repaid loan**: the repayment is on Stellar. Releasing the 5,000 sats on signet is a step the borrower signs and is not part of this run.
+- **Bitcoin release of the loan repaid in the recorded lender run (#261)**: the repayment is on Stellar; that release is a step the borrower signs and was not part of the run. The demo session releases both of its loans on signet.
