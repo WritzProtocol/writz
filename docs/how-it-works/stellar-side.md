@@ -139,6 +139,7 @@ The transaction that creates an entry pays rent for its whole window, at the rat
 | Header and height index (two per block) | bitcoin-spv | `header_ttl_ledgers` | 90 days | 7 days |
 | Consumed deposit txid | bitcoin-spv | `consumed_ttl_ledgers` | 90 days | 7 days |
 | Config / Protocol accounting | writz-lend | fixed | 90 days | 90 days |
+| Contract instance and code | writz-lend | fixed | 90 days | 90 days |
 | Config / Checkpoint / best tip | bitcoin-spv | fixed | 90 days | 90 days |
 
 The testnet contracts were redeployed with these parameters on 2026-10-25, after testnet rent rose sharply: a deposit was charged about 428 XLM in fees on the previous contracts, which used the mainnet windows, and about 89 XLM with the testnet windows (measured 2026-10-25). Positions on the previous contracts were closed and their BTC released. The constructor arguments are in the [Contract reference](/developers/contract-reference).
@@ -146,6 +147,8 @@ The testnet contracts were redeployed with these parameters on 2026-10-25, after
 Testnet runs short windows because its live state is above the network's target size, which prices rent far higher than on mainnet: a 180-day position would cost more resource fee than one transaction can carry. Seven days is the network's minimum persistent TTL, so a 7-day window adds no rent beyond what creating the entry already costs. An entry that is read or rewritten in the last third of its window (at most its last 30 days) is extended back to its full window.
 
 The admin can change these windows without a redeploy (`set_entry_ttl` on writz-lend, `set_ttls` on bitcoin-spv, same bounds as the constructors), so they can follow the rent rate. A change applies to entries written or touched after it; existing entries keep their TTL until a call tops them up or refreshes them.
+
+**Contract instance and code:** every `writz-lend` call reads its configuration, and that read also extends the contract instance and its wasm code entry once less than 30 days remain, so any activity keeps the contract itself live. `refresh_protocol_ttl` extends both to the full window. Without this, the instance and code keep only the network minimum TTL they get at deployment, and once archived every call fails until they are restored. Deployments before this change (`CD3BRE32…` on testnet) are kept live with `stellar contract extend`.
 
 **Permissionless refresh:** positions, supply balances, release PSBTs, the protocol accounting and `bitcoin-spv`'s singletons each have a public `refresh_*` function that extends their TTL to the full window. Anyone (Writz's keeper, a third party, or the user) can call them; no permission is required. A position, balance or PSBT is also topped up when a call that uses it reads or writes it, but an idle entry (a position nobody touches for months) is only kept live by these functions. Stored headers other than the tip, and consumed-deposit markers, have no refresh function: once archived they are restored when next read.
 

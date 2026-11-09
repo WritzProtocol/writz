@@ -3091,3 +3091,41 @@ fn lender_yield_invariants_hold_over_random_sequences() {
         }
     }
 }
+
+// ── Contract instance and code TTL ───────────────────────────────────────────
+//
+// All state lives in persistent entries, but the contract instance and its
+// wasm code entry have their own TTLs. If either is archived, every call
+// fails until someone restores it. They are kept on the Config window.
+
+use crate::storage::{PERSISTENT_BUMP, PERSISTENT_THRESHOLD};
+
+fn instance_ttl(s: &Setup) -> u32 {
+    use soroban_sdk::testutils::Deployer as _;
+    let deployer = s.env.deployer();
+    deployer.get_contract_instance_ttl(&s.client.address)
+}
+
+#[test]
+fn constructor_extends_the_instance_to_the_config_window() {
+    let s = setup_testnet_ttl();
+    assert_eq!(instance_ttl(&s), PERSISTENT_BUMP);
+}
+
+#[test]
+fn a_state_changing_call_keeps_the_instance_live() {
+    let s = setup_testnet_ttl();
+    advance(&s, PERSISTENT_BUMP - PERSISTENT_THRESHOLD + 1);
+    assert!(instance_ttl(&s) < PERSISTENT_THRESHOLD);
+    s.client.supply_usdc(&s.supplier, &1_000_i128);
+    assert_eq!(instance_ttl(&s), PERSISTENT_BUMP);
+}
+
+#[test]
+fn refresh_protocol_ttl_extends_the_instance_to_the_full_window() {
+    let s = setup_testnet_ttl();
+    advance(&s, 100_000);
+    assert!(instance_ttl(&s) > PERSISTENT_THRESHOLD);
+    s.client.refresh_protocol_ttl();
+    assert_eq!(instance_ttl(&s), PERSISTENT_BUMP);
+}
