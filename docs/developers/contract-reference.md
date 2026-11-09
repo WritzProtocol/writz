@@ -424,7 +424,7 @@ pub fn refresh_supply_balance_ttl(lender: Address) -> bool
 
 ### `refresh_protocol_ttl`
 
-Extend the TTL of the global protocol accounting entry.
+Extend the TTL of the global protocol accounting entry, the configuration, and the contract instance and code to their full 90-day window.
 
 ```rust
 pub fn refresh_protocol_ttl()

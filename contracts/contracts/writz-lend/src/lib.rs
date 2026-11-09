@@ -1051,7 +1051,9 @@ impl WritzLendContract {
         storage::refresh_supply_balance_ttl(&env, &lender, storage::entry_ttl(&env))
     }
 
-    /// Extend the TTL of the global protocol accounting entry.
+    /// Extend the TTL of the global protocol accounting entry, the
+    /// configuration, and the contract instance and code to their full
+    /// window (90 days).
     pub fn refresh_protocol_ttl(env: Env) {
         storage::refresh_protocol_ttl(&env);
     }

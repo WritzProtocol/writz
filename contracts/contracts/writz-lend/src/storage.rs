@@ -32,8 +32,8 @@ pub const LEDGERS_PER_DAY: u32 = 17_280;
 // Every state-changing call reads config and updates protocol, so these
 // entries are refreshed on every transaction. They are written once per
 // deployment, so their rent does not scale with use.
-const PERSISTENT_BUMP:      u32 = 90  * LEDGERS_PER_DAY;
-const PERSISTENT_THRESHOLD: u32 = 30  * LEDGERS_PER_DAY;
+pub(crate) const PERSISTENT_BUMP:      u32 = 90  * LEDGERS_PER_DAY;
+pub(crate) const PERSISTENT_THRESHOLD: u32 = 30  * LEDGERS_PER_DAY;
 
 // Per-user entries (Position, SupplyBalance, ReleasePsbt) are kept live for
 // `Config::entry_ttl_ledgers`, set at deployment. Each deposit, supply or
@@ -77,6 +77,18 @@ fn refresh<K: IntoVal<Env, Val>>(env: &Env, key: &K, window: u32) {
     env.storage().persistent().extend_ttl(key, window, window);
 }
 
+// The contract instance and its wasm code entry have TTLs of their own. No
+// state lives in the instance, but if either is archived every call fails
+// until someone restores it. They are kept on the Config window, and since
+// every call reads Config, any activity keeps the contract live.
+// `instance().extend_ttl` extends the instance and the code entry together.
+
+fn touch_instance(env: &Env) {
+    env.storage()
+        .instance()
+        .extend_ttl(PERSISTENT_THRESHOLD, PERSISTENT_BUMP);
+}
+
 /// The per-user entry window this deployment was configured with.
 pub fn entry_ttl(env: &Env) -> u32 {
     get_config(env).map_or(0, |c| c.entry_ttl_ledgers)
@@ -91,6 +103,7 @@ pub fn get_config(env: &Env) -> Option<Config> {
         env.storage()
             .persistent()
             .extend_ttl(&key, PERSISTENT_THRESHOLD, PERSISTENT_BUMP);
+        touch_instance(env);
     }
     result
 }
@@ -101,6 +114,7 @@ pub fn set_config(env: &Env, config: &Config) {
     env.storage()
         .persistent()
         .extend_ttl(&key, PERSISTENT_THRESHOLD, PERSISTENT_BUMP);
+    touch_instance(env);
 }
 
 // ── ProtocolState ─────────────────────────────────────────────────────────────
@@ -149,6 +163,10 @@ pub fn refresh_protocol_ttl(env: &Env) {
     if env.storage().persistent().has(&config_key) {
         refresh(env, &config_key, PERSISTENT_BUMP);
     }
+    // And the instance and code, which no other entry point refreshes in full.
+    env.storage()
+        .instance()
+        .extend_ttl(PERSISTENT_BUMP, PERSISTENT_BUMP);
 }
 
 // ── Position ──────────────────────────────────────────────────────────────────
