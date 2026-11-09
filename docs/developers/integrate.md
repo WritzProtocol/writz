@@ -311,8 +311,8 @@ Other frequent mistakes:
 
 ## Faucets and wallets
 
-- **Stellar testnet XLM:** `stellar keys generate me --network testnet --fund`, or Friendbot in [Stellar Lab](https://lab.stellar.org) or in the Freighter wallet on testnet.
-- **Test USDC:** add a trustline to `USDC:GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5`, then swap testnet XLM for it in Freighter, or use [faucet.circle.com](https://faucet.circle.com) (Stellar Testnet). This is the USDC the Writz pool uses.
+- **Stellar testnet XLM:** `stellar keys generate me --network testnet --fund`, or Friendbot in [Stellar Lab](https://lab.stellar.org) or in the Varial (formerly Freighter) wallet on testnet.
+- **Test USDC:** add a trustline to `USDC:GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5`, then swap testnet XLM for it in Varial, or use [faucet.circle.com](https://faucet.circle.com) (Stellar Testnet). This is the USDC the Writz pool uses.
 - **Bitcoin signet coins:** a signet wallet (Xverse and Sparrow support signet) and its `tb1q...` or `tb1p...` address, then a public Signet faucet such as [bitcoinsignetfaucet.com](https://bitcoinsignetfaucet.com) or [signet.dcorral.com](https://signet.dcorral.com). Their amounts, captchas and limits are set by their operators. The relayer's `/faucet/signet` route is not a builder faucet: it only funds accounts created through the Writz testnet app's social login, once each, and refuses any other request. Coins from a faucet are unconfirmed at first; wait for a block (about 10 minutes) before building a proof.
 - **Explorers:** [mempool.space/signet](https://mempool.space/signet) for Bitcoin, [stellar.expert/explorer/testnet](https://stellar.expert/explorer/testnet) for Stellar.
 

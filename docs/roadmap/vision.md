@@ -67,7 +67,7 @@ This is not a token launched to raise money. It is a token launched to give owne
 
 The Writz Bitcoin SPV SDK is integrated into:
 - Xverse (BTC wallet with a "Writz" button in the DeFi section)
-- Freighter (Stellar wallet with BTC collateral option)
+- Varial, formerly Freighter (Stellar wallet with BTC collateral option)
 - Lobstr (BTC yield product in the savings section)
 - 7+ Stellar DeFi protocols using the SDK for Bitcoin verification
 

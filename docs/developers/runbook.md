@@ -80,7 +80,7 @@ short version for developers.
 **You need:** [Xverse](https://www.xverse.app/) on Signet with at least 5,000 sats
 (the testnet minimum deposit) from a public Signet faucet such as
 [bitcoinsignetfaucet.com](https://bitcoinsignetfaucet.com), and
-[Freighter](https://freighter.app/) on Stellar testnet, funded with Friendbot.
+[Varial (formerly Freighter)](https://varialwallet.com) on Stellar testnet, funded with Friendbot.
 
 1. Use the hosted app at [testnet.writz.xyz](https://testnet.writz.xyz), or run it locally:
    ```bash

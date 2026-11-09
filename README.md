@@ -84,7 +84,7 @@ Positions, amounts and collateral are public on chain, like any other lending ma
   <img alt="From a Bitcoin deposit to a USDC loan" src="docs/diagrams/deposit-and-borrow.svg">
 </picture>
 
-1. User connects their Bitcoin wallet (Xverse) and a Stellar wallet (Freighter) to the Writz UI. On testnet, an email or social sign-in with a Signet test key kept in the browser replaces both.
+1. User connects their Bitcoin wallet (Xverse) and a Stellar wallet (Varial, formerly Freighter) to the Writz UI. On testnet, an email or social sign-in with a Signet test key kept in the browser replaces both.
 2. The frontend derives a unique P2WSH address for this deposit (user public key + protocol public key + timelock).
 3. User sends BTC to that address on Bitcoin. The script is now live on-chain.
 4. After the required confirmations (1 on this testnet deployment, 6 on mainnet), the SPV Relayer assembles a proof bundle: raw transaction, block headers, and Merkle inclusion path.
@@ -216,7 +216,7 @@ writz/
 | Bitcoin scripting | P2WSH, absolute CLTV timelock | `bitcoinjs-lib`, `ecpair` |
 | Bitcoin wallets | Xverse (sats-connect), Signet test key in the browser on testnet | PSBT standard |
 | Frontend | Next.js 16, React 19, TypeScript | App Router, Tailwind CSS 4 |
-| Stellar wallets | Stellar Wallets Kit, Pollar | Freighter, Lobstr, email and social login on testnet |
+| Stellar wallets | Stellar Wallets Kit, Pollar | Varial, Lobstr, email and social login on testnet |
 | Relayer runtime | Bun, Express.js | Alpine Docker, Esplora-backed |
 | CI | GitHub Actions | Per-module jobs plus docs sync, all must pass |
 

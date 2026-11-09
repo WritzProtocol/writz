@@ -20,7 +20,7 @@
 
 * [Start here](/guides/start-here)
 * [Sign in with Google, GitHub or email](/guides/sign-in-with-email)
-* [Set up Freighter](/guides/set-up-freighter)
+* [Set up Varial](/guides/set-up-varial)
 * [Set up Xverse on Bitcoin signet](/guides/set-up-xverse)
 * [Get test funds](/guides/get-test-funds)
 * [Connect your wallets](/guides/connect-your-wallets)
