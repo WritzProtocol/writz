@@ -157,7 +157,7 @@ The SPV contract's tests cover:
 - Multi-transaction blocks with varying Merkle proof sizes, odd transaction counts and single-transaction blocks
 - Confirmation depth, blocks at or before the checkpoint, and the consumed-deposit registry
 
-All 80 tests pass, and the light client follows Bitcoin signet on testnet. The contract is deployed on Stellar testnet at `CBX23YKCCJMAMBMSCNP6YVKEXUIYK2CTKSR4TQ3RVBPAFYZFVCW7W4EO`.
+All 83 tests pass, and the light client follows Bitcoin signet on testnet. The contract is deployed on Stellar testnet at `CBX23YKCCJMAMBMSCNP6YVKEXUIYK2CTKSR4TQ3RVBPAFYZFVCW7W4EO`.
 
 ---
 

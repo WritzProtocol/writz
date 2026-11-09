@@ -64,7 +64,7 @@ Writz Lend is the only product today. Features planned for later are listed in [
 Writz runs on Stellar testnet today:
 
 - `bitcoin-spv` deployed on testnet since 2026-10-25, the current `writz-lend` since 2026-11-02
-- 839 tests passing across all modules
+- 845 tests passing across all modules
 - Deposits and releases broadcast and confirmed on Bitcoin signet
 
 Writz Lend is not on mainnet. The mainnet launch is targeted for Q2 to Q3 2027, starting with low borrowing caps.

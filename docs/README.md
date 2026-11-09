@@ -63,7 +63,7 @@ Writz is a lending protocol on Stellar backed by native BTC. Lock real BTC on Bi
 
 ## Current Status
 
-**The protocol's two contracts are deployed on Stellar testnet. 839 tests pass across all modules.** See [`contracts/deployments/testnet.md`](https://github.com/WritzProtocol/writz/blob/main/contracts/deployments/testnet.md) for verified calls and known gaps.
+**The protocol's two contracts are deployed on Stellar testnet. 845 tests pass across all modules.** See [`contracts/deployments/testnet.md`](https://github.com/WritzProtocol/writz/blob/main/contracts/deployments/testnet.md) for verified calls and known gaps.
 
 | Contract | Address |
 |---|---|
