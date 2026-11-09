@@ -1,6 +1,7 @@
 import { describe, expect, it, mock } from "bun:test";
 import type { ChainPosition } from "@/lib/contracts/writzLend";
 import type { Position } from "@/lib/position";
+import { parseUsdcAmount, toExactFieldValue, toFieldValue } from "@/lib/loan/model";
 
 const repayCalls: bigint[] = [];
 mock.module("@/lib/contracts/writzLend", () => ({
@@ -53,6 +54,17 @@ describe("repayPlan", () => {
   it("repaying what the page showed pays the debt with interest since then", () => {
     expect(repayPlan(1_000n, 1_000n, 1_003n)).toEqual({ amount: 1_003n, full: true });
     expect(repayPlan(2_000n, 1_000n, 1_003n)).toEqual({ amount: 1_003n, full: true });
+  });
+
+  it("Repay all on a debt past the cents is a full repay", () => {
+    // 24.80 USDC borrowed plus 185 stroops of interest.
+    const debt = 248_000_185n;
+    const field = parseUsdcAmount(toExactFieldValue(debt));
+    expect(field).toEqual({ ok: true, stroops: debt });
+    expect(repayPlan(field.ok ? field.stroops : 0n, debt, debt + 3n)).toEqual({ amount: debt + 3n, full: true });
+    // Cut to the cents, the same click left the 185 stroops and the loan open.
+    const cents = parseUsdcAmount(toFieldValue(debt));
+    expect(repayPlan(cents.ok ? cents.stroops : 0n, debt, debt + 3n).full).toBe(false);
   });
 });
 
