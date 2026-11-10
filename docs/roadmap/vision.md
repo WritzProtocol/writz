@@ -53,15 +53,9 @@ Bitcoin holders trust Writz because:
 
 The protocol generates real revenue: at $100M TVL and a 5% average borrow rate, with a 15% protocol fee, annual revenue is approximately $750,000 - enough to fund ongoing development, audits, and the insurance fund.
 
-### The WRTZ Token - Real Yield, No Speculation
+### Governance token
 
-The WRTZ token launches at $5M TVL (Q2–Q3 2027), with a community-first structure:
-
-- Fair IDO / Liquidity Bootstrapping Pool - no VC cliff dumps at steep discounts
-- Real-yield mechanics: protocol revenue is used to buy and burn WRTZ from the open market
-- Governance: WRTZ holders vote on TVL cap increases, fee adjustments, new product launches, and insurance fund payouts
-
-This is not a token launched to raise money. It is a token launched to give ownership to the community that built the TVL.
+A governance token may be considered after mainnet; it is not part of the current plan.
 
 ### Stellar Ecosystem Infrastructure
 
