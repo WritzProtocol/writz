@@ -43,7 +43,7 @@
 <rect x="368" y="72" width="40" height="14" rx="2" fill="none" stroke="#4B515B" stroke-opacity="0.5" stroke-width="0.8"/>
 <text x="388.0" y="82" fill="#4B515B" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">USER</text>
 <text x="480.0" y="106.0" fill="#15181E" font-size="16" font-weight="600" font-family="'Work Sans', system-ui, sans-serif" text-anchor="middle">Stellar wallet</text>
-<text x="480.0" y="125.0" fill="#4B515B" font-size="12" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">Freighter</text>
+<text x="480.0" y="125.0" fill="#4B515B" font-size="12" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">Varial</text>
 <rect x="664" y="64" width="240" height="72" rx="6" fill="#F6F7F8"/>
 <rect x="664" y="64" width="240" height="72" rx="6" fill="#F6F7F8" stroke="#15181E" stroke-width="1"/>
 <rect x="672" y="72" width="48" height="14" rx="2" fill="none" stroke="#4B515B" stroke-opacity="0.5" stroke-width="0.8"/>

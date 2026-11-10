@@ -45,7 +45,7 @@ Writz did not write a smart contract for the vault. It was created through the D
 
 ### Prerequisites
 
-- A Google or GitHub account or an email address (testnet sign-in through Pollar), or a Stellar wallet: Freighter, xBull, Lobstr, Albedo or Rabet
+- A Google or GitHub account or an email address (testnet sign-in through Pollar), or a Stellar wallet: Varial (formerly Freighter), xBull, Lobstr, Albedo or Rabet
 - A small amount of testnet XLM for transaction fees
 - Blend testnet USDC to deposit (step 3 below)
 

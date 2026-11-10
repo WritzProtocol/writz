@@ -85,7 +85,7 @@
             "pages": [
               "guides/start-here",
               "guides/sign-in-with-email",
-              "guides/set-up-freighter",
+              "guides/set-up-varial",
               "guides/set-up-xverse",
               "guides/get-test-funds",
               "guides/connect-your-wallets"
@@ -197,6 +197,10 @@
     }
   },
   "redirects": [
+    {
+      "source": "/guides/set-up-freighter",
+      "destination": "/guides/set-up-varial"
+    },
     {
       "source": "/go-to-market/step-by-step",
       "destination": "/go-to-market/phases"

@@ -26,7 +26,7 @@ def body(skin):
           label(c, 184, 356, 56, "CO-SIGN"),
           label(c, 404, 356, 68, "LIQUIDATE")]
     p += [node(c, 56, 64, 240, 72, "USER", "Bitcoin wallet", "Xverse", "user"),
-          node(c, 360, 64, 240, 72, "USER", "Stellar wallet", "Freighter", "user"),
+          node(c, 360, 64, 240, 72, "USER", "Stellar wallet", "Varial", "user"),
           node(c, 664, 64, 240, 72, "SERVICE", "Relayer", "only header submitter"),
           node(c, 56, 240, 240, 72, "P2WSH", "Writz vault", "locks the BTC"),
           node(c, 360, 240, 240, 72, "CONTRACT", "writz-lend", "positions, USDC pool", "focal"),

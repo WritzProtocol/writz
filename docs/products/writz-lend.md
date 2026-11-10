@@ -68,7 +68,7 @@ The steep slope above 75% pulls utilization back toward that point: it pushes bo
 ### Prerequisites
 
 - Xverse, the Bitcoin wallet the app supports
-- A Stellar wallet the app supports (Freighter, xBull, Lobstr, Albedo or Rabet), or on testnet a Google, GitHub or email sign-in
+- A Stellar wallet the app supports (Varial, formerly Freighter, xBull, Lobstr, Albedo or Rabet), or on testnet a Google, GitHub or email sign-in
 - BTC to deposit (minimum 0.001 BTC; 0.00005 BTC on testnet, which one Signet faucet payout covers)
 - XLM for Stellar fees (free test XLM from Friendbot on testnet)
 
@@ -78,7 +78,7 @@ For a click-by-click walkthrough with screenshots, including wallet setup and te
 
 ### Step 1: Connect Your Wallets
 
-Open the Writz app at [testnet.writz.xyz](https://testnet.writz.xyz). Connect your Bitcoin wallet (Xverse, on Bitcoin signet) and your Stellar wallet (Freighter, xBull, Lobstr, Albedo, Rabet, or a Google, GitHub or email sign-in on testnet). Your wallets sign in your browser; Writz never receives your private keys.
+Open the Writz app at [testnet.writz.xyz](https://testnet.writz.xyz). Connect your Bitcoin wallet (Xverse, on Bitcoin signet) and your Stellar wallet (Varial, xBull, Lobstr, Albedo, Rabet, or a Google, GitHub or email sign-in on testnet). Your wallets sign in your browser; Writz never receives your private keys.
 
 ### Step 2: Choose Your Deposit Amount
 
