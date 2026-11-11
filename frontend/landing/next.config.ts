@@ -8,6 +8,7 @@ const devEval = process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : "";
 const nextConfig: NextConfig = {
   outputFileTracingRoot: repoRoot,
   turbopack: { root: repoRoot },
+  experimental: { inlineCss: true },
   async headers() {
     return [
       {
