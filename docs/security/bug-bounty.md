@@ -11,9 +11,9 @@ title: "Bug Bounty"
 > **planned** bands for that program, not offers we can honour right now.
 >
 > **Please still report findings.** During testnet we acknowledge, fix, and
-> credit them. Cash rewards start with the mainnet program; a report made during
-> testnet is not a claim on a reward. We would rather say so plainly than have
-> you assume otherwise.
+> credit them. A report made during testnet is never paid, and the mainnet
+> program will not be retroactive: it will cover only reports made after it
+> opens. We would rather say so plainly than have you assume otherwise.
 
 If you find a security vulnerability in Writz Protocol, we want to hear from you
 before it becomes a problem.
@@ -84,7 +84,7 @@ for the full policy.
 3. Step-by-step reproduction instructions
 4. Proof of concept code or test case (if available)
 5. Your assessment of impact and severity
-6. Your Stellar wallet address, for a reward once the paid program is active
+6. Whether you want to be credited, and under which name
 
 ---
 
@@ -94,11 +94,22 @@ for the full policy.
 2. **We acknowledge** within 48 hours
 3. **We assess** the report and confirm the severity within 7 business days
 4. **We fix** the issue; Critical/High findings are patched within 14 days
-5. **We pay** the reward upon fix deployment (paid program only, from mainnet)
+5. **We pay** the reward upon fix deployment (mainnet program only, for reports made after it opens)
 6. **We publish** a post-mortem (for Critical/High findings) after the fix is live and users are safe
 7. **You can disclose** publicly once the fix is live, 30 days after the report - we will coordinate with you
 
 We do not pursue legal action against researchers who follow this responsible disclosure process.
+
+---
+
+## How We Triage
+
+Every report is checked against the current code on `main` before we assign a
+severity. We close reports that describe code that does not exist or has been
+removed, that repeat a finding already reported, or that we cannot reproduce on
+the current code. Generated or automated submissions without a working
+reproduction are closed with a short reply. A failing test is the fastest way to
+show us a real issue.
 
 ---
 
@@ -116,4 +127,4 @@ Researchers who responsibly disclose valid vulnerabilities will be acknowledged 
 
 The bug bounty program is active from mainnet launch (Q2 to Q3 2027). During the testnet phase, reports are accepted and recognized, but cash rewards are not yet active - the protocol does not hold user funds until mainnet.
 
-If you find a critical issue during the testnet phase, report it anyway: it is fixed before real funds are at stake, and you are credited for it.
+If you find a critical issue during the testnet phase, report it anyway: it is fixed before real funds are at stake, and you are credited for it. Testnet reports are not paid, now or after mainnet launch.
