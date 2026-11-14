@@ -10,10 +10,18 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# Read-only token by default; jobs widen it only where needed.
+permissions:
+  contents: read
+
 jobs:
   changes:
     name: detect changed areas
     runs-on: ubuntu-latest
+    # paths-filter lists PR files through the API on pull_request events.
+    permissions:
+      contents: read
+      pull-requests: read
     outputs:
       frontend: ${{ steps.filter.outputs.frontend }}
       relayer: ${{ steps.filter.outputs.relayer }}
@@ -400,6 +408,7 @@ jobs:
       - examples
       - writz-lend-bindings
     runs-on: ubuntu-latest
+    permissions: {}
     steps:
       - name: Fail if any non-skipped job failed
         if: contains(needs.*.result, 'failure')
