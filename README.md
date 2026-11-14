@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://writz.xyz/?utm_source=github&utm_medium=readme">
+  <a href="https://writz.xyz">
     <picture>
       <source media="(prefers-color-scheme: dark)" srcset="docs/brand/writz-lockup-white.svg">
       <img alt="Writz" src="docs/brand/writz-lockup-black.svg" width="300">
@@ -27,9 +27,9 @@
   <a href="https://docs.writz.xyz/guides/lend"><b>Lend on testnet</b></a> &nbsp;·&nbsp;
   <a href="#build-on-writz"><b>Build with the SPV SDK</b></a>
   <br>
-  <a href="https://testnet.writz.xyz/?utm_source=github&utm_medium=readme">Testnet app</a> &nbsp;·&nbsp;
+  <a href="https://testnet.writz.xyz">Testnet app</a> &nbsp;·&nbsp;
   <a href="https://docs.writz.xyz">Documentation</a> &nbsp;·&nbsp;
-  <a href="https://writz.xyz/?utm_source=github&utm_medium=readme">Website</a> &nbsp;·&nbsp;
+  <a href="https://writz.xyz">Website</a> &nbsp;·&nbsp;
   <a href="https://discord.gg/zDa4xRN9Xe">Discord</a> &nbsp;·&nbsp;
   <a href="https://x.com/WritzProtocol">X</a>
 </p>
