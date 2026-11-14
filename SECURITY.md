@@ -54,8 +54,12 @@ published audit.
 Rewards, severity bands, and the Hall of Fame live in
 [`docs/security/bug-bounty.md`](docs/security/bug-bounty.md). Note that the
 protocol is on testnet and holds no user funds yet: cash rewards begin at
-mainnet. Testnet findings are acknowledged, fixed and credited, but a testnet
-report is not a claim on a future reward.
+mainnet. Testnet findings are acknowledged, fixed and credited, but they are
+never paid, and the mainnet program will not be retroactive.
+
+Every report is checked against the current code before a severity is assigned.
+Reports about code that no longer exists, duplicates, and automated submissions
+we cannot reproduce are closed with a short reply.
 
 ## Safe harbour
 

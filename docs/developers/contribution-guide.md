@@ -14,7 +14,7 @@ Writz is open source. Bug reports, code, documentation and security research are
 
 **Documentation:** Spotted something unclear, incorrect, or missing? Open a PR directly against the `docs/` directory.
 
-**Security research:** See the [Bug Bounty](/security/bug-bounty) page for responsible disclosure guidelines and rewards.
+**Security research:** See the [Bug Bounty](/security/bug-bounty) page for responsible disclosure guidelines.
 
 ---
 
