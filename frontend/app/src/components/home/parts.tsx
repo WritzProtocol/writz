@@ -453,7 +453,7 @@ export function Preview({
         </h2>
         <ul className="wz-need">
           <li>
-            <b>A Stellar wallet</b> such as Freighter. It receives the USDC you borrow.
+            <b>A Stellar wallet</b> such as Varial (formerly Freighter). It receives the USDC you borrow.
           </li>
           <li>
             <b>Xverse</b> for Bitcoin. It holds the BTC you lock.
@@ -517,7 +517,7 @@ export function PreviewSkeleton() {
         </p>
         <ul className="wz-need wz-sk-list">
           <li>
-            <T>A Stellar wallet such as Freighter. It receives the USDC you borrow.</T>
+            <T>A Stellar wallet such as Varial (formerly Freighter). It receives the USDC you borrow.</T>
           </li>
           <li>
             <T>Xverse for Bitcoin. It holds the BTC you lock.</T>

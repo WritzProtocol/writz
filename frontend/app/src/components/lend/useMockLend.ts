@@ -41,7 +41,7 @@ export function useMockLend(world: MockWorld): LendModel {
     connected: Boolean(sw),
     connecting: false,
     connect: noop,
-    walletName: "Freighter",
+    walletName: "Varial",
     wrongNetwork: sw?.network === "PUBLIC" ? "Stellar mainnet" : null,
     unfunded: Boolean(sw) && sw?.xlmStroops === null,
     pool: stale ? { kind: "ok", value: stale.pool } : pool,
@@ -52,7 +52,7 @@ export function useMockLend(world: MockWorld): LendModel {
     funds: sw
       ? {
           unit: "USDC",
-          walletName: "Freighter",
+          walletName: "Varial",
           sides: lendSides(wallet, supplied, pool, initial),
           defaultSide: initial?.side ?? (action === "out" ? "out" : "in"),
           trustline: read(l?.trustline),

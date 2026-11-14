@@ -101,7 +101,7 @@ export function useMockJourney(world: MockWorld): JourneyModel {
     priceStroops: world.chain.oraclePriceStroops ?? null,
     stellar: {
       address: sw?.address ?? null,
-      walletName: "Freighter",
+      walletName: "Varial",
       connecting: connect?.wallet === "stellar" && connect.state === "awaiting",
       connectError:
         connect?.wallet === "stellar" && connect.state === "rejected" ? { declined: true, raw: "User declined access" } : null,

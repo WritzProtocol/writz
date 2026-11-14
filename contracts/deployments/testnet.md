@@ -10,6 +10,10 @@
 
 > **`zk-verifier` and `commitment-tree` were retired on 2026-11-02 and are not part of Writz.** Their code left this repository. The entries below that mention them are the historical record of past deployments; nothing in the app or the relayer calls them.
 
+## TTL of the live contracts
+
+On 2026-11-09 the instance and wasm entries of `writz-lend` `CD3BRE32…` and `bitcoin-spv` `CBX23YKC…` were extended to about 2027-01-31 (about ledger 7,066,000) with `scripts/deploy/extend_ttl.mjs`; on 2026-11-14 the RPC reported them live until ledgers 7,065,999 to 7,066,013. Persistent data entries (positions, pool records, headers) keep their own windows from [Storage TTL parameters](#storage-ttl-parameters). The live contracts predate #422 and #424, which make both contracts extend their instance and code TTL on every call; that applies from their next deployment.
+
 ## `writz-lend` redeploy (2026-11-02)
 
 Carries the projected views of #256 (`get_pool_totals`, `get_supply_position`, and the projected meaning of `get_supply_balance`, `get_supply_index`, `get_borrow_index` and the rates) and the invariant-tested code of #258 (#377). Same constructor arguments as `CC7XGEWA…`; `bitcoin-spv` is unchanged.
@@ -73,7 +77,7 @@ Built at `9d9114e` (#370) with `cargo build --release --target wasm32v1-none --l
 
 Both protocol contracts redeployed together, built at `477788f` (`cargo build --release --target wasm32v1-none --locked -p bitcoin-spv -p writz-lend`) through `scripts/deploy/deploy_stack.mjs`, with the testnet storage windows from [Storage TTL parameters](#storage-ttl-parameters). The reason is testnet rent: testnet's live state is above its target size, so rent rose sharply, and the previous contracts gave every entry they created the long mainnet windows built in. A deposit on the previous contracts was charged about 428 XLM in fees; with the testnet windows it was charged about 89 XLM (measured 2026-10-25; the rate keeps moving). Positions on the previous contracts were closed and their BTC released before the switch (#307). The previous `bitcoin-spv` and `writz-lend` are kept below, marked superseded; the app and the relayer no longer use them.
 
-The relayer and the app (`testnet.writz.xyz`) run on these contracts from the same day. Both instances and both wasm entries were extended to about 2026-11-15. The first deposit on them, [`eac0f95c…07e269`](https://mempool.space/signet/tx/eac0f95c531b4bd5307597f74bedd7379928539056b9a1467ea6d1159507e269) (6,000 sats, signet block 327,928), is the example transaction in the developer docs.
+The relayer and the app (`testnet.writz.xyz`) run on these contracts from the same day. Both instances and both wasm entries were extended to about 2026-11-15, and again on 2026-11-09, see [TTL of the live contracts](#ttl-of-the-live-contracts). The first deposit on them, [`eac0f95c…07e269`](https://mempool.space/signet/tx/eac0f95c531b4bd5307597f74bedd7379928539056b9a1467ea6d1159507e269) (6,000 sats, signet block 327,928), is the example transaction in the developer docs.
 
 ### bitcoin-spv
 

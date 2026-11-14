@@ -171,7 +171,7 @@ export function StellarStep({ m }: { m: JourneyModel }) {
                 Your wallet didn&apos;t connect. Try again, or open it from your browser toolbar first.
               </Notice>
             ))}
-          <WalletCard icon="F" name="Freighter" detail="Also works with xBull, Lobstr and others" />
+          <WalletCard icon="V" name="Varial" detail="Also works with xBull, Lobstr and others" />
           {s.connecting ? (
             <>
               <Status>Confirm in your wallet</Status>
