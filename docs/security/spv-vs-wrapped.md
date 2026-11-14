@@ -22,6 +22,21 @@ Items marked **planned** are not built yet. They stay marked until they ship. Th
 | What represents the BTC on the other chain | A token, transferable | A token, transferable | A staking position | A loan position. Through a lending-market adapter (designed), a Writz Vault Unit: not transferable, not redeemable, burned on release |
 | If the operator disappears | Token holders hold an unbacked claim | Token holders hold an unbacked claim | The staker unbonds through the script | The user spends the time-lock path with their own key |
 
+## Babylon Trustless Bitcoin Vaults
+
+Babylon's [Trustless Bitcoin Vaults](https://babylonlabs.io/trustless-bitcoin-vaults) also keep BTC on Bitcoin, and in November 2026 Aave governance approved them as collateral for Aave V4. They are the closest design to Writz Lend. Both refuse custody and bridges; they differ in which chain checks the other, and in who else takes part. As of 2026-11-14 the vaults run on a public testnet, and so does Writz.
+
+| | Babylon Trustless Bitcoin Vaults | Writz |
+|---|---|---|
+| Where the BTC sits | A Taproot output; every release path is signed at vault creation, before any BTC moves into it | A P2WSH output with two paths: user and protocol together, or the user alone after the time-lock |
+| Which chain checks the other | Bitcoin checks a zero-knowledge proof of the lending chain's state, through pre-committed garbled circuits (Babylon's BABE construction) and a challenge window | Stellar checks Bitcoin, through a light client contract on the lending chain |
+| Who else takes part | A vault provider, app keepers, a closed set of challengers ("not planned to open up to permissionless participation") and a security council that can block a payout but cannot direct BTC | One protocol co-signing key (2-of-3 **planned**), a relayer that submits headers, a keeper that liquidates |
+| What represents the BTC on the lending chain | A collateral record on the lending chain, tied to one application | A loan position; no token |
+| Default | Settled on Bitcoin: after a claim and a challenge window of about three days, a pre-signed payout path releases the BTC | Today no BTC moves in a liquidation; settlement on Bitcoin through transactions the borrower pre-signs at deposit is **planned** before mainnet |
+| If the operator disappears | The depositor can claim or refund through their own paths | The user spends the time-lock path with their own key |
+
+Sources: Babylon's [safety and trust assumptions](https://docs.babylonlabs.io/trustless-bitcoin-vault/start-here/safety-and-trust-assumptions/) and [protocol architecture](https://docs.babylonlabs.io/trustless-bitcoin-vault/technical-details/protocol-architecture/), read 2026-11-14. Babylon's Bitcoin staking, a different product that locks BTC to secure proof-of-stake chains, is the "Bitcoin staking with slashing" column of the first table.
+
 ## Trust assumptions
 
 | Assumption | Custodial wrapped BTC | Multisig or federated bridge | Writz (SPV light client) |

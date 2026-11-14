@@ -77,6 +77,8 @@ Writz is built for holders who will not give up custody or trust a bridge in ord
 | **How the deposit is proven** | Bitcoin light client on Soroban: proof-of-work, difficulty and Merkle inclusion | The issuer or bridge attests to it |
 | **If the protocol disappears** | CLTV timelock: the borrower reclaims the BTC alone after it passes | Depends on the protocol or custodian staying available |
 
+Babylon's Trustless Bitcoin Vaults, approved in November 2026 as collateral for Aave V4, also keep BTC on Bitcoin, with a different design: Bitcoin checks a proof of the lending chain's state through garbled circuits and a closed set of challengers, where Writz has Stellar check Bitcoin through a light client. See the [comparison](https://docs.writz.xyz/security/spv-vs-wrapped#babylon-trustless-bitcoin-vaults).
+
 Stellar is the execution layer because Circle issues USDC natively there, neither bridged nor wrapped, and Soroban's compute budget fits a full Bitcoin header light client written in Rust. Read more in [Why Stellar, why now](https://docs.writz.xyz/introduction/why-stellar-why-now).
 
 ---

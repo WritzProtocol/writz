@@ -276,7 +276,7 @@ function mockAccount(world: MockWorld): BaseAccount {
     mock: true,
     stellar: {
       address: sw?.address ?? null,
-      walletName: "Freighter",
+      walletName: "Varial",
       connecting: world.wallets.connect?.wallet === "stellar" && world.wallets.connect.state === "awaiting",
       wrongNetwork: sw?.network === "PUBLIC" ? "Stellar mainnet" : null,
       funding: sw ? { kind: "ok", value: fundingOf(sw.xlmStroops === null ? null : { balances: [{ asset_type: "native", balance: (Number(sw.xlmStroops) / 1e7).toFixed(7) }] }) } : { kind: "checking" },

@@ -31,7 +31,7 @@ export function useMockEarn(world: MockWorld): EarnModel {
     connected: Boolean(sw),
     connecting: false,
     connect: noop,
-    walletName: "Freighter",
+    walletName: "Varial",
     wrongNetwork: sw?.network === "PUBLIC" ? "Stellar mainnet" : null,
     unfunded: Boolean(sw) && sw?.xlmStroops === null,
     apy: { value: apy.kind === "ok" ? apy.value : null, at: now, failed: apy.kind === "failed" },
@@ -44,7 +44,7 @@ export function useMockEarn(world: MockWorld): EarnModel {
     funds: sw
       ? {
           unit: UNIT,
-          walletName: "Freighter",
+          walletName: "Varial",
           sides: earnSides(wallet, balance, paused),
           defaultSide: "in",
           trustline,

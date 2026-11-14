@@ -22,7 +22,7 @@ const base: Omit<ReceiveStepProps, "intent" | "phase"> = {
   swap: null,
   leg: { kind: "idle" },
   mintHash: null,
-  walletName: "Freighter",
+  walletName: "Varial",
   onGo: noop,
   onKeep: noop,
 };

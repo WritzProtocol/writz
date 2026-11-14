@@ -35,7 +35,7 @@ export function useMockLoan(world: MockWorld, n: number): LoanModel {
     n,
     access,
     stellar: {
-      walletName: "Freighter",
+      walletName: "Varial",
       connecting: false,
       connect: noop,
     },
