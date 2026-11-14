@@ -10,7 +10,7 @@ Use only these values; anything not listed here or in the linked pages does not 
 - Bitcoin network: signet (no mainnet, testnet3 or testnet4 verification)
 - `bitcoin-spv`: `CBX23YKCCJMAMBMSCNP6YVKEXUIYK2CTKSR4TQ3RVBPAFYZFVCW7W4EO`
 - `writz-lend`: `CD3BRE32LDNDHAEVI6H35UC3NIRREW5BLH64AZMHSQY3LEKYDLKYWBXS`
-- Both were redeployed on 2026-10-25 (testnet rent; positions on the previous contracts were closed and released), and `writz-lend` again on 2026-11-01 (supply and withdraw events carry the scaled amount and supply index, #257). Any other `bitcoin-spv` or `writz-lend` ID is superseded; the `bitcoin-spv` checkpoint is signet block 327,925 and only later blocks can be proven
+- Both were redeployed on 2026-10-25 (testnet rent; positions on the previous contracts were closed and released), and `writz-lend` again on 2026-11-01 (supply and withdraw events carry the scaled amount and supply index, #257) and on 2026-11-02 (projected pool and supply views, #256, #377; the current ID above). Any other `bitcoin-spv` or `writz-lend` ID is superseded; the `bitcoin-spv` checkpoint is signet block 327,925 and only later blocks can be proven
 - Test USDC (SAC): `CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA`
 - Relayer: `https://api.testnet.writz.xyz`, proof route `GET /spv-proof/:txid?confirmations=N`
 - Yield on USDC: the `writz-lend` lender side, `supply_usdc(supplier, amount)` and `withdraw_supply(supplier, amount)` signed by the supplier, read with `get_supply_balance(lender)` and `get_supply_rate_bp()`. The rate is variable and zero while nothing is borrowed: read it live, never hard-code an APY
