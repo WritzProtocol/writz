@@ -14,6 +14,19 @@
 
 On 2026-11-09 the instance and wasm entries of `writz-lend` `CD3BRE32…` and `bitcoin-spv` `CBX23YKC…` were extended to about 2027-01-31 (about ledger 7,066,000) with `scripts/deploy/extend_ttl.mjs`; on 2026-11-14 the RPC reported them live until ledgers 7,065,999 to 7,066,013. Persistent data entries (positions, pool records, headers) keep their own windows from [Storage TTL parameters](#storage-ttl-parameters). The live contracts predate #422 and #424, which make both contracts extend their instance and code TTL on every call; that applies from their next deployment.
 
+## USDT0 testnet token
+
+No official USDT0 exists on any testnet. The app's swap to USDT0 uses the USDT0 testnet token (Writz-deployed LayerZero OFT), which also moves between Stellar testnet and Arbitrum Sepolia over LayerZero V2, the way USDT0 runs on Stellar mainnet. It has no value and is never called USDT0 alone. Its code, build, every transaction and how to send it live in [WritzProtocol/usdt0-stellar-testnet](https://github.com/WritzProtocol/usdt0-stellar-testnet) ([`deployments/testnet.md`](https://github.com/WritzProtocol/usdt0-stellar-testnet/blob/main/deployments/testnet.md)).
+
+| Field | Value |
+|---|---|
+| Classic asset | `USDT0:GCZS6UMPQDE5QVDFCJWRKLM3NR77IT7KSGEH3THSZNTWOH53E66KZ2CC` (issuer locked) |
+| SAC (the token the app swaps into) | `CBBUGWDNLXMEFRECTRWUE2AV7VISS5ICC5OKPKY3B4ZEYXSQE2LTVKN6` |
+| LayerZero OFT on Stellar testnet (EID 40600) | `CDQLOSDFZKRZLHYHDGOPBNF2EW6ZW3YVOPROH2CVNMNEVR3CLWRDVFCC` |
+| SAC admin (LayerZero SAC Manager) | `CADASTNHPST6XBYXR5A5Y56BSOHLEC3TXO355EMCUAF54QGELAY3H2TO` |
+| Peer on Arbitrum Sepolia (EID 40231) | `0x21a5553a83655d024361E510f32Da165bDd7758D` |
+| Soroswap pool | Circle USDC / USDT0 testnet token |
+
 ## `writz-lend` redeploy (2026-11-02)
 
 Carries the projected views of #256 (`get_pool_totals`, `get_supply_position`, and the projected meaning of `get_supply_balance`, `get_supply_index`, `get_borrow_index` and the rates) and the invariant-tested code of #258 (#377). Same constructor arguments as `CC7XGEWA…`; `bitcoin-spv` is unchanged.
