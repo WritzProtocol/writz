@@ -1,23 +1,5 @@
 @import "tailwindcss";
-
-@theme inline {
-  --color-bg: var(--bg);
-  --color-surface: var(--surface);
-  --color-surface-2: var(--surface-2);
-  --color-deep: var(--deep);
-  --color-line: var(--line);
-  --color-line-strong: var(--line-strong);
-  --color-heading: var(--heading);
-  --color-body: var(--body);
-  --color-muted: var(--muted);
-  --color-accent: var(--accent);
-  --color-accent-hover: var(--accent-hover);
-  --color-on-accent: var(--on-accent);
-  --color-danger: var(--danger);
-  --color-positive: var(--positive);
-  --color-warning: var(--warning);
-  --color-info: var(--info);
-}
+@import "../../../../packages/brand/theme.css";
 
 @layer base {
   html {

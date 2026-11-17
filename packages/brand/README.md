@@ -1,6 +1,6 @@
 # brand
 
-The Graphite & Gold design tokens shared by `frontend/app` and `frontend/landing`: colours, type families, the control radius and the motion tiers. CSS only, no build step.
+The Graphite & Gold design tokens shared by `frontend/app` and `frontend/landing`: colours, type families, the control radius and the motion tiers, plus the Tailwind theme that maps them to utilities. CSS only, no build step.
 
 `tokens.css` declares every token as a plain custom property on `:root`, so scoped stylesheets read it with `var(--bg)`, `var(--accent)` and so on.
 
@@ -18,7 +18,22 @@ The Graphite & Gold design tokens shared by `frontend/app` and `frontend/landing
   import "../../../../packages/brand/tokens.css";
   ```
 
-  `globals.css` maps the colours into Tailwind with an `@theme inline` block (`--color-bg: var(--bg)` and so on), which gives utilities such as `bg-surface` and `text-muted`. The landing can copy that block when it moves to Tailwind.
+## Tailwind theme
+
+`theme.css` maps the tokens to Tailwind v4 utilities (`bg-surface`, `text-heading`, `text-accent`, `shadow-border`, `rounded-control`, `ease-enter`, `font-mono`) with `@theme inline reference`, so the values stay in `tokens.css` and a token change needs no edit in the theme. It imports `tokens.css` itself, and also defines:
+
+- `duration-micro`, `duration-element`, `duration-section` and `duration-signature`, the motion tiers.
+- `slant`, the parallelogram at the mark's minus 16 degrees drawn behind an element. Set its fill with `[--slant-bg:var(--accent)]` and its horizontal inset with `[--slant-inset:6px]`. A plain skewed box is `-skew-x-16`.
+- `cut` and `cut-sm`, the cut corner on panels.
+
+Each app imports it from its `globals.css`:
+
+```css
+@import "tailwindcss";
+@import "../../../../packages/brand/theme.css";
+```
+
+The landing imports Tailwind's theme and utilities without preflight and with source detection off, so its plain stylesheets render as before; a page that moves to utilities is added with an `@source` line in `frontend/landing/src/app/globals.css`.
 
 Both apps set the `next/font` variables `--ff-sans` (Work Sans) and `--ff-mono` (Geist Mono) on `<html>`, which `--font-sans` and `--font-mono` resolve against.
 

@@ -1,4 +1,11 @@
-@import "../../../../packages/brand/tokens.css";
+/* Tailwind without preflight: the landing keeps its own reset below, so the
+ * pages that still use plain stylesheets render exactly as before. Source
+ * detection is off because legacy class names collide with utilities (the
+ * whitepaper's `.contents` list would become `display: contents`); each page
+ * is added with an `@source` line when it moves to utilities. */
+@import "tailwindcss/theme" layer(theme);
+@import "tailwindcss/utilities" layer(utilities) source(none);
+@import "../../../../packages/brand/theme.css";
 
 *,
 *::before,

@@ -6,7 +6,6 @@ import { WalletProvider } from "@/lib/wallet/WalletProvider";
 import { BitcoinWalletProvider } from "@/lib/bitcoin/useBitcoinWallet";
 import { OnboardingProvider } from "@/lib/onboarding/OnboardingProvider";
 import { env } from "@/config/env";
-import "../../../../packages/brand/tokens.css";
 import "./globals.css";
 
 const sans = Work_Sans({
