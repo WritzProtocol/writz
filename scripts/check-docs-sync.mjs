@@ -21,7 +21,7 @@
 // Usage: node scripts/check-docs-sync.mjs
 // Exit 0 = clean. Exit 1 = drift found (also lists it).
 
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { generatedFiles, parseTestnetDeployments } from "./lib/deployments.mjs";
@@ -33,12 +33,18 @@ const EXCLUDED_DIRS = new Set([
   ".next", "coverage", ".claude", ".codex", ".agents", "ptau",
 ]);
 
+// A directory with its own .git is another checkout (a git worktree such as
+// .worktrees/<branch>, or a nested repository), not part of this tree. Its files
+// belong to another branch, so checking them would report drift CI never sees.
+const isOtherCheckout = (dir) => existsSync(path.join(dir, ".git"));
+
 function walk(dir, out = []) {
   for (const entry of readdirSync(dir)) {
     if (EXCLUDED_DIRS.has(entry)) continue;
     const full = path.join(dir, entry);
     const st = statSync(full);
     if (st.isDirectory()) {
+      if (isOtherCheckout(full)) continue;
       walk(full, out);
     } else if (entry.endsWith(".md")) {
       out.push(full);
@@ -188,7 +194,9 @@ function walkAll(dir, out = []) {
   for (const entry of readdirSync(dir)) {
     if (EXCLUDED_DIRS.has(entry) || entry === "bun.lock" || entry === "Cargo.lock") continue;
     const full = path.join(dir, entry);
-    if (statSync(full).isDirectory()) walkAll(full, out);
+    if (statSync(full).isDirectory()) {
+      if (!isOtherCheckout(full)) walkAll(full, out);
+    }
     else if (INTEGRATION_EXTS.has(path.extname(entry))) out.push(full);
   }
   return out;
