@@ -63,7 +63,7 @@ export async function withBackoff<T>(
  * How many blocks below bitcoin-spv's best tip each sync pass starts. The
  * contract skips headers it already stores, so this costs one cheap batch,
  * and it lets a Bitcoin reorg of up to this depth extend the new branch from
- * a parent the contract knows.
+ * a parent the contract knows; forkSafeStartHeight goes lower for a deeper one.
  */
 export const REORG_RESUBMIT_DEPTH = 6;
 
@@ -75,6 +75,62 @@ export const REORG_RESUBMIT_DEPTH = 6;
 export function syncStartHeight(configuredFrom: number, contractTipHeight: number | undefined): number {
   if (contractTipHeight === undefined) return configuredFrom;
   return Math.max(configuredFrom, contractTipHeight - REORG_RESUBMIT_DEPTH);
+}
+
+/**
+ * Deepest fork the sync searches below its start height. A fork deeper than
+ * this needs an operator; on mainnet none deeper than a few blocks has
+ * happened since 2013.
+ */
+export const MAX_FORK_SEARCH_DEPTH = 2016;
+
+/**
+ * Where a sync pass must start so its first header has a parent the
+ * contract stores. Starting at `start`, steps down while the Bitcoin block
+ * just below is not stored in the contract (the contract is on another
+ * branch there), never below `floor`. Without this, a Bitcoin reorg deeper
+ * than REORG_RESUBMIT_DEPTH would fail every pass with UnknownParent.
+ *
+ * `isStoredAt(h)` answers whether the Bitcoin block at height `h` is
+ * stored in the contract. In the normal case it is one lookup.
+ */
+export async function forkSafeStartHeight(
+  start: number,
+  floor: number,
+  isStoredAt: (height: number) => Promise<boolean>,
+  maxDepth = MAX_FORK_SEARCH_DEPTH,
+): Promise<number> {
+  let from = start;
+  while (from > floor && start - from < maxDepth && !(await isStoredAt(from - 1))) {
+    from--;
+  }
+  return from;
+}
+
+export interface ReorgDriverDeps {
+  /** Whether bitcoin-spv has a chain switch still rewriting its index (get_pending_reorg). */
+  isPending: () => Promise<boolean>;
+  /** Sends one continue_reorg; resolves to whether a switch is still pending after it. */
+  continueReorg: () => Promise<boolean>;
+}
+
+/** Most continue_reorg calls one pass sends; the next pass picks up the rest. */
+export const MAX_CONTINUE_CALLS_PER_PASS = 10;
+
+/**
+ * Drives a pending chain switch in bitcoin-spv to completion. While one is
+ * pending the contract refuses every proof (ReorgPending), so the relayer
+ * finishes it right away instead of waiting for the next header. Returns
+ * the number of continue_reorg calls sent.
+ */
+export async function driveReorg(deps: ReorgDriverDeps, maxCalls = MAX_CONTINUE_CALLS_PER_PASS): Promise<number> {
+  if (!(await deps.isPending())) return 0;
+  let calls = 0;
+  while (calls < maxCalls) {
+    calls++;
+    if (!(await deps.continueReorg())) break;
+  }
+  return calls;
 }
 
 /**
@@ -170,6 +226,7 @@ export interface HeaderSyncStatus {
   lastFeeXlm: string | null;
   maxFeeXlm: string | null;
   submissions: number;
+  reorgContinueCalls: number;
   skippedNoNewHeaders: number;
   skippedFeeCeiling: number;
   lastFeeCeilingSkip: { at: string; feeXlm: string } | null;
@@ -189,6 +246,7 @@ export const headerSyncStatus: HeaderSyncStatus = {
   lastFeeXlm: null,
   maxFeeXlm: null,
   submissions: 0,
+  reorgContinueCalls: 0,
   skippedNoNewHeaders: 0,
   skippedFeeCeiling: 0,
   lastFeeCeilingSkip: null,

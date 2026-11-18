@@ -97,8 +97,9 @@ pub enum SPVError {
     /// checkpoint can be proven.
     BlockNotAfterCheckpoint = 24,
 
-    /// Switching to the heavier fork would rewrite more blocks than one
-    /// call may touch.
+    /// No longer returned: a chain switch larger than one call's
+    /// height-index budget now continues across calls (see `ReorgPending`).
+    /// Kept so codes stay stable.
     ReorgTooDeep = 25,
     /// A lending contract tried to consume a deposit txid that was already consumed.
     TxidAlreadyConsumed = 26,
@@ -107,4 +108,11 @@ pub enum SPVError {
     /// A constructor or `set_ttls` `header_ttl_ledgers` or `consumed_ttl_ledgers` is
     /// outside `MIN_ENTRY_TTL_LEDGERS..=MAX_ENTRY_TTL_LEDGERS`.
     InvalidEntryTtl = 28,
+    /// `verify_transaction` was called while a chain switch is still
+    /// rewriting the height index. Call `continue_reorg` (or submit headers)
+    /// until `get_pending_reorg` is `None`, then retry.
+    ReorgPending = 29,
+    /// A submitted header's timestamp is not later than the median of the
+    /// 11 blocks before it (Bitcoin's median-time-past rule).
+    TimestampNotAfterMedianTimePast = 30,
 }

@@ -72,6 +72,8 @@ export const SPV_ERRORS: Readonly<Record<number, string>> = {
   26: "TxidAlreadyConsumed",
   27: "NotAConsumer",
   28: "InvalidEntryTtl",
+  29: "ReorgPending",
+  30: "TimestampNotAfterMedianTimePast",
 };
 
 /** Error names of `writz-lend`, by code. Codes are stable. */

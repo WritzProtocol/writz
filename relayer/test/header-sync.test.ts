@@ -1,7 +1,9 @@
 import { describe, expect, test } from '@jest/globals';
 import {
   assertWithinFeeCeiling,
+  driveReorg,
   FeeCeilingExceededError,
+  forkSafeStartHeight,
   hasNewHeaders,
   type HeaderSyncStatus,
   headerSyncStatus,
@@ -221,5 +223,61 @@ describe('recordRelayerBalance', () => {
     recordRelayerBalance(status, 1n, xlmToStroops(100));
     expect(recordRelayerBalance(status, xlmToStroops(100), xlmToStroops(100))).toBe(false);
     expect(status.balanceLow).toBe(false);
+  });
+});
+
+describe('forkSafeStartHeight', () => {
+  test('keeps the start when the block below it is stored (normal case, one lookup)', async () => {
+    const asked: number[] = [];
+    const from = await forkSafeStartHeight(94, 0, async (h) => {
+      asked.push(h);
+      return true;
+    });
+    expect(from).toBe(94);
+    expect(asked).toEqual([93]);
+  });
+
+  test('steps below a reorg deeper than the resubmit depth to the last shared block', async () => {
+    // The contract is on another branch above 70; Bitcoin's 70 is stored.
+    const from = await forkSafeStartHeight(94, 0, async (h) => h <= 70);
+    expect(from).toBe(71);
+  });
+
+  test('never goes below the configured floor', async () => {
+    expect(await forkSafeStartHeight(94, 90, async () => false)).toBe(90);
+  });
+
+  test('stops after maxDepth heights', async () => {
+    expect(await forkSafeStartHeight(94, 0, async () => false, 10)).toBe(84);
+  });
+});
+
+describe('driveReorg', () => {
+  test('sends nothing when no chain switch is pending', async () => {
+    let sent = 0;
+    const calls = await driveReorg({
+      isPending: async () => false,
+      continueReorg: async () => {
+        sent++;
+        return false;
+      },
+    });
+    expect(calls).toBe(0);
+    expect(sent).toBe(0);
+  });
+
+  test('continues a multi-call switch until the contract reports it complete', async () => {
+    let remaining = 3; // the switch needs three more continue_reorg calls
+    const calls = await driveReorg({
+      isPending: async () => remaining > 0,
+      continueReorg: async () => --remaining > 0,
+    });
+    expect(calls).toBe(3);
+    expect(remaining).toBe(0);
+  });
+
+  test('stops at maxCalls and leaves the rest to the next pass', async () => {
+    const calls = await driveReorg({ isPending: async () => true, continueReorg: async () => true }, 4);
+    expect(calls).toBe(4);
   });
 });

@@ -83,7 +83,7 @@ pub struct SpvVerificationResult {
 
 Rules: `block_hash` and every `merkle_proof` item in internal byte order (reverse of explorers); `raw_tx` without witness data, never exactly 64 bytes; `min_confirmations >= 1`. Inclusion only: to check amount and recipient, parse `raw_tx`. Store accepted txids yourself (replay protection).
 
-Errors (`Error(Contract, #N)`): 2 InsufficientConfirmations, 3 ZeroMinConfirmations, 5 MerkleProofInvalid, 7 EmptyTransaction, 15 AmbiguousTransactionLength, 22 HeaderNotFound, 23 NotOnBestChain, 24 BlockNotAfterCheckpoint.
+Errors (`Error(Contract, #N)`): 2 InsufficientConfirmations, 3 ZeroMinConfirmations, 5 MerkleProofInvalid, 7 EmptyTransaction, 15 AmbiguousTransactionLength, 22 HeaderNotFound, 23 NotOnBestChain, 24 BlockNotAfterCheckpoint, 29 ReorgPending (a chain switch is in progress; retry shortly).
 
 ## `writz-lend` reads and the lender side
 

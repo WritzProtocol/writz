@@ -20,7 +20,7 @@ The SDK is the deployed contract, the relayer proof route, and two published pac
 | Checkpoint | Signet block 327,925 (only later blocks can be proven) |
 | Header submission | Restricted to one designated Writz account on signet, because signet blocks are authorised by a signature the contract does not verify |
 | Max headers per `submit_headers` call | 16 |
-| Max reorg depth per call | 20 blocks |
+| Chain switch (reorg) | Contract source: no depth limit, the height index is rewritten across calls (16 slots per `submit_headers`, 28 per `continue_reorg`) and proofs are refused with `ReorgPending` until it completes. The instance above re-points at most 20 blocks in one call until its next redeploy |
 
 Source: [`contracts/contracts/bitcoin-spv/src/lib.rs`](https://github.com/WritzProtocol/writz/blob/main/contracts/contracts/bitcoin-spv/src/lib.rs). Deployment record: [`contracts/deployments/testnet.md`](https://github.com/WritzProtocol/writz/blob/main/contracts/deployments/testnet.md).
 
@@ -83,6 +83,7 @@ That is the complete result. It says nothing about the transaction's outputs: if
 | 22 | `HeaderNotFound` | `block_hash` is not stored |
 | 23 | `NotOnBestChain` | The block is stored but not on the most-work chain |
 | 24 | `BlockNotAfterCheckpoint` | The block is the checkpoint or older |
+| 29 | `ReorgPending` | The light client is switching to a heavier chain; retry once `get_pending_reorg` is `None` |
 
 The full list, including the codes of `submit_headers` and the admin functions, is in [`error.rs`](https://github.com/WritzProtocol/writz/blob/main/contracts/contracts/bitcoin-spv/src/error.rs).
 
@@ -92,7 +93,8 @@ The full list, including the codes of `submit_headers` and the admin functions, 
 |---|---|
 | `get_best_tip()` | `Option<BestTip>`: `hash`, `height`, `chainwork` of the most-work chain |
 | `get_header(block_hash)` | `Option<HeaderEntry>`: `prev`, `merkle_root`, `height`, `bits`, `time`, `period_start_time`, `chainwork` |
-| `get_canonical_hash(height)` | `Option<BytesN<32>>`: the most-work chain's block hash at that height |
+| `get_canonical_hash(height)` | `Option<BytesN<32>>`: the most-work chain's block hash at that height (`None` above the tip, and at heights a pending chain switch has not rewritten yet) |
+| `get_pending_reorg()` | `Option<PendingReorg>`: a chain switch still in progress; proofs are refused until it is `None` |
 | `get_checkpoint()` | `Option<Checkpoint>`: the trust root |
 | `is_deposit_consumed(txid)` | `bool`: whether a Writz lending contract has already used this deposit |
 

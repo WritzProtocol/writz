@@ -14,3 +14,5 @@ spv-types = { path = "../spv-types" }
 
 [dev-dependencies]
 soroban-sdk = { workspace = true, features = ["testutils"] }
+# Native SHA-256 to mine test headers at real targets (already in the lockfile).
+sha2 = "0.10"

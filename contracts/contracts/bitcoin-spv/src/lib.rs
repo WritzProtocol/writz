@@ -13,7 +13,7 @@ mod test;
 
 pub use error::SPVError;
 pub use spv_types::SpvVerificationResult;
-pub use types::{BestTip, Checkpoint, Config, HeaderEntry};
+pub use types::{BestTip, Checkpoint, Config, HeaderEntry, PendingReorg};
 
 use soroban_sdk::{
     contract, contractevent, contractimpl, panic_with_error, Address, Bytes, BytesN, Env, Vec, U256,
@@ -26,8 +26,9 @@ use crate::difficulty::{
 use crate::header::{bits_of, hash_header, merkle_root_of, prev_hash_of, time_of};
 use crate::merkle::verify_merkle_inclusion;
 use crate::storage::{
-    get_best_tip, get_canonical, get_checkpoint, get_config, get_header, header_ttl,
-    set_best_tip, set_canonical, set_checkpoint, set_config, set_header,
+    get_best_tip, get_canonical, get_checkpoint, get_config, get_header, get_pending_reorg,
+    has_pending_reorg, header_ttl, remove_pending_reorg, set_best_tip, set_canonical,
+    set_checkpoint, set_config, set_header, set_pending_reorg,
 };
 pub use crate::storage::{LEDGERS_PER_DAY, MAX_ENTRY_TTL_LEDGERS, MIN_ENTRY_TTL_LEDGERS};
 
@@ -41,13 +42,28 @@ pub struct TtlsSetEvent {
     pub consumed_ttl_ledgers: u32,
 }
 
-/// Most headers one `submit_headers` call accepts. Keeps the call inside
-/// Soroban's per-transaction ledger-entry write limit.
+/// Most headers one `submit_headers` call accepts.
 const MAX_HEADERS_PER_SUBMIT: u32 = 16;
 
-/// Most blocks one call may re-point in the canonical chain when a heavier
-/// fork takes over.
-const MAX_REORG_DEPTH: u32 = 20;
+/// Most height-index slots one `submit_headers` call writes when the best
+/// chain changes. A switch that needs more is stored as a `PendingReorg`
+/// and continues in later calls.
+///
+/// The binding limit is the transaction footprint: each slot written is a
+/// read-write entry plus a read of its block's header, on top of up to 16
+/// new headers, the 11 headers behind them and the singletons. With 16 the
+/// worst case stays under the 100 footprint entries Soroban's SDK test
+/// environment enforces (the network allows 400); `reorg_call_resources`
+/// measures it.
+const MAX_INDEX_WRITES_PER_SUBMIT: u32 = 16;
+
+/// Most height-index slots one `continue_reorg` call writes. It stores no
+/// header, so it can spend that footprint on the index instead.
+const MAX_INDEX_WRITES_PER_CONTINUE: u32 = 28;
+
+/// Bitcoin's median-time-past window: a header must be later than the
+/// median timestamp of the 11 blocks before it.
+const MEDIAN_TIME_SPAN: u32 = 11;
 
 /// Bitcoin rejects headers more than two hours ahead of network time.
 const MAX_FUTURE_DRIFT_SECS: u64 = 2 * 60 * 60;
@@ -304,8 +320,26 @@ impl BitcoinSpvContract {
     }
 
     /// Returns the most-work chain's block hash at `height`, if known.
+    ///
+    /// `None` above the best tip, and, while a chain switch is pending, at
+    /// heights it has not rewritten yet.
     pub fn get_canonical_hash(env: Env, height: u32) -> Option<BytesN<32>> {
+        let best = get_best_tip(&env)?;
+        if height > best.height {
+            return None;
+        }
+        if let Some(pending) = get_pending_reorg(&env) {
+            if height <= pending.next_height {
+                return None;
+            }
+        }
         get_canonical(&env, height, header_ttl(&env))
+    }
+
+    /// Returns the chain switch still rewriting the height index, if any.
+    /// While it exists `verify_transaction` returns `ReorgPending`.
+    pub fn get_pending_reorg(env: Env) -> Option<PendingReorg> {
+        get_pending_reorg(&env)
     }
 
     /// Extends the TTL of the Config, Checkpoint and best-tip entries, and
@@ -322,15 +356,22 @@ impl BitcoinSpvContract {
     /// Each header must descend from a header already stored (ultimately the
     /// checkpoint), satisfy its own proof-of-work, carry exactly the `bits`
     /// Bitcoin's difficulty rules require at its height, and not be more than
-    /// two hours ahead of ledger time. Headers already stored are skipped.
-    /// If the run makes a heavier chain than the current best, the best tip
-    /// and the height-to-hash index switch to it.
+    /// two hours ahead of ledger time, and, from the 11th block after the
+    /// checkpoint on, be later than the median time of the 11 blocks before
+    /// it. Headers already stored are skipped.
+    ///
+    /// If the run's last header makes a heavier chain than the current best,
+    /// the best tip switches to it and the height-to-hash index is rewritten
+    /// down to where the two chains meet, at most `MAX_INDEX_WRITES_PER_SUBMIT`
+    /// slots per call. A longer rewrite is stored as a pending switch: each
+    /// later call (this one or `continue_reorg`) advances it first, and a
+    /// heavier tip submitted meanwhile is adopted once it completes.
     ///
     /// Permissionless unless a submitter is configured (see `set_submitter`).
     /// Returns the height of the best tip afterwards.
     pub fn submit_headers(env: Env, headers: Vec<BytesN<80>>) -> Result<u32, SPVError> {
         let config = get_config(&env).ok_or(SPVError::NotInitialized)?;
-        get_checkpoint(&env).ok_or(SPVError::CheckpointNotSet)?;
+        let checkpoint = get_checkpoint(&env).ok_or(SPVError::CheckpointNotSet)?;
 
         if let Some(submitter) = &config.submitter {
             submitter.require_auth();
@@ -369,6 +410,13 @@ impl BitcoinSpvContract {
             if time as u64 > now.saturating_add(MAX_FUTURE_DRIFT_SECS) {
                 return Err(SPVError::TimestampTooFarInFuture);
             }
+            // Only once all 11 previous timestamps are stored: a median of
+            // fewer could be later than Bitcoin's and reject a valid block.
+            if height >= checkpoint.height.saturating_add(MEDIAN_TIME_SPAN)
+                && time <= median_time_past(&env, &parent, ttl)?
+            {
+                return Err(SPVError::TimestampNotAfterMedianTimePast);
+            }
 
             let work = work_from_target(&env, &bits_to_target(&env, bits)?);
             let entry = HeaderEntry {
@@ -388,32 +436,27 @@ impl BitcoinSpvContract {
             last = Some((hash, entry));
         }
 
-        let (tip_hash, tip_entry) = last.ok_or(SPVError::NoHeaders)?;
-        let mut best = get_best_tip(&env).ok_or(SPVError::CheckpointNotSet)?;
-
-        if tip_entry.chainwork > best.chainwork {
-            let mut hash = tip_hash.clone();
-            let mut entry = tip_entry.clone();
-            let mut rewritten = 0u32;
-            while get_canonical(&env, entry.height, ttl).as_ref() != Some(&hash) {
-                rewritten += 1;
-                if rewritten > MAX_REORG_DEPTH {
-                    return Err(SPVError::ReorgTooDeep);
-                }
-                set_canonical(&env, entry.height, &hash, ttl);
-                let parent_hash = entry.prev.clone();
-                entry = get_header(&env, &parent_hash, ttl).ok_or(SPVError::UnknownParent)?;
-                hash = parent_hash;
-            }
-            best = BestTip {
-                hash: tip_hash,
-                height: tip_entry.height,
-                chainwork: tip_entry.chainwork,
-            };
-            set_best_tip(&env, &best);
-        }
-
+        let offered = last.ok_or(SPVError::NoHeaders)?;
+        let best = apply_fork_choice(&env, Some(offered), MAX_INDEX_WRITES_PER_SUBMIT, ttl)?;
         Ok(best.height)
+    }
+
+    /// Advances a pending chain switch by up to `MAX_INDEX_WRITES_PER_CONTINUE`
+    /// height-index slots, then adopts any heavier tip submitted while it
+    /// was pending. Returns whether a switch is still pending afterwards;
+    /// with none pending it changes nothing and returns `false`.
+    ///
+    /// Permissionless even when a submitter is configured: it adds no
+    /// header, it only finishes a rewrite fully determined by headers
+    /// already stored, so anyone can end a pending `ReorgPending` state.
+    pub fn continue_reorg(env: Env) -> Result<bool, SPVError> {
+        let ttl = get_config(&env).ok_or(SPVError::NotInitialized)?.header_ttl_ledgers;
+        get_checkpoint(&env).ok_or(SPVError::CheckpointNotSet)?;
+        if !has_pending_reorg(&env) {
+            return Ok(false);
+        }
+        apply_fork_choice(&env, None, MAX_INDEX_WRITES_PER_CONTINUE, ttl)?;
+        Ok(has_pending_reorg(&env))
     }
 
     // ── Verification ─────────────────────────────────────────────────────────
@@ -426,7 +469,8 @@ impl BitcoinSpvContract {
     /// - `block_hash`
     ///   Hash (internal byte order) of the block claimed to contain the
     ///   transaction. It must already have been stored with `submit_headers`
-    ///   and be on the most-work chain.
+    ///   and be on the most-work chain. While a chain switch is pending
+    ///   (`get_pending_reorg`), every call returns `ReorgPending`.
     ///
     /// - `merkle_proof`
     ///   Sibling hashes for the Merkle inclusion proof, ordered from leaf
@@ -472,6 +516,9 @@ impl BitcoinSpvContract {
 
         let ttl = get_config(&env).ok_or(SPVError::NotInitialized)?.header_ttl_ledgers;
         let checkpoint = get_checkpoint(&env).ok_or(SPVError::CheckpointNotSet)?;
+        if has_pending_reorg(&env) {
+            return Err(SPVError::ReorgPending);
+        }
 
         let entry = get_header(&env, &block_hash, ttl).ok_or(SPVError::HeaderNotFound)?;
         if entry.height <= checkpoint.height {
@@ -500,4 +547,118 @@ impl BitcoinSpvContract {
             confirmations,
         })
     }
+}
+
+/// Median timestamp of the 11 blocks ending at `parent`. The caller makes
+/// sure all 11 are stored (the checkpoint is the oldest it may reach).
+fn median_time_past(env: &Env, parent: &HeaderEntry, ttl: u32) -> Result<u32, SPVError> {
+    let mut times = [0u32; MEDIAN_TIME_SPAN as usize];
+    times[0] = parent.time;
+    let mut prev = parent.prev.clone();
+    for slot in times.iter_mut().skip(1) {
+        let entry = get_header(env, &prev, ttl).ok_or(SPVError::UnknownParent)?;
+        *slot = entry.time;
+        prev = entry.prev;
+    }
+    times.sort_unstable();
+    Ok(times[MEDIAN_TIME_SPAN as usize / 2])
+}
+
+/// Writes the height index for the best chain from `hash` at `height`
+/// downwards, at most `budget` slots, until it meets the chain already
+/// indexed. A slot only counts as a meeting point at or below
+/// `trusted_height`: above it a slot may still name a block of a chain
+/// abandoned earlier. Every chain descends from the checkpoint, whose slot
+/// never changes, so the walk always ends. Returns where to resume, or
+/// `None` once the index is consistent.
+fn rewrite_index(
+    env: &Env,
+    mut hash: BytesN<32>,
+    mut height: u32,
+    trusted_height: u32,
+    budget: &mut u32,
+    ttl: u32,
+) -> Result<Option<(BytesN<32>, u32)>, SPVError> {
+    loop {
+        if height <= trusted_height && get_canonical(env, height, ttl).as_ref() == Some(&hash) {
+            return Ok(None);
+        }
+        if *budget == 0 {
+            return Ok(Some((hash, height)));
+        }
+        set_canonical(env, height, &hash, ttl);
+        *budget -= 1;
+        hash = get_header(env, &hash, ttl).ok_or(SPVError::UnknownParent)?.prev;
+        height -= 1;
+    }
+}
+
+/// Fork choice with at most `budget` height-index writes.
+///
+/// Advances a pending switch first. While one is still pending, a heavier
+/// `offered` tip is only remembered as its candidate. Otherwise the heavier
+/// of `offered` and that candidate replaces the best tip if it has more
+/// work, and its index rewrite starts, pending again if it does not fit.
+fn apply_fork_choice(
+    env: &Env,
+    offered: Option<(BytesN<32>, HeaderEntry)>,
+    mut budget: u32,
+    ttl: u32,
+) -> Result<BestTip, SPVError> {
+    let mut best = get_best_tip(env).ok_or(SPVError::CheckpointNotSet)?;
+    let mut offered = offered;
+
+    if let Some(mut pending) = get_pending_reorg(env) {
+        let resume = rewrite_index(
+            env,
+            pending.next_hash.clone(),
+            pending.next_height,
+            pending.trusted_height,
+            &mut budget,
+            ttl,
+        )?;
+        if let Some((next_hash, next_height)) = resume {
+            pending.next_hash = next_hash;
+            pending.next_height = next_height;
+            if let Some((hash, entry)) = offered {
+                let floor = match &pending.candidate {
+                    Some(c) => get_header(env, c, ttl).ok_or(SPVError::UnknownParent)?.chainwork,
+                    None => best.chainwork.clone(),
+                };
+                if entry.chainwork > floor {
+                    pending.candidate = Some(hash);
+                }
+            }
+            set_pending_reorg(env, &pending);
+            return Ok(best);
+        }
+        remove_pending_reorg(env);
+        if let Some(c) = pending.candidate {
+            let entry = get_header(env, &c, ttl).ok_or(SPVError::UnknownParent)?;
+            if offered.as_ref().is_none_or(|(_, o)| entry.chainwork > o.chainwork) {
+                offered = Some((c, entry));
+            }
+        }
+    }
+
+    if let Some((hash, entry)) = offered {
+        if entry.chainwork > best.chainwork {
+            let trusted_height = best.height;
+            best = BestTip {
+                hash: hash.clone(),
+                height: entry.height,
+                chainwork: entry.chainwork,
+            };
+            set_best_tip(env, &best);
+            if let Some((next_hash, next_height)) =
+                rewrite_index(env, hash, best.height, trusted_height, &mut budget, ttl)?
+            {
+                set_pending_reorg(
+                    env,
+                    &PendingReorg { next_hash, next_height, trusted_height, candidate: None },
+                );
+            }
+        }
+    }
+    Ok(best)
 }

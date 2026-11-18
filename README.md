@@ -248,10 +248,10 @@ The worked rate model is in [Writz Lend](https://docs.writz.xyz/products/writz-l
 
 | Risk | Mitigation |
 |---|---|
-| Bitcoin reorg | 1 confirmation on testnet, 6 planned for mainnet; the light client follows the most-work chain and rejects reorgs deeper than 20 blocks. A position whose deposit is later reorged out is not unwound automatically |
+| Bitcoin reorg | 1 confirmation on testnet, 6 planned for mainnet; the light client follows the most-work chain through reorgs of any depth, rewriting its index across calls and refusing proofs until the switch completes (the testnet instance deployed on 2026-10-25 still limits one switch to 20 blocks). A position whose deposit is later reorged out is not unwound automatically |
 | P2WSH script bug | Internal review and tests, including releases confirmed on Signet; external review before mainnet. The timelock protects users regardless |
 | Protocol key compromise | The protocol key cannot move BTC without the user's key; a 2-of-3 protocol side in the P2WSH script is planned, with a published signing policy |
-| SPV contract bug | Header light client anchored to a public checkpoint, with proof-of-work, exact difficulty and chainwork checks; no upgrade path. Known open edge cases (proof-depth binding, median-time-past) are listed in [SPV vs wrapped Bitcoin](https://docs.writz.xyz/security/spv-vs-wrapped); independent audit before mainnet |
+| SPV contract bug | Header light client anchored to a public checkpoint, with proof-of-work, exact difficulty and chainwork checks; no upgrade path. Known open edge cases (proof-depth binding) are listed in [SPV vs wrapped Bitcoin](https://docs.writz.xyz/security/spv-vs-wrapped); independent audit before mainnet |
 | Oracle manipulation | Reflector SEP-40 feed with a one-hour staleness check; a second source (RedStone) with a divergence guard is planned |
 | Mass liquidation (BTC crash) | 150% collateral ratio, liquidation below 120%, 50,000 USDC total borrow cap; see [What you trust today](#what-you-trust-today) for what liquidation does and does not do |
 
