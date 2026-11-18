@@ -7,6 +7,12 @@ jest.mock('../src/defindex/client.js', () => ({
   },
   defindexNetwork: 'testnet',
 }));
+// The transaction check needs @stellar/stellar-sdk, which jest cannot load;
+// it has its own suite under Bun (verify-vault-tx.bun.test.ts).
+jest.mock('../src/defindex/verify-vault-tx.js', () => ({
+  ...jest.requireActual('../src/defindex/verify-vault-tx.js'),
+  verifyVaultTx: jest.fn(),
+}));
 
 import express from 'express';
 import request from 'supertest';
