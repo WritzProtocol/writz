@@ -3129,3 +3129,152 @@ fn refresh_protocol_ttl_extends_the_instance_to_the_full_window() {
     s.client.refresh_protocol_ttl();
     assert_eq!(instance_ttl(&s), PERSISTENT_BUMP);
 }
+
+// ── Position views project accrued interest ──────────────────────────────────
+//
+// `get_position` and `get_health_ratio_bp` bring an `Active` position's debt
+// up to the current ledger in memory, exactly as the next write would, while
+// the stored entry only changes when a write runs.
+
+/// Collateral value of the test deposit (500_000 sats at $60_000), in stroops.
+const TEST_COLLATERAL_STROOPS: i128 = 3_000_000_000;
+
+/// The position as stored, without any projection.
+fn stored_position(s: &Setup, txid: &BytesN<32>) -> Position {
+    s.env.as_contract(&s.client.address, || {
+        crate::storage::get_position(&s.env, txid, crate::storage::entry_ttl(&s.env)).unwrap()
+    })
+}
+
+/// The position as the next write would see it: stored entry plus
+/// `accrue_position_interest`, computed without saving anything.
+fn position_at_next_write(s: &Setup, txid: &BytesN<32>) -> Position {
+    s.env.as_contract(&s.client.address, || {
+        let mut pos = crate::storage::get_position(&s.env, txid, crate::storage::entry_ttl(&s.env)).unwrap();
+        let mut proto = crate::storage::get_protocol(&s.env);
+        crate::accrue_position_interest(&s.env, &mut pos, &mut proto);
+        pos
+    })
+}
+
+/// Every field of two positions, compared (`Position` has no `PartialEq`).
+fn assert_same_position(a: &Position, b: &Position) {
+    assert_eq!(a.btc_txid, b.btc_txid);
+    assert_eq!(a.btc_satoshis, b.btc_satoshis);
+    assert_eq!(a.usdc_debt, b.usdc_debt);
+    assert_eq!(a.p2wsh_script_pubkey, b.p2wsh_script_pubkey);
+    assert_eq!(a.timelock_height, b.timelock_height);
+    assert_eq!(a.last_update_ledger, b.last_update_ledger);
+    assert_eq!(a.debt_index, b.debt_index);
+    assert_eq!(a.depositor, b.depositor);
+    assert_eq!(a.status, b.status);
+    assert_eq!(a.user_pubkey, b.user_pubkey);
+}
+
+/// A borrowed position at the default 75% pool utilization.
+fn borrowed_position(s: &Setup) -> (BytesN<32>, i128) {
+    let txid = setup_with_supply_and_deposit(s, 2_654_000_000_i128);
+    let borrow = 1_990_000_000_i128;
+    s.client.borrow(&s.depositor, &txid, &borrow);
+    (txid, borrow)
+}
+
+#[test]
+fn get_position_returns_the_debt_the_next_write_sees() {
+    let s = setup();
+    let (txid, borrow) = borrowed_position(&s);
+    advance(&s, 6_311_520); // one year, no write
+
+    let view = s.client.get_position(&txid).unwrap();
+    let next = position_at_next_write(&s, &txid);
+    assert!(view.usdc_debt > borrow, "interest accrued in the view");
+    assert_same_position(&view, &next);
+    assert_eq!(view.debt_index, s.client.get_borrow_index());
+    assert_eq!(view.last_update_ledger, s.env.ledger().sequence());
+
+    // The view wrote nothing.
+    let stored = stored_position(&s, &txid);
+    assert_eq!(stored.usdc_debt, borrow);
+    assert!(stored.debt_index < view.debt_index);
+}
+
+#[test]
+fn get_health_ratio_bp_uses_the_debt_the_next_write_sees() {
+    let s = setup();
+    let (txid, borrow) = borrowed_position(&s);
+    advance(&s, 6_311_520);
+
+    let next = position_at_next_write(&s, &txid);
+    let health = s.client.get_health_ratio_bp(&txid);
+    assert_eq!(health, crate::oracle::health_ratio_bp(TEST_COLLATERAL_STROOPS, next.usdc_debt));
+    assert!(health < crate::oracle::health_ratio_bp(TEST_COLLATERAL_STROOPS, borrow));
+}
+
+#[test]
+fn repaying_the_viewed_debt_closes_the_position() {
+    let s = setup();
+    let (txid, borrow) = borrowed_position(&s);
+    advance(&s, 6_311_520);
+
+    let shown = s.client.get_position(&txid).unwrap().usdc_debt;
+    assert!(shown > borrow);
+    StellarAssetClient::new(&s.env, &s.usdc).mint(&s.depositor, &shown);
+    s.client.repay(&s.depositor, &txid, &shown);
+
+    let pos = s.client.get_position(&txid).unwrap();
+    assert_eq!(pos.status, PositionStatus::Closed);
+    assert_eq!(pos.usdc_debt, 0);
+}
+
+#[test]
+fn health_view_is_below_the_threshold_exactly_when_liquidate_succeeds() {
+    let s = setup();
+    let (txid, _) = borrowed_position(&s);
+    StellarAssetClient::new(&s.env, &s.usdc).mint(&s.keeper, &100_000_000_000_i128);
+    let start = s.env.ledger().sequence();
+
+    // First ledger at which the view reports the position as liquidatable.
+    let health_at = |ledger: u32| {
+        s.env.ledger().set_sequence_number(ledger);
+        s.client.get_health_ratio_bp(&txid)
+    };
+    let (mut lo, mut hi) = (start, start + 60_000_000);
+    assert!(health_at(lo) >= 12_000 && health_at(hi) < 12_000);
+    while hi - lo > 1 {
+        let mid = lo + (hi - lo) / 2;
+        if health_at(mid) < 12_000 { hi = mid } else { lo = mid }
+    }
+
+    // One ledger before: the view says healthy and liquidate refuses.
+    assert!(health_at(lo) >= 12_000);
+    assert_eq!(s.client.try_liquidate(&s.keeper, &txid), Err(Ok(WritzLendError::PositionHealthy)));
+    // From the crossing ledger on: the view says liquidatable and liquidate succeeds.
+    assert!(health_at(hi) < 12_000);
+    assert_eq!(s.client.try_liquidate(&s.keeper, &txid), Ok(Ok(())));
+    assert_eq!(s.client.get_position(&txid).unwrap().status, PositionStatus::Liquidated);
+}
+
+#[test]
+fn closed_and_liquidated_positions_are_returned_as_stored() {
+    // Closed.
+    let s = setup();
+    let (txid, _) = borrowed_position(&s);
+    let debt = s.client.get_position(&txid).unwrap().usdc_debt;
+    s.client.repay(&s.depositor, &txid, &debt);
+    advance(&s, 6_311_520);
+    let view = s.client.get_position(&txid).unwrap();
+    assert_eq!(view.status, PositionStatus::Closed);
+    assert_same_position(&view, &stored_position(&s, &txid));
+    assert_eq!(s.client.get_health_ratio_bp(&txid), i128::MAX);
+
+    // Liquidated.
+    let s = setup();
+    let (txid, _) = borrowed_position(&s);
+    StellarAssetClient::new(&s.env, &s.usdc).mint(&s.keeper, &100_000_000_000_i128);
+    advance(&s, 25_000_000);
+    s.client.liquidate(&s.keeper, &txid);
+    advance(&s, 6_311_520);
+    let view = s.client.get_position(&txid).unwrap();
+    assert_eq!(view.status, PositionStatus::Liquidated);
+    assert_same_position(&view, &stored_position(&s, &txid));
+}

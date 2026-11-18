@@ -84,14 +84,19 @@ export class WritzLendClient {
     return big(await this.c.read("get_supply_balance", address(lender)));
   }
 
-  /** A position by its BTC deposit txid (internal byte order), or `null`. */
+  /**
+   * A position by its BTC deposit txid (internal byte order), or `null`. An
+   * active position's `usdcDebt` includes the interest accrued to the current
+   * ledger, and its `debtIndex` is the borrow index at that ledger.
+   */
   async getPosition(txid: string): Promise<Position | null> {
     const r = await this.c.read("get_position", txidArg(txid));
     return r ? decodePosition(r) : null;
   }
 
   /**
-   * Health ratio in basis points (15000 is 150%; liquidation at 12000). A
+   * Health ratio in basis points on the debt with interest accrued to the
+   * current ledger (15000 is 150%; liquidation below 12000). A
    * position without debt returns the i128 maximum. Throws `ContractError`
    * 8 PositionNotFound for an unknown txid.
    */

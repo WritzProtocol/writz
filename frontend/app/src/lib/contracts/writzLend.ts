@@ -103,7 +103,7 @@ export interface ChainPosition {
   collateralSats: bigint;
   /** Outstanding USDC debt in stroops, interest included up to `ledger`. */
   debtStroops: bigint;
-  /** The stored debt before accrual; the contract only accepts repayments up to the accrued figure. */
+  /** `usdc_debt` as `get_position` returned it, accrued to the ledger the read ran at; the contract only accepts repayments up to the accrued figure. */
   storedDebtStroops: bigint;
   timelockHeight: number;
   /** The depositor's compressed Bitcoin public key, hex. */
