@@ -146,8 +146,15 @@ async function checkRelayerBalance(): Promise<void> {
  * switch longer than one call leaves the contract refusing every proof
  * (ReorgPending) until it completes.
  */
+let reportedNoPendingReorgSupport = false;
+
 async function finishPendingReorg(): Promise<void> {
   const calls = await driveReorg({
+    onUnsupported: () => {
+      if (reportedNoPendingReorgSupport) return;
+      reportedNoPendingReorgSupport = true;
+      console.info("[spv-sync] bitcoin-spv has no get_pending_reorg (deployed before multi-call chain switches); nothing to continue");
+    },
     isPending: async () => (await simulateRead("get_pending_reorg")) != null,
     continueReorg: async () => {
       headerSyncStatus.reorgContinueCalls++;

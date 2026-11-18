@@ -4,6 +4,7 @@ import {
   driveReorg,
   FeeCeilingExceededError,
   forkSafeStartHeight,
+  isMissingContractFunction,
   hasNewHeaders,
   type HeaderSyncStatus,
   headerSyncStatus,
@@ -274,6 +275,50 @@ describe('driveReorg', () => {
     });
     expect(calls).toBe(3);
     expect(remaining).toBe(0);
+  });
+
+  // Simulation error text from a light client deployed before get_pending_reorg existed.
+  const missingFunction = new Error(
+    'get_pending_reorg simulation failed: HostError: Error(WasmVm, MissingValue)\n\nEvent log (newest first):\n' +
+      '   0: [Diagnostic Event] topics:[error, Error(WasmVm, MissingValue)], data:["trying to invoke non-existent contract function", get_pending_reorg]',
+  );
+
+  test('treats a contract without get_pending_reorg as having nothing pending', async () => {
+    let unsupported = 0;
+    let sent = 0;
+    const calls = await driveReorg({
+      isPending: async () => {
+        throw missingFunction;
+      },
+      continueReorg: async () => {
+        sent++;
+        return false;
+      },
+      onUnsupported: () => unsupported++,
+    });
+    expect(calls).toBe(0);
+    expect(sent).toBe(0);
+    expect(unsupported).toBe(1);
+  });
+
+  test('any other read failure still propagates', async () => {
+    const other = [
+      new Error('get_pending_reorg simulation failed: HostError: Error(Storage, MissingValue)'),
+      new Error('get_pending_reorg simulation failed: HostError: Error(WasmVm, MissingValue) trying to invoke non-existent contract function, continue_reorg'),
+      new Error('connect ECONNREFUSED'),
+    ];
+    for (const e of other) {
+      await expect(
+        driveReorg({
+          isPending: async () => {
+            throw e;
+          },
+          continueReorg: async () => false,
+        }),
+      ).rejects.toBe(e);
+    }
+    expect(isMissingContractFunction(missingFunction, 'get_pending_reorg')).toBe(true);
+    expect(isMissingContractFunction(missingFunction, 'get_pending')).toBe(false);
   });
 
   test('stops at maxCalls and leaves the rest to the next pass', async () => {
