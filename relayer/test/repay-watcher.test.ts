@@ -1,4 +1,4 @@
-// `withPromptRetry` only. Polling and the release sweep need real SQLite
+// `withPromptRetry` and the release status check only. Polling and the release sweep need real SQLite
 // transactions, so they are in repay-watcher.bun.test.ts.
 //
 // NOTE: this suite deliberately never imports `@stellar/stellar-sdk` (nor
@@ -45,5 +45,18 @@ describe("withPromptRetry", () => {
     await expect(withPromptRetry(handle, { sleep })(txid)).rejects.toThrow("third");
     expect(handle).toHaveBeenCalledTimes(3);
     expect(sleep.mock.calls).toEqual([[2_000], [4_000]]);
+  });
+});
+
+describe("assertPositionClosed", () => {
+  const { assertPositionClosed } = require("../src/repay-watcher/release-guard.js");
+  const at = (tag: string) => ({ status: { tag, values: undefined } });
+
+  test("accepts a Closed position", () => {
+    expect(() => assertPositionClosed(at("Closed"), "aa")).not.toThrow();
+  });
+
+  test.each(["Active", "Liquidated"])("refuses to co-sign for a %s position", (tag) => {
+    expect(() => assertPositionClosed(at(tag), "aa")).toThrow(`position aa is ${tag}, not Closed`);
   });
 });
