@@ -75,9 +75,9 @@ cd ../packages/writz-lend && bun install
 cd ../../relayer && bun install && bun run test
 ```
 
-Expected output: 515 tests pass.
+Expected output: 520 tests pass.
 
-### All together: 854 tests, all passing.
+### All together: 859 tests, all passing.
 
 ---
 

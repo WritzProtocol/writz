@@ -3,6 +3,7 @@ import { config } from "../config.js";
 import { defindexSdk, defindexNetwork } from "../defindex/client.js";
 import { mapDefindexError } from "../defindex/errors.js";
 import { trackVaultRoute } from "../defindex/metrics.js";
+import { verifyVaultTx, VaultTxMismatchError, type VaultAction } from "../defindex/verify-vault-tx.js";
 import { rateLimit } from "../rate-limit.js";
 
 const STELLAR_ADDRESS_RE = /^G[A-Z2-7]{55}$/;
@@ -15,6 +16,37 @@ export const vaultReadLimiter = rateLimit({ name: "defindex-read", limit: 60, wi
 export const vaultTxLimiter = rateLimit({ name: "defindex-tx", limit: 10, windowMs: 60_000 });
 
 export const defindexRouter = Router();
+
+/**
+ * Sends `xdr` only if it is exactly the requested vault call
+ * (../defindex/verify-vault-tx.ts), otherwise answers 502 with
+ * `VaultTxMismatch: ...`. The app checks again before the wallet signs; this
+ * stops a wrong envelope before it leaves the relayer.
+ */
+function sendIfVaultCall(
+  res: Response,
+  xdr: string,
+  action: VaultAction,
+  caller: string,
+  amountStroops: string,
+): void {
+  try {
+    verifyVaultTx({
+      xdr,
+      networkPassphrase: config.networkPassphrase,
+      vaultId: config.defindexVaultId,
+      action,
+      caller,
+      amountStroops: BigInt(amountStroops),
+    });
+  } catch (err) {
+    if (!(err instanceof VaultTxMismatchError)) throw err;
+    console.error(`[defindex] ${action} transaction from the DeFindex API refused: ${err.message}`);
+    res.status(502).json({ error: err.message });
+    return;
+  }
+  res.json({ xdr });
+}
 
 /**
  * GET /defindex/apy
@@ -83,6 +115,8 @@ defindexRouter.get("/position", trackVaultRoute("position"), vaultReadLimiter, a
  * Builds an unsigned deposit transaction only - the relayer never signs or
  * submits on the caller's behalf (epic #101's custody model). The connected
  * wallet signs the returned XDR and the browser submits it to Soroban RPC.
+ * DeFindex's XDR is returned only if it is a `deposit` of exactly this amount
+ * from `caller` into the configured vault (502 otherwise).
  *
  * `amountStroops` is a decimal string of USDC stroops (7 decimals), matching
  * the frontend's wire convention (frontend/src/lib/earn/amount.ts) - a JSON
@@ -115,7 +149,7 @@ defindexRouter.post("/deposit", trackVaultRoute("deposit"), vaultTxLimiter, asyn
       res.status(502).json({ error: "DeFindex API did not return a transaction to sign" });
       return;
     }
-    res.json({ xdr });
+    sendIfVaultCall(res, xdr, "deposit", caller, amountStroops);
   } catch (err) {
     const { status, error } = mapDefindexError(err);
     res.status(status).json({ error });
@@ -129,6 +163,8 @@ defindexRouter.post("/deposit", trackVaultRoute("deposit"), vaultTxLimiter, asyn
  * Builds an unsigned withdraw transaction only - the relayer never signs or
  * submits on the caller's behalf (epic #101's custody model). The connected
  * wallet signs the returned XDR and the browser submits it to Soroban RPC.
+ * DeFindex's XDR is returned only if it is a `withdraw` from the configured
+ * vault paying `caller` about this amount (502 otherwise).
  *
  * `amountStroops` is the underlying USDC amount to withdraw (7 decimals), the
  * same wire convention as `/deposit`. Passed straight through to
@@ -160,7 +196,7 @@ defindexRouter.post("/withdraw", trackVaultRoute("withdraw"), vaultTxLimiter, as
       res.status(502).json({ error: "DeFindex API did not return a transaction to sign" });
       return;
     }
-    res.json({ xdr });
+    sendIfVaultCall(res, xdr, "withdraw", caller, amountStroops);
   } catch (err) {
     const { status, error } = mapDefindexError(err);
     res.status(status).json({ error });
