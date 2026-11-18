@@ -42,4 +42,6 @@ export const WRITZ_LEND_ERRORS: Readonly<Record<number, string>> = Object.freeze
   31: "StaleBitcoinTip",
   32: "LiquidationWindowClosed",
   33: "InvalidTimelockParams",
+  34: "InvalidRepayAmount",
+  35: "NotPositionOwner",
 });
