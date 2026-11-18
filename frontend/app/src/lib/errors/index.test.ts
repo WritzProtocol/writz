@@ -3,6 +3,7 @@ import { WritzLendError } from "@/lib/contracts/writzLendGenerated";
 import { SignatureRejectedError } from "@/lib/wallet/rejection";
 import { AccountUnfundedError, LowXlmError, WrongNetworkError } from "@/lib/wallet/precheck";
 import { XverseError } from "@/lib/bitcoin/xverse";
+import { VaultTxMismatchError } from "@/lib/earn/verifyVaultTx";
 import { BitcoinSpvError } from "./contract";
 import { describeError, humanizeError, type ErrorContext, type FriendlyError } from "./index";
 
@@ -35,6 +36,8 @@ const SAMPLES: [unknown, ErrorContext?][] = [
   [new Error("Transaction failed on-chain: AAAA")],
   [new Error("Request failed with status code 503")],
   [new Error("StrategyPaused"), { flow: "earn-withdraw" }],
+  [new VaultTxMismatchError("wrong_contract", "calls a contract other than the Earn vault"), { flow: "earn-deposit" }],
+  [new Error("VaultTxMismatch: wrong_amount: deposit of 1, requested 2"), { flow: "earn-deposit" }],
   [new Error("InsufficientOutputAmount"), { flow: "earn-withdraw" }],
   [new Error("something nobody planned for")],
 ];
@@ -123,6 +126,15 @@ describe("wallet and account messages", () => {
       expect(describeError(error).link?.label).toBe("Fund with Friendbot");
     }
     expect(describeError(new Error("tx_insufficient_balance")).headline).toBe("Not enough XLM for this transaction.");
+  });
+
+  it("says an Earn transaction that failed the vault check was never signed", () => {
+    const e = describeError(new VaultTxMismatchError("wrong_function", "calls transfer, requested deposit"), {
+      flow: "earn-deposit",
+    });
+    expect(e.safety).toBe("Nothing was signed and no USDC moved.");
+    expect(e.report).toBe("always");
+    expect(describeError(new Error("VaultTxMismatch: wrong_auth: x"), { flow: "earn-withdraw" }).headline).toBe(e.headline);
   });
 
   it("does not show raw Xverse text", () => {

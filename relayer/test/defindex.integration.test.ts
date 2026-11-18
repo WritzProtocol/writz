@@ -17,6 +17,14 @@
  * locally to exercise this suite for real.
  */
 
+// The route's transaction check needs @stellar/stellar-sdk, which jest cannot
+// load (see jest.config.js). It runs for real under Bun in
+// earn-cycle.e2e.test.ts and verify-vault-tx.bun.test.ts; here it is a no-op.
+jest.mock("../src/defindex/verify-vault-tx.js", () => ({
+  ...jest.requireActual("../src/defindex/verify-vault-tx.js"),
+  verifyVaultTx: jest.fn(),
+}));
+
 import express from "express";
 import request from "supertest";
 import { defindexRouter } from "../src/routes/defindex.js";

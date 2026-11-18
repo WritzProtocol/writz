@@ -126,6 +126,17 @@ const RULES: Rule[] = [
     }),
   },
   {
+    // The app (or the relayer) found that the transaction it was asked to sign
+    // is not the vault call the user requested; it never reached the wallet.
+    match: /^VaultTxMismatch: /,
+    build: () => ({
+      headline: "The vault transaction the app received doesn't match what you asked for, so it was not sent to your wallet.",
+      safety: "Nothing was signed and no USDC moved.",
+      action: "Don't retry for now.",
+      report: "always",
+    }),
+  },
+  {
     match: /^WrongNetwork$/,
     build: (_ctx, _s, error) => {
       const e = error instanceof WrongNetworkError ? error : null;

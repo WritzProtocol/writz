@@ -13,7 +13,7 @@ import { Horizon, NotFoundError } from "@stellar/stellar-sdk";
 import { ensureKit } from "@/lib/wallet/kit";
 import { installKitA11y } from "@/lib/wallet/kitA11y";
 import { config } from "@/config";
-import { pollarClient, signMessageWithPollar, signTransactionWithPollar } from "@/lib/wallet/pollar";
+import { pollarClient, signMessageWithPollar, signTransactionWithPollar, wantsSponsorship } from "@/lib/wallet/pollar";
 import { usePollarSession, type PollarSession } from "@/lib/wallet/pollarSession";
 import { withRejection } from "@/lib/wallet/rejection";
 import { preflightSign, type AccountSnapshot } from "@/lib/wallet/precheck";
@@ -237,16 +237,21 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         const client = pollarClient();
         if (!client) throw new Error("No Pollar wallet connected");
         const signer = assertPollarWalletReady(pollarSession);
-        const result = await withRejection("stellar", "Pollar", () => signTransactionWithPollar(client, xdr, signer));
-        // A sponsored envelope needs no XLM; one Pollar would not sponsor is paid by the user.
-        if (!result.sponsored) {
-          await preflightSign({
+        const preflight = () =>
+          preflightSign({
             xdr,
             expectedPassphrase: config.networkPassphrase,
             getWalletPassphrase: async () => null,
             loadAccount: () => loadAccountSnapshot(signer),
           });
-        }
+        // A sponsored envelope needs no XLM. One Pollar never sponsors is paid by
+        // the user, so it is checked before Pollar signs, as on the kit path.
+        const sponsorable = wantsSponsorship(xdr);
+        if (!sponsorable) await preflight();
+        const result = await withRejection("stellar", "Pollar", () => signTransactionWithPollar(client, xdr, signer));
+        // Pollar can still decline to sponsor a contract call or trustline, and
+        // that is only known once it has signed; the user pays for it then.
+        if (sponsorable && !result.sponsored) await preflight();
         return { signedTxXdr: result.signedTxXdr, signerAddress: result.signerAddress };
       }
       const kit = ensureKit();

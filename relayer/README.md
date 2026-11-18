@@ -304,7 +304,7 @@ submits it - the connected wallet signs the returned XDR and the caller submits 
 | `200` | Unsigned deposit XDR returned |
 | `400` | Missing or malformed `caller` or `amountStroops` |
 | `500` | `DEFINDEX_VAULT_ID` not configured |
-| `502` | Upstream DeFindex error, or DeFindex resolved without an XDR to sign (`error` carries the `ContractError` variant name when the failure came from the vault contract) |
+| `502` | Upstream DeFindex error, DeFindex resolved without an XDR to sign (`error` carries the `ContractError` variant name when the failure came from the vault contract), or the XDR is not exactly the requested vault call (`error` starts with `VaultTxMismatch:`) |
 
 **Example**
 
@@ -343,7 +343,7 @@ submits it - the connected wallet signs the returned XDR and the caller submits 
 | `200` | Unsigned withdraw XDR returned |
 | `400` | Missing or malformed `caller` or `amountStroops` |
 | `500` | `DEFINDEX_VAULT_ID` not configured |
-| `502` | Upstream DeFindex error, or DeFindex resolved without an XDR to sign (`error` carries the `ContractError` variant name when the failure came from the vault contract) |
+| `502` | Upstream DeFindex error, DeFindex resolved without an XDR to sign (`error` carries the `ContractError` variant name when the failure came from the vault contract), or the XDR is not exactly the requested vault call (`error` starts with `VaultTxMismatch:`) |
 
 **Example**
 

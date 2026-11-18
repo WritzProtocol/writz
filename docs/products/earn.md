@@ -80,7 +80,7 @@ Enter an amount, or select **Max** to withdraw your full position, and sign one 
 The vault is non-custodial. Three parties take part in every deposit and withdrawal, and none of them can move your funds alone:
 
 1. **The Writz relayer builds the transaction.** It holds the DeFindex API key, which must never reach the browser. It builds an unsigned transaction and returns it. It never signs and never submits.
-2. **Your wallet signs it.** Nothing moves without your signature.
+2. **The app checks it, then your wallet signs it.** Before the wallet is asked to sign, the app reads the transaction and refuses it unless it is exactly what you asked for: one call to the Writz vault's `deposit` or `withdraw`, from your account, for the amount you entered, authorizing nothing beyond that call and, on a deposit, the transfer of that amount from your account to the vault. The relayer runs the same check before returning the transaction. Nothing moves without your signature.
 3. **Your browser submits it** to Stellar and waits for confirmation.
 
 The vault shares are minted to your own account, not to a Writz account. The relayer cannot withdraw on your behalf, because a withdrawal needs a signature from the account that holds the shares.

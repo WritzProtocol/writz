@@ -16,17 +16,25 @@ jest.mock('../src/defindex/client.js', () => ({
   },
   defindexNetwork: 'testnet',
 }));
+// The transaction check needs @stellar/stellar-sdk, which jest cannot load;
+// it has its own suite under Bun (verify-vault-tx.bun.test.ts).
+jest.mock('../src/defindex/verify-vault-tx.js', () => ({
+  ...jest.requireActual('../src/defindex/verify-vault-tx.js'),
+  verifyVaultTx: jest.fn(),
+}));
 
 import express from 'express';
 import request from 'supertest';
 import { defindexRouter, vaultReadLimiter, vaultTxLimiter } from '../src/routes/defindex.js';
 import { defindexSdk } from '../src/defindex/client.js';
 import { config } from '../src/config.js';
+import { verifyVaultTx, VaultTxMismatchError } from '../src/defindex/verify-vault-tx.js';
 
 const mockGetVaultAPY = defindexSdk.getVaultAPY as jest.Mock;
 const mockGetVaultBalance = defindexSdk.getVaultBalance as jest.Mock;
 const mockDepositToVault = defindexSdk.depositToVault as jest.Mock;
 const mockWithdrawFromVault = defindexSdk.withdrawFromVault as jest.Mock;
+const mockVerifyVaultTx = verifyVaultTx as jest.Mock;
 
 const VAULT_ID = 'CBMHGL7GGGHODEDDJ5H2LKJEFHJWBRSQUKOXMC4FKOFDZK5HBKW6PI2S';
 const VALID_ADDRESS = 'GB2BSYQS3FRJ5LZSSIDF3ZCSG5MKWJT5SZ3OZO4QRCAMCR357YAVPTWT';
@@ -46,6 +54,7 @@ beforeEach(() => {
   mockGetVaultBalance.mockReset();
   mockWithdrawFromVault.mockReset();
   mockDepositToVault.mockReset();
+  mockVerifyVaultTx.mockReset();
   config.defindexVaultId = VAULT_ID;
   vaultReadLimiter.reset();
   vaultTxLimiter.reset();
@@ -361,5 +370,57 @@ describe('POST /defindex/withdraw', () => {
 
     expect(res.status).toBe(502);
     expect(res.body).toEqual({ error: 'DeFindex API did not return a transaction to sign' });
+  });
+});
+
+// ── Transaction check on built transactions ──────────────────────────────
+
+describe('POST /defindex/deposit and /withdraw check the built transaction', () => {
+  test.each([
+    ['deposit', mockDepositToVault, '10000000'],
+    ['withdraw', mockWithdrawFromVault, '5000000'],
+  ] as const)('%s checks the XDR against the request before returning it', async (action, mockBuild, amountStroops) => {
+    mockBuild.mockResolvedValue({ xdr: 'AAAAAgAAAAA...', simulationResponse: {} });
+
+    const res = await request(app).post(`/defindex/${action}`).send({ caller: VALID_ADDRESS, amountStroops });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ xdr: 'AAAAAgAAAAA...' });
+    expect(mockVerifyVaultTx).toHaveBeenCalledWith({
+      xdr: 'AAAAAgAAAAA...',
+      networkPassphrase: config.networkPassphrase,
+      vaultId: VAULT_ID,
+      action,
+      caller: VALID_ADDRESS,
+      amountStroops: BigInt(amountStroops),
+    });
+  });
+
+  test.each([
+    ['deposit', mockDepositToVault],
+    ['withdraw', mockWithdrawFromVault],
+  ] as const)('%s answers 502 and withholds the XDR when it is not the requested vault call', async (action, mockBuild) => {
+    mockBuild.mockResolvedValue({ xdr: 'AAAAAgAAAAB...', simulationResponse: {} });
+    mockVerifyVaultTx.mockImplementation(() => {
+      throw new VaultTxMismatchError('not_contract_call', 'operation is payment');
+    });
+
+    const res = await request(app).post(`/defindex/${action}`).send({ caller: VALID_ADDRESS, amountStroops: '10000000' });
+
+    expect(res.status).toBe(502);
+    expect(res.body).toEqual({ error: 'VaultTxMismatch: not_contract_call: operation is payment' });
+    expect(res.body.xdr).toBeUndefined();
+  });
+
+  test('an unexpected failure in the check is not reported as a mismatch', async () => {
+    mockDepositToVault.mockResolvedValue({ xdr: 'AAAAAgAAAAC...', simulationResponse: {} });
+    mockVerifyVaultTx.mockImplementation(() => {
+      throw new Error('boom');
+    });
+
+    const res = await request(app).post('/defindex/deposit').send({ caller: VALID_ADDRESS, amountStroops: '10000000' });
+
+    expect(res.status).not.toBe(200);
+    expect(res.body.xdr).toBeUndefined();
   });
 });
