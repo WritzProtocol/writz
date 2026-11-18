@@ -3,6 +3,7 @@ import {
   assertWithinFeeCeiling,
   driveReorg,
   FeeCeilingExceededError,
+  ForkSearchExhaustedError,
   forkSafeStartHeight,
   isMissingContractFunction,
   hasNewHeaders,
@@ -127,34 +128,42 @@ describe('withBackoff', () => {
 describe('hasNewHeaders', () => {
   const A = 'aa'.repeat(32);
   const B = 'bb'.repeat(32);
+  const stored = (hashes: string[]) => async (h: string) => hashes.includes(h.toLowerCase());
+  const neverAsked = async () => {
+    throw new Error('isStored must not be needed here');
+  };
 
-  test('submits when the contract has no tip yet', () => {
-    expect(hasNewHeaders({ height: 100, hash: A }, undefined)).toBe(true);
+  test('submits when the contract has no tip yet', async () => {
+    expect(await hasNewHeaders({ height: 100, hash: A }, undefined, neverAsked)).toBe(true);
   });
 
-  test('submits when the Bitcoin source is ahead', () => {
-    expect(hasNewHeaders({ height: 101, hash: B }, { height: 100, hash: A })).toBe(true);
+  test('submits when the Bitcoin source is ahead', async () => {
+    expect(await hasNewHeaders({ height: 101, hash: B }, { height: 100, hash: A }, neverAsked)).toBe(true);
   });
 
-  test('skips when the source tip is the contract tip (no new block)', () => {
-    expect(hasNewHeaders({ height: 100, hash: A }, { height: 100, hash: A })).toBe(false);
+  test('skips when the source tip is the contract tip (no new block)', async () => {
+    expect(await hasNewHeaders({ height: 100, hash: A }, { height: 100, hash: A }, neverAsked)).toBe(false);
   });
 
-  test('compares hashes case-insensitively', () => {
-    expect(hasNewHeaders({ height: 100, hash: A.toUpperCase() }, { height: 100, hash: A })).toBe(false);
+  test('compares hashes case-insensitively', async () => {
+    expect(await hasNewHeaders({ height: 100, hash: A.toUpperCase() }, { height: 100, hash: A }, neverAsked)).toBe(false);
   });
 
-  test('submits on a same-height reorg so the competing branch is offered', () => {
-    expect(hasNewHeaders({ height: 100, hash: B }, { height: 100, hash: A })).toBe(true);
+  test('submits on a same-height reorg so the competing branch is offered', async () => {
+    expect(await hasNewHeaders({ height: 100, hash: B }, { height: 100, hash: A }, stored([]))).toBe(true);
   });
 
-  test('skips when the source lags behind the contract', () => {
-    expect(hasNewHeaders({ height: 99, hash: B }, { height: 100, hash: A })).toBe(false);
+  test('submits a lower tip the contract does not store (a shorter chain with more work)', async () => {
+    expect(await hasNewHeaders({ height: 98, hash: B }, { height: 100, hash: A }, stored([]))).toBe(true);
   });
 
-  test('a new block after a deeper reorg still resubmits from below the contract tip', () => {
+  test('skips when the source lags behind on a block the contract already stores', async () => {
+    expect(await hasNewHeaders({ height: 99, hash: B }, { height: 100, hash: A }, stored([B]))).toBe(false);
+  });
+
+  test('a new block after a deeper reorg still resubmits from below the contract tip', async () => {
     // The skip only gates whether a pass runs; where it starts is unchanged.
-    expect(hasNewHeaders({ height: 101, hash: B }, { height: 100, hash: A })).toBe(true);
+    expect(await hasNewHeaders({ height: 101, hash: B }, { height: 100, hash: A }, neverAsked)).toBe(true);
     expect(syncStartHeight(0, 100)).toBe(100 - REORG_RESUBMIT_DEPTH);
   });
 });
@@ -248,8 +257,16 @@ describe('forkSafeStartHeight', () => {
     expect(await forkSafeStartHeight(94, 90, async () => false)).toBe(90);
   });
 
-  test('stops after maxDepth heights', async () => {
-    expect(await forkSafeStartHeight(94, 0, async () => false, 10)).toBe(84);
+  test('throws once maxDepth heights are searched without a stored block', async () => {
+    await expect(forkSafeStartHeight(94, 0, async () => false, 10)).rejects.toBeInstanceOf(ForkSearchExhaustedError);
+    expect(await forkSafeStartHeight(94, 0, async (h) => h === 83, 10)).toBe(84);
+  });
+
+  test('finds the common ancestor when Bitcoin\'s tip is below the contract\'s', async () => {
+    // Contract tip 100 on branch A; Bitcoin's heavier branch ends at 97 and
+    // forks after 90. The sync starts at most at Bitcoin's tip.
+    const start = Math.min(syncStartHeight(0, 100), 97);
+    expect(await forkSafeStartHeight(start, 0, async (h) => h <= 90)).toBe(91);
   });
 });
 
@@ -324,5 +341,62 @@ describe('driveReorg', () => {
   test('stops at maxCalls and leaves the rest to the next pass', async () => {
     const calls = await driveReorg({ isPending: async () => true, continueReorg: async () => true }, 4);
     expect(calls).toBe(4);
+  });
+});
+
+describe('syncHeaders with a pending chain switch', () => {
+  test('drains a pending switch before each batch is sent', async () => {
+    const events: string[] = [];
+    let pending = false;
+    let continueCallsLeft = 0;
+    const budget = { remaining: 10 };
+    await syncHeaders(1, 40, 16, {
+      getHeaderHex: async (h) => h.toString(16),
+      submitHeaders: async (headers) => {
+        events.push(`submit ${headers.length} (pending ${pending})`);
+        // The first batch makes a switch that needs two continue calls.
+        if (events.length === 1) {
+          pending = true;
+          continueCallsLeft = 2;
+        }
+      },
+      beforeBatch: async () => {
+        budget.remaining -= await driveReorg(
+          {
+            isPending: async () => pending,
+            continueReorg: async () => {
+              events.push('continue');
+              pending = --continueCallsLeft > 0;
+              return pending;
+            },
+          },
+          budget.remaining,
+        );
+      },
+    });
+    expect(events).toEqual([
+      'submit 16 (pending false)',
+      'continue',
+      'continue',
+      'submit 16 (pending false)',
+      'submit 8 (pending false)',
+    ]);
+    expect(budget.remaining).toBe(8);
+  });
+
+  test('stops continuing once the pass budget is spent', async () => {
+    let sent = 0;
+    const calls = await driveReorg(
+      {
+        isPending: async () => true,
+        continueReorg: async () => {
+          sent++;
+          return true;
+        },
+      },
+      0,
+    );
+    expect(calls).toBe(0);
+    expect(sent).toBe(0);
   });
 });

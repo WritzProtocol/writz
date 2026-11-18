@@ -36,6 +36,13 @@ export interface HeaderSyncDeps {
   getHeaderHex: (height: number) => Promise<string>;
   /** Submits one contiguous run of headers (hex strings) to bitcoin-spv. */
   submitHeaders: (headersHex: string[]) => Promise<void>;
+  /**
+   * Runs before each batch is sent. The sync uses it to finish a pending
+   * chain switch first: a batch sent while one is pending spends its index
+   * budget on the switch and only records its own tip for later, so proofs
+   * would stay refused for the whole catch-up.
+   */
+  beforeBatch?: () => Promise<void>;
 }
 
 /**
@@ -92,7 +99,8 @@ export const MAX_FORK_SEARCH_DEPTH = 2016;
  * than REORG_RESUBMIT_DEPTH would fail every pass with UnknownParent.
  *
  * `isStoredAt(h)` answers whether the Bitcoin block at height `h` is
- * stored in the contract. In the normal case it is one lookup.
+ * stored in the contract. In the normal case it is one lookup. Throws
+ * ForkSearchExhaustedError when no stored block is found within `maxDepth`.
  */
 export async function forkSafeStartHeight(
   start: number,
@@ -101,10 +109,22 @@ export async function forkSafeStartHeight(
   maxDepth = MAX_FORK_SEARCH_DEPTH,
 ): Promise<number> {
   let from = start;
-  while (from > floor && start - from < maxDepth && !(await isStoredAt(from - 1))) {
+  while (from > floor && !(await isStoredAt(from - 1))) {
+    if (start - from >= maxDepth) throw new ForkSearchExhaustedError(start, maxDepth);
     from--;
   }
   return from;
+}
+
+/** No block the contract stores was found within the search depth below a sync start. */
+export class ForkSearchExhaustedError extends Error {
+  constructor(
+    readonly start: number,
+    readonly maxDepth: number,
+  ) {
+    super(`no block stored in bitcoin-spv within ${maxDepth} heights below ${start}; the fork is deeper than the relayer searches`);
+    this.name = "ForkSearchExhaustedError";
+  }
 }
 
 export interface ReorgDriverDeps {
@@ -143,6 +163,7 @@ export const MAX_CONTINUE_CALLS_PER_PASS = 10;
  * get_pending_reorg is treated as having nothing pending.
  */
 export async function driveReorg(deps: ReorgDriverDeps, maxCalls = MAX_CONTINUE_CALLS_PER_PASS): Promise<number> {
+  if (maxCalls <= 0) return 0;
   let pending: boolean;
   try {
     pending = await deps.isPending();
@@ -177,6 +198,7 @@ export async function syncHeaders(
     for (let h = batch.fromHeight; h <= batch.toHeight; h++) {
       headers.push(await deps.getHeaderHex(h));
     }
+    await deps.beforeBatch?.();
     await deps.submitHeaders(headers);
     submittedThrough = batch.toHeight;
   }
@@ -196,15 +218,21 @@ export interface ChainTip {
  * stored nothing.
  *
  * Submits when the contract has no tip yet, when the Bitcoin source is
- * higher, or when both are at the same height on different blocks (a
- * same-height reorg: the resubmitted range carries the competing branch).
- * Skips when the source is at the contract's tip or behind it.
+ * higher, or when its tip is a different block at the same or a lower
+ * height that the contract does not store (a reorg, possibly to a shorter
+ * chain with more work). Skips when the tips are the same block, or when
+ * the contract already stores the source's tip (the source lags behind).
+ * `isStored` is only asked in that last case.
  */
-export function hasNewHeaders(bitcoinTip: ChainTip, contractTip: ChainTip | undefined): boolean {
+export async function hasNewHeaders(
+  bitcoinTip: ChainTip,
+  contractTip: ChainTip | undefined,
+  isStored: (displayHash: string) => Promise<boolean>,
+): Promise<boolean> {
   if (contractTip === undefined) return true;
+  if (bitcoinTip.hash.toLowerCase() === contractTip.hash.toLowerCase()) return false;
   if (bitcoinTip.height > contractTip.height) return true;
-  if (bitcoinTip.height < contractTip.height) return false;
-  return bitcoinTip.hash.toLowerCase() !== contractTip.hash.toLowerCase();
+  return !(await isStored(bitcoinTip.hash));
 }
 
 /** 32-byte hash in the contract's internal byte order, as Esplora's display hex. */

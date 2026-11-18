@@ -14,7 +14,9 @@ import {
   type ChainTip,
   driveReorg,
   FeeCeilingExceededError,
+  ForkSearchExhaustedError,
   forkSafeStartHeight,
+  MAX_CONTINUE_CALLS_PER_PASS,
   hasNewHeaders,
   headerSyncStatus,
   internalHashToDisplayHex,
@@ -38,6 +40,10 @@ const isRateLimited = (e: unknown) => e instanceof EsploraError && e.status === 
 // minutes is enough for the alert and keeps RPC calls and log lines down.
 const BALANCE_CHECK_INTERVAL_MS = 10 * 60_000;
 
+// A fork deeper than the relayer searches needs an operator; repeating the
+// whole search every pass would only spend Esplora and RPC calls.
+const FORK_SEARCH_BACKOFF_MS = 30 * 60_000;
+
 export function startHeaderSync(): { stop: () => void } {
   if (!config.bitcoinSpvId || !config.spvSyncFromHeight || !config.relayerSecret) {
     console.warn("[spv-sync] BITCOIN_SPV_ID, SPV_SYNC_FROM_HEIGHT and RELAYER_SECRET are required - header sync disabled");
@@ -51,8 +57,10 @@ export function startHeaderSync(): { stop: () => void } {
   const esplora = new EsploraClient(config.esploraBaseUrl, config.requestTimeoutMs);
   let running = false;
   let lastBalanceCheck = 0;
+  let forkSearchRetryAt = 0;
   const tick = async () => {
     if (running) return;
+    if (Date.now() < forkSearchRetryAt) return;
     running = true;
     try {
       if (Date.now() - lastBalanceCheck >= BALANCE_CHECK_INTERVAL_MS) {
@@ -68,9 +76,12 @@ export function startHeaderSync(): { stop: () => void } {
       headerSyncStatus.lastPassAt = new Date().toISOString();
       headerSyncStatus.bitcoinTipHeight = bitcoinTip.height;
       headerSyncStatus.contractTipHeight = contractTip?.height ?? null;
-      if (!hasNewHeaders(bitcoinTip, contractTip)) {
+      // Proofs are refused while a chain switch is pending, so each pass
+      // finishes it first, within a bounded number of calls.
+      const reorgBudget = { remaining: MAX_CONTINUE_CALLS_PER_PASS };
+      if (!(await hasNewHeaders(bitcoinTip, contractTip, isStoredInContract))) {
         headerSyncStatus.skippedNoNewHeaders++;
-        await finishPendingReorg();
+        await finishPendingReorg(reorgBudget);
         headerSyncStatus.lastError = null;
         return;
       }
@@ -79,9 +90,11 @@ export function startHeaderSync(): { stop: () => void } {
       // height every pass would resubmit the whole chain since the checkpoint.
       // After a Bitcoin reorg deeper than the resubmit depth, step down to
       // where the contract stores Bitcoin's block, so the first header has a
-      // known parent.
+      // known parent. Bitcoin's tip may be lower than the contract's (a
+      // shorter chain with more work), so the search starts at most there.
       const floor = config.spvSyncFromHeight!;
-      const from = await forkSafeStartHeight(syncStartHeight(floor, contractTip?.height), floor, async (h) =>
+      const start = Math.min(syncStartHeight(floor, contractTip?.height), bitcoinTip.height);
+      const from = await forkSafeStartHeight(start, floor, async (h) =>
         isStoredInContract(await withBackoff(() => esplora.getBlockHashAtHeight(h), isRateLimited)),
       );
       const result = await syncHeaders(from, bitcoinTip.height, MAX_HEADERS_PER_SUBMIT, {
@@ -91,15 +104,20 @@ export function startHeaderSync(): { stop: () => void } {
           return (await withBackoff(() => esplora.getBlockHeader(hash), isRateLimited)).trim();
         },
         submitHeaders: (headers) => submitHeadersOnChain(headers),
+        beforeBatch: () => finishPendingReorg(reorgBudget),
       });
       if (result.submittedThrough !== null) {
         headerSyncStatus.lastSubmittedThrough = result.submittedThrough;
         console.log(`[spv-sync] submitted through height ${result.submittedThrough}`);
       }
-      await finishPendingReorg();
+      await finishPendingReorg(reorgBudget);
       headerSyncStatus.lastError = null;
     } catch (e) {
-      if (e instanceof FeeCeilingExceededError) {
+      if (e instanceof ForkSearchExhaustedError) {
+        forkSearchRetryAt = Date.now() + FORK_SEARCH_BACKOFF_MS;
+        headerSyncStatus.lastError = e.message;
+        console.error(`[spv-sync] ${e.message}; next attempt in ${FORK_SEARCH_BACKOFF_MS / 60_000} minutes`);
+      } else if (e instanceof FeeCeilingExceededError) {
         headerSyncStatus.skippedFeeCeiling++;
         headerSyncStatus.lastFeeCeilingSkip = { at: new Date().toISOString(), feeXlm: stroopsToXlm(e.feeStroops) };
         headerSyncStatus.lastError = e.message;
@@ -142,13 +160,14 @@ async function checkRelayerBalance(): Promise<void> {
 }
 
 /**
- * Sends continue_reorg until bitcoin-spv has no chain switch pending. A
+ * Sends continue_reorg until bitcoin-spv has no chain switch pending, within
+ * the pass's remaining `budget` of calls. A
  * switch longer than one call leaves the contract refusing every proof
  * (ReorgPending) until it completes.
  */
 let reportedNoPendingReorgSupport = false;
 
-async function finishPendingReorg(): Promise<void> {
+async function finishPendingReorg(budget: { remaining: number }): Promise<void> {
   const calls = await driveReorg({
     onUnsupported: () => {
       if (reportedNoPendingReorgSupport) return;
@@ -160,7 +179,8 @@ async function finishPendingReorg(): Promise<void> {
       headerSyncStatus.reorgContinueCalls++;
       return Boolean(await sendSpvCall("continue_reorg", []));
     },
-  });
+  }, budget.remaining);
+  budget.remaining -= calls;
   if (calls > 0) console.log(`[spv-sync] chain switch advanced with ${calls} continue_reorg call(s)`);
 }
 
