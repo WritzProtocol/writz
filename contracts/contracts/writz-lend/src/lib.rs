@@ -948,11 +948,18 @@ impl WritzLendContract {
     // ── View functions ────────────────────────────────────────────────────────
 
     /// Returns the position for the given Bitcoin txid, or `None`.
+    ///
+    /// An `Active` position comes back with interest accrued to the current
+    /// ledger, as the next write would compute it: `usdc_debt` includes it,
+    /// and `debt_index` and `last_update_ledger` are the projected borrow
+    /// index and the current ledger. Nothing is written. `Closed` and
+    /// `Liquidated` positions are returned as stored.
     pub fn get_position(env: Env, txid: BytesN<32>) -> Option<Position> {
-        get_position(&env, &txid, storage::entry_ttl(&env))
+        get_position(&env, &txid, storage::entry_ttl(&env)).map(|pos| projected_position(&env, pos))
     }
 
-    /// Returns the health ratio (in basis points) for a position.
+    /// Returns the health ratio (in basis points) for a position, on its
+    /// debt with interest accrued to the current ledger (see `get_position`).
     ///
     /// 15_000 = 150% (healthy), 12_000 = 120% (liquidation threshold),
     /// `i128::MAX` = position has no debt.
@@ -962,6 +969,7 @@ impl WritzLendContract {
     ) -> Result<i128, WritzLendError> {
         let config = get_config(&env).ok_or(WritzLendError::NotInitialized)?;
         let pos = get_position(&env, &txid, config.entry_ttl_ledgers).ok_or(WritzLendError::PositionNotFound)?;
+        let pos = projected_position(&env, pos);
         if pos.usdc_debt == 0 {
             return Ok(i128::MAX);
         }
@@ -1129,6 +1137,22 @@ fn projected(env: &Env) -> ProtocolState {
     let mut proto = get_protocol(env);
     accrue_global(env, &mut proto);
     proto
+}
+
+/// An `Active` position with its debt brought up to the projected borrow
+/// index, exactly as `accrue_position_interest` would leave it at the current
+/// ledger. Nothing is written: views use this. Other positions are unchanged.
+fn projected_position(env: &Env, mut pos: Position) -> Position {
+    if pos.status != PositionStatus::Active {
+        return pos;
+    }
+    let proto = projected(env);
+    if pos.usdc_debt > 0 && pos.debt_index > 0 {
+        pos.usdc_debt = pos.usdc_debt.saturating_mul(proto.borrow_index) / pos.debt_index;
+    }
+    pos.debt_index = proto.borrow_index;
+    pos.last_update_ledger = env.ledger().sequence();
+    pos
 }
 
 /// Brings the global borrow index up to date, charging interest on all

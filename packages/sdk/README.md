@@ -75,8 +75,8 @@ Pool and borrower reads:
 | `getProtocolState()` | Total supply (scaled) and supply index, total borrowed, reserve, borrow index |
 | `getSupplyRateBp()`, `getBorrowRateBp()` | Annual rates in basis points |
 | `getSupplyBalance(lender)` | A lender's USDC including accrued interest |
-| `getPosition(txid)` | A loan by its BTC deposit txid (internal byte order), or `null` |
-| `getHealthRatioBp(txid)` | Collateral to debt in basis points (liquidation at 12000) |
+| `getPosition(txid)` | A loan by its BTC deposit txid (internal byte order), or `null`. An active loan's debt includes the interest accrued to the current ledger |
+| `getHealthRatioBp(txid)` | Collateral to debt, interest included, in basis points (liquidation below 12000) |
 
 A failed call throws `ContractError` with the contract's code and name, from `WRITZ_LEND_ERRORS` and `SPV_ERRORS`.
 

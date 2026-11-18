@@ -95,6 +95,34 @@ describe("toChainPosition", () => {
     });
     expect(toChainPosition({ ...raw, status: { tag: "Closed", values: undefined } }, state(0n), 1_000).status).toBe("closed");
   });
+
+  it("does not count interest twice when get_position already projected it", () => {
+    // get_position returns an active position accrued to the ledger it ran
+    // at: usdc_debt includes the interest and debt_index is the projected
+    // borrow index, while get_protocol_state stays as stored.
+    const proto = state(7_500n * STROOP);
+    const ledger = 1_000 + 6_311_520;
+    const stored = { usdc_debt: 1_000n * STROOP, debt_index: INDEX_ONE };
+    const { borrowIndex } = projectRates(proto, ledger);
+    const projected = { usdc_debt: debtAt(stored, borrowIndex), debt_index: borrowIndex };
+    expect(projected.usdc_debt).toBe(1_080n * STROOP);
+    const raw: RawPosition = {
+      btc_txid: internalTxid("ab".repeat(32)),
+      btc_satoshis: 5_000_000n,
+      ...projected,
+      p2wsh_script_pubkey: Buffer.from("0020" + "11".repeat(32), "hex"),
+      timelock_height: 300_000,
+      last_update_ledger: ledger,
+      depositor: "GOWNER",
+      status: { tag: "Active", values: undefined },
+      user_pubkey: Buffer.from("02" + "22".repeat(32), "hex"),
+    };
+    // Same ledger: the projected debt as is.
+    expect(toChainPosition(raw, proto, ledger).debtStroops).toBe(1_080n * STROOP);
+    // A later ledger adds only the interest since the view ran.
+    const later = ledger + 6_311_520;
+    expect(toChainPosition(raw, proto, later).debtStroops).toBe(debtAt(stored, projectRates(proto, later).borrowIndex));
+  });
 });
 
 describe("poolStateAt", () => {

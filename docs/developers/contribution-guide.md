@@ -32,7 +32,7 @@ cd ../packages/writz-lend && bun install
 cd ../../relayer && bun install
 ```
 
-All 879 tests should pass on a clean checkout.
+All 884 tests should pass on a clean checkout.
 
 ---
 
