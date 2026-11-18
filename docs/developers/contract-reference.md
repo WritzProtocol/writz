@@ -321,7 +321,7 @@ pub fn get_release_psbt(txid: BytesN<32>) -> Option<Bytes>
 
 ### `get_position`
 
-Returns the position for the given Bitcoin txid, or `None`.
+Returns the position for the given Bitcoin txid, or `None`. An `Active` position is projected to the current ledger, as the next write would compute it: `usdc_debt` includes the interest accrued since the position was last touched, `debt_index` is the projected borrow index (the value of `get_borrow_index`) and `last_update_ledger` is the current ledger. Nothing is written. `Closed` and `Liquidated` positions are returned as stored. Repaying the returned `usdc_debt` in the same ledger closes the position.
 
 ```rust
 pub fn get_position(txid: BytesN<32>) -> Option<Position>
@@ -329,7 +329,7 @@ pub fn get_position(txid: BytesN<32>) -> Option<Position>
 
 ### `get_health_ratio_bp`
 
-Returns the health ratio (in basis points) for a position.
+Returns the health ratio (in basis points) for a position, on its debt with interest accrued to the current ledger (the same debt `get_position` returns). `15000` is 150%; below `12000` the position is under the liquidation threshold; `i128::MAX` means no debt.
 
 ```rust
 pub fn get_health_ratio_bp(txid: BytesN<32>) -> Result<i128, WritzLendError>
