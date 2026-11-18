@@ -197,7 +197,11 @@ pub fn borrow(borrower: Address, txid: BytesN<32>, usdc_amount: i128) -> Result<
 
 ### `repay`
 
-Repay some or all of the USDC debt on a position.
+Repay some or all of the USDC debt on a position. The `repayer` signs and the USDC moves from its account. A repayment that clears the debt (after interest accrues) closes the position and emits `repay_full`, which the relayer's repay watcher answers with the co-signed release. The amount and caller rules, against the debt after accrual:
+
+- `usdc_amount` below zero: refused with `InvalidRepayAmount`.
+- `usdc_amount` above zero: accepted from any account up to the debt, so anyone can repay a position's debt; above the debt, `RepayExceedsDebt`.
+- `usdc_amount` of zero: refused with `InvalidRepayAmount` while debt is outstanding. On a position that owes nothing (never borrowed against, or already paid down to zero), it closes the position only when `repayer` is the depositor; any other account gets `NotPositionOwner`. This is how the app closes a deposit that was never borrowed against.
 
 ```rust
 pub fn repay(repayer: Address, txid: BytesN<32>, usdc_amount: i128) -> Result<(), WritzLendError>
@@ -496,3 +500,5 @@ Topic fields are in **bold**.
 | 31 | `StaleBitcoinTip` | `bitcoin-spv` has no tip yet, or its tip header is older than `max_tip_age_secs`, so the current Bitcoin height is not known well enough to measure a timelock against. |
 | 32 | `LiquidationWindowClosed` | Fewer than `LIQUIDATION_CUTOFF_BLOCKS` (288) blocks remain between the `bitcoin-spv` tip and the position's timelock height, so the borrower's unilateral exit is about to open and a liquidation is no longer accepted. |
 | 33 | `InvalidTimelockParams` | A `set_borrow_timelock_margin` or `set_max_tip_age` value is outside its allowed range. |
+| 34 | `InvalidRepayAmount` | The `repay` amount is negative, or is zero while the position still owes debt. |
+| 35 | `NotPositionOwner` | A zero-amount `repay`, which closes a position that owes nothing, was called by an account other than the position's depositor. |

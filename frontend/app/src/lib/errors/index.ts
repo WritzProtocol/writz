@@ -339,6 +339,24 @@ const RULES: Rule[] = [
     }),
   },
   {
+    match: /^InvalidRepayAmount$/,
+    contract: "writz-lend",
+    build: () => ({
+      headline: "Enter an amount above zero to repay this loan.",
+      safety: "No USDC moved.",
+      action: "Refresh the loan and enter the amount to repay.",
+    }),
+  },
+  {
+    match: /^NotPositionOwner$/,
+    contract: "writz-lend",
+    build: () => ({
+      headline: "Only the wallet that made this deposit can close it.",
+      safety: "Nothing changed. Your BTC is safe in its lock.",
+      action: "Connect the Stellar wallet you deposited with.",
+    }),
+  },
+  {
     match: /^(OraclePriceUnavailable|OraclePriceStale)$/,
     contract: "writz-lend",
     build: () => ({

@@ -1249,6 +1249,91 @@ fn repay_more_than_debt_panics() {
     s.client.repay(&s.depositor, &txid, &(debt + 1));
 }
 
+#[test]
+fn zero_repay_by_another_account_does_not_close_an_undrawn_position() {
+    let s = setup();
+    let txid = do_deposit(&s);
+    let other = Address::generate(&s.env);
+    let r = s.client.try_repay(&other, &txid, &0_i128);
+    assert_eq!(r, Err(Ok(WritzLendError::NotPositionOwner)));
+    let pos: Position = s.client.get_position(&txid).unwrap();
+    assert_eq!(pos.status, PositionStatus::Active);
+    // The depositor can still borrow against it.
+    s.client.supply_usdc(&s.supplier, &10_000_000_000_i128);
+    s.client.borrow(&s.depositor, &txid, &1_000_000_i128);
+    assert_eq!(s.client.get_position(&txid).unwrap().usdc_debt, 1_000_000);
+}
+
+#[test]
+fn zero_repay_by_the_depositor_closes_an_undrawn_position() {
+    let s = setup();
+    let txid = do_deposit(&s);
+    s.client.repay(&s.depositor, &txid, &0_i128);
+    let pos: Position = s.client.get_position(&txid).unwrap();
+    assert_eq!(pos.status, PositionStatus::Closed);
+    assert_eq!(pos.usdc_debt, 0);
+}
+
+#[test]
+fn negative_repay_is_rejected() {
+    let s = setup();
+    let txid = setup_with_supply_and_deposit(&s, 10_000_000_000_i128);
+    s.client.borrow(&s.depositor, &txid, &1_000_000_000_i128);
+    let before: Position = s.client.get_position(&txid).unwrap();
+    for repayer in [s.depositor.clone(), Address::generate(&s.env)] {
+        let r = s.client.try_repay(&repayer, &txid, &-500_000_000_i128);
+        assert_eq!(r, Err(Ok(WritzLendError::InvalidRepayAmount)));
+    }
+    let after: Position = s.client.get_position(&txid).unwrap();
+    assert_eq!(after.usdc_debt, before.usdc_debt);
+    assert_eq!(after.status, PositionStatus::Active);
+    assert_eq!(s.client.get_protocol_state().total_borrowed, 1_000_000_000);
+}
+
+#[test]
+fn negative_repay_on_an_undrawn_position_is_rejected() {
+    let s = setup();
+    let txid = do_deposit(&s);
+    let r = s.client.try_repay(&s.depositor, &txid, &-1_i128);
+    assert_eq!(r, Err(Ok(WritzLendError::InvalidRepayAmount)));
+    assert_eq!(s.client.get_position(&txid).unwrap().status, PositionStatus::Active);
+}
+
+#[test]
+fn zero_repay_on_an_indebted_position_is_rejected() {
+    let s = setup();
+    let txid = setup_with_supply_and_deposit(&s, 10_000_000_000_i128);
+    s.client.borrow(&s.depositor, &txid, &1_000_000_000_i128);
+    for repayer in [s.depositor.clone(), Address::generate(&s.env)] {
+        let r = s.client.try_repay(&repayer, &txid, &0_i128);
+        assert_eq!(r, Err(Ok(WritzLendError::InvalidRepayAmount)));
+    }
+    let pos: Position = s.client.get_position(&txid).unwrap();
+    assert_eq!(pos.status, PositionStatus::Active);
+    assert_eq!(pos.usdc_debt, 1_000_000_000);
+}
+
+#[test]
+fn another_account_can_repay_a_positions_debt() {
+    let s = setup();
+    let txid = setup_with_supply_and_deposit(&s, 10_000_000_000_i128);
+    let debt = 1_000_000_000_i128;
+    s.client.borrow(&s.depositor, &txid, &debt);
+    let payer = Address::generate(&s.env);
+    StellarAssetClient::new(&s.env, &s.usdc).mint(&payer, &debt);
+
+    s.client.repay(&payer, &txid, &400_000_000_i128);
+    let pos: Position = s.client.get_position(&txid).unwrap();
+    assert_eq!(pos.usdc_debt, 600_000_000);
+    assert_eq!(pos.status, PositionStatus::Active);
+
+    s.client.repay(&payer, &txid, &600_000_000_i128);
+    let pos: Position = s.client.get_position(&txid).unwrap();
+    assert_eq!(pos.usdc_debt, 0);
+    assert_eq!(pos.status, PositionStatus::Closed);
+    assert_eq!(TokenClient::new(&s.env, &s.usdc).balance(&payer), 0);
+}
+
 // ── interest accrual ──────────────────────────────────────────────────────────
 
 #[test]
