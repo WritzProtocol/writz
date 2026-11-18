@@ -29,6 +29,7 @@ import { parseOutput } from "../bitcoin/tx.js";
 import { bidInclusionFeeOnly } from "../soroban-fee.js";
 import { withAccountLock } from "../account-lock.js";
 import { config } from "../config.js";
+import { assertPositionClosed } from "./release-guard.js";
 
 // A widely-used, publicly documented placeholder account with no known
 // private key - safe for read-only / simulation-only contract calls that
@@ -116,6 +117,9 @@ export async function handleRepayFull(
   }
 
   const txidDisplay = reverseHex(txidInternal.toString("hex"));
+
+  // Only a position the contract reports as Closed is released.
+  assertPositionClosed(position, txidDisplay);
 
   // Sanity-check: the redeem script we're about to build must match the
   // scriptPubKey recorded on-chain at deposit time. If it doesn't, something

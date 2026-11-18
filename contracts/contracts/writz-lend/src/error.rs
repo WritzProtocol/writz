@@ -92,4 +92,10 @@ pub enum WritzLendError {
     /// A `set_borrow_timelock_margin` or `set_max_tip_age` value is outside
     /// its allowed range.
     InvalidTimelockParams = 33,
+    /// The `repay` amount is negative, or is zero while the position still
+    /// owes debt.
+    InvalidRepayAmount = 34,
+    /// A zero-amount `repay`, which closes a position that owes nothing, was
+    /// called by an account other than the position's depositor.
+    NotPositionOwner = 35,
 }

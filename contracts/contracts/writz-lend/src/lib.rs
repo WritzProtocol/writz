@@ -512,6 +512,15 @@ impl WritzLendContract {
     /// interest), the position is marked as `Closed` and a `repay_full`
     /// event is emitted.  The Writz backend listens for this event and
     /// co-signs the Bitcoin release transaction (spending path A).
+    ///
+    /// Amount and caller rules, checked against the debt after accrual:
+    /// - a negative `usdc_amount` is refused with `InvalidRepayAmount`;
+    /// - a positive `usdc_amount` up to the debt may come from any account,
+    ///   so anyone can repay a position's debt;
+    /// - a zero `usdc_amount` is refused with `InvalidRepayAmount` while
+    ///   debt is outstanding, and when nothing is owed it closes the
+    ///   position only if `repayer` is the depositor (`NotPositionOwner`
+    ///   otherwise).
     pub fn repay(
         env: Env,
         repayer: Address,
@@ -530,8 +539,21 @@ impl WritzLendContract {
         let mut proto = get_protocol(&env);
         accrue_position_interest(&env, &mut pos, &mut proto);
 
+        if usdc_amount < 0 {
+            return Err(WritzLendError::InvalidRepayAmount);
+        }
         if usdc_amount > pos.usdc_debt {
             return Err(WritzLendError::RepayExceedsDebt);
+        }
+        if usdc_amount == 0 {
+            if pos.usdc_debt != 0 {
+                return Err(WritzLendError::InvalidRepayAmount);
+            }
+            // Closing a position that owes nothing releases its BTC, so only
+            // the depositor may do it.
+            if repayer != pos.depositor {
+                return Err(WritzLendError::NotPositionOwner);
+            }
         }
 
         // Transfer USDC from repayer into pool.

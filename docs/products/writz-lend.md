@@ -135,7 +135,7 @@ Watch the BTC/USD price. If BTC drops significantly, repay part of your loan to 
 
 ### Step 7: Repay
 
-Repay your USDC loan plus accrued interest at any time. Partial repayment is supported. A repayment that clears the whole debt closes the position.
+Repay your USDC loan plus accrued interest at any time. Partial repayment is supported, and any account can repay a position's debt. A repayment that clears the whole debt closes the position. A deposit that was never borrowed against is closed by its depositor alone.
 
 ### Step 8: Release Your BTC
 
@@ -144,7 +144,7 @@ After a full repayment, the protocol co-signs the transaction that returns your 
 <details>
 <summary>How this works technically</summary>
 
-A full repayment emits a `repay_full` event. The relayer's repay watcher sees it, rebuilds your redeem script from the position, builds the cooperative-path (Path A) release PSBT paying your key's own address, co-signs it with the protocol key and publishes it on `writz-lend` with `publish_release_psbt`. Because the half-signed PSBT is stored on Stellar, you can fetch it with `get_release_psbt` and finish it even if the rest of the Writz stack is down. Your wallet adds your signature and broadcasts.
+A full repayment emits a `repay_full` event. The relayer's repay watcher sees it, checks that the position is `Closed`, rebuilds your redeem script from the position, builds the cooperative-path (Path A) release PSBT paying your key's own address, co-signs it with the protocol key and publishes it on `writz-lend` with `publish_release_psbt`. Because the half-signed PSBT is stored on Stellar, you can fetch it with `get_release_psbt` and finish it even if the rest of the Writz stack is down. Your wallet adds your signature and broadcasts.
 
 </details>
 
