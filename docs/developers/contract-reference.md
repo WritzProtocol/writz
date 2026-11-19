@@ -121,10 +121,18 @@ pub fn get_header(block_hash: BytesN<32>) -> Option<HeaderEntry>
 
 ### `get_canonical_hash`
 
-Returns the most-work chain's block hash at `height`, if known.
+Returns the most-work chain's block hash at `height`, if known. `None` above the best tip, and, while a chain switch is pending, at heights it has not rewritten yet.
 
 ```rust
 pub fn get_canonical_hash(height: u32) -> Option<BytesN<32>>
+```
+
+### `get_pending_reorg`
+
+Returns the chain switch still rewriting the height index, if any: the next block and height to write, the best height before the switch, and the heaviest tip submitted meanwhile. While it exists `verify_transaction` returns `ReorgPending`.
+
+```rust
+pub fn get_pending_reorg() -> Option<PendingReorg>
 ```
 
 ### `refresh_ttl`
@@ -137,10 +145,18 @@ pub fn refresh_ttl()
 
 ### `submit_headers`
 
-Adds a run of contiguous block headers to the light client.
+Adds a run of contiguous block headers to the light client (at most 16). If the last one makes a heavier chain, the best tip switches to it and the height index is rewritten down to where the chains meet, at most 16 slots per call; a longer switch stays pending and every later call advances it first. Returns the best height.
 
 ```rust
 pub fn submit_headers(headers: Vec<BytesN<80>>) -> Result<u32, SPVError>
+```
+
+### `continue_reorg`
+
+Advances a pending chain switch by up to 28 height-index slots, then adopts any heavier tip submitted while it was pending. Returns whether a switch is still pending; with none pending it changes nothing. Permissionless even with a submitter configured: it adds no header.
+
+```rust
+pub fn continue_reorg() -> Result<bool, SPVError>
 ```
 
 ### `verify_transaction`

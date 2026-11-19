@@ -638,13 +638,14 @@ Where lending is enabled, `headerSync` reports the `bitcoin-spv` header sync:
 |---|---|
 | `enabled` | `BITCOIN_SPV_ID`, `SPV_SYNC_FROM_HEIGHT` and `RELAYER_SECRET` are set |
 | `lastPassAt`, `bitcoinTipHeight`, `contractTipHeight` | Last pass, and the two tips it compared |
-| `submissions`, `lastSubmissionAt`, `lastSubmittedThrough`, `lastFeeXlm` | Confirmed `submit_headers` calls since start, the last one, and the fee it was charged |
+| `submissions`, `lastSubmissionAt`, `lastSubmittedThrough`, `lastFeeXlm` | Confirmed `submit_headers` and `continue_reorg` calls since start, the last one, and the fee it was charged |
+| `reorgContinueCalls` | `continue_reorg` calls sent since start to finish chain switches |
 | `skippedNoNewHeaders` | Passes that sent nothing because the Bitcoin tip was already the contract's tip |
 | `maxFeeXlm`, `skippedFeeCeiling`, `lastFeeCeilingSkip` | The `SPV_MAX_FEE_XLM` ceiling, passes skipped because the simulated fee was above it, and the last such fee |
 | `relayerBalanceXlm`, `minBalanceXlm`, `balanceLow` | Relayer account balance (read every 10 minutes), the `RELAYER_MIN_BALANCE_XLM` threshold, and whether it is under it |
 | `lastError` | Why the last pass failed or was skipped, `null` after a clean pass |
 
-Each pass first compares the Bitcoin tip (height and hash) with the contract's best tip, read with a free `get_best_tip` simulation, and sends a transaction only when there is something new: a higher Bitcoin tip, or a different block at the same height. When it sends, it still starts six blocks below the contract tip, so reorg handling is unchanged.
+Each pass first compares the Bitcoin tip (height and hash) with the contract's best tip, read with a free `get_best_tip` simulation, and sends a transaction only when there is something new: a higher Bitcoin tip, or a different block at the same or a lower height that the contract does not store (a reorg, possibly to a shorter chain with more work). When it sends, it still starts six blocks below the contract tip, and lower if the contract does not store Bitcoin's block just below that height (a deeper reorg), so the first header always has a known parent. Before each batch, after the last one, and on passes with nothing new, it reads `get_pending_reorg` and sends `continue_reorg` (up to 10 per pass in total) until a chain switch that did not fit in one call completes, since `bitcoin-spv` refuses proofs while one is pending and a batch sent meanwhile would only extend it. If no stored block is found within 2,016 heights below the start, the pass records the error and the sync waits 30 minutes before searching again. A light client deployed before `get_pending_reorg` existed is treated as having nothing pending, logged once at info level.
 
 ## Environment variables
 

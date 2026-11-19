@@ -12,7 +12,11 @@ import { EsploraClient, EsploraError } from "./esplora.js";
 import {
   assertWithinFeeCeiling,
   type ChainTip,
+  driveReorg,
   FeeCeilingExceededError,
+  ForkSearchExhaustedError,
+  forkSafeStartHeight,
+  MAX_CONTINUE_CALLS_PER_PASS,
   hasNewHeaders,
   headerSyncStatus,
   internalHashToDisplayHex,
@@ -36,6 +40,10 @@ const isRateLimited = (e: unknown) => e instanceof EsploraError && e.status === 
 // minutes is enough for the alert and keeps RPC calls and log lines down.
 const BALANCE_CHECK_INTERVAL_MS = 10 * 60_000;
 
+// A fork deeper than the relayer searches needs an operator; repeating the
+// whole search every pass would only spend Esplora and RPC calls.
+const FORK_SEARCH_BACKOFF_MS = 30 * 60_000;
+
 export function startHeaderSync(): { stop: () => void } {
   if (!config.bitcoinSpvId || !config.spvSyncFromHeight || !config.relayerSecret) {
     console.warn("[spv-sync] BITCOIN_SPV_ID, SPV_SYNC_FROM_HEIGHT and RELAYER_SECRET are required - header sync disabled");
@@ -49,8 +57,10 @@ export function startHeaderSync(): { stop: () => void } {
   const esplora = new EsploraClient(config.esploraBaseUrl, config.requestTimeoutMs);
   let running = false;
   let lastBalanceCheck = 0;
+  let forkSearchRetryAt = 0;
   const tick = async () => {
     if (running) return;
+    if (Date.now() < forkSearchRetryAt) return;
     running = true;
     try {
       if (Date.now() - lastBalanceCheck >= BALANCE_CHECK_INTERVAL_MS) {
@@ -66,15 +76,27 @@ export function startHeaderSync(): { stop: () => void } {
       headerSyncStatus.lastPassAt = new Date().toISOString();
       headerSyncStatus.bitcoinTipHeight = bitcoinTip.height;
       headerSyncStatus.contractTipHeight = contractTip?.height ?? null;
-      if (!hasNewHeaders(bitcoinTip, contractTip)) {
+      // Proofs are refused while a chain switch is pending, so each pass
+      // finishes it first, within a bounded number of calls.
+      const reorgBudget = { remaining: MAX_CONTINUE_CALLS_PER_PASS };
+      if (!(await hasNewHeaders(bitcoinTip, contractTip, isStoredInContract))) {
         headerSyncStatus.skippedNoNewHeaders++;
+        await finishPendingReorg(reorgBudget);
         headerSyncStatus.lastError = null;
         return;
       }
 
       // Resume near the contract's own tip; restarting from the configured
       // height every pass would resubmit the whole chain since the checkpoint.
-      const from = syncStartHeight(config.spvSyncFromHeight!, contractTip?.height);
+      // After a Bitcoin reorg deeper than the resubmit depth, step down to
+      // where the contract stores Bitcoin's block, so the first header has a
+      // known parent. Bitcoin's tip may be lower than the contract's (a
+      // shorter chain with more work), so the search starts at most there.
+      const floor = config.spvSyncFromHeight!;
+      const start = Math.min(syncStartHeight(floor, contractTip?.height), bitcoinTip.height);
+      const from = await forkSafeStartHeight(start, floor, async (h) =>
+        isStoredInContract(await withBackoff(() => esplora.getBlockHashAtHeight(h), isRateLimited)),
+      );
       const result = await syncHeaders(from, bitcoinTip.height, MAX_HEADERS_PER_SUBMIT, {
         getHeaderHex: async (h) => {
           await new Promise((r) => setTimeout(r, HEADER_FETCH_GAP_MS));
@@ -82,14 +104,20 @@ export function startHeaderSync(): { stop: () => void } {
           return (await withBackoff(() => esplora.getBlockHeader(hash), isRateLimited)).trim();
         },
         submitHeaders: (headers) => submitHeadersOnChain(headers),
+        beforeBatch: () => finishPendingReorg(reorgBudget),
       });
-      headerSyncStatus.lastError = null;
       if (result.submittedThrough !== null) {
         headerSyncStatus.lastSubmittedThrough = result.submittedThrough;
         console.log(`[spv-sync] submitted through height ${result.submittedThrough}`);
       }
+      await finishPendingReorg(reorgBudget);
+      headerSyncStatus.lastError = null;
     } catch (e) {
-      if (e instanceof FeeCeilingExceededError) {
+      if (e instanceof ForkSearchExhaustedError) {
+        forkSearchRetryAt = Date.now() + FORK_SEARCH_BACKOFF_MS;
+        headerSyncStatus.lastError = e.message;
+        console.error(`[spv-sync] ${e.message}; next attempt in ${FORK_SEARCH_BACKOFF_MS / 60_000} minutes`);
+      } else if (e instanceof FeeCeilingExceededError) {
         headerSyncStatus.skippedFeeCeiling++;
         headerSyncStatus.lastFeeCeilingSkip = { at: new Date().toISOString(), feeXlm: stroopsToXlm(e.feeStroops) };
         headerSyncStatus.lastError = e.message;
@@ -131,54 +159,100 @@ async function checkRelayerBalance(): Promise<void> {
   }
 }
 
-/** bitcoin-spv's best tip, or undefined when it has none. Throws when the read fails. */
-async function readContractTip(): Promise<ChainTip | undefined> {
+/**
+ * Sends continue_reorg until bitcoin-spv has no chain switch pending, within
+ * the pass's remaining `budget` of calls. A
+ * switch longer than one call leaves the contract refusing every proof
+ * (ReorgPending) until it completes.
+ */
+let reportedNoPendingReorgSupport = false;
+
+async function finishPendingReorg(budget: { remaining: number }): Promise<void> {
+  const calls = await driveReorg({
+    onUnsupported: () => {
+      if (reportedNoPendingReorgSupport) return;
+      reportedNoPendingReorgSupport = true;
+      console.info("[spv-sync] bitcoin-spv has no get_pending_reorg (deployed before multi-call chain switches); nothing to continue");
+    },
+    isPending: async () => (await simulateRead("get_pending_reorg")) != null,
+    continueReorg: async () => {
+      headerSyncStatus.reorgContinueCalls++;
+      return Boolean(await sendSpvCall("continue_reorg", []));
+    },
+  }, budget.remaining);
+  budget.remaining -= calls;
+  if (calls > 0) console.log(`[spv-sync] chain switch advanced with ${calls} continue_reorg call(s)`);
+}
+
+/** Whether bitcoin-spv stores the block with this hash (Esplora display hex). */
+async function isStoredInContract(displayHash: string): Promise<boolean> {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- see top-of-file comment.
+  const { nativeToScVal } = require("@stellar/stellar-sdk") as typeof import("@stellar/stellar-sdk");
+  const internal = Buffer.from(displayHash.trim(), "hex").reverse();
+  return (await simulateRead("get_header", [nativeToScVal(internal)])) != null;
+}
+
+/** Simulates a read-only bitcoin-spv call and returns its decoded result. Throws when the read fails. */
+async function simulateRead(
+  method: string,
+  args: import("@stellar/stellar-sdk").xdr.ScVal[] = [],
+): Promise<unknown> {
   // eslint-disable-next-line @typescript-eslint/no-require-imports -- see top-of-file comment.
   const sdk = require("@stellar/stellar-sdk") as typeof import("@stellar/stellar-sdk");
   const { Keypair, Contract, TransactionBuilder, scValToNative, rpc } = sdk;
   const server = new rpc.Server(config.stellarRpcUrl, { allowHttp: config.stellarRpcUrl.startsWith("http://") });
   const account = await server.getAccount(Keypair.fromSecret(config.relayerSecret!).publicKey());
   const tx = new TransactionBuilder(account, { fee: "100", networkPassphrase: config.networkPassphrase })
-    .addOperation(new Contract(config.bitcoinSpvId).call("get_best_tip"))
+    .addOperation(new Contract(config.bitcoinSpvId).call(method, ...args))
     .setTimeout(30)
     .build();
-  // Simulation only: nothing is signed or sent, so the read is free.
   const sim = await server.simulateTransaction(tx);
-  if (rpc.Api.isSimulationError(sim)) throw new Error(`get_best_tip simulation failed: ${sim.error}`);
-  if (!sim.result) throw new Error("get_best_tip simulation returned no result");
-  const tip = scValToNative(sim.result.retval) as { height?: number; hash?: Uint8Array } | null | undefined;
+  if (rpc.Api.isSimulationError(sim)) throw new Error(`${method} simulation failed: ${sim.error}`);
+  if (!sim.result) throw new Error(`${method} simulation returned no result`);
+  return scValToNative(sim.result.retval);
+}
+
+/** bitcoin-spv's best tip, or undefined when it has none. Throws when the read fails. */
+async function readContractTip(): Promise<ChainTip | undefined> {
+  // Simulation only: nothing is signed or sent, so the read is free.
+  const tip = (await simulateRead("get_best_tip")) as { height?: number; hash?: Uint8Array } | null | undefined;
   if (!tip || tip.height === undefined || !tip.hash) return undefined;
   return { height: Number(tip.height), hash: internalHashToDisplayHex(tip.hash) };
 }
 
 async function submitHeadersOnChain(headersHex: string[]): Promise<void> {
   // eslint-disable-next-line @typescript-eslint/no-require-imports -- see top-of-file comment.
-  const sdk = require("@stellar/stellar-sdk") as typeof import("@stellar/stellar-sdk");
-  const { Keypair } = sdk;
-
-  const keypair = Keypair.fromSecret(config.relayerSecret!);
-  // The repay watcher publishes releases from this same account. Holding the
-  // account's lock from getAccount to confirmation keeps this batch from
-  // reusing the sequence number of a pending publish and, with its higher
-  // bid, evicting it from the queue (see account-lock.ts).
-  await withAccountLock(keypair.publicKey(), () => sendHeaders(sdk, keypair, headersHex));
+  const { nativeToScVal } = require("@stellar/stellar-sdk") as typeof import("@stellar/stellar-sdk");
+  await sendSpvCall("submit_headers", [nativeToScVal(headersHex.map((h) => Buffer.from(h, "hex")))]);
 }
 
-async function sendHeaders(
+/** Signs and sends one bitcoin-spv call with the relayer key; resolves to its decoded return value. */
+async function sendSpvCall(method: string, args: import("@stellar/stellar-sdk").xdr.ScVal[]): Promise<unknown> {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- see top-of-file comment.
+  const sdk = require("@stellar/stellar-sdk") as typeof import("@stellar/stellar-sdk");
+  const keypair = sdk.Keypair.fromSecret(config.relayerSecret!);
+  // The repay watcher publishes releases from this same account. Holding the
+  // account's lock from getAccount to confirmation keeps this call from
+  // reusing the sequence number of a pending publish and, with its higher
+  // bid, evicting it from the queue (see account-lock.ts).
+  return withAccountLock(keypair.publicKey(), () => sendCall(sdk, keypair, method, args));
+}
+
+async function sendCall(
   sdk: typeof import("@stellar/stellar-sdk"),
   keypair: import("@stellar/stellar-sdk").Keypair,
-  headersHex: string[],
-): Promise<void> {
-  const { Contract, TransactionBuilder, nativeToScVal, rpc } = sdk;
+  method: string,
+  args: import("@stellar/stellar-sdk").xdr.ScVal[],
+): Promise<unknown> {
+  const { Contract, TransactionBuilder, scValToNative, rpc } = sdk;
   const server = new rpc.Server(config.stellarRpcUrl, { allowHttp: config.stellarRpcUrl.startsWith("http://") });
   const account = await server.getAccount(keypair.publicKey());
-  const headersVal = nativeToScVal(headersHex.map((h) => Buffer.from(h, "hex")));
   const tx = new TransactionBuilder(account, { fee: "1000000", networkPassphrase: config.networkPassphrase })
-    .addOperation(new Contract(config.bitcoinSpvId).call("submit_headers", headersVal))
+    .addOperation(new Contract(config.bitcoinSpvId).call(method, ...args))
     .setTimeout(60)
     .build();
   const sim = await server.simulateTransaction(tx);
-  if (rpc.Api.isSimulationError(sim)) throw new Error(`submit_headers simulation failed: ${JSON.stringify(sim.error)}`);
+  if (rpc.Api.isSimulationError(sim)) throw new Error(`${method} simulation failed: ${JSON.stringify(sim.error)}`);
   const prepared = rpc.assembleTransaction(tx, sim).build();
   // The most this transaction can be charged: inclusion bid plus the simulated
   // resource fee. On 2026-10-25 a testnet rent spike made single-header calls
@@ -187,18 +261,18 @@ async function sendHeaders(
   assertWithinFeeCeiling(feeStroops, config.spvMaxFeeStroops);
   prepared.sign(keypair);
   const sent = await server.sendTransaction(prepared);
-  if (sent.status === "ERROR") throw new Error(`submit_headers rejected: ${JSON.stringify(sent.errorResult)}`);
+  if (sent.status === "ERROR") throw new Error(`${method} rejected: ${JSON.stringify(sent.errorResult)}`);
   for (let i = 0; i < 60; i++) {
     const res = await server.getTransaction(sent.hash);
     if (res.status === "SUCCESS") {
       headerSyncStatus.submissions++;
       headerSyncStatus.lastSubmissionAt = new Date().toISOString();
       headerSyncStatus.lastFeeXlm = stroopsToXlm(res.resultXdr.feeCharged().toBigInt());
-      return;
+      return res.returnValue === undefined ? undefined : scValToNative(res.returnValue);
     }
-    if (res.status === "FAILED") throw new Error(`submit_headers failed: ${sent.hash}`);
+    if (res.status === "FAILED") throw new Error(`${method} failed: ${sent.hash}`);
     await new Promise((r) => setTimeout(r, 1500));
   }
-  throw new Error(`submit_headers timed out: ${sent.hash}`);
+  throw new Error(`${method} timed out: ${sent.hash}`);
 }
 

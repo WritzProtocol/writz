@@ -1728,3 +1728,484 @@ fn refresh_ttl_extends_the_instance_to_the_full_window() {
     client.refresh_ttl();
     assert_eq!(instance_ttl(&env, &client.address), CONFIG_WINDOW);
 }
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Reorgs that take more than one call
+// ══════════════════════════════════════════════════════════════════════════════
+
+/// Distinct Merkle roots for mined fixtures, one per block.
+fn roots_tagged(tag: u8, n: usize) -> std::vec::Vec<[u8; 32]> {
+    (0..n)
+        .map(|i| {
+            let mut r = [tag; 32];
+            r[0] = i as u8;
+            r[1] = (i >> 8) as u8;
+            r
+        })
+        .collect()
+}
+
+/// `verify_transaction` for a single-transaction block (empty proof).
+fn verify_single(
+    env: &Env,
+    light: &Light<'_>,
+    block: &BytesN<32>,
+    raw: &[u8],
+) -> Result<SpvVerificationResult, SPVError> {
+    match light.client.try_verify_transaction(block, &Vec::new(env), &0, &Bytes::from_slice(env, raw), &1) {
+        Ok(Ok(r)) => Ok(r),
+        Err(Ok(e)) => Err(e),
+        _ => panic!("unexpected invocation error"),
+    }
+}
+
+/// Calls `continue_reorg` until it reports nothing pending; returns the number of calls.
+fn finish_reorg(light: &Light<'_>) -> u32 {
+    let mut calls = 0;
+    loop {
+        calls += 1;
+        assert!(calls <= 20, "a pending reorg must finish in a bounded number of calls");
+        if !light.client.continue_reorg() {
+            break;
+        }
+    }
+    assert!(light.client.get_pending_reorg().is_none());
+    calls
+}
+
+#[derive(Clone, Copy)]
+enum Order {
+    /// The fork in runs of 16 headers, the most one call accepts.
+    Chunked,
+    /// Every header of the fork in its own call.
+    OneByOne,
+    /// The fork up to equal work first, then 16 heavier headers in one call.
+    Overshoot,
+}
+
+/// Chain A of `depth + 5` blocks on the checkpoint, then a heavier fork B
+/// that leaves A at height `CP_HEIGHT + 5`, `depth` blocks below A's tip,
+/// submitted in `order`. While the switch is pending every proof is refused;
+/// once it completes B is the best chain at every height above the fork and
+/// A's blocks above the fork are no longer provable.
+fn deep_reorg_is_adopted(depth: usize, order: Order) {
+    let env = Env::default();
+    let light = new_light(&env);
+
+    let raw_a = [0xa5u8; 40];
+    let raw_b = [0xb5u8; 40];
+    let mut roots_a = roots_tagged(0xa0, depth + 5);
+    roots_a[5] = sha256d_bytes(&env, &raw_a);
+    let a = mine_chain(&env, &CP_HASH, &roots_a, T0 + 1);
+    for c in a.chunks(16) {
+        light.client.submit_headers(&to_sdk_headers(&env, c));
+    }
+    let a_tip = light.client.get_best_tip().unwrap();
+    assert_eq!(a_tip.height, CP_HEIGHT + 5 + depth as u32);
+
+    let fork = hash_header(&env, &a[4]).to_array();
+    let mut roots_b = roots_tagged(0xb0, depth + 16);
+    roots_b[0] = sha256d_bytes(&env, &raw_b);
+    let b = mine_chain(&env, &fork, &roots_b, T0 + 10_000);
+    let b_first = hash_header(&env, &b[0]);
+
+    let mut saw_pending = false;
+    let mut submit = |headers: &[BytesN<80>]| {
+        light.client.submit_headers(&to_sdk_headers(&env, headers));
+        if light.client.get_pending_reorg().is_some() {
+            saw_pending = true;
+            assert_eq!(verify_single(&env, &light, &b_first, &raw_b), Err(SPVError::ReorgPending));
+        }
+    };
+    match order {
+        Order::Chunked => b.chunks(16).for_each(&mut submit),
+        Order::OneByOne => b.iter().for_each(|h| submit(core::slice::from_ref(h))),
+        Order::Overshoot => {
+            b[..depth].chunks(16).for_each(&mut submit);
+            assert_eq!(light.client.get_best_tip().unwrap().hash, a_tip.hash, "equal work does not switch");
+            submit(&b[depth..]);
+        }
+    }
+    finish_reorg(&light);
+    assert!(saw_pending, "a switch this deep must take more than one call");
+
+    let tip = light.client.get_best_tip().unwrap();
+    assert_eq!(tip.hash, hash_header(&env, b.last().unwrap()));
+    assert_eq!(tip.height, CP_HEIGHT + 5 + depth as u32 + 16);
+    for (i, h) in b.iter().enumerate() {
+        assert_eq!(
+            light.client.get_canonical_hash(&(CP_HEIGHT + 6 + i as u32)),
+            Some(hash_header(&env, h)),
+            "height {}",
+            CP_HEIGHT + 6 + i as u32
+        );
+    }
+    assert_eq!(light.client.get_canonical_hash(&(CP_HEIGHT + 5)), Some(hash_header(&env, &a[4])));
+    assert_eq!(light.client.get_canonical_hash(&(tip.height + 1)), None);
+
+    let proven = verify_single(&env, &light, &b_first, &raw_b).expect("B's block is provable");
+    assert_eq!(proven.confirmations, depth as u32 + 16);
+    assert_eq!(
+        verify_single(&env, &light, &hash_header(&env, &a[5]), &raw_a),
+        Err(SPVError::NotOnBestChain)
+    );
+}
+
+#[test]
+fn reorg_of_25_is_adopted_in_chunks() {
+    deep_reorg_is_adopted(25, Order::Chunked);
+}
+
+#[test]
+fn reorg_of_25_is_adopted_one_header_at_a_time() {
+    deep_reorg_is_adopted(25, Order::OneByOne);
+}
+
+#[test]
+fn reorg_of_25_is_adopted_when_the_fork_overtakes_in_one_call() {
+    deep_reorg_is_adopted(25, Order::Overshoot);
+}
+
+#[test]
+fn reorg_of_60_is_adopted_in_chunks() {
+    deep_reorg_is_adopted(60, Order::Chunked);
+}
+
+#[test]
+fn reorg_of_60_is_adopted_one_header_at_a_time() {
+    deep_reorg_is_adopted(60, Order::OneByOne);
+}
+
+#[test]
+fn reorg_of_60_is_adopted_when_the_fork_overtakes_in_one_call() {
+    deep_reorg_is_adopted(60, Order::Overshoot);
+}
+
+/// While a switch is pending even a block below the fork point, on both
+/// chains, is refused; once `continue_reorg` completes it the same proof
+/// passes with the new depth.
+#[test]
+fn verify_transaction_is_refused_while_a_reorg_is_pending() {
+    let env = Env::default();
+    let light = new_light(&env);
+
+    let raw = [0x5au8; 40];
+    let mut roots_a = roots_tagged(0xa0, 40);
+    roots_a[0] = sha256d_bytes(&env, &raw);
+    let a = mine_chain(&env, &CP_HASH, &roots_a, T0 + 1);
+    for c in a.chunks(16) {
+        light.client.submit_headers(&to_sdk_headers(&env, c));
+    }
+    let shared = hash_header(&env, &a[0]);
+    assert_eq!(verify_single(&env, &light, &shared, &raw).unwrap().confirmations, 40);
+
+    let b = mine_chain(&env, &shared.to_array(), &roots_tagged(0xb0, 48), T0 + 10_000);
+    for c in b[..32].chunks(16) {
+        light.client.submit_headers(&to_sdk_headers(&env, c));
+    }
+    assert_eq!(light.client.get_best_tip().unwrap().height, CP_HEIGHT + 40);
+    light.client.submit_headers(&to_sdk_headers(&env, &b[32..48]));
+
+    let pending = light.client.get_pending_reorg().expect("48 index writes do not fit in one call");
+    assert_eq!(light.client.get_best_tip().unwrap().height, CP_HEIGHT + 49);
+    assert_eq!(verify_single(&env, &light, &shared, &raw), Err(SPVError::ReorgPending));
+    // Slots the switch has not reached yet are not reported as canonical.
+    assert_eq!(light.client.get_canonical_hash(&pending.next_height), None);
+
+    finish_reorg(&light);
+    assert_eq!(verify_single(&env, &light, &shared, &raw).unwrap().confirmations, 49);
+}
+
+/// `continue_reorg` adds no data, so it needs no authorization even with a
+/// submitter configured, and without a pending switch it changes nothing.
+#[test]
+fn continue_reorg_is_permissionless_and_idle_without_a_pending_reorg() {
+    let env = Env::default();
+    let light = new_light(&env);
+    assert!(!light.client.continue_reorg());
+
+    let a = mine_chain(&env, &CP_HASH, &roots_tagged(0xa0, 30), T0 + 1);
+    for c in a.chunks(16) {
+        light.client.submit_headers(&to_sdk_headers(&env, c));
+    }
+    let b = mine_chain(&env, &CP_HASH, &roots_tagged(0xb0, 32), T0 + 10_000);
+    light.client.submit_headers(&to_sdk_headers(&env, &b[..16]));
+    light.client.submit_headers(&to_sdk_headers(&env, &b[16..]));
+    assert!(light.client.get_pending_reorg().is_some());
+
+    light.client.set_submitter(&light.admin, &Some(Address::generate(&env)));
+    assert!(!light.client.continue_reorg());
+    assert!(env.auths().is_empty(), "continue_reorg must not require any authorization");
+    assert_eq!(light.client.get_best_tip().unwrap().hash, hash_header(&env, &b[31]));
+}
+
+/// Headers that extend the new chain while its switch is pending are stored
+/// and kept as the next tip; it is adopted once the switch completes.
+#[test]
+fn a_heavier_tip_submitted_during_a_pending_reorg_is_adopted_after_it() {
+    let env = Env::default();
+    let light = new_light(&env);
+
+    let a = mine_chain(&env, &CP_HASH, &roots_tagged(0xa0, 60), T0 + 1);
+    for c in a.chunks(16) {
+        light.client.submit_headers(&to_sdk_headers(&env, c));
+    }
+    let b = mine_chain(&env, &CP_HASH, &roots_tagged(0xb0, 80), T0 + 10_000);
+    for c in b[..64].chunks(16) {
+        light.client.submit_headers(&to_sdk_headers(&env, c));
+    }
+    assert!(light.client.get_pending_reorg().is_some());
+    let switching_to = light.client.get_best_tip().unwrap();
+    assert_eq!(switching_to.hash, hash_header(&env, &b[63]));
+
+    // The next run extends B: it is stored, and the switch in progress
+    // comes first.
+    light.client.submit_headers(&to_sdk_headers(&env, &b[64..80]));
+    let pending = light.client.get_pending_reorg().expect("still switching");
+    assert_eq!(light.client.get_best_tip().unwrap().hash, switching_to.hash);
+    assert_eq!(pending.candidate, Some(hash_header(&env, &b[79])));
+
+    finish_reorg(&light);
+    assert_eq!(light.client.get_best_tip().unwrap().hash, hash_header(&env, &b[79]));
+    for (i, h) in b.iter().enumerate() {
+        assert_eq!(light.client.get_canonical_hash(&(CP_HEIGHT + 1 + i as u32)), Some(hash_header(&env, h)));
+    }
+}
+
+// ── Shorter but heavier forks ────────────────────────────────────────────────
+
+/// Native double SHA-256 for mining at real (not regtest-easy) targets,
+/// where hashing through the host would take far too long.
+fn native_sha256d(data: &[u8]) -> [u8; 32] {
+    use sha2::{Digest, Sha256};
+    Sha256::digest(Sha256::digest(data)).into()
+}
+
+/// Big-endian 256-bit target of compact `bits` (exponent >= 3).
+fn native_target_be(bits: u32) -> [u8; 32] {
+    let exp = (bits >> 24) as usize;
+    let mant = bits & 0x007f_ffff;
+    let m = [(mant >> 16) as u8, (mant >> 8) as u8, mant as u8];
+    let mut t = [0u8; 32];
+    for (k, byte) in m.iter().enumerate() {
+        let pos = 32 + k;
+        if pos >= exp && pos - exp < 32 {
+            t[pos - exp] = *byte;
+        }
+    }
+    t
+}
+
+/// Mines a header at `bits` natively; the contract's own check must agree.
+fn native_mine(env: &Env, bits: u32, prev: &[u8; 32], root: &[u8; 32], time: u32) -> BytesN<80> {
+    let target = native_target_be(bits);
+    let mut buf = [0u8; 80];
+    buf[0..4].copy_from_slice(&1i32.to_le_bytes());
+    buf[4..36].copy_from_slice(prev);
+    buf[36..68].copy_from_slice(root);
+    buf[68..72].copy_from_slice(&time.to_le_bytes());
+    buf[72..76].copy_from_slice(&bits.to_le_bytes());
+    for nonce in 0u32..=u32::MAX {
+        buf[76..80].copy_from_slice(&nonce.to_le_bytes());
+        let mut h = native_sha256d(&buf);
+        h.reverse();
+        if h < target {
+            let header = BytesN::<80>::from_array(env, &buf);
+            validate_proof_of_work(env, &header).expect("contract disagrees with the native miner");
+            return header;
+        }
+    }
+    panic!("nonce space exhausted");
+}
+
+/// Mines `n` headers at `bits` after `prev` with roots `roots[i]` and times `t0 + i`.
+fn native_chain(env: &Env, bits: u32, prev: &[u8; 32], roots: &[[u8; 32]], t0: u32) -> std::vec::Vec<BytesN<80>> {
+    let mut out = std::vec::Vec::new();
+    let mut prev = *prev;
+    for (i, root) in roots.iter().enumerate() {
+        let h = native_mine(env, bits, &prev, root, t0 + i as u32);
+        prev = hash_header(env, &h).to_array();
+        out.push(h);
+    }
+    out
+}
+
+/// A shorter fork can carry more work when it crosses a retarget after a
+/// fast period: its post-boundary blocks are four times harder. The light
+/// client runs on proof-of-work limit 0x1e2fffff (target about 2^237.6): low
+/// enough that a four-times-harder retarget does not overflow 256 bits, high
+/// enough to mine in a unit test. The checkpoint sits at 2014, so 2016 is
+/// a boundary.
+///
+/// Chain A: 11 blocks 2015..=2025 after a slow period (difficulty unchanged).
+/// Fork B from the checkpoint: 2015 timestamped 90 s into the period, so
+/// 2016..=2018 retarget four times harder; B's tip is lower than A's but
+/// carries more work. Then A grows to 2028 and wins again.
+#[test]
+fn a_shorter_heavier_fork_and_the_switch_back_leave_no_stale_index_slot() {
+    const BITS: u32 = 0x1e2f_ffff;
+    let env = Env::default();
+    env.mock_all_auths();
+    env.ledger().set_timestamp(LEDGER_NOW);
+    let admin = Address::generate(&env);
+    let id = env.register(BitcoinSpvContract, (admin.clone(), BITS, MAINNET_TTL, MAINNET_TTL));
+    let client = BitcoinSpvContractClient::new(&env, &id);
+    client.set_checkpoint(&admin, &2014, &BytesN::<32>::from_array(&env, &CP_HASH), &BITS, &(T0 + 10), &T0);
+    let light = Light { client, admin };
+
+    let raw_a = [0xa5u8; 40];
+    let raw_b = [0xb5u8; 40];
+    let mut roots_a = roots_tagged(0xa0, 11);
+    roots_a[1] = sha256d_bytes(&env, &raw_a);
+    let a = native_chain(&env, BITS, &CP_HASH, &roots_a, T0 + 6_048_000);
+    for c in a.chunks(16) {
+        light.client.submit_headers(&to_sdk_headers(&env, c));
+    }
+    let a_tip = light.client.get_best_tip().unwrap();
+    assert_eq!(a_tip.height, 2025);
+
+    let b2015 = native_mine(&env, BITS, &CP_HASH, &[0xb0; 32], T0 + 100);
+    let b2015_entry = HeaderEntry {
+        prev: BytesN::from_array(&env, &CP_HASH),
+        merkle_root: BytesN::from_array(&env, &[0xb0; 32]),
+        height: 2015,
+        bits: BITS,
+        time: T0 + 100,
+        period_start_time: T0,
+        chainwork: U256::from_u32(&env, 0),
+    };
+    let hard = expected_bits(&env, &b2015_entry, 2016, &bits_to_target(&env, BITS).unwrap()).unwrap();
+    assert_ne!(hard, BITS, "the retarget must make B harder");
+    let mut roots_b = roots_tagged(0xc0, 3);
+    roots_b[0] = sha256d_bytes(&env, &raw_b);
+    let mut b = std::vec![b2015];
+    b.extend(native_chain(&env, hard, &hash_header(&env, &b[0]).to_array(), &roots_b, T0 + 200));
+
+    // B takes over and the best height falls from 2025 to 2018.
+    assert_eq!(light.client.submit_headers(&to_sdk_headers(&env, &b)), 2018);
+    assert!(light.client.get_best_tip().unwrap().chainwork > a_tip.chainwork);
+    assert!(light.client.get_pending_reorg().is_none());
+    for (i, h) in b.iter().enumerate() {
+        assert_eq!(light.client.get_canonical_hash(&(2015 + i as u32)), Some(hash_header(&env, h)));
+    }
+    for height in 2019..=2025 {
+        assert_eq!(light.client.get_canonical_hash(&height), None, "slot {height} above the tip");
+    }
+    let b2016 = hash_header(&env, &b[1]);
+    assert_eq!(verify_single(&env, &light, &b2016, &raw_b).unwrap().confirmations, 3);
+    assert_eq!(
+        verify_single(&env, &light, &hash_header(&env, &a[1]), &raw_a),
+        Err(SPVError::NotOnBestChain)
+    );
+
+    // A grows to 2028 and wins again.
+    let a_more = native_chain(&env, BITS, &a_tip.hash.to_array(), &roots_tagged(0xd0, 3), T0 + 6_048_100);
+    assert_eq!(light.client.submit_headers(&to_sdk_headers(&env, &a_more)), 2028);
+    finish_reorg(&light);
+
+    for (i, h) in a.iter().chain(a_more.iter()).enumerate() {
+        assert_eq!(light.client.get_canonical_hash(&(2015 + i as u32)), Some(hash_header(&env, h)));
+    }
+    for h in &b {
+        assert_eq!(
+            verify_single(&env, &light, &hash_header(&env, h), &raw_b),
+            Err(SPVError::NotOnBestChain),
+            "no block of the abandoned branch stays provable"
+        );
+    }
+    assert_eq!(verify_single(&env, &light, &hash_header(&env, &a[1]), &raw_a).unwrap().confirmations, 13);
+}
+
+// ── Median time past ─────────────────────────────────────────────────────────
+
+/// From the 11th block after the checkpoint on, all 11 previous timestamps
+/// are known and a header must be later than their median, as in Bitcoin.
+#[test]
+fn a_header_not_after_the_median_time_past_is_rejected() {
+    let env = Env::default();
+    let light = new_light(&env);
+
+    // Heights 101..=110 at T0+1..=T0+10; with the checkpoint (T0) the 11
+    // timestamps before height 111 have median T0+5.
+    let chain = mine_chain(&env, &CP_HASH, &roots_tagged(0xa0, 10), T0 + 1);
+    light.client.submit_headers(&to_sdk_headers(&env, &chain));
+    let tip = hash_header(&env, &chain[9]).to_array();
+
+    let at_median = mine_valid_header(&env, &tip, &[0xee; 32], T0 + 5);
+    assert_eq!(
+        light.client.try_submit_headers(&to_sdk_headers(&env, &[at_median])),
+        Err(Ok(SPVError::TimestampNotAfterMedianTimePast)),
+    );
+    let after_median = mine_valid_header(&env, &tip, &[0xee; 32], T0 + 6);
+    assert_eq!(light.client.submit_headers(&to_sdk_headers(&env, &[after_median])), CP_HEIGHT + 11);
+}
+
+/// Closer to the checkpoint some of the 11 timestamps are unknown, and a
+/// median of fewer could reject a valid block, so the rule is not applied.
+#[test]
+fn median_time_past_is_not_applied_within_11_blocks_of_the_checkpoint() {
+    let env = Env::default();
+    let light = new_light(&env);
+
+    let chain = mine_chain(&env, &CP_HASH, &roots_tagged(0xa0, 9), T0 + 1);
+    light.client.submit_headers(&to_sdk_headers(&env, &chain));
+    let earlier = mine_valid_header(&env, &hash_header(&env, &chain[8]).to_array(), &[0xee; 32], T0 - 1_000);
+    assert_eq!(light.client.submit_headers(&to_sdk_headers(&env, &[earlier])), CP_HEIGHT + 10);
+}
+
+// ── Per-call resources ───────────────────────────────────────────────────────
+
+/// The heaviest calls stay inside the per-transaction limits the SDK's test
+/// environment enforces on every call (its mainnet snapshot, stricter than
+/// the live network's 200 written and 400 footprint entries). Prints the
+/// figures (`cargo test -p bitcoin-spv reorg_call_resources -- --nocapture`).
+#[test]
+fn reorg_call_resources() {
+    const MAX_WRITES: u32 = 50;
+    const MAX_FOOTPRINT: u32 = 100;
+    const MAX_WRITE_BYTES: u32 = 132_096;
+    let env = Env::default();
+    let light = new_light(&env);
+    let report = |name: &str| {
+        let r = env.cost_estimate().resources();
+        let footprint = r.disk_read_entries + r.memory_read_entries + r.write_entries;
+        std::println!(
+            "{name:<34} cpu {:>10}  writes {:>2}  footprint {:>3}  write bytes {:>5}",
+            r.instructions, r.write_entries, footprint, r.write_bytes
+        );
+        assert!(r.write_entries <= MAX_WRITES, "{name}: writes");
+        assert!(footprint <= MAX_FOOTPRINT, "{name}: footprint");
+        assert!(r.write_bytes <= MAX_WRITE_BYTES, "{name}: write bytes");
+    };
+
+    let a = mine_chain(&env, &CP_HASH, &roots_tagged(0xa0, 48), T0 + 1);
+    for c in a.chunks(16) {
+        light.client.submit_headers(&to_sdk_headers(&env, c));
+    }
+    report("submit 16 new headers, tip extended");
+
+    // A fork from the checkpoint: 48 lighter headers, then 16 heavier ones
+    // start a switch whose walk reaches far below the call's own headers.
+    let b = mine_chain(&env, &CP_HASH, &roots_tagged(0xb0, 81), T0 + 10_000);
+    for c in b[..48].chunks(16) {
+        light.client.submit_headers(&to_sdk_headers(&env, c));
+    }
+    light.client.submit_headers(&to_sdk_headers(&env, &b[48..64]));
+    report("submit 16 new headers, switch");
+    assert!(light.client.get_pending_reorg().is_some());
+    // 15 known headers and one new one: the walk runs through stored headers.
+    light.client.submit_headers(&to_sdk_headers(&env, &b[49..65]));
+    report("submit 15 known + 1 new, pending");
+    assert!(light.client.get_pending_reorg().is_some());
+    light.client.continue_reorg();
+    report("continue_reorg");
+    finish_reorg(&light);
+    light.client.submit_headers(&to_sdk_headers(&env, &b[65..81]));
+    report("submit 16 new headers after switch");
+
+    let raw = [0x5au8; 40];
+    let c = mine_chain(&env, &hash_header(&env, &b[80]).to_array(), &[sha256d_bytes(&env, &raw)], T0 + 20_000);
+    light.client.submit_headers(&to_sdk_headers(&env, &c));
+    verify_single(&env, &light, &hash_header(&env, &c[0]), &raw).unwrap();
+    report("verify_transaction");
+}

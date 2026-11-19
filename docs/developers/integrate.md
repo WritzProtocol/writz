@@ -302,6 +302,7 @@ From `bitcoin-spv` (simulation fails with `Error(Contract, #N)`):
 | 22 | `HeaderNotFound` | The block is not in the light client: before the checkpoint (327,925), not a signet block, `block_hash` in display order, or mined in the last minutes and not submitted yet (check `get_best_tip`) |
 | 23 | `NotOnBestChain` | The block was orphaned |
 | 24 | `BlockNotAfterCheckpoint` | The block is the checkpoint or older |
+| 29 | `ReorgPending` | The light client is switching to a heavier chain; retry shortly |
 
 Other frequent mistakes:
 

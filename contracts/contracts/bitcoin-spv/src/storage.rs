@@ -1,6 +1,6 @@
 use soroban_sdk::{contracttype, BytesN, Env, IntoVal, Val};
 
-use crate::types::{BestTip, Checkpoint, Config, HeaderEntry};
+use crate::types::{BestTip, Checkpoint, Config, HeaderEntry, PendingReorg};
 
 /// Storage keys - each variant maps to an isolated persistent storage entry.
 ///
@@ -23,6 +23,8 @@ pub enum DataKey {
     Consumer(soroban_sdk::Address),
     /// Deposit txids already consumed by a lending contract (GHSA-2975-ggwh-pxw5).
     Consumed(BytesN<32>),
+    /// Singleton: a chain switch still rewriting the height index.
+    PendingReorg,
 }
 
 // Each ledger targets a 5-second close time.
@@ -181,6 +183,33 @@ pub fn set_best_tip(env: &Env, tip: &BestTip) {
     env.storage()
         .persistent()
         .extend_ttl(&key, PERSISTENT_THRESHOLD, PERSISTENT_BUMP);
+}
+
+pub fn get_pending_reorg(env: &Env) -> Option<PendingReorg> {
+    let key = DataKey::PendingReorg;
+    let result: Option<PendingReorg> = env.storage().persistent().get(&key);
+    if result.is_some() {
+        env.storage()
+            .persistent()
+            .extend_ttl(&key, PERSISTENT_THRESHOLD, PERSISTENT_BUMP);
+    }
+    result
+}
+
+pub fn has_pending_reorg(env: &Env) -> bool {
+    env.storage().persistent().has(&DataKey::PendingReorg)
+}
+
+pub fn set_pending_reorg(env: &Env, pending: &PendingReorg) {
+    let key = DataKey::PendingReorg;
+    env.storage().persistent().set(&key, pending);
+    env.storage()
+        .persistent()
+        .extend_ttl(&key, PERSISTENT_THRESHOLD, PERSISTENT_BUMP);
+}
+
+pub fn remove_pending_reorg(env: &Env) {
+    env.storage().persistent().remove(&DataKey::PendingReorg);
 }
 
 /// Extends the TTL of Config, Checkpoint, the best tip, and the contract

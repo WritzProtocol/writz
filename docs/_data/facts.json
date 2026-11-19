@@ -1,13 +1,13 @@
 {
   "generatedBy": "scripts/update-test-counts.mjs",
-  "generatedAt": "2026-11-18T14:13:12.746Z",
-  "contractsTotal": 272,
-  "totalTests": 864,
+  "generatedAt": "2026-11-18T14:40:56.917Z",
+  "contractsTotal": 285,
+  "totalTests": 890,
   "modules": {
-    "contracts/bitcoin-spv": 83,
+    "contracts/bitcoin-spv": 96,
     "contracts/writz-lend": 179,
     "contracts/spv-types": 10,
     "bitcoin-script": 72,
-    "relayer": 520
+    "relayer": 533
   }
 }

@@ -17,6 +17,10 @@ panic = "abort"
 codegen-units = 1
 lto = true
 
+# Test-only: mining fixtures at real targets hashes millions of headers.
+[profile.dev.package.sha2]
+opt-level = 3
+
 # For more information about this profile see https://developers.stellar.org/docs/build/smart-contracts/example-contracts/logging#cargotoml-profile
 [profile.release-with-logs]
 inherits = "release"

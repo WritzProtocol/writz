@@ -65,10 +65,12 @@ pub fn verify_transaction(
 - Each header's `prev_block_hash` must be a header the contract already stores (ultimately the checkpoint)
 - `SHA256d(header)` must meet the target encoded in `bits`
 - `bits` must equal what Bitcoin's difficulty rules require at that height: unchanged inside a 2016-block period, the exact retarget at each boundary
-- The timestamp may not be more than two hours ahead of ledger time
-- The chain with the most cumulative work becomes the best chain; a heavier fork replaces it, re-pointing at most 20 blocks in one call (`ReorgTooDeep` beyond that)
+- The timestamp may not be more than two hours ahead of ledger time, and, from the 11th block after the checkpoint on, must be later than the median time of the 11 blocks before it (`TimestampNotAfterMedianTimePast`). Closer to the checkpoint not all 11 timestamps are stored, so the rule is not applied there
+- The chain with the most cumulative work becomes the best chain; a heavier fork replaces the best tip at once, and its height-to-hash index is rewritten down to where the two chains meet, at most 16 slots per `submit_headers` call and 28 per `continue_reorg` call. A switch that needs more stays pending (`get_pending_reorg`) and continues with every later call; `continue_reorg` needs no authorization. Index slots above a lower new tip are never trusted or reported
+- The testnet instance deployed on 2026-10-25 predates this behaviour: it re-points at most 20 blocks in one call and does not check median time past, until its next redeploy.
 
 **Verification - `verify_transaction`:**
+- No chain switch may be pending (`ReorgPending` while one is)
 - The block must be stored, after the checkpoint, and on the best chain
 - Its depth below the best tip must be at least `min_confirmations`
 - `raw_tx` must not be exactly 64 bytes (the size of a Merkle inner-node preimage)
@@ -133,7 +135,7 @@ The testnet relayer is at `https://api.testnet.writz.xyz`. `confirmations` is op
 
 ## Security Guarantees
 
-**Confirmation requirement:** `writz-lend` is deployed with the number of confirmations a deposit needs: 6 on mainnet, 1 on testnet. Reorganizations six blocks deep are very rare: the deepest on mainnet are the 2010 value-overflow fix and the 2013 BIP-50 fork. Six confirmations make reversal of an accepted deposit negligible at launch exposure caps.
+**Confirmation requirement:** `writz-lend` is deployed with the number of confirmations a deposit needs: 6 on mainnet, 1 on testnet. Reorganizations six blocks deep are very rare: the deepest known on mainnet, the 2010 value-overflow incident and the 2013 BIP-50 fork, came from software bugs and were resolved by node operators, not by ordinary mining competition. Six confirmations make reversal of an accepted deposit negligible at launch exposure caps.
 
 **PoW validation:** Each header's proof-of-work and difficulty are checked when it is submitted. A forged mainnet header chain would require generating valid PoW, which is computationally infeasible against Bitcoin's current hash rate. Signet proof of work is cheap, which is why testnet relies on a trusted submitter.
 
@@ -157,7 +159,7 @@ The SPV contract's tests cover:
 - Multi-transaction blocks with varying Merkle proof sizes, odd transaction counts and single-transaction blocks
 - Confirmation depth, blocks at or before the checkpoint, and the consumed-deposit registry
 
-All 83 tests pass, and the light client follows Bitcoin signet on testnet. The contract is deployed on Stellar testnet at `CBX23YKCCJMAMBMSCNP6YVKEXUIYK2CTKSR4TQ3RVBPAFYZFVCW7W4EO`.
+All 96 tests pass, and the light client follows Bitcoin signet on testnet. The contract is deployed on Stellar testnet at `CBX23YKCCJMAMBMSCNP6YVKEXUIYK2CTKSR4TQ3RVBPAFYZFVCW7W4EO`.
 
 ---
 

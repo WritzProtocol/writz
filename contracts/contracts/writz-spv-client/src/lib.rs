@@ -85,8 +85,8 @@ pub struct Checkpoint {
 
 /// Error codes of `bitcoin-spv`. Codes are stable and never reassigned.
 ///
-/// A caller of `verify_transaction` can hit 2, 3, 5, 7, 10, 13, 15, 22, 23
-/// and 24; the others come from header submission and admin functions.
+/// A caller of `verify_transaction` can hit 2, 3, 5, 7, 10, 13, 15, 22, 23,
+/// 24 and 29; the others come from header submission and admin functions.
 #[contracterror]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
 #[repr(u32)]
@@ -125,11 +125,16 @@ pub enum SPVError {
     NotOnBestChain = 23,
     /// The block is the checkpoint or older.
     BlockNotAfterCheckpoint = 24,
+    /// No longer returned by the contract; kept so codes stay stable.
     ReorgTooDeep = 25,
     TxidAlreadyConsumed = 26,
     NotAConsumer = 27,
     /// Admin only: a TTL window passed to the constructor or `set_ttls` is out of bounds.
     InvalidEntryTtl = 28,
+    /// The light client is switching to a heavier chain and refuses every
+    /// proof until the switch completes. Retry shortly.
+    ReorgPending = 29,
+    TimestampNotAfterMedianTimePast = 30,
 }
 
 /// The read interface of `bitcoin-spv`. `#[contractclient]` generates

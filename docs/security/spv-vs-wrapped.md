@@ -64,7 +64,7 @@ On testnet the light client follows Bitcoin signet. Signet blocks are authentica
 
 | Shared risk | Why | How Writz addresses it |
 |---|---|---|
-| Verification code can have bugs | A light client is code that decides what counts as a confirmed Bitcoin payment | A small, open-source verifier with no upgrade path, so code cannot be swapped under users (a fix ships as a new deployment). Planned: an independent audit before mainnet, and hardening of proof-depth binding and median-time-past |
+| Verification code can have bugs | A light client is code that decides what counts as a confirmed Bitcoin payment | A small, open-source verifier with no upgrade path, so code cannot be swapped under users (a fix ships as a new deployment). Planned: an independent audit before mainnet, and hardening of proof-depth binding |
 | Someone must deliver data | Headers have to be submitted to Stellar | Planned: permissionless submission on mainnet, several independent relayers, and a monitor that compares the on-chain tip with several Bitcoin sources and pauses new loans if it falls behind |
 | Privileged roles | Whoever configures the verifier is trusted for what that role can do | No role can rewrite stored headers or the checkpoint once it is set. The admin can still choose who may submit headers and which lending contracts may consume deposits, and the lending contract's admin can point it at a different verifier or price source, change the keeper and the relayer, or pause new loans. Planned: these admin accounts move to a 2-of-3 multisig before mainnet |
 | Starting point | The checkpoint is trusted once | It is public, and anyone can compare it with a Bitcoin node |
@@ -101,7 +101,8 @@ Figures are as reported by the linked post-mortems, announcements and press cove
 | Merkle proof against a stored header, 64-byte transaction refusal | Live | A transaction is accepted only if it is in a block the light client already accepted |
 | Confirmation depth | Live, set per deployment | 6 confirmations planned on mainnet |
 | Exposure caps | Global cap live, per-borrower cap planned | Bound what any verification failure could cost lenders |
-| Proof-depth binding, median-time-past | Planned | Close known SPV edge cases |
+| Proof-depth binding | Planned | Close known SPV edge cases |
+| Median-time-past | Built, on testnet at the next redeploy | Rejects a header not later than the median time of the 11 blocks before it, from the 11th block after the checkpoint |
 | On-chain freshness rule | Live | Borrows and liquidations are refused when the light client's tip header is older than six hours (admin-set, 1 to 48 hours) |
 | Multiple relayers, permissionless submission | Planned for mainnet | Any honest relayer keeps the light client live |
 | Independent monitor with automatic pause of new loans | Planned for mainnet | Compares the on-chain tip with several Bitcoin sources; can only pause new deposits and borrows, never move funds |
