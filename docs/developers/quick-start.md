@@ -99,7 +99,7 @@ Both contracts are live on Stellar testnet. You can call them directly without d
 ```bash
 # Read the light client's Bitcoin tip
 stellar contract invoke \
-  --id CBX23YKCCJMAMBMSCNP6YVKEXUIYK2CTKSR4TQ3RVBPAFYZFVCW7W4EO \
+  --id CCCQXNWQGLAAVGOB7YCZNWNHIC456LZXML55Z65OOXRTAZ5BIPNIZ3HB \
   --network testnet \
   --source-account GB2BSYQS3FRJ5LZSSIDF3ZCSG5MKWJT5SZ3OZO4QRCAMCR357YAVPTWT \
   --send=no \

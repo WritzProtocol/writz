@@ -12,7 +12,9 @@
 
 ## TTL of the live contracts
 
-On 2026-11-09 the instance and wasm entries of `writz-lend` `CD3BRE32…` and `bitcoin-spv` `CBX23YKC…` were extended to about 2027-01-31 (about ledger 7,066,000) with `scripts/deploy/extend_ttl.mjs`; on 2026-11-14 the RPC reported them live until ledgers 7,065,999 to 7,066,013. Persistent data entries (positions, pool records, headers) keep their own windows from [Storage TTL parameters](#storage-ttl-parameters). The live contracts predate #422 and #424, which make both contracts extend their instance and code TTL on every call; that applies from their next deployment.
+The live `bitcoin-spv` `CCCQXNWQ…` and `writz-lend` `CBI4AGUL…`, deployed on 2026-11-19, carry #422 and #424: every call that reads their configuration extends the contract instance and its wasm code entry once less than 30 days remain, so activity keeps them live without a manual extension. Persistent data entries (positions, pool records, headers) keep their own windows from [Storage TTL parameters](#storage-ttl-parameters).
+
+The superseded `writz-lend` `CD3BRE32…` and `bitcoin-spv` `CBX23YKC…` predate that change. On 2026-11-09 their instance and wasm entries were extended to about 2027-01-31 (about ledger 7,066,000) with `scripts/deploy/extend_ttl.mjs`; on 2026-11-14 the RPC reported them live until ledgers 7,065,999 to 7,066,013. `CD3BRE32…` still holds open loans and supply, so it is kept live while those positions can be repaid or reclaimed.
 
 ## USDT0 testnet token
 
@@ -27,7 +29,57 @@ No official USDT0 exists on any testnet. The app's swap to USDT0 uses the USDT0 
 | Peer on Arbitrum Sepolia (EID 40231) | `0x21a5553a83655d024361E510f32Da165bDd7758D` |
 | Soroswap pool | Circle USDC / USDT0 testnet token |
 
-## `writz-lend` redeploy (2026-11-02)
+## `bitcoin-spv` and `writz-lend` redeploy (2026-11-19)
+
+Both protocol contracts redeployed together, built at `ec46267` with `cargo build --release --target wasm32v1-none --locked -p bitcoin-spv -p writz-lend` and deployed by `writz-deployer` with `stellar contract deploy` and `stellar contract invoke`, the same steps as `scripts/deploy/deploy_stack.mjs`, with the testnet storage windows from [Storage TTL parameters](#storage-ttl-parameters). They carry:
+
+- `writz-lend`: the `repay` amount and caller rules (#458: `InvalidRepayAmount` (34) for a negative amount, or zero while debt is owed; a zero-amount close only by the depositor, otherwise `NotPositionOwner` (35)), and `get_position` and `get_health_ratio_bp` projected to the current ledger (#459).
+- `bitcoin-spv`: chain switches of any depth, rewritten across calls (16 slots per `submit_headers`, 28 per `continue_reorg`) with proofs refused with `ReorgPending` (29) until the switch completes, and the median-time-past check from the 11th block after the checkpoint (#462).
+- Both: the contract instance and code TTL extended on every call (#422, #424), see [TTL of the live contracts](#ttl-of-the-live-contracts).
+
+The relayer runs on these contracts from 2026-11-19 (`BITCOIN_SPV_ID`, `WRITZ_LEND_ID`, `WRITZ_LEND_DEPLOY_LEDGER` 5805054, `SPV_SYNC_FROM_HEIGHT` 331476); the app follows when its environment is updated. The superseded `writz-lend` `CD3BRE32…` keeps its open loans (about 2 USDC borrowed) and its supply: borrowers can still repay or reclaim against it directly, and the app and the relayer no longer show it. `bitcoin-spv` `CBX23YKC…` keeps serving `CD3BRE32…` as its consumer.
+
+### bitcoin-spv
+
+| Field | Value |
+|---|---|
+| **Contract ID** | `CCCQXNWQGLAAVGOB7YCZNWNHIC456LZXML55Z65OOXRTAZ5BIPNIZ3HB` |
+| wasm sha256 | `0eeba0ad12a38c6faec4179b3ef3371506de0cd59e274dad48db8b9c7ab0ecb0` (51,841 bytes) |
+| Upload tx | [`7e56362be6…`](https://stellar.expert/explorer/testnet/tx/7e56362be66feb2a5849dcd8b13bb656115a565974af7b29ae179f253f0ab92d) |
+| Deploy tx | [`f0457b8ca3…`](https://stellar.expert/explorer/testnet/tx/f0457b8ca313037c934186f588336675d16e944636c42dfcf8591e7ee69fa31f) |
+| `admin` | `writz-deployer` |
+| `pow_limit_bits` | `0x1e0377ae` (signet) |
+| `header_ttl_ledgers` | `120960` (7 days, the network minimum; 90 days on mainnet) |
+| `consumed_ttl_ledgers` | `120960` (7 days; 90 days on mainnet) |
+| Checkpoint | signet block 331,476, `00000001d8ccef01604aff466db891c48e6332cdfe3e751e8d5bdd110f996645`, bits `0x1d14fcee`, time `1795047027`, period start time `1794548169` (height 330,624) - [`da35d5de8e…`](https://stellar.expert/explorer/testnet/tx/da35d5de8e59b70b41dde98dd3012d5660724f2cff0bb9de0ec55ee3b46ce7de) |
+| Submitter | `GCNBKRZO5T24SF7EPLVUABSFO76TFWXJBIHKL4TH6ZAX7IJOFRQ5GWN4` (the relayer account; signet blocks are signature-authenticated, which this contract does not check) - [`a37babf21f…`](https://stellar.expert/explorer/testnet/tx/a37babf21f9b635040aa03aa413e4304efde6e11c76c16ef2e4221b63508aafd) |
+| Consumers | `writz-lend` `CBI4AGUL…` [`37df6189f7…`](https://stellar.expert/explorer/testnet/tx/37df6189f72e7cff67d155db677f17bf26a5a24aa73520a991ff02ce100b5669) |
+
+### writz-lend
+
+| Field | Value |
+|---|---|
+| **Contract ID** | `CBI4AGULYDCCNYHKAC5HBCIF7X3YEZCYFXLYVLQWUOKPLXWO7LJCKG4Q` |
+| wasm sha256 | `6372a1f16fbf7f11591ce8bb2ea7ab0deaac40e2cde191830753f3c9c067a768` (96,483 bytes) |
+| Deployment ledger | 5805054 |
+| Upload tx | [`f74ee8de14…`](https://stellar.expert/explorer/testnet/tx/f74ee8de14eefca9bbd6eabc9fd4c542059988886672e82a454c3d7fd8c4d1c8) |
+| Deploy tx | [`8c5953348b…`](https://stellar.expert/explorer/testnet/tx/8c5953348b8898ddea754b9408601b7c9839a8def1354587f661d6964db10fea) |
+| `bitcoin-spv` consumer | [`37df6189f7…`](https://stellar.expert/explorer/testnet/tx/37df6189f72e7cff67d155db677f17bf26a5a24aa73520a991ff02ce100b5669) |
+| Supply | 5 USDC from `writz-deployer` ([`bf9d1bdb8c…`](https://stellar.expert/explorer/testnet/tx/bf9d1bdb8cc5f4398acc6b6a84994478e05289c4f5b52407248d4611e62fb1dc)) |
+| `admin`, `keeper` | `writz-deployer` |
+| `relayer` | `GCNBKRZO5T24SF7EPLVUABSFO76TFWXJBIHKL4TH6ZAX7IJOFRQ5GWN4` |
+| `spv_contract` | `CCCQXNWQGLAAVGOB7YCZNWNHIC456LZXML55Z65OOXRTAZ5BIPNIZ3HB` |
+| `usdc_token` | `CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA` |
+| `oracle` | `CCYOZJCOPG34LLQQ7N24YXBM7LL62R7ONMZ3G6WZAAYPB5OYKOMJRN63` (Reflector, external CEXs & DEXs) |
+| `protocol_pubkey` | `03d2f0699b167138988bf8d14a4655a8708066473b4c59ef40ee4ac500564fb70d` |
+| `min_confirmations` | `1` (testnet) |
+| `min_deposit_satoshis` | `5,000` (testnet; 100,000 on mainnet) |
+| `entry_ttl_ledgers` | `691200` (40 days; 180 days on mainnet) |
+| `borrow_timelock_margin_blocks` | `4320` (default and minimum) |
+| `max_tip_age_secs` | `21600` (6 hours, default) |
+| `max_total_borrowed` | 50,000 USDC (default) |
+
+## `writz-lend` redeploy (2026-11-02, superseded 2026-11-19)
 
 Carries the projected views of #256 (`get_pool_totals`, `get_supply_position`, and the projected meaning of `get_supply_balance`, `get_supply_index`, `get_borrow_index` and the rates) and the invariant-tested code of #258 (#377). Same constructor arguments as `CC7XGEWA…`; `bitcoin-spv` is unchanged.
 
@@ -90,9 +142,9 @@ Built at `9d9114e` (#370) with `cargo build --release --target wasm32v1-none --l
 
 Both protocol contracts redeployed together, built at `477788f` (`cargo build --release --target wasm32v1-none --locked -p bitcoin-spv -p writz-lend`) through `scripts/deploy/deploy_stack.mjs`, with the testnet storage windows from [Storage TTL parameters](#storage-ttl-parameters). The reason is testnet rent: testnet's live state is above its target size, so rent rose sharply, and the previous contracts gave every entry they created the long mainnet windows built in. A deposit on the previous contracts was charged about 428 XLM in fees; with the testnet windows it was charged about 89 XLM (measured 2026-10-25; the rate keeps moving). Positions on the previous contracts were closed and their BTC released before the switch (#307). The previous `bitcoin-spv` and `writz-lend` are kept below, marked superseded; the app and the relayer no longer use them.
 
-The relayer and the app (`testnet.writz.xyz`) run on these contracts from the same day. Both instances and both wasm entries were extended to about 2026-11-15, and again on 2026-11-09, see [TTL of the live contracts](#ttl-of-the-live-contracts). The first deposit on them, [`eac0f95c…07e269`](https://mempool.space/signet/tx/eac0f95c531b4bd5307597f74bedd7379928539056b9a1467ea6d1159507e269) (6,000 sats, signet block 327,928), is the example transaction in the developer docs.
+The relayer and the app (`testnet.writz.xyz`) ran on these contracts from the same day; the relayer moved to the 2026-11-19 contracts on that day, and the app follows when its environment is updated. Both instances and both wasm entries were extended to about 2026-11-15, and again on 2026-11-09, see [TTL of the live contracts](#ttl-of-the-live-contracts). The first deposit on them, [`eac0f95c…07e269`](https://mempool.space/signet/tx/eac0f95c531b4bd5307597f74bedd7379928539056b9a1467ea6d1159507e269) (6,000 sats, signet block 327,928), was the example transaction in the developer docs until the 2026-11-19 redeploy, whose checkpoint is above its block.
 
-### bitcoin-spv
+### bitcoin-spv (superseded 2026-11-19)
 
 | Field | Value |
 |---|---|

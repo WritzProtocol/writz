@@ -25,21 +25,21 @@ NETWORK_PASSPHRASE     Test SDF Network ; September 2015
 SOROBAN_RPC_URL        https://soroban-testnet.stellar.org
 BITCOIN_NETWORK        signet
 RELAYER_URL            https://api.testnet.writz.xyz
-BITCOIN_SPV_ID         CBX23YKCCJMAMBMSCNP6YVKEXUIYK2CTKSR4TQ3RVBPAFYZFVCW7W4EO
-WRITZ_LEND_ID          CD3BRE32LDNDHAEVI6H35UC3NIRREW5BLH64AZMHSQY3LEKYDLKYWBXS
+BITCOIN_SPV_ID         CCCQXNWQGLAAVGOB7YCZNWNHIC456LZXML55Z65OOXRTAZ5BIPNIZ3HB
+WRITZ_LEND_ID          CBI4AGULYDCCNYHKAC5HBCIF7X3YEZCYFXLYVLQWUOKPLXWO7LJCKG4Q
 TEST_USDC_SAC          CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA   (USDC:GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5, 7 decimals)
-SPV_CHECKPOINT_HEIGHT  327925   (signet; only later blocks can be proven)
+SPV_CHECKPOINT_HEIGHT  331476   (signet; only later blocks can be proven)
 SOROBAN_SDK            soroban-sdk = "26"
 ```
 
 Source of truth for IDs: [`contracts/deployments/testnet.md`](https://github.com/WritzProtocol/writz/blob/main/contracts/deployments/testnet.md), machine-readable in [`contracts/deployments/testnet.json`](https://github.com/WritzProtocol/writz/blob/main/contracts/deployments/testnet.json). The contracts are immutable; a new version gets a new ID there.
 
-The current `bitcoin-spv` was deployed on 2026-10-25 and the current `writz-lend` on 2026-11-02. Any other `bitcoin-spv` or `writz-lend` ID is superseded; do not use it. How the storage windows work: [Contract reference](/developers/contract-reference) and [Storage and TTL management](/how-it-works/stellar-side#storage-and-ttl-management).
+The current `bitcoin-spv` and `writz-lend` were deployed on 2026-11-19. Any other `bitcoin-spv` or `writz-lend` ID is superseded; do not use it. How the storage windows work: [Contract reference](/developers/contract-reference) and [Storage and TTL management](/how-it-works/stellar-side#storage-and-ttl-management).
 
 ## Packages
 
 ```text
-NPM_PACKAGE     @writz/sdk         0.1.3   source packages/sdk                         npm install @writz/sdk
+NPM_PACKAGE     @writz/sdk         0.1.4   source packages/sdk                         npm install @writz/sdk
 CRATE           writz-spv-client   0.1.1   source contracts/contracts/writz-spv-client cargo add writz-spv-client
 ```
 
@@ -136,9 +136,9 @@ The other routes the index lists (`/faucet/*`, `/defindex/*`, `/metrics/*`) serv
 **CLI** (simulation; the source account is any valid G address and is not charged):
 
 ```bash
-SPV=CBX23YKCCJMAMBMSCNP6YVKEXUIYK2CTKSR4TQ3RVBPAFYZFVCW7W4EO
+SPV=CCCQXNWQGLAAVGOB7YCZNWNHIC456LZXML55Z65OOXRTAZ5BIPNIZ3HB
 READER=GB2BSYQS3FRJ5LZSSIDF3ZCSG5MKWJT5SZ3OZO4QRCAMCR357YAVPTWT
-TXID=eac0f95c531b4bd5307597f74bedd7379928539056b9a1467ea6d1159507e269
+TXID=2936c0587b07cf926e5d546ff5179ffb3ee9b7fed51d578fd048d98c59914b91
 curl -s "https://api.testnet.writz.xyz/spv-proof/$TXID" > proof.json
 stellar contract invoke --id $SPV --network testnet --source-account $READER --send=no -- \
   verify_transaction \
@@ -147,7 +147,7 @@ stellar contract invoke --id $SPV --network testnet --source-account $READER --s
   --tx_index "$(jq -r .sorobanArgs.tx_index proof.json)" \
   --raw_tx "$(jq -r .sorobanArgs.raw_tx proof.json)" \
   --min_confirmations 6
-# {"block_hash":"fe324a44...02000000","block_height":327928,"confirmations":1796,"txid":"69e20795...5cf9c0ea"}
+# {"block_hash":"ae4c51dc...05000000","block_height":331477,"confirmations":6,"txid":"914b9159...58c03629"}
 ```
 
 **TypeScript** (`@stellar/stellar-sdk` 16.x, read-only):
@@ -156,10 +156,10 @@ stellar contract invoke --id $SPV --network testnet --source-account $READER --s
 import { Account, BASE_FEE, Contract, Keypair, TransactionBuilder, nativeToScVal, rpc, scValToNative, xdr } from "@stellar/stellar-sdk";
 
 const server = new rpc.Server("https://soroban-testnet.stellar.org");
-const spv = new Contract("CBX23YKCCJMAMBMSCNP6YVKEXUIYK2CTKSR4TQ3RVBPAFYZFVCW7W4EO");
+const spv = new Contract("CCCQXNWQGLAAVGOB7YCZNWNHIC456LZXML55Z65OOXRTAZ5BIPNIZ3HB");
 const hex = (s: string) => Buffer.from(s, "hex");
 
-const txid = "eac0f95c531b4bd5307597f74bedd7379928539056b9a1467ea6d1159507e269";
+const txid = "2936c0587b07cf926e5d546ff5179ffb3ee9b7fed51d578fd048d98c59914b91";
 const a = (await (await fetch(`https://api.testnet.writz.xyz/spv-proof/${txid}`)).json()).sorobanArgs;
 
 const tx = new TransactionBuilder(new Account(Keypair.random().publicKey(), "0"), {
@@ -211,7 +211,7 @@ Complete contract with tests, deployed and run against testnet: [`examples/spv-p
 ## Checklist before you answer "it works"
 
 1. `get_best_tip` returns a height near the signet tip on mempool.space.
-2. The txid is a **signet** transaction with enough confirmations, in a block above 327,925.
+2. The txid is a **signet** transaction with enough confirmations, in a block above 331,476.
 3. You passed `sorobanArgs` through unchanged (no extra byte reversal).
 4. You simulated reads (`--send=no`, `simulateTransaction`) and only signed real writes.
 5. Your contract checks the output (amount and scriptPubKey) and stores the txid.

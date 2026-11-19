@@ -28,10 +28,10 @@ cargo build --release --target wasm32v1-none
 stellar keys generate me --network testnet --fund
 stellar contract deploy --wasm target/wasm32v1-none/release/spv_payment_check.wasm \
   --source-account me --network testnet -- \
-  --spv CBX23YKCCJMAMBMSCNP6YVKEXUIYK2CTKSR4TQ3RVBPAFYZFVCW7W4EO --min_confirmations 6
+  --spv CCCQXNWQGLAAVGOB7YCZNWNHIC456LZXML55Z65OOXRTAZ5BIPNIZ3HB --min_confirmations 6
 # prints your contract ID; use it as $ID below
 
-TXID=eac0f95c531b4bd5307597f74bedd7379928539056b9a1467ea6d1159507e269
+TXID=2936c0587b07cf926e5d546ff5179ffb3ee9b7fed51d578fd048d98c59914b91
 curl -s "https://api.testnet.writz.xyz/spv-proof/$TXID" > proof.json
 stellar contract invoke --id $ID --source-account me --network testnet --send=no -- \
   check_payment \
@@ -39,14 +39,14 @@ stellar contract invoke --id $ID --source-account me --network testnet --send=no
   --merkle_proof "$(jq -c .sorobanArgs.merkle_proof proof.json)" \
   --tx_index "$(jq -r .sorobanArgs.tx_index proof.json)" \
   --raw_tx "$(jq -r .sorobanArgs.raw_tx proof.json)" \
-  --expected_script_pubkey 002087e1b7a30a8f05a11d3ea2a01ea196737f93651ba349c4f6ee35a8b05f585a29 \
+  --expected_script_pubkey 51206161b959e6ee49f518f0e82d6cff068cc37c4011a48542cea3f91b5d4bc367d0 \
   --min_sats 1000
 ```
 
 ```json
-{"block_height":327928,"confirmations":7,"sats":6000,"txid":"69e2079515d1a67e46a1b9569053289937d7ed4bf7977530d54b1b535cf9c0ea"}
+{"block_height":331477,"confirmations":6,"sats":12136500,"txid":"914b91598cd948d08f571dd5feb7e93efb9f17f56f545d6e92cf077b58c03629"}
 ```
 
-Drop `--send=no` to record the payment; a second call with the same proof then fails with `Error(Contract, #4)`. A wrong scriptPubKey gives `#2`, a higher `min_sats` gives `#3`, and a wrong `tx_index` gives `#1`. All of these were run on testnet on 2026-10-23, against the previous `bitcoin-spv` deployment.
+Drop `--send=no` to record the payment; a second call with the same proof then fails with `Error(Contract, #4)`. A wrong scriptPubKey gives `#2`, a higher `min_sats` gives `#3`, and a wrong `tx_index` gives `#1`. These error cases were run on testnet on 2026-10-23, against an earlier `bitcoin-spv` deployment; the call above was simulated on 2026-11-19 against the current one.
 
 The scriptPubKey of each output is on mempool.space as `scriptpubkey` (`https://mempool.space/signet/api/tx/<txid>`).

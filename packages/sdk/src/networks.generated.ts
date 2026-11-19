@@ -9,10 +9,10 @@ export const testnet: NetworkPreset = {
   "rpcUrl": "https://soroban-testnet.stellar.org",
   "relayerUrl": "https://api.testnet.writz.xyz",
   "bitcoinNetwork": "signet",
-  "spvCheckpointHeight": 327925,
+  "spvCheckpointHeight": 331476,
   "contracts": {
-    "bitcoinSpv": "CBX23YKCCJMAMBMSCNP6YVKEXUIYK2CTKSR4TQ3RVBPAFYZFVCW7W4EO",
-    "writzLend": "CD3BRE32LDNDHAEVI6H35UC3NIRREW5BLH64AZMHSQY3LEKYDLKYWBXS",
+    "bitcoinSpv": "CCCQXNWQGLAAVGOB7YCZNWNHIC456LZXML55Z65OOXRTAZ5BIPNIZ3HB",
+    "writzLend": "CBI4AGULYDCCNYHKAC5HBCIF7X3YEZCYFXLYVLQWUOKPLXWO7LJCKG4Q",
     "usdc": "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA",
     "oracle": "CCYOZJCOPG34LLQQ7N24YXBM7LL62R7ONMZ3G6WZAAYPB5OYKOMJRN63"
   }

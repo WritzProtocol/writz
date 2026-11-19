@@ -67,7 +67,7 @@ Writz is a lending protocol on Stellar backed by native BTC. Lock real BTC on Bi
 
 | Contract | Address |
 |---|---|
-| `bitcoin-spv` | `CBX23YKCCJMAMBMSCNP6YVKEXUIYK2CTKSR4TQ3RVBPAFYZFVCW7W4EO` |
-| `writz-lend` | `CD3BRE32LDNDHAEVI6H35UC3NIRREW5BLH64AZMHSQY3LEKYDLKYWBXS` |
+| `bitcoin-spv` | `CCCQXNWQGLAAVGOB7YCZNWNHIC456LZXML55Z65OOXRTAZ5BIPNIZ3HB` |
+| `writz-lend` | `CBI4AGULYDCCNYHKAC5HBCIF7X3YEZCYFXLYVLQWUOKPLXWO7LJCKG4Q` |
 
-Both were redeployed on 2026-10-25 because testnet rent rose sharply; positions on the previous contracts were closed and their BTC released. `writz-lend` was redeployed twice more, on 2026-11-01 for lender events that carry the scaled amount and the supply index, and on 2026-11-02 for read views that project interest to the current ledger; `bitcoin-spv` was not. See [Storage and TTL management](/how-it-works/stellar-side#storage-and-ttl-management).
+Both were redeployed on 2026-10-25 because testnet rent rose sharply; positions on the previous contracts were closed and their BTC released. `writz-lend` was redeployed twice more, on 2026-11-01 for lender events that carry the scaled amount and the supply index, and on 2026-11-02 for read views that project interest to the current ledger. Both were redeployed again on 2026-11-19, for the `repay` amount and caller rules, position views projected to the current ledger, and light-client chain switches that continue across calls with the median-time-past check. See [Storage and TTL management](/how-it-works/stellar-side#storage-and-ttl-management).

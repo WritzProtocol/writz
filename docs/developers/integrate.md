@@ -35,7 +35,7 @@ Ideas that fit in a weekend: a Soroban contract that releases something (an NFT,
 | [`@writz/sdk`](https://github.com/WritzProtocol/writz/tree/main/packages/sdk) | npm | TypeScript in the browser, Node or Bun: testnet preset, relayer client with typed errors and `Retry-After`, `bitcoin-spv` and `writz-lend` clients | Published: [`npm install @writz/sdk`](https://www.npmjs.com/package/@writz/sdk) |
 | [`writz-spv-client`](https://github.com/WritzProtocol/writz/tree/main/contracts/contracts/writz-spv-client) | crates.io | Soroban contracts: `BitcoinSpvClient`, the result and error types, the on-chain output parser `find_output_value` | Published: [`cargo add writz-spv-client`](https://crates.io/crates/writz-spv-client) |
 
-Current versions: `@writz/sdk` 0.1.3 and `writz-spv-client` 0.1.1. The snippets on this page also work without them, with only `@stellar/stellar-sdk` or `soroban-sdk`.
+Current versions: `@writz/sdk` 0.1.4 and `writz-spv-client` 0.1.1. The snippets on this page also work without them, with only `@stellar/stellar-sdk` or `soroban-sdk`.
 
 ---
 
@@ -48,16 +48,16 @@ Current versions: `@writz/sdk` 0.1.3 and `writz-spv-client` 0.1.1. The snippets 
 | Soroban RPC | `https://soroban-testnet.stellar.org` |
 | Bitcoin network | Signet |
 | Writz relayer | `https://api.testnet.writz.xyz` |
-| `bitcoin-spv` | `CBX23YKCCJMAMBMSCNP6YVKEXUIYK2CTKSR4TQ3RVBPAFYZFVCW7W4EO` |
-| `writz-lend` | `CD3BRE32LDNDHAEVI6H35UC3NIRREW5BLH64AZMHSQY3LEKYDLKYWBXS` |
+| `bitcoin-spv` | `CCCQXNWQGLAAVGOB7YCZNWNHIC456LZXML55Z65OOXRTAZ5BIPNIZ3HB` |
+| `writz-lend` | `CBI4AGULYDCCNYHKAC5HBCIF7X3YEZCYFXLYVLQWUOKPLXWO7LJCKG4Q` |
 | Test USDC (Stellar Asset Contract for `USDC:GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5`) | `CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA` |
 | BTC price oracle read by `writz-lend` (Reflector) | `CCYOZJCOPG34LLQQ7N24YXBM7LL62R7ONMZ3G6WZAAYPB5OYKOMJRN63` |
 
 The source of truth for every ID, with deploy transactions and wasm hashes, is [`contracts/deployments/testnet.md`](https://github.com/WritzProtocol/writz/blob/main/contracts/deployments/testnet.md). The same values, machine-readable, are in [`contracts/deployments/testnet.json`](https://github.com/WritzProtocol/writz/blob/main/contracts/deployments/testnet.json) and in the `@writz/sdk` network preset, both generated from that file. Writz contracts are never upgraded in place: a new version gets a new ID, recorded there.
 
-The `bitcoin-spv` checkpoint is signet block **327,925**. Only blocks after it can be proven.
+The `bitcoin-spv` checkpoint is signet block **331,476**. Only blocks after it can be proven.
 
-The current `bitcoin-spv` was deployed on 2026-10-25 and the current `writz-lend` on 2026-11-02. Both take their storage windows as deployment parameters and run testnet-length ones, so testnet rent stays low. Earlier IDs are recorded as superseded in `contracts/deployments/testnet.md`; do not use them. How the storage windows work: [Contract reference](/developers/contract-reference) and [Storage and TTL management](/how-it-works/stellar-side#storage-and-ttl-management).
+The current `bitcoin-spv` and `writz-lend` were deployed on 2026-11-19. Both take their storage windows as deployment parameters and run testnet-length ones, so testnet rent stays low. Earlier IDs are recorded as superseded in `contracts/deployments/testnet.md`; do not use them. How the storage windows work: [Contract reference](/developers/contract-reference) and [Storage and TTL management](/how-it-works/stellar-side#storage-and-ttl-management).
 
 ---
 
@@ -66,33 +66,33 @@ The current `bitcoin-spv` was deployed on 2026-10-25 and the current `writz-lend
 Install the [Stellar CLI](https://developers.stellar.org/docs/tools/cli) (`brew install stellar-cli`). Read calls are simulated, never submitted, so the source account only has to be a valid address; it is not charged and does not sign.
 
 ```bash
-SPV=CBX23YKCCJMAMBMSCNP6YVKEXUIYK2CTKSR4TQ3RVBPAFYZFVCW7W4EO
+SPV=CCCQXNWQGLAAVGOB7YCZNWNHIC456LZXML55Z65OOXRTAZ5BIPNIZ3HB
 READER=GB2BSYQS3FRJ5LZSSIDF3ZCSG5MKWJT5SZ3OZO4QRCAMCR357YAVPTWT   # any G... address
 
 stellar contract invoke --id $SPV --network testnet --source-account $READER --send=no -- get_best_tip
 ```
 
 ```json
-{"chainwork":"367859271038","hash":"4d09ddcf4191518f7ae8b386f608d4c745d3f6ab5a7c0d4f141c499414000000","height":329723}
+{"chainwork":"1227834744","hash":"3634ab59c477b2d09e8e02dc59b710babc96132c44ef9930eee50b6714000000","height":331482}
 ```
 
 `height` should be at or near the signet tip on [mempool.space/signet](https://mempool.space/signet). The Writz relayer submits new signet headers to the contract as they are mined.
 
 ## 2. Get a proof from the relayer
 
-Pick any confirmed signet transaction (here one in block 327,928) and ask the relayer for its proof:
+Pick any confirmed signet transaction (here one in block 331,477) and ask the relayer for its proof:
 
 ```bash
-TXID=eac0f95c531b4bd5307597f74bedd7379928539056b9a1467ea6d1159507e269
+TXID=2936c0587b07cf926e5d546ff5179ffb3ee9b7fed51d578fd048d98c59914b91
 curl -s "https://api.testnet.writz.xyz/spv-proof/$TXID?confirmations=6" > proof.json
 jq '.sorobanArgs | {block_hash, tx_index, proof_len: (.merkle_proof|length), min_confirmations}' proof.json
 ```
 
 ```json
 {
-  "block_hash": "fe324a4450cea25959ed180d312172c8484e8e08837b75835d3ec48f02000000",
-  "tx_index": 842,
-  "proof_len": 10,
+  "block_hash": "ae4c51dcb8fc5e5210eade6cdb20cf8bcc3cd0c20d408ce2a98b0cbd05000000",
+  "tx_index": 1,
+  "proof_len": 4,
   "min_confirmations": 6
 }
 ```
@@ -114,7 +114,7 @@ stellar contract invoke --id $SPV --network testnet --source-account $READER --s
 ```
 
 ```json
-{"block_hash":"fe324a4450cea25959ed180d312172c8484e8e08837b75835d3ec48f02000000","block_height":327928,"confirmations":1796,"txid":"69e2079515d1a67e46a1b9569053289937d7ed4bf7977530d54b1b535cf9c0ea"}
+{"block_hash":"ae4c51dcb8fc5e5210eade6cdb20cf8bcc3cd0c20d408ce2a98b0cbd05000000","block_height":331477,"confirmations":6,"txid":"914b91598cd948d08f571dd5feb7e93efb9f17f56f545d6e92cf077b58c03629"}
 ```
 
 That is the whole primitive. `confirmations` is the block's real depth below the light client's tip. Note that `txid` comes back reversed compared to the `TXID` you passed in: see [Byte order](#byte-order).
@@ -133,15 +133,15 @@ With `@writz/sdk` (`npm install @writz/sdk`) the whole flow is three lines, and 
 import { createWritzClient } from "@writz/sdk";
 
 const writz = createWritzClient(); // testnet preset
-const { result } = await writz.verifyBitcoinTx("eac0f95c531b4bd5307597f74bedd7379928539056b9a1467ea6d1159507e269");
-// { txid, txidDisplay, blockHash, blockHeight: 327928, confirmations }
+const { result } = await writz.verifyBitcoinTx("2936c0587b07cf926e5d546ff5179ffb3ee9b7fed51d578fd048d98c59914b91");
+// { txid, txidDisplay, blockHash, blockHeight: 331477, confirmations }
 ```
 
 Without it, the quickest typed client is generated from the deployed contract:
 
 ```bash
 stellar contract bindings typescript --network testnet \
-  --contract-id CBX23YKCCJMAMBMSCNP6YVKEXUIYK2CTKSR4TQ3RVBPAFYZFVCW7W4EO \
+  --contract-id CCCQXNWQGLAAVGOB7YCZNWNHIC456LZXML55Z65OOXRTAZ5BIPNIZ3HB \
   --output-dir bitcoin-spv-client
 cd bitcoin-spv-client && bun install && bun run build
 ```
@@ -152,7 +152,7 @@ import { Client, networks } from "./bitcoin-spv-client/dist/index.js";
 const spv = new Client({ ...networks.testnet, rpcUrl: "https://soroban-testnet.stellar.org" });
 const hex = (s: string) => Buffer.from(s, "hex");
 
-const txid = "eac0f95c531b4bd5307597f74bedd7379928539056b9a1467ea6d1159507e269";
+const txid = "2936c0587b07cf926e5d546ff5179ffb3ee9b7fed51d578fd048d98c59914b91";
 const { sorobanArgs: a } = await (
   await fetch(`https://api.testnet.writz.xyz/spv-proof/${txid}`)
 ).json();
@@ -165,10 +165,10 @@ const { result } = await spv.verify_transaction({
   min_confirmations: 6,
 });
 console.log(result.isOk() ? result.unwrap() : result.unwrapErr());
-// { block_hash: <Buffer fe 32 ...>, block_height: 327928, confirmations: 1796, txid: <Buffer 69 e2 ...> }
+// { block_hash: <Buffer ae 4c ...>, block_height: 331477, confirmations: 6, txid: <Buffer 91 4b ...> }
 ```
 
-The same command generates a client for `writz-lend` (`--contract-id CD3BRE32LDNDHAEVI6H35UC3NIRREW5BLH64AZMHSQY3LEKYDLKYWBXS`). Generate bindings from the deployed contract ID, not from the source on `main`: the source can be ahead of what is deployed.
+The same command generates a client for `writz-lend` (`--contract-id CBI4AGULYDCCNYHKAC5HBCIF7X3YEZCYFXLYVLQWUOKPLXWO7LJCKG4Q`). Generate bindings from the deployed contract ID, not from the source on `main`: the source can be ahead of what is deployed.
 
 ## 5. From your Soroban contract
 
@@ -228,7 +228,7 @@ The complete contract, with tests, is [`examples/spv-payment-check`](https://git
 ## 6. Read the Writz lending pool
 
 ```bash
-LEND=CD3BRE32LDNDHAEVI6H35UC3NIRREW5BLH64AZMHSQY3LEKYDLKYWBXS
+LEND=CBI4AGULYDCCNYHKAC5HBCIF7X3YEZCYFXLYVLQWUOKPLXWO7LJCKG4Q
 stellar contract invoke --id $LEND --network testnet --source-account $READER --send=no -- get_protocol_state
 stellar contract invoke --id $LEND --network testnet --source-account $READER --send=no -- get_borrow_rate_bp
 stellar contract invoke --id $LEND --network testnet --source-account $READER --send=no -- get_supply_balance --lender $READER
@@ -249,7 +249,7 @@ stellar contract invoke --id $LEND --network testnet --source-account $READER --
 Yield on Writz is the lender side of `writz-lend`. Lenders supply USDC to the pool that Bitcoin borrowers draw from, and the interest those borrowers pay is the lenders' yield. You need no contract of your own: the user's wallet signs `supply_usdc` and `withdraw_supply`, and your app reads the balance and the rate by simulation. The asset is the same test USDC as the rest of this page (`USDC:GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5`), and the user's account needs a trustline to it.
 
 ```bash
-LEND=CD3BRE32LDNDHAEVI6H35UC3NIRREW5BLH64AZMHSQY3LEKYDLKYWBXS
+LEND=CBI4AGULYDCCNYHKAC5HBCIF7X3YEZCYFXLYVLQWUOKPLXWO7LJCKG4Q
 stellar contract invoke --id $LEND --network testnet --source-account me --send=no -- get_supply_rate_bp
 stellar contract invoke --id $LEND --network testnet --source-account me -- supply_usdc --supplier $(stellar keys address me) --amount 100000000
 stellar contract invoke --id $LEND --network testnet --source-account me --send=no -- get_supply_balance --lender $(stellar keys address me)
@@ -269,7 +269,7 @@ With `@writz/sdk` these are `lend.getSupplyRateBp`, `lend.getSupplyBalance`, `le
 Bitcoin explorers show txids and block hashes **reversed** (display order). `bitcoin-spv` works in **internal** order, the raw SHA256d output.
 
 - The relayer route takes the txid in **display** order (as on mempool.space) and returns `sorobanArgs` already in internal order. Pass them through unchanged.
-- `verify_transaction` returns `txid` and `block_hash` in internal order. To compare with an explorer, reverse the bytes: `69e20795...5cf9c0ea` is `eac0f95c...9507e269`.
+- `verify_transaction` returns `txid` and `block_hash` in internal order. To compare with an explorer, reverse the bytes: `914b9159...58c03629` is `2936c058...59914b91`.
 - If you build proofs yourself from an Esplora API, reverse the block hash and every Merkle sibling before calling the contract.
 
 ## Common errors
@@ -299,7 +299,7 @@ From `bitcoin-spv` (simulation fails with `Error(Contract, #N)`):
 | 5 | `MerkleProofInvalid` | Wrong `tx_index`, siblings in display order, or a `raw_tx` with witness data |
 | 7 | `EmptyTransaction` | `raw_tx` is empty |
 | 15 | `AmbiguousTransactionLength` | `raw_tx` is exactly 64 bytes, never accepted |
-| 22 | `HeaderNotFound` | The block is not in the light client: before the checkpoint (327,925), not a signet block, `block_hash` in display order, or mined in the last minutes and not submitted yet (check `get_best_tip`) |
+| 22 | `HeaderNotFound` | The block is not in the light client: before the checkpoint (331,476), not a signet block, `block_hash` in display order, or mined in the last minutes and not submitted yet (check `get_best_tip`) |
 | 23 | `NotOnBestChain` | The block was orphaned |
 | 24 | `BlockNotAfterCheckpoint` | The block is the checkpoint or older |
 | 29 | `ReorgPending` | The light client is switching to a heavier chain; retry shortly |

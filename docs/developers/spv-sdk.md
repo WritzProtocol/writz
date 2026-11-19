@@ -15,16 +15,16 @@ The SDK is the deployed contract, the relayer proof route, and two published pac
 
 | | Value |
 |---|---|
-| Contract ID (Stellar testnet) | `CBX23YKCCJMAMBMSCNP6YVKEXUIYK2CTKSR4TQ3RVBPAFYZFVCW7W4EO` |
+| Contract ID (Stellar testnet) | `CCCQXNWQGLAAVGOB7YCZNWNHIC456LZXML55Z65OOXRTAZ5BIPNIZ3HB` |
 | Bitcoin network tracked | Signet |
-| Checkpoint | Signet block 327,925 (only later blocks can be proven) |
+| Checkpoint | Signet block 331,476 (only later blocks can be proven) |
 | Header submission | Restricted to one designated Writz account on signet, because signet blocks are authorised by a signature the contract does not verify |
 | Max headers per `submit_headers` call | 16 |
-| Chain switch (reorg) | Contract source: no depth limit, the height index is rewritten across calls (16 slots per `submit_headers`, 28 per `continue_reorg`) and proofs are refused with `ReorgPending` until it completes. The instance above re-points at most 20 blocks in one call until its next redeploy |
+| Chain switch (reorg) | Contract source: no depth limit, the height index is rewritten across calls (16 slots per `submit_headers`, 28 per `continue_reorg`) and proofs are refused with `ReorgPending` until it completes. The instance above has this behaviour |
 
 Source: [`contracts/contracts/bitcoin-spv/src/lib.rs`](https://github.com/WritzProtocol/writz/blob/main/contracts/contracts/bitcoin-spv/src/lib.rs). Deployment record: [`contracts/deployments/testnet.md`](https://github.com/WritzProtocol/writz/blob/main/contracts/deployments/testnet.md).
 
-This instance was deployed on 2026-10-25. How long it keeps headers and consumed deposits is set at deployment (`header_ttl_ledgers`, `consumed_ttl_ledgers`, see the [Contract reference](/developers/contract-reference)).
+This instance was deployed on 2026-11-19. How long it keeps headers and consumed deposits is set at deployment (`header_ttl_ledgers`, `consumed_ttl_ledgers`, see the [Contract reference](/developers/contract-reference)).
 
 ---
 
@@ -106,7 +106,7 @@ The full list, including the codes of `submit_headers` and the admin functions, 
 
 | Package | Registry | For | Status |
 |---|---|---|---|
-| [`@writz/sdk`](https://github.com/WritzProtocol/writz/tree/main/packages/sdk) | npm | TypeScript in the browser, Node or Bun: testnet preset, relayer client with typed errors and `Retry-After`, `bitcoin-spv` and `writz-lend` clients | 0.1.3: [`npm install @writz/sdk`](https://www.npmjs.com/package/@writz/sdk) |
+| [`@writz/sdk`](https://github.com/WritzProtocol/writz/tree/main/packages/sdk) | npm | TypeScript in the browser, Node or Bun: testnet preset, relayer client with typed errors and `Retry-After`, `bitcoin-spv` and `writz-lend` clients | 0.1.4: [`npm install @writz/sdk`](https://www.npmjs.com/package/@writz/sdk) |
 | [`writz-spv-client`](https://github.com/WritzProtocol/writz/tree/main/contracts/contracts/writz-spv-client) | crates.io | Soroban contracts: `BitcoinSpvClient`, the result and error types, the on-chain output parser `find_output_value` | 0.1.1: [`cargo add writz-spv-client`](https://crates.io/crates/writz-spv-client) |
 
 With `writz-spv-client` the contract below shrinks to the call itself:
@@ -203,18 +203,18 @@ GET https://api.testnet.writz.xyz/spv-proof/:txid?confirmations=6
 
 ```json
 {
-  "txid": "eac0f95c...9507e269",
+  "txid": "2936c058...59914b91",
   "rawTxNoWitness": "...",
-  "blockHash": "fe324a44...02000000",
-  "txIndex": 842,
+  "blockHash": "ae4c51dc...05000000",
+  "txIndex": 1,
   "merkleProof": ["...", "..."],
   "headers": ["...", "..."],
-  "blockHeight": 327928,
+  "blockHeight": 331477,
   "confirmations": 6,
   "sorobanArgs": {
-    "block_hash": "fe324a44...02000000",
+    "block_hash": "ae4c51dc...05000000",
     "merkle_proof": ["...", "..."],
-    "tx_index": 842,
+    "tx_index": 1,
     "raw_tx": "...",
     "min_confirmations": 6
   }

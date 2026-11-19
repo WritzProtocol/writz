@@ -15,10 +15,10 @@ wire up both, use `scripts/deploy/deploy_stack.mjs`.
 
 | Contract | Address |
 |---|---|
-| `bitcoin-spv` | `CBX23YKCCJMAMBMSCNP6YVKEXUIYK2CTKSR4TQ3RVBPAFYZFVCW7W4EO` |
-| `writz-lend` | `CD3BRE32LDNDHAEVI6H35UC3NIRREW5BLH64AZMHSQY3LEKYDLKYWBXS` |
+| `bitcoin-spv` | `CCCQXNWQGLAAVGOB7YCZNWNHIC456LZXML55Z65OOXRTAZ5BIPNIZ3HB` |
+| `writz-lend` | `CBI4AGULYDCCNYHKAC5HBCIF7X3YEZCYFXLYVLQWUOKPLXWO7LJCKG4Q` |
 
-`bitcoin-spv` was deployed on 2026-10-25 and `writz-lend` on 2026-11-02; the
+Both were deployed on 2026-11-19; the
 deployment record, with superseded IDs, is `contracts/deployments/testnet.md`.
 
 Storage windows are deployment parameters, so testnet runs short ones and
