@@ -2,7 +2,7 @@
 
 Everything below is public: merged pull requests in this repository, transactions on Stellar testnet and Bitcoin signet, and the live app. No link needs a login.
 
-Contract: `writz-lend` [`CD3BRE32LDNDHAEVI6H35UC3NIRREW5BLH64AZMHSQY3LEKYDLKYWBXS`](https://stellar.expert/explorer/testnet/contract/CD3BRE32LDNDHAEVI6H35UC3NIRREW5BLH64AZMHSQY3LEKYDLKYWBXS), deployed at ledger 5,516,974. Deployment record: [`contracts/deployments/testnet.md`](../../../contracts/deployments/testnet.md).
+Contract: `writz-lend` [`CD3BRE32LDNDHAEVI6H35UC3NIRREW5BLH64AZMHSQY3LEKYDLKYWBXS`](https://stellar.expert/explorer/testnet/contract/CD3BRE32LDNDHAEVI6H35UC3NIRREW5BLH64AZMHSQY3LEKYDLKYWBXS), deployed at ledger 5,516,974 and superseded on 2026-11-19 by `CBI4AGUL…`; everything below was recorded on it. Deployment record: [`contracts/deployments/testnet.md`](../../../contracts/deployments/testnet.md).
 
 ## Lender yield (#277)
 

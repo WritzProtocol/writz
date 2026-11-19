@@ -19,7 +19,7 @@ Verifies Bitcoin transactions on Soroban using Simplified Payment Verification. 
 
 It also holds the shared deposit registry: `consume_deposit` records a Bitcoin txid the first time a registered lending contract uses it, so the same output can never back two positions.
 
-**Deployed:** `CBX23YKCCJMAMBMSCNP6YVKEXUIYK2CTKSR4TQ3RVBPAFYZFVCW7W4EO`
+**Deployed:** `CCCQXNWQGLAAVGOB7YCZNWNHIC456LZXML55Z65OOXRTAZ5BIPNIZ3HB`
 
 ---
 
@@ -63,7 +63,7 @@ pub fn get_release_psbt(txid: BytesN<32>) -> Option<Bytes>
 
 **Events emitted** (topic strings, matching `contracts/contracts/writz-lend/src/events.rs` exactly): `deposit`, `borrow`, `repay`, `repay_full` (emitted instead of `repay` when a repayment fully closes the debt), `liquidate`, `supply`, `withdraw`, `paused_set`, `oracle_set`, `entry_ttl_set`.
 
-**Deployed:** `CD3BRE32LDNDHAEVI6H35UC3NIRREW5BLH64AZMHSQY3LEKYDLKYWBXS`
+**Deployed:** `CBI4AGULYDCCNYHKAC5HBCIF7X3YEZCYFXLYVLQWUOKPLXWO7LJCKG4Q`
 
 ---
 
@@ -148,7 +148,7 @@ Testnet runs short windows because its live state is above the network's target 
 
 The admin can change these windows without a redeploy (`set_entry_ttl` on writz-lend, `set_ttls` on bitcoin-spv, same bounds as the constructors), so they can follow the rent rate. A change applies to entries written or touched after it; existing entries keep their TTL until a call tops them up or refreshes them.
 
-**Contract instance and code:** every `writz-lend` call, and every `bitcoin-spv` call that ingests headers or verifies a transaction, reads the contract's configuration, and that read also extends the contract instance and its wasm code entry once less than 30 days remain, so any activity keeps the contract itself live. `refresh_protocol_ttl` (writz-lend) and `refresh_ttl` (bitcoin-spv) extend both to the full window. Without this, the instance and code keep only the network minimum TTL they get at deployment, and once archived every call fails until they are restored. Deployments before this change (`CD3BRE32…` and `CBX23YKC…` on testnet) are kept live with `stellar contract extend`.
+**Contract instance and code:** every `writz-lend` call, and every `bitcoin-spv` call that ingests headers or verifies a transaction, reads the contract's configuration, and that read also extends the contract instance and its wasm code entry once less than 30 days remain, so any activity keeps the contract itself live. `refresh_protocol_ttl` (writz-lend) and `refresh_ttl` (bitcoin-spv) extend both to the full window. Without this, the instance and code keep only the network minimum TTL they get at deployment, and once archived every call fails until they are restored. The testnet contracts deployed on 2026-11-19 carry this change; the superseded `CD3BRE32…` and `CBX23YKC…`, which predate it and still hold open loans, are kept live with `stellar contract extend`.
 
 **Permissionless refresh:** positions, supply balances, release PSBTs, the protocol accounting and `bitcoin-spv`'s singletons each have a public `refresh_*` function that extends their TTL to the full window. Anyone (Writz's keeper, a third party, or the user) can call them; no permission is required. A position, balance or PSBT is also topped up when a call that uses it reads or writes it, but an idle entry (a position nobody touches for months) is only kept live by these functions. Stored headers other than the tip, and consumed-deposit markers, have no refresh function: once archived they are restored when next read.
 

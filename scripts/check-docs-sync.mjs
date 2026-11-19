@@ -7,7 +7,8 @@
 //   2. "N tests" / "N/N tests" mentions whose number isn't any of the real,
 //      just-measured counts in docs/_data/facts.json.
 //   3. A superseded bitcoin-spv or writz-lend ID in an integration surface
-//      (AGENTS.md, docs/developers, examples, packages/sdk, writz-spv-client),
+//      (AGENTS.md, docs/developers except evidence/, examples, packages/sdk,
+//      writz-spv-client),
 //      where only the current ID is acceptable.
 //   4. contracts/deployments/testnet.json or the @writz/sdk network preset
 //      out of date with testnet.md (scripts/sync-deployments.mjs).
@@ -201,9 +202,12 @@ function walkAll(dir, out = []) {
   }
   return out;
 }
+// docs/developers/evidence/ records runs against the contract that was live at
+// the time, so its IDs stay as they were after a redeploy.
+const evidenceDir = path.join(repoRoot, "docs/developers/evidence") + path.sep;
 const integrationFiles = [
   path.join(repoRoot, "AGENTS.md"),
-  ...walkAll(path.join(repoRoot, "docs/developers")),
+  ...walkAll(path.join(repoRoot, "docs/developers")).filter((f) => !f.startsWith(evidenceDir)),
   ...walkAll(path.join(repoRoot, "examples")),
   ...walkAll(path.join(repoRoot, "packages/sdk")),
   ...walkAll(path.join(repoRoot, "contracts/contracts/writz-spv-client")),

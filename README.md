@@ -16,7 +16,7 @@
 
 <p align="center">
   <a href="https://github.com/WritzProtocol/writz/actions/workflows/ci.yml?query=branch%3Amain"><img alt="CI" src="https://github.com/WritzProtocol/writz/actions/workflows/ci.yml/badge.svg?branch=main"></a>
-  <a href="https://stellar.expert/explorer/testnet/contract/CD3BRE32LDNDHAEVI6H35UC3NIRREW5BLH64AZMHSQY3LEKYDLKYWBXS"><img alt="Network: Stellar testnet" src="https://img.shields.io/badge/network-Stellar%20Testnet-blue"></a>
+  <a href="https://stellar.expert/explorer/testnet/contract/CBI4AGULYDCCNYHKAC5HBCIF7X3YEZCYFXLYVLQWUOKPLXWO7LJCKG4Q"><img alt="Network: Stellar testnet" src="https://img.shields.io/badge/network-Stellar%20Testnet-blue"></a>
   <a href="https://www.npmjs.com/package/@writz/sdk"><img alt="npm: @writz/sdk" src="https://img.shields.io/npm/v/@writz/sdk?label=%40writz%2Fsdk"></a>
   <a href="https://crates.io/crates/writz-spv-client"><img alt="crates.io: writz-spv-client" src="https://img.shields.io/crates/v/writz-spv-client?label=writz-spv-client"></a>
   <a href="https://github.com/WritzProtocol/writz/blob/main/LICENSE"><img alt="License: Apache 2.0" src="https://img.shields.io/badge/License-Apache%202.0-blue.svg"></a>
@@ -120,8 +120,8 @@ The project started as a whitepaper (v1.0, July 2026, DOI [10.5281/zenodo.231485
 
 | Contract | Address | WASM |
 |---|---|---|
-| `bitcoin-spv` | [`CBX23YKCCJMAMBMSCNP6YVKEXUIYK2CTKSR4TQ3RVBPAFYZFVCW7W4EO`](https://stellar.expert/explorer/testnet/contract/CBX23YKCCJMAMBMSCNP6YVKEXUIYK2CTKSR4TQ3RVBPAFYZFVCW7W4EO) | 45.2 KB |
-| `writz-lend` | [`CD3BRE32LDNDHAEVI6H35UC3NIRREW5BLH64AZMHSQY3LEKYDLKYWBXS`](https://stellar.expert/explorer/testnet/contract/CD3BRE32LDNDHAEVI6H35UC3NIRREW5BLH64AZMHSQY3LEKYDLKYWBXS) | 94.6 KB |
+| `bitcoin-spv` | [`CCCQXNWQGLAAVGOB7YCZNWNHIC456LZXML55Z65OOXRTAZ5BIPNIZ3HB`](https://stellar.expert/explorer/testnet/contract/CCCQXNWQGLAAVGOB7YCZNWNHIC456LZXML55Z65OOXRTAZ5BIPNIZ3HB) | 51.8 KB |
+| `writz-lend` | [`CBI4AGULYDCCNYHKAC5HBCIF7X3YEZCYFXLYVLQWUOKPLXWO7LJCKG4Q`](https://stellar.expert/explorer/testnet/contract/CBI4AGULYDCCNYHKAC5HBCIF7X3YEZCYFXLYVLQWUOKPLXWO7LJCKG4Q) | 96.5 KB |
 
 Any other `bitcoin-spv` or `writz-lend` ID is superseded. The contracts have been redeployed several times on testnet; the full history, init transactions and verified calls are in [`contracts/deployments/testnet.md`](https://github.com/WritzProtocol/writz/blob/main/contracts/deployments/testnet.md), and the machine-readable IDs in [`testnet.json`](https://github.com/WritzProtocol/writz/blob/main/contracts/deployments/testnet.json).
 
@@ -248,7 +248,7 @@ The worked rate model is in [Writz Lend](https://docs.writz.xyz/products/writz-l
 
 | Risk | Mitigation |
 |---|---|
-| Bitcoin reorg | 1 confirmation on testnet, 6 planned for mainnet; the light client follows the most-work chain through reorgs of any depth, rewriting its index across calls and refusing proofs until the switch completes (the testnet instance deployed on 2026-10-25 still limits one switch to 20 blocks). A position whose deposit is later reorged out is not unwound automatically |
+| Bitcoin reorg | 1 confirmation on testnet, 6 planned for mainnet; the light client follows the most-work chain through reorgs of any depth, rewriting its index across calls and refusing proofs until the switch completes. A position whose deposit is later reorged out is not unwound automatically |
 | P2WSH script bug | Internal review and tests, including releases confirmed on Signet; external review before mainnet. The timelock protects users regardless |
 | Protocol key compromise | The protocol key cannot move BTC without the user's key; a 2-of-3 protocol side in the P2WSH script is planned, with a published signing policy |
 | SPV contract bug | Header light client anchored to a public checkpoint, with proof-of-work, exact difficulty and chainwork checks; no upgrade path. Known open edge cases (proof-depth binding) are listed in [SPV vs wrapped Bitcoin](https://docs.writz.xyz/security/spv-vs-wrapped); independent audit before mainnet |
@@ -271,9 +271,9 @@ The Bitcoin SPV light client is open infrastructure. Any Stellar contract or app
 Stellar network       testnet (no Writz contract on mainnet)
 Network passphrase    Test SDF Network ; September 2015
 Soroban RPC           https://soroban-testnet.stellar.org
-Bitcoin network       signet (no mainnet, testnet3 or testnet4); only blocks after the checkpoint, 327,925, can be proven
-bitcoin-spv           CBX23YKCCJMAMBMSCNP6YVKEXUIYK2CTKSR4TQ3RVBPAFYZFVCW7W4EO
-writz-lend            CD3BRE32LDNDHAEVI6H35UC3NIRREW5BLH64AZMHSQY3LEKYDLKYWBXS
+Bitcoin network       signet (no mainnet, testnet3 or testnet4); only blocks after the checkpoint, 331,476, can be proven
+bitcoin-spv           CCCQXNWQGLAAVGOB7YCZNWNHIC456LZXML55Z65OOXRTAZ5BIPNIZ3HB
+writz-lend            CBI4AGULYDCCNYHKAC5HBCIF7X3YEZCYFXLYVLQWUOKPLXWO7LJCKG4Q
 Test USDC (SAC)       CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA
 Relayer               https://api.testnet.writz.xyz, proof route GET /spv-proof/:txid?confirmations=N
 ```

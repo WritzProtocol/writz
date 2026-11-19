@@ -67,7 +67,7 @@ pub fn verify_transaction(
 - `bits` must equal what Bitcoin's difficulty rules require at that height: unchanged inside a 2016-block period, the exact retarget at each boundary
 - The timestamp may not be more than two hours ahead of ledger time, and, from the 11th block after the checkpoint on, must be later than the median time of the 11 blocks before it (`TimestampNotAfterMedianTimePast`). Closer to the checkpoint not all 11 timestamps are stored, so the rule is not applied there
 - The chain with the most cumulative work becomes the best chain; a heavier fork replaces the best tip at once, and its height-to-hash index is rewritten down to where the two chains meet, at most 16 slots per `submit_headers` call and 28 per `continue_reorg` call. A switch that needs more stays pending (`get_pending_reorg`) and continues with every later call; `continue_reorg` needs no authorization. Index slots above a lower new tip are never trusted or reported
-- The testnet instance deployed on 2026-10-25 predates this behaviour: it re-points at most 20 blocks in one call and does not check median time past, until its next redeploy.
+- The testnet instance deployed on 2026-11-19 has this behaviour; the instance it replaced, deployed on 2026-10-25, re-pointed at most 20 blocks in one call and did not check median time past.
 
 **Verification - `verify_transaction`:**
 - No chain switch may be pending (`ReorgPending` while one is)
@@ -109,18 +109,18 @@ GET /spv-proof/{txid}?confirmations=6
 
 Response:
 {
-  "txid": "eac0f95c...",
+  "txid": "2936c058...",
   "rawTxNoWitness": "02000000...",
-  "blockHash": "fe324a44...",
-  "blockHeight": 327928,
-  "txIndex": 842,
+  "blockHash": "ae4c51dc...",
+  "blockHeight": 331477,
+  "txIndex": 1,
   "merkleProof": [...],
   "headers": [...],
   "confirmations": 6,
   "sorobanArgs": {
-    "block_hash": "fe324a44...",
+    "block_hash": "ae4c51dc...",
     "merkle_proof": [...],
-    "tx_index": 842,
+    "tx_index": 1,
     "raw_tx": "02000000...",
     "min_confirmations": 6
   }
@@ -159,7 +159,7 @@ The SPV contract's tests cover:
 - Multi-transaction blocks with varying Merkle proof sizes, odd transaction counts and single-transaction blocks
 - Confirmation depth, blocks at or before the checkpoint, and the consumed-deposit registry
 
-All 96 tests pass, and the light client follows Bitcoin signet on testnet. The contract is deployed on Stellar testnet at `CBX23YKCCJMAMBMSCNP6YVKEXUIYK2CTKSR4TQ3RVBPAFYZFVCW7W4EO`.
+All 96 tests pass, and the light client follows Bitcoin signet on testnet. The contract is deployed on Stellar testnet at `CCCQXNWQGLAAVGOB7YCZNWNHIC456LZXML55Z65OOXRTAZ5BIPNIZ3HB`.
 
 ---
 

@@ -102,7 +102,7 @@ Figures are as reported by the linked post-mortems, announcements and press cove
 | Confirmation depth | Live, set per deployment | 6 confirmations planned on mainnet |
 | Exposure caps | Global cap live, per-borrower cap planned | Bound what any verification failure could cost lenders |
 | Proof-depth binding | Planned | Close known SPV edge cases |
-| Median-time-past | Built, on testnet at the next redeploy | Rejects a header not later than the median time of the 11 blocks before it, from the 11th block after the checkpoint |
+| Median-time-past | Built, on testnet since 2026-11-19 | Rejects a header not later than the median time of the 11 blocks before it, from the 11th block after the checkpoint |
 | On-chain freshness rule | Live | Borrows and liquidations are refused when the light client's tip header is older than six hours (admin-set, 1 to 48 hours) |
 | Multiple relayers, permissionless submission | Planned for mainnet | Any honest relayer keeps the light client live |
 | Independent monitor with automatic pause of new loans | Planned for mainnet | Compares the on-chain tip with several Bitcoin sources; can only pause new deposits and borrows, never move funds |
