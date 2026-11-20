@@ -7,6 +7,7 @@ import type { SignTransaction } from "@/lib/wallet/WalletProvider";
 import type { Emit } from "@/lib/flow/engine";
 import { activity, type PendingTxKind } from "@/lib/flow/pendingTx";
 import { asRejection } from "@/lib/wallet/rejection";
+import type { SigningIntent } from "@/lib/wallet/intent";
 
 /**
  * Earn flows: deposit USDC into the Writz DeFindex vault and withdraw it.
@@ -37,13 +38,13 @@ export interface EarnTxResult {
 async function signAndSubmit(
   xdr: string,
   signTransaction: SignTransaction,
-  track: { owner: string; kind: PendingTxKind; emit?: Emit },
+  track: { owner: string; kind: PendingTxKind; intent: SigningIntent; emit?: Emit },
 ): Promise<string> {
-  const { owner, kind, emit } = track;
+  const { owner, kind, intent, emit } = track;
   emit?.({ type: "awaiting_signature", wallet: "stellar" });
   let signedTxXdr: string;
   try {
-    ({ signedTxXdr } = await signTransaction(xdr));
+    ({ signedTxXdr } = await signTransaction(xdr, { intent }));
   } catch (e) {
     const rejected = asRejection(e, "stellar");
     if (rejected) {
@@ -136,7 +137,12 @@ export async function depositToVault(params: {
   const { xdr } = await earnApi().buildDeposit({ caller, amountStroops });
   checkVaultTx(xdr, "deposit", caller, amountStroops);
   return {
-    txHash: await signAndSubmit(xdr, signTransaction, { owner: caller, kind: "earn_deposit", emit }),
+    txHash: await signAndSubmit(xdr, signTransaction, {
+      owner: caller,
+      kind: "earn_deposit",
+      intent: { kind: "earn.deposit", amount: amountStroops },
+      emit,
+    }),
   };
 }
 
@@ -151,6 +157,11 @@ export async function withdrawFromVault(params: {
   const { xdr } = await earnApi().buildWithdraw({ caller, amountStroops });
   checkVaultTx(xdr, "withdraw", caller, amountStroops);
   return {
-    txHash: await signAndSubmit(xdr, signTransaction, { owner: caller, kind: "earn_withdraw", emit }),
+    txHash: await signAndSubmit(xdr, signTransaction, {
+      owner: caller,
+      kind: "earn_withdraw",
+      intent: { kind: "earn.withdraw", amount: amountStroops },
+      emit,
+    }),
   };
 }

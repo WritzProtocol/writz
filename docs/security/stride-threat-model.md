@@ -87,6 +87,13 @@
 
 **Residual risk:** LOW - the user can always bypass the relayer entirely.
 
+#### T4: The embedded wallet is handed a transaction other than the one the user asked for
+**Threat:** Pollar sign-in signs on Pollar's server with no approval window of its own, so a transaction changed after the user pressed the button (a different contract, amount or recipient, an extra operation, an authorization for further calls, a high fee) would be signed without anyone seeing it. Wallets with their own window (Varial, xBull, Lobstr, Albedo, Rabet) show the user the transaction before they sign.
+
+**Mitigation:** Every signing call in the app declares what it is for (deposit 10 USDC into the Earn vault, borrow 200 USDC against a loan, add USDC to the wallet). Before Pollar is asked to sign, the app decodes the transaction and checks it against that: the user's account as the source, one operation, the expected contract, function and arguments, a single authorization that covers exactly the expected calls, a bounded fee, and no fee-bump. A match is signed with no extra step. A mismatch is stopped, with only Cancel, and the app says what it would have done. A transaction with no known purpose asks the user, Cancel first and Sign anyway second. What Pollar returns is checked again: the transaction inside a sponsored fee-bump must be the one checked, and the fee-bump must not be paid by the user. That second check runs after Pollar has signed, so when it fails the signature exists, but the app stops there and submits nothing. A deployment can also ask the user to confirm any matching transaction above a set USDC amount (`NEXT_PUBLIC_POLLAR_CONFIRM_ABOVE_USDC`, off by default). Code: [`frontend/app/src/lib/wallet/verifyIntent.ts`](https://github.com/WritzProtocol/writz/blob/main/frontend/app/src/lib/wallet/verifyIntent.ts) and [`sign.ts`](https://github.com/WritzProtocol/writz/blob/main/frontend/app/src/lib/wallet/sign.ts).
+
+**Residual risk:** LOW on testnet - the check runs in the app, so it covers a changed transaction, not changed app code, and Pollar holds the key of these test accounts. Pollar sign-in is testnet only; the mainnet build refuses it.
+
 ---
 
 ### R - Repudiation (denying having performed an action)

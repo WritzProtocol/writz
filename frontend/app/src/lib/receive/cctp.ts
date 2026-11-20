@@ -105,7 +105,7 @@ export async function sendUsdcToChain(params: {
         nativeToScVal(sequence + ALLOWANCE_LEDGERS, { type: "u32" }),
       ],
     });
-    approveHash = (await signAndSubmit(approve, { signTransaction, emit })).hash;
+    approveHash = (await signAndSubmit(approve, { signTransaction, intent: { kind: "cctp.approve", amount }, emit })).hash;
   }
 
   emit?.({ type: "preparing", step: "building" });
@@ -124,7 +124,8 @@ export async function sendUsdcToChain(params: {
       nativeToScVal(STANDARD_FINALITY, { type: "u32" }),
     ],
   });
-  const { hash: burnHash } = await signAndSubmit(burn, { signTransaction, emit });
+  const intent = { kind: "cctp.burn", amount, maxFee, recipient } as const;
+  const { hash: burnHash } = await signAndSubmit(burn, { signTransaction, intent, emit });
   emit?.({ type: "settled", hash: burnHash });
   return { approveHash, burnHash, amount, maxFee };
 }

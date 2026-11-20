@@ -7,6 +7,7 @@ import { checkAmount, type FundsSide } from "@/lib/funds/model";
 import { toFieldValue, type Read } from "@/lib/loan/model";
 import { ErrorBox, Notice, Spinner } from "@/components/ui";
 import { AmountField, TxResult, TxRunning } from "@/components/loan/parts";
+import { SigningCheckSlot } from "@/components/wallet/SigningCheck";
 
 export interface SideModel {
   label: string;
@@ -157,6 +158,7 @@ export function FundsCard({ m, label }: { m: FundsModel; label: string }) {
             )}
           </button>
         </div>
+        {m.trust.busy ? <SigningCheckSlot /> : null}
         {m.trust.error ? <ErrorBox error={m.trust.error} label="Not added" /> : null}
       </section>
     );

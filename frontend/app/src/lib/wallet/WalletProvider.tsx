@@ -13,18 +13,26 @@ import { Horizon, NotFoundError } from "@stellar/stellar-sdk";
 import { ensureKit } from "@/lib/wallet/kit";
 import { installKitA11y } from "@/lib/wallet/kitA11y";
 import { config } from "@/config";
-import { pollarClient, signMessageWithPollar, signTransactionWithPollar, wantsSponsorship } from "@/lib/wallet/pollar";
+import { pollarClient, signMessageWithPollar } from "@/lib/wallet/pollar";
 import { usePollarSession, type PollarSession } from "@/lib/wallet/pollarSession";
 import { withRejection } from "@/lib/wallet/rejection";
-import { preflightSign, type AccountSnapshot } from "@/lib/wallet/precheck";
+import type { AccountSnapshot } from "@/lib/wallet/precheck";
+import type { SignOptions } from "@/lib/wallet/intent";
+import { createSignTransaction, POLLAR_WALLET_NAME } from "@/lib/wallet/sign";
+import { SigningReviews } from "@/lib/wallet/signingReview";
+import { ReviewsContext } from "@/lib/wallet/reviewsContext";
+import { signingEnv } from "@/lib/wallet/verifyIntent";
 
 /**
  * Signs a transaction XDR with the connected wallet. The return shape is
  * compatible with the generated contract bindings' `signAndSend({ signTransaction })`,
- * so deposit/borrow/repay/supply flows can reuse it directly.
+ * so deposit/borrow/repay/supply flows can reuse it directly. `opts.intent`
+ * says what the transaction is for; the embedded Pollar wallet checks the
+ * transaction against it before signing (`lib/wallet/sign.ts`).
  */
 export type SignTransaction = (
   xdr: string,
+  opts?: SignOptions,
 ) => Promise<{ signedTxXdr: string; signerAddress: string }>;
 
 /** Signs an arbitrary message (SEP-53) and returns the base64 signature. */
@@ -108,6 +116,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   // A login started here; until it settles, an idle Pollar state is not a signed-out one.
   const pollarLoggingIn = useRef(false);
   const creatingPollarWallet = useRef(false);
+  const [reviews] = useState(() => new SigningReviews());
 
   const address = backend === "pollar" ? pollarSession.address : kitAddress;
 
@@ -216,6 +225,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
 
   // ── Disconnect ──
   const disconnect = useCallback(() => {
+    reviews.cancel();
     if (backend === "kit") {
       ensureKit()
         .disconnect()
@@ -228,51 +238,27 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     setBackend(null);
     setError(null);
     localStorage.removeItem(BACKEND_KEY);
-  }, [backend]);
+  }, [backend, reviews]);
 
   // ── Signing - dispatches to the active backend ──
-  const signTransaction = useCallback<SignTransaction>(
-    async (xdr) => {
-      if (backend === "pollar") {
-        const client = pollarClient();
-        if (!client) throw new Error("No Pollar wallet connected");
-        const signer = assertPollarWalletReady(pollarSession);
-        const preflight = () =>
-          preflightSign({
-            xdr,
-            expectedPassphrase: config.networkPassphrase,
-            getWalletPassphrase: async () => null,
-            loadAccount: () => loadAccountSnapshot(signer),
-          });
-        // A sponsored envelope needs no XLM. One Pollar never sponsors is paid by
-        // the user, so it is checked before Pollar signs, as on the kit path.
-        const sponsorable = wantsSponsorship(xdr);
-        if (!sponsorable) await preflight();
-        const result = await withRejection("stellar", "Pollar", () => signTransactionWithPollar(client, xdr, signer));
-        // Pollar can still decline to sponsor a contract call or trustline, and
-        // that is only known once it has signed; the user pays for it then.
-        if (sponsorable && !result.sponsored) await preflight();
-        return { signedTxXdr: result.signedTxXdr, signerAddress: result.signerAddress };
-      }
-      const kit = ensureKit();
-      const walletName = kitWalletName();
-      const { address: signerAddress } = await kit.getAddress();
-      await preflightSign({
-        xdr,
-        expectedPassphrase: config.networkPassphrase,
-        walletName,
-        getWalletPassphrase: async () => (await kit.getNetwork()).networkPassphrase,
-        loadAccount: () => loadAccountSnapshot(signerAddress),
-      });
-      const { signedTxXdr, signerAddress: signer } = await withRejection("stellar", walletName, () =>
-        kit.signTransaction(xdr, {
-          address: signerAddress,
-          networkPassphrase: config.networkPassphrase,
-        }),
-      );
-      return { signedTxXdr, signerAddress: signer ?? signerAddress };
-    },
-    [backend, pollarSession],
+  const signTransaction = useMemo<SignTransaction>(
+    () =>
+      createSignTransaction({
+        backend,
+        networkPassphrase: config.networkPassphrase,
+        kit: ensureKit,
+        kitWalletName,
+        pollar: () => {
+          const client = pollarClient();
+          if (!client) throw new Error("No Pollar wallet connected");
+          return { client, signer: assertPollarWalletReady(pollarSession) };
+        },
+        loadAccount: loadAccountSnapshot,
+        reviews,
+        confirmAboveUsdc: config.signing.confirmAboveUsdc,
+        env: signingEnv,
+      }),
+    [backend, pollarSession, reviews],
   );
 
   const signMessage = useCallback<SignMessage>(
@@ -281,7 +267,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         const client = pollarClient();
         if (!client) throw new Error("No Pollar wallet connected");
         assertPollarWalletReady(pollarSession);
-        return withRejection("stellar", "Pollar", () => signMessageWithPollar(client, message));
+        return withRejection("stellar", POLLAR_WALLET_NAME, () => signMessageWithPollar(client, message));
       }
       const kit = ensureKit();
       const walletName = kitWalletName();
@@ -331,7 +317,9 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <WalletContext.Provider value={value}>{children}</WalletContext.Provider>
+    <WalletContext.Provider value={value}>
+      <ReviewsContext.Provider value={reviews}>{children}</ReviewsContext.Provider>
+    </WalletContext.Provider>
   );
 }
 

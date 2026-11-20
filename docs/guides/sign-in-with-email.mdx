@@ -43,6 +43,17 @@ After you sign in, the app also creates a **Signet test key** in your browser fo
 - USDC already added to the account (the trustline), so you can receive test USDC straight away.
 - Network fees paid by Pollar on Writz transactions. If a transaction is not covered, the test XLM in the account pays its small fee.
 
+## How signing works
+
+Pollar signs on its server, so no wallet window opens when you deposit, borrow, repay or withdraw. Your click on the action button, with the amount on it, is the confirmation. Before Pollar signs, the app reads the transaction and checks it is exactly what you asked for: the right action, amount and account, and nothing else.
+
+- **It matches:** it is signed straight away, with no extra step.
+- **It doesn't match:** the app stops it and shows **This isn't the transaction you asked for**, with what you asked for and what it would have done. The only choice is **Cancel**. Nothing is signed.
+- **The app can't tell what it is:** it shows **Writz can't check this transaction**, with **Cancel** and **Sign anyway**. Sign only if you started it yourself.
+- **Large amounts:** a deployment can ask you to confirm anything above a set amount of USDC. Off unless it is turned on.
+
+Varial and the other Stellar wallets show their own window instead, so nothing changes there.
+
 ## Your Signet test key
 
 - **Where it lives:** only in this browser's storage, one key per signed-in account. It is never sent to Writz, to Pollar or to the relayer.

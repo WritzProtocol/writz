@@ -9,6 +9,7 @@
  */
 
 import { assertDeployTarget, lendingEnabled, TESTNET_PASSPHRASE } from "@/config/target";
+import { toStroops } from "@/lib/earn/amount";
 
 const TESTNET_RPC = "https://soroban-testnet.stellar.org";
 
@@ -181,6 +182,16 @@ export const config = {
      * the asset cannot be obtained.
      */
     faucetUrl: process.env.NEXT_PUBLIC_EARN_FAUCET_URL ?? "",
+  },
+  /**
+   * The embedded Pollar wallet signs with no window of its own, so the app
+   * checks each transaction against what the flow asked for before Pollar
+   * signs (src/lib/wallet/verifyIntent.ts). A matching one signs at once;
+   * above this many USDC (stroops) it also asks the user to confirm. Unset,
+   * empty or not a positive amount: never asks.
+   */
+  signing: {
+    confirmAboveUsdc: toStroops(process.env.NEXT_PUBLIC_POLLAR_CONFIRM_ABOVE_USDC ?? ""),
   },
   bitcoin: {
     network: BTC_NETWORK,

@@ -82,7 +82,8 @@ export async function repay(params: {
     );
     const left = chain.debtStroops > amount ? chain.debtStroops - amount : 0n;
     const updated: Position = { ...current, debtStroops: left.toString(), status: left === 0n ? "closed" : "active" };
-    const sent = await submitPositionTx({ kind: "repay", tx, position: current, updated, signTransaction, emit, keepOpen });
+    const intent = { kind: "writz-lend.repay", txid: position.txid, amount } as const;
+    const sent = await submitPositionTx({ kind: "repay", tx, position: current, updated, intent, signTransaction, emit, keepOpen });
     return { ...sent, updated };
   };
 

@@ -2,6 +2,7 @@ import { contract, rpc, TransactionBuilder, xdr, type Transaction } from "@stell
 import { config } from "@/config";
 import { asRejection } from "@/lib/wallet/rejection";
 import type { SignTransaction } from "@/lib/wallet/WalletProvider";
+import { withIntent, type SigningIntent } from "@/lib/wallet/intent";
 import type { Emit } from "./engine";
 import type { TxStatus } from "./pendingTx";
 
@@ -51,16 +52,18 @@ export async function signAndSubmit<T>(
   tx: contract.AssembledTransaction<T>,
   opts: {
     signTransaction: SignTransaction;
+    /** What this transaction is for; the embedded wallet signs only when it matches. */
+    intent: SigningIntent;
     emit?: Emit;
     onSigned?: (hash: string) => void;
     onDropped?: (hash: string) => void;
   },
 ): Promise<{ hash: string; sent: contract.SentTransaction<T> }> {
-  const { signTransaction, emit, onSigned, onDropped } = opts;
+  const { signTransaction, intent, emit, onSigned, onDropped } = opts;
   emit?.({ type: "awaiting_signature", wallet: "stellar" });
   try {
     bidInclusionFeeOnly(tx);
-    await tx.sign({ signTransaction });
+    await tx.sign({ signTransaction: withIntent(signTransaction, intent) });
   } catch (e) {
     const rejected = asRejection(e, "stellar");
     if (rejected) {

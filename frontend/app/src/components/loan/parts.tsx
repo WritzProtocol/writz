@@ -27,6 +27,8 @@ import type { Position } from "@/lib/position/types";
 import type { PositionStatus } from "@/lib/status/types";
 import type { ErrorFlow } from "@/lib/errors";
 import { networkName } from "@/lib/wallet/precheck";
+import { POLLAR_WALLET_NAME } from "@/lib/wallet/signingReview";
+import { SigningCheckSlot } from "@/components/wallet/SigningCheck";
 import { useElapsed } from "@/components/ui/hooks";
 import { Enter } from "@/components/ui/entrance";
 import { ErrorBox, ExternalLink, Notice, SlideToConfirm, Spinner, type Tone } from "@/components/ui";
@@ -311,12 +313,18 @@ export function TxRunning({ flow, walletName }: { flow: FlowState; walletName: s
   switch (flow.phase) {
     case "awaiting_signature":
       return (
-        <div className="wz-stack" style={{ gap: 8 }}>
-          <Status>
-            Confirm in {walletName}. Fee about 0.01 XLM.
-          </Status>
-          {slow && <p className="wz-hint">Didn&apos;t see it? Open {walletName} from your browser toolbar.</p>}
-        </div>
+        <SigningCheckSlot>
+          {walletName === POLLAR_WALLET_NAME ? (
+            <Status>Checking and signing with {walletName}.</Status>
+          ) : (
+            <div className="wz-stack" style={{ gap: 8 }}>
+              <Status>
+                Confirm in {walletName}. Fee about 0.01 XLM.
+              </Status>
+              {slow && <p className="wz-hint">Didn&apos;t see it? Open {walletName} from your browser toolbar.</p>}
+            </div>
+          )}
+        </SigningCheckSlot>
       );
     case "submitted":
       return (
@@ -613,7 +621,9 @@ export function BorrowPanel({
           {m.trust.error ? <ErrorBox error={m.trust.error} context={{ flow: "trustline" }} label="USDC not added" /> : null}
           <div className="wz-actions">
             {m.trust.busy ? (
-              <Status>Confirm in {m.stellar.walletName}. 0.5 XLM set aside.</Status>
+              <SigningCheckSlot>
+                <Status>Confirm in {m.stellar.walletName}. 0.5 XLM set aside.</Status>
+              </SigningCheckSlot>
             ) : (
               <button type="button" className="wz-btn wz-btn-gold" onClick={m.trust.add} disabled={m.otherTx}>
                 Add USDC
@@ -776,7 +786,9 @@ export function RepayPanel({
           label="Interest"
           actions={
             m.topUp.busy ? (
-              <Status>Confirm in {m.stellar.walletName}</Status>
+              <SigningCheckSlot>
+                <Status>Confirm in {m.stellar.walletName}</Status>
+              </SigningCheckSlot>
             ) : (
               <button type="button" className="wz-btn wz-btn-line" onClick={() => m.topUp?.buy(shortfall)} disabled={m.otherTx}>
                 Get {formatUsdc(shortfall)} USDC with XLM
@@ -973,6 +985,7 @@ export function ReleasePanel({ m, position, neverBorrowed }: { m: LoanModel; pos
             disabled={fee === null || destination === null || m.otherTx || m.catchingUp}
             onConfirm={m.release}
           />
+          {mine && m.flow.phase === "awaiting_signature" && m.flow.wallet === "stellar" ? <SigningCheckSlot /> : null}
         </>
       )}
     </div>

@@ -21,6 +21,7 @@ import { BTC_FAUCETS } from "@/lib/links";
 import { useElapsed } from "@/components/ui/hooks";
 import { ConfirmationSlots, CopyButton, ErrorBox, ExternalLink, Notice, SlideToConfirm, Spinner } from "@/components/ui";
 import { DepositProof } from "./DepositProof";
+import { SigningCheckSlot } from "@/components/wallet/SigningCheck";
 import type { JourneyModel } from "./model";
 
 const ON_TESTNET = config.target !== "mainnet";
@@ -820,6 +821,7 @@ export function RegisterStep({ m }: { m: JourneyModel }) {
               </li>
             ))}
           </ol>
+          {v.active === 2 ? <SigningCheckSlot /> : null}
           {slow && <p className="wz-hint">Didn&apos;t see it? Open {wallet} from your browser toolbar.</p>}
         </>
       )}
