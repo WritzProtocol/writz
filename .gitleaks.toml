@@ -1,0 +1,13 @@
+# gitleaks configuration for the public repository.
+# The default rules have no pattern for Stellar secret seeds, so one is added:
+# a seed is "S" followed by 55 base32 characters (StrKey ed25519 secret seed).
+# Public keys (G...) and contract IDs (C...) do not match.
+[extend]
+useDefault = true
+
+[[rules]]
+id = "stellar-secret-seed"
+description = "Stellar secret seed"
+regex = '''\bS[A-Z2-7]{55}\b'''
+keywords = ["S"]
+tags = ["key", "stellar"]
