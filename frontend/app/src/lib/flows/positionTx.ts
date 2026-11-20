@@ -4,6 +4,7 @@ import type { SignTransaction } from "@/lib/wallet/WalletProvider";
 import type { Emit } from "@/lib/flow/engine";
 import { activity, reconcilePendingTxs, type PendingTx } from "@/lib/flow/pendingTx";
 import { getTxStatus, signAndSubmit, TxTimedOutError } from "@/lib/flow/stellarTx";
+import type { SigningIntent } from "@/lib/wallet/intent";
 
 function replacePosition(removeId: string, save: Position) {
   if (removeId !== save.id) removePosition(save.owner, removeId);
@@ -37,13 +38,15 @@ export async function submitTrackedTx<T>(params: {
   kind: PendingTx["kind"];
   owner: string;
   tx: contract.AssembledTransaction<T>;
+  intent: SigningIntent;
   signTransaction: SignTransaction;
   emit?: Emit;
 }): Promise<{ hash: string }> {
-  const { kind, owner, tx, signTransaction, emit } = params;
+  const { kind, owner, tx, intent, signTransaction, emit } = params;
   try {
     const { hash } = await signAndSubmit(tx, {
       signTransaction,
+      intent,
       emit,
       onSigned: (h) => activity.addTx(owner, { hash: h, kind, createdAt: Date.now() }),
       onDropped: (h) => activity.removeTx(owner, h),
@@ -67,12 +70,13 @@ export async function submitPositionTx<T>(params: {
   tx: contract.AssembledTransaction<T>;
   position: Position;
   updated: Position;
+  intent: SigningIntent;
   signTransaction: SignTransaction;
   emit?: Emit;
   /** Leave the flow open for a follow-up transaction instead of settling it. */
   keepOpen?: boolean;
 }): Promise<{ hash: string; ledger?: number }> {
-  const { kind, tx, position, updated, signTransaction, emit } = params;
+  const { kind, tx, position, updated, intent, signTransaction, emit } = params;
   const owner = position.owner;
   let hash: string;
   let ledger: number | undefined;
@@ -80,6 +84,7 @@ export async function submitPositionTx<T>(params: {
     let sent: Awaited<ReturnType<typeof signAndSubmit<T>>>["sent"];
     ({ hash, sent } = await signAndSubmit(tx, {
       signTransaction,
+      intent,
       emit,
       onSigned: (h) =>
         activity.addTx(owner, {

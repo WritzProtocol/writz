@@ -87,7 +87,8 @@ export async function swapUsdcTo(params: {
       nativeToScVal(swapDeadline(now()), { type: "u64" }),
     ],
   });
-  const { hash, sent } = await signAndSubmit(tx, { signTransaction, emit });
+  const intent = { kind: "swap.exact-in", amountIn, minOut: floor, path } as const;
+  const { hash, sent } = await signAndSubmit(tx, { signTransaction, intent, emit });
   emit?.({ type: "settled", hash });
   const amounts = sent.result;
   const out = Array.isArray(amounts) ? amounts[amounts.length - 1] : undefined;
@@ -150,7 +151,8 @@ export async function buyUsdcWithXlm(params: {
       nativeToScVal(swapDeadline(now()), { type: "u64" }),
     ],
   });
-  const { hash } = await signAndSubmit(tx, { signTransaction, emit });
+  const intent = { kind: "swap.exact-out", amountOut, maxIn: ceiling, path } as const;
+  const { hash } = await signAndSubmit(tx, { signTransaction, intent, emit });
   emit?.({ type: "settled", hash });
   return { hash, maxIn: ceiling };
 }

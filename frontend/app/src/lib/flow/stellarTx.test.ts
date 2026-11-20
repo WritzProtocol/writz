@@ -11,7 +11,8 @@ import {
   TransactionBuilder,
   xdr,
 } from "@stellar/stellar-sdk";
-import { bidInclusionFeeOnly } from "./stellarTx";
+import { SignatureRejectedError } from "@/lib/wallet/rejection";
+import { bidInclusionFeeOnly, signAndSubmit } from "./stellarTx";
 
 const PASSPHRASE = Networks.TESTNET;
 const CONTRACT_ID = "CCMSOCBVX2S645MQFFXJRHVHRWH2NY62KLOJXNDYFOJRYHIC47EO6ZZK";
@@ -112,5 +113,22 @@ describe("bidInclusionFeeOnly", () => {
     const { seen, signTransaction } = wallet();
     await tx.sign({ signTransaction });
     expect(signedFee(seen[0])).toBe(INCLUSION_FEE + Number(resourceFee));
+  });
+});
+
+describe("signAndSubmit", () => {
+  test("hands the declared intent to the wallet alongside the bindings' own options, and maps a decline", async () => {
+    const seen: unknown[] = [];
+    const signTransaction = async (_xdr: string, opts?: unknown) => {
+      seen.push(opts);
+      throw new Error("User declined access");
+    };
+    const events: string[] = [];
+    const intent = { kind: "writz-lend.withdraw", amount: 5n } as const;
+    const err = await signAndSubmit(assembled(50n), { signTransaction, intent, emit: (e) => events.push(e.type) }).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(SignatureRejectedError);
+    expect(seen).toHaveLength(1);
+    expect(seen[0]).toMatchObject({ intent, networkPassphrase: PASSPHRASE });
+    expect(events).toEqual(["awaiting_signature", "signature_cancelled"]);
   });
 });

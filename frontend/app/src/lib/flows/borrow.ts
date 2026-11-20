@@ -50,6 +50,7 @@ export async function borrow(params: {
     debtStroops: (chain.debtStroops + amountStroops).toString(),
     status: "active",
   };
-  const { hash } = await submitPositionTx({ kind: "borrow", tx, position, updated, signTransaction, emit });
+  const intent = { kind: "writz-lend.borrow", txid: position.txid, amount: amountStroops } as const;
+  const { hash } = await submitPositionTx({ kind: "borrow", tx, position, updated, intent, signTransaction, emit });
   return { txHash: hash, updated };
 }

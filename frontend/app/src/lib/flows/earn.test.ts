@@ -72,8 +72,10 @@ const { depositToVault, withdrawFromVault } = await import("./earn");
 
 class Stop extends Error {}
 const signed: string[] = [];
-const signTransaction = async (txXdr: string): Promise<{ signedTxXdr: string; signerAddress: string }> => {
+const intents: unknown[] = [];
+const signTransaction = async (txXdr: string, opts?: { intent?: unknown }): Promise<{ signedTxXdr: string; signerAddress: string }> => {
   signed.push(txXdr);
+  intents.push(opts?.intent);
   throw new Stop("stopped before submission");
 };
 
@@ -84,6 +86,7 @@ const flows = [
 
 beforeEach(() => {
   signed.length = 0;
+  intents.length = 0;
 });
 
 describe("Earn flows check the relayer's transaction before the wallet sees it", () => {
@@ -117,5 +120,15 @@ describe("Earn flows check the relayer's transaction before the wallet sees it",
     await expect(depositToVault({ amountStroops: AMOUNT, caller: user, signTransaction })).rejects.toBeInstanceOf(Stop);
     await expect(withdrawFromVault({ amountStroops: AMOUNT, caller: user, signTransaction })).rejects.toBeInstanceOf(Stop);
     expect(signed).toEqual([genuineDeposit, genuineWithdraw]);
+  });
+
+  it("declares what each call is for, so the embedded wallet can check it before signing", async () => {
+    built = { deposit: genuineDeposit, withdraw: genuineWithdraw };
+    await expect(depositToVault({ amountStroops: AMOUNT, caller: user, signTransaction })).rejects.toBeInstanceOf(Stop);
+    await expect(withdrawFromVault({ amountStroops: AMOUNT, caller: user, signTransaction })).rejects.toBeInstanceOf(Stop);
+    expect(intents).toEqual([
+      { kind: "earn.deposit", amount: AMOUNT },
+      { kind: "earn.withdraw", amount: AMOUNT },
+    ]);
   });
 });

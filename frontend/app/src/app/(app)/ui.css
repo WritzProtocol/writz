@@ -252,6 +252,20 @@ body:has(.app) { background: var(--bg); }
 @media (hover: hover) and (pointer: fine) { .wz-note a:not(.wz-btn):hover, .wz-note a.wz-btn-text:hover { text-decoration-color: currentColor; } }
 .wz-note a.wz-btn-gold { color: var(--ink); }
 
+/* The signing check before the embedded wallet signs: a notice with the request and the transaction side by side */
+.wz-signcheck { gap: 8px; padding: 16px 18px; scroll-margin: 96px 0 calc(112px + env(safe-area-inset-bottom)); }
+.wz-signcheck:focus { outline: 2px solid var(--mark); outline-offset: 2px; }
+.wz-signcheck:focus:not(:focus-visible) { outline-color: color-mix(in srgb, var(--mark) 55%, transparent); }
+.wz-signcheck-h { font-size: 16px; font-weight: 600; line-height: 1.35; color: var(--heading); }
+.wz-signcheck-rows { margin: 2px 0; }
+.wz-signcheck-rows .wz-row { flex-direction: column; align-items: flex-start; gap: 2px; padding: 8px 0; border-top-color: var(--rule-strong); font-size: 15px; }
+.wz-signcheck-rows .wz-row:first-child { padding-top: 2px; }
+.wz-signcheck-rows .wz-row dt { font-size: 13px; }
+.wz-signcheck-rows .wz-row dd { margin: 0; text-align: left; }
+.wz-signcheck-line { display: block; overflow-wrap: break-word; }
+.wz-signcheck .wz-actions { margin-top: 8px; }
+.wz-signcheck-fallback { margin-bottom: 24px; }
+
 .wz-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 16px; padding: 12px 0; border-top: 1px solid var(--rule); font-size: 15px; }
 .wz-row:first-child { border-top: 0; }
 .wz-row dt { flex-shrink: 0; color: var(--muted); }

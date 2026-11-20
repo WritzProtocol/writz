@@ -29,7 +29,8 @@ export async function supply(params: {
   const tx = await simulateWithRetry(() =>
     client.supply_usdc({ supplier, amount: amountStroops }),
   );
-  const { hash } = await submitTrackedTx({ kind: "supply", owner: supplier, tx, signTransaction, emit });
+  const intent = { kind: "writz-lend.supply", amount: amountStroops } as const;
+  const { hash } = await submitTrackedTx({ kind: "supply", owner: supplier, tx, intent, signTransaction, emit });
   return { txHash: hash };
 }
 
@@ -54,7 +55,8 @@ export async function withdraw(params: {
   const tx = await simulateWithRetry(() =>
     client.withdraw_supply({ supplier, amount: amountStroops }),
   );
-  const { hash } = await submitTrackedTx({ kind: "withdraw", owner: supplier, tx, signTransaction, emit });
+  const intent = { kind: "writz-lend.withdraw", amount: amountStroops } as const;
+  const { hash } = await submitTrackedTx({ kind: "withdraw", owner: supplier, tx, intent, signTransaction, emit });
   return { txHash: hash };
 }
 

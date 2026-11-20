@@ -155,6 +155,7 @@ async function realRegister(input: RegisterInput): Promise<{ hash: string }> {
   const tx = await simulateWritzLend(() => client.deposit(args));
   const { hash } = await signAndSubmit(tx, {
     signTransaction,
+    intent: { kind: "writz-lend.deposit", btcTxid: pd.btcTxid },
     emit,
     onSigned: input.onSigned,
     onDropped: input.onDropped,

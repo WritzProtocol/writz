@@ -116,6 +116,7 @@ async function closeUnborrowed({ txid, owner, signTransaction, emit }: Parameter
     kind: "repay",
     owner,
     tx,
+    intent: { kind: "writz-lend.repay", txid, amount: 0n },
     signTransaction,
     emit: (e) => {
       if (e.type !== "settled") emit(e);

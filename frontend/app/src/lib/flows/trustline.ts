@@ -120,7 +120,7 @@ export async function enableTrustline(params: {
     .setTimeout(120)
     .build();
 
-  const { signedTxXdr } = await signTransaction(tx.toXDR());
+  const { signedTxXdr } = await signTransaction(tx.toXDR(), { intent: { kind: "trustline", asset } });
   const signed = TransactionBuilder.fromXDR(signedTxXdr, config.networkPassphrase);
   await horizon.submitTransaction(signed);
 }
