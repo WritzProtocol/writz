@@ -1,0 +1,98 @@
+/* Writz Graphite & Gold as a Tailwind v4 theme, shared by frontend/app and frontend/landing.
+ * Values live in tokens.css; this file only maps them to utilities, so a token
+ * change needs no edit here. `reference` keeps Tailwind from re-declaring the
+ * variables, which tokens.css already puts on :root. */
+@import "./tokens.css";
+
+@theme inline reference {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-deep: var(--deep);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-heading: var(--heading);
+  --color-body: var(--body);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-on-accent: var(--on-accent);
+  --color-danger: var(--danger);
+  --color-positive: var(--positive);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+  --color-link: var(--link);
+  --color-mark: var(--mark);
+  --color-tint-10: var(--tint-10);
+  --color-tint-20: var(--tint-20);
+
+  --shadow-border: var(--shadow-border);
+
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+
+  --radius-control: var(--radius-control);
+
+  --ease-enter: var(--ease-enter);
+  --ease-exit: var(--ease-exit);
+}
+
+/* Motion tiers. Tailwind has no duration namespace, so each tier is a utility. */
+@utility duration-micro {
+  transition-duration: var(--dur-micro);
+}
+@utility duration-element {
+  transition-duration: var(--dur-element);
+}
+@utility duration-section {
+  transition-duration: var(--dur-section);
+}
+@utility duration-signature {
+  transition-duration: var(--dur-signature);
+}
+
+/* The parallelogram at the mark's minus 16 degrees, drawn behind an element
+ * (buttons, chips, the active nav link, the count badge). The fill and the
+ * horizontal inset are custom properties, so a variant sets them:
+ * `slant [--slant-bg:var(--accent)] hover:[--slant-bg:var(--accent-hover)]`.
+ * A plain skewed box (the slash before a status, a dot) is `-skew-x-16`. */
+@utility slant {
+  position: relative;
+  isolation: isolate;
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0 var(--slant-inset, 7px);
+    z-index: -1;
+    background: var(--slant-bg, var(--tint-10));
+    transform: skewX(-16deg);
+    transition:
+      background-color var(--dur-micro) var(--ease-enter),
+      box-shadow var(--dur-micro) var(--ease-enter);
+  }
+  &:focus-visible {
+    outline: none;
+  }
+  &:focus-visible::before {
+    box-shadow:
+      0 0 0 2px var(--bg),
+      0 0 0 4px var(--mark);
+  }
+}
+
+/* The cut corner on panels takes the mark's angle off the top left. 0.2867 is
+ * the tangent of 16 degrees, so the cut's height follows its width. */
+@utility cut {
+  --cut: 40px;
+  clip-path: polygon(var(--cut) 0, 100% 0, 100% 100%, 0 100%, 0 calc(var(--cut) / 0.2867));
+  @media (max-width: 767px) {
+    --cut: 24px;
+  }
+}
+@utility cut-sm {
+  --cut: 32px;
+  clip-path: polygon(var(--cut) 0, 100% 0, 100% 100%, 0 100%, 0 calc(var(--cut) / 0.2867));
+  @media (max-width: 767px) {
+    --cut: 24px;
+  }
+}
