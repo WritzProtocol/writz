@@ -101,6 +101,24 @@ describe("signWithIntentCheck (the embedded Pollar wallet)", () => {
     expect(pollar.calls).toEqual([GOOD]);
   });
 
+  test("two signing calls at once both wait for their own answer; the second is not reported as declined", async () => {
+    const reviews = new SigningReviews();
+    const a = fakePollar();
+    const b = fakePollar();
+    const first = run(GOOD, undefined, reviews, a);
+    const second = run(GOOD, undefined, reviews, b);
+    await Promise.resolve();
+    const shown = reviews.get()!;
+    expect(reviews.queued()).toBe(1);
+    reviews.answer(shown.id, "sign");
+    await first;
+    expect(a.calls).toHaveLength(1);
+    expect(b.calls).toHaveLength(0);
+    reviews.answer(reviews.get()!.id, "sign");
+    await second;
+    expect(b.calls).toHaveLength(1);
+  });
+
   test("above the large-amount limit a matching transaction asks to confirm; Confirm signs, Cancel rejects", async () => {
     const confirm = new SigningReviews();
     const seen = answering(confirm, "sign");

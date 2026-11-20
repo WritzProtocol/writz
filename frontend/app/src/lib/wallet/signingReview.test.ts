@@ -31,16 +31,39 @@ describe("SigningReviews", () => {
     expect(await pending).toBe("cancel");
   });
 
-  test("a stale answer is ignored, a newer request cancels the older, and cancel() clears it", async () => {
+  test("two concurrent requests queue: the second waits, is shown once the first is answered, and neither is cancelled", async () => {
+    const r = new SigningReviews();
+    const first = r.request(ask("large"));
+    const firstId = r.get()!.id;
+    const second = r.request(ask("unknown"));
+    expect(r.get()!.id).toBe(firstId);
+    expect(r.queued()).toBe(1);
+    let secondDone = false;
+    void second.then(() => (secondDone = true));
+    await Promise.resolve();
+    expect(secondDone).toBe(false);
+    r.answer(firstId + 1, "sign");
+    expect(r.get()!.id).toBe(firstId);
+    r.answer(firstId, "sign");
+    expect(await first).toBe("sign");
+    expect(r.get()!.mode).toBe("unknown");
+    r.answer(r.get()!.id, "sign");
+    expect(await second).toBe("sign");
+    expect(r.get()).toBeNull();
+  });
+
+  test("a stale answer is ignored, and cancel() clears every waiting review", async () => {
     const r = new SigningReviews();
     const first = r.request(ask("large"));
     const firstId = r.get()!.id;
     const second = r.request(ask("large"));
-    expect(await first).toBe("cancel");
     r.answer(firstId, "sign");
-    expect(r.get()).not.toBeNull();
+    r.answer(firstId, "cancel");
+    expect(await first).toBe("sign");
+    const third = r.request(ask("unknown"));
     r.cancel();
     expect(await second).toBe("cancel");
+    expect(await third).toBe("cancel");
     expect(r.get()).toBeNull();
   });
 

@@ -8,6 +8,21 @@
  * every panel that renders "awaiting signature" holds a slot, and the shell
  * holds a fallback that is used only when no slot is on the page, so a check
  * can never wait unseen while the transaction lock is held.
+ *
+ * Requests queue, first in first out, and the page shows one at a time. Two
+ * signing calls can overlap: the swap and the cross-chain send of step 2 do
+ * not take the transaction lock, and two tabs or a double click can race. A
+ * newer request therefore never cancels an older one, which would surface as
+ * "you declined" for a signature the user was never asked about; each waits
+ * for its own answer, in order.
+ *
+ * Which panel shows the check: the most recently mounted slot. A signing call
+ * does not know which panel started it, so this is a heuristic, not a link.
+ * It holds in practice because the transaction lock lets one flow per account
+ * sign at a time and the panel of the running flow is the one that just
+ * switched to its progress view (and mounted its slot); the fallback covers
+ * the rest. Tying a request to its panel would mean threading a slot id
+ * through every flow, which is not done here.
  */
 
 /** How the embedded Pollar wallet is named in the UI. */
@@ -40,37 +55,47 @@ export interface SigningReview {
 export type ReviewRequest = Omit<SigningReview, "id">;
 
 export class SigningReviews {
-  private current: { review: SigningReview; resolve: (a: ReviewAnswer) => void } | null = null;
+  private readonly queue: { review: SigningReview; resolve: (a: ReviewAnswer) => void }[] = [];
   private readonly listeners = new Set<() => void>();
   private readonly slots: string[] = [];
   private nextId = 1;
 
-  /** Shows `request` and resolves with the user's answer. A mismatch can only resolve "cancel". */
+  /**
+   * Queues `request` behind any waiting one and resolves with the user's
+   * answer once it has been shown and answered. A mismatch can only resolve
+   * "cancel".
+   */
   request(request: ReviewRequest): Promise<ReviewAnswer> {
-    this.cancel();
     const review: SigningReview = { ...request, id: this.nextId++ };
     return new Promise<ReviewAnswer>((resolve) => {
-      this.current = { review, resolve };
-      this.emit();
+      this.queue.push({ review, resolve });
+      if (this.queue.length === 1) this.emit();
     });
   }
 
-  /** Answers the review `id`; a stale id (one already answered or replaced) is ignored. */
+  /** Answers the review on screen, `id`; any other id (answered, or still queued) is ignored. */
   answer(id: number, answer: ReviewAnswer): void {
-    const c = this.current;
-    if (!c || c.review.id !== id) return;
-    this.current = null;
-    c.resolve(c.review.mode === "mismatch" ? "cancel" : answer);
+    const head = this.queue[0];
+    if (!head || head.review.id !== id) return;
+    this.queue.shift();
+    head.resolve(head.review.mode === "mismatch" ? "cancel" : answer);
     this.emit();
   }
 
-  /** Cancels whatever is waiting, for a disconnect or a newer request. */
+  /** Cancels every waiting review, for a disconnect. */
   cancel(): void {
-    if (this.current) this.answer(this.current.review.id, "cancel");
+    const waiting = this.queue.splice(0);
+    for (const w of waiting) w.resolve("cancel");
+    if (waiting.length) this.emit();
+  }
+
+  /** How many requests wait behind the one on screen. */
+  queued(): number {
+    return Math.max(0, this.queue.length - 1);
   }
 
   get(): SigningReview | null {
-    return this.current?.review ?? null;
+    return this.queue[0]?.review ?? null;
   }
 
   subscribe(listener: () => void): () => void {

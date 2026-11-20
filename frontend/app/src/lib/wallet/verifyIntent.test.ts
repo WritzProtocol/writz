@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { Buffer } from "buffer";
-import { Account, Address, Asset, nativeToScVal, Networks, Operation, scValToBigInt, TransactionBuilder, xdr } from "@stellar/stellar-sdk";
+import { Account, Address, Asset, FeeBumpTransaction, nativeToScVal, Networks, Operation, scValToBigInt, TransactionBuilder, xdr } from "@stellar/stellar-sdk";
+import { checkSignedEnvelope } from "./sign";
+import { LIVE_BURN, LIVE_BURN_FEE_BUMPED, LIVE_SUPPLY } from "./liveTxFixtures";
 import { LIVE_ASSET, LIVE_CALLER, LIVE_DEPOSIT, LIVE_VAULT, LIVE_WITHDRAW } from "@/lib/earn/vaultTxFixtures";
 import type { SigningIntent } from "./intent";
 import {
@@ -369,5 +371,46 @@ describe("describeRequest", () => {
     expect(describeRequest({ kind: "writz-lend.repay", txid: TXID, amount: 5n }, ENV)).toBe("Repay 0.0000005 USDC on your loan");
     expect(describeRequest(CASES.find((c) => c.name === "swap.exact-in")!.intent, ENV)).toBe("Swap 50.00 USDC for at least 45.00 EURC");
     expect(describeRequest({ kind: "trustline", asset: { code: "USDC", issuer: CALLER } }, ENV)).toBe("Add USDC to your wallet");
+  });
+});
+
+describe("checkIntent: transactions that landed on testnet", () => {
+  const liveEnv = {
+    ...ENV,
+    writzLend: LIVE_SUPPLY.pool,
+    usdcToken: LIVE_SUPPLY.usdc,
+    tokenMessengerMinter: LIVE_BURN.tmm,
+  };
+
+  test("a writz-lend supply_usdc on the current pool matches its intent", () => {
+    const intent: SigningIntent = { kind: "writz-lend.supply", amount: LIVE_SUPPLY.amount };
+    expect(checkIntent(LIVE_SUPPLY.xdr, intent, LIVE_SUPPLY.caller, liveEnv).status).toBe("match");
+    expect(checkIntent(LIVE_SUPPLY.xdr, { ...intent, amount: LIVE_SUPPLY.amount + 1n }, LIVE_SUPPLY.caller, liveEnv).status).toBe("mismatch");
+    expect(checkIntent(LIVE_SUPPLY.xdr, intent, CALLER, liveEnv).status).toBe("mismatch");
+  });
+
+  test("a CCTP deposit_for_burn with a zero destination caller and Standard finality matches its intent", () => {
+    const intent: SigningIntent = { kind: "cctp.burn", amount: LIVE_BURN.amount, maxFee: LIVE_BURN.maxFee, recipient: LIVE_BURN.recipient };
+    const env = { ...liveEnv, cctpDomain: LIVE_BURN.domain };
+    expect(checkIntent(LIVE_BURN.xdr, intent, LIVE_BURN.caller, env).status).toBe("match");
+    // The same burn read against the Base Sepolia domain Writz uses is refused.
+    expect(checkIntent(LIVE_BURN.xdr, intent, LIVE_BURN.caller, { ...env, cctpDomain: 6 }).status).toBe("mismatch");
+    expect(checkIntent(LIVE_BURN.xdr, { ...intent, recipient: "0x" + "00".repeat(20) }, LIVE_BURN.caller, env).status).toBe("mismatch");
+  });
+
+  test("a fee-bumped burn: refused as an envelope to sign, its inner call checked on its own, and accepted back from the sponsor", () => {
+    const env = { ...liveEnv, cctpDomain: LIVE_BURN_FEE_BUMPED.domain };
+    const b = LIVE_BURN_FEE_BUMPED;
+    const intent: SigningIntent = { kind: "cctp.burn", amount: b.amount, maxFee: b.maxFee, recipient: b.recipient };
+    const outer = checkIntent(b.xdr, intent, b.caller, env);
+    expect(outer.status === "mismatch" && outer.reason).toBe("fee_bump");
+
+    const bumped = TransactionBuilder.fromXDR(b.xdr, Networks.TESTNET) as FeeBumpTransaction;
+    const inner = bumped.innerTransaction.toXDR();
+    // It names a destination caller, which a Writz burn never does.
+    const v = checkIntent(inner, intent, b.caller, env);
+    expect(v.status === "mismatch" && v.detail).toMatch(/deposit_for_burn argument 5/);
+    // What a sponsor hands back around the transaction that was checked passes the post-sign check.
+    expect(checkSignedEnvelope({ signedXdr: b.xdr, unsignedXdr: inner, intent: undefined, caller: b.caller, env })).toBeNull();
   });
 });

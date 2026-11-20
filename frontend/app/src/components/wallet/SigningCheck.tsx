@@ -6,6 +6,8 @@ import { usdcText } from "@/lib/wallet/intent";
 import type { ReviewAnswer, SigningReview, SigningReviews } from "@/lib/wallet/signingReview";
 
 const NONE = () => () => {};
+/** How long after mount the live region gets its text. */
+export const LIVE_DELAY_MS = 100;
 
 /** The waiting review and which slot shows it, kept in sync with the store. */
 function useReviewState(reviews: SigningReviews | null): { review: SigningReview | null; owner: string | null } {
@@ -69,22 +71,41 @@ function copyOf(r: SigningReview): Copy {
  */
 export function SigningCheckView({ review, onAnswer }: { review: SigningReview; onAnswer: (a: ReviewAnswer) => void }) {
   const ref = useRef<HTMLElement>(null);
+  const live = useRef<HTMLParagraphElement>(null);
+  const before = useRef<Element | null>(null);
   const uid = useId();
   const [answered, setAnswered] = useState<number | null>(null);
   const c = copyOf(review);
   const busy = answered === review.id;
+  const announce = c.announce;
 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
+    if (document.activeElement && document.activeElement !== el && !el.contains(document.activeElement)) {
+      before.current = document.activeElement;
+    }
     el.focus({ preventScroll: true });
     el.scrollIntoView?.({ block: "nearest" });
-  }, [review.id]);
+    // The live region mounts empty and is filled a moment later, so screen
+    // readers that only announce changes to an existing region still read it.
+    const t = setTimeout(() => {
+      if (live.current) live.current.textContent = announce;
+    }, LIVE_DELAY_MS);
+    return () => clearTimeout(t);
+  }, [review.id, announce]);
 
   const answer = (a: ReviewAnswer) => {
     if (busy) return;
     setAnswered(review.id);
+    const back = before.current;
     onAnswer(a);
+    // Once the check is gone, focus goes back to where it was, unless
+    // something else (the next check, the next step) has taken it.
+    setTimeout(() => {
+      const lost = !document.activeElement || document.activeElement === document.body;
+      if (lost && back instanceof HTMLElement && back.isConnected) back.focus({ preventScroll: true });
+    }, 0);
   };
   const onKeyDown = (e: KeyboardEvent<HTMLElement>) => {
     if (e.key !== "Escape") return;
@@ -165,9 +186,7 @@ export function SigningCheckView({ review, onAnswer }: { review: SigningReview; 
           </>
         )}
       </div>
-      <p className="wz-sr" role={review.mode === "large" ? "status" : "alert"}>
-        {c.announce}
-      </p>
+      <p ref={live} className="wz-sr" role={review.mode === "large" ? "status" : "alert"} />
     </section>
   );
 }

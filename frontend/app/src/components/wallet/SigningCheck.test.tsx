@@ -4,7 +4,7 @@ import { act, type ReactNode } from "react";
 import type { Root } from "react-dom/client";
 import { ReviewsContext } from "@/lib/wallet/reviewsContext";
 import { SigningReviews, type ReviewAnswer, type ReviewRequest, type SigningReview } from "@/lib/wallet/signingReview";
-import { SigningCheckFallback, SigningCheckSlot, SigningCheckView } from "./SigningCheck";
+import { LIVE_DELAY_MS, SigningCheckFallback, SigningCheckSlot, SigningCheckView } from "./SigningCheck";
 
 // A DOM for this file only, so focus and keyboard can be exercised; removed again after.
 beforeAll(() => {
@@ -127,6 +127,9 @@ describe("SigningCheckView", () => {
     ] as const) {
       const el = await view(mode);
       const live = el.querySelector(`[role="${role}"]`);
+      // Mounted empty, then filled, so the change is announced.
+      expect(live?.textContent).toBe("");
+      await act(async () => new Promise((r) => setTimeout(r, LIVE_DELAY_MS + 20)));
       expect(live?.textContent?.length).toBeGreaterThan(10);
       await act(async () => root?.unmount());
       host?.remove();
@@ -142,6 +145,27 @@ describe("SigningCheckView", () => {
     await act(async () => press(section, "Escape"));
     expect(answers).toEqual(["cancel"]);
     expect([...el.querySelectorAll("button")].every((b) => b.disabled)).toBe(true);
+  });
+
+  test("after an answer, focus returns to the element that had it before", async () => {
+    const reviews = new SigningReviews();
+    const outside = document.createElement("button");
+    outside.textContent = "Deposit 10.00 USDC";
+    document.body.appendChild(outside);
+    outside.focus();
+    const el = await render(
+      <ReviewsContext.Provider value={reviews}>
+        <SigningCheckSlot>progress</SigningCheckSlot>
+      </ReviewsContext.Provider>,
+    );
+    await act(async () => {
+      void reviews.request(REQUESTS.large);
+    });
+    expect(document.activeElement).toBe(el.querySelector("section"));
+    await act(async () => (el.querySelectorAll("section button")[1] as HTMLButtonElement).click());
+    await act(async () => new Promise((r) => setTimeout(r, 10)));
+    expect(document.activeElement).toBe(outside);
+    outside.remove();
   });
 
   test("the buttons are native buttons in tab order, and Technical details holds the reason", async () => {
