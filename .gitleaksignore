@@ -1,0 +1,16 @@
+# Findings in past commits, reviewed on 2026-11-20 and accepted.
+# stellar-secret-seed: a testnet-only account used once for a deploy simulation in June 2026;
+# the account has since been merged and no longer exists on the network.
+# generic-api-key: contract IDs, public addresses and EVM addresses, not secrets.
+041289ad2638a90980244c39a1039a0e8d6d50c0:relayer/.env.example:generic-api-key:55
+1952156ec8dad1b178906af5ba9d8baddbb6946b:relayer/.env.example:generic-api-key:55
+2b58c535cb6cc288ecc9d15cb57ebaa1c14665a2:frontend/app/src/config.ts:generic-api-key:74
+2b58c535cb6cc288ecc9d15cb57ebaa1c14665a2:frontend/app/src/config.ts:generic-api-key:75
+2b58c535cb6cc288ecc9d15cb57ebaa1c14665a2:frontend/app/src/config.ts:generic-api-key:76
+358ad442d037a81fd1275c1093d54f8d65a2021f:scripts/deploy/test_deploy_sim.mjs:stellar-secret-seed:4
+590d1ec5af518d33949372346c84d617457c0510:relayer/src/cctp/message.ts:generic-api-key:33
+5fa728bc67db9adc3e46a8572dcfc85ee1b7cc83:relayer/src/cctp/message.ts:generic-api-key:33
+7ce8564cb61d332ccfba7e9dc09dc96edfdfa34e:frontend/app/src/config.ts:generic-api-key:74
+7ce8564cb61d332ccfba7e9dc09dc96edfdfa34e:frontend/app/src/config.ts:generic-api-key:75
+7ce8564cb61d332ccfba7e9dc09dc96edfdfa34e:frontend/app/src/config.ts:generic-api-key:76
+af1ad5ecf442e57d9e0f383b05f8fcbd5a2e20cb:frontend/.env.example:generic-api-key:14
