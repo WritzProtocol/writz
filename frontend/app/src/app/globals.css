@@ -159,6 +159,13 @@
     animation: none;
   }
 }
+/* The health meter on a loan panel: the fill grows and the marker drops in after the panel sweeps in. */
+@utility animate-ln-grow {
+  animation: ln-grow var(--dur-section) var(--ease-enter) calc(640ms + var(--wz-skip, 0ms)) both;
+}
+@utility animate-ln-drop {
+  animation: ln-drop var(--dur-element) var(--ease-enter) calc(1010ms + var(--wz-skip, 0ms)) both;
+}
 /* A closing sheet still slides out under reduced motion, as it always has; the sheet removes itself without waiting for it. */
 @utility animate-sh-fade-out {
   animation: sh-fade-out var(--dur-element) var(--ease-exit) both;
@@ -234,6 +241,17 @@
 @keyframes sh-right-out {
   to {
     transform: translateX(100%);
+  }
+}
+@keyframes ln-grow {
+  from {
+    transform: scaleX(0);
+  }
+}
+@keyframes ln-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
   }
 }
 @keyframes sh-up-out {
