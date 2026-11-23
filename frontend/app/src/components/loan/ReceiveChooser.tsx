@@ -7,6 +7,7 @@ import { debtLine, isSwapAssetId, offeredSwapAssets, swapAsset } from "@/lib/rec
 import { parseEvmAddress, receiveOptions, type ReceiveChoiceDraft } from "@/lib/receive/options";
 import { DEFAULT_SLIPPAGE_BP } from "@/lib/receive/swap";
 import * as ui from "@/components/ui/styles";
+import * as ln from "@/components/loan/styles";
 
 /** The options this deployment can deliver: each swap asset and Base Sepolia only when their contracts are configured. */
 export const RECEIVE_OPTIONS = receiveOptions({
@@ -36,12 +37,12 @@ export function ReceiveChooser({
       <p className={ui.label} id={`${id}-label`}>
         Receive as
       </p>
-      <div className={ui.cx(ui.chips, "ln-recv")} role="group" aria-labelledby={`${id}-label`}>
+      <div className={ui.chips} role="group" aria-labelledby={`${id}-label`}>
         {RECEIVE_OPTIONS.map((o) => (
           <button
             key={o.id}
             type="button"
-            className={ui.cx(ui.chip, "ln-recv-opt")}
+            className={ln.receiveOption}
             aria-pressed={draft.option === o.id}
             disabled={disabled}
             onClick={() => {

@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { LoanPage } from "@/components/loan/LoanPage";
 import { parseLoanNumber, parsePanel } from "@/lib/loan/model";
-import "../loans.css";
 import * as ui from "@/components/ui/styles";
+import * as ln from "@/components/loan/styles";
 
 type Props = {
   params: Promise<{ n: string }>;
@@ -21,11 +21,11 @@ export default async function LoanRoute({ params, searchParams }: Props) {
   const panel = parsePanel(Array.isArray(raw) ? raw[0] : raw);
   if (!n)
     return (
-      <div className="ln-col">
-        <header className="ln-head">
+      <div className={ln.col}>
+        <header className={ln.head}>
           <h1>Loan not found</h1>
         </header>
-        <section className="ln-empty">
+        <section className={ln.empty}>
           <p>There is no loan with that number on this device.</p>
           <Link href="/" className={ui.btn("gold")}>
             Go home

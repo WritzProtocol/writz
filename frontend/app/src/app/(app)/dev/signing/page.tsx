@@ -3,7 +3,6 @@ import { notFound } from "next/navigation";
 import { UI_MOCK } from "@/lib/mock/gate";
 import { SigningStates } from "./SigningStates";
 import "../../funds.css";
-import "../scenarios/dev.css";
 
 export const dynamic = "force-dynamic";
 

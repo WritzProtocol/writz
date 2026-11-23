@@ -44,26 +44,27 @@ import {
   WayOut,
 } from "./parts";
 import * as ui from "@/components/ui/styles";
+import * as ln from "./styles";
 
 const TAB_LABEL: Record<LoanTab, string> = { borrow: "Borrow more", repay: "Repay", release: "Release BTC" };
 
 function Heading({ n, badge, sub }: { n: number; badge?: ReactNode; sub?: ReactNode }) {
   return (
-    <Enter as="header" name="head" className="ln-head">
-      <div className="ln-title">
+    <Enter as="header" name="head" className={ln.head}>
+      <div className={ln.title}>
         <HeadingTitle n={n} />
         {badge}
       </div>
-      {sub ? <p className="ln-sub">{sub}</p> : null}
+      {sub ? <p className={ln.sub}>{sub}</p> : null}
     </Enter>
   );
 }
 
 function Empty({ n, title, body, action }: { n: number; title?: string; body: ReactNode; action: ReactNode }) {
   return (
-    <div className="ln-col">
+    <div className={ln.col}>
       <Heading n={n} />
-      <Enter as="section" name="empty" kind="open" className="cut-sm ln-empty">
+      <Enter as="section" name="empty" kind="open" className={ui.cx("cut-sm", ln.empty)}>
         {title ? <h2 className={ui.h2}>{title}</h2> : null}
         <div>{body}</div>
         {action}
@@ -228,7 +229,7 @@ export function LoanView({ m }: { m: LoanModel }) {
   };
 
   return (
-    <div className="ln-col">
+    <div className={ln.col}>
       <Heading
         n={n}
         badge={<StatusBadge status={status} />}
@@ -239,40 +240,40 @@ export function LoanView({ m }: { m: LoanModel }) {
         }
       />
 
-      <div className="ln-grid" data-risk={risk} data-side={sideTop ? "top" : undefined} style={grid}>
+      <div className={ln.grid} data-risk={risk} data-side={sideTop ? "top" : undefined} style={grid}>
         {risk ? (
-          <Enter as="section" name="risk" kind="open" className="cut ln-risk" aria-label="Risk">
+          <Enter as="section" name="risk" kind="open" className={ui.cx("cut", ln.risk)} aria-label="Risk">
             <HealthText ratioBp={ratioBp} health={checking ? null : health} />
-            <HealthMeter ratioBp={ratioBp} health={checking ? null : health} preview={preview} />
+            <HealthMeter ratioBp={ratioBp} health={checking ? null : health} preview={preview} className="mt-7" />
             {checking ? (
-              <p className="ln-liq">Checking...</p>
+              <p className={ln.liq}>Checking...</p>
             ) : m.price.kind === "failed" ? (
-              <div className={ui.cx(ui.actions, "ln-liq")}>
+              <div className={ui.cx(ui.actions, ln.liq)}>
                 <p>BTC price unavailable. Try again in a minute.</p>
                 <button type="button" className={ui.btn("line", "sm")} onClick={m.recheckPrice}>
                   Try again
                 </button>
               </div>
             ) : debt > 0n && liq !== null ? (
-              <p className="ln-liq">
+              <p className={ln.liq}>
                 Liquidated if BTC falls below <b className="mono">{formatUsd(liq)}</b>. BTC now{" "}
                 <span className="mono">{price !== null ? formatUsd(price) : "Checking..."}</span> (oracle price).
               </p>
             ) : (
-              <p className="ln-liq">
+              <p className={ln.liq}>
                 No debt yet, so nothing can be liquidated. BTC now{" "}
                 <span className="mono">{price !== null ? formatUsd(price) : "Checking..."}</span> (oracle price).
               </p>
             )}
           </Enter>
         ) : (
-          <Enter name="closed" step={2} className="ln-closed">
+          <Enter name="closed" step={2} className={ln.closed}>
             <ClosedNotice status={status} position={position} />
           </Enter>
         )}
 
         {risk ? (
-          <Enter as="dl" name="nums" step={3} className="ln-nums">
+          <Enter as="dl" name="nums" step={3} className={ln.nums}>
             <div>
               <dt>Collateral</dt>
               <dd>
@@ -296,7 +297,7 @@ export function LoanView({ m }: { m: LoanModel }) {
             </div>
           </Enter>
         ) : status.kind === "liquidated" ? (
-          <Enter as="dl" name="nums" step={3} className="ln-nums">
+          <Enter as="dl" name="nums" step={3} className={ln.nums}>
             <div>
               <dt>Collateral</dt>
               <dd className="mono">{formatBtc(collateral)} BTC</dd>
@@ -309,13 +310,13 @@ export function LoanView({ m }: { m: LoanModel }) {
         ) : null}
 
         {notes.length > 0 ? (
-          <Enter name="notes" step={3} className="ln-notes">
+          <Enter name="notes" step={3} className={ln.notes}>
             {notes}
           </Enter>
         ) : null}
 
         {hasActions && (
-          <Enter as="section" name="actions" step={4} className="ln-actions" aria-label="Actions">
+          <Enter as="section" name="actions" step={4} className={ln.actions} aria-label="Actions">
             <div
               className={ui.seg}
               role="tablist"
@@ -348,7 +349,7 @@ export function LoanView({ m }: { m: LoanModel }) {
               ))}
             </div>
             {reasons.length > 0 && (
-              <ul className="ln-reasons">
+              <ul className={ln.reasons}>
                 {reasons.map((r, i) => (
                   <li key={r} id={`loan-reason-${i}`} className={shownReasons.includes(r) ? undefined : "sr-only"}>
                     {r}
@@ -369,7 +370,7 @@ export function LoanView({ m }: { m: LoanModel }) {
             )}
             {(!checking || stepTwoOpen) && tab && (tabs[tab].enabled || (stepTwoOpen && tab === "borrow")) && (
               <div
-                className="animate-wz-enter ln-panel ln-act-panel"
+                className={ui.cx("animate-wz-enter", ln.actPanel)}
                 id="loan-panel"
                 role="tabpanel"
                 aria-labelledby={`loan-tab-${tab}`}
@@ -394,7 +395,7 @@ export function LoanView({ m }: { m: LoanModel }) {
           </Enter>
         )}
 
-        <div className="ln-side">
+        <div className={ln.side}>
           <DepositProof btcTxid={position.txid} stellarTxHash={position.stellarTxHash ?? null} verified />
           <LoanTimeline m={m} position={position} />
           {!closed && (

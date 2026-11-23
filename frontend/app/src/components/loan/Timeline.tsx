@@ -13,6 +13,7 @@ import type { Position } from "@/lib/position/types";
 import { ExternalLink } from "@/components/ui";
 import type { LoanModel } from "./model";
 import * as ui from "@/components/ui/styles";
+import * as ln from "@/components/loan/styles";
 
 const NONE: Record<string, TimelineEvent[]> = {};
 
@@ -68,11 +69,11 @@ export function LoanTimeline({ m, position }: { m: LoanModel; position: Position
   // Without a swap or transfer of its own, a borrow is received as USDC with the borrow itself.
   const rows = all.filter((r) => r.event || r.kind !== "received" || !(happened("borrowed") || r.passed));
   return (
-    <section className="ln-tl" aria-labelledby="ln-tl-h">
-      <h2 id="ln-tl-h" className="ln-h2">
+    <section className={ln.timeline} aria-labelledby="ln-tl-h">
+      <h2 id="ln-tl-h" className={ln.h2}>
         Full cycle
       </h2>
-      <ol className="ln-tl-list">
+      <ol className={ln.timelineList}>
         {rows.map((r, i) => {
           const e = r.event;
           return (
@@ -81,7 +82,7 @@ export function LoanTimeline({ m, position }: { m: LoanModel; position: Position
               <div>
                 <b>{e?.label ?? TIMELINE_LABEL[r.kind]}</b>
                 {e ? (
-                  <span className="ln-tl-meta">
+                  <span className={ln.timelineMeta}>
                     <ExternalLink href={urlOf(e)} className={ui.monoLink}>
                       {shortAddress(e.hash, 6, 4)}
                     </ExternalLink>
@@ -91,18 +92,18 @@ export function LoanTimeline({ m, position }: { m: LoanModel; position: Position
                     </span>
                   </span>
                 ) : happened(r.kind) ? (
-                  <span className="ln-tl-meta">Done. The transaction isn&apos;t on this device.</span>
+                  <span className={ln.timelineMeta}>Done. The transaction isn&apos;t on this device.</span>
                 ) : r.passed ? (
-                  <span className="ln-tl-meta">No transaction on this device</span>
+                  <span className={ln.timelineMeta}>No transaction on this device</span>
                 ) : (
-                  <span className="ln-tl-meta">Not yet</span>
+                  <span className={ln.timelineMeta}>Not yet</span>
                 )}
               </div>
             </li>
           );
         })}
       </ol>
-      {!m.timeline && <p className={ui.cx(ui.muted, "ln-tl-note")}>Built from this device. Steps taken on another device need the Writz indexer.</p>}
+      {!m.timeline && <p className={ui.cx(ui.muted, ln.timelineNote)}>Built from this device. Steps taken on another device need the Writz indexer.</p>}
     </section>
   );
 }
