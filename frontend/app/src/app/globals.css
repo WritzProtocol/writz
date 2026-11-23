@@ -26,6 +26,220 @@
     background: var(--accent);
     color: var(--on-accent);
   }
+
+  /* Short names for the brand tokens, still read by the route stylesheets. */
+  .app {
+    --midnight: var(--bg);
+    --panel: var(--surface);
+    --panel-2: var(--surface-2);
+    --ink: var(--on-accent);
+    --gold: var(--accent);
+    --gold-hover: var(--accent-hover);
+    --rule: var(--line);
+    --rule-strong: var(--line-strong);
+    /* The outline of a line button, and the tangent of 16 degrees that cuts corners at the mark's angle. */
+    --edge: color-mix(in oklab, var(--heading) 36%, transparent);
+    --shear: 0.2867;
+    --rail: 256px;
+    --gut: 32px;
+    --sk: color-mix(in srgb, var(--deep) 35%, transparent);
+  }
+  @media (max-width: 767px) {
+    .app {
+      --gut: 16px;
+    }
+  }
+  body:has(.app) {
+    background: var(--bg);
+  }
+  .app :focus-visible,
+  /* The wallet kit mounts on <body>, outside .app; lib/wallet/kitA11y.ts makes its items focusable. */
+  .stellar-wallets-kit :focus-visible {
+    outline: 2px solid var(--mark);
+    outline-offset: 2px;
+  }
+  .app small {
+    font-size: 13px;
+  }
+  .app h1[tabindex="-1"]:focus,
+  .app main[tabindex="-1"]:focus {
+    outline: none;
+  }
+
+  /* Skeletons: the hint script sets these attributes on <html> before first paint, so each skeleton shows only its own layout. */
+  html:not([data-wz-wallet="1"]) .app [data-sk="wallet"],
+  html[data-wz-wallet="1"] .app [data-sk="nowallet"],
+  html:not([data-wz-loans="1"]) .app [data-sk="loans"],
+  html[data-wz-loans="1"] .app [data-sk="noloans"],
+  html:not([data-wz-step="amount"]) .app [data-sk="amount"],
+  html[data-wz-step="amount"] .app [data-sk="past-amount"],
+  html:not([data-wz-step="review"]) .app [data-sk="review"],
+  html:not([data-wz-step="other"]) .app [data-sk="other"] {
+    display: none !important;
+  }
+}
+
+/* Figures from a chain or a calculation: Geist Mono with tabular numbers, so live values do not jitter. */
+@utility mono {
+  font-family: var(--ff-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Animations, each off when the user prefers reduced motion. The route entrance rises sections in steps of 80ms and sweeps a
+ * cut-corner panel in from the right before its contents rise; components/ui/entrance.tsx reads the wz-up and wz-cut names. */
+@utility animate-wz-spin {
+  animation: wz-spin 800ms linear infinite;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+@utility animate-wz-sk {
+  animation: wz-sk 1200ms linear infinite alternate;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+@utility animate-wz-up {
+  animation: wz-up var(--dur-section) var(--ease-enter) calc(var(--wz-at, 0ms) + var(--wz-skip, 0ms)) both;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+@utility animate-wz-open {
+  animation: wz-cut var(--dur-signature) var(--ease-enter) calc(120ms + var(--wz-skip, 0ms)) both;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+@utility animate-wz-open-child {
+  animation: wz-up var(--dur-section) var(--ease-enter) calc(640ms + var(--wz-skip, 0ms)) both;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+@utility animate-wz-seal {
+  animation: wz-cut var(--dur-signature) var(--ease-enter) 120ms both;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+@utility animate-wz-enter {
+  animation: wz-in var(--dur-element) var(--ease-enter) both;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+@utility animate-wz-rise {
+  animation: wz-in var(--dur-section) var(--ease-enter) both;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+@utility animate-wz-toast-in {
+  animation: wz-toast-in var(--dur-element) var(--ease-enter) both;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+@utility animate-wz-toast-out {
+  animation: wz-toast-out var(--dur-element) var(--ease-exit) both;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+@utility animate-sh-fade {
+  animation: sh-fade var(--dur-section) var(--ease-enter) both;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+@utility animate-sh-right {
+  animation: sh-right var(--dur-section) var(--ease-enter) both;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+/* A closing sheet still slides out under reduced motion, as it always has; the sheet removes itself without waiting for it. */
+@utility animate-sh-fade-out {
+  animation: sh-fade-out var(--dur-element) var(--ease-exit) both;
+}
+@utility animate-sh-right-out {
+  animation: sh-right-out var(--dur-element) var(--ease-exit) both;
+}
+
+@keyframes wz-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes wz-sk {
+  to {
+    opacity: 0.55;
+  }
+}
+@keyframes wz-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+}
+@keyframes wz-cut {
+  from {
+    clip-path: polygon(
+      calc(100% + var(--cut, 40px)) 0,
+      calc(100% + var(--cut, 40px)) 0,
+      100% 100%,
+      100% 100%,
+      100% calc(var(--cut, 40px) / var(--shear))
+    );
+  }
+}
+@keyframes wz-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+@keyframes wz-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+@keyframes wz-toast-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes sh-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes sh-right {
+  from {
+    transform: translateX(100%);
+  }
+}
+@keyframes sh-up {
+  from {
+    transform: translateY(100%);
+  }
+}
+@keyframes sh-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes sh-right-out {
+  to {
+    transform: translateX(100%);
+  }
+}
+@keyframes sh-up-out {
+  to {
+    transform: translateY(100%);
+  }
 }
 
 /* Native smooth scroll for anchor-link jumps only - replaces the removed

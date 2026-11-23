@@ -38,6 +38,7 @@ import { ReceiveStep, type ReceivedLeg } from "./ReceiveStep";
 import { ReceiveChooser } from "./ReceiveChooser";
 import { intentFor, type ReceiveChoiceDraft } from "@/lib/receive/options";
 import { repayShortfallStroops, suggestBorrowStroops } from "@/lib/onboarding/defaults";
+import * as ui from "@/components/ui/styles";
 
 const RECEIVE_USDC: ReceiveIntent = { kind: "usdc" };
 
@@ -89,9 +90,9 @@ export function badgeOf(status: PositionStatus): { label: string; tone: Tone } {
 export function StatusBadge({ status }: { status: PositionStatus }) {
   const { label, tone } = badgeOf(status);
   return (
-    <span className="wz-badge" data-tone={tone}>
+    <span className={ui.badge(tone)} data-tone={tone}>
       <i aria-hidden="true" />
-      <span className="wz-sr">Status: </span>
+      <span className="sr-only">Status: </span>
       {label}
     </span>
   );
@@ -247,7 +248,7 @@ export function WayOut({
   opened: string;
 }) {
   return (
-    <Enter as="section" name="wayout" kind="open" className="ln-out wz-cut-sm" aria-labelledby="way-out">
+    <Enter as="section" name="wayout" kind="open" className="cut-sm ln-out" aria-labelledby="way-out">
       <h2 id="way-out" className="ln-h2">
         Your way out
       </h2>
@@ -263,7 +264,7 @@ export function WayOut({
             {date ? `, about ${date}` : ""}.{" "}
           </>
         )}
-        <Link href={`/help/reclaim?loan=${n}`} className="wz-btn wz-btn-text wz-inline">
+        <Link href={`/help/reclaim?loan=${n}`} className={ui.btn("text", "md", { inline: true })}>
           How to reclaim
         </Link>
       </p>
@@ -291,7 +292,7 @@ export function WayOut({
 
 function TxLinkInline({ hash, chain = "stellar" }: { hash: string; chain?: "stellar" | "bitcoin" }) {
   return (
-    <ExternalLink href={chain === "stellar" ? stellarTxUrl(hash) : btcTxUrl(hash)} className="wz-link mono">
+    <ExternalLink href={chain === "stellar" ? stellarTxUrl(hash) : btcTxUrl(hash)} className={ui.monoLink}>
       {shortAddress(hash, 6, 4)}
     </ExternalLink>
   );
@@ -299,7 +300,7 @@ function TxLinkInline({ hash, chain = "stellar" }: { hash: string; chain?: "stel
 
 function Status({ children }: { children: ReactNode }) {
   return (
-    <div className="wz-status">
+    <div className={ui.status}>
       <Spinner />
       <span>{children}</span>
     </div>
@@ -317,11 +318,11 @@ export function TxRunning({ flow, walletName }: { flow: FlowState; walletName: s
           {walletName === POLLAR_WALLET_NAME ? (
             <Status>Checking and signing with {walletName}.</Status>
           ) : (
-            <div className="wz-stack" style={{ gap: 8 }}>
+            <div className={ui.stack} style={{ gap: 8 }}>
               <Status>
                 Confirm in {walletName}. Fee about 0.01 XLM.
               </Status>
-              {slow && <p className="wz-hint">Didn&apos;t see it? Open {walletName} from your browser toolbar.</p>}
+              {slow && <p className={ui.hint}>Didn&apos;t see it? Open {walletName} from your browser toolbar.</p>}
             </div>
           )}
         </SigningCheckSlot>
@@ -359,7 +360,7 @@ export function TxResult({
   switch (flow.phase) {
     case "settled":
       return (
-        <Notice tone="positive" label="Done" className="wz-enter">
+        <Notice tone="positive" label="Done" className="animate-wz-enter">
           <p>
             {success} {hash && <TxLinkInline hash={hash} />}
           </p>
@@ -377,7 +378,7 @@ export function TxResult({
           tone="warning"
           label="Not confirmed yet"
           actions={
-            <button type="button" className="wz-btn wz-btn-line wz-btn-sm" onClick={onCheckAgain}>
+            <button type="button" className={ui.btn("line", "sm")} onClick={onCheckAgain}>
               Check again
             </button>
           }
@@ -395,7 +396,7 @@ export function TxResult({
           context={{ flow: context }}
           hash={hash}
           actions={
-            <button type="button" className="wz-btn wz-btn-line wz-btn-sm" onClick={onDismiss}>
+            <button type="button" className={ui.btn("line", "sm")} onClick={onDismiss}>
               Try again
             </button>
           }
@@ -432,11 +433,11 @@ export function AmountField({
   unit?: string;
 }) {
   return (
-    <div className="wz-stack" style={{ gap: 8 }}>
-      <label htmlFor={id} className="wz-label">
+    <div className={ui.stack} style={{ gap: 8 }}>
+      <label htmlFor={id} className={ui.label}>
         {label}
       </label>
-      <div className="wz-field ln-field" data-invalid={Boolean(error)}>
+      <div className={ui.cx(ui.field(), "ln-field")} data-invalid={Boolean(error)}>
         <input
           id={id}
           inputMode="decimal"
@@ -450,11 +451,11 @@ export function AmountField({
           onChange={(e) => onChange(e.target.value)}
         />
         <span>{unit}</span>
-        <button type="button" className="wz-chip ln-max" onClick={onMax} disabled={disabled}>
+        <button type="button" className={ui.cx(ui.chip, "ln-max")} onClick={onMax} disabled={disabled}>
           {maxLabel}
         </button>
       </div>
-      <p id={`${id}-hint`} className={error ? "wz-error" : "wz-hint"}>
+      <p id={`${id}-hint`} className={error ? ui.error : ui.hint}>
         {error ?? hint}
       </p>
     </div>
@@ -518,7 +519,7 @@ function LiquidationEstimate({ collateralSats, debt }: { collateralSats: bigint;
   const liq = liquidationPriceFor(collateralSats, debt);
   return (
     <dl className="ln-est">
-      <div className="wz-row">
+      <div className={ui.row()}>
         <dt>Liquidation price</dt>
         <dd>
           {liq !== null ? <span className="mono">{formatUsd(liq)}</span> : "No debt, nothing to liquidate"}
@@ -604,7 +605,7 @@ export function BorrowPanel({
 
   return (
     <form
-      className="wz-stack"
+      className={ui.stack}
       noValidate
       onSubmit={(e) => {
         e.preventDefault();
@@ -619,13 +620,13 @@ export function BorrowPanel({
             Add USDC to your Stellar wallet so it can receive what you borrow. One signature. Your wallet sets aside 0.5 XLM.
           </p>
           {m.trust.error ? <ErrorBox error={m.trust.error} context={{ flow: "trustline" }} label="USDC not added" /> : null}
-          <div className="wz-actions">
+          <div className={ui.actions}>
             {m.trust.busy ? (
               <SigningCheckSlot>
                 <Status>Confirm in {m.stellar.walletName}. 0.5 XLM set aside.</Status>
               </SigningCheckSlot>
             ) : (
-              <button type="button" className="wz-btn wz-btn-gold" onClick={m.trust.add} disabled={m.otherTx}>
+              <button type="button" className={ui.btn("gold")} onClick={m.trust.add} disabled={m.otherTx}>
                 Add USDC
               </button>
             )}
@@ -644,9 +645,9 @@ export function BorrowPanel({
         hint={hint}
         disabled={running}
       />
-      <div className="wz-chips ln-presets">
+      <div className={ui.cx(ui.chips, "ln-presets")}>
         {[25n, 50n].map((p) => (
-          <button key={String(p)} type="button" className="wz-chip" disabled={running} onClick={() => setValue(toFieldValue((max * p) / 100n))}>
+          <button key={String(p)} type="button" className={ui.chip} disabled={running} onClick={() => setValue(toFieldValue((max * p) / 100n))}>
             {String(p)}%
           </button>
         ))}
@@ -683,11 +684,11 @@ export function BorrowPanel({
       ) : running ? (
         <TxRunning flow={m.flow} walletName={m.stellar.walletName} />
       ) : mine && m.flow.phase === "timed_out" ? null : (
-        <div className="wz-stack" style={{ gap: 8 }}>
+        <div className={ui.stack} style={{ gap: 8 }}>
           <div>
             <button
               type="submit"
-              className="wz-btn wz-btn-gold"
+              className={ui.btn("gold")}
               aria-disabled={amount === null || Boolean(error) || noTrustline || trustChecking || choiceBlocked}
               aria-describedby={trustChecking || noTrustline ? `${id}-why` : undefined}
             >
@@ -695,7 +696,7 @@ export function BorrowPanel({
             </button>
           </div>
           {(trustChecking || noTrustline) && (
-            <p id={`${id}-why`} className="wz-hint">
+            <p id={`${id}-why`} className={ui.hint}>
               {trustChecking ? "Checking your wallet" : "Add USDC first."}
             </p>
           )}
@@ -756,7 +757,7 @@ export function RepayPanel({
 
   return (
     <form
-      className="wz-stack"
+      className={ui.stack}
       noValidate
       onSubmit={(e) => {
         e.preventDefault();
@@ -790,7 +791,7 @@ export function RepayPanel({
                 <Status>Confirm in {m.stellar.walletName}</Status>
               </SigningCheckSlot>
             ) : (
-              <button type="button" className="wz-btn wz-btn-line" onClick={() => m.topUp?.buy(shortfall)} disabled={m.otherTx}>
+              <button type="button" className={ui.btn("line")} onClick={() => m.topUp?.buy(shortfall)} disabled={m.otherTx}>
                 Get {formatUsdc(shortfall)} USDC with XLM
               </button>
             )
@@ -823,7 +824,7 @@ export function RepayPanel({
         <TxRunning flow={m.flow} walletName={m.stellar.walletName} />
       ) : mine && m.flow.phase === "timed_out" ? null : (
         <div>
-          <button type="submit" className="wz-btn wz-btn-gold" aria-disabled={amount === null || Boolean(error)}>
+          <button type="submit" className={ui.btn("gold")} aria-disabled={amount === null || Boolean(error)}>
             {amount !== null && !error ? `Repay ${formatUsdc(amount)} USDC` : "Repay"}
           </button>
         </div>
@@ -850,19 +851,19 @@ export function ReleasePanel({ m, position, neverBorrowed }: { m: LoanModel; pos
   if (step !== null)
     return (
       <>
-        <ol className="wz-steps" aria-label="Release progress">
+        <ol className={ui.steps} aria-label="Release progress">
           {RELEASE_STEPS.map((s, i) => (
             <li key={s} data-state={i < step ? "done" : i === step ? "now" : "next"} aria-current={i === step ? "step" : undefined}>
               {i === step ? <Spinner /> : <i aria-hidden="true" />}
               <span>{s}</span>
-              {i < step && <span className="wz-sr">Done</span>}
+              {i < step && <span className="sr-only">Done</span>}
             </li>
           ))}
         </ol>
         {step === 2 ? (
           <CosignWait />
         ) : (
-          <p className="wz-sr" role="status">
+          <p className="sr-only" role="status">
             {RELEASE_STEPS[step]}
           </p>
         )}
@@ -871,13 +872,13 @@ export function ReleasePanel({ m, position, neverBorrowed }: { m: LoanModel; pos
 
   if (mine && m.flow.phase === "settled")
     return (
-      <Notice tone="positive" label="Sent" className="wz-enter">
+      <Notice tone="positive" label="Sent" className="animate-wz-enter">
         <p>Your release was sent to Bitcoin. It arrives after 1 Bitcoin confirmation.</p>
       </Notice>
     );
 
   return (
-    <div className="wz-stack">
+    <div className={ui.stack}>
       <p>
         {neverBorrowed
           ? "Nothing is owed on this loan, so you can close it and release your BTC."
@@ -888,7 +889,7 @@ export function ReleasePanel({ m, position, neverBorrowed }: { m: LoanModel; pos
           tone="warning"
           label="Still waiting for Writz"
           actions={
-            <button type="button" className="wz-btn wz-btn-gold" onClick={m.release} disabled={blocker !== null || m.otherTx || m.catchingUp}>
+            <button type="button" className={ui.btn("gold")} onClick={m.release} disabled={blocker !== null || m.otherTx || m.catchingUp}>
               Check again
             </button>
           }
@@ -910,7 +911,7 @@ export function ReleasePanel({ m, position, neverBorrowed }: { m: LoanModel; pos
         <Notice
           tone="info"
           actions={
-            <button type="button" className="wz-btn wz-btn-gold" onClick={m.bitcoin.connect} disabled={m.bitcoin.connecting}>
+            <button type="button" className={ui.btn("gold")} onClick={m.bitcoin.connect} disabled={m.bitcoin.connecting}>
               {m.bitcoin.connecting ? "Confirm in Xverse" : "Connect Xverse"}
             </button>
           }
@@ -922,7 +923,7 @@ export function ReleasePanel({ m, position, neverBorrowed }: { m: LoanModel; pos
           tone="warning"
           label="Different Bitcoin account"
           actions={
-            <button type="button" className="wz-btn wz-btn-line" onClick={m.bitcoin.useOther}>
+            <button type="button" className={ui.btn("line")} onClick={m.bitcoin.useOther}>
               Use a different account
             </button>
           }
@@ -940,25 +941,25 @@ export function ReleasePanel({ m, position, neverBorrowed }: { m: LoanModel; pos
         </Notice>
       ) : blocker === "missing_details" || waitingCosign ? null : (
         <>
-          <dl className="wz-well" id={reviewId}>
-            <div className="wz-row wz-row-wrap">
+          <dl className={ui.well} id={reviewId}>
+            <div className={ui.row({ wrap: true })}>
               <dt>Send to your Bitcoin key&apos;s address</dt>
-              <dd className="mono wz-break">{destination}</dd>
+              <dd className="wrap-anywhere mono">{destination}</dd>
             </div>
-            <div className="wz-row">
+            <div className={ui.row()}>
               <dt>Amount</dt>
               <dd className="mono">{btc} BTC</dd>
             </div>
-            <div className="wz-row">
+            <div className={ui.row()}>
               <dt>Bitcoin network fee</dt>
               <dd className="mono">{fee !== null ? `about ${fee.toLocaleString("en-US")} sats` : "Checking..."}</dd>
             </div>
-            <div className="wz-row">
+            <div className={ui.row()}>
               <dt>You receive</dt>
               <dd className="mono">{fee !== null ? `${formatBtc(sats - BigInt(fee))} BTC` : "Checking..."}</dd>
             </div>
           </dl>
-          <p className="wz-hint">
+          <p className={ui.hint}>
             {neverBorrowed ? (
               <>
                 You sign twice: in {m.stellar.walletName} to close the loan on {STELLAR}, then with {m.bitcoin.embedded ? "your test key" : "Xverse"}.
@@ -1003,11 +1004,11 @@ function CosignWait() {
   const minutes = Math.floor((now - start) / 60_000);
   return (
     <>
-      <p className="wz-hint" aria-hidden="true">
+      <p className={ui.hint} aria-hidden="true">
         {cosignWaitText(now - start)}
       </p>
       {/* Announced once a minute, not every second. */}
-      <p className="wz-sr" role="status">
+      <p className="sr-only" role="status">
         {cosignWaitText(minutes * 60_000)}
       </p>
     </>
@@ -1032,12 +1033,12 @@ export function ClosedNotice({ status, position }: { status: PositionStatus; pos
       return (
         <Notice tone="info" label="Releasing">
           <p>
-            Your BTC is on its way{position.releaseAddress ? <> to <span className="mono wz-break">{position.releaseAddress}</span></> : null}. It
+            Your BTC is on its way{position.releaseAddress ? <> to <span className="wrap-anywhere mono">{position.releaseAddress}</span></> : null}. It
             arrives after 1 Bitcoin confirmation.
             {status.btcTxid ? (
               <>
                 {" "}
-                <ExternalLink href={btcTxUrl(status.btcTxid)}>View on mempool</ExternalLink>
+                <ExternalLink className={ui.noteLink} href={btcTxUrl(status.btcTxid)}>View on mempool</ExternalLink>
               </>
             ) : null}
           </p>
@@ -1048,8 +1049,8 @@ export function ClosedNotice({ status, position }: { status: PositionStatus; pos
         <Notice tone="positive" label="BTC released">
           <p>
             <span className="mono">{btc}</span> BTC, less the Bitcoin network fee, sent
-            {position.releaseAddress ? <> to <span className="mono wz-break">{position.releaseAddress}</span></> : null}. It arrives after 1
-            Bitcoin confirmation. <ExternalLink href={btcTxUrl(status.btcTxid)}>View on mempool</ExternalLink>
+            {position.releaseAddress ? <> to <span className="wrap-anywhere mono">{position.releaseAddress}</span></> : null}. It arrives after 1
+            Bitcoin confirmation. <ExternalLink className={ui.noteLink} href={btcTxUrl(status.btcTxid)}>View on mempool</ExternalLink>
           </p>
         </Notice>
       );
@@ -1060,13 +1061,13 @@ export function ClosedNotice({ status, position }: { status: PositionStatus; pos
             <b>This loan was liquidated.</b> Its collateral ratio fell below 120%, so a liquidator repaid your USDC debt and the loan is
             closed. You owe nothing on it.
           </p>
-          <div className="wz-actions">
+          <div className={ui.actions}>
             {status.txHash ? (
-              <ExternalLink href={stellarTxUrl(status.txHash)} className="wz-btn wz-btn-text">
+              <ExternalLink href={stellarTxUrl(status.txHash)} className={ui.cx(ui.btn("text"), ui.noteTextAlign)}>
                 View the liquidation on {STELLAR}
               </ExternalLink>
             ) : null}
-            <ExternalLink href={LIQUIDATION_DOCS_URL} className="wz-btn wz-btn-text">
+            <ExternalLink href={LIQUIDATION_DOCS_URL} className={ui.cx(ui.btn("text"), ui.noteTextAlign)}>
               Read how liquidation works
             </ExternalLink>
           </div>
@@ -1079,7 +1080,7 @@ export function ClosedNotice({ status, position }: { status: PositionStatus; pos
           tone="info"
           label="Registering on Stellar"
           actions={
-            <Link href="/borrow/new" className="wz-btn wz-btn-line wz-btn-sm">
+            <Link href="/borrow/new" className={ui.btn("line", "sm")}>
               Go to your deposit
             </Link>
           }
@@ -1098,7 +1099,7 @@ export function MissingDetails({ m, height }: { m: LoanModel; height: number | n
       tone="warning"
       label="Bitcoin details missing"
       actions={
-        <button type="button" className="wz-btn wz-btn-line wz-btn-sm" onClick={m.checkAgain}>
+        <button type="button" className={ui.btn("line", "sm")} onClick={m.checkAgain}>
           Check again
         </button>
       }
@@ -1106,7 +1107,7 @@ export function MissingDetails({ m, height }: { m: LoanModel; height: number | n
       <p>Writz couldn&apos;t read this deposit from Bitcoin yet, so it can&apos;t check whether your BTC is still locked.</p>
       <p>
         If it stays this way, after <BlockRef height={height} /> you can reclaim the BTC alone.{" "}
-        <Link href={`/help/reclaim?loan=${m.n}`} className="wz-btn wz-btn-text wz-inline">
+        <Link href={`/help/reclaim?loan=${m.n}`} className={ui.cx(ui.btn("text", "md", { inline: true }), ui.noteTextAlign)}>
           How to reclaim
         </Link>
       </p>
@@ -1144,7 +1145,7 @@ export function OnThisDevice({ items }: { items: ActivityItem[] }) {
       ) : (
         <p>No transactions for this loan on this device yet.</p>
       )}
-      <p className="wz-muted">Full history needs the Writz indexer and is coming later.</p>
+      <p className={ui.muted}>Full history needs the Writz indexer and is coming later.</p>
     </Enter>
   );
 }

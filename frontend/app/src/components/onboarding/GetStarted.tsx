@@ -12,6 +12,7 @@ import { satsToBtcInput, suggestDepositSats } from "@/lib/onboarding/defaults";
 import type { ClaimState } from "@/lib/onboarding/autoClaim";
 import { CopyButton, ExternalLink, Spinner } from "@/components/ui";
 import { useShellAccount } from "@/components/shell/account";
+import * as ui from "@/components/ui/styles";
 
 /** The loan's state as the guide reads it: the derived status first, the local hint otherwise. */
 function guideStatus(kind: string, local: GuideLoan["status"]): GuideLoan["status"] {
@@ -34,14 +35,14 @@ function FundDetail({ claim, balance, address, retry }: { claim: ClaimState; bal
     case "idle":
     case "checking":
       return (
-        <p className="wz-status" aria-live="polite">
+        <p className={ui.status} aria-live="polite">
           <Spinner />
           <span>Checking your test key</span>
         </p>
       );
     case "claiming":
       return (
-        <p className="wz-status" aria-live="polite">
+        <p className={ui.status} aria-live="polite">
           <Spinner />
           <span>Sending you test BTC</span>
         </p>
@@ -73,21 +74,21 @@ function FundDetail({ claim, balance, address, retry }: { claim: ClaimState; bal
           <p>
             <b>{f.title}.</b> {f.message}
           </p>
-          <div className="wz-actions">
+          <div className={ui.actions}>
             {f.retryable ? (
-              <button type="button" className="wz-btn wz-btn-line wz-btn-sm" onClick={retry}>
+              <button type="button" className={ui.btn("line", "sm")} onClick={retry}>
                 Try again
               </button>
             ) : null}
             {f.publicFaucets.map((href) => (
-              <ExternalLink key={href} href={href} className="wz-btn wz-btn-text">
+              <ExternalLink key={href} href={href} className={ui.btn("text")}>
                 {new URL(href).host}
               </ExternalLink>
             ))}
           </div>
           {address ? (
-            <p className="wz-hint">
-              Your test key&apos;s address: <span className="mono wz-break">{address}</span> <CopyButton value={address} />
+            <p className={ui.hint}>
+              Your test key&apos;s address: <span className="wrap-anywhere mono">{address}</span> <CopyButton value={address} />
             </p>
           ) : null}
         </div>
@@ -146,13 +147,13 @@ export function GetStarted() {
         return null;
       case "deposit":
         return a.pendingDeposit ? (
-          <Link href="/borrow/new" className="wz-btn wz-btn-gold">
+          <Link href="/borrow/new" className={ui.btn("gold")}>
             Open your deposit
           </Link>
         ) : (
           <Link
             href="/borrow/new"
-            className="wz-btn wz-btn-gold"
+            className={ui.btn("gold")}
             onClick={() => {
               if (deposit !== null) setDraftAmount(satsToBtcInput(deposit));
             }}
@@ -162,7 +163,7 @@ export function GetStarted() {
         );
       default:
         return loan ? (
-          <Link href={loanHref(loan.index, id === "borrow" ? "borrow" : id === "repay" ? "repay" : "release")} className="wz-btn wz-btn-gold">
+          <Link href={loanHref(loan.index, id === "borrow" ? "borrow" : id === "repay" ? "repay" : "release")} className={ui.btn("gold")}>
             {TITLES[id]}
           </Link>
         ) : null;
@@ -198,7 +199,7 @@ export function GetStarted() {
         <h2 id="gs-title" className="hm-h2">
           {allDone ? "You did the whole loop" : "Your first loan, in five steps"}
         </h2>
-        <p className="wz-hint">
+        <p className={ui.hint}>
           {allDone
             ? "You locked Bitcoin, borrowed dollars, repaid and got your BTC back. Start another loan any time."
             : "Test funds only. About 15 minutes, mostly waiting for one Bitcoin block."}
@@ -215,10 +216,10 @@ export function GetStarted() {
               <div className="gs-body">
                 <p className="gs-title">
                   {TITLES[id]}
-                  {state === "done" ? <span className="wz-sr"> (done)</span> : null}
+                  {state === "done" ? <span className="sr-only"> (done)</span> : null}
                 </p>
                 {detail(id)}
-                {action(id) ? <div className="wz-actions">{action(id)}</div> : null}
+                {action(id) ? <div className={ui.actions}>{action(id)}</div> : null}
               </div>
             </li>
           );

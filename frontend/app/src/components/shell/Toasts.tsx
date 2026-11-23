@@ -5,8 +5,11 @@ import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { onToast, showToast, TOAST_MS, toastsHere, type Toast } from "@/lib/toast";
 import { useMockWorld, usePrefersReducedMotion } from "@/components/ui/hooks";
+import * as ui from "@/components/ui/styles";
 
 const EXIT_MS = 220;
+
+const LABEL_TONE: Partial<Record<Toast["tone"], string>> = { positive: "text-positive", warning: "text-warning", danger: "text-danger" };
 
 function Item({ t, onGone }: { t: Toast; onGone: (id: number) => void }) {
   const reduced = usePrefersReducedMotion();
@@ -36,7 +39,7 @@ function Item({ t, onGone }: { t: Toast; onGone: (id: number) => void }) {
 
   return (
     <div
-      className="wz-toast"
+      className="[--cut:14px] grid grid-cols-[minmax(0,1fr)_auto] items-center gap-y-1 gap-x-2 pt-[14px] pr-2 pb-1.5 pl-[22px] bg-surface-2 text-heading [box-shadow:inset_0_0_0_1px_var(--line-strong)] [clip-path:polygon(var(--cut)_0,100%_0,100%_100%,0_100%,0_calc(var(--cut)/var(--shear)))] pointer-events-auto animate-wz-toast-in data-[leaving=true]:animate-wz-toast-out data-[leaving=true]:pointer-events-none"
       data-tone={t.tone}
       data-leaving={leaving}
       onPointerEnter={() => setHeld(true)}
@@ -44,12 +47,24 @@ function Item({ t, onGone }: { t: Toast; onGone: (id: number) => void }) {
       onFocus={() => setHeld(true)}
       onBlur={(e) => !e.currentTarget.contains(e.relatedTarget) && setHeld(false)}
     >
-      <p className="wz-toast-label">{t.label}</p>
-      <p className="wz-toast-text">{t.text}</p>
-      <Link href={t.link.href} className="wz-btn wz-btn-text wz-toast-link" onClick={leave}>
+      <p
+        className={ui.cx(
+          "inline-flex items-center gap-2 text-[13px] font-semibold before:w-1.5 before:h-[11px] before:bg-current before:-skew-x-16 before:flex-none",
+          LABEL_TONE[t.tone],
+        )}
+      >
+        {t.label}
+      </p>
+      <p className="col-span-full pr-[14px] text-[15px] leading-[1.45]">{t.text}</p>
+      <Link href={t.link.href} className={ui.cx(ui.btn("text", "sm"), "col-1 justify-self-start")} onClick={leave}>
         {t.link.label}
       </Link>
-      <button type="button" className="wz-toast-close" aria-label="Dismiss" onClick={leave}>
+      <button
+        type="button"
+        className="col-2 row-1 grid place-items-center size-11 -mt-3 -mb-2 p-0 border-none bg-transparent text-body cursor-pointer hover:text-heading"
+        aria-label="Dismiss"
+        onClick={leave}
+      >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
         </svg>
@@ -103,7 +118,11 @@ export function Toasts() {
   const gone = useCallback((id: number) => setItems((list) => list.filter((t) => t.id !== id)), []);
 
   return (
-    <div className="wz-toasts" role="status" aria-live="polite">
+    <div
+      className="fixed right-6 bottom-6 z-45 flex flex-col items-stretch gap-2 w-[min(400px,calc(100vw-48px))] pointer-events-none max-lg:right-4 max-lg:left-4 max-lg:bottom-[calc(64px+env(safe-area-inset-bottom)+12px)] max-lg:w-auto"
+      role="status"
+      aria-live="polite"
+    >
       {items.map((t) => (
         <Item key={t.id} t={t} onGone={gone} />
       ))}

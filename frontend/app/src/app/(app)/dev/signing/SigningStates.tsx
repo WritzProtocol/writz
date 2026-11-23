@@ -9,6 +9,7 @@ import { getScenario } from "@/lib/mock/scenarios";
 import type { MockWorld } from "@/lib/mock/types";
 import { ReviewsContext } from "@/lib/wallet/reviewsContext";
 import { SigningReviews, type ReviewMode, type ReviewRequest } from "@/lib/wallet/signingReview";
+import * as ui from "@/components/ui/styles";
 
 /** What the check shows for a Pollar deposit into Earn, in each of its three states. */
 const REQUESTS: Record<ReviewMode, { title: string; request: ReviewRequest }> = {
@@ -83,7 +84,7 @@ export function SigningStates() {
         <p>What a Pollar user sees in the action&apos;s own panel when a transaction is not what they asked for, has no known purpose, or is above the large-amount limit.</p>
         <nav className="dv-areas" aria-label="States">
           {MODES.map((m) => (
-            <Link key={m} href={`/dev/signing?state=${m}`} className="wz-chip" aria-current={m === mode ? "page" : undefined}>
+            <Link key={m} href={`/dev/signing?state=${m}`} className={ui.chip} aria-current={m === mode ? "page" : undefined}>
               {REQUESTS[m].title}
             </Link>
           ))}

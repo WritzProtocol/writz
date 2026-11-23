@@ -134,24 +134,42 @@ export function Sheet({
   };
 
   return (
-    <div className="sh-root" data-closing={closing}>
-      <div className="sh-backdrop" onClick={close} aria-hidden="true" />
-      <div ref={panel} className="sh-panel" role="dialog" aria-modal="true" aria-labelledby={headingId}>
-        <div className="sh-head" {...dragProps}>
-          <span className="sh-handle" aria-hidden="true" />
+    <div className="group/sheet fixed inset-0 z-50 data-[closing=true]:pointer-events-none" data-closing={closing}>
+      <div
+        className="absolute inset-0 bg-[color-mix(in_srgb,var(--bg)_60%,transparent)] animate-sh-fade group-data-[closing=true]/sheet:animate-sh-fade-out"
+        onClick={close}
+        aria-hidden="true"
+      />
+      <div
+        ref={panel}
+        className="absolute top-0 right-0 bottom-0 flex flex-col w-[min(400px,100vw)] border-l border-line-strong bg-surface overflow-y-auto overscroll-contain animate-sh-right group-data-[closing=true]/sheet:animate-sh-right-out max-[761px]:top-auto max-[761px]:left-0 max-[761px]:w-full max-[761px]:max-h-[90dvh] max-[761px]:border-l-0 max-[761px]:border-t max-[761px]:pb-[env(safe-area-inset-bottom)] max-[761px]:motion-safe:[animation-name:sh-up] max-[761px]:group-data-[closing=true]/sheet:[animation-name:sh-up-out] max-[761px]:data-[dragged=true]:group-data-[closing=false]/sheet:animate-none max-[761px]:data-[returning=true]:transition-[transform] max-[761px]:data-[returning=true]:duration-element max-[761px]:data-[returning=true]:ease-enter motion-reduce:transition-none"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={headingId}
+      >
+        <div
+          className="sticky top-0 z-1 flex justify-between items-start gap-3 pt-5 px-5 pb-4 bg-surface border-b border-line max-[761px]:pt-6 max-[761px]:touch-none"
+          {...dragProps}
+        >
+          <span className="hidden max-[761px]:block absolute top-2 left-1/2 w-10 h-1 -ml-5 bg-line-strong" aria-hidden="true" />
           <div>
-            <h2 id={headingId} ref={heading} tabIndex={-1} className="sh-title">
+            <h2 id={headingId} ref={heading} tabIndex={-1} className="text-[20px] font-semibold tracking-[-0.01em]">
               {title}
             </h2>
-            {subtitle ? <p className="sh-sub">{subtitle}</p> : null}
+            {subtitle ? <p className="mt-1 text-[14px] text-muted">{subtitle}</p> : null}
           </div>
-          <button type="button" className="sh-close" onClick={close} aria-label="Close">
+          <button
+            type="button"
+            className="grid place-items-center size-11 -mt-2 -mr-[10px] border-none bg-transparent text-body cursor-pointer flex-none hover:text-heading"
+            onClick={close}
+            aria-label="Close"
+          >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
             </svg>
           </button>
         </div>
-        <div className="sh-body">{children}</div>
+        <div className="pt-0 px-5 pb-6">{children}</div>
       </div>
     </div>
   );

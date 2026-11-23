@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import { SkBtn, T } from "@/components/ui/skeleton";
+import * as ui from "@/components/ui/styles";
 
 interface Figures {
   hero?: { label: string; value: string; unit: string };
@@ -35,12 +36,12 @@ export function FundsSkeleton({
   const figures = (f: Figures, when: "wallet" | "nowallet") => (
     <div className="fu-figures" data-sk={when}>
       {f.hero ? (
-        <div className="fu-hero wz-cut" style={{ "--n": Math.max(f.hero.value.length, 6), "--u": f.hero.unit.length } as CSSProperties}>
+        <div className="cut fu-hero" style={{ "--n": Math.max(f.hero.value.length, 6), "--u": f.hero.unit.length } as CSSProperties}>
           <dl>
             <dt className="fu-hero-k">
               <T>{f.hero.label}</T>
             </dt>
-            <dd className="fu-big wz-sk-big">
+            <dd className="fu-big flex-nowrap items-end">
               <span className="mono">
                 <T>{f.hero.value}</T>
               </span>{" "}
@@ -70,18 +71,18 @@ export function FundsSkeleton({
           </div>
         ))}
       </dl>
-      <div className="fu-risk wz-sk-list">
+      <div className={ui.cx("fu-risk", ui.skList)}>
         {risk.map((r) => (
           <p key={r}>
             <T>{r}</T>
           </p>
         ))}
         {docs ? (
-          <span className="wz-link fu-textlink">
+          <span className={ui.cx(ui.link, "fu-textlink")}>
             <T>{docs}</T>
           </span>
         ) : null}
-        <span className="wz-link fu-textlink">
+        <span className={ui.cx(ui.link, "fu-textlink")}>
           <T>{link}</T>
         </span>
       </div>
@@ -90,7 +91,7 @@ export function FundsSkeleton({
 
   return (
     <div className="fu-page">
-      <h1 className="wz-sr">{title}</h1>
+      <h1 className="sr-only">{title}</h1>
       <div aria-hidden="true">
         <p className="fu-h1">
           <T>{title}</T>
@@ -103,35 +104,35 @@ export function FundsSkeleton({
         {figures(wallet, "wallet")}
         {figures(nowallet, "nowallet")}
         <div className="fu-act">
-          <div className="wz-stack" data-sk="wallet">
-            <div className="wz-seg fu-seg">
-              <SkBtn>{tabs[0]}</SkBtn>
-              <SkBtn>{tabs[1]}</SkBtn>
+          <div className={ui.stack} data-sk="wallet">
+            <div className={ui.cx(ui.seg, "fu-seg")}>
+              <SkBtn kind="seg">{tabs[0]}</SkBtn>
+              <SkBtn kind="seg">{tabs[1]}</SkBtn>
             </div>
             <div className="fu-panel">
-              <div className="wz-stack">
-                <div className="wz-stack" style={{ gap: 8 }}>
-                  <p className="wz-label">
+              <div className={ui.stack}>
+                <div className={ui.stack} style={{ gap: 8 }}>
+                  <p className={ui.label}>
                     <T>{field}</T>
                   </p>
-                  <div className="wz-field wz-sk-field" />
-                  <p className="wz-hint">
+                  <div className={ui.field("md", { skeleton: true })} />
+                  <p className={ui.hint}>
                     <T>{hint}</T>
                   </p>
                 </div>
-                <div className="wz-actions">
+                <div className={ui.actions}>
                   <SkBtn>{tabs[0]}</SkBtn>
                 </div>
               </div>
             </div>
           </div>
-          <div className="wz-note" data-tone="neutral" data-sk="nowallet">
+          <div className={ui.note("neutral")} data-tone="neutral" data-sk="nowallet">
             <div>
               <p>
                 <T>{connect}</T>
               </p>
             </div>
-            <div className="wz-actions">
+            <div className={ui.cx(ui.actions, "mt-1.5")}>
               <SkBtn>Connect Stellar wallet</SkBtn>
             </div>
           </div>

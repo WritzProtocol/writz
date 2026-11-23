@@ -3,6 +3,7 @@
 import { ReceiveStepView, type ReceiveStepProps } from "@/components/loan/ReceiveStep";
 import { IDLE } from "@/lib/flow/engine";
 import type { ChainLeg } from "@/lib/receive/useReceive";
+import * as ui from "@/components/ui/styles";
 
 const AMOUNT = 1_000_000_000n;
 const RECIPIENT = "0x7a3f9c2b41d08e5a6b2c9d1e4f7a8b3c5d6e9f01";
@@ -88,7 +89,7 @@ const STATES: { id: string; title: string; props: ReceiveStepProps }[] = [
 
 export function ReceiveStates() {
   return (
-    <div className="wz-stack" style={{ gap: 32 }}>
+    <div className={ui.stack} style={{ gap: 32 }}>
       {STATES.map((s) => (
         <section key={s.id} id={`rx-${s.id}`} className="dv-group" aria-labelledby={`rx-${s.id}-h`}>
           <h2 id={`rx-${s.id}-h`}>

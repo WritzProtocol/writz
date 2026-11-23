@@ -12,13 +12,20 @@ import type { PollarLogin } from "@/lib/wallet/WalletProvider";
 import { TestKeyPanel } from "@/components/onboarding/TestKeyPanel";
 import { useBitcoinWallet } from "@/lib/bitcoin/useBitcoinWallet";
 import { useShellAccount, type ShellAccount } from "./account";
+import * as ui from "@/components/ui/styles";
 
 type Chain = "stellar" | "bitcoin";
+
+const section = "flex flex-col gap-[10px] py-5 [*+&]:border-t [*+&]:border-line";
+const links =
+  "flex flex-col gap-3 py-5 [*+&]:border-t [*+&]:border-line text-[14px] [&_a]:self-start [&_a]:text-body [&_a]:underline [&_a]:decoration-line-strong [&_a]:underline-offset-4 [&_a]:hover:text-heading [&_a]:hover:decoration-accent pointer-coarse:[&_a]:inline-flex pointer-coarse:[&_a]:items-center pointer-coarse:[&_a]:min-h-11";
+const heading = "flex items-center gap-2 text-[15px] font-semibold text-heading";
+const facts = "grid gap-1.5 m-0 text-[14px] [&>div]:flex [&>div]:justify-between [&>div]:gap-3 [&_dt]:text-muted [&_dd]:m-0 [&_dd]:text-heading";
 const STELLAR = networkName(config.networkPassphrase);
 
 function Address({ value }: { value: string }) {
   return (
-    <p className="mono sh-addr" aria-label={value}>
+    <p className="mono text-[14px] text-heading" aria-label={value}>
       {shortAddress(value, 8, 8)}
     </p>
   );
@@ -35,10 +42,10 @@ function Disconnect({ chain, a }: { chain: Chain; a: ShellAccount }) {
         label="Transaction in progress"
         actions={
           <>
-            <button type="button" className="wz-btn wz-btn-line wz-btn-sm" onClick={go}>
+            <button type="button" className={ui.btn("line", "sm")} onClick={go}>
               Disconnect
             </button>
-            <button type="button" className="wz-btn wz-btn-gold wz-btn-sm" onClick={() => setConfirming(false)}>
+            <button type="button" className={ui.btn("gold", "sm")} onClick={() => setConfirming(false)}>
               Stay connected
             </button>
           </>
@@ -52,7 +59,7 @@ function Disconnect({ chain, a }: { chain: Chain; a: ShellAccount }) {
     );
   }
   return (
-    <button type="button" className="wz-btn wz-btn-line wz-btn-sm" onClick={() => (a.busy ? setConfirming(true) : go())}>
+    <button type="button" className={ui.btn("line", "sm")} onClick={() => (a.busy ? setConfirming(true) : go())}>
       Disconnect
     </button>
   );
@@ -70,7 +77,7 @@ function StellarChecks({ a }: { a: ShellAccount }) {
     );
   }
   if (s.feesSponsored && s.funding.kind === "ok" && s.funding.value.kind === "unfunded") {
-    return <p className="wz-hint">Your account is being created on Stellar. This takes a few seconds.</p>;
+    return <p className={ui.hint}>Your account is being created on Stellar. This takes a few seconds.</p>;
   }
   if (s.funding.kind === "ok" && s.funding.value.kind === "unfunded") {
     // Friendbot only exists on testnet; a mainnet account is funded with real XLM.
@@ -86,7 +93,7 @@ function StellarChecks({ a }: { a: ShellAccount }) {
         tone="warning"
         label="Account not funded"
         actions={
-          <button type="button" className="wz-btn wz-btn-line wz-btn-sm" disabled={s.fundBusy} onClick={s.fund}>
+          <button type="button" className={ui.btn("line", "sm")} disabled={s.fundBusy} onClick={s.fund}>
             {s.fundBusy ? "Funding..." : "Fund with Friendbot"}
           </button>
         }
@@ -120,23 +127,23 @@ function PollarSignIn({ pollar }: { pollar: PollarLogin }) {
   const working = POLLAR_WORKING[auth.step];
 
   if (auth.step === "authenticated") {
-    return <p className="wz-hint">Creating your Stellar account...</p>;
+    return <p className={ui.hint}>Creating your Stellar account...</p>;
   }
 
   if (auth.step === "entering_code") {
     return (
       <form
-        className="wz-stack"
+        className={ui.stack}
         style={{ gap: 8 }}
         onSubmit={(e) => {
           e.preventDefault();
           pollar.verifyCode(code.trim());
         }}
       >
-        <label htmlFor="sh-code" className="wz-label">
+        <label htmlFor="sh-code" className={ui.label}>
           Code
         </label>
-        <div className="wz-field" data-size="sm">
+        <div className={ui.field("sm")}>
           <input
             id="sh-code"
             inputMode="numeric"
@@ -147,12 +154,12 @@ function PollarSignIn({ pollar }: { pollar: PollarLogin }) {
             autoFocus
           />
         </div>
-        <p className="wz-hint">We sent a code to {auth.email}.</p>
-        <div className="wz-actions">
-          <button type="submit" className="wz-btn wz-btn-gold wz-btn-sm" disabled={!code.trim()}>
+        <p className={ui.hint}>We sent a code to {auth.email}.</p>
+        <div className={ui.actions}>
+          <button type="submit" className={ui.btn("gold", "sm")} disabled={!code.trim()}>
             Verify
           </button>
-          <button type="button" className="wz-btn wz-btn-line wz-btn-sm" onClick={pollar.cancel}>
+          <button type="button" className={ui.btn("line", "sm")} onClick={pollar.cancel}>
             Cancel
           </button>
         </div>
@@ -162,9 +169,9 @@ function PollarSignIn({ pollar }: { pollar: PollarLogin }) {
 
   if (working) {
     return (
-      <div className="wz-actions">
-        <p className="wz-hint">{working}</p>
-        <button type="button" className="wz-btn wz-btn-line wz-btn-sm" onClick={pollar.cancel}>
+      <div className={ui.actions}>
+        <p className={ui.hint}>{working}</p>
+        <button type="button" className={ui.btn("line", "sm")} onClick={pollar.cancel}>
           Cancel
         </button>
       </div>
@@ -174,7 +181,7 @@ function PollarSignIn({ pollar }: { pollar: PollarLogin }) {
   if (email !== null) {
     return (
       <form
-        className="wz-stack"
+        className={ui.stack}
         style={{ gap: 8 }}
         onSubmit={(e) => {
           e.preventDefault();
@@ -182,10 +189,10 @@ function PollarSignIn({ pollar }: { pollar: PollarLogin }) {
           pollar.loginWithEmail(email.trim());
         }}
       >
-        <label htmlFor="sh-email" className="wz-label">
+        <label htmlFor="sh-email" className={ui.label}>
           Email
         </label>
-        <div className="wz-field" data-size="sm">
+        <div className={ui.field("sm")}>
           <input
             id="sh-email"
             type="email"
@@ -196,11 +203,11 @@ function PollarSignIn({ pollar }: { pollar: PollarLogin }) {
             autoFocus
           />
         </div>
-        <div className="wz-actions">
-          <button type="submit" className="wz-btn wz-btn-gold wz-btn-sm" disabled={!email.includes("@")}>
+        <div className={ui.actions}>
+          <button type="submit" className={ui.btn("gold", "sm")} disabled={!email.includes("@")}>
             Send code
           </button>
-          <button type="button" className="wz-btn wz-btn-line wz-btn-sm" onClick={() => setEmail(null)}>
+          <button type="button" className={ui.btn("line", "sm")} onClick={() => setEmail(null)}>
             Cancel
           </button>
         </div>
@@ -210,19 +217,19 @@ function PollarSignIn({ pollar }: { pollar: PollarLogin }) {
 
   return (
     <>
-      <p className="wz-hint">
+      <p className={ui.hint}>
         No wallet? Sign in to get a test account with fees paid and free test BTC. Pollar holds the Stellar key and your Signet test key
         stays in this browser, so use it for testing only.
       </p>
-      {auth.step === "error" ? <p className="wz-error">{auth.message}</p> : null}
-      <div className="wz-actions">
-        <button type="button" className="wz-btn wz-btn-line wz-btn-sm" onClick={() => pollar.login("google")}>
+      {auth.step === "error" ? <p className={ui.error}>{auth.message}</p> : null}
+      <div className={ui.actions}>
+        <button type="button" className={ui.btn("line", "sm")} onClick={() => pollar.login("google")}>
           Google
         </button>
-        <button type="button" className="wz-btn wz-btn-line wz-btn-sm" onClick={() => pollar.login("github")}>
+        <button type="button" className={ui.btn("line", "sm")} onClick={() => pollar.login("github")}>
           GitHub
         </button>
-        <button type="button" className="wz-btn wz-btn-line wz-btn-sm" onClick={() => setEmail("")}>
+        <button type="button" className={ui.btn("line", "sm")} onClick={() => setEmail("")}>
           Email
         </button>
       </div>
@@ -239,34 +246,34 @@ export function AccountSheetBody() {
   const usdc = s.usdcAdded.kind === "checking" ? "Checking..." : s.usdcAdded.kind === "failed" ? "Couldn't check" : s.usdcAdded.value ? "Yes" : "Not yet";
 
   return (
-    <div className="sh-sections">
-      <section className="sh-section" aria-labelledby="sh-stellar">
-        <h3 id="sh-stellar" className="sh-h">
-          <i className="wz-dot" data-on={Boolean(s.address)} aria-hidden="true" />
+    <div className="flex flex-col">
+      <section className={section} aria-labelledby="sh-stellar">
+        <h3 id="sh-stellar" className={heading}>
+          <i className={ui.dot} data-on={Boolean(s.address)} aria-hidden="true" />
           Stellar wallet
         </h3>
-        <p className="wz-hint">Receives your USDC and signs loan actions.</p>
+        <p className={ui.hint}>Receives your USDC and signs loan actions.</p>
         {s.address ? (
           <>
             <Address value={s.address} />
             <StellarChecks a={a} />
-            <dl className="sh-facts">
+            <dl className={facts}>
               <div>
                 <dt>USDC added</dt>
                 <dd>{usdc}</dd>
               </div>
             </dl>
-            <div className="wz-actions">
+            <div className={ui.actions}>
               <CopyButton value={s.address} />
-              <ExternalLink href={stellarAccountUrl(s.address)} className="wz-btn wz-btn-line wz-btn-sm">
+              <ExternalLink href={stellarAccountUrl(s.address)} className={ui.btn("line", "sm")}>
                 View on Stellar Expert
               </ExternalLink>
               <Disconnect chain="stellar" a={a} />
             </div>
           </>
         ) : (
-          <div className="wz-actions">
-            <button type="button" className="wz-btn wz-btn-gold wz-btn-sm" disabled={s.connecting} onClick={s.connect}>
+          <div className={ui.actions}>
+            <button type="button" className={ui.btn("gold", "sm")} disabled={s.connecting} onClick={s.connect}>
               {s.connecting ? "Confirm in your wallet" : "Connect Stellar wallet"}
             </button>
           </div>
@@ -274,16 +281,16 @@ export function AccountSheetBody() {
         {!s.address && s.pollar ? <PollarSignIn pollar={s.pollar} /> : null}
       </section>
 
-      <section className="sh-section" aria-labelledby="sh-bitcoin">
-        <h3 id="sh-bitcoin" className="sh-h">
-          <i className="wz-dot" data-on={Boolean(b.address)} aria-hidden="true" />
+      <section className={section} aria-labelledby="sh-bitcoin">
+        <h3 id="sh-bitcoin" className={heading}>
+          <i className={ui.dot} data-on={Boolean(b.address)} aria-hidden="true" />
           {testKey ? "Signet test key" : "Bitcoin wallet"}
         </h3>
-        <p className="wz-hint">Holds the BTC you lock. Its key builds your lock address.</p>
+        <p className={ui.hint}>Holds the BTC you lock. Its key builds your lock address.</p>
         {b.address ? (
           <>
             <Address value={b.address} />
-            <dl className="sh-facts">
+            <dl className={facts}>
               <div>
                 <dt>Balance</dt>
                 <dd className="mono">
@@ -291,9 +298,9 @@ export function AccountSheetBody() {
                 </dd>
               </div>
             </dl>
-            <div className="wz-actions">
+            <div className={ui.actions}>
               <CopyButton value={b.address} />
-              <ExternalLink href={btcAddressUrl(b.address)} className="wz-btn wz-btn-line wz-btn-sm">
+              <ExternalLink href={btcAddressUrl(b.address)} className={ui.btn("line", "sm")}>
                 View on mempool
               </ExternalLink>
               {testKey ? null : <Disconnect chain="bitcoin" a={a} />}
@@ -301,8 +308,8 @@ export function AccountSheetBody() {
             {!a.mock ? <TestKeyPanel /> : null}
           </>
         ) : (
-          <div className="wz-actions">
-            <button type="button" className="wz-btn wz-btn-line wz-btn-sm" disabled={b.connecting} onClick={b.connect}>
+          <div className={ui.actions}>
+            <button type="button" className={ui.btn("line", "sm")} disabled={b.connecting} onClick={b.connect}>
               {b.connecting ? "Confirm in Xverse" : "Connect Xverse"}
             </button>
           </div>
@@ -310,8 +317,8 @@ export function AccountSheetBody() {
       </section>
 
       {s.address ? (
-        <section className="sh-section" aria-labelledby="sh-loans">
-          <h3 id="sh-loans" className="sh-h">
+        <section className={section} aria-labelledby="sh-loans">
+          <h3 id="sh-loans" className={heading}>
             Your loans
           </h3>
           {a.loans.state === "failed" ? (
@@ -319,13 +326,13 @@ export function AccountSheetBody() {
               error={a.loans.error}
               label="Loans not loaded"
               actions={
-                <button type="button" className="wz-btn wz-btn-line wz-btn-sm" onClick={a.loans.retry}>
+                <button type="button" className={ui.btn("line", "sm")} onClick={a.loans.retry}>
                   Try again
                 </button>
               }
             />
           ) : (
-            <p className="wz-hint">
+            <p className={ui.hint}>
               {a.loans.state === "finding"
                 ? "Finding your loans..."
                 : `Found on Stellar for this wallet: ${a.loanStatuses.length} ${a.loanStatuses.length === 1 ? "loan" : "loans"}.`}
@@ -333,12 +340,12 @@ export function AccountSheetBody() {
           )}
           {a.positions.length > 0 ? (
             <>
-              <div className="wz-actions">
-                <button type="button" className="wz-btn wz-btn-line wz-btn-sm" onClick={a.downloadBackup}>
+              <div className={ui.actions}>
+                <button type="button" className={ui.btn("line", "sm")} onClick={a.downloadBackup}>
                   Download loan backup
                 </button>
               </div>
-              <p className="wz-hint">
+              <p className={ui.hint}>
                 Your loans are on Stellar and load on any device with this wallet. The backup keeps each deposit&apos;s Bitcoin transaction ID for
                 reclaiming without Writz.
               </p>
@@ -347,7 +354,7 @@ export function AccountSheetBody() {
         </section>
       ) : null}
 
-      <nav className="sh-section sh-links sh-compact" aria-label="Other pages">
+      <nav className={ui.cx(links, "lg:hidden!")} aria-label="Other pages">
         <Link href="/protocol">Protocol</Link>
         <ExternalLink href={DOCS_URL} className="">
           Docs
@@ -355,8 +362,8 @@ export function AccountSheetBody() {
         {LENDING_ENABLED ? <Link href="/help/reclaim">How to reclaim</Link> : null}
       </nav>
 
-      <section className="sh-section sh-links" aria-labelledby="sh-help">
-        <h3 id="sh-help" className="sh-h">
+      <section className={links} aria-labelledby="sh-help">
+        <h3 id="sh-help" className={heading}>
           Help
         </h3>
         <ExternalLink href={GITHUB_ISSUES_URL} className="">
@@ -368,8 +375,8 @@ export function AccountSheetBody() {
       </section>
 
       {config.target !== "mainnet" ? (
-        <section className="sh-section sh-links" aria-labelledby="sh-faucets">
-          <h3 id="sh-faucets" className="sh-h">
+        <section className={links} aria-labelledby="sh-faucets">
+          <h3 id="sh-faucets" className={heading}>
             Testnet faucets
           </h3>
           {BTC_FAUCETS.map((f) => (
@@ -378,7 +385,12 @@ export function AccountSheetBody() {
             </ExternalLink>
           ))}
           {s.address ? (
-            <button type="button" className="sh-linkbtn" disabled={s.fundBusy} onClick={s.fund}>
+            <button
+              type="button"
+              className="self-start p-0 border-none bg-transparent cursor-pointer text-body underline decoration-line-strong underline-offset-4 hover:text-heading hover:decoration-accent pointer-coarse:inline-flex pointer-coarse:items-center pointer-coarse:min-h-11"
+              disabled={s.fundBusy}
+              onClick={s.fund}
+            >
               Test XLM from Friendbot
             </button>
           ) : (

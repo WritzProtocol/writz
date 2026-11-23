@@ -9,6 +9,7 @@ import { useShellAccount } from "@/components/shell/account";
 import { SkBtn, T } from "@/components/ui/skeleton";
 import { useLiveLoan } from "./useLiveLoan";
 import { useMockLoan } from "./useMockLoan";
+import * as ui from "@/components/ui/styles";
 
 function LiveLoan({ n, panel }: { n: number; panel: LoanTab | null }) {
   return <LoanView m={useLiveLoan(n, panel)} />;
@@ -24,14 +25,14 @@ const GRID = { ["--ln-areas" as string]: '"risk nums" "acts side"' };
 function Skeleton({ n }: { n: number }) {
   return (
     <>
-      <h1 className="wz-sr">Loading Loan {n}</h1>
+      <h1 className="sr-only">Loading Loan {n}</h1>
       <div className="ln-col" aria-hidden="true">
         <div className="ln-head">
           <div className="ln-title">
             <p className="ln-h1">
               <T>Loan {n}</T>
             </p>
-            <SkBtn className="wz-badge" data-sk="wallet">
+            <SkBtn kind="badge" data-sk="wallet">
               Healthy
             </SkBtn>
           </div>
@@ -43,14 +44,14 @@ function Skeleton({ n }: { n: number }) {
             <T> BTC locked.</T>
           </p>
         </div>
-        <div className="ln-empty wz-cut-sm" data-sk="nowallet">
+        <div className="cut-sm ln-empty" data-sk="nowallet">
           <p>
             <T>Connect your Stellar wallet to see this loan. It receives your USDC and signs loan actions.</T>
           </p>
           <SkBtn>Connect Stellar wallet</SkBtn>
         </div>
         <div className="ln-grid" style={GRID} data-sk="wallet">
-          <div className="ln-risk wz-cut">
+          <div className="cut ln-risk">
             <p className="ln-ratio">
               <b className="mono">
                 <T>200%</T>
@@ -86,9 +87,9 @@ function Skeleton({ n }: { n: number }) {
             ))}
           </dl>
           <div className="ln-actions">
-            <div className="wz-seg">
+            <div className={ui.seg}>
               {["Borrow more", "Repay", "Release BTC"].map((t) => (
-                <SkBtn key={t}>
+                <SkBtn key={t} kind="seg">
                   {t}
                 </SkBtn>
               ))}
@@ -99,19 +100,19 @@ function Skeleton({ n }: { n: number }) {
               </li>
             </ul>
             <div className="ln-panel ln-act-panel">
-              <div className="wz-stack">
-                <div className="wz-stack" style={{ gap: 8 }}>
-                  <p className="wz-label">
+              <div className={ui.stack}>
+                <div className={ui.stack} style={{ gap: 8 }}>
+                  <p className={ui.label}>
                     <T>Borrow</T>
                   </p>
-                  <div className="wz-field ln-field wz-sk-field" />
-                  <p className="wz-hint">
+                  <div className={ui.cx(ui.field("md", { skeleton: true }), "ln-field")} />
+                  <p className={ui.hint}>
                     <T>You can borrow up to 500.00 USDC more.</T>
                   </p>
                 </div>
-                <div className="wz-chips ln-presets">
-                  <SkBtn className="wz-chip">25%</SkBtn>
-                  <SkBtn className="wz-chip">50%</SkBtn>
+                <div className={ui.cx(ui.chips, "ln-presets")}>
+                  <SkBtn kind="chip">25%</SkBtn>
+                  <SkBtn kind="chip">50%</SkBtn>
                 </div>
                 <p className="ln-after">
                   <T>After: 200% ratio.</T>
@@ -123,13 +124,13 @@ function Skeleton({ n }: { n: number }) {
             </div>
           </div>
           <div className="ln-side">
-            <div className="ln-out wz-cut-sm">
+            <div className="cut-sm ln-out">
               <div className="ln-h2">
                 <T>Your way out</T>
               </div>
               <p className="ln-out-text">
                 <T>If Writz stops, you can reclaim this BTC with your Bitcoin key alone after block 300,000, about 21 Jul 2027. </T>
-                <span className="wz-btn wz-btn-text wz-inline">
+                <span className={ui.btn("text", "md", { inline: true })}>
                   <T>How to reclaim</T>
                 </span>
               </p>
@@ -146,7 +147,7 @@ function Skeleton({ n }: { n: number }) {
               <p>
                 <T>No transactions for this loan on this device yet.</T>
               </p>
-              <p className="wz-muted">
+              <p className={ui.muted}>
                 <T>Full history needs the Writz indexer and is coming later.</T>
               </p>
             </div>

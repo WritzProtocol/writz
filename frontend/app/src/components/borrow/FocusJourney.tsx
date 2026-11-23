@@ -17,6 +17,7 @@ import { ExternalLink } from "@/components/ui";
 import { Enter, useEntrance } from "@/components/ui/entrance";
 import type { JourneyModel } from "./model";
 import { AmountStep, BitcoinStep, DoneStep, RegisterStep, ReviewStep, StellarStep, WaitStep, registerQuestion } from "./steps";
+import * as ui from "@/components/ui/styles";
 
 const QUESTION: Record<Exclude<JourneyStep, "done" | "register">, string> = {
   amount: "How much BTC do you want to lock?",
@@ -69,7 +70,7 @@ export function FocusJourney({ m: model }: { m: JourneyModel }) {
     return (
       <div className="bj">
         <section className="bj-end">
-          <div className="wz-stack">
+          <div className={ui.stack}>
             <h1 className="bj-q">Deposits are unavailable on this deployment.</h1>
             <p>This app isn&apos;t set up for deposits right now. Nothing was sent.</p>
             <p>
@@ -84,7 +85,7 @@ export function FocusJourney({ m: model }: { m: JourneyModel }) {
   if (step === "done") {
     return (
       <div className="bj">
-        <Enter as="section" name="done" kind="open" className="bj-end wz-cut">
+        <Enter as="section" name="done" kind="open" className="cut bj-end">
           <DoneStep m={model} heading={heading} />
         </Enter>
       </div>
@@ -114,16 +115,16 @@ export function FocusJourney({ m: model }: { m: JourneyModel }) {
           {label}
         </p>
         {back && (
-          <button type="button" className="wz-btn wz-btn-text" onClick={() => model.edit(back)}>
+          <button type="button" className={ui.cx(ui.btn("text"), "pointer-coarse:min-w-11")} onClick={() => model.edit(back)}>
             Back
           </button>
         )}
       </Enter>
-      <p className="wz-sr" role="status">
+      <p className="sr-only" role="status">
         Step {current + 1} of {STEPS.length}: {label}
       </p>
 
-      <div className={moved ? "wz-enter" : undefined} key={step}>
+      <div className={moved ? "animate-wz-enter" : undefined} key={step}>
         {step !== "amount" && <Summary m={model} intro={!moved} />}
         <h1 {...question("bj-q")} ref={heading} tabIndex={-1}>
           {step === "register" ? registerQuestion(model) : QUESTION[step]}
@@ -218,7 +219,7 @@ function Summary({ m, intro }: { m: JourneyModel; intro: boolean }) {
       <dd>
         {value}
         {edit && m.canEdit(edit) && (
-          <button type="button" className="wz-btn wz-btn-text" aria-label={EDIT_LABEL[edit]} onClick={() => m.edit(edit)}>
+          <button type="button" className={ui.btn("text")} aria-label={EDIT_LABEL[edit]} onClick={() => m.edit(edit)}>
             Edit
           </button>
         )}
@@ -243,7 +244,7 @@ function Summary({ m, intro }: { m: JourneyModel; intro: boolean }) {
         </span>
         <span className="bj-sum-ctl">
           {editAmount && (
-            <button type="button" className="wz-btn wz-btn-sm" aria-label={EDIT_LABEL.amount} onClick={() => m.edit("amount")}>
+            <button type="button" className={ui.btn("default", "sm")} aria-label={EDIT_LABEL.amount} onClick={() => m.edit("amount")}>
               Edit
             </button>
           )}
@@ -254,7 +255,7 @@ function Summary({ m, intro }: { m: JourneyModel; intro: boolean }) {
             aria-controls="bj-sum-body"
             onClick={() => setOpen((o) => !o)}
           >
-            <span className="wz-sr">Loan details</span>
+            <span className="sr-only">Loan details</span>
             <span aria-hidden="true" className="bj-caret" data-open={open} />
           </button>
         </span>

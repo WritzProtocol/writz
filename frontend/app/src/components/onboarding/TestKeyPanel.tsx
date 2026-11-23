@@ -3,6 +3,7 @@
 import { useId, useState } from "react";
 import { useBitcoinWallet, type EmbeddedSignet } from "@/lib/bitcoin/useBitcoinWallet";
 import { ErrorBox, Notice } from "@/components/ui";
+import * as ui from "@/components/ui/styles";
 
 function download(text: string, address: string) {
   const blob = new Blob([text], { type: "application/json" });
@@ -34,14 +35,14 @@ function BackupRestore({ e, onDone }: { e: EmbeddedSignet; onDone(): void }) {
   };
 
   return (
-    <div className="wz-stack" style={{ gap: 12 }}>
-      <p className="wz-hint">
+    <div className={ui.stack} style={{ gap: 12 }}>
+      <p className={ui.hint}>
         The key file moves this test key to another browser. Anyone with it can spend the key&apos;s test coins, which have no value.
       </p>
-      <div className="wz-actions">
+      <div className={ui.actions}>
         <button
           type="button"
-          className="wz-btn wz-btn-gold wz-btn-sm"
+          className={ui.btn("gold", "sm")}
           onClick={() => {
             download(e.exportFile(), e.address);
             setSaved(true);
@@ -49,16 +50,16 @@ function BackupRestore({ e, onDone }: { e: EmbeddedSignet; onDone(): void }) {
         >
           Download key file
         </button>
-        <button type="button" className="wz-btn wz-btn-line wz-btn-sm" onClick={onDone}>
+        <button type="button" className={ui.btn("line", "sm")} onClick={onDone}>
           Close
         </button>
       </div>
-      {saved ? <p className="wz-hint">Saved. Keep the file somewhere private.</p> : null}
-      <label htmlFor={`${id}-file`} className="wz-label">
+      {saved ? <p className={ui.hint}>Saved. Keep the file somewhere private.</p> : null}
+      <label htmlFor={`${id}-file`} className={ui.label}>
         Restore from a key file
       </label>
       <input id={`${id}-file`} type="file" accept=".json,.txt,application/json,text/plain" onChange={(ev) => void restore(ev.target.files?.[0])} />
-      <p className="wz-hint">Restoring replaces the test key in this browser. Back up the current one first if it holds coins or a loan.</p>
+      <p className={ui.hint}>Restoring replaces the test key in this browser. Back up the current one first if it holds coins or a loan.</p>
       {restored ? (
         <Notice tone="positive" label="Restored">
           <p>This browser now uses the restored test key.</p>
@@ -78,8 +79,8 @@ export function TestKeyPanel() {
 
   if (!e.active) {
     return (
-      <div className="wz-actions">
-        <button type="button" className="wz-btn wz-btn-line wz-btn-sm" onClick={e.use}>
+      <div className={ui.actions}>
+        <button type="button" className={ui.btn("line", "sm")} onClick={e.use}>
           Use my Signet test key
         </button>
       </div>
@@ -88,17 +89,17 @@ export function TestKeyPanel() {
 
   return (
     <>
-      <p className="wz-hint">
+      <p className={ui.hint}>
         <b>Signet test key, worthless coins.</b> It lives only in this browser, not with Writz or Pollar. For testing only.
       </p>
       {open ? (
         <BackupRestore e={e} onDone={() => setOpen(false)} />
       ) : (
-        <div className="wz-actions">
-          <button type="button" className="wz-btn wz-btn-line wz-btn-sm" onClick={() => setOpen(true)}>
+        <div className={ui.actions}>
+          <button type="button" className={ui.btn("line", "sm")} onClick={() => setOpen(true)}>
             Back up or restore
           </button>
-          <button type="button" className="wz-btn wz-btn-text" disabled={b.connecting} onClick={b.connect}>
+          <button type="button" className={ui.btn("text")} disabled={b.connecting} onClick={b.connect}>
             {b.connecting ? "Confirm in Xverse" : "Use Xverse instead"}
           </button>
         </div>

@@ -4,14 +4,15 @@ import { formatUsdc } from "@/lib/borrow/journey";
 import type { Read } from "@/lib/loan/model";
 import { ExternalLink } from "@/components/ui";
 import { Enter } from "@/components/ui/entrance";
+import * as ui from "@/components/ui/styles";
 
 function Amount({ value, unit, checking, decimals }: { value: Read<bigint>; unit: string; checking: string; decimals?: 2 | 7 }) {
   if (value.kind === "failed") return <span className="fu-na">Unavailable</span>;
   if (value.kind === "checking") {
     return (
       <>
-        <span className="wz-skeleton fu-sk" aria-hidden="true" />
-        <span className="wz-sr">{checking}</span>
+        <span className={ui.cx(ui.skeleton, "fu-sk")} aria-hidden="true" />
+        <span className="sr-only">{checking}</span>
       </>
     );
   }
@@ -38,7 +39,7 @@ export function Hero({
 }) {
   const digits = value.kind === "ok" ? formatUsdc(value.value, decimals).length : value.kind === "text" ? value.text.length : 8;
   return (
-    <Enter name="hero" kind="open" className="fu-hero wz-cut" style={{ "--n": Math.max(digits, 6), "--u": unit.length } as CSSProperties}>
+    <Enter name="hero" kind="open" className="cut fu-hero" style={{ "--n": Math.max(digits, 6), "--u": unit.length } as CSSProperties}>
       <dl>
         <dt className="fu-hero-k">{label}</dt>
         <dd className="fu-big">
@@ -92,11 +93,11 @@ export function RiskNotes({
         <p key={i}>{line}</p>
       ))}
       {docs ? (
-        <ExternalLink href={docs.href} className="wz-link fu-textlink">
+        <ExternalLink href={docs.href} className={ui.cx(ui.link, "fu-textlink")}>
           {docs.label}
         </ExternalLink>
       ) : null}
-      <Link href={link.href} className="wz-link fu-textlink">
+      <Link href={link.href} className={ui.cx(ui.link, "fu-textlink")}>
         {link.label}
       </Link>
     </Enter>

@@ -8,6 +8,7 @@ import { toFieldValue, type Read } from "@/lib/loan/model";
 import { ErrorBox, Notice, Spinner } from "@/components/ui";
 import { AmountField, TxResult, TxRunning } from "@/components/loan/parts";
 import { SigningCheckSlot } from "@/components/wallet/SigningCheck";
+import * as ui from "@/components/ui/styles";
 
 export interface SideModel {
   label: string;
@@ -70,7 +71,7 @@ function SidePanel({ m, side }: { m: FundsModel; side: FundsSide }) {
 
   return (
     <form
-      className="wz-stack"
+      className={ui.stack}
       noValidate
       onSubmit={(e) => {
         e.preventDefault();
@@ -107,10 +108,10 @@ function SidePanel({ m, side }: { m: FundsModel; side: FundsSide }) {
         hint={s.hint}
         disabled={Boolean(s.blocked)}
       />
-      <div className="wz-actions">
+      <div className={ui.actions}>
         <button
           type="submit"
-          className="wz-btn wz-btn-gold"
+          className={ui.btn("gold")}
           aria-disabled={Boolean(s.blocked) || m.otherTx || !check.ok}
           aria-describedby={s.blocked || m.otherTx ? `${id}-why` : undefined}
         >
@@ -118,7 +119,7 @@ function SidePanel({ m, side }: { m: FundsModel; side: FundsSide }) {
         </button>
       </div>
       {s.blocked || m.otherTx ? (
-        <p id={`${id}-why`} className="wz-hint">
+        <p id={`${id}-why`} className={ui.hint}>
           {s.blocked ?? "Waiting for your other transaction."}
         </p>
       ) : null}
@@ -145,10 +146,10 @@ export function FundsCard({ m, label }: { m: FundsModel; label: string }) {
 
   if (m.trustline.kind === "ok" && !m.trustline.value) {
     return (
-      <section className="fu-panel wz-stack" aria-label={label}>
-        <p className="wz-strong">{m.trust.text}</p>
-        <div className="wz-actions">
-          <button type="button" className="wz-btn wz-btn-gold" disabled={m.trust.busy || m.otherTx} onClick={m.trust.add}>
+      <section className={ui.cx(ui.stack, "fu-panel")} aria-label={label}>
+        <p className={ui.strong}>{m.trust.text}</p>
+        <div className={ui.actions}>
+          <button type="button" className={ui.btn("gold")} disabled={m.trust.busy || m.otherTx} onClick={m.trust.add}>
             {m.trust.busy ? (
               <>
                 <Spinner /> Confirm in {m.walletName}
@@ -165,14 +166,14 @@ export function FundsCard({ m, label }: { m: FundsModel; label: string }) {
   }
 
   return (
-    <section className="wz-stack" aria-label={label}>
+    <section className={ui.stack} aria-label={label}>
       <div
-        className="wz-seg fu-seg"
+        className={ui.cx(ui.seg, "fu-seg")}
         role="tablist"
         aria-label={label}
         style={{ ["--seg-n" as string]: SIDES.length, ["--seg-i" as string]: SIDES.indexOf(tab) }}
       >
-        <span className="wz-seg-ind" aria-hidden="true" />
+        <span className={ui.segInd} aria-hidden="true" />
         {SIDES.map((t) => {
           const reason = disabledOf(t);
           return (
@@ -181,6 +182,7 @@ export function FundsCard({ m, label }: { m: FundsModel; label: string }) {
               id={`funds-tab-${t}`}
               type="button"
               role="tab"
+              className={ui.segTab}
               aria-selected={tab === t}
               aria-controls="funds-panel"
               aria-disabled={Boolean(reason)}
@@ -194,8 +196,8 @@ export function FundsCard({ m, label }: { m: FundsModel; label: string }) {
           );
         })}
       </div>
-      {busy ? <p className="wz-hint">{WAITING}</p> : null}
-      <div className="fu-panel wz-enter" id="funds-panel" role="tabpanel" aria-labelledby={`funds-tab-${tab}`} key={tab}>
+      {busy ? <p className={ui.hint}>{WAITING}</p> : null}
+      <div className="animate-wz-enter fu-panel" id="funds-panel" role="tabpanel" aria-labelledby={`funds-tab-${tab}`} key={tab}>
         <SidePanel m={m} side={tab} />
       </div>
     </section>
@@ -207,7 +209,7 @@ export function NotConnected({ text, connect, connecting }: { text: string; conn
     <Notice
       tone="neutral"
       actions={
-        <button type="button" className="wz-btn wz-btn-gold" disabled={connecting} onClick={connect}>
+        <button type="button" className={ui.btn("gold")} disabled={connecting} onClick={connect}>
           {connecting ? "Confirm in your wallet" : "Connect Stellar wallet"}
         </button>
       }

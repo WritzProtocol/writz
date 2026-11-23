@@ -6,23 +6,14 @@ The Graphite & Gold design tokens shared by `frontend/app` and `frontend/landing
 
 ## Using it
 
-- `frontend/landing` imports it at the top of `src/app/globals.css`:
-
-  ```css
-  @import "../../../../packages/brand/tokens.css";
-  ```
-
-- `frontend/app` imports it from `src/app/layout.tsx`, next to `globals.css`. Its `globals.css` goes through Tailwind, which resolves `@import` paths from the app root under Turbopack rather than from the file, so the import lives in the layout:
-
-  ```ts
-  import "../../../../packages/brand/tokens.css";
-  ```
+Both apps reach it through `theme.css`, which imports `tokens.css` (see below); nothing imports `tokens.css` directly.
 
 ## Tailwind theme
 
 `theme.css` maps the tokens to Tailwind v4 utilities (`bg-surface`, `text-heading`, `text-accent`, `shadow-border`, `rounded-control`, `ease-enter`, `font-mono`) with `@theme inline reference`, so the values stay in `tokens.css` and a token change needs no edit in the theme. It imports `tokens.css` itself, and also defines:
 
-- `duration-micro`, `duration-element`, `duration-section` and `duration-signature`, the motion tiers.
+- `hover:` only where a fine pointer can hover (`(hover: hover) and (pointer: fine)`), as both apps' stylesheets always did, so touch screens never keep a stuck hover state.
+- `duration-micro`, `duration-element`, `duration-section` and `duration-signature`, the motion tiers. Like Tailwind's own `duration-*` they compose with `transition-*`.
 - `slant`, the parallelogram at the mark's minus 16 degrees drawn behind an element. Set its fill with `[--slant-bg:var(--accent)]` and its horizontal inset with `[--slant-inset:6px]`. A plain skewed box is `-skew-x-16`.
 - `cut` and `cut-sm`, the cut corner on panels.
 

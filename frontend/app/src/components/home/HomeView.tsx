@@ -14,6 +14,7 @@ import { GetStarted } from "@/components/onboarding/GetStarted";
 import { useGuide } from "@/components/onboarding/useGuide";
 import type { HomeData } from "./data";
 import { EarnCard, HowALoanWorks, LendCard, LoanSkeleton, LoanSummaryCard, Preview, UrgentCard } from "./parts";
+import * as ui from "@/components/ui/styles";
 
 const STELLAR = networkName(config.networkPassphrase);
 
@@ -39,7 +40,7 @@ function GlobalNotices({ data }: { data: HomeData }) {
           tone="warning"
           label="Network"
           actions={
-            <button type="button" className="wz-btn wz-btn-line wz-btn-sm" onClick={data.retry}>
+            <button type="button" className={ui.btn("line", "sm")} onClick={data.retry}>
               Try again
             </button>
           }
@@ -162,8 +163,8 @@ export function HomeView({ data }: { data: HomeData }) {
 
       {showsPreview && !guided ? (
         earn || supplied ? (
-          <div {...startIn("wz-actions")}>
-            <Link href="/borrow/new" className="wz-btn wz-btn-line">
+          <div {...startIn(ui.actions)}>
+            <Link href="/borrow/new" className={ui.btn("line")}>
               Start a loan
             </Link>
           </div>
@@ -175,13 +176,13 @@ export function HomeView({ data }: { data: HomeData }) {
       {!hasLoans && !guided ? <HowALoanWorks enter={howIn} /> : null}
 
       <nav {...foot("hm-foot")} aria-label="More">
-        <Link href="/protocol" className="wz-btn wz-btn-text">
+        <Link href="/protocol" className={ui.cx(ui.btn("text"), "pointer-coarse:min-w-11")}>
           Protocol stats
         </Link>
-        <Link href="/help/reclaim" className="wz-btn wz-btn-text">
+        <Link href="/help/reclaim" className={ui.cx(ui.btn("text"), "pointer-coarse:min-w-11")}>
           How to reclaim
         </Link>
-        <ExternalLink href={DOCS_URL} className="wz-btn wz-btn-text">
+        <ExternalLink href={DOCS_URL} className={ui.cx(ui.btn("text"), "pointer-coarse:min-w-11")}>
           Docs
         </ExternalLink>
       </nav>

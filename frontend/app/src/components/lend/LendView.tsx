@@ -10,6 +10,7 @@ import { Enter } from "@/components/ui/entrance";
 import { FundsCard, NotConnected } from "@/components/funds/FundsCard";
 import { Hero, RiskNotes, Tile, Tiles } from "@/components/funds/parts";
 import { balanceCaption, balanceDecimals, formatApr, poolSupplyRate, type LendModel } from "./model";
+import * as ui from "@/components/ui/styles";
 
 const STELLAR = networkName(config.networkPassphrase);
 
@@ -29,8 +30,8 @@ function SupplyRate({ pool }: { pool: LendModel["pool"] }) {
           <span className="fu-na">Unavailable</span>
         ) : (
           <>
-            <span className="wz-skeleton fu-sk" aria-hidden="true" />
-            <span className="wz-sr">Checking...</span>
+            <span className={ui.cx(ui.skeleton, "fu-sk")} aria-hidden="true" />
+            <span className="sr-only">Checking...</span>
           </>
         )}
       </dd>
@@ -57,7 +58,7 @@ export function LendView({ m }: { m: LendModel }) {
             tone="warning"
             label="Balance not refreshed"
             actions={
-              <button type="button" className="wz-btn wz-btn-line wz-btn-sm" onClick={m.retry}>
+              <button type="button" className={ui.btn("line", "sm")} onClick={m.retry}>
                 Try again
               </button>
             }

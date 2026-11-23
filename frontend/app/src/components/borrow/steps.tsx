@@ -23,12 +23,13 @@ import { ConfirmationSlots, CopyButton, ErrorBox, ExternalLink, Notice, SlideToC
 import { DepositProof } from "./DepositProof";
 import { SigningCheckSlot } from "@/components/wallet/SigningCheck";
 import type { JourneyModel } from "./model";
+import * as ui from "@/components/ui/styles";
 
 const ON_TESTNET = config.target !== "mainnet";
 
 function Status({ children, spinning = true }: { children: React.ReactNode; spinning?: boolean }) {
   return (
-    <p className="wz-status" aria-live="polite">
+    <p className={ui.status} aria-live="polite">
       {spinning ? <Spinner /> : null}
       <span>{children}</span>
     </p>
@@ -38,7 +39,7 @@ function Status({ children, spinning = true }: { children: React.ReactNode; spin
 function Primary({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
     <div>
-      <button type="button" className="wz-btn wz-btn-gold" {...props}>
+      <button type="button" className={ui.btn("gold")} {...props}>
         {children}
       </button>
     </div>
@@ -47,8 +48,8 @@ function Primary({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonEl
 
 function WalletCard({ icon, name, detail }: { icon: string; name: string; detail: React.ReactNode }) {
   return (
-    <div className="wz-wallet">
-      <span className="wz-wallet-icon" aria-hidden="true">
+    <div className={ui.wallet}>
+      <span className={ui.walletIcon} aria-hidden="true">
         {icon}
       </span>
       <div>
@@ -61,7 +62,7 @@ function WalletCard({ icon, name, detail }: { icon: string; name: string; detail
 
 function TxHash({ hash, chain }: { hash: string; chain: "stellar" | "bitcoin" }) {
   return (
-    <ExternalLink href={chain === "stellar" ? stellarTxUrl(hash) : btcTxUrl(hash)} className="wz-link mono">
+    <ExternalLink href={chain === "stellar" ? stellarTxUrl(hash) : btcTxUrl(hash)} className={ui.monoLink}>
       {shortAddress(hash, 6, 4)}
     </ExternalLink>
   );
@@ -85,10 +86,10 @@ export function AmountStep({ m }: { m: JourneyModel }) {
         amount.submit();
       }}
     >
-      <label htmlFor="amount" className="wz-label">
+      <label htmlFor="amount" className={ui.label}>
         Amount in BTC
       </label>
-      <div className="wz-field" data-invalid={invalid}>
+      <div className={ui.field()} data-invalid={invalid}>
         <input
           id="amount"
           inputMode="decimal"
@@ -103,11 +104,11 @@ export function AmountStep({ m }: { m: JourneyModel }) {
         <span>BTC</span>
       </div>
       {invalid ? (
-        <p id="amount-error" className="wz-error">
+        <p id="amount-error" className={ui.error}>
           {amount.error}
         </p>
       ) : (
-        <p id="amount-hint" className="wz-hint">
+        <p id="amount-hint" className={ui.hint}>
           {sats ? <span className="mono">= {sats.toLocaleString("en-US")} sats. </span> : null}
           Minimum {formatBtc(MIN_DEPOSIT_SATS)} BTC.
           {amount.balanceSats !== null ? (
@@ -131,19 +132,19 @@ export function AmountStep({ m }: { m: JourneyModel }) {
           <div>
             <dt>BTC price</dt>
             <dd>
-              <span className="mono">{formatUsd(price)}</span> <small className="wz-muted">oracle price</small>
+              <span className="mono">{formatUsd(price)}</span> <small className={ui.muted}>oracle price</small>
             </dd>
           </div>
         </dl>
       ) : (
-        <p className="wz-hint">BTC price unavailable.</p>
+        <p className={ui.hint}>BTC price unavailable.</p>
       )}
-      <p className="wz-hint">
+      <p className={ui.hint}>
         The liquidation price assumes you borrow the full amount.
         {m.review.exitDate ? ` If Writz stops, you can reclaim your BTC alone after about ${m.review.exitDate}.` : ""}
       </p>
       <div className="bj-submit">
-        <button type="submit" className="wz-btn wz-btn-gold">
+        <button type="submit" className={ui.btn("gold")}>
           Continue
         </button>
       </div>
@@ -159,7 +160,7 @@ export function StellarStep({ m }: { m: JourneyModel }) {
   const editing = s.ready;
 
   return (
-    <div className="wz-stack">
+    <div className={ui.stack}>
       <p className="bj-lead">Your Stellar wallet receives the USDC and signs loan actions. Writz never sees your keys.</p>
 
       {!s.address ? (
@@ -176,7 +177,7 @@ export function StellarStep({ m }: { m: JourneyModel }) {
           {s.connecting ? (
             <>
               <Status>Confirm in your wallet</Status>
-              {slow && <p className="wz-hint">Didn&apos;t see it? Open your wallet from your browser toolbar.</p>}
+              {slow && <p className={ui.hint}>Didn&apos;t see it? Open your wallet from your browser toolbar.</p>}
             </>
           ) : (
             <Primary onClick={s.connect}>Connect Stellar wallet</Primary>
@@ -187,11 +188,11 @@ export function StellarStep({ m }: { m: JourneyModel }) {
           <WalletCard icon="S" name={s.walletName === "your wallet" ? "Stellar wallet" : s.walletName} detail={<span className="mono">{shortAddress(s.address, 6, 6)}</span>} />
           <StellarReadiness m={m} />
           {editing && (
-            <div className="wz-actions">
-              <button type="button" className="wz-btn wz-btn-gold" onClick={m.finishEdit}>
+            <div className={ui.actions}>
+              <button type="button" className={ui.btn("gold")} onClick={m.finishEdit}>
                 Continue
               </button>
-              <button type="button" className="wz-btn wz-btn-line" onClick={s.useOther}>
+              <button type="button" className={ui.btn("line")} onClick={s.useOther}>
                 Use a different wallet
               </button>
             </div>
@@ -221,7 +222,7 @@ function StellarReadiness({ m }: { m: JourneyModel }) {
   const funding = s.funding.kind === "ok" ? s.funding.value : null;
   const fundButton = (gold: boolean) =>
     ON_TESTNET ? (
-      <button type="button" className={`wz-btn ${gold ? "wz-btn-gold" : "wz-btn-line"}`} disabled={s.fundBusy} onClick={s.fund}>
+      <button type="button" className={ui.btn(gold ? "gold" : "line")} disabled={s.fundBusy} onClick={s.fund}>
         {s.fundBusy ? (
           <>
             <Spinner /> Funding
@@ -241,7 +242,7 @@ function StellarReadiness({ m }: { m: JourneyModel }) {
           actions={
             <>
               {fundButton(true)}
-              <button type="button" className="wz-btn wz-btn-line" onClick={s.recheckFunding}>
+              <button type="button" className={ui.btn("line")} onClick={s.recheckFunding}>
                 Check again
               </button>
             </>
@@ -260,7 +261,7 @@ function StellarReadiness({ m }: { m: JourneyModel }) {
         label="Low XLM"
         actions={
           <>
-            <button type="button" className="wz-btn wz-btn-gold" onClick={s.ackLow}>
+            <button type="button" className={ui.btn("gold")} onClick={s.ackLow}>
               Continue
             </button>
             {fundButton(false)}
@@ -283,7 +284,7 @@ function StellarReadiness({ m }: { m: JourneyModel }) {
           label="Couldn't find your loans"
           tone="warning"
           actions={
-            <button type="button" className="wz-btn wz-btn-gold" onClick={s.retryFind}>
+            <button type="button" className={ui.btn("gold")} onClick={s.retryFind}>
               Try again
             </button>
           }
@@ -307,7 +308,7 @@ export function BitcoinStep({ m }: { m: JourneyModel }) {
   const short = b.balance?.kind === "ok" && sats !== null && b.balance.value < sats;
 
   return (
-    <div className="wz-stack">
+    <div className={ui.stack}>
       <p className="bj-lead">
         {b.embedded
           ? "Your Signet test key holds the BTC you lock. It lives only in this browser. Test coins only."
@@ -332,7 +333,7 @@ export function BitcoinStep({ m }: { m: JourneyModel }) {
           {b.connecting ? (
             <>
               <Status>Confirm in Xverse</Status>
-              {slow && <p className="wz-hint">Didn&apos;t see it? Open Xverse from your browser toolbar.</p>}
+              {slow && <p className={ui.hint}>Didn&apos;t see it? Open Xverse from your browser toolbar.</p>}
             </>
           ) : (
             <Primary onClick={b.connect}>Connect Xverse</Primary>
@@ -352,10 +353,10 @@ export function BitcoinStep({ m }: { m: JourneyModel }) {
               label="Not enough BTC"
               actions={
                 <>
-                  <button type="button" className="wz-btn wz-btn-gold" onClick={b.recheck}>
+                  <button type="button" className={ui.btn("gold")} onClick={b.recheck}>
                     Check balance again
                   </button>
-                  <button type="button" className="wz-btn wz-btn-text" onClick={() => m.newDevice.setOpen(true)}>
+                  <button type="button" className={ui.btn("text")} onClick={() => m.newDevice.setOpen(true)}>
                     I already sent BTC
                   </button>
                 </>
@@ -370,9 +371,9 @@ export function BitcoinStep({ m }: { m: JourneyModel }) {
                     : " Add BTC to Xverse, then select Check balance again."}
               </p>
               {ON_TESTNET && (
-                <p className="wz-actions" style={{ marginTop: 8 }}>
+                <p className={ui.actions} style={{ marginTop: 8 }}>
                   {BTC_FAUCETS.map((f) => (
-                    <ExternalLink key={f.href} href={f.href}>
+                    <ExternalLink className={ui.noteLink} key={f.href} href={f.href}>
                       {f.label}
                     </ExternalLink>
                   ))}
@@ -382,11 +383,11 @@ export function BitcoinStep({ m }: { m: JourneyModel }) {
           )}
           {short && m.newDevice.open && <NewDevicePanel m={m} />}
           {b.ready && (
-            <div className="wz-actions">
-              <button type="button" className="wz-btn wz-btn-gold" onClick={m.finishEdit}>
+            <div className={ui.actions}>
+              <button type="button" className={ui.btn("gold")} onClick={m.finishEdit}>
                 Continue
               </button>
-              <button type="button" className="wz-btn wz-btn-line" onClick={b.useOther}>
+              <button type="button" className={ui.btn("line")} onClick={b.useOther}>
                 Use a different wallet
               </button>
             </div>
@@ -421,7 +422,7 @@ export function ReviewStep({ m }: { m: JourneyModel }) {
   }
 
   return (
-    <div className="wz-stack">
+    <div className={ui.stack}>
       <dl className="bj-rows" id="review-summary">
         <div>
           <dt>You lock</dt>
@@ -434,9 +435,9 @@ export function ReviewStep({ m }: { m: JourneyModel }) {
           <dt>To your lock address</dt>
           <dd>
             {r.lockFailed ? (
-              <span className="wz-actions">
+              <span className={ui.actions}>
                 <span>Can&apos;t read the Bitcoin block height to build your lock address.</span>
-                <button type="button" className="wz-btn wz-btn-line wz-btn-sm" onClick={r.retryLock}>
+                <button type="button" className={ui.btn("line", "sm")} onClick={r.retryLock}>
                   Try again
                 </button>
               </span>
@@ -447,7 +448,7 @@ export function ReviewStep({ m }: { m: JourneyModel }) {
             )}
             <div className="bj-tools">
               {r.lockAddress && (
-                <CopyButton value={r.lockAddress} className="wz-btn wz-btn-sm" />
+                <CopyButton value={r.lockAddress} className={ui.btn("default", "sm")} />
               )}
               <details className="bj-more">
                 <summary>What is this?</summary>
@@ -520,7 +521,7 @@ export function ReviewStep({ m }: { m: JourneyModel }) {
                 : "Writz cannot recover your Bitcoin key. Keep its recovery phrase."}
             </span>
           </p>
-          <label className="wz-check">
+          <label className={ui.check}>
             <input type="checkbox" checked={r.ack} onChange={(e) => r.setAck(e.target.checked)} />
             <span>I understand my BTC stays locked until I repay and release it, or until block {height}.</span>
           </label>
@@ -533,8 +534,8 @@ export function ReviewStep({ m }: { m: JourneyModel }) {
             describedBy="review-summary"
             onConfirm={r.send}
           />
-          {!r.ack && <p className="wz-hint">Tick the box above to send.</p>}
-          <button type="button" className="wz-btn wz-btn-text" onClick={() => m.newDevice.setOpen(true)}>
+          {!r.ack && <p className={ui.hint}>Tick the box above to send.</p>}
+          <button type="button" className={ui.btn("text")} onClick={() => m.newDevice.setOpen(true)}>
             I already sent BTC
           </button>
         </div>
@@ -558,10 +559,10 @@ function NewDevicePanel({ m }: { m: JourneyModel }) {
         n.submit();
       }}
     >
-      <label htmlFor="txid" className="wz-label">
+      <label htmlFor="txid" className={ui.label}>
         Bitcoin transaction ID
       </label>
-      <div className="wz-field" data-size="sm" data-invalid={invalid || c.kind === "no_output"}>
+      <div className={ui.field("sm")} data-invalid={invalid || c.kind === "no_output"}>
         <input
           ref={input}
           id="txid"
@@ -573,7 +574,7 @@ function NewDevicePanel({ m }: { m: JourneyModel }) {
           onChange={(e) => n.setTxid(e.target.value)}
         />
       </div>
-      <p id="txid-help" className={invalid ? "wz-error" : "wz-hint"}>
+      <p id="txid-help" className={invalid ? ui.error : ui.hint}>
         {invalid ? "Enter the 64-character ID from Xverse." : "Paste the ID from Xverse. The amount is read from Bitcoin."}
       </p>
       {c.kind === "checking" && <Status>Looking for it on Bitcoin</Status>}
@@ -583,7 +584,7 @@ function NewDevicePanel({ m }: { m: JourneyModel }) {
           tone="positive"
           label="Found"
           actions={
-            <button type="button" className="wz-btn wz-btn-gold" onClick={n.confirm}>
+            <button type="button" className={ui.btn("gold")} onClick={n.confirm}>
               Continue
             </button>
           }
@@ -597,7 +598,7 @@ function NewDevicePanel({ m }: { m: JourneyModel }) {
           label="Doesn't match"
           alert
           actions={
-            <button type="button" className="wz-btn wz-btn-line" onClick={() => input.current?.focus()}>
+            <button type="button" className={ui.btn("line")} onClick={() => input.current?.focus()}>
               Check the ID
             </button>
           }
@@ -606,13 +607,13 @@ function NewDevicePanel({ m }: { m: JourneyModel }) {
         </Notice>
       )}
       {c.kind === "error" && <ErrorBox error={c.error} context={{ flow: "deposit" }} tone="warning" label="Not found yet" />}
-      <div className="wz-actions">
+      <div className={ui.actions}>
         {c.kind !== "found" && (
-          <button type="submit" className="wz-btn wz-btn-gold" disabled={c.kind === "checking" || c.kind === "saving"}>
+          <button type="submit" className={ui.btn("gold")} disabled={c.kind === "checking" || c.kind === "saving"}>
             Find my deposit
           </button>
         )}
-        <button type="button" className="wz-btn wz-btn-text" onClick={() => n.setOpen(false)}>
+        <button type="button" className={ui.btn("text")} onClick={() => n.setOpen(false)}>
           Cancel
         </button>
       </div>
@@ -643,7 +644,7 @@ export function WaitStep({ m }: { m: JourneyModel }) {
   const saving = d.flow.phase === "preparing" && d.flow.step === "locating_output" && s.kind !== "btc_unseen";
 
   return (
-    <div className="wz-stack">
+    <div className={ui.stack}>
       {(d.foundOnLoad || d.secondBlocked) && (
         <Notice tone="info">
           You have a deposit in progress.{d.secondBlocked ? " Finish this deposit first." : ""}
@@ -659,21 +660,21 @@ export function WaitStep({ m }: { m: JourneyModel }) {
             <span>/{count.m}</span>
           </p>
           <ConfirmationSlots n={count.n} m={count.m} />
-          <div className="wz-spread">
-            <p className="wz-strong" aria-live="polite">
+          <div className={ui.spread}>
+            <p className={ui.strong} aria-live="polite">
               {relayerBehind
                 ? `${count.m} of ${count.m} confirmations. Waiting for the Writz relayer to see it.`
                 : count.n === 0
                   ? "Waiting for the first confirmation."
                   : `${count.n} of ${count.m} confirmations.`}
             </p>
-            {!relayerBehind && <p className="wz-muted">{timeLeft(count.m - count.n)}</p>}
+            {!relayerBehind && <p className={ui.muted}>{timeLeft(count.m - count.n)}</p>}
           </div>
         </div>
       ) : (
         <>
-          <div className="wz-skeleton" style={{ height: 44 }} />
-          <p className="wz-muted">Checking…</p>
+          <div className={ui.skeleton} style={{ height: 44 }} />
+          <p className={ui.muted}>Checking…</p>
         </>
       )}
 
@@ -682,7 +683,7 @@ export function WaitStep({ m }: { m: JourneyModel }) {
           tone="warning"
           label="Not seen yet"
           actions={
-            <button type="button" className="wz-btn wz-btn-gold" onClick={d.recheck}>
+            <button type="button" className={ui.btn("gold")} onClick={d.recheck}>
               Check again
             </button>
           }
@@ -691,7 +692,7 @@ export function WaitStep({ m }: { m: JourneyModel }) {
         </Notice>
       )}
       {d.relayerUnreachable && (
-        <p className="wz-hint" role="status">
+        <p className={ui.hint} role="status">
           Can&apos;t reach the Writz relayer. Retrying on its own. Your BTC is safe on Bitcoin.
         </p>
       )}
@@ -702,23 +703,23 @@ export function WaitStep({ m }: { m: JourneyModel }) {
           tone="warning"
           label="Needs attention"
           actions={
-            <button type="button" className="wz-btn wz-btn-line" onClick={d.recheck}>
+            <button type="button" className={ui.btn("line")} onClick={d.recheck}>
               Check again
             </button>
           }
         />
       )}
 
-      <p className="wz-hint">
+      <p className={ui.hint}>
         You can close this page. Your progress is saved in this browser for this Stellar wallet.
         {pd ? (
           <>
             {" "}
-            <ExternalLink href={btcTxUrl(pd.btcTxid)}>View on mempool</ExternalLink>
+            <ExternalLink className={ui.noteLink} href={btcTxUrl(pd.btcTxid)}>View on mempool</ExternalLink>
           </>
         ) : null}
       </p>
-      {pd && <p className="wz-hint mono">{shortAddress(pd.btcTxid, 10, 8)}</p>}
+      {pd && <p className={ui.cx(ui.hint, "mono")}>{shortAddress(pd.btcTxid, 10, 8)}</p>}
     </div>
   );
 }
@@ -784,7 +785,7 @@ export function RegisterStep({ m }: { m: JourneyModel }) {
   ];
 
   return (
-    <div className="wz-stack">
+    <div className={ui.stack}>
       {(d.foundOnLoad || d.secondBlocked) && v.kind !== "progress" && (
         <Notice tone="info">
           You have a deposit in progress.{d.secondBlocked ? " Finish this deposit first." : ""}
@@ -803,7 +804,7 @@ export function RegisterStep({ m }: { m: JourneyModel }) {
             Register on Stellar
           </Primary>
           {blocked && (
-            <p id="register-blocked" className="wz-hint">
+            <p id="register-blocked" className={ui.hint}>
               {blocked}
             </p>
           )}
@@ -812,7 +813,7 @@ export function RegisterStep({ m }: { m: JourneyModel }) {
 
       {v.kind === "progress" && (
         <>
-          <ol className="wz-steps" aria-live="polite">
+          <ol className={ui.steps} aria-live="polite">
             {lines.map((text, i) => (
               <li key={i} data-state={i < v.active ? "done" : i === v.active ? "now" : "next"}>
                 {i === v.active ? <Spinner /> : <i aria-hidden="true" />}
@@ -822,7 +823,7 @@ export function RegisterStep({ m }: { m: JourneyModel }) {
             ))}
           </ol>
           {v.active === 2 ? <SigningCheckSlot /> : null}
-          {slow && <p className="wz-hint">Didn&apos;t see it? Open {wallet} from your browser toolbar.</p>}
+          {slow && <p className={ui.hint}>Didn&apos;t see it? Open {wallet} from your browser toolbar.</p>}
         </>
       )}
 
@@ -830,7 +831,7 @@ export function RegisterStep({ m }: { m: JourneyModel }) {
         <Notice
           tone="neutral"
           actions={
-            <button type="button" className="wz-btn wz-btn-gold" onClick={d.register} disabled={Boolean(blocked)}>
+            <button type="button" className={ui.btn("gold")} onClick={d.register} disabled={Boolean(blocked)}>
               Sign again
             </button>
           }
@@ -844,7 +845,7 @@ export function RegisterStep({ m }: { m: JourneyModel }) {
           tone={v.failed ? "warning" : "info"}
           label={v.failed ? "Not saved yet" : undefined}
           actions={
-            <button type="button" className="wz-btn wz-btn-gold" onClick={d.finish} disabled={Boolean(blocked)}>
+            <button type="button" className={ui.btn("gold")} onClick={d.finish} disabled={Boolean(blocked)}>
               Finish deposit
             </button>
           }
@@ -866,7 +867,7 @@ export function RegisterStep({ m }: { m: JourneyModel }) {
           tone="warning"
           label="Not confirmed yet"
           actions={
-            <button type="button" className="wz-btn wz-btn-line" onClick={d.recheck}>
+            <button type="button" className={ui.btn("line")} onClick={d.recheck}>
               Check again
             </button>
           }
@@ -887,7 +888,7 @@ export function RegisterStep({ m }: { m: JourneyModel }) {
           context={{ flow: "deposit" }}
           hash={hash}
           actions={
-            <button type="button" className="wz-btn wz-btn-gold" onClick={d.register} disabled={Boolean(blocked)}>
+            <button type="button" className={ui.btn("gold")} onClick={d.register} disabled={Boolean(blocked)}>
               Try again
             </button>
           }
@@ -909,8 +910,8 @@ export function DoneStep({ m, heading }: { m: JourneyModel; heading: RefObject<H
   }, [heading]);
 
   return (
-    <div className="wz-stack wz-done">
-      <span className="wz-done-mark" aria-hidden="true" />
+    <div className={ui.cx(ui.stack, "items-start")}>
+      <span className={ui.doneMark} aria-hidden="true" />
       <h1 className="bj-q" ref={heading} tabIndex={-1}>
         {btc ? (
           <>
@@ -938,14 +939,14 @@ export function DoneStep({ m, heading }: { m: JourneyModel; heading: RefObject<H
           moment
         />
       ) : null}
-      <p className="wz-sr" role="status">
+      <p className="sr-only" role="status">
         {`${btc ? `${btc} BTC locked. ` : ""}${m.done.index !== null ? `Loan ${m.done.index + 1} is ready.` : "Your loan is ready."}${max ? ` You can borrow up to ${max} USDC.` : ""}`}
       </p>
-      <div className="wz-actions">
-        <Link href={m.done.index !== null ? loanHref(m.done.index, "borrow") : "/"} className="wz-btn wz-btn-gold">
+      <div className={ui.actions}>
+        <Link href={m.done.index !== null ? loanHref(m.done.index, "borrow") : "/"} className={ui.btn("gold")}>
           Borrow now
         </Link>
-        <button type="button" className="wz-btn wz-btn-line" onClick={m.done.reset}>
+        <button type="button" className={ui.btn("line")} onClick={m.done.reset}>
           Make another deposit
         </button>
       </div>

@@ -8,6 +8,7 @@ import { mockHomeData, useLiveHomeData } from "./data";
 import { HomeView } from "./HomeView";
 import { HowSkeleton, LoanSkeleton, PreviewSkeleton } from "./parts";
 import { T } from "@/components/ui/skeleton";
+import * as ui from "@/components/ui/styles";
 
 function LiveHome() {
   const a = useShellAccount();
@@ -23,7 +24,7 @@ function Foot() {
   return (
     <nav className="hm-foot">
       {["Protocol stats", "How to reclaim", "Docs"].map((t) => (
-        <span key={t} className="wz-btn wz-btn-text">
+        <span key={t} className={ui.cx(ui.btn("text"), "pointer-coarse:min-w-11")}>
           <T>{t}</T>
         </span>
       ))}
@@ -35,7 +36,7 @@ function Foot() {
 function Skeleton() {
   return (
     <>
-      <h1 className="wz-sr">Loading Writz</h1>
+      <h1 className="sr-only">Loading Writz</h1>
       <div className="hm-col" aria-hidden="true" data-sk="loans">
         <div className="hm-head">
           <p className="hm-h1 hm-display">

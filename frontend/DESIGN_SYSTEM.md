@@ -51,18 +51,18 @@ Never write a hex or rgb colour in a component or stylesheet.
   styles its pages with plain scoped CSS (`.landing`, `.press-root`). The
   whitepaper is a light paper page and defines its own paper variables in
   `src/app/whitepaper/whitepaper.css`.
-- `frontend/app` imports the file from `src/app/layout.tsx`, before
-  `globals.css`. `globals.css` maps the colours into Tailwind with an
-  `@theme inline` block (`--color-surface: var(--surface)` and so on), so
-  utilities such as `bg-surface` or `text-muted` exist. Most screens are styled
-  with the classes in `ui.css` and the route stylesheets instead.
+- `frontend/app` imports the shared Tailwind theme (`packages/brand/theme.css`,
+  which imports the tokens) from `src/app/globals.css`, so utilities such as
+  `bg-surface`, `text-muted` or `shadow-border` exist. The shell and the shared
+  primitives are styled with utilities; the route stylesheets still style
+  their own pages.
 
-Inside the app, `.app` defines a few short aliases used by `ui.css` and the
-route stylesheets: `--gold`, `--ink`, `--panel`, `--panel-2`, `--midnight`,
-`--rule`, `--rule-strong`, plus `--edge` (heading at 36%, the outline of a line
-button) and `--shear` (the tangent of 16 degrees, used to cut corners at the
-mark's angle). See `packages/brand/README.md` for the Next.js and Vercel
-settings that let both apps reach the shared folder.
+Inside the app, `.app` defines a few short aliases still read by the route
+stylesheets: `--gold`, `--ink`, `--panel`, `--panel-2`, `--midnight`, `--rule`,
+`--rule-strong`, plus `--edge` (heading at 36%, the outline of a line button)
+and `--shear` (the tangent of 16 degrees, used to cut corners at the mark's
+angle). See `packages/brand/README.md` for the Next.js and Vercel settings that
+let both apps reach the shared folder.
 
 ## Type
 
@@ -71,53 +71,60 @@ settings that let both apps reach the shared folder.
 - **Geist Mono** for every figure that comes from a chain or a calculation:
   amounts, ratios, prices, block heights, addresses, transaction ids. Always
   with tabular numbers so columns and live values do not jitter. In the app use
-  the `.mono` class, which sets both.
+  the `mono` utility, which sets both.
 - Headings use `text-wrap: balance`. Section labels are 13px, uppercase, with
-  wide tracking (`.wz-label`). Nothing renders under 13px.
+  wide tracking (`ui.label`). Nothing renders under 13px.
 
 ## The cut primitives
 
-The shared pieces of the app live in `frontend/app/src/app/(app)/ui.css` (the
-`wz-` classes) and `frontend/app/src/components/ui/` (React parts: `Notice`,
-`ErrorBox`, `ExternalLink`, `SlideToConfirm`, `ConfirmationSlots`, `Spinner`,
-and the hooks in `hooks.ts`). The landing has its own copies of the button and
-tag treatment in `landing.css`, drawn the same way.
+The shared pieces of the app are Tailwind class strings in
+`frontend/app/src/components/ui/styles.ts`, imported as `ui`
+(`className={ui.btn("gold")}`), and React parts in
+`frontend/app/src/components/ui/` (`Notice`, `ErrorBox`, `ExternalLink`,
+`SlideToConfirm`, `ConfirmationSlots`, `Spinner`, and the hooks in `hooks.ts`).
+Each string is one complete list of utilities, so a variant never relies on
+class order to override the base. The landing has its own copies of the button
+and tag treatment in `landing.css`, drawn the same way.
 
 The angle is always drawn with a `::before` layer under the content, skewed by
-`skewX(-16deg)`, so the text stays upright and the hit area stays a rectangle.
+`skewX(-16deg)` (the `slant` utility, or `before:-skew-x-16`), so the text stays
+upright and the hit area stays a rectangle.
 
-- **Buttons** (`.wz-btn`): a parallelogram fill. Variants: `wz-btn-gold` (the
-  one primary action), `wz-btn-line` (outlined), the default quiet fill on
-  `--tint-10`, `wz-btn-text` (an underlined text action in `--link`) and
-  `wz-btn-sm`. Disabled buttons keep a readable muted label on a quiet fill.
-- **Tags and badges** (`.wz-tag`, `.wz-badge`): a quiet parallelogram. A status
-  badge starts with the slash, a small skewed bar in the status colour, and
-  always names the status in words (`data-tone` picks the colour).
-- **Chips** (`.wz-chip` in `.wz-chips`): small parallelograms for presets and
+- **Buttons** (`ui.btn(tone, size)`): a parallelogram fill. Tones: `gold` (the
+  one primary action), `line` (outlined), the default quiet fill on
+  `--tint-10`, `quiet` (the header controls) and `text` (an underlined text
+  action in `--link`); sizes `md` and `sm`. Disabled buttons keep a readable
+  muted label on a quiet fill.
+- **Tags and badges** (`ui.tag`, `ui.badge(tone)`): a quiet parallelogram. A
+  status badge starts with the slash, a small skewed bar in the status colour,
+  and always names the status in words.
+- **Chips** (`ui.chip` in `ui.chips`): small parallelograms for presets and
   inline choices; the pressed chip fills with `--heading`.
-- **Segmented control** (`.wz-seg`): tabs as parallelograms of equal width; the
-  selected one fills with `--heading`.
-- **Fields** (`.wz-field`, `.wz-label`, `.wz-hint`, `.wz-error`, `.wz-check`):
-  a square field outlined in `--muted`, Geist Mono input, the unit at the end,
-  a 2px `--danger` outline when invalid. The checkbox fills gold when checked.
-- **Panels with the cut corner** (`.wz-cut`, `.wz-cut-sm`): a `clip-path` that
+- **Segmented control** (`ui.seg`, `ui.segTab`, `ui.segInd`): tabs as
+  parallelograms of equal width; the selected one fills with `--heading`.
+- **Fields** (`ui.field()`, `ui.label`, `ui.hint`, `ui.error`, `ui.check`): a
+  square field outlined in `--muted`, Geist Mono input, the unit at the end, a
+  2px `--danger` outline when invalid. The checkbox fills gold when checked.
+- **Panels with the cut corner** (the `cut` and `cut-sm` utilities): a `clip-path` that
   takes the top left corner off at the mark's angle. Panels are square
   otherwise, with no radius and no shadow. Below 768px every panel and the
   tiles under it sit inside the 16px page gutter, with the cut at 24px; only
   the single Home loan card bleeds to the right edge, and only from 768px.
-- **Notices** (`Notice`, `.wz-note`): the status colour at a 10% tint with a
+- **Notices** (`Notice`, `ui.note(tone)`): the status colour at a 10% tint with a
   thin outline in the same colour, and a word label after the slash.
-- **Ledger rows** (`.wz-row` in a `dl`): term on the left in `--muted`, value on
+- **Ledger rows** (`ui.row()` in a `dl`): term on the left in `--muted`, value on
   the right in `--heading`, hairline between rows.
-- **Slide to confirm** (`SlideToConfirm`, `.wz-slide`): a gold parallelogram
+- **Slide to confirm** (`SlideToConfirm`): a gold parallelogram
   handle dragged across a track to send a transaction. By keyboard, the first
   Enter arms it and the second sends.
-- **Confirmation slots** (`ConfirmationSlots`, `.wz-slots`): one block per
+- **Confirmation slots** (`ConfirmationSlots`): one block per
   required confirmation, gold when reached.
 
 Route stylesheets sit next to their routes and use a short prefix: `hm-` home,
 `ln-` loans, `bj-` the borrow journey, `fu-` Earn and Lend, `pr-` Protocol,
-`rc-` reclaim. Reuse a `wz-` class before adding a new one.
+`rc-` reclaim. Reuse a primitive from `ui` before adding a new one. A few
+primitives still carry their old `wz-` class name, unstyled, only because a
+route stylesheet targets it; those names go when the route moves to utilities.
 
 ## App shell
 
