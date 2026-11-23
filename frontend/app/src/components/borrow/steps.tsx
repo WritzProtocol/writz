@@ -60,9 +60,9 @@ function WalletCard({ icon, name, detail }: { icon: string; name: string; detail
   );
 }
 
-function TxHash({ hash, chain }: { hash: string; chain: "stellar" | "bitcoin" }) {
+function TxHash({ hash, chain, inNote = false }: { hash: string; chain: "stellar" | "bitcoin"; inNote?: boolean }) {
   return (
-    <ExternalLink href={chain === "stellar" ? stellarTxUrl(hash) : btcTxUrl(hash)} className={ui.monoLink}>
+    <ExternalLink href={chain === "stellar" ? stellarTxUrl(hash) : btcTxUrl(hash)} className={inNote ? ui.noteMonoLink : ui.monoLink}>
       {shortAddress(hash, 6, 4)}
     </ExternalLink>
   );
@@ -715,7 +715,7 @@ export function WaitStep({ m }: { m: JourneyModel }) {
         {pd ? (
           <>
             {" "}
-            <ExternalLink className={ui.noteLink} href={btcTxUrl(pd.btcTxid)}>View on mempool</ExternalLink>
+            <ExternalLink href={btcTxUrl(pd.btcTxid)}>View on mempool</ExternalLink>
           </>
         ) : null}
       </p>
@@ -856,7 +856,7 @@ export function RegisterStep({ m }: { m: JourneyModel }) {
           {hash ? (
             <>
               {" "}
-              <TxHash hash={hash} chain="stellar" />
+              <TxHash hash={hash} chain="stellar" inNote />
             </>
           ) : null}
         </Notice>
@@ -876,7 +876,7 @@ export function RegisterStep({ m }: { m: JourneyModel }) {
           {hash ? (
             <>
               {" "}
-              <TxHash hash={hash} chain="stellar" />
+              <TxHash hash={hash} chain="stellar" inNote />
             </>
           ) : null}
         </Notice>

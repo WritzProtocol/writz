@@ -56,7 +56,7 @@ function Item({ t, onGone }: { t: Toast; onGone: (id: number) => void }) {
         {t.label}
       </p>
       <p className="col-span-full pr-[14px] text-[15px] leading-[1.45]">{t.text}</p>
-      <Link href={t.link.href} className={ui.cx(ui.btn("text", "sm"), "col-1 justify-self-start")} onClick={leave}>
+      <Link href={t.link.href} className={ui.cx(ui.btn("text", "sm"), "col-1 [justify-self:start]")} onClick={leave}>
         {t.link.label}
       </Link>
       <button

@@ -56,7 +56,7 @@ export function ErrorNotice({
       <details className="text-xs text-muted">
         <summary className="cursor-pointer select-none">Technical details</summary>
         {details.map((line, i) => (
-          <p key={i} className="mt-1 break-all font-mono">
+          <p key={i} className="break-all font-mono">
             {line}
           </p>
         ))}

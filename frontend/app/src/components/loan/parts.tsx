@@ -290,9 +290,9 @@ export function WayOut({
 
 // ── Transaction status ───────────────────────────────────────────────────
 
-function TxLinkInline({ hash, chain = "stellar" }: { hash: string; chain?: "stellar" | "bitcoin" }) {
+function TxLinkInline({ hash, chain = "stellar", inNote = false }: { hash: string; chain?: "stellar" | "bitcoin"; inNote?: boolean }) {
   return (
-    <ExternalLink href={chain === "stellar" ? stellarTxUrl(hash) : btcTxUrl(hash)} className={ui.monoLink}>
+    <ExternalLink href={chain === "stellar" ? stellarTxUrl(hash) : btcTxUrl(hash)} className={inNote ? ui.noteMonoLink : ui.monoLink}>
       {shortAddress(hash, 6, 4)}
     </ExternalLink>
   );
@@ -362,7 +362,7 @@ export function TxResult({
       return (
         <Notice tone="positive" label="Done" className="animate-wz-enter">
           <p>
-            {success} {hash && <TxLinkInline hash={hash} />}
+            {success} {hash && <TxLinkInline hash={hash} inNote />}
           </p>
         </Notice>
       );
@@ -385,7 +385,7 @@ export function TxResult({
         >
           <p>
             Your transaction was sent but isn&apos;t confirmed yet. It may still go through. Don&apos;t send it again.{" "}
-            <TxLinkInline hash={flow.hash} />
+            <TxLinkInline hash={flow.hash} inNote />
           </p>
         </Notice>
       );
@@ -620,7 +620,7 @@ export function BorrowPanel({
             Add USDC to your Stellar wallet so it can receive what you borrow. One signature. Your wallet sets aside 0.5 XLM.
           </p>
           {m.trust.error ? <ErrorBox error={m.trust.error} context={{ flow: "trustline" }} label="USDC not added" /> : null}
-          <div className={ui.actions}>
+          <div className={ui.cx(ui.actions, "mt-1.5")}>
             {m.trust.busy ? (
               <SigningCheckSlot>
                 <Status>Confirm in {m.stellar.walletName}. 0.5 XLM set aside.</Status>
@@ -1061,7 +1061,7 @@ export function ClosedNotice({ status, position }: { status: PositionStatus; pos
             <b>This loan was liquidated.</b> Its collateral ratio fell below 120%, so a liquidator repaid your USDC debt and the loan is
             closed. You owe nothing on it.
           </p>
-          <div className={ui.actions}>
+          <div className={ui.cx(ui.actions, "mt-1.5")}>
             {status.txHash ? (
               <ExternalLink href={stellarTxUrl(status.txHash)} className={ui.cx(ui.btn("text"), ui.noteTextAlign)}>
                 View the liquidation on {STELLAR}

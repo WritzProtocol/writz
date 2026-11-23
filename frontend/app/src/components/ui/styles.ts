@@ -83,7 +83,7 @@ export function badge(tone: Tone): string {
 export const chips = "flex flex-wrap gap-1";
 
 export const chip =
-  "wz-chip relative isolate inline-flex items-center justify-center min-h-11 px-5 border-none bg-transparent text-heading aria-pressed:text-bg disabled:text-muted text-[15px] font-medium leading-[1.2] whitespace-nowrap cursor-pointer disabled:cursor-not-allowed flex-none [-webkit-tap-highlight-color:transparent] touch-manipulation select-none transition-[scale] duration-micro ease-enter motion-reduce:transition-none active:not-disabled:[scale:0.96] focus-visible:outline-none before:absolute before:inset-y-0 before:inset-x-[6px] before:-z-1 before:bg-tint-10 aria-pressed:before:bg-heading hover:not-disabled:not-aria-pressed:before:bg-tint-20 before:-skew-x-16 before:transition-[background-color] before:duration-micro before:ease-enter motion-reduce:before:transition-none focus-visible:before:[box-shadow:0_0_0_2px_var(--bg),0_0_0_4px_var(--mark)]";
+  "wz-chip relative isolate inline-flex items-center justify-center min-h-11 px-5 border-none bg-transparent text-heading aria-pressed:not-disabled:text-bg disabled:text-muted text-[15px] font-medium leading-[1.2] whitespace-nowrap cursor-pointer disabled:cursor-not-allowed flex-none [-webkit-tap-highlight-color:transparent] touch-manipulation select-none transition-[scale] duration-micro ease-enter motion-reduce:transition-none active:not-disabled:[scale:0.96] focus-visible:outline-none before:absolute before:inset-y-0 before:inset-x-[6px] before:-z-1 before:bg-tint-10 aria-pressed:before:bg-heading hover:not-disabled:not-aria-pressed:before:bg-tint-20 before:-skew-x-16 before:transition-[background-color] before:duration-micro before:ease-enter motion-reduce:before:transition-none focus-visible:before:[box-shadow:0_0_0_2px_var(--bg),0_0_0_4px_var(--mark)]";
 
 /* Fields */
 
@@ -154,6 +154,9 @@ export function noteLabel(tone: Tone): string {
 /** A link inside a notice, which underlines a little further from the text than `link`. */
 export const noteLink =
   "wz-link text-link underline decoration-link/45 underline-offset-4 transition-[text-decoration-color] duration-micro ease-enter motion-reduce:transition-none hover:decoration-current pointer-coarse:inline-flex pointer-coarse:items-center pointer-coarse:min-h-11";
+
+/** A link set in mono inside a notice, such as a transaction id. */
+export const noteMonoLink = cx(noteLink, "mono pointer-coarse:py-[13px] pointer-coarse:-my-[13px]");
 
 /** A text button inside a notice, aligned to the start of the notice. */
 export const noteTextAlign = "justify-start text-left";

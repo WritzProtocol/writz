@@ -211,11 +211,12 @@ function DepositCard({ u, m, onCheckAgain }: { u: Extract<Urgent, { kind: "depos
   const s = u.status;
   const open = useEntrance("urgent", "open", { ready: s.kind !== "btc_unseen" });
   const txid = u.deposit?.pd.btcTxid ?? u.loan?.position.txid;
-  const mempool = txid ? (
-    <ExternalLink href={btcTxUrl(txid)} className={ui.btn("text")}>
-      View on mempool
-    </ExternalLink>
-  ) : null;
+  const mempool = (inNote: boolean) =>
+    txid ? (
+      <ExternalLink href={btcTxUrl(txid)} className={inNote ? ui.cx(ui.btn("text"), ui.noteTextAlign) : ui.btn("text")}>
+        View on mempool
+      </ExternalLink>
+    ) : null;
 
   if (s.kind === "btc_unseen") {
     return (
@@ -227,7 +228,7 @@ function DepositCard({ u, m, onCheckAgain }: { u: Extract<Urgent, { kind: "depos
             <button type="button" className={ui.btn("gold")} onClick={onCheckAgain}>
               Check again
             </button>
-            {mempool}
+            {mempool(true)}
           </>
         }
       >
@@ -247,7 +248,7 @@ function DepositCard({ u, m, onCheckAgain }: { u: Extract<Urgent, { kind: "depos
           <Link href="/borrow/new" className={ui.btn("line")}>
             View progress
           </Link>
-          {mempool}
+          {mempool(false)}
         </div>
       </section>
     );
@@ -273,7 +274,7 @@ function DepositCard({ u, m, onCheckAgain }: { u: Extract<Urgent, { kind: "depos
         <Link href="/borrow/new" className={ui.btn(ready ? "gold" : "line")}>
           {ready ? "Finish in one signature" : "View progress"}
         </Link>
-        {mempool}
+        {mempool(false)}
       </div>
     </section>
   );
