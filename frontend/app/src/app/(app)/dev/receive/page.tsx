@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { UI_MOCK } from "@/lib/mock/gate";
 import { ReceiveStates } from "./ReceiveStates";
-import "../scenarios/dev.css";
+import * as dv from "../styles";
 
 export const dynamic = "force-dynamic";
 
@@ -14,8 +14,8 @@ export const metadata: Metadata = {
 export default function DevReceive() {
   if (!UI_MOCK) notFound();
   return (
-    <div className="dv">
-      <header className="dv-head">
+    <div className={dv.page}>
+      <header className={dv.head}>
         <h1>Receive states</h1>
         <p>Step 2 of a borrow in every state: convert to XLM or send to another chain after the USDC is in the wallet.</p>
       </header>

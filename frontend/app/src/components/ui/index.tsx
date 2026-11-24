@@ -34,7 +34,11 @@ export function Notice({
     <div className={ui.cx(ui.note(tone), className)} data-tone={tone} role={alert ? "alert" : "status"}>
       {label ? <span className={ui.noteLabel(tone)}>{label}</span> : null}
       <div>{children}</div>
-      {actions ? <div className={ui.cx(ui.actions, "mt-1.5")}>{actions}</div> : null}
+      {actions ? (
+        <div className={ui.cx(ui.actions, "mt-1.5")} data-slot="actions">
+          {actions}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -47,6 +51,7 @@ export function ErrorBox({
   label = "Something went wrong",
   tone = "danger",
   actions,
+  className,
 }: {
   error: unknown;
   context?: ErrorContext;
@@ -54,12 +59,17 @@ export function ErrorBox({
   label?: string;
   tone?: Tone;
   actions?: ReactNode;
+  className?: string;
 }) {
   return (
-    <div className={ui.note(tone)} data-tone={tone}>
+    <div className={ui.cx(ui.note(tone), className)} data-tone={tone}>
       <span className={ui.noteLabel(tone)}>{label}</span>
       <ErrorNotice error={error} context={context} hash={hash} className="" />
-      {actions ? <div className={ui.cx(ui.actions, "mt-1.5")}>{actions}</div> : null}
+      {actions ? (
+        <div className={ui.cx(ui.actions, "mt-1.5")} data-slot="actions">
+          {actions}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -116,6 +126,8 @@ export function SlideToConfirm({
   disabled,
   describedBy,
   onConfirm,
+  className,
+  labelClassName,
 }: {
   label: string;
   armedLabel: string;
@@ -123,6 +135,9 @@ export function SlideToConfirm({
   disabled?: boolean;
   describedBy?: string;
   onConfirm: () => void;
+  /** Restyles the track and its label in a context, such as the journey's review panel. */
+  className?: string;
+  labelClassName?: string;
 }) {
   const track = useRef<HTMLDivElement>(null);
   const dragRef = useRef<SlideDrag | null>(null);
@@ -187,7 +202,7 @@ export function SlideToConfirm({
 
   return (
     <div
-      className={ui.cx(ui.slide, "group/slide data-[armed=true]:[box-shadow:inset_0_0_0_2px_var(--accent)]")}
+      className={ui.cx(ui.slide, "group/slide data-[armed=true]:[box-shadow:inset_0_0_0_2px_var(--accent)]", className)}
       ref={track}
       data-disabled={disabled}
       data-done={done}
@@ -199,7 +214,10 @@ export function SlideToConfirm({
         className="absolute inset-y-0 left-0 right-auto bg-[color-mix(in_srgb,var(--accent)_14%,transparent)] group-data-[done=true]/slide:bg-[color-mix(in_srgb,var(--accent)_22%,transparent)] transition-[width] duration-element ease-exit group-data-[done=true]/slide:ease-enter motion-reduce:transition-none"
         style={{ width: x + HANDLE - 4, transition: drag ? "none" : undefined }} />
       <span
-        className="wz-slide-label absolute inset-y-0 right-4 left-[84px] grid place-items-center text-center font-medium text-[15px] leading-[1.2] text-heading group-data-[disabled=true]/slide:text-muted pointer-events-none opacity-[calc(1-var(--slide-p,0)*1.4)] group-data-[done=true]/slide:opacity-100 transition-opacity duration-element ease-exit group-data-[dragging=true]/slide:transition-none motion-reduce:transition-none"
+        className={ui.cx(
+          "wz-slide-label absolute inset-y-0 right-4 left-[84px] grid place-items-center text-center font-medium text-[15px] leading-[1.2] text-heading group-data-[disabled=true]/slide:text-muted pointer-events-none opacity-[calc(1-var(--slide-p,0)*1.4)] group-data-[done=true]/slide:opacity-100 transition-opacity duration-element ease-exit group-data-[dragging=true]/slide:transition-none motion-reduce:transition-none",
+          labelClassName,
+        )}
         aria-hidden="true"
       >
         {shown}

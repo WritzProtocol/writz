@@ -24,12 +24,13 @@ import { DepositProof } from "./DepositProof";
 import { SigningCheckSlot } from "@/components/wallet/SigningCheck";
 import type { JourneyModel } from "./model";
 import * as ui from "@/components/ui/styles";
+import * as bj from "./styles";
 
 const ON_TESTNET = config.target !== "mainnet";
 
 function Status({ children, spinning = true }: { children: React.ReactNode; spinning?: boolean }) {
   return (
-    <p className={ui.status} aria-live="polite">
+    <p className={bj.status} aria-live="polite">
       {spinning ? <Spinner /> : null}
       <span>{children}</span>
     </p>
@@ -48,8 +49,8 @@ function Primary({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonEl
 
 function WalletCard({ icon, name, detail }: { icon: string; name: string; detail: React.ReactNode }) {
   return (
-    <div className={ui.wallet}>
-      <span className={ui.walletIcon} aria-hidden="true">
+    <div className={bj.wallet}>
+      <span className={bj.walletIcon} aria-hidden="true">
         {icon}
       </span>
       <div>
@@ -79,7 +80,7 @@ export function AmountStep({ m }: { m: JourneyModel }) {
 
   return (
     <form
-      className="bj-panel"
+      className={bj.panel}
       noValidate
       onSubmit={(e) => {
         e.preventDefault();
@@ -108,7 +109,7 @@ export function AmountStep({ m }: { m: JourneyModel }) {
           {amount.error}
         </p>
       ) : (
-        <p id="amount-hint" className={ui.hint}>
+        <p id="amount-hint" className={bj.hint}>
           {sats ? <span className="mono">= {sats.toLocaleString("en-US")} sats. </span> : null}
           Minimum {formatBtc(MIN_DEPOSIT_SATS)} BTC.
           {amount.balanceSats !== null ? (
@@ -120,7 +121,7 @@ export function AmountStep({ m }: { m: JourneyModel }) {
         </p>
       )}
       {price ? (
-        <dl className="bj-kv">
+        <dl className={bj.kv}>
           <div>
             <dt>You can borrow up to</dt>
             <dd className="mono">{sats ? `${formatUsdc(maxBorrowStroops(sats, price))} USDC` : "-"}</dd>
@@ -137,13 +138,13 @@ export function AmountStep({ m }: { m: JourneyModel }) {
           </div>
         </dl>
       ) : (
-        <p className={ui.hint}>BTC price unavailable.</p>
+        <p className={bj.hint}>BTC price unavailable.</p>
       )}
-      <p className={ui.hint}>
+      <p className={bj.hint}>
         The liquidation price assumes you borrow the full amount.
         {m.review.exitDate ? ` If Writz stops, you can reclaim your BTC alone after about ${m.review.exitDate}.` : ""}
       </p>
-      <div className="bj-submit">
+      <div className={bj.submit}>
         <button type="submit" className={ui.btn("gold")}>
           Continue
         </button>
@@ -161,7 +162,7 @@ export function StellarStep({ m }: { m: JourneyModel }) {
 
   return (
     <div className={ui.stack}>
-      <p className="bj-lead">Your Stellar wallet receives the USDC and signs loan actions. Writz never sees your keys.</p>
+      <p className={bj.lead}>Your Stellar wallet receives the USDC and signs loan actions. Writz never sees your keys.</p>
 
       {!s.address ? (
         <>
@@ -177,7 +178,7 @@ export function StellarStep({ m }: { m: JourneyModel }) {
           {s.connecting ? (
             <>
               <Status>Confirm in your wallet</Status>
-              {slow && <p className={ui.hint}>Didn&apos;t see it? Open your wallet from your browser toolbar.</p>}
+              {slow && <p className={bj.hint}>Didn&apos;t see it? Open your wallet from your browser toolbar.</p>}
             </>
           ) : (
             <Primary onClick={s.connect}>Connect Stellar wallet</Primary>
@@ -188,7 +189,7 @@ export function StellarStep({ m }: { m: JourneyModel }) {
           <WalletCard icon="S" name={s.walletName === "your wallet" ? "Stellar wallet" : s.walletName} detail={<span className="mono">{shortAddress(s.address, 6, 6)}</span>} />
           <StellarReadiness m={m} />
           {editing && (
-            <div className={ui.actions}>
+            <div className={bj.actions}>
               <button type="button" className={ui.btn("gold")} onClick={m.finishEdit}>
                 Continue
               </button>
@@ -309,7 +310,7 @@ export function BitcoinStep({ m }: { m: JourneyModel }) {
 
   return (
     <div className={ui.stack}>
-      <p className="bj-lead">
+      <p className={bj.lead}>
         {b.embedded
           ? "Your Signet test key holds the BTC you lock. It lives only in this browser. Test coins only."
           : "Xverse holds the BTC you lock. Its key builds your lock address, so only you and Writz together can move it."}
@@ -333,7 +334,7 @@ export function BitcoinStep({ m }: { m: JourneyModel }) {
           {b.connecting ? (
             <>
               <Status>Confirm in Xverse</Status>
-              {slow && <p className={ui.hint}>Didn&apos;t see it? Open Xverse from your browser toolbar.</p>}
+              {slow && <p className={bj.hint}>Didn&apos;t see it? Open Xverse from your browser toolbar.</p>}
             </>
           ) : (
             <Primary onClick={b.connect}>Connect Xverse</Primary>
@@ -371,7 +372,7 @@ export function BitcoinStep({ m }: { m: JourneyModel }) {
                     : " Add BTC to Xverse, then select Check balance again."}
               </p>
               {ON_TESTNET && (
-                <p className={ui.actions} style={{ marginTop: 8 }}>
+                <p className={bj.actions} style={{ marginTop: 8 }}>
                   {BTC_FAUCETS.map((f) => (
                     <ExternalLink className={ui.noteLink} key={f.href} href={f.href}>
                       {f.label}
@@ -383,7 +384,7 @@ export function BitcoinStep({ m }: { m: JourneyModel }) {
           )}
           {short && m.newDevice.open && <NewDevicePanel m={m} />}
           {b.ready && (
-            <div className={ui.actions}>
+            <div className={bj.actions}>
               <button type="button" className={ui.btn("gold")} onClick={m.finishEdit}>
                 Continue
               </button>
@@ -423,11 +424,11 @@ export function ReviewStep({ m }: { m: JourneyModel }) {
 
   return (
     <div className={ui.stack}>
-      <dl className="bj-rows" id="review-summary">
+      <dl className={bj.rows} id="review-summary">
         <div>
           <dt>You lock</dt>
           <dd>
-            <span className="mono bj-big">{btc} BTC</span>
+            <span className={ui.cx("mono", bj.big)}>{btc} BTC</span>
             <small>plus a network fee {fee}</small>
           </dd>
         </div>
@@ -435,23 +436,23 @@ export function ReviewStep({ m }: { m: JourneyModel }) {
           <dt>To your lock address</dt>
           <dd>
             {r.lockFailed ? (
-              <span className={ui.actions}>
+              <span className={bj.actions}>
                 <span>Can&apos;t read the Bitcoin block height to build your lock address.</span>
                 <button type="button" className={ui.btn("line", "sm")} onClick={r.retryLock}>
                   Try again
                 </button>
               </span>
             ) : (
-              <span className="mono bj-addr">
+              <span className={ui.cx("mono", bj.addr)}>
                 {r.lockAddress ?? (m.bitcoin.address ? "Checking..." : `Connect ${m.bitcoin.walletName} first`)}
               </span>
             )}
-            <div className="bj-tools">
+            <div className={bj.tools}>
               {r.lockAddress && (
                 <CopyButton value={r.lockAddress} className={ui.btn("default", "sm")} />
               )}
-              <details className="bj-more">
-                <summary>What is this?</summary>
+              <details className={bj.more}>
+                <summary className={bj.moreSummary}>What is this?</summary>
                 <p>
                   Only your key and Writz&apos;s together can move BTC from this address. After Bitcoin block {height}
                   {r.exitDate ? `, about ${r.exitDate},` : ""} your key alone can.
@@ -508,12 +509,14 @@ export function ReviewStep({ m }: { m: JourneyModel }) {
       ) : flow.phase === "preparing" ? (
         <Status>Getting your deposit ready</Status>
       ) : (
-        <div className="bj-send">
+        <div className={bj.send}>
           {flow.phase === "signature_cancelled" && flow.wallet === "bitcoin" && (
-            <Notice tone="neutral">You declined in Xverse. No BTC was sent.</Notice>
+            <Notice tone="neutral" className={bj.sendNote}>
+              You declined in Xverse. No BTC was sent.
+            </Notice>
           )}
-          {flow.phase === "failed" && <ErrorBox error={flow.error} context={{ flow: "deposit" }} />}
-          <p className="bj-key">
+          {flow.phase === "failed" && <ErrorBox error={flow.error} context={{ flow: "deposit" }} className={bj.sendNote} />}
+          <p className={bj.key}>
             <i aria-hidden="true" />
             <span>
               {m.bitcoin.embedded
@@ -521,7 +524,7 @@ export function ReviewStep({ m }: { m: JourneyModel }) {
                 : "Writz cannot recover your Bitcoin key. Keep its recovery phrase."}
             </span>
           </p>
-          <label className={ui.check}>
+          <label className={bj.sendCheck}>
             <input type="checkbox" checked={r.ack} onChange={(e) => r.setAck(e.target.checked)} />
             <span>I understand my BTC stays locked until I repay and release it, or until block {height}.</span>
           </label>
@@ -533,9 +536,11 @@ export function ReviewStep({ m }: { m: JourneyModel }) {
             disabled={!r.ack || !r.lockAddress}
             describedBy="review-summary"
             onConfirm={r.send}
+            className={bj.slideTrack}
+            labelClassName={bj.slideLabel}
           />
-          {!r.ack && <p className={ui.hint}>Tick the box above to send.</p>}
-          <button type="button" className={ui.btn("text")} onClick={() => m.newDevice.setOpen(true)}>
+          {!r.ack && <p className={bj.sendHint}>Tick the box above to send.</p>}
+          <button type="button" className={ui.cx(ui.btn("text"), "self-start mt-2")} onClick={() => m.newDevice.setOpen(true)}>
             I already sent BTC
           </button>
         </div>
@@ -552,7 +557,7 @@ function NewDevicePanel({ m }: { m: JourneyModel }) {
 
   return (
     <form
-      className="bj-panel"
+      className={bj.panel}
       noValidate
       onSubmit={(e) => {
         e.preventDefault();
@@ -574,7 +579,7 @@ function NewDevicePanel({ m }: { m: JourneyModel }) {
           onChange={(e) => n.setTxid(e.target.value)}
         />
       </div>
-      <p id="txid-help" className={invalid ? ui.error : ui.hint}>
+      <p id="txid-help" className={invalid ? ui.error : bj.hint}>
         {invalid ? "Enter the 64-character ID from Xverse." : "Paste the ID from Xverse. The amount is read from Bitcoin."}
       </p>
       {c.kind === "checking" && <Status>Looking for it on Bitcoin</Status>}
@@ -607,7 +612,7 @@ function NewDevicePanel({ m }: { m: JourneyModel }) {
         </Notice>
       )}
       {c.kind === "error" && <ErrorBox error={c.error} context={{ flow: "deposit" }} tone="warning" label="Not found yet" />}
-      <div className={ui.actions}>
+      <div className={bj.actions}>
         {c.kind !== "found" && (
           <button type="submit" className={ui.btn("gold")} disabled={c.kind === "checking" || c.kind === "saving"}>
             Find my deposit
@@ -654,13 +659,13 @@ export function WaitStep({ m }: { m: JourneyModel }) {
       {saving && <Status>BTC sent. Saving your progress</Status>}
 
       {count ? (
-        <div className="bj-wait">
-          <p className="bj-count mono" aria-hidden="true">
+        <div>
+          <p className={ui.cx(bj.count, "mono")} aria-hidden="true">
             {count.n}
             <span>/{count.m}</span>
           </p>
           <ConfirmationSlots n={count.n} m={count.m} />
-          <div className={ui.spread}>
+          <div className={ui.cx(ui.spread, "mt-4")}>
             <p className={ui.strong} aria-live="polite">
               {relayerBehind
                 ? `${count.m} of ${count.m} confirmations. Waiting for the Writz relayer to see it.`
@@ -692,7 +697,7 @@ export function WaitStep({ m }: { m: JourneyModel }) {
         </Notice>
       )}
       {d.relayerUnreachable && (
-        <p className={ui.hint} role="status">
+        <p className={bj.hint} role="status">
           Can&apos;t reach the Writz relayer. Retrying on its own. Your BTC is safe on Bitcoin.
         </p>
       )}
@@ -710,7 +715,7 @@ export function WaitStep({ m }: { m: JourneyModel }) {
         />
       )}
 
-      <p className={ui.hint}>
+      <p className={bj.hint}>
         You can close this page. Your progress is saved in this browser for this Stellar wallet.
         {pd ? (
           <>
@@ -719,7 +724,7 @@ export function WaitStep({ m }: { m: JourneyModel }) {
           </>
         ) : null}
       </p>
-      {pd && <p className={ui.cx(ui.hint, "mono")}>{shortAddress(pd.btcTxid, 10, 8)}</p>}
+      {pd && <p className={ui.cx(bj.hint, "mono")}>{shortAddress(pd.btcTxid, 10, 8)}</p>}
     </div>
   );
 }
@@ -804,7 +809,7 @@ export function RegisterStep({ m }: { m: JourneyModel }) {
             Register on Stellar
           </Primary>
           {blocked && (
-            <p id="register-blocked" className={ui.hint}>
+            <p id="register-blocked" className={bj.hint}>
               {blocked}
             </p>
           )}
@@ -813,7 +818,7 @@ export function RegisterStep({ m }: { m: JourneyModel }) {
 
       {v.kind === "progress" && (
         <>
-          <ol className={ui.steps} aria-live="polite">
+          <ol className={bj.steps} aria-live="polite">
             {lines.map((text, i) => (
               <li key={i} data-state={i < v.active ? "done" : i === v.active ? "now" : "next"}>
                 {i === v.active ? <Spinner /> : <i aria-hidden="true" />}
@@ -823,7 +828,7 @@ export function RegisterStep({ m }: { m: JourneyModel }) {
             ))}
           </ol>
           {v.active === 2 ? <SigningCheckSlot /> : null}
-          {slow && <p className={ui.hint}>Didn&apos;t see it? Open {wallet} from your browser toolbar.</p>}
+          {slow && <p className={bj.hint}>Didn&apos;t see it? Open {wallet} from your browser toolbar.</p>}
         </>
       )}
 
@@ -910,9 +915,9 @@ export function DoneStep({ m, heading }: { m: JourneyModel; heading: RefObject<H
   }, [heading]);
 
   return (
-    <div className={ui.cx(ui.stack, "items-start")}>
+    <div className={ui.cx(bj.endStack, "items-start")}>
       <span className={ui.doneMark} aria-hidden="true" />
-      <h1 className="bj-q" ref={heading} tabIndex={-1}>
+      <h1 className={bj.endQuestion} ref={heading} tabIndex={-1}>
         {btc ? (
           <>
             <span className="mono">{btc}</span> BTC locked
@@ -942,7 +947,7 @@ export function DoneStep({ m, heading }: { m: JourneyModel; heading: RefObject<H
       <p className="sr-only" role="status">
         {`${btc ? `${btc} BTC locked. ` : ""}${m.done.index !== null ? `Loan ${m.done.index + 1} is ready.` : "Your loan is ready."}${max ? ` You can borrow up to ${max} USDC.` : ""}`}
       </p>
-      <div className={ui.actions}>
+      <div className={bj.actions}>
         <Link href={m.done.index !== null ? loanHref(m.done.index, "borrow") : "/"} className={ui.btn("gold")}>
           Borrow now
         </Link>

@@ -10,6 +10,7 @@ import type { MockWorld } from "@/lib/mock/types";
 import { ReviewsContext } from "@/lib/wallet/reviewsContext";
 import { SigningReviews, type ReviewMode, type ReviewRequest } from "@/lib/wallet/signingReview";
 import * as ui from "@/components/ui/styles";
+import * as dv from "../styles";
 
 /** What the check shows for a Pollar deposit into Earn, in each of its three states. */
 const REQUESTS: Record<ReviewMode, { title: string; request: ReviewRequest }> = {
@@ -78,11 +79,11 @@ export function SigningStates() {
   const asked = params.get("state");
   const mode: ReviewMode = MODES.includes(asked as ReviewMode) ? (asked as ReviewMode) : "mismatch";
   return (
-    <div className="dv">
-      <header className="dv-head">
+    <div className={dv.page}>
+      <header className={dv.head}>
         <h1>Signing check</h1>
         <p>What a Pollar user sees in the action&apos;s own panel when a transaction is not what they asked for, has no known purpose, or is above the large-amount limit.</p>
-        <nav className="dv-areas" aria-label="States">
+        <nav className={dv.areas} aria-label="States">
           {MODES.map((m) => (
             <Link key={m} href={`/dev/signing?state=${m}`} className={ui.chip} aria-current={m === mode ? "page" : undefined}>
               {REQUESTS[m].title}

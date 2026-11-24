@@ -19,6 +19,7 @@ import { useEntrance, type EntranceProps } from "@/components/ui/entrance";
 import { SkBtn, T } from "@/components/ui/skeleton";
 import type { EarnSummary } from "./data";
 import * as ui from "@/components/ui/styles";
+import * as ln from "@/components/loan/styles";
 
 const STELLAR = networkName(config.networkPassphrase);
 const DEFAULT_PREVIEW = "0.05";
@@ -160,7 +161,7 @@ export function LoanSkeleton() {
           <SkBtn kind="badge">Healthy</SkBtn>
         </div>
         <div className="hm-risk">
-          <p className="ln-ratio">
+          <p className={ln.ratio()}>
             <b className="mono">
               <T>200%</T>
             </b>

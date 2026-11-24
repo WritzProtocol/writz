@@ -1,15 +1,18 @@
+import { twMerge } from "tailwind-merge";
+
 /**
  * The shared primitives of the app as Tailwind class strings.
  *
  * Two utilities that set the same property on one element do not override
- * each other by class order, so a primitive's variants never repeat a property
- * the base sets: each function assembles one complete, non-overlapping list.
- * The parallelogram fills behind buttons and chips read --slant-bg, which a
- * state variant can set without fighting the base fill.
+ * each other by class order, so each primitive is one complete list, and `cx`
+ * merges with tailwind-merge: a later utility replaces an earlier one for the
+ * same property, so `cx(ui.label, "text-[15px]")` restyles a primitive in
+ * context. The parallelogram fills behind buttons and chips read --slant-bg,
+ * which a state variant can set without fighting the base fill.
  */
 
 export function cx(...parts: (string | false | null | undefined)[]): string {
-  return parts.filter(Boolean).join(" ");
+  return twMerge(parts.filter(Boolean).join(" "));
 }
 
 /* Buttons: parallelograms at the mark's minus 16 degrees. */
@@ -25,7 +28,7 @@ const BTN_HOVER = "hover:not-disabled:not-aria-disabled:[--slant-bg:var(--tint-2
 const BTN_TONE: Record<Exclude<BtnTone, "text">, string> = {
   default: `text-heading ${BTN_HOVER}`,
   quiet: `wz-btn-quiet text-body hover:text-heading ${BTN_HOVER}`,
-  gold: "wz-btn-gold text-on-accent [--slant-bg:var(--accent)] hover:not-disabled:not-aria-disabled:[--slant-bg:var(--accent-hover)]",
+  gold: "wz-btn-gold ml-[var(--gold-inset,0px)] text-on-accent [--slant-bg:var(--accent)] hover:not-disabled:not-aria-disabled:[--slant-bg:var(--accent-hover)]",
   line: `text-heading [--slant-bg:transparent] before:[box-shadow:inset_0_0_0_1px_var(--edge)] focus-visible:before:[box-shadow:inset_0_0_0_1px_var(--edge),0_0_0_2px_var(--bg),0_0_0_4px_var(--mark)] ${BTN_HOVER}`,
 };
 
@@ -87,11 +90,21 @@ export const chip =
 
 /* Fields */
 
-export const label = "wz-label block text-[13px] font-medium tracking-[0.06em] uppercase text-muted";
+/*
+ * Label, hint, error and the gold button read a few custom properties with their default as fallback, so a panel can
+ * restyle every one inside it, nested components included, by setting the properties (see `panelVars`).
+ */
 
-export const hint = "wz-hint text-[14px] text-muted";
+export const label =
+  "wz-label block font-medium text-[length:var(--label-size,13px)] tracking-[var(--label-tracking,0.06em)] [text-transform:var(--label-case,uppercase)] text-[color:var(--label-color,var(--muted))]";
 
-export const error = "wz-error text-[14px] text-danger";
+export const hint = "wz-hint text-[length:var(--hint-size,14px)] text-[color:var(--hint-color,var(--muted))] [&_.mono]:text-(color:--hint-figure)";
+
+export const error = "wz-error text-[length:var(--error-size,14px)] text-danger";
+
+/** Set on a form panel: labels in sentence case at 15px, hints and errors at 15px, hints in body colour. */
+export const panelVars =
+  "[--label-size:15px] [--label-tracking:0] [--label-case:none] [--label-color:var(--heading)] [--hint-size:15px] [--hint-color:var(--body)] [--error-size:15px]";
 
 /** The box around an amount input. `sm` is the compact size used in sheets. */
 export function field(size: "md" | "sm" = "md", { skeleton = false }: { skeleton?: boolean } = {}): string {

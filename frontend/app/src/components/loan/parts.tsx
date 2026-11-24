@@ -39,6 +39,7 @@ import { ReceiveChooser } from "./ReceiveChooser";
 import { intentFor, type ReceiveChoiceDraft } from "@/lib/receive/options";
 import { repayShortfallStroops, suggestBorrowStroops } from "@/lib/onboarding/defaults";
 import * as ui from "@/components/ui/styles";
+import * as ln from "./styles";
 
 const RECEIVE_USDC: ReceiveIntent = { kind: "usdc" };
 
@@ -144,19 +145,25 @@ export function HealthMeter({
   ratioBp,
   health,
   preview = null,
+  className,
 }: {
   ratioBp: bigint | null;
   health: Health | null;
   preview?: bigint | null;
+  className?: string;
 }) {
   const p = health === null ? null : health === "none" || ratioBp === null ? MAX : Number(ratioBp) / 100;
   const text = meterText(p, health);
   const known = p !== null;
   const style = { ["--at" as string]: known ? pos(p) : "0%" };
   return (
-    <div className="ln-bm" data-tone={health ? HEALTH_TONE[health] : "neutral"} data-state={known ? "known" : "checking"}>
+    <div
+      className={ui.cx(ln.meter(health ? HEALTH_TONE[health] : "neutral"), className)}
+      data-tone={health ? HEALTH_TONE[health] : "neutral"}
+      data-state={known ? "known" : "checking"}
+    >
       <div
-        className="ln-bm-scale"
+        className={ln.meterScale}
         style={style}
         role="meter"
         aria-label="Collateral ratio"
@@ -165,34 +172,34 @@ export function HealthMeter({
         aria-valuenow={known ? Math.min(MAX, Math.floor(p)) : undefined}
         aria-valuetext={text}
       >
-        <div className="ln-bm-track">
-          {known ? <span className="ln-bm-fill" /> : null}
-          <span className="ln-bm-tk" style={{ left: LIQ_AT }} />
-          <span className="ln-bm-tk" style={{ left: RISK_AT }} />
-          <span className="ln-bm-tk" style={{ left: LIMIT_AT }} />
+        <div className={ln.meterTrack}>
+          {known ? <span className={ln.meterFill} /> : null}
+          <span className={ln.meterTick} style={{ left: LIQ_AT }} />
+          <span className={ln.meterTick} style={{ left: RISK_AT }} />
+          <span className={ln.meterTick} style={{ left: LIMIT_AT }} />
         </div>
-        <div className="ln-bm-bands" aria-hidden="true">
+        <div className={ln.meterBands} aria-hidden="true">
           {ZONES.map((z) => (
-            <span key={z.zone} className="ln-bm-z" data-zone={z.zone} style={bandStyle(z.from, z.to)} />
+            <span key={z.zone} className={ln.meterZone(z.zone, known)} data-zone={z.zone} style={bandStyle(z.from, z.to)} />
           ))}
         </div>
-        {known ? <span className="ln-bm-marker" aria-hidden="true" /> : null}
+        {known ? <span className={ln.meterMarker} aria-hidden="true" /> : null}
         {known && preview !== null ? (
-          <span className="ln-bm-pre" aria-hidden="true" style={{ left: pos(Number(preview) / 100) }}>
+          <span className={ln.meterPreview} aria-hidden="true" style={{ left: pos(Number(preview) / 100) }}>
             <svg viewBox="0 0 16 28" aria-hidden="true">
               <polygon points="8.78,1 15,1 7.22,27 1.33,27" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="miter" />
             </svg>
           </span>
         ) : null}
-        <div className="ln-bm-ticks" aria-hidden="true">
+        <div className={ln.meterTicks} aria-hidden="true">
           <span style={{ left: LIQ_AT }}>{LIQ}%</span>
           <span style={{ left: LIMIT_AT }}>{LIMIT}%</span>
         </div>
       </div>
-      <ul className="ln-bm-legend" aria-hidden="true">
+      <ul className={ln.meterLegend} aria-hidden="true">
         {ZONES.map((z) => (
           <li key={z.zone}>
-            <i data-zone={z.zone} />
+            <i className={ln.legendKey(z.zone)} data-zone={z.zone} />
             {z.label}
           </li>
         ))}
@@ -205,18 +212,18 @@ export function HealthMeter({
 export function HealthText({ ratioBp, health }: { ratioBp: bigint | null; health: Health | null }) {
   if (health === null)
     return (
-      <p className="ln-ratio" data-tone="neutral">
+      <p className={ln.ratio("neutral")} data-tone="neutral">
         <b>Checking...</b>
       </p>
     );
   if (health === "none" || ratioBp === null)
     return (
-      <p className="ln-ratio" data-tone="neutral">
+      <p className={ln.ratio("neutral")} data-tone="neutral">
         <b>No debt</b>
       </p>
     );
   return (
-    <p className="ln-ratio" data-tone={HEALTH_TONE[health]}>
+    <p className={ln.ratio(HEALTH_TONE[health])} data-tone={HEALTH_TONE[health]}>
       <b className="mono">{pct(ratioBp)}</b>
       <span>
         <i aria-hidden="true" />
@@ -248,11 +255,11 @@ export function WayOut({
   opened: string;
 }) {
   return (
-    <Enter as="section" name="wayout" kind="open" className="cut-sm ln-out" aria-labelledby="way-out">
-      <h2 id="way-out" className="ln-h2">
+    <Enter as="section" name="wayout" kind="open" className={ui.cx("cut-sm", ln.out)} aria-labelledby="way-out">
+      <h2 id="way-out" className={ln.h2}>
         Your way out
       </h2>
-      <p className="ln-out-text">
+      <p className={ln.outText}>
         {reclaimable ? (
           <>
             Bitcoin passed <BlockRef height={height} />, so you can reclaim this BTC with your
@@ -270,11 +277,11 @@ export function WayOut({
       </p>
       {progress !== null ? (
         <>
-          <div className="ln-out-track" aria-hidden="true" style={{ ["--at" as string]: `${Math.max(2, Math.min(100, progress * 100))}%` }}>
+          <div className={ln.outTrack} aria-hidden="true" style={{ ["--at" as string]: `${Math.max(2, Math.min(100, progress * 100))}%` }}>
             <b />
             <span />
           </div>
-          <div className="ln-out-ends" aria-hidden="true">
+          <div className={ln.outEnds} aria-hidden="true">
             <span>Opened {opened}</span>
             {height !== null ? (
               <span>
@@ -420,6 +427,7 @@ export function AmountField({
   hint,
   disabled,
   unit = "USDC",
+  loan = false,
 }: {
   id: string;
   label: string;
@@ -431,13 +439,15 @@ export function AmountField({
   hint: ReactNode;
   disabled?: boolean;
   unit?: string;
+  /** In the loan's action panel the figure drops to 20px on phones. */
+  loan?: boolean;
 }) {
   return (
     <div className={ui.stack} style={{ gap: 8 }}>
       <label htmlFor={id} className={ui.label}>
         {label}
       </label>
-      <div className={ui.cx(ui.field(), "ln-field")} data-invalid={Boolean(error)}>
+      <div className={loan ? ui.cx(ui.field(), "max-md:[&_input]:text-[20px] max-[761px]:[&_input]:text-[20px]") : ui.field()} data-invalid={Boolean(error)}>
         <input
           id={id}
           inputMode="decimal"
@@ -451,7 +461,7 @@ export function AmountField({
           onChange={(e) => onChange(e.target.value)}
         />
         <span>{unit}</span>
-        <button type="button" className={ui.cx(ui.chip, "ln-max")} onClick={onMax} disabled={disabled}>
+        <button type="button" className={loan ? ui.cx(ui.chip, ln.max) : ui.chip} onClick={onMax} disabled={disabled}>
           {maxLabel}
         </button>
       </div>
@@ -490,7 +500,7 @@ function After({
       );
   } else if (debt !== null) body = null;
   return (
-    <p className="ln-after" aria-live="polite">
+    <p className={ln.after} aria-live="polite">
       {body}
     </p>
   );
@@ -518,7 +528,7 @@ const usdcAmount = (s: bigint) => <span className="mono">{formatUsdc(s)}</span>;
 function LiquidationEstimate({ collateralSats, debt }: { collateralSats: bigint; debt: bigint }) {
   const liq = liquidationPriceFor(collateralSats, debt);
   return (
-    <dl className="ln-est">
+    <dl className={ln.est}>
       <div className={ui.row()}>
         <dt>Liquidation price</dt>
         <dd>
@@ -635,6 +645,7 @@ export function BorrowPanel({
       )}
       {choice && <ReceiveChooser draft={choice.draft} onChange={choice.onDraft} disabled={running || stepTwo !== null} />}
       <AmountField
+        loan
         id={`${id}-borrow`}
         label="Borrow"
         value={value}
@@ -645,7 +656,7 @@ export function BorrowPanel({
         hint={hint}
         disabled={running}
       />
-      <div className={ui.cx(ui.chips, "ln-presets")}>
+      <div className={ui.cx(ui.chips, ln.presetsInPanel)}>
         {[25n, 50n].map((p) => (
           <button key={String(p)} type="button" className={ui.chip} disabled={running} onClick={() => setValue(toFieldValue((max * p) / 100n))}>
             {String(p)}%
@@ -765,6 +776,7 @@ export function RepayPanel({
       }}
     >
       <AmountField
+        loan
         id={`${id}-repay`}
         label="Repay"
         value={value}
@@ -1122,20 +1134,20 @@ const when = (at: number) =>
 
 export function OnThisDevice({ items }: { items: ActivityItem[] }) {
   return (
-    <Enter as="section" name="device" step={4} className="ln-device" aria-labelledby="on-device">
-      <h2 id="on-device" className="ln-h2">
+    <Enter as="section" name="device" step={4} className={ln.device} aria-labelledby="on-device">
+      <h2 id="on-device" className={ln.h2}>
         On this device
       </h2>
       {items.length > 0 ? (
-        <ul className="ln-txs">
+        <ul className={ln.txs}>
           {items.map((t) => (
-            <li key={t.hash} className="ln-tx">
+            <li key={t.hash} className={ln.tx}>
               <b>{t.label}</b>
-              <span className="ln-tx-chip" data-state={t.state}>
+              <span className={ln.txChip} data-state={t.state}>
                 {t.state === "pending" ? <Spinner /> : null}
                 {t.state === "pending" ? "In progress" : "Done"}
               </span>
-              <span className="ln-tx-end">
+              <span className={ln.txEnd}>
                 {t.at ? <span>{when(t.at)}</span> : null}
                 <TxLinkInline hash={t.hash} chain={t.chain} />
               </span>
@@ -1143,9 +1155,9 @@ export function OnThisDevice({ items }: { items: ActivityItem[] }) {
           ))}
         </ul>
       ) : (
-        <p>No transactions for this loan on this device yet.</p>
+        <p className={ln.deviceText}>No transactions for this loan on this device yet.</p>
       )}
-      <p className={ui.muted}>Full history needs the Writz indexer and is coming later.</p>
+      <p className={ln.deviceNote}>Full history needs the Writz indexer and is coming later.</p>
     </Enter>
   );
 }
