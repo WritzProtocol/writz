@@ -1,5 +1,6 @@
 import { APP_ROUTE } from "../constants";
 import { BorrowCalculator } from "./BorrowCalculator";
+import * as l from "../styles";
 
 const FACTS = [
   { k: "No custodian", v: "A Bitcoin Script holds it, not a company." },
@@ -10,41 +11,41 @@ const FACTS = [
 export function Hero() {
   return (
     <>
-      <section className="hero" aria-labelledby="hero-h">
-        <div className="hero-field" aria-hidden="true" />
-        <div className="wrap hero-in">
-          <div className="hero-copy">
-            <span className="tag">
-              <span className="dot" />
+      <section className={l.hero} aria-labelledby="hero-h">
+        <div className={l.heroField} aria-hidden="true" />
+        <div className={l.heroIn}>
+          <div>
+            <span className={l.heroTag}>
+              <span className={l.heroTagDot} />
               Live on Stellar testnet
             </span>
-            <h1 id="hero-h">
-              Native Bitcoin lending protocol <span className="accent">on Stellar.</span>
+            <h1 id="hero-h" className={l.heroTitle}>
+              Native Bitcoin lending protocol <span className={l.heroAccent}>on Stellar.</span>
             </h1>
-            <p className="lead">
+            <p className={l.heroLead}>
               Writz Protocol lets you borrow USDC without selling your Bitcoin. Your BTC stays on the Bitcoin network, with
               no custodian and no bridge.
             </p>
-            <div className="ctas">
-              <a className="btn btn-gold" href={APP_ROUTE} data-umami-event="open-app" data-umami-event-where="hero">
+            <div className={l.heroCtas}>
+              <a className={l.btn("gold")} href={APP_ROUTE} data-umami-event="open-app" data-umami-event-where="hero">
                 Open app
               </a>
-              <a className="btn" href="#how" data-umami-event="see-how-it-works" data-umami-event-where="hero">
+              <a className={l.btn()} href="#how" data-umami-event="see-how-it-works" data-umami-event-where="hero">
                 See how it works
               </a>
             </div>
-            <p className="note">Testnet only: test BTC and test USDC, no real funds.</p>
+            <p className={l.heroNote}>Testnet only: test BTC and test USDC, no real funds.</p>
           </div>
-          <div className="hero-vis">
+          <div className={l.heroVis}>
             <BorrowCalculator />
           </div>
         </div>
       </section>
-      <div className="wrap">
-        <ul className="facts">
-          {FACTS.map((f) => (
-            <li key={f.k}>
-              <span className="tick" aria-hidden="true" />
+      <div className={l.wrap}>
+        <ul className={l.facts}>
+          {FACTS.map((f, i) => (
+            <li key={f.k} className={l.fact(i)}>
+              <span className={l.factTick} aria-hidden="true" />
               <b>{f.k}</b>
               <span>{f.v}</span>
             </li>

@@ -12,12 +12,15 @@ dependencies: the dApp lives in `../app`.
 
 ## Styling
 
-Plain CSS, no Tailwind. `src/app/globals.css` imports the shared Graphite & Gold
-tokens from `../../packages/brand/tokens.css`, and each page styles itself with
-scoped stylesheets that read those tokens: `src/features/landing/landing.css`
-for the landing (also used by `/brand`), `src/app/brand/press.css` and
-`src/app/whitepaper/whitepaper.css`. The design system is documented in
-`../DESIGN_SYSTEM.md`.
+`src/app/globals.css` imports Tailwind (theme and utilities, no preflight) and the
+shared Graphite & Gold theme from `../../packages/brand/theme.css`. The home page,
+the navbar and the footer are styled with utilities, their class strings in
+`src/features/landing/styles.ts`. `/about`, `/brand` and `/whitepaper` still use
+their stylesheets (`src/app/about/about.css`, `src/app/brand/press.css`,
+`src/app/whitepaper/whitepaper.css`, and the shared rules left in
+`src/features/landing/landing.css`), which sit in a `legacy` cascade layer under
+the utilities. A folder that moves to utilities gets an `@source` line in
+`globals.css`. The design system is documented in `../DESIGN_SYSTEM.md`.
 
 ## Troubleshooting
 

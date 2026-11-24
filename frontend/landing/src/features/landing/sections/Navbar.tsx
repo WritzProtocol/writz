@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState, type MouseEvent } from "react";
 import { APP_ROUTE } from "../constants";
 import { navItems } from "../data/navigation.data";
+import * as l from "../styles";
 
 export function Navbar() {
   const [floating, setFloating] = useState(false);
@@ -24,18 +25,18 @@ export function Navbar() {
   };
 
   return (
-    <header className="nav" data-floating={floating}>
-      <div className="nav-bar">
-        <Link href="/" aria-label="Writz" onClick={toTop}>
-          <span className="lockup" />
+    <header className={l.nav} data-floating={floating}>
+      <div className={l.navBar}>
+        <Link href="/" aria-label="Writz" onClick={toTop} className={l.navHome}>
+          <span className={l.navLockup} />
         </Link>
-        <div className="nav-end">
-          <nav className="nav-links">
+        <div className={l.navEnd}>
+          <nav className={l.navLinks}>
             {navItems.map((item) => (
               <a
                 key={item.label}
                 href={item.href}
-                className={item.keepOnMobile ? "keep" : undefined}
+                className={l.navLink(Boolean(item.keepOnMobile))}
                 data-umami-event="nav-link"
                 data-umami-event-label={item.label}
               >
@@ -43,11 +44,11 @@ export function Navbar() {
               </a>
             ))}
           </nav>
-          <span className="tag nav-tag">
-            <span className="dot" />
+          <span className={l.navTag}>
+            <span className={l.heroTagDot} />
             Live on Stellar testnet
           </span>
-          <a className="btn btn-gold" href={APP_ROUTE} data-umami-event="open-app" data-umami-event-where="nav">
+          <a className={l.navCta} href={APP_ROUTE} data-umami-event="open-app" data-umami-event-where="nav">
             Open app
           </a>
         </div>
