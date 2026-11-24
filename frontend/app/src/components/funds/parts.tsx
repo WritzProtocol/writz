@@ -5,20 +5,39 @@ import type { Read } from "@/lib/loan/model";
 import { ExternalLink } from "@/components/ui";
 import { Enter } from "@/components/ui/entrance";
 import * as ui from "@/components/ui/styles";
+import * as fu from "@/components/funds/styles";
 
-function Amount({ value, unit, checking, decimals }: { value: Read<bigint>; unit: string; checking: string; decimals?: 2 | 7 }) {
-  if (value.kind === "failed") return <span className="fu-na">Unavailable</span>;
+const AMOUNT = {
+  big: { figure: fu.bigFigure, unit: fu.bigUnit, na: fu.bigNa, sk: fu.bigSkeleton },
+  tile: { figure: fu.tileFigure, unit: fu.tileUnit, na: fu.tileNa, sk: fu.tileSkeleton },
+};
+
+function Amount({
+  value,
+  unit,
+  checking,
+  decimals,
+  size,
+}: {
+  value: Read<bigint>;
+  unit: string;
+  checking: string;
+  decimals?: 2 | 7;
+  size: keyof typeof AMOUNT;
+}) {
+  const c = AMOUNT[size];
+  if (value.kind === "failed") return <span className={c.na}>Unavailable</span>;
   if (value.kind === "checking") {
     return (
       <>
-        <span className={ui.cx(ui.skeleton, "fu-sk")} aria-hidden="true" />
+        <span className={ui.cx(ui.skeleton, c.sk)} aria-hidden="true" />
         <span className="sr-only">{checking}</span>
       </>
     );
   }
   return (
     <>
-      <span className="mono">{formatUsdc(value.value, decimals)}</span> <span className="fu-unit">{unit}</span>
+      <span className={ui.cx("mono", c.figure)}>{formatUsdc(value.value, decimals)}</span> <span className={c.unit}>{unit}</span>
     </>
   );
 }
@@ -39,19 +58,19 @@ export function Hero({
 }) {
   const digits = value.kind === "ok" ? formatUsdc(value.value, decimals).length : value.kind === "text" ? value.text.length : 8;
   return (
-    <Enter name="hero" kind="open" className="cut fu-hero" style={{ "--n": Math.max(digits, 6), "--u": unit.length } as CSSProperties}>
+    <Enter name="hero" kind="open" className={ui.cx("cut", fu.hero)} style={{ "--n": Math.max(digits, 6), "--u": unit.length } as CSSProperties}>
       <dl>
-        <dt className="fu-hero-k">{label}</dt>
-        <dd className="fu-big">
+        <dt className={fu.heroKey}>{label}</dt>
+        <dd className={fu.big}>
           {value.kind === "text" ? (
             <>
-              <span className="mono">{value.text}</span> <span className="fu-unit">{unit}</span>
+              <span className={ui.cx("mono", fu.bigFigure)}>{value.text}</span> <span className={fu.bigUnit}>{unit}</span>
             </>
           ) : (
-            <Amount value={value} unit={unit} checking="Checking..." decimals={decimals} />
+            <Amount value={value} unit={unit} checking="Checking..." decimals={decimals} size="big" />
           )}
         </dd>
-        {caption ? <dd className="fu-caption">{caption}</dd> : null}
+        {caption ? <dd className={fu.heroCaption}>{caption}</dd> : null}
       </dl>
     </Enter>
   );
@@ -59,7 +78,7 @@ export function Hero({
 
 export function Tiles({ children }: { children: ReactNode }) {
   return (
-    <Enter as="dl" name="tiles" step={3} className="fu-tiles">
+    <Enter as="dl" name="tiles" step={3} className={fu.tiles}>
       {children}
     </Enter>
   );
@@ -69,10 +88,10 @@ export function Tile({ label, value, unit = "USDC", caption }: { label: string; 
   return (
     <div>
       <dt>{label}</dt>
-      <dd className="fu-tile-v">
-        <Amount value={value} unit={unit} checking="Checking..." />
+      <dd className={fu.tileValue}>
+        <Amount value={value} unit={unit} checking="Checking..." size="tile" />
       </dd>
-      {caption ? <dd className="fu-caption">{caption}</dd> : null}
+      {caption ? <dd className={fu.tileCaption}>{caption}</dd> : null}
     </div>
   );
 }
@@ -88,16 +107,16 @@ export function RiskNotes({
   link: { href: string; label: string };
 }) {
   return (
-    <Enter name="risk" step={4} className="fu-risk">
+    <Enter name="risk" step={4} className={fu.risk}>
       {lines.map((line, i) => (
         <p key={i}>{line}</p>
       ))}
       {docs ? (
-        <ExternalLink href={docs.href} className={ui.cx(ui.link, "fu-textlink")}>
+        <ExternalLink href={docs.href} className={fu.textLink}>
           {docs.label}
         </ExternalLink>
       ) : null}
-      <Link href={link.href} className={ui.cx(ui.link, "fu-textlink")}>
+      <Link href={link.href} className={fu.textLink}>
         {link.label}
       </Link>
     </Enter>

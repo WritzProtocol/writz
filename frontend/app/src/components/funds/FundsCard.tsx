@@ -9,6 +9,7 @@ import { ErrorBox, Notice, Spinner } from "@/components/ui";
 import { AmountField, TxResult, TxRunning } from "@/components/loan/parts";
 import { SigningCheckSlot } from "@/components/wallet/SigningCheck";
 import * as ui from "@/components/ui/styles";
+import * as fu from "@/components/funds/styles";
 
 export interface SideModel {
   label: string;
@@ -107,8 +108,9 @@ function SidePanel({ m, side }: { m: FundsModel; side: FundsSide }) {
         error={error}
         hint={s.hint}
         disabled={Boolean(s.blocked)}
+        variant="funds"
       />
-      <div className={ui.actions}>
+      <div className={fu.panelActions}>
         <button
           type="submit"
           className={ui.btn("gold")}
@@ -146,7 +148,7 @@ export function FundsCard({ m, label }: { m: FundsModel; label: string }) {
 
   if (m.trustline.kind === "ok" && !m.trustline.value) {
     return (
-      <section className={ui.cx(ui.stack, "fu-panel")} aria-label={label}>
+      <section className={ui.cx(ui.stack, fu.panel)} aria-label={label}>
         <p className={ui.strong}>{m.trust.text}</p>
         <div className={ui.actions}>
           <button type="button" className={ui.btn("gold")} disabled={m.trust.busy || m.otherTx} onClick={m.trust.add}>
@@ -168,7 +170,7 @@ export function FundsCard({ m, label }: { m: FundsModel; label: string }) {
   return (
     <section className={ui.stack} aria-label={label}>
       <div
-        className={ui.cx(ui.seg, "fu-seg")}
+        className={ui.cx(ui.seg, fu.seg)}
         role="tablist"
         aria-label={label}
         style={{ ["--seg-n" as string]: SIDES.length, ["--seg-i" as string]: SIDES.indexOf(tab) }}
@@ -197,7 +199,7 @@ export function FundsCard({ m, label }: { m: FundsModel; label: string }) {
         })}
       </div>
       {busy ? <p className={ui.hint}>{WAITING}</p> : null}
-      <div className="animate-wz-enter fu-panel" id="funds-panel" role="tabpanel" aria-labelledby={`funds-tab-${tab}`} key={tab}>
+      <div className={ui.cx("animate-wz-enter", fu.panel)} id="funds-panel" role="tabpanel" aria-labelledby={`funds-tab-${tab}`} key={tab}>
         <SidePanel m={m} side={tab} />
       </div>
     </section>

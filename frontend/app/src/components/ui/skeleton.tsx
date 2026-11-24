@@ -7,9 +7,19 @@ export function T({ children }: { children: ReactNode }) {
 }
 
 /** A button's parallelogram at the real button's size, without the label. */
-export function SkBtn({ kind = "btn", children, ...rest }: { kind?: ui.SkKind; children: ReactNode; "data-sk"?: SkWhen }) {
+export function SkBtn({
+  kind = "btn",
+  className,
+  children,
+  ...rest
+}: {
+  kind?: ui.SkKind;
+  className?: string;
+  children: ReactNode;
+  "data-sk"?: SkWhen;
+}) {
   return (
-    <span className={ui.skBtn(kind)} {...rest}>
+    <span className={ui.cx(ui.skBtn(kind), className)} {...rest}>
       {children}
     </span>
   );

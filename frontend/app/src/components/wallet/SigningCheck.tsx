@@ -128,7 +128,7 @@ export function SigningCheckView({ review, onAnswer }: { review: SigningReview; 
     <section
       ref={ref}
       className={ui.cx(
-        ui.note(c.tone, "gap-2 py-4 px-[18px]"),
+        ui.note(c.tone, "gap-2 py-[var(--note-py,16px)] px-[var(--note-px,18px)]"),
         "scroll-mt-24 scroll-mb-[calc(112px+env(safe-area-inset-bottom))] focus:outline-2 focus:outline-mark focus:outline-offset-2 focus:not-focus-visible:outline-[color:color-mix(in_srgb,var(--mark)_55%,transparent)] animate-wz-enter",
       )}
       data-tone={c.tone}

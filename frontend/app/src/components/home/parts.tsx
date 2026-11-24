@@ -19,6 +19,7 @@ import { useEntrance, type EntranceProps } from "@/components/ui/entrance";
 import { SkBtn, T } from "@/components/ui/skeleton";
 import type { EarnSummary } from "./data";
 import * as ui from "@/components/ui/styles";
+import * as hm from "@/components/home/styles";
 import * as ln from "@/components/loan/styles";
 
 const STELLAR = networkName(config.networkPassphrase);
@@ -80,23 +81,23 @@ export function LoanSummaryCard({
   const secondary = secondaryAction(loan);
   const showsRisk = health !== null || s.kind === "checking";
   const closed = s.kind === "released" || s.kind === "liquidated";
-  const actionClass = ui.btn(primary ? "gold" : "line", compact ? "sm" : "md");
+  const actionClass = ui.cx(ui.btn(primary ? "gold" : "line", compact ? "sm" : "md"), hm.loanAct);
   const open = useEntrance(`loan-${p.id}`, "open", { ready: enter });
 
   return (
-    <article {...open("hm-loan cut")} data-compact={compact} aria-labelledby={`loan-${p.index}`}>
-      <div className="hm-loan-main">
-        <header className="hm-loan-head">
+    <article {...open(ui.cx(hm.loan(compact), "cut"))} data-compact={compact} aria-labelledby={`loan-${p.index}`}>
+      <div className={hm.loanMain}>
+        <header className={hm.loanHead(compact)}>
           <h2 id={`loan-${p.index}`}>{loanName(loan)}</h2>
           <StatusBadge status={s} />
         </header>
-        {s.kind === "liquidated" ? <p className="hm-loan-note">{loanName(loan)} was liquidated. A liquidator repaid the debt and the loan is closed.</p> : null}
+        {s.kind === "liquidated" ? <p className={hm.loanNote}>{loanName(loan)} was liquidated. A liquidator repaid the debt and the loan is closed.</p> : null}
         {showsRisk && (debt > 0n || s.kind === "checking") ? (
-          <div className="hm-risk">
-            <HealthText ratioBp={ratioOf(s)} health={health} />
-            <HealthMeter ratioBp={ratioOf(s)} health={health} />
+          <div>
+            <HealthText ratioBp={ratioOf(s)} health={health} compact={compact} />
+            <HealthMeter ratioBp={ratioOf(s)} health={health} className="mt-7" />
             {liq !== null && health !== null ? (
-              <p className="hm-liq">
+              <p className={hm.liq}>
                 Liquidated if BTC falls below <b className="mono">{formatUsd(liq)}</b>.{" "}
                 {price.kind === "ok" ? (
                   <>
@@ -110,8 +111,8 @@ export function LoanSummaryCard({
           </div>
         ) : null}
       </div>
-      <div className="hm-loan-side">
-        <dl className="hm-kv">
+      <div className={hm.loanSide}>
+        <dl className={hm.kv(compact)}>
           <div>
             <dt>Collateral</dt>
             <dd className="mono">{formatBtc(collateral)} BTC</dd>
@@ -123,7 +124,7 @@ export function LoanSummaryCard({
             </div>
           ) : null}
         </dl>
-        <div className="hm-loan-acts">
+        <div className={hm.loanActs}>
           {action ? (
             action.href ? (
               <Link href={action.href} className={actionClass}>
@@ -136,11 +137,11 @@ export function LoanSummaryCard({
             )
           ) : null}
           {secondary ? (
-            <Link href={secondary.href} className={ui.btn("line", compact ? "sm" : "md")}>
+            <Link href={secondary.href} className={ui.cx(ui.btn("line", compact ? "sm" : "md"), hm.loanAct)}>
               {secondary.label}
             </Link>
           ) : null}
-          <Link href={loanHref(p.index)} className={ui.cx(ui.btn("text"), "hm-stretch")}>
+          <Link href={loanHref(p.index)} className={hm.stretch}>
             Open {loanName(loan)}
           </Link>
         </div>
@@ -152,15 +153,15 @@ export function LoanSummaryCard({
 /** The loan panel at its loaded size while the loan is being read. */
 export function LoanSkeleton() {
   return (
-    <div className="cut hm-loan" data-compact="false" aria-hidden="true">
-      <div className="hm-loan-main">
-        <div className="hm-loan-head">
+    <div className={ui.cx("cut", hm.loan(false))} data-compact="false" aria-hidden="true">
+      <div className={hm.loanMain}>
+        <div className={hm.loanHead(false)}>
           <h2>
             <T>Loan 1</T>
           </h2>
           <SkBtn kind="badge">Healthy</SkBtn>
         </div>
-        <div className="hm-risk">
+        <div>
           <p className={ln.ratio()}>
             <b className="mono">
               <T>200%</T>
@@ -169,14 +170,14 @@ export function LoanSkeleton() {
               <T>Healthy</T>
             </span>
           </p>
-          <HealthMeter ratioBp={null} health={null} />
-          <p className="hm-liq">
+          <HealthMeter ratioBp={null} health={null} className="mt-7" />
+          <p className={hm.liq}>
             <T>Liquidated if BTC falls below $36,000. BTC now $60,000, oracle price.</T>
           </p>
         </div>
       </div>
-      <div className="hm-loan-side">
-        <dl className="hm-kv">
+      <div className={hm.loanSide}>
+        <dl className={hm.kv(false)}>
           <div>
             <dt>
               <T>Collateral</T>
@@ -194,10 +195,10 @@ export function LoanSkeleton() {
             </dd>
           </div>
         </dl>
-        <div className="hm-loan-acts">
-          <SkBtn>Borrow more</SkBtn>
-          <SkBtn>Repay</SkBtn>
-          <span className={ui.btn("text")}>
+        <div className={hm.loanActs}>
+          <SkBtn className={hm.loanAct}>Borrow more</SkBtn>
+          <SkBtn className={hm.loanAct}>Repay</SkBtn>
+          <span className={ui.cx(ui.btn("text"), "ml-[7px]", hm.loanAct)}>
             <T>Open Loan 1</T>
           </span>
         </div>
@@ -240,9 +241,9 @@ function DepositCard({ u, m, onCheckAgain }: { u: Extract<Urgent, { kind: "depos
 
   if (s.kind === "checking") {
     return (
-      <section {...open("hm-card hm-urgent cut-sm")} aria-labelledby="urgent-title">
+      <section {...open(ui.cx(hm.card, "cut-sm"))} aria-labelledby="urgent-title">
         <span className={ui.label}>Deposit in progress</span>
-        <h2 id="urgent-title" className="hm-h2">
+        <h2 id="urgent-title" className={hm.h2}>
           Checking your deposit...
         </h2>
         <div className={ui.actions}>
@@ -260,16 +261,16 @@ function DepositCard({ u, m, onCheckAgain }: { u: Extract<Urgent, { kind: "depos
   const ready = s.kind === "ready_to_register";
   const registering = s.kind === "registering";
   return (
-    <section {...open("hm-card hm-urgent cut-sm")} aria-labelledby="urgent-title">
+    <section {...open(ui.cx(hm.card, "cut-sm"))} aria-labelledby="urgent-title">
       <span className={ui.label}>Deposit in progress</span>
-      <h2 id="urgent-title" className="hm-h2">
+      <h2 id="urgent-title" className={hm.h2}>
         {registering
           ? "Registering your deposit on Stellar."
           : ready
             ? `${total} of ${total} confirmations. One signature left.`
             : `${n} of ${total} confirmations. You can leave.`}
       </h2>
-      {!registering ? <ConfirmationSlots n={n} m={total} /> : null}
+      {!registering ? <ConfirmationSlots n={n} m={total} className={hm.slots} /> : null}
       {!ready && !registering ? <p className={ui.hint}>{timeLeft(total - n)}. Your progress is saved in this browser.</p> : null}
       <div className={ui.actions}>
         <Link href="/borrow/new" className={ui.btn(ready ? "gold" : "line")}>
@@ -385,8 +386,8 @@ export function Preview({
   const need = useEntrance("need", "in", { step: 3 });
 
   return (
-    <div className="hm-preview">
-      <section {...open("hm-card cut-sm")} aria-labelledby="preview-title">
+    <div className={hm.preview}>
+      <section {...open(ui.cx(hm.card, "cut-sm"))} aria-labelledby="preview-title">
         <h2 id="preview-title" className={ui.label}>
           Try an amount
         </h2>
@@ -411,7 +412,7 @@ export function Preview({
           />
           <span>BTC</span>
         </div>
-        <p id="preview-result" className="hm-preview-line" aria-live="polite">
+        <p id="preview-result" className={hm.previewLine} aria-live="polite">
           {!parsed.ok ? (
             <span className={ui.error}>{parsed.error}</span>
           ) : max !== null ? (
@@ -450,11 +451,11 @@ export function Preview({
           )}
         </div>
       </section>
-      <section {...need("hm-need")} aria-labelledby="need-title">
+      <section {...need(hm.need)} aria-labelledby="need-title">
         <h2 id="need-title" className={ui.label}>
           What you&apos;ll need
         </h2>
-        <ul className={ui.need}>
+        <ul className={ui.cx(ui.need, hm.needList)}>
           <li>
             <b>A Stellar wallet</b> such as Varial (formerly Freighter). It receives the USDC you borrow.
           </li>
@@ -465,7 +466,7 @@ export function Preview({
             {STELLAR} and {BTC_NETWORK_LABEL}. Test funds only.
           </li>
         </ul>
-        <Link href="/lend" className={ui.btn("text")}>
+        <Link href="/lend" className={ui.cx(ui.btn("text"), hm.needLink)}>
           Lend USDC instead
         </Link>
       </section>
@@ -491,8 +492,8 @@ const STEPS = [
 /** The first-visit preview at its loaded size. */
 export function PreviewSkeleton() {
   return (
-    <div className="hm-preview">
-      <div className="cut-sm hm-card">
+    <div className={hm.preview}>
+      <div className={ui.cx("cut-sm", hm.card)}>
         <p className={ui.label}>
           <T>Try an amount</T>
         </p>
@@ -500,7 +501,7 @@ export function PreviewSkeleton() {
           <T>You have 0.12000000 BTC.</T>
         </p>
         <div className={ui.field("md", { skeleton: true })} />
-        <p className="hm-preview-line">
+        <p className={hm.previewLine}>
           <T>Lock 0.05000000 BTC. Borrow up to 2,000.00 USDC.</T>
         </p>
         <p className={ui.hint}>
@@ -514,11 +515,11 @@ export function PreviewSkeleton() {
           <SkBtn>Get test BTC</SkBtn>
         </div>
       </div>
-      <div className="hm-need">
+      <div className={hm.need}>
         <p className={ui.label}>
           <T>What you&apos;ll need</T>
         </p>
-        <ul className={ui.need}>
+        <ul className={ui.cx(ui.need, hm.needList)}>
           <li>
             <T>A Stellar wallet such as Varial (formerly Freighter). It receives the USDC you borrow.</T>
           </li>
@@ -529,7 +530,7 @@ export function PreviewSkeleton() {
             <T>Stellar testnet and Bitcoin signet. Test funds only.</T>
           </li>
         </ul>
-        <span className={ui.btn("text")}>
+        <span className={ui.cx(ui.btn("text"), hm.needLink)}>
           <T>Lend USDC instead</T>
         </span>
       </div>
@@ -539,18 +540,18 @@ export function PreviewSkeleton() {
 
 export function HowSkeleton() {
   return (
-    <div className="hm-how">
-      <p className="hm-h2">
+    <div className={hm.how}>
+      <p className={hm.h2}>
         <T>How a loan works</T>
       </p>
-      <ol className="hm-steps">
+      <ol className={hm.steps}>
         {STEPS.map((s, i) => (
           <li key={s.title}>
-            <span className="hm-step-n hm-how-n">
+            <span className={hm.stepN}>
               <T>{i + 1}</T>
             </span>
             <div>
-              <p className="hm-h3">
+              <p className={hm.h3}>
                 <T>{s.title}</T>
               </p>
               <p>
@@ -560,7 +561,7 @@ export function HowSkeleton() {
           </li>
         ))}
       </ol>
-      <p className="hm-wayout">
+      <p className={hm.wayout}>
         <T>Your way out: if Writz stops, you reclaim your BTC alone after the timelock. How to reclaim</T>
       </p>
     </div>
@@ -569,24 +570,24 @@ export function HowSkeleton() {
 
 export function HowALoanWorks({ enter }: { enter: (className?: string) => EntranceProps }) {
   return (
-    <section {...enter("hm-how")} aria-labelledby="how-title">
-      <h2 id="how-title" className="hm-h2">
+    <section {...enter(hm.how)} aria-labelledby="how-title">
+      <h2 id="how-title" className={hm.h2}>
         How a loan works
       </h2>
-      <ol className="hm-steps">
+      <ol className={hm.steps}>
         {STEPS.map((s, i) => (
           <li key={s.title}>
-            <span className="hm-step-n hm-how-n" aria-hidden="true">
+            <span className={hm.stepN} aria-hidden="true">
               {i + 1}
             </span>
             <div>
-              <h3 className="hm-h3">{s.title}</h3>
+              <h3 className={hm.h3}>{s.title}</h3>
               <p>{s.body}</p>
             </div>
           </li>
         ))}
       </ol>
-      <p className="hm-wayout">
+      <p className={hm.wayout}>
         <b>Your way out:</b> if Writz stops, you reclaim your BTC alone after the timelock.{" "}
         <Link href="/help/reclaim" className={ui.btn("text")}>
           How to reclaim
@@ -601,11 +602,11 @@ export function HowALoanWorks({ enter }: { enter: (className?: string) => Entran
 export function EarnCard({ earn }: { earn: EarnSummary }) {
   const open = useEntrance("earn", "open");
   return (
-    <section {...open("hm-card cut-sm")} aria-labelledby="earn-title">
+    <section {...open(ui.cx(hm.card, "cut-sm"))} aria-labelledby="earn-title">
       <h2 id="earn-title" className={ui.label}>
         {VAULT_NAME}
       </h2>
-      <p className="hm-big mono">
+      <p className={ui.cx(hm.big, "mono")}>
         {formatUsdc(earn.balanceStroops)} <span>USDC</span>
       </p>
       {earn.earnedStroops !== null ? <p className={ui.hint}>Earned so far: {formatUsdc(earn.earnedStroops)} USDC (Blend).</p> : null}
@@ -626,11 +627,11 @@ export function EarnCard({ earn }: { earn: EarnSummary }) {
 export function LendCard({ supplied }: { supplied: bigint }) {
   const open = useEntrance("lend", "open");
   return (
-    <section {...open("hm-card cut-sm")} aria-labelledby="lend-title">
+    <section {...open(ui.cx(hm.card, "cut-sm"))} aria-labelledby="lend-title">
       <h2 id="lend-title" className={ui.label}>
         Lend
       </h2>
-      <p className="hm-big mono">
+      <p className={ui.cx(hm.big, "mono")}>
         {formatUsdc(supplied)} <span>USDC</span>
       </p>
       <p className={ui.hint}>Your balance in the lending pool, interest included.</p>
