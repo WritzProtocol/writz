@@ -87,6 +87,19 @@ jobs:
           node-version: 22
       - run: node scripts/check-docs-sync.mjs
 
+  # Both frontends are styled with Tailwind utilities; the only stylesheet in
+  # each is its globals.css. Only Node builtins, so it always runs: a stray
+  # .css file can be added by a change that touches no other frontend file.
+  frontend-styles:
+    name: frontend styles (only the two globals.css files)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/check-frontend-styles.mjs
+
   # Same always-run rationale as docs-sync: Mintlify parses pages as MDX and
   # only re-parses what a push changed, so a syntax error can sit in a page
   # for months and then break the deploy on an unrelated PR that merely
@@ -398,6 +411,7 @@ jobs:
     needs:
       - changes
       - docs-sync
+      - frontend-styles
       - frontend
       - relayer
       - relayer-docker-build
