@@ -15,6 +15,7 @@ import { useMockWorld, useMounted, useRead } from "@/components/ui/hooks";
 import { useShellAccount } from "@/components/shell/account";
 import { T } from "@/components/ui/skeleton";
 import * as ui from "@/components/ui/styles";
+import * as rc from "./styles";
 
 interface LoanLock {
   n: number;
@@ -89,13 +90,13 @@ function When({ lock, tip, now }: { lock: LoanLock; tip: number | null; now: num
 
 function LoanCard({ lock, tip, now, detailed }: { lock: LoanLock; tip: number | null; now: number; detailed: boolean }) {
   return (
-    <section className="rc-loan" aria-labelledby={`rc-loan-${lock.n}`}>
-      <h3 id={`rc-loan-${lock.n}`} className="rc-h3">
+    <section className={rc.loan} aria-labelledby={`rc-loan-${lock.n}`}>
+      <h3 id={`rc-loan-${lock.n}`} className={rc.h3}>
         Loan {lock.n}
       </h3>
       <When lock={lock} tip={tip} now={now} />
       {detailed ? (
-        <dl className="rc-facts">
+        <dl className={rc.facts}>
           {lock.lockAddress ? (
             <div>
               <dt>Lock address</dt>
@@ -130,9 +131,9 @@ function LoanCard({ lock, tip, now, detailed }: { lock: LoanLock; tip: number | 
 function LoansSkeleton() {
   return (
     <div aria-hidden="true">
-      <div className="rc-loans" data-sk="loans">
-        <div className="rc-loan">
-          <p className="rc-h3">
+      <div className={rc.loans} data-sk="loans">
+        <div className={rc.loan}>
+          <p className={rc.h3}>
             <T>Loan 1</T>
           </p>
           <p>
@@ -177,7 +178,7 @@ export function ReclaimLoans() {
     );
   }
   return (
-    <div className="rc-loans">
+    <div className={rc.loans}>
       {shown.map((l) => (
         <LoanCard key={l.n} lock={l} tip={tip} now={now} detailed={requested !== null || shown.length === 1} />
       ))}

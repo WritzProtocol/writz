@@ -215,7 +215,7 @@ export function SlideToConfirm({
         style={{ width: x + HANDLE - 4, transition: drag ? "none" : undefined }} />
       <span
         className={ui.cx(
-          "wz-slide-label absolute inset-y-0 right-4 left-[84px] grid place-items-center text-center font-medium text-[15px] leading-[1.2] text-heading group-data-[disabled=true]/slide:text-muted pointer-events-none opacity-[calc(1-var(--slide-p,0)*1.4)] group-data-[done=true]/slide:opacity-100 transition-opacity duration-element ease-exit group-data-[dragging=true]/slide:transition-none motion-reduce:transition-none",
+          "absolute inset-y-0 right-4 left-[84px] grid place-items-center text-center font-medium text-[15px] leading-[1.2] text-heading group-data-[disabled=true]/slide:text-muted pointer-events-none opacity-[calc(1-var(--slide-p,0)*1.4)] group-data-[done=true]/slide:opacity-100 transition-opacity duration-element ease-exit group-data-[dragging=true]/slide:transition-none motion-reduce:transition-none",
           labelClassName,
         )}
         aria-hidden="true"
@@ -250,11 +250,11 @@ export function SlideToConfirm({
 }
 
 /** m equal cells filled to n, with the count always available as text. */
-export function ConfirmationSlots({ n, m }: { n: number; m: number }) {
+export function ConfirmationSlots({ n, m, className }: { n: number; m: number; className?: string }) {
   const filled = Math.min(n, m);
   return (
     <div
-      className="wz-slots grid grid-cols-[repeat(var(--slots,6),1fr)] gap-1"
+      className={ui.cx("grid grid-cols-[repeat(var(--slots,6),1fr)] gap-1", className)}
       style={{ ["--slots" as string]: m }}
       role="progressbar"
       aria-label="Bitcoin confirmations"
@@ -266,7 +266,7 @@ export function ConfirmationSlots({ n, m }: { n: number; m: number }) {
       {Array.from({ length: m }, (_, i) => (
         <span
           key={i}
-          className="wz-slot h-11 bg-[color-mix(in_srgb,var(--deep)_55%,transparent)] data-[on=true]:bg-accent transition-[background-color] duration-element ease-linear motion-reduce:transition-none"
+          className="h-11 bg-[color-mix(in_srgb,var(--deep)_55%,transparent)] data-[on=true]:bg-accent transition-[background-color] duration-element ease-linear motion-reduce:transition-none"
           data-on={i < filled}
         />
       ))}

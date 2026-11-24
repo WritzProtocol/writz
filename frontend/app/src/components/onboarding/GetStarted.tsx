@@ -13,6 +13,7 @@ import type { ClaimState } from "@/lib/onboarding/autoClaim";
 import { CopyButton, ExternalLink, Spinner } from "@/components/ui";
 import { useShellAccount } from "@/components/shell/account";
 import * as ui from "@/components/ui/styles";
+import * as hm from "@/components/home/styles";
 
 /** The loan's state as the guide reads it: the derived status first, the local hint otherwise. */
 function guideStatus(kind: string, local: GuideLoan["status"]): GuideLoan["status"] {
@@ -70,7 +71,7 @@ function FundDetail({ claim, balance, address, retry }: { claim: ClaimState; bal
     case "failed": {
       const f = claim.failure;
       return (
-        <div className="gs-fail">
+        <div className={hm.guideFail}>
           <p>
             <b>{f.title}.</b> {f.message}
           </p>
@@ -194,9 +195,9 @@ export function GetStarted() {
   };
 
   return (
-    <section className="hm-card gs" aria-labelledby="gs-title">
-      <div className="gs-head">
-        <h2 id="gs-title" className="hm-h2">
+    <section className={hm.guide} aria-labelledby="gs-title">
+      <div className={hm.guideHead}>
+        <h2 id="gs-title" className={hm.h2}>
           {allDone ? "You did the whole loop" : "Your first loan, in five steps"}
         </h2>
         <p className={ui.hint}>
@@ -205,16 +206,16 @@ export function GetStarted() {
             : "Test funds only. About 15 minutes, mostly waiting for one Bitcoin block."}
         </p>
       </div>
-      <ol className="gs-steps">
+      <ol className={hm.guideSteps}>
         {(["fund", "deposit", "borrow", "repay", "release"] as const).map((id, i) => {
           const state = progress.state(id);
           return (
             <li key={id} data-state={state} aria-current={state === "now" ? "step" : undefined}>
-              <span className="gs-n mono" aria-hidden="true">
+              <span className={ui.cx(hm.guideN(state), "mono")} aria-hidden="true">
                 {i + 1}
               </span>
-              <div className="gs-body">
-                <p className="gs-title">
+              <div className={hm.guideBody}>
+                <p className={hm.guideTitle(state)}>
                   {TITLES[id]}
                   {state === "done" ? <span className="sr-only"> (done)</span> : null}
                 </p>

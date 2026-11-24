@@ -209,21 +209,21 @@ export function HealthMeter({
 }
 
 /** The ratio in large figures with its status in words beside it. */
-export function HealthText({ ratioBp, health }: { ratioBp: bigint | null; health: Health | null }) {
+export function HealthText({ ratioBp, health, compact = false }: { ratioBp: bigint | null; health: Health | null; compact?: boolean }) {
   if (health === null)
     return (
-      <p className={ln.ratio("neutral")} data-tone="neutral">
+      <p className={ln.ratio("neutral", compact)} data-tone="neutral">
         <b>Checking...</b>
       </p>
     );
   if (health === "none" || ratioBp === null)
     return (
-      <p className={ln.ratio("neutral")} data-tone="neutral">
+      <p className={ln.ratio("neutral", compact)} data-tone="neutral">
         <b>No debt</b>
       </p>
     );
   return (
-    <p className={ln.ratio(HEALTH_TONE[health])} data-tone={HEALTH_TONE[health]}>
+    <p className={ln.ratio(HEALTH_TONE[health], compact)} data-tone={HEALTH_TONE[health]}>
       <b className="mono">{pct(ratioBp)}</b>
       <span>
         <i aria-hidden="true" />
@@ -416,6 +416,12 @@ export function TxResult({
 
 // ── Amount field ─────────────────────────────────────────────────────────
 
+const FIELD = {
+  plain: "",
+  loan: "max-md:[&_input]:text-[20px] max-[761px]:[&_input]:text-[20px]",
+  funds: "[&_input]:h-[60px] max-md:[&_input]:text-[22px] max-[761px]:[&_input]:text-[22px]",
+};
+
 export function AmountField({
   id,
   label,
@@ -427,7 +433,7 @@ export function AmountField({
   hint,
   disabled,
   unit = "USDC",
-  loan = false,
+  variant,
 }: {
   id: string;
   label: string;
@@ -439,15 +445,15 @@ export function AmountField({
   hint: ReactNode;
   disabled?: boolean;
   unit?: string;
-  /** In the loan's action panel the figure drops to 20px on phones. */
-  loan?: boolean;
+  /** The panel it sits in: the loan's action panel drops the figure to 20px on phones; Earn and Lend use a taller input and a larger hint. */
+  variant?: "loan" | "funds";
 }) {
   return (
     <div className={ui.stack} style={{ gap: 8 }}>
       <label htmlFor={id} className={ui.label}>
         {label}
       </label>
-      <div className={loan ? ui.cx(ui.field(), "max-md:[&_input]:text-[20px] max-[761px]:[&_input]:text-[20px]") : ui.field()} data-invalid={Boolean(error)}>
+      <div className={ui.cx(ui.field(), FIELD[variant ?? "plain"])} data-invalid={Boolean(error)}>
         <input
           id={id}
           inputMode="decimal"
@@ -461,11 +467,11 @@ export function AmountField({
           onChange={(e) => onChange(e.target.value)}
         />
         <span>{unit}</span>
-        <button type="button" className={loan ? ui.cx(ui.chip, ln.max) : ui.chip} onClick={onMax} disabled={disabled}>
+        <button type="button" className={variant === "loan" ? ui.cx(ui.chip, ln.max) : ui.chip} onClick={onMax} disabled={disabled}>
           {maxLabel}
         </button>
       </div>
-      <p id={`${id}-hint`} className={error ? ui.error : ui.hint}>
+      <p id={`${id}-hint`} className={ui.cx(error ? ui.error : ui.hint, variant === "funds" && (error ? "text-[15px]" : "text-[15px] text-body"))}>
         {error ?? hint}
       </p>
     </div>
@@ -645,7 +651,7 @@ export function BorrowPanel({
       )}
       {choice && <ReceiveChooser draft={choice.draft} onChange={choice.onDraft} disabled={running || stepTwo !== null} />}
       <AmountField
-        loan
+        variant="loan"
         id={`${id}-borrow`}
         label="Borrow"
         value={value}
@@ -776,7 +782,7 @@ export function RepayPanel({
       }}
     >
       <AmountField
-        loan
+        variant="loan"
         id={`${id}-repay`}
         label="Repay"
         value={value}

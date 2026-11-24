@@ -110,9 +110,10 @@ path.
 
 `src/app/globals.css` imports Tailwind and the shared Graphite & Gold theme
 (`../../packages/brand/theme.css`, which brings in the tokens). The app shell
-and the shared primitives are styled with Tailwind utilities, the primitives as
-class strings in `src/components/ui/styles.ts`; each route still has its own
-stylesheet next to it. See `../DESIGN_SYSTEM.md`.
+and every screen are styled with Tailwind utilities: the shared primitives as
+class strings in `src/components/ui/styles.ts`, each area's in a `styles.ts`
+next to its components. `globals.css` is the only stylesheet. See
+`../DESIGN_SYSTEM.md`.
 
 ## Structure
 

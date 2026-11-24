@@ -15,6 +15,7 @@ import { useGuide } from "@/components/onboarding/useGuide";
 import type { HomeData } from "./data";
 import { EarnCard, HowALoanWorks, LendCard, LoanSkeleton, LoanSummaryCard, Preview, UrgentCard } from "./parts";
 import * as ui from "@/components/ui/styles";
+import * as hm from "@/components/home/styles";
 
 const STELLAR = networkName(config.networkPassphrase);
 
@@ -98,13 +99,13 @@ export function HomeView({ data }: { data: HomeData }) {
   };
 
   return (
-    <div className="hm-col">
+    <div className={hm.col}>
       <GlobalNotices data={data} />
 
-      <header {...head("hm-head")}>
-        <h1 className="hm-h1 hm-display">{headline}</h1>
+      <header {...head(hm.head)}>
+        <h1 className={hm.display}>{headline}</h1>
         {isNew ? (
-          <p className="hm-sub">
+          <p className={hm.sub}>
             Lock BTC on Bitcoin and borrow USDC on Stellar. Repay and your BTC comes back. No bridge, no custodian, no wrapped
             token. Test funds only.
           </p>
@@ -118,18 +119,18 @@ export function HomeView({ data }: { data: HomeData }) {
       ) : null}
 
       {finding ? (
-        <section aria-labelledby="finding" {...findingIn("hm-section")}>
-          <h2 id="finding" className="hm-h2" aria-live="polite">
+        <section aria-labelledby="finding" {...findingIn(hm.section)}>
+          <h2 id="finding" className={hm.h2} aria-live="polite">
             Finding your loans...
           </h2>
-          <div className="hm-loans">
+          <div className={hm.loans}>
             <LoanSkeleton />
           </div>
         </section>
       ) : null}
 
       {open.length > 0 ? (
-        <section aria-label={open.length === 1 ? "Your loan" : "Your loans"} className="hm-loans" data-count={open.length}>
+        <section aria-label={open.length === 1 ? "Your loan" : "Your loans"} className={ui.cx(hm.loans, hm.loansInCol)} data-count={open.length} data-bleed={open.length === 1 ? "" : undefined}>
           {open.map((l) => (
             <LoanSummaryCard
               key={l.position.id}
@@ -144,9 +145,9 @@ export function HomeView({ data }: { data: HomeData }) {
       ) : null}
 
       {closed.length > 0 ? (
-        <details {...closedIn("hm-closed")}>
-          <summary>Closed loans ({closed.length})</summary>
-          <div className="hm-loans" data-count={closed.length}>
+        <details {...closedIn(hm.closed)}>
+          <summary className={hm.closedSummary}>Closed loans ({closed.length})</summary>
+          <div className={hm.loans} data-count={closed.length} data-bleed={closed.length === 1 ? "" : undefined}>
             {closed.map((l) => (
               <LoanSummaryCard key={l.position.id} loan={l} price={data.price} compact primary={false} />
             ))}
@@ -155,7 +156,7 @@ export function HomeView({ data }: { data: HomeData }) {
       ) : null}
 
       {earn || supplied ? (
-        <div className="hm-grid">
+        <div className={hm.grid}>
           {supplied ? <LendCard supplied={supplied} /> : null}
           {earn ? <EarnCard earn={earn} /> : null}
         </div>
@@ -175,14 +176,14 @@ export function HomeView({ data }: { data: HomeData }) {
 
       {!hasLoans && !guided ? <HowALoanWorks enter={howIn} /> : null}
 
-      <nav {...foot("hm-foot")} aria-label="More">
-        <Link href="/protocol" className={ui.cx(ui.btn("text"), "pointer-coarse:min-w-11")}>
+      <nav {...foot(hm.foot)} aria-label="More">
+        <Link href="/protocol" className={hm.footLink}>
           Protocol stats
         </Link>
-        <Link href="/help/reclaim" className={ui.cx(ui.btn("text"), "pointer-coarse:min-w-11")}>
+        <Link href="/help/reclaim" className={hm.footLink}>
           How to reclaim
         </Link>
-        <ExternalLink href={DOCS_URL} className={ui.cx(ui.btn("text"), "pointer-coarse:min-w-11")}>
+        <ExternalLink href={DOCS_URL} className={hm.footLink}>
           Docs
         </ExternalLink>
       </nav>

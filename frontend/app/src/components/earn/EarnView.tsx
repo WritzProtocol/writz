@@ -10,6 +10,7 @@ import { Hero, RiskNotes, Tile, Tiles } from "@/components/funds/parts";
 import { PAUSED, UNIT, type EarnModel } from "./model";
 import { EARN_COPY } from "./copy";
 import * as ui from "@/components/ui/styles";
+import * as fu from "@/components/funds/styles";
 
 const STELLAR = networkName(config.networkPassphrase);
 
@@ -24,16 +25,16 @@ function Apy({ apy }: { apy: EarnModel["apy"] }) {
       <dt>APY</dt>
       {apy.value !== null ? (
         <>
-          <dd className="fu-tile-v">
-            <span className="mono">{(apy.value * 100).toFixed(2)}%</span>
+          <dd className={fu.tileValue}>
+            <span className={ui.cx("mono", fu.tileFigure)}>{(apy.value * 100).toFixed(2)}%</span>
           </dd>
-          <dd className="fu-caption">
+          <dd className={fu.tileCaption}>
             Earned from Blend lending. Changes over time.
             {apy.at !== null ? <> Updated {clock(apy.at)}.</> : null}
           </dd>
         </>
       ) : (
-        <dd className="fu-caption">{apy.failed ? "APY unavailable right now." : "Reading the APY..."}</dd>
+        <dd className={fu.tileCaption}>{apy.failed ? "APY unavailable right now." : "Reading the APY..."}</dd>
       )}
     </div>
   );
@@ -43,10 +44,10 @@ export function EarnView({ m }: { m: EarnModel }) {
   const blocked = m.wrongNetwork !== null || m.unfunded;
   const balance = m.stale ? { kind: "ok" as const, value: m.stale.value } : m.balance;
   return (
-    <div className="fu-page">
+    <div className={fu.page}>
       <Enter as="header" name="head">
-        <h1 className="fu-h1">{EARN_COPY.title}</h1>
-        <p className="fu-lede">
+        <h1 className={fu.h1}>{EARN_COPY.title}</h1>
+        <p className={fu.lede}>
           {EARN_COPY.lede}
           {LENDING_ENABLED ? (
             <>
@@ -62,7 +63,7 @@ export function EarnView({ m }: { m: EarnModel }) {
       </Enter>
 
       {m.stale ? (
-        <div className="fu-stale">
+        <div className={fu.stale}>
           <Notice
             tone="warning"
             label="Balance not refreshed"
@@ -80,8 +81,8 @@ export function EarnView({ m }: { m: EarnModel }) {
         </div>
       ) : null}
 
-      <div className="fu-grid">
-        <section className="fu-figures" aria-label="Your vault">
+      <div className={fu.grid}>
+        <section className={fu.figures} aria-label="Your vault">
           {m.connected ? (
             <Hero
               label="Your balance"
@@ -100,7 +101,7 @@ export function EarnView({ m }: { m: EarnModel }) {
           />
         </section>
 
-        <Enter name="act" step={3} className="fu-act">
+        <Enter name="act" step={3} className={fu.act}>
           {m.paused ? (
             <Notice tone="warning" label="Strategy paused">
               <p>{PAUSED}</p>

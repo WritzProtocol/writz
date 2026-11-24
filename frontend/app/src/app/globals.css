@@ -27,16 +27,8 @@
     color: var(--on-accent);
   }
 
-  /* Short names for the brand tokens, still read by the route stylesheets. */
+  /* App-wide measures: the sidebar, the page gutter and the skeleton fill. */
   .app {
-    --midnight: var(--bg);
-    --panel: var(--surface);
-    --panel-2: var(--surface-2);
-    --ink: var(--on-accent);
-    --gold: var(--accent);
-    --gold-hover: var(--accent-hover);
-    --rule: var(--line);
-    --rule-strong: var(--line-strong);
     /* The outline of a line button, and the tangent of 16 degrees that cuts corners at the mark's angle. */
     --edge: color-mix(in oklab, var(--heading) 36%, transparent);
     --shear: 0.2867;
@@ -48,6 +40,16 @@
     .app {
       --gut: 16px;
     }
+  }
+  /* Home: the sidebar width a single loan card bleeds past, and the page clip that keeps its bleed from scrolling sideways. */
+  @media (min-width: 1024px) {
+    .app {
+      --hm-rail: var(--rail);
+    }
+  }
+  html:has([data-bleed]),
+  body:has([data-bleed]) {
+    overflow-x: clip;
   }
   body:has(.app) {
     background: var(--bg);

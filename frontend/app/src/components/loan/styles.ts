@@ -51,11 +51,12 @@ const RATIO_TONE: Record<Tone, string> = {
   danger: `${BIG} [&>span]:text-danger`,
 };
 
-/** The ratio figure; without a tone (the skeleton) the status word keeps the text colour. */
-export function ratio(tone?: Tone): string {
+/** The ratio figure; without a tone (the skeleton) the status word keeps the text colour. `compact` is the size used on Home when several loans sit side by side. */
+export function ratio(tone?: Tone, compact = false): string {
   return ui.cx(
-    "ln-ratio flex items-baseline flex-wrap gap-y-1 gap-x-[18px] [&_b]:leading-[0.95] [&_b]:text-heading [&>span]:inline-flex [&>span]:items-center [&>span]:gap-2 [&>span]:text-[21px] [&>span]:font-medium [&>span]:leading-[1.2] [&>span>i]:w-[7px] [&>span>i]:h-3 [&>span>i]:bg-current [&>span>i]:-skew-x-16 [&>span>i]:flex-none",
+    "flex items-baseline flex-wrap gap-y-1 gap-x-[18px] [&_b]:leading-[0.95] [&_b]:text-heading [&>span]:inline-flex [&>span]:items-center [&>span]:gap-2 [&>span]:text-[21px] [&>span]:font-medium [&>span]:leading-[1.2] [&>span>i]:w-[7px] [&>span>i]:h-3 [&>span>i]:bg-current [&>span>i]:-skew-x-16 [&>span>i]:flex-none",
     tone ? RATIO_TONE[tone] : BIG,
+    compact && (tone === "neutral" ? "[&_b]:text-[length:clamp(32px,3vw,44px)]" : "[&_b]:text-[length:clamp(48px,4.4vw,72px)]"),
   );
 }
 
@@ -67,7 +68,7 @@ const FILL: Record<Tone, string> = {
   danger: "[--bm-fill:var(--danger)]",
 };
 export function meter(tone: Tone): string {
-  return ui.cx("ln-bm", FILL[tone]);
+  return ui.cx("", FILL[tone]);
 }
 export const meterScale = "relative pt-2";
 export const meterTrack = "relative h-3 rounded-[6px] bg-deep overflow-hidden";

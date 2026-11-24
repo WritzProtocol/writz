@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { UI_MOCK } from "@/lib/mock/gate";
 import { SigningStates } from "./SigningStates";
-import "../../funds.css";
 
 export const dynamic = "force-dynamic";
 

@@ -74,7 +74,7 @@ export const ticks =
 const SLAB =
   "pt-16 pr-8 pb-8 pl-12 [clip-path:polygon(40px_0,100%_0,100%_100%,0_100%,0_calc(40px/var(--shear)))] max-[1200px]:hidden [&_h2]:text-on-accent [&>p]:mt-2 [&>p]:text-[15px] [&>p]:text-on-accent";
 export const slab = ui.cx(SLAB, H2, "bg-accent text-on-accent");
-export const slabSkeleton = ui.cx(SLAB, H2, "wz-sk-slab bg-surface text-on-accent");
+export const slabSkeleton = ui.cx(SLAB, H2, "bg-surface text-on-accent");
 export const frag =
   "mt-6 p-6 bg-surface text-body [&>span]:text-[14px] [&>span]:text-muted [&>p]:mt-1 [&>p]:text-[28px] [&>p]:leading-[1.15] [&>p]:text-heading [&_li:first-child>i]:bg-muted";
 
