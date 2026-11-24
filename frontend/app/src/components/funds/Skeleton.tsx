@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import { SkBtn, T } from "@/components/ui/skeleton";
 import * as ui from "@/components/ui/styles";
+import * as fu from "@/components/funds/styles";
 
 interface Figures {
   hero?: { label: string; value: string; unit: string };
@@ -34,55 +35,55 @@ export function FundsSkeleton({
   connect: string;
 }) {
   const figures = (f: Figures, when: "wallet" | "nowallet") => (
-    <div className="fu-figures" data-sk={when}>
+    <div className={fu.figures} data-sk={when}>
       {f.hero ? (
-        <div className="cut fu-hero" style={{ "--n": Math.max(f.hero.value.length, 6), "--u": f.hero.unit.length } as CSSProperties}>
+        <div className={ui.cx("cut", fu.hero)} style={{ "--n": Math.max(f.hero.value.length, 6), "--u": f.hero.unit.length } as CSSProperties}>
           <dl>
-            <dt className="fu-hero-k">
+            <dt className={fu.heroKey}>
               <T>{f.hero.label}</T>
             </dt>
-            <dd className="fu-big flex-nowrap items-end">
-              <span className="mono">
+            <dd className={fu.big}>
+              <span className={ui.cx("mono", fu.bigFigure)}>
                 <T>{f.hero.value}</T>
               </span>{" "}
-              <span className="fu-unit">
+              <span className={fu.bigUnit}>
                 <T>{f.hero.unit}</T>
               </span>
             </dd>
           </dl>
         </div>
       ) : null}
-      <dl className="fu-tiles">
+      <dl className={fu.tiles}>
         {f.tiles.map(([k, v, caption]) => (
           <div key={k}>
             <dt>
               <T>{k}</T>
             </dt>
-            <dd className="fu-tile-v">
-              <span className="mono">
+            <dd className={fu.tileValue}>
+              <span className={ui.cx("mono", fu.tileFigure)}>
                 <T>{v}</T>
               </span>
             </dd>
             {caption ? (
-              <dd className="fu-caption">
+              <dd className={fu.tileCaption}>
                 <T>{caption}</T>
               </dd>
             ) : null}
           </div>
         ))}
       </dl>
-      <div className={ui.cx("fu-risk", ui.skList)}>
+      <div className={fu.risk}>
         {risk.map((r) => (
           <p key={r}>
             <T>{r}</T>
           </p>
         ))}
         {docs ? (
-          <span className={ui.cx(ui.link, "fu-textlink")}>
+          <span className={fu.textLink}>
             <T>{docs}</T>
           </span>
         ) : null}
-        <span className={ui.cx(ui.link, "fu-textlink")}>
+        <span className={fu.textLink}>
           <T>{link}</T>
         </span>
       </div>
@@ -90,37 +91,37 @@ export function FundsSkeleton({
   );
 
   return (
-    <div className="fu-page">
+    <div className={fu.page}>
       <h1 className="sr-only">{title}</h1>
       <div aria-hidden="true">
-        <p className="fu-h1">
+        <p className={fu.h1}>
           <T>{title}</T>
         </p>
-        <p className="fu-lede">
+        <p className={fu.lede}>
           <T>{lede}</T>
         </p>
       </div>
-      <div className="fu-grid" aria-hidden="true">
+      <div className={fu.grid} aria-hidden="true">
         {figures(wallet, "wallet")}
         {figures(nowallet, "nowallet")}
-        <div className="fu-act">
+        <div className={fu.act}>
           <div className={ui.stack} data-sk="wallet">
-            <div className={ui.cx(ui.seg, "fu-seg")}>
+            <div className={ui.cx(ui.seg, fu.seg)}>
               <SkBtn kind="seg">{tabs[0]}</SkBtn>
               <SkBtn kind="seg">{tabs[1]}</SkBtn>
             </div>
-            <div className="fu-panel">
+            <div className={fu.panel}>
               <div className={ui.stack}>
                 <div className={ui.stack} style={{ gap: 8 }}>
                   <p className={ui.label}>
                     <T>{field}</T>
                   </p>
                   <div className={ui.field("md", { skeleton: true })} />
-                  <p className={ui.hint}>
+                  <p className={ui.cx(ui.hint, "text-[15px] text-body")}>
                     <T>{hint}</T>
                   </p>
                 </div>
-                <div className={ui.actions}>
+                <div className={fu.panelActions}>
                   <SkBtn>{tabs[0]}</SkBtn>
                 </div>
               </div>

@@ -7,8 +7,6 @@ import type { Read } from "@/lib/loan/model";
 import { ProtocolView } from "@/components/protocol/ProtocolView";
 import { mockProtocolData, type ProtocolData } from "@/components/protocol/model";
 import { UI_MOCK, scenarioFromSearch } from "@/lib/mock/gate";
-import "../funds.css";
-import "../protocol.css";
 
 // The metrics API reads with `no-store`, so this always renders per request.
 export const dynamic = "force-dynamic";

@@ -54,16 +54,15 @@ Never write a hex or rgb colour in a component or stylesheet.
   `src/app/whitepaper/styles.ts`.
 - `frontend/app` imports the shared Tailwind theme (`packages/brand/theme.css`,
   which imports the tokens) from `src/app/globals.css`, so utilities such as
-  `bg-surface`, `text-muted` or `shadow-border` exist. The shell and the shared
-  primitives are styled with utilities; the route stylesheets still style
-  their own pages.
+  `bg-surface`, `text-muted` or `shadow-border` exist. Every screen is styled
+  with utilities; `globals.css` is the only stylesheet.
 
-Inside the app, `.app` defines a few short aliases still read by the route
-stylesheets: `--gold`, `--ink`, `--panel`, `--panel-2`, `--midnight`, `--rule`,
-`--rule-strong`, plus `--edge` (heading at 36%, the outline of a line button)
-and `--shear` (the tangent of 16 degrees, used to cut corners at the mark's
-angle). See `packages/brand/README.md` for the Next.js and Vercel settings that
-let both apps reach the shared folder.
+Inside the app, `.app` defines a few measures the utilities read: `--rail` (the
+sidebar), `--gut` (the page gutter), `--sk` (the skeleton fill), `--edge`
+(heading at 36%, the outline of a line button) and `--shear` (the tangent of 16
+degrees, used to cut corners at the mark's angle). See
+`packages/brand/README.md` for the Next.js and Vercel settings that let both
+apps reach the shared folder.
 
 ## Type
 
@@ -121,11 +120,19 @@ upright and the hit area stays a rectangle.
 - **Confirmation slots** (`ConfirmationSlots`): one block per
   required confirmation, gold when reached.
 
-Route stylesheets sit next to their routes and use a short prefix: `hm-` home,
-`ln-` loans, `bj-` the borrow journey, `fu-` Earn and Lend, `pr-` Protocol,
-`rc-` reclaim. Reuse a primitive from `ui` before adding a new one. A few
-primitives still carry their old `wz-` class name, unstyled, only because a
-route stylesheet targets it; those names go when the route moves to utilities.
+Each area keeps its own class strings next to its components:
+`components/home/styles.ts`, `components/borrow/styles.ts`,
+`components/loan/styles.ts`, `components/funds/styles.ts` (Earn and Lend, and
+the page frame Protocol and Reclaim share), `components/protocol/styles.ts`,
+`components/reclaim/styles.ts` and `app/(app)/dev/styles.ts`. Reuse a primitive
+from `ui` before adding a new one, and restyle it in context with `ui.cx`, which
+merges with tailwind-merge.
+
+A form panel restyles everything inside it through custom properties rather
+than descendant selectors: labels, hints and errors read `--label-*`,
+`--hint-*` and `--error-size`, links read `--link-display`, `--link-align` and
+`--link-min-h`, notices read `--note-py`, `--note-px` and `--note-size`, and
+the gold button reads `--gold-inset`. `ui.panelVars` sets the common set.
 
 ## App shell
 

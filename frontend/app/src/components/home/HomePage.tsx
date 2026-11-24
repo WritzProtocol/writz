@@ -9,6 +9,7 @@ import { HomeView } from "./HomeView";
 import { HowSkeleton, LoanSkeleton, PreviewSkeleton } from "./parts";
 import { T } from "@/components/ui/skeleton";
 import * as ui from "@/components/ui/styles";
+import * as hm from "@/components/home/styles";
 
 function LiveHome() {
   const a = useShellAccount();
@@ -22,9 +23,9 @@ function MockHome({ world }: { world: MockWorld }) {
 
 function Foot() {
   return (
-    <nav className="hm-foot">
+    <nav className={hm.foot}>
       {["Protocol stats", "How to reclaim", "Docs"].map((t) => (
-        <span key={t} className={ui.cx(ui.btn("text"), "pointer-coarse:min-w-11")}>
+        <span key={t} className={hm.footLink}>
           <T>{t}</T>
         </span>
       ))}
@@ -37,23 +38,23 @@ function Skeleton() {
   return (
     <>
       <h1 className="sr-only">Loading Writz</h1>
-      <div className="hm-col" aria-hidden="true" data-sk="loans">
-        <div className="hm-head">
-          <p className="hm-h1 hm-display">
+      <div className={hm.col} aria-hidden="true" data-sk="loans">
+        <div className={hm.head}>
+          <p className={hm.display}>
             <T>Your loan is healthy.</T>
           </p>
         </div>
-        <div className="hm-loans" data-count="1">
+        <div className={ui.cx(hm.loans, hm.loansInCol)} data-count="1" data-bleed="">
           <LoanSkeleton />
         </div>
         <Foot />
       </div>
-      <div className="hm-col" aria-hidden="true" data-sk="noloans">
-        <div className="hm-head">
-          <p className="hm-h1 hm-display">
+      <div className={hm.col} aria-hidden="true" data-sk="noloans">
+        <div className={hm.head}>
+          <p className={hm.display}>
             <T>Lock Bitcoin. Borrow dollars.</T>
           </p>
-          <p className="hm-sub">
+          <p className={hm.sub}>
             <T>
               Lock BTC on Bitcoin and borrow USDC on Stellar. Repay and your BTC comes back. No bridge, no custodian, no wrapped token.
               Test funds only.

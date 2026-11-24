@@ -11,6 +11,7 @@ import { FundsCard, NotConnected } from "@/components/funds/FundsCard";
 import { Hero, RiskNotes, Tile, Tiles } from "@/components/funds/parts";
 import { balanceCaption, balanceDecimals, formatApr, poolSupplyRate, type LendModel } from "./model";
 import * as ui from "@/components/ui/styles";
+import * as fu from "@/components/funds/styles";
 
 const STELLAR = networkName(config.networkPassphrase);
 
@@ -23,19 +24,19 @@ function SupplyRate({ pool }: { pool: LendModel["pool"] }) {
   return (
     <div>
       <dt>Supply rate</dt>
-      <dd className="fu-tile-v">
+      <dd className={fu.tileValue}>
         {pool.kind === "ok" ? (
-          <span className="mono">{formatApr(poolSupplyRate(pool.value))}</span>
+          <span className={ui.cx("mono", fu.tileFigure)}>{formatApr(poolSupplyRate(pool.value))}</span>
         ) : pool.kind === "failed" ? (
-          <span className="fu-na">Unavailable</span>
+          <span className={fu.tileNa}>Unavailable</span>
         ) : (
           <>
-            <span className={ui.cx(ui.skeleton, "fu-sk")} aria-hidden="true" />
+            <span className={ui.cx(ui.skeleton, fu.tileSkeleton)} aria-hidden="true" />
             <span className="sr-only">Checking...</span>
           </>
         )}
       </dd>
-      <dd className="fu-caption">Variable APR.</dd>
+      <dd className={fu.tileCaption}>Variable APR.</dd>
     </div>
   );
 }
@@ -46,14 +47,14 @@ export function LendView({ m }: { m: LendModel }) {
   const out = m.balance.kind === "ok" && m.pool.kind === "ok" ? withdrawable(m.balance.value, m.pool.value.available) : null;
 
   return (
-    <div className="fu-page">
+    <div className={fu.page}>
       <Enter as="header" name="head">
-        <h1 className="fu-h1">Lend USDC</h1>
-        <p className="fu-lede">Supply USDC to the lending pool and earn interest from borrowers. The rate moves with how much of the pool is borrowed. Stellar testnet, test USDC.</p>
+        <h1 className={fu.h1}>Lend USDC</h1>
+        <p className={fu.lede}>Supply USDC to the lending pool and earn interest from borrowers. The rate moves with how much of the pool is borrowed. Stellar testnet, test USDC.</p>
       </Enter>
 
       {m.stale ? (
-        <div className="fu-stale">
+        <div className={fu.stale}>
           <Notice
             tone="warning"
             label="Balance not refreshed"
@@ -68,8 +69,8 @@ export function LendView({ m }: { m: LendModel }) {
         </div>
       ) : null}
 
-      <div className="fu-grid">
-        <section className="fu-figures" aria-label="Your position and the pool">
+      <div className={fu.grid}>
+        <section className={fu.figures} aria-label="Your position and the pool">
           {m.connected ? (
             <>
               <Hero
@@ -104,7 +105,7 @@ export function LendView({ m }: { m: LendModel }) {
           />
         </section>
 
-        <Enter name="act" step={3} className="fu-act">
+        <Enter name="act" step={3} className={fu.act}>
           {!m.connected ? (
             <NotConnected text="Connect your Stellar wallet to lend USDC." connect={m.connect} connecting={m.connecting} />
           ) : m.wrongNetwork ? (

@@ -7,6 +7,7 @@ import { AccountProvider, useShellAccount } from "./account";
 import { Toasts } from "./Toasts";
 import { SigningCheckFallback } from "@/components/wallet/SigningCheck";
 import * as ui from "@/components/ui/styles";
+import * as hm from "@/components/home/styles";
 
 /** After a client-side route change, focus the new page's heading so screen readers start there. */
 function useFocusHeadingOnRoute() {
@@ -40,8 +41,8 @@ function Main({ top, children }: { top: React.ReactNode; children: React.ReactNo
       >
         <SigningCheckFallback />
         {a.mainnetGuard ? (
-          <section className="hm-guard" role="alert">
-            <h1 className="hm-h1">This build is set up for Stellar testnet only.</h1>
+          <section className={hm.guard} role="alert">
+            <h1 className={hm.h1}>This build is set up for Stellar testnet only.</h1>
             <p className={ui.muted}>It points at a different network, so loans, Lend and the DeFindex vault are turned off.</p>
           </section>
         ) : (
