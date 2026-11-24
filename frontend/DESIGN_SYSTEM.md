@@ -12,7 +12,8 @@ colours with their contrast pairs, type specimens) is shown on writz.xyz/brand.
 
 All tokens live in `packages/brand/tokens.css` as plain CSS custom properties on
 `:root`. There is no build step and no generated theme; both apps read the same
-file.
+file, through the Tailwind theme in `packages/brand/theme.css` that maps each token
+to utilities.
 
 | Token | Value | Use |
 |---|---|---|
@@ -64,6 +65,21 @@ degrees, used to cut corners at the mark's angle). See
 `packages/brand/README.md` for the Next.js and Vercel settings that let both
 apps reach the shared folder.
 
+## Writing styles
+
+Both frontends are styled with Tailwind utilities, and the only stylesheet in each
+is its `globals.css` (imports, the base reset, keyframes, and the few rules that
+cannot be a utility). A page's utilities are written as class strings in a
+`styles.ts` next to it, not as a stylesheet; `scripts/check-frontend-styles.mjs`
+runs in CI and fails when a `.css` file appears under `frontend/` anywhere else.
+
+Give each primitive one complete list of utilities rather than a base plus
+overrides, since two utilities for the same property do not override each other by
+the order they are written in. Restyle a primitive in context with `ui.cx`, which
+merges with tailwind-merge in the app, or with a custom property set on the panel
+(see the form panels below). Utilities are only generated for class names that
+appear whole in the source, so never build one with string interpolation.
+
 ## Type
 
 - **Work Sans** for all text, weights 400, 500 and 600, loaded with `next/font`
@@ -84,7 +100,8 @@ The shared pieces of the app are Tailwind class strings in
 `SlideToConfirm`, `ConfirmationSlots`, `Spinner`, and the hooks in `hooks.ts`).
 Each string is one complete list of utilities, so a variant never relies on
 class order to override the base. The landing has its own copies of the button
-and tag treatment in `landing.css`, drawn the same way.
+and tag treatment in `frontend/landing/src/features/landing/styles.ts`, drawn the
+same way.
 
 The angle is always drawn with a `::before` layer under the content, skewed by
 `skewX(-16deg)` (the `slant` utility, or `before:-skew-x-16`), so the text stays

@@ -131,12 +131,6 @@
     animation: none;
   }
 }
-@utility animate-wz-rise {
-  animation: wz-in var(--dur-section) var(--ease-enter) both;
-  @media (prefers-reduced-motion: reduce) {
-    animation: none;
-  }
-}
 @utility animate-wz-toast-in {
   animation: wz-toast-in var(--dur-element) var(--ease-enter) both;
   @media (prefers-reduced-motion: reduce) {
@@ -272,22 +266,5 @@
 @media (prefers-reduced-motion: no-preference) {
   html {
     scroll-behavior: smooth;
-  }
-}
-
-@keyframes indeterminate {
-  0% {
-    transform: translateX(-100%);
-  }
-  100% {
-    transform: translateX(300%);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .animate-\[indeterminate_1\.4s_ease-in-out_infinite\] {
-    animation: none !important;
-    width: 100% !important;
-    opacity: 0.4;
   }
 }
