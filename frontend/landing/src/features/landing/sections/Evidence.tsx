@@ -1,22 +1,23 @@
 import { DOCS_URL, GITHUB_URL } from "../constants";
 import { explorerUrl, ledger } from "../data/contracts.data";
+import * as l from "../styles";
 
 export function Evidence() {
   return (
-    <section id="evidence" className="proof" aria-labelledby="proof-h">
-      <div className="wrap board">
-        <div className="ptile head" data-reveal>
+    <section id="evidence" className={l.proof} aria-labelledby="proof-h">
+      <div className={l.board}>
+        <div className={l.proofHead} data-reveal>
           <h2 id="proof-h">The protocol runs on contracts you can read.</h2>
-          <a className="textlink" href={GITHUB_URL} data-umami-event="read-source" data-umami-event-where="evidence">
+          <a className={l.proofHeadLink} href={GITHUB_URL} data-umami-event="read-source" data-umami-event-where="evidence">
             Read the source
           </a>
         </div>
         {ledger.map((c) => (
-          <div className="ptile" key={c.address} data-reveal>
-            <p className="nm">{c.name}</p>
-            <p className="rl">{c.role}</p>
+          <div className={l.contract} key={c.address} data-reveal>
+            <p className={l.contractName}>{c.name}</p>
+            <p className={l.contractRole}>{c.role}</p>
             <a
-              className="addr"
+              className={l.contractAddress}
               href={explorerUrl(c.address)}
               data-umami-event="contract-explorer"
               data-umami-event-label={c.name}
@@ -28,7 +29,7 @@ export function Evidence() {
             </a>
           </div>
         ))}
-        <div className="ptile facts2" data-reveal>
+        <div className={l.proofFacts} data-reveal>
           <p>Open source under Apache 2.0.</p>
           <p>
             Not audited yet. <a href={`${DOCS_URL}/security/security-model`} data-umami-event="security-model" data-umami-event-where="evidence">Read the security model</a>

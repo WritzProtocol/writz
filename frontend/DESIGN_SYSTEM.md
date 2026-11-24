@@ -47,10 +47,12 @@ Never write a hex or rgb colour in a component or stylesheet.
 
 ### How each app reads them
 
-- `frontend/landing` imports the file at the top of `src/app/globals.css` and
-  styles its pages with plain scoped CSS (`.landing`, `.press-root`). The
-  whitepaper is a light paper page and defines its own paper variables in
-  `src/app/whitepaper/whitepaper.css`.
+- `frontend/landing` imports the shared Tailwind theme from
+  `src/app/globals.css`, without Tailwind's preflight. The home page, navbar and
+  footer use utilities (`src/features/landing/styles.ts`); `/about`, `/brand`
+  and `/whitepaper` still use scoped stylesheets (`.landing`, `.press-root`) in
+  a `legacy` cascade layer under the utilities. The whitepaper is a light paper
+  page and defines its own paper variables in `src/app/whitepaper/whitepaper.css`.
 - `frontend/app` imports the shared Tailwind theme (`packages/brand/theme.css`,
   which imports the tokens) from `src/app/globals.css`, so utilities such as
   `bg-surface`, `text-muted` or `shadow-border` exist. The shell and the shared

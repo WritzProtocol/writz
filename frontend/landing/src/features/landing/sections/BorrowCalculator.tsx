@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
+import * as l from "../styles";
 
 const EXAMPLE_PRICE = 100_000;
 // writz-lend config: 150% minimum collateral, liquidation below 120%.
@@ -39,16 +40,17 @@ export function BorrowCalculator() {
   };
 
   return (
-    <form className="calc" aria-label="What you could borrow" onSubmit={(e) => e.preventDefault()}>
-      <div className="calc-r">
+    <form className={l.calc} aria-label="What you could borrow" onSubmit={(e) => e.preventDefault()}>
+      <div className={l.calcRow}>
         <label htmlFor="calc-btc">Lock</label>
-        <output className="v" htmlFor="calc-btc">
+        <output className={`v ${l.calcRowValue}`} htmlFor="calc-btc">
           {btcLabel}
         </output>
       </div>
       <input
         id="calc-btc"
         type="range"
+        className={l.range}
         min={MIN_BTC}
         max={MAX_BTC}
         step={0.05}
@@ -58,9 +60,9 @@ export function BorrowCalculator() {
         onChange={(e) => setBtc(Number(e.target.value))}
       />
 
-      <div className="calc-r">
+      <div className={l.calcRow}>
         <span id="calc-share">Borrow</span>
-        <div className="seg" role="radiogroup" aria-labelledby="calc-share">
+        <div className={l.choices} role="radiogroup" aria-labelledby="calc-share">
           {SHARES.map((s, i) => (
             <button
               key={s.label}
@@ -69,6 +71,7 @@ export function BorrowCalculator() {
               }}
               type="button"
               role="radio"
+              className={l.choice}
               aria-checked={ratio === s.ratio}
               tabIndex={ratio === s.ratio ? 0 : -1}
               onClick={() => setRatio(s.ratio)}
@@ -80,20 +83,20 @@ export function BorrowCalculator() {
         </div>
       </div>
 
-      <p className="calc-fig" aria-live="polite">
-        <span className="v">{usdc.format(borrow)}</span> <span>USDC</span>
+      <p className={l.figure} aria-live="polite">
+        <span className={`v ${l.figureValue}`}>{usdc.format(borrow)}</span> <span>USDC</span>
       </p>
 
-      <div className="ctrack" aria-hidden="true" style={{ "--at": `${fall}%` } as CSSProperties}>
-        <b />
+      <div className={l.track} aria-hidden="true" style={{ "--at": `${fall}%` } as CSSProperties}>
+        <b className={l.trackFill} />
       </div>
-      <div className="calc-legend">
+      <div className={l.legend}>
         <span>
           Liquidation below <b className="v">{usd.format(liqPrice)}</b>
         </span>
         <span>BTC can fall {fall}%</span>
       </div>
-      <p className="sub">Example at {usd.format(EXAMPLE_PRICE)} per BTC. The app uses the live price.</p>
+      <p className={l.sub}>Example at {usd.format(EXAMPLE_PRICE)} per BTC. The app uses the live price.</p>
     </form>
   );
 }
