@@ -43,6 +43,7 @@ import {
   StatusBadge,
   WayOut,
 } from "./parts";
+import * as ui from "@/components/ui/styles";
 
 const TAB_LABEL: Record<LoanTab, string> = { borrow: "Borrow more", repay: "Repay", release: "Release BTC" };
 
@@ -62,8 +63,8 @@ function Empty({ n, title, body, action }: { n: number; title?: string; body: Re
   return (
     <div className="ln-col">
       <Heading n={n} />
-      <Enter as="section" name="empty" kind="open" className="ln-empty wz-cut-sm">
-        {title ? <h2 className="wz-h2">{title}</h2> : null}
+      <Enter as="section" name="empty" kind="open" className="cut-sm ln-empty">
+        {title ? <h2 className={ui.h2}>{title}</h2> : null}
         <div>{body}</div>
         {action}
       </Enter>
@@ -104,7 +105,7 @@ export function LoanView({ m }: { m: LoanModel }) {
         n={n}
         body={<p>Connect your Stellar wallet to see this loan. It receives your USDC and signs loan actions.</p>}
         action={
-          <button type="button" className="wz-btn wz-btn-gold" onClick={m.stellar.connect} disabled={m.stellar.connecting}>
+          <button type="button" className={ui.btn("gold")} onClick={m.stellar.connect} disabled={m.stellar.connecting}>
             {m.stellar.connecting ? `Confirm in ${m.stellar.walletName}` : "Connect Stellar wallet"}
           </button>
         }
@@ -117,7 +118,7 @@ export function LoanView({ m }: { m: LoanModel }) {
         n={n}
         body={<p>Looking up the loans this wallet holds.</p>}
         action={
-          <button type="button" className="wz-btn wz-btn-gold" disabled>
+          <button type="button" className={ui.btn("gold")} disabled>
             Finding your loans...
           </button>
         }
@@ -136,7 +137,7 @@ export function LoanView({ m }: { m: LoanModel }) {
           )
         }
         action={
-          <Link href={m.depositInProgress ? "/borrow/new" : "/"} className="wz-btn wz-btn-gold">
+          <Link href={m.depositInProgress ? "/borrow/new" : "/"} className={ui.btn("gold")}>
             {m.depositInProgress ? "Go to your deposit" : "Go home"}
           </Link>
         }
@@ -240,15 +241,15 @@ export function LoanView({ m }: { m: LoanModel }) {
 
       <div className="ln-grid" data-risk={risk} data-side={sideTop ? "top" : undefined} style={grid}>
         {risk ? (
-          <Enter as="section" name="risk" kind="open" className="ln-risk wz-cut" aria-label="Risk">
+          <Enter as="section" name="risk" kind="open" className="cut ln-risk" aria-label="Risk">
             <HealthText ratioBp={ratioBp} health={checking ? null : health} />
             <HealthMeter ratioBp={ratioBp} health={checking ? null : health} preview={preview} />
             {checking ? (
               <p className="ln-liq">Checking...</p>
             ) : m.price.kind === "failed" ? (
-              <div className="wz-actions ln-liq">
+              <div className={ui.cx(ui.actions, "ln-liq")}>
                 <p>BTC price unavailable. Try again in a minute.</p>
-                <button type="button" className="wz-btn wz-btn-line wz-btn-sm" onClick={m.recheckPrice}>
+                <button type="button" className={ui.btn("line", "sm")} onClick={m.recheckPrice}>
                   Try again
                 </button>
               </div>
@@ -316,12 +317,12 @@ export function LoanView({ m }: { m: LoanModel }) {
         {hasActions && (
           <Enter as="section" name="actions" step={4} className="ln-actions" aria-label="Actions">
             <div
-              className="wz-seg"
+              className={ui.seg}
               role="tablist"
               aria-label="Choose an action"
               style={{ ["--seg-n" as string]: LOAN_TABS.length, ["--seg-i" as string]: tab ? LOAN_TABS.indexOf(tab) : 0 }}
             >
-              {tab ? <span className="wz-seg-ind" aria-hidden="true" /> : null}
+              {tab ? <span className={ui.segInd} aria-hidden="true" /> : null}
               {LOAN_TABS.map((t) => (
                 <button
                   key={t}
@@ -331,6 +332,7 @@ export function LoanView({ m }: { m: LoanModel }) {
                   id={`loan-tab-${t}`}
                   type="button"
                   role="tab"
+                  className={ui.segTab}
                   aria-selected={tab === t}
                   aria-controls="loan-panel"
                   aria-disabled={!tabs[t].enabled}
@@ -348,14 +350,14 @@ export function LoanView({ m }: { m: LoanModel }) {
             {reasons.length > 0 && (
               <ul className="ln-reasons">
                 {reasons.map((r, i) => (
-                  <li key={r} id={`loan-reason-${i}`} className={shownReasons.includes(r) ? undefined : "wz-sr"}>
+                  <li key={r} id={`loan-reason-${i}`} className={shownReasons.includes(r) ? undefined : "sr-only"}>
                     {r}
                   </li>
                 ))}
               </ul>
             )}
             {landedElsewhere && (
-              <Notice tone="positive" label="Done" className="wz-enter">
+              <Notice tone="positive" label="Done" className="animate-wz-enter">
                 <p>
                   {m.action === "repay" && debt === 0n
                     ? "Loan repaid. Your BTC is still locked. Release it below."
@@ -367,7 +369,7 @@ export function LoanView({ m }: { m: LoanModel }) {
             )}
             {(!checking || stepTwoOpen) && tab && (tabs[tab].enabled || (stepTwoOpen && tab === "borrow")) && (
               <div
-                className="ln-panel ln-act-panel wz-enter"
+                className="animate-wz-enter ln-panel ln-act-panel"
                 id="loan-panel"
                 role="tabpanel"
                 aria-labelledby={`loan-tab-${tab}`}

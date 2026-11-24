@@ -3,6 +3,7 @@ import Link from "next/link";
 import { LoanPage } from "@/components/loan/LoanPage";
 import { parseLoanNumber, parsePanel } from "@/lib/loan/model";
 import "../loans.css";
+import * as ui from "@/components/ui/styles";
 
 type Props = {
   params: Promise<{ n: string }>;
@@ -26,7 +27,7 @@ export default async function LoanRoute({ params, searchParams }: Props) {
         </header>
         <section className="ln-empty">
           <p>There is no loan with that number on this device.</p>
-          <Link href="/" className="wz-btn wz-btn-gold">
+          <Link href="/" className={ui.btn("gold")}>
             Go home
           </Link>
         </section>

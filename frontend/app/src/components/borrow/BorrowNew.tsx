@@ -8,6 +8,7 @@ import { SkBtn, T } from "@/components/ui/skeleton";
 import { formatBtc, MIN_DEPOSIT_SATS } from "@/lib/borrow/journey";
 import { useLiveJourney } from "./useLiveJourney";
 import { useMockJourney } from "./useMockJourney";
+import * as ui from "@/components/ui/styles";
 
 function LiveJourney() {
   return <FocusJourney m={useLiveJourney()} />;
@@ -28,7 +29,7 @@ const ROWS = [
 function Skeleton() {
   return (
     <div className="bj">
-      <h1 className="wz-sr">Loading the deposit</h1>
+      <h1 className="sr-only">Loading the deposit</h1>
       <div aria-hidden="true">
         <div className="bj-progress" style={{ ["--bj-steps" as string]: 6 }}>
           {Array.from({ length: 6 }, (_, i) => (
@@ -61,7 +62,7 @@ function Skeleton() {
               </span>
             </span>
             <span className="bj-sum-ctl">
-              <SkBtn className="wz-btn-sm">Edit</SkBtn>
+              <SkBtn kind="sm">Edit</SkBtn>
               <span className="bj-toggle" />
             </span>
           </div>
@@ -78,11 +79,11 @@ function Skeleton() {
         <div className="bj-grid" data-aside="true" data-sk="amount">
           <div className="bj-col">
             <div className="bj-panel">
-              <p className="wz-label">
+              <p className={ui.label}>
                 <T>Amount in BTC</T>
               </p>
-              <div className="wz-field wz-sk-field" />
-              <p className="wz-hint">
+              <div className={ui.field("md", { skeleton: true })} />
+              <p className={ui.hint}>
                 <T>About 5,000,000 sats. Minimum {formatBtc(MIN_DEPOSIT_SATS)} BTC.</T>
               </p>
               <dl className="bj-kv">
@@ -101,7 +102,7 @@ function Skeleton() {
                   </div>
                 ))}
               </dl>
-              <p className="wz-hint">
+              <p className={ui.hint}>
                 <T>The liquidation price assumes you borrow the full amount. If Writz stops, you can reclaim your BTC alone after about 21 Jul 2027.</T>
               </p>
               <div className="bj-submit">
@@ -113,7 +114,7 @@ function Skeleton() {
             <div className="bj-h2">
               <T>What you&apos;ll need</T>
             </div>
-            <ul className="bj-ticks wz-sk-list">
+            <ul className={ui.cx("bj-ticks", ui.skList)}>
               {["A Stellar wallet", "Xverse with test BTC", "About 70 minutes"].map((t) => (
                 <li key={t}>
                   <i />
@@ -130,7 +131,7 @@ function Skeleton() {
         </div>
         <div className="bj-grid" data-aside="true" data-sk="review">
           <div className="bj-col">
-            <div className="wz-stack">
+            <div className={ui.stack}>
               <dl className="bj-rows">
                 <div>
                   <dt>
@@ -154,9 +155,9 @@ function Skeleton() {
                       <T>tb1qlockaddressfixture0000000000000000000000000000000000000</T>
                     </span>
                     <div className="bj-tools">
-                      <SkBtn className="wz-btn-sm">Copy address</SkBtn>
+                      <SkBtn kind="sm">Copy address</SkBtn>
                       <span className="bj-more">
-                        <span className="wz-btn wz-btn-text">
+                        <span className={ui.btn("text")}>
                           <T>What is this?</T>
                         </span>
                       </span>
@@ -178,12 +179,12 @@ function Skeleton() {
                 <p className="bj-key">
                   <T>Writz cannot recover your Bitcoin key. Keep its recovery phrase.</T>
                 </p>
-                <p className="wz-check">
-                  <i className="wz-sk-check" />
+                <p className={ui.check}>
+                  <i className={ui.skCheck} />
                   <T>I understand my BTC stays locked until I repay and release it, or until block 300,000.</T>
                 </p>
-                <div className="wz-slide wz-sk-field" />
-                <span className="wz-btn wz-btn-text">
+                <div className={ui.slide} />
+                <span className={ui.btn("text")}>
                   <T>I already sent BTC</T>
                 </span>
               </div>
@@ -203,7 +204,7 @@ function Skeleton() {
               <p className="mono">
                 <T>0.05000000 BTC</T>
               </p>
-              <ul className="bj-ticks wz-sk-list">
+              <ul className={ui.cx("bj-ticks", ui.skList)}>
                 <li>
                   <i />
                   <b>
@@ -232,7 +233,7 @@ function Skeleton() {
               <p className="bj-count">
                 <T>0 of 3</T>
               </p>
-              <p className="wz-hint">
+              <p className={ui.hint}>
                 <T>About 30 minutes left. Your progress is saved in this browser.</T>
               </p>
             </div>

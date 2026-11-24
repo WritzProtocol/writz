@@ -4,6 +4,7 @@ import { ExternalLink } from "lucide-react";
 import { UI_MOCK } from "@/lib/mock/gate";
 import { scenarioCatalog } from "@/lib/mock/catalog";
 import "./dev.css";
+import * as ui from "@/components/ui/styles";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +28,7 @@ export default function DevScenarios() {
         </p>
         <nav aria-label="Areas" className="dv-areas">
           {groups.map((g) => (
-            <a key={g.area} href={`#dv-${g.area}`} className="wz-chip">
+            <a key={g.area} href={`#dv-${g.area}`} className={ui.chip}>
               {g.label}
             </a>
           ))}
@@ -45,7 +46,7 @@ export default function DevScenarios() {
                   <span className="mono dv-id">{e.id}</span>
                   <span className="dv-name">{e.title}</span>
                   <span className="mono dv-route">{e.route}</span>
-                  <span className="wz-sr"> (opens in a new tab)</span>
+                  <span className="sr-only"> (opens in a new tab)</span>
                   <ExternalLink size={16} strokeWidth={1.75} className="dv-ext" aria-hidden="true" />
                 </a>
               </li>

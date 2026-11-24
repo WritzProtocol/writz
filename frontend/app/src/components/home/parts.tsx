@@ -18,6 +18,7 @@ import { HealthMeter, HealthText, StatusBadge } from "@/components/loan/parts";
 import { useEntrance, type EntranceProps } from "@/components/ui/entrance";
 import { SkBtn, T } from "@/components/ui/skeleton";
 import type { EarnSummary } from "./data";
+import * as ui from "@/components/ui/styles";
 
 const STELLAR = networkName(config.networkPassphrase);
 const DEFAULT_PREVIEW = "0.05";
@@ -78,11 +79,11 @@ export function LoanSummaryCard({
   const secondary = secondaryAction(loan);
   const showsRisk = health !== null || s.kind === "checking";
   const closed = s.kind === "released" || s.kind === "liquidated";
-  const actionClass = `wz-btn ${primary ? "wz-btn-gold" : "wz-btn-line"}${compact ? " wz-btn-sm" : ""}`;
+  const actionClass = ui.btn(primary ? "gold" : "line", compact ? "sm" : "md");
   const open = useEntrance(`loan-${p.id}`, "open", { ready: enter });
 
   return (
-    <article {...open("hm-loan wz-cut")} data-compact={compact} aria-labelledby={`loan-${p.index}`}>
+    <article {...open("hm-loan cut")} data-compact={compact} aria-labelledby={`loan-${p.index}`}>
       <div className="hm-loan-main">
         <header className="hm-loan-head">
           <h2 id={`loan-${p.index}`}>{loanName(loan)}</h2>
@@ -134,11 +135,11 @@ export function LoanSummaryCard({
             )
           ) : null}
           {secondary ? (
-            <Link href={secondary.href} className={`wz-btn wz-btn-line${compact ? " wz-btn-sm" : ""}`}>
+            <Link href={secondary.href} className={ui.btn("line", compact ? "sm" : "md")}>
               {secondary.label}
             </Link>
           ) : null}
-          <Link href={loanHref(p.index)} className="wz-btn wz-btn-text hm-stretch">
+          <Link href={loanHref(p.index)} className={ui.cx(ui.btn("text"), "hm-stretch")}>
             Open {loanName(loan)}
           </Link>
         </div>
@@ -150,13 +151,13 @@ export function LoanSummaryCard({
 /** The loan panel at its loaded size while the loan is being read. */
 export function LoanSkeleton() {
   return (
-    <div className="hm-loan wz-cut" data-compact="false" aria-hidden="true">
+    <div className="cut hm-loan" data-compact="false" aria-hidden="true">
       <div className="hm-loan-main">
         <div className="hm-loan-head">
           <h2>
             <T>Loan 1</T>
           </h2>
-          <SkBtn className="wz-badge">Healthy</SkBtn>
+          <SkBtn kind="badge">Healthy</SkBtn>
         </div>
         <div className="hm-risk">
           <p className="ln-ratio">
@@ -195,7 +196,7 @@ export function LoanSkeleton() {
         <div className="hm-loan-acts">
           <SkBtn>Borrow more</SkBtn>
           <SkBtn>Repay</SkBtn>
-          <span className="wz-btn wz-btn-text">
+          <span className={ui.btn("text")}>
             <T>Open Loan 1</T>
           </span>
         </div>
@@ -210,11 +211,12 @@ function DepositCard({ u, m, onCheckAgain }: { u: Extract<Urgent, { kind: "depos
   const s = u.status;
   const open = useEntrance("urgent", "open", { ready: s.kind !== "btc_unseen" });
   const txid = u.deposit?.pd.btcTxid ?? u.loan?.position.txid;
-  const mempool = txid ? (
-    <ExternalLink href={btcTxUrl(txid)} className="wz-btn wz-btn-text">
-      View on mempool
-    </ExternalLink>
-  ) : null;
+  const mempool = (inNote: boolean) =>
+    txid ? (
+      <ExternalLink href={btcTxUrl(txid)} className={inNote ? ui.cx(ui.btn("text"), ui.noteTextAlign) : ui.btn("text")}>
+        View on mempool
+      </ExternalLink>
+    ) : null;
 
   if (s.kind === "btc_unseen") {
     return (
@@ -223,10 +225,10 @@ function DepositCard({ u, m, onCheckAgain }: { u: Extract<Urgent, { kind: "depos
         label="Not seen on Bitcoin yet"
         actions={
           <>
-            <button type="button" className="wz-btn wz-btn-gold" onClick={onCheckAgain}>
+            <button type="button" className={ui.btn("gold")} onClick={onCheckAgain}>
               Check again
             </button>
-            {mempool}
+            {mempool(true)}
           </>
         }
       >
@@ -237,16 +239,16 @@ function DepositCard({ u, m, onCheckAgain }: { u: Extract<Urgent, { kind: "depos
 
   if (s.kind === "checking") {
     return (
-      <section {...open("hm-card hm-urgent wz-cut-sm")} aria-labelledby="urgent-title">
-        <span className="wz-label">Deposit in progress</span>
+      <section {...open("hm-card hm-urgent cut-sm")} aria-labelledby="urgent-title">
+        <span className={ui.label}>Deposit in progress</span>
         <h2 id="urgent-title" className="hm-h2">
           Checking your deposit...
         </h2>
-        <div className="wz-actions">
-          <Link href="/borrow/new" className="wz-btn wz-btn-line">
+        <div className={ui.actions}>
+          <Link href="/borrow/new" className={ui.btn("line")}>
             View progress
           </Link>
-          {mempool}
+          {mempool(false)}
         </div>
       </section>
     );
@@ -257,8 +259,8 @@ function DepositCard({ u, m, onCheckAgain }: { u: Extract<Urgent, { kind: "depos
   const ready = s.kind === "ready_to_register";
   const registering = s.kind === "registering";
   return (
-    <section {...open("hm-card hm-urgent wz-cut-sm")} aria-labelledby="urgent-title">
-      <span className="wz-label">Deposit in progress</span>
+    <section {...open("hm-card hm-urgent cut-sm")} aria-labelledby="urgent-title">
+      <span className={ui.label}>Deposit in progress</span>
       <h2 id="urgent-title" className="hm-h2">
         {registering
           ? "Registering your deposit on Stellar."
@@ -267,12 +269,12 @@ function DepositCard({ u, m, onCheckAgain }: { u: Extract<Urgent, { kind: "depos
             : `${n} of ${total} confirmations. You can leave.`}
       </h2>
       {!registering ? <ConfirmationSlots n={n} m={total} /> : null}
-      {!ready && !registering ? <p className="wz-hint">{timeLeft(total - n)}. Your progress is saved in this browser.</p> : null}
-      <div className="wz-actions">
-        <Link href="/borrow/new" className={`wz-btn ${ready ? "wz-btn-gold" : "wz-btn-line"}`}>
+      {!ready && !registering ? <p className={ui.hint}>{timeLeft(total - n)}. Your progress is saved in this browser.</p> : null}
+      <div className={ui.actions}>
+        <Link href="/borrow/new" className={ui.btn(ready ? "gold" : "line")}>
           {ready ? "Finish in one signature" : "View progress"}
         </Link>
-        {mempool}
+        {mempool(false)}
       </div>
     </section>
   );
@@ -307,10 +309,10 @@ export function UrgentCard({
           label={label}
           actions={
             <>
-              <Link href={loanHref(p.index, "repay")} className="wz-btn wz-btn-gold">
+              <Link href={loanHref(p.index, "repay")} className={ui.btn("gold")}>
                 {toSafe ? `Repay ${formatUsdc(toSafe)} USDC` : "Repay"}
               </Link>
-              <Link href={loanHref(p.index)} className="wz-btn wz-btn-line">
+              <Link href={loanHref(p.index)} className={ui.btn("line")}>
                 Open loan
               </Link>
             </>
@@ -328,7 +330,7 @@ export function UrgentCard({
           tone="info"
           label="Loan repaid"
           actions={
-            <Link href={loanHref(u.loan.position.index, "release")} className="wz-btn wz-btn-gold">
+            <Link href={loanHref(u.loan.position.index, "release")} className={ui.btn("gold")}>
               Release BTC
             </Link>
           }
@@ -344,7 +346,7 @@ export function UrgentCard({
           tone="info"
           label="Reclaim available"
           actions={
-            <Link href={`/help/reclaim?loan=${u.loan.position.index + 1}`} className="wz-btn wz-btn-line">
+            <Link href={`/help/reclaim?loan=${u.loan.position.index + 1}`} className={ui.btn("line")}>
               How to reclaim
             </Link>
           }
@@ -383,19 +385,19 @@ export function Preview({
 
   return (
     <div className="hm-preview">
-      <section {...open("hm-card wz-cut-sm")} aria-labelledby="preview-title">
-        <h2 id="preview-title" className="wz-label">
+      <section {...open("hm-card cut-sm")} aria-labelledby="preview-title">
+        <h2 id="preview-title" className={ui.label}>
           Try an amount
         </h2>
         {own !== null && own > 0n ? (
-          <p className="wz-hint">
+          <p className={ui.hint}>
             You have <span className="mono">{formatBtc(own)}</span> BTC.
           </p>
         ) : null}
-        <label className="wz-sr" htmlFor="preview-amount">
+        <label className="sr-only" htmlFor="preview-amount">
           BTC to lock
         </label>
-        <div className="wz-field" data-invalid={!parsed.ok && amount !== ""}>
+        <div className={ui.field()} data-invalid={!parsed.ok && amount !== ""}>
           <input
             id="preview-amount"
             inputMode="decimal"
@@ -410,7 +412,7 @@ export function Preview({
         </div>
         <p id="preview-result" className="hm-preview-line" aria-live="polite">
           {!parsed.ok ? (
-            <span className="wz-error">{parsed.error}</span>
+            <span className={ui.error}>{parsed.error}</span>
           ) : max !== null ? (
             <>
               Lock <b className="mono">{formatBtc(sats!)}</b> BTC. Borrow up to <b className="mono">{formatUsdc(max)}</b> USDC.
@@ -421,37 +423,37 @@ export function Preview({
             "Checking the BTC price..."
           )}
         </p>
-        {exit ? <p className="wz-hint">If Writz stops, you can reclaim your BTC alone after about {exit}.</p> : null}
-        <p className="wz-hint">Writz co-signs the release when you repay.</p>
+        {exit ? <p className={ui.hint}>If Writz stops, you can reclaim your BTC alone after about {exit}.</p> : null}
+        <p className={ui.hint}>Writz co-signs the release when you repay.</p>
         {empty ? (
-          <p className="wz-hint">Your Bitcoin wallet is empty. Get test BTC first.</p>
+          <p className={ui.hint}>Your Bitcoin wallet is empty. Get test BTC first.</p>
         ) : null}
-        <div className="wz-actions">
+        <div className={ui.actions}>
           {empty ? (
-            <ExternalLink href={BTC_FAUCETS[0].href} className="wz-btn wz-btn-gold">
+            <ExternalLink href={BTC_FAUCETS[0].href} className={ui.btn("gold")}>
               Get test BTC
             </ExternalLink>
           ) : (
-            <Link href="/borrow/new" className="wz-btn wz-btn-gold" onClick={handOff}>
+            <Link href="/borrow/new" className={ui.btn("gold")} onClick={handOff}>
               Start
             </Link>
           )}
           {empty ? (
-            <Link href="/borrow/new" className="wz-btn wz-btn-line" onClick={handOff}>
+            <Link href="/borrow/new" className={ui.btn("line")} onClick={handOff}>
               Start
             </Link>
           ) : (
-            <ExternalLink href={BTC_FAUCETS[0].href} className="wz-btn wz-btn-line">
+            <ExternalLink href={BTC_FAUCETS[0].href} className={ui.btn("line")}>
               Get test BTC
             </ExternalLink>
           )}
         </div>
       </section>
       <section {...need("hm-need")} aria-labelledby="need-title">
-        <h2 id="need-title" className="wz-label">
+        <h2 id="need-title" className={ui.label}>
           What you&apos;ll need
         </h2>
-        <ul className="wz-need">
+        <ul className={ui.need}>
           <li>
             <b>A Stellar wallet</b> such as Varial (formerly Freighter). It receives the USDC you borrow.
           </li>
@@ -462,7 +464,7 @@ export function Preview({
             {STELLAR} and {BTC_NETWORK_LABEL}. Test funds only.
           </li>
         </ul>
-        <Link href="/lend" className="wz-btn wz-btn-text">
+        <Link href="/lend" className={ui.btn("text")}>
           Lend USDC instead
         </Link>
       </section>
@@ -489,33 +491,33 @@ const STEPS = [
 export function PreviewSkeleton() {
   return (
     <div className="hm-preview">
-      <div className="hm-card wz-cut-sm">
-        <p className="wz-label">
+      <div className="cut-sm hm-card">
+        <p className={ui.label}>
           <T>Try an amount</T>
         </p>
-        <p className="wz-hint" data-sk="wallet">
+        <p className={ui.hint} data-sk="wallet">
           <T>You have 0.12000000 BTC.</T>
         </p>
-        <div className="wz-field wz-sk-field" />
+        <div className={ui.field("md", { skeleton: true })} />
         <p className="hm-preview-line">
           <T>Lock 0.05000000 BTC. Borrow up to 2,000.00 USDC.</T>
         </p>
-        <p className="wz-hint">
+        <p className={ui.hint}>
           <T>If Writz stops, you can reclaim your BTC alone after about 18 Jul 2027.</T>
         </p>
-        <p className="wz-hint">
+        <p className={ui.hint}>
           <T>Writz co-signs the release when you repay.</T>
         </p>
-        <div className="wz-actions">
+        <div className={ui.actions}>
           <SkBtn>Start</SkBtn>
           <SkBtn>Get test BTC</SkBtn>
         </div>
       </div>
       <div className="hm-need">
-        <p className="wz-label">
+        <p className={ui.label}>
           <T>What you&apos;ll need</T>
         </p>
-        <ul className="wz-need wz-sk-list">
+        <ul className={ui.need}>
           <li>
             <T>A Stellar wallet such as Varial (formerly Freighter). It receives the USDC you borrow.</T>
           </li>
@@ -526,7 +528,7 @@ export function PreviewSkeleton() {
             <T>Stellar testnet and Bitcoin signet. Test funds only.</T>
           </li>
         </ul>
-        <span className="wz-btn wz-btn-text">
+        <span className={ui.btn("text")}>
           <T>Lend USDC instead</T>
         </span>
       </div>
@@ -585,7 +587,7 @@ export function HowALoanWorks({ enter }: { enter: (className?: string) => Entran
       </ol>
       <p className="hm-wayout">
         <b>Your way out:</b> if Writz stops, you reclaim your BTC alone after the timelock.{" "}
-        <Link href="/help/reclaim" className="wz-btn wz-btn-text">
+        <Link href="/help/reclaim" className={ui.btn("text")}>
           How to reclaim
         </Link>
       </p>
@@ -598,21 +600,21 @@ export function HowALoanWorks({ enter }: { enter: (className?: string) => Entran
 export function EarnCard({ earn }: { earn: EarnSummary }) {
   const open = useEntrance("earn", "open");
   return (
-    <section {...open("hm-card wz-cut-sm")} aria-labelledby="earn-title">
-      <h2 id="earn-title" className="wz-label">
+    <section {...open("hm-card cut-sm")} aria-labelledby="earn-title">
+      <h2 id="earn-title" className={ui.label}>
         {VAULT_NAME}
       </h2>
       <p className="hm-big mono">
         {formatUsdc(earn.balanceStroops)} <span>USDC</span>
       </p>
-      {earn.earnedStroops !== null ? <p className="wz-hint">Earned so far: {formatUsdc(earn.earnedStroops)} USDC (Blend).</p> : null}
+      {earn.earnedStroops !== null ? <p className={ui.hint}>Earned so far: {formatUsdc(earn.earnedStroops)} USDC (Blend).</p> : null}
       {earn.apy !== null ? (
-        <p className="wz-hint">
+        <p className={ui.hint}>
           {(earn.apy * 100).toFixed(2)}% APY from Blend lending, via DeFindex.
         </p>
       ) : null}
-      <div className="wz-actions">
-        <Link href="/earn" className="wz-btn wz-btn-line wz-btn-sm">
+      <div className={ui.actions}>
+        <Link href="/earn" className={ui.btn("line", "sm")}>
           Open the vault
         </Link>
       </div>
@@ -623,16 +625,16 @@ export function EarnCard({ earn }: { earn: EarnSummary }) {
 export function LendCard({ supplied }: { supplied: bigint }) {
   const open = useEntrance("lend", "open");
   return (
-    <section {...open("hm-card wz-cut-sm")} aria-labelledby="lend-title">
-      <h2 id="lend-title" className="wz-label">
+    <section {...open("hm-card cut-sm")} aria-labelledby="lend-title">
+      <h2 id="lend-title" className={ui.label}>
         Lend
       </h2>
       <p className="hm-big mono">
         {formatUsdc(supplied)} <span>USDC</span>
       </p>
-      <p className="wz-hint">Your balance in the lending pool, interest included.</p>
-      <div className="wz-actions">
-        <Link href="/lend" className="wz-btn wz-btn-line wz-btn-sm">
+      <p className={ui.hint}>Your balance in the lending pool, interest included.</p>
+      <div className={ui.actions}>
+        <Link href="/lend" className={ui.btn("line", "sm")}>
           Go to Lend
         </Link>
       </div>

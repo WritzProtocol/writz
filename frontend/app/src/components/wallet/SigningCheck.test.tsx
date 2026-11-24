@@ -5,6 +5,7 @@ import type { Root } from "react-dom/client";
 import { ReviewsContext } from "@/lib/wallet/reviewsContext";
 import { SigningReviews, type ReviewAnswer, type ReviewRequest, type SigningReview } from "@/lib/wallet/signingReview";
 import { LIVE_DELAY_MS, SigningCheckFallback, SigningCheckSlot, SigningCheckView } from "./SigningCheck";
+import * as ui from "@/components/ui/styles";
 
 // A DOM for this file only, so focus and keyboard can be exercised; removed again after.
 beforeAll(() => {
@@ -76,7 +77,7 @@ describe("SigningCheckView", () => {
     const answers: ReviewAnswer[] = [];
     const el = await view("mismatch", (a) => answers.push(a));
     expect(text(el)).toContain("This isn't the transaction you asked for");
-    const rows = [...el.querySelectorAll(".wz-row")].map((r) => [r.querySelector("dt")?.textContent, r.querySelector("dd")?.textContent]);
+    const rows = [...el.querySelectorAll("dl > div")].map((r) => [r.querySelector("dt")?.textContent, r.querySelector("dd")?.textContent]);
     expect(rows).toEqual([
       ["You asked to", "Deposit 10.00 USDC into the Earn vault"],
       ["It would instead", "Send 500.00 USDC to GBRP…7KQZ"],
@@ -92,8 +93,8 @@ describe("SigningCheckView", () => {
     const el = await view("unknown", (a) => answers.push(a));
     expect(buttons(el)).toEqual(["Cancel", "Sign anyway"]);
     const [cancel, risk] = [...el.querySelectorAll("button")];
-    expect(cancel.className).toContain("wz-btn-gold");
-    expect(risk.className).toContain("wz-btn-line");
+    expect(cancel.className).toBe(ui.btn("gold"));
+    expect(risk.className).toBe(ui.btn("line"));
     const warning = document.getElementById(risk.getAttribute("aria-describedby")!);
     expect(warning?.textContent).toContain("Sign only if you started this yourself");
     await act(async () => risk.click());

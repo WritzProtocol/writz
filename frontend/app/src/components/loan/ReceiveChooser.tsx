@@ -6,6 +6,7 @@ import { formatBp } from "@/lib/receive/format";
 import { debtLine, isSwapAssetId, offeredSwapAssets, swapAsset } from "@/lib/receive/assets";
 import { parseEvmAddress, receiveOptions, type ReceiveChoiceDraft } from "@/lib/receive/options";
 import { DEFAULT_SLIPPAGE_BP } from "@/lib/receive/swap";
+import * as ui from "@/components/ui/styles";
 
 /** The options this deployment can deliver: each swap asset and Base Sepolia only when their contracts are configured. */
 export const RECEIVE_OPTIONS = receiveOptions({
@@ -31,16 +32,16 @@ export function ReceiveChooser({
   const swapping = isSwapAssetId(draft.option) ? swapAsset(draft.option) : null;
 
   return (
-    <div className="wz-stack" style={{ gap: 8 }}>
-      <p className="wz-label" id={`${id}-label`}>
+    <div className={ui.stack} style={{ gap: 8 }}>
+      <p className={ui.label} id={`${id}-label`}>
         Receive as
       </p>
-      <div className="wz-chips ln-recv" role="group" aria-labelledby={`${id}-label`}>
+      <div className={ui.cx(ui.chips, "ln-recv")} role="group" aria-labelledby={`${id}-label`}>
         {RECEIVE_OPTIONS.map((o) => (
           <button
             key={o.id}
             type="button"
-            className="wz-chip ln-recv-opt"
+            className={ui.cx(ui.chip, "ln-recv-opt")}
             aria-pressed={draft.option === o.id}
             disabled={disabled}
             onClick={() => {
@@ -54,10 +55,10 @@ export function ReceiveChooser({
         ))}
       </div>
       {RECEIVE_OPTIONS.some((o) => o.id === "xlm") && (
-        <p className="wz-hint">XLM is here for testing only. Writz pays out in stablecoins, and XLM leaves this list before mainnet.</p>
+        <p className={ui.hint}>XLM is here for testing only. Writz pays out in stablecoins, and XLM leaves this list before mainnet.</p>
       )}
       {swapping && (
-        <p className="wz-hint">
+        <p className={ui.hint}>
           Two signatures: borrow USDC, then convert it to {swapping.label} through Soroswap at the price shown, with slippage up to{" "}
           <span className="mono">{formatBp(DEFAULT_SLIPPAGE_BP)}</span>. {debtLine(swapping)}
           {swapping.id === "usdt0" &&
@@ -66,13 +67,13 @@ export function ReceiveChooser({
       )}
       {draft.option === "base" && (
         <>
-          <p className="wz-hint">
+          <p className={ui.hint}>
             Your debt stays in USDC on Stellar. After the borrow, the USDC is sent to Base Sepolia for you, so you need no wallet there.
           </p>
-          <label htmlFor={`${id}-to`} className="wz-label">
+          <label htmlFor={`${id}-to`} className={ui.label}>
             Base Sepolia address
           </label>
-          <div className="wz-field" data-size="sm" data-invalid={Boolean(toError)}>
+          <div className={ui.field("sm")} data-invalid={Boolean(toError)}>
             <input
               id={`${id}-to`}
               autoComplete="off"
@@ -86,7 +87,7 @@ export function ReceiveChooser({
               onBlur={() => setTouched(true)}
             />
           </div>
-          <p id={`${id}-to-hint`} className={toError ? "wz-error" : "wz-hint"}>
+          <p id={`${id}-to-hint`} className={toError ? ui.error : ui.hint}>
             {toError ?? "The address that receives the USDC. Check it: a transfer to the wrong address cannot be undone."}
           </p>
         </>

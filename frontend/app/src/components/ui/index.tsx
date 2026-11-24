@@ -4,12 +4,15 @@ import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, ty
 import { ErrorNotice } from "@/components/ErrorNotice";
 import type { ErrorContext } from "@/lib/errors";
 import { endDrag, moveDrag, startDrag, type SlideDrag, type SlideEnd } from "./slideGesture";
+import * as ui from "@/components/ui/styles";
 
 export function Spinner() {
-  return <span className="wz-spin" aria-hidden="true" />;
+  return <span className={ui.spin} aria-hidden="true" />;
 }
 
-export type Tone = "info" | "positive" | "warning" | "danger" | "neutral";
+import type { Tone } from "./styles";
+
+export type { Tone };
 
 /** A status notice. Warning and danger always carry their word label, never colour alone. */
 export function Notice({
@@ -28,10 +31,10 @@ export function Notice({
   className?: string;
 }) {
   return (
-    <div className={className ? `wz-note ${className}` : "wz-note"} data-tone={tone} role={alert ? "alert" : "status"}>
-      {label ? <span className="wz-note-label">{label}</span> : null}
+    <div className={ui.cx(ui.note(tone), className)} data-tone={tone} role={alert ? "alert" : "status"}>
+      {label ? <span className={ui.noteLabel(tone)}>{label}</span> : null}
       <div>{children}</div>
-      {actions ? <div className="wz-actions">{actions}</div> : null}
+      {actions ? <div className={ui.cx(ui.actions, "mt-1.5")}>{actions}</div> : null}
     </div>
   );
 }
@@ -53,10 +56,10 @@ export function ErrorBox({
   actions?: ReactNode;
 }) {
   return (
-    <div className="wz-note" data-tone={tone}>
-      <span className="wz-note-label">{label}</span>
+    <div className={ui.note(tone)} data-tone={tone}>
+      <span className={ui.noteLabel(tone)}>{label}</span>
       <ErrorNotice error={error} context={context} hash={hash} className="" />
-      {actions ? <div className="wz-actions">{actions}</div> : null}
+      {actions ? <div className={ui.cx(ui.actions, "mt-1.5")}>{actions}</div> : null}
     </div>
   );
 }
@@ -64,7 +67,7 @@ export function ErrorBox({
 const COPY_FAILED = "Couldn't copy. Select the address instead.";
 
 /** Copies an address; "Copied" for 2 seconds, or the reason when the clipboard refuses. */
-export function CopyButton({ value, className = "wz-btn wz-btn-line wz-btn-sm" }: { value: string; className?: string }) {
+export function CopyButton({ value, className = ui.btn("line", "sm") }: { value: string; className?: string }) {
   const [state, setState] = useState<"idle" | "copied" | "failed">("idle");
   useEffect(() => {
     if (state !== "copied") return;
@@ -81,18 +84,18 @@ export function CopyButton({ value, className = "wz-btn wz-btn-line wz-btn-sm" }
       <button type="button" className={className} onClick={copy}>
         {state === "copied" ? "Copied" : "Copy address"}
       </button>
-      <span className={state === "failed" ? "wz-hint wz-copy-fail" : "wz-sr"} aria-live="polite">
+      <span className={state === "failed" ? ui.cx(ui.hint, "basis-full") : "sr-only"} aria-live="polite">
         {state === "copied" ? "Address copied" : state === "failed" ? COPY_FAILED : ""}
       </span>
     </>
   );
 }
 
-export function ExternalLink({ href, children, className = "wz-link" }: { href: string; children: ReactNode; className?: string }) {
+export function ExternalLink({ href, children, className = ui.link }: { href: string; children: ReactNode; className?: string }) {
   return (
     <a href={href} target="_blank" rel="noopener noreferrer" className={className}>
       {children}
-      <span className="wz-sr"> (opens in a new tab)</span>
+      <span className="sr-only"> (opens in a new tab)</span>
     </a>
   );
 }
@@ -184,7 +187,7 @@ export function SlideToConfirm({
 
   return (
     <div
-      className="wz-slide"
+      className={ui.cx(ui.slide, "group/slide data-[armed=true]:[box-shadow:inset_0_0_0_2px_var(--accent)]")}
       ref={track}
       data-disabled={disabled}
       data-done={done}
@@ -192,13 +195,18 @@ export function SlideToConfirm({
       data-dragging={drag}
       style={{ "--slide-p": span > 0 ? x / span : 0 } as CSSProperties}
     >
-      <span className="wz-slide-fill" style={{ width: x + HANDLE - 4, transition: drag ? "none" : undefined }} />
-      <span className="wz-slide-label" aria-hidden="true">
+      <span
+        className="absolute inset-y-0 left-0 right-auto bg-[color-mix(in_srgb,var(--accent)_14%,transparent)] group-data-[done=true]/slide:bg-[color-mix(in_srgb,var(--accent)_22%,transparent)] transition-[width] duration-element ease-exit group-data-[done=true]/slide:ease-enter motion-reduce:transition-none"
+        style={{ width: x + HANDLE - 4, transition: drag ? "none" : undefined }} />
+      <span
+        className="wz-slide-label absolute inset-y-0 right-4 left-[84px] grid place-items-center text-center font-medium text-[15px] leading-[1.2] text-heading group-data-[disabled=true]/slide:text-muted pointer-events-none opacity-[calc(1-var(--slide-p,0)*1.4)] group-data-[done=true]/slide:opacity-100 transition-opacity duration-element ease-exit group-data-[dragging=true]/slide:transition-none motion-reduce:transition-none"
+        aria-hidden="true"
+      >
         {shown}
       </span>
       <button
         type="button"
-        className="wz-slide-handle"
+        className="absolute top-1 left-1 isolate grid place-items-center w-[72px] h-14 p-0 border-none bg-transparent text-on-accent group-data-[disabled=true]/slide:text-muted cursor-grab active:cursor-grabbing disabled:cursor-not-allowed touch-manipulation transition-[transform] duration-element ease-exit group-data-[done=true]/slide:ease-enter motion-reduce:transition-none focus-visible:outline-none before:absolute before:inset-y-0 before:inset-x-2 before:-z-1 before:bg-accent group-data-[disabled=true]/slide:before:bg-tint-20 before:-skew-x-16 focus-visible:before:[box-shadow:0_0_0_2px_var(--bg),0_0_0_4px_var(--mark)]"
         style={{ transform: `translateX(${x}px)`, transition: drag ? "none" : undefined }}
         aria-label={done ? doneLabel : `${label}. Press Enter twice to confirm.`}
         aria-describedby={describedBy}
@@ -216,7 +224,7 @@ export function SlideToConfirm({
           <path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
-      <span className="wz-sr" aria-live="polite">
+      <span className="sr-only" aria-live="polite">
         {armed ? armedLabel : ""}
       </span>
     </div>
@@ -228,7 +236,7 @@ export function ConfirmationSlots({ n, m }: { n: number; m: number }) {
   const filled = Math.min(n, m);
   return (
     <div
-      className="wz-slots"
+      className="wz-slots grid grid-cols-[repeat(var(--slots,6),1fr)] gap-1"
       style={{ ["--slots" as string]: m }}
       role="progressbar"
       aria-label="Bitcoin confirmations"
@@ -238,7 +246,11 @@ export function ConfirmationSlots({ n, m }: { n: number; m: number }) {
       aria-valuetext={`${filled} of ${m} Bitcoin confirmations`}
     >
       {Array.from({ length: m }, (_, i) => (
-        <span key={i} className="wz-slot" data-on={i < filled} />
+        <span
+          key={i}
+          className="wz-slot h-11 bg-[color-mix(in_srgb,var(--deep)_55%,transparent)] data-[on=true]:bg-accent transition-[background-color] duration-element ease-linear motion-reduce:transition-none"
+          data-on={i < filled}
+        />
       ))}
     </div>
   );

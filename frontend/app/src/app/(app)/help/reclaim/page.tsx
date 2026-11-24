@@ -5,6 +5,7 @@ import { Enter } from "@/components/ui/entrance";
 import { ReclaimLoans } from "@/components/reclaim/ReclaimLoans";
 import "../../funds.css";
 import "../../reclaim.css";
+import * as ui from "@/components/ui/styles";
 
 export const metadata: Metadata = {
   title: "Reclaim your BTC without Writz | Writz",
@@ -39,7 +40,7 @@ export default function ReclaimHelp() {
           </p>
         </Enter>
 
-        <Enter as="section" name="when" kind="open" className="rc-when wz-cut" aria-labelledby="rc-when">
+        <Enter as="section" name="when" kind="open" className="cut rc-when" aria-labelledby="rc-when">
           <h2 id="rc-when" className="rc-h2">
             When
           </h2>
@@ -51,7 +52,7 @@ export default function ReclaimHelp() {
           <h2 id="rc-need" className="rc-h2">
             What you need
           </h2>
-          <ul className="wz-need">
+          <ul className={ui.need}>
             <li>
               <b>Your Bitcoin wallet&apos;s key</b>, the one that made the deposit. Writz cannot recover it.
             </li>
@@ -81,8 +82,8 @@ export default function ReclaimHelp() {
             </li>
           ))}
         </ol>
-        <p className="wz-hint">There is no in-app reclaim yet; the script in the docs is the way to do it today.</p>
-        <ExternalLink href={RECLAIM_DOCS_URL} className="wz-link fu-textlink">
+        <p className={ui.hint}>There is no in-app reclaim yet; the script in the docs is the way to do it today.</p>
+        <ExternalLink href={RECLAIM_DOCS_URL} className={ui.cx(ui.link, "fu-textlink")}>
           Reference script and checks in the docs
         </ExternalLink>
       </Enter>

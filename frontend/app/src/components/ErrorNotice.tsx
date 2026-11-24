@@ -4,7 +4,9 @@ import { GITHUB_ISSUES_URL } from "@/lib/links";
 
 const MAX_DETAIL = 2000;
 
-const LINK = "underline decoration-current/40 underline-offset-2 hover:opacity-80";
+// Always rendered inside a notice (ErrorBox), so its links take the notice's link style.
+const LINK =
+  "text-link underline decoration-link/45 underline-offset-4 hover:decoration-current hover:opacity-80 pointer-coarse:inline-flex pointer-coarse:items-center pointer-coarse:min-h-11";
 
 /** A failure as headline, safety line and next step, with the raw error behind "Technical details". */
 export function ErrorNotice({
@@ -54,7 +56,7 @@ export function ErrorNotice({
       <details className="text-xs text-muted">
         <summary className="cursor-pointer select-none">Technical details</summary>
         {details.map((line, i) => (
-          <p key={i} className="mt-1 break-all font-mono">
+          <p key={i} className="break-all font-mono">
             {line}
           </p>
         ))}

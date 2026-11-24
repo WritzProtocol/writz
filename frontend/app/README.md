@@ -108,17 +108,18 @@ path.
 
 ## Styling
 
-The Graphite & Gold tokens come from `../../packages/brand/tokens.css`,
-imported in `src/app/layout.tsx`. `src/app/globals.css` maps them into Tailwind;
-the app shell and the shared primitives are styled in `src/app/(app)/ui.css`,
-and each route has its own stylesheet next to it. See `../DESIGN_SYSTEM.md`.
+`src/app/globals.css` imports Tailwind and the shared Graphite & Gold theme
+(`../../packages/brand/theme.css`, which brings in the tokens). The app shell
+and the shared primitives are styled with Tailwind utilities, the primitives as
+class strings in `src/components/ui/styles.ts`; each route still has its own
+stylesheet next to it. See `../DESIGN_SYSTEM.md`.
 
 ## Structure
 
 ```
 src/
   app/                 # App Router root layout, globals and API routes
-  app/(app)/           # every page inside the app shell, with ui.css
+  app/(app)/           # every page inside the app shell
   components/shell/    # sidebar, bottom tabs, Activity tray, account sheet
   components/ui/       # shared primitives and hooks
   config.ts            # environment-driven configuration

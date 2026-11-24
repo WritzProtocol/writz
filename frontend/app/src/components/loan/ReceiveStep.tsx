@@ -13,6 +13,7 @@ import { minOut, type SwapResult } from "@/lib/receive/swap";
 import { useReceive, useSwapQuote, type ChainLeg, type SwapQuote } from "@/lib/receive/useReceive";
 import { ExternalLink, Notice } from "@/components/ui";
 import { TxRunning } from "./parts";
+import * as ui from "@/components/ui/styles";
 
 const DEST = config.receive.cctp.destination.name;
 
@@ -43,7 +44,7 @@ const swapLabel = (intent: ReceiveStepProps["intent"]) =>
 
 function Ready({ intent, amount, quote, onGo, onKeep }: ReceiveStepProps) {
   const keep = (
-    <button type="button" className="wz-btn wz-btn-text" onClick={onKeep}>
+    <button type="button" className={ui.btn("text")} onClick={onKeep}>
       Keep as USDC
     </button>
   );
@@ -52,11 +53,11 @@ function Ready({ intent, amount, quote, onGo, onKeep }: ReceiveStepProps) {
     const label = swapLabel(intent);
     const q = quote.kind === "ok" ? quote.out : null;
     return (
-      <div className="wz-stack" style={{ gap: 12 }}>
-        <p className="wz-strong">
+      <div className={ui.stack} style={{ gap: 12 }}>
+        <p className={ui.strong}>
           Convert {usdc(amount)} USDC to {q !== null ? <>about <span className="mono">{formatUsdc(q)}</span> {label}</> : label}.
         </p>
-        <p className="wz-hint">
+        <p className={ui.hint}>
           {q !== null ? (
             <>
               You get at least <span className="mono">{formatUsdc(minOut(q, intent.slippageBp))}</span> {label} or the swap does not happen.{" "}
@@ -69,8 +70,8 @@ function Ready({ intent, amount, quote, onGo, onKeep }: ReceiveStepProps) {
           {a ? debtLine(a) : null}
           {a?.classic ? ` If ${label} is not in your wallet yet, it asks once more to add it.` : null}
         </p>
-        <div className="wz-actions">
-          <button type="button" className="wz-btn wz-btn-gold" onClick={q !== null ? onGo : undefined} aria-disabled={q === null}>
+        <div className={ui.actions}>
+          <button type="button" className={ui.btn("gold")} onClick={q !== null ? onGo : undefined} aria-disabled={q === null}>
             Convert to {label}
           </button>
           {keep}
@@ -79,13 +80,13 @@ function Ready({ intent, amount, quote, onGo, onKeep }: ReceiveStepProps) {
     );
   }
   return (
-    <div className="wz-stack" style={{ gap: 12 }}>
-      <p className="wz-strong">
+    <div className={ui.stack} style={{ gap: 12 }}>
+      <p className={ui.strong}>
         Send {usdc(amount)} USDC to <span className="mono">{shortAddress(intent.recipient, 6, 4)}</span> on {DEST}.
       </p>
-      <p className="wz-hint">Your wallet asks twice: allow, then send. Circle moves the USDC; nothing is wrapped.</p>
-      <div className="wz-actions">
-        <button type="button" className="wz-btn wz-btn-gold" onClick={onGo}>
+      <p className={ui.hint}>Your wallet asks twice: allow, then send. Circle moves the USDC; nothing is wrapped.</p>
+      <div className={ui.actions}>
+        <button type="button" className={ui.btn("gold")} onClick={onGo}>
           Send to {DEST}
         </button>
         {keep}
@@ -103,10 +104,10 @@ function Recover({ intent, amount, flow, walletName, onGo, onKeep }: ReceiveStep
       label="Your USDC is safe"
       actions={
         <>
-          <button type="button" className="wz-btn wz-btn-gold wz-btn-sm" onClick={onGo}>
+          <button type="button" className={ui.btn("gold", "sm")} onClick={onGo}>
             Try again
           </button>
-          <button type="button" className="wz-btn wz-btn-text wz-btn-sm" onClick={onKeep}>
+          <button type="button" className={ui.btn("text", "sm")} onClick={onKeep}>
             Keep as USDC
           </button>
         </>
@@ -133,7 +134,7 @@ function SwapDone({ intent, amount, swap }: ReceiveStepProps) {
       <p>
         Converted {usdc(amount)} USDC to {swap.received === null ? "at least " : ""}
         <span className="mono">{formatUsdc(got)}</span> {label}. It&apos;s in your Stellar wallet. Your debt stays in USDC.{" "}
-        <ExternalLink href={stellarTxUrl(swap.hash)}>View transaction</ExternalLink>
+        <ExternalLink className={ui.noteLink} href={stellarTxUrl(swap.hash)}>View transaction</ExternalLink>
       </p>
     </Notice>
   );
@@ -145,12 +146,12 @@ function ChainProgress({ phase, leg, mintHash, relay, onRetryRelay }: ReceiveSte
   const confirmed = phase === "chain_confirmed" || arrived;
   const retrying = relay?.kind === "pending" ? relay.retrying : null;
   return (
-    <div className="wz-stack" style={{ gap: 12 }}>
-      <p className="wz-strong">
+    <div className={ui.stack} style={{ gap: 12 }}>
+      <p className={ui.strong}>
         {arrived ? "Arrived" : "On its way"}: {usdc(leg.send.amount)} USDC to{" "}
         <span className="mono">{shortAddress(leg.recipient, 6, 4)}</span> on {DEST}.
       </p>
-      <ol className="wz-steps" aria-live="polite" aria-label={`Transfer to ${DEST}`}>
+      <ol className={ui.steps} aria-live="polite" aria-label={`Transfer to ${DEST}`}>
         <li data-state="done">
           <i aria-hidden="true" />
           Sent from Stellar <ExternalLink href={stellarTxUrl(leg.send.burnHash)}>View</ExternalLink>
@@ -179,7 +180,7 @@ function ChainProgress({ phase, leg, mintHash, relay, onRetryRelay }: ReceiveSte
         </li>
       </ol>
       {retrying && (
-        <p className="wz-hint" aria-live="polite">
+        <p className={ui.hint} aria-live="polite">
           Delivery is being retried ({retrying.reason}). It continues on its own; you can leave this page.
         </p>
       )}
@@ -194,7 +195,7 @@ function ChainProgress({ phase, leg, mintHash, relay, onRetryRelay }: ReceiveSte
           label="Not delivered"
           actions={
             relay.retryable && onRetryRelay ? (
-              <button type="button" className="wz-btn wz-btn-gold wz-btn-sm" onClick={onRetryRelay}>
+              <button type="button" className={ui.btn("gold", "sm")} onClick={onRetryRelay}>
                 Try again
               </button>
             ) : undefined
@@ -230,8 +231,8 @@ export function ReceiveStepView(p: ReceiveStepProps) {
   }
   const done = p.phase === "swap_done" || p.phase === "chain_arrived" || p.relay?.kind === "arrived";
   return (
-    <section className="wz-stack" style={{ gap: 12 }} aria-label="Step 2 of 2">
-      <p className="wz-hint">{done ? "Step 2 of 2 done" : "Step 2 of 2"}</p>
+    <section className={ui.stack} style={{ gap: 12 }} aria-label="Step 2 of 2">
+      <p className={ui.hint}>{done ? "Step 2 of 2 done" : "Step 2 of 2"}</p>
       {body}
     </section>
   );

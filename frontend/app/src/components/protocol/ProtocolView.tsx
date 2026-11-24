@@ -12,6 +12,7 @@ import { useMockWorld } from "@/components/ui/hooks";
 import { Enter } from "@/components/ui/entrance";
 import { Hero } from "@/components/funds/parts";
 import { mockProtocolData, type ProtocolData } from "./model";
+import * as ui from "@/components/ui/styles";
 
 const STELLAR = networkName(config.networkPassphrase);
 const contractUrl = stellarContractUrl;
@@ -22,7 +23,7 @@ function clock(ms: number): string {
 }
 
 function Unavailable() {
-  return <p className="wz-hint">Unavailable right now. Refresh in a minute.</p>;
+  return <p className={ui.hint}>Unavailable right now. Refresh in a minute.</p>;
 }
 
 function Block({ title, at, step, className, children }: { title: string; at: number; step: 2 | 3; className?: string; children: ReactNode }) {
@@ -53,7 +54,7 @@ function Figure({ label, value, unit, text }: { label: string; value: string; un
 }
 
 function Retention({ cohorts, now }: { cohorts: RetentionCohort[]; now: number }) {
-  if (cohorts.length === 0) return <p className="wz-hint">No deposit cohorts yet.</p>;
+  if (cohorts.length === 0) return <p className={ui.hint}>No deposit cohorts yet.</p>;
   return (
     <table className="pr-table">
       <thead>
@@ -135,8 +136,8 @@ export function ProtocolView({ data: server }: { data: ProtocolData }) {
 
       {allFailed ? (
         <div className="fu-stale">
-          <p className="wz-note" data-tone="warning">
-            <span className="wz-note-label">Unavailable</span>
+          <p className={ui.note("warning")} data-tone="warning">
+            <span className={ui.noteLabel("warning")}>Unavailable</span>
             <span>Can&apos;t read {STELLAR} right now. Refresh in a minute.</span>
           </p>
         </div>
@@ -168,7 +169,7 @@ export function ProtocolView({ data: server }: { data: ProtocolData }) {
                 <Figure label="APY" value={d.vault.value.apy !== null ? `${(d.vault.value.apy * 100).toFixed(2)}%` : "Unavailable"} />
                 <Figure label="Strategy" value="Blend lending pool" text />
               </dl>
-              {d.vault.value.depositors === 0 ? <p className="wz-hint">No deposits yet.</p> : null}
+              {d.vault.value.depositors === 0 ? <p className={ui.hint}>No deposits yet.</p> : null}
             </>
           ) : (
             <Unavailable />
@@ -192,7 +193,7 @@ export function ProtocolView({ data: server }: { data: ProtocolData }) {
             <div key={c.label}>
               <dt>{c.label}</dt>
               <dd>
-                <ExternalLink href={contractUrl(c.id)} className="wz-link mono">
+                <ExternalLink href={contractUrl(c.id)} className={ui.monoLink}>
                   {shortAddress(c.id, 8, 8)}
                 </ExternalLink>
               </dd>

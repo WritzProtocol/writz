@@ -12,6 +12,7 @@ import { shortDate } from "@/lib/loan/model";
 import type { Position } from "@/lib/position/types";
 import { ExternalLink } from "@/components/ui";
 import type { LoanModel } from "./model";
+import * as ui from "@/components/ui/styles";
 
 const NONE: Record<string, TimelineEvent[]> = {};
 
@@ -81,7 +82,7 @@ export function LoanTimeline({ m, position }: { m: LoanModel; position: Position
                 <b>{e?.label ?? TIMELINE_LABEL[r.kind]}</b>
                 {e ? (
                   <span className="ln-tl-meta">
-                    <ExternalLink href={urlOf(e)} className="wz-link mono">
+                    <ExternalLink href={urlOf(e)} className={ui.monoLink}>
                       {shortAddress(e.hash, 6, 4)}
                     </ExternalLink>
                     <span>
@@ -101,7 +102,7 @@ export function LoanTimeline({ m, position }: { m: LoanModel; position: Position
           );
         })}
       </ol>
-      {!m.timeline && <p className="wz-muted ln-tl-note">Built from this device. Steps taken on another device need the Writz indexer.</p>}
+      {!m.timeline && <p className={ui.cx(ui.muted, "ln-tl-note")}>Built from this device. Steps taken on another device need the Writz indexer.</p>}
     </section>
   );
 }

@@ -14,6 +14,7 @@ import { ExternalLink, Notice } from "@/components/ui";
 import { useMockWorld, useMounted, useRead } from "@/components/ui/hooks";
 import { useShellAccount } from "@/components/shell/account";
 import { T } from "@/components/ui/skeleton";
+import * as ui from "@/components/ui/styles";
 
 interface LoanLock {
   n: number;
@@ -107,10 +108,10 @@ function LoanCard({ lock, tip, now, detailed }: { lock: LoanLock; tip: number | 
             <div>
               <dt>Deposit transaction</dt>
               <dd>
-                <ExternalLink href={btcTxUrl(lock.txid)} className="wz-link mono">
+                <ExternalLink href={btcTxUrl(lock.txid)} className={ui.monoLink}>
                   {shortAddress(lock.txid, 8, 8)}
                 </ExternalLink>
-                {lock.vout !== null ? <span className="wz-muted">, output {lock.vout}</span> : null}
+                {lock.vout !== null ? <span className={ui.muted}>, output {lock.vout}</span> : null}
               </dd>
             </div>
           ) : null}
@@ -139,7 +140,7 @@ function LoansSkeleton() {
           </p>
         </div>
       </div>
-      <div className="wz-note" data-tone="neutral" data-sk="noloans">
+      <div className={ui.note("neutral")} data-tone="neutral" data-sk="noloans">
         <div>
           <p>
             <T>Connect the Stellar wallet you used and find your loans to see each one&apos;s timelock block here.</T>

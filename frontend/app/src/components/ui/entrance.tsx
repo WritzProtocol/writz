@@ -12,6 +12,10 @@ const NAMES = new Set(["wz-cut", "wz-up", "ln-grow", "ln-drop"]);
 
 const clock = createEntranceClock();
 
+/** `in` rises a section after its step's delay; `open` sweeps the panel in, then its children rise. */
+const RISE = { 1: "animate-wz-up", 2: "animate-wz-up [--wz-at:80ms]", 3: "animate-wz-up [--wz-at:160ms]", 4: "animate-wz-up [--wz-at:240ms]" } as const;
+const OPEN = "wz-open animate-wz-open [&>*]:animate-wz-open-child";
+
 function claim(path: string, key: string): number {
   return typeof window === "undefined" ? 0 : clock(path, key, performance.now());
 }
@@ -45,7 +49,7 @@ export function useEntrance(key: string, kind: EntranceKind, { step = 1, ready =
     return () => clearTimeout(t);
   }, [playing]);
 
-  const cls = !playing ? "" : kind === "open" ? "wz-open" : step > 1 ? `wz-in wz-in${step}` : "wz-in";
+  const cls = !playing ? "" : kind === "open" ? OPEN : RISE[step];
   const onAnimationEnd = (e: AnimationEvent<HTMLElement>) => {
     if (NAMES.has(e.animationName) && !entering(e.currentTarget)) setSkip("done");
   };

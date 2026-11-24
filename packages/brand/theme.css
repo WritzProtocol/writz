@@ -37,17 +37,33 @@
   --ease-exit: var(--ease-exit);
 }
 
-/* Motion tiers. Tailwind has no duration namespace, so each tier is a utility. */
+/* Hover only where a fine pointer can hover, as every stylesheet in both apps
+ * already did; touch screens never see a stuck hover state. */
+@custom-variant hover {
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      @slot;
+    }
+  }
+}
+
+/* Motion tiers. Tailwind has no duration namespace, so each tier is a utility;
+ * like Tailwind's own `duration-*` it also sets --tw-duration, which the
+ * `transition-*` utilities read. */
 @utility duration-micro {
+  --tw-duration: var(--dur-micro);
   transition-duration: var(--dur-micro);
 }
 @utility duration-element {
+  --tw-duration: var(--dur-element);
   transition-duration: var(--dur-element);
 }
 @utility duration-section {
+  --tw-duration: var(--dur-section);
   transition-duration: var(--dur-section);
 }
 @utility duration-signature {
+  --tw-duration: var(--dur-signature);
   transition-duration: var(--dur-signature);
 }
 

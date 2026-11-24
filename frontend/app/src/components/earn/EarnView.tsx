@@ -9,6 +9,7 @@ import { FundsCard, NotConnected } from "@/components/funds/FundsCard";
 import { Hero, RiskNotes, Tile, Tiles } from "@/components/funds/parts";
 import { PAUSED, UNIT, type EarnModel } from "./model";
 import { EARN_COPY } from "./copy";
+import * as ui from "@/components/ui/styles";
 
 const STELLAR = networkName(config.networkPassphrase);
 
@@ -51,7 +52,7 @@ export function EarnView({ m }: { m: EarnModel }) {
             <>
               {" "}
               To lend to Bitcoin borrowers on Writz, use{" "}
-              <Link href="/lend" className="wz-link">
+              <Link href="/lend" className={ui.link}>
                 Lend
               </Link>
               .
@@ -66,7 +67,7 @@ export function EarnView({ m }: { m: EarnModel }) {
             tone="warning"
             label="Balance not refreshed"
             actions={
-              <button type="button" className="wz-btn wz-btn-line wz-btn-sm" onClick={m.retry}>
+              <button type="button" className={ui.btn("line", "sm")} onClick={m.retry}>
                 Try again
               </button>
             }
@@ -123,7 +124,7 @@ export function EarnView({ m }: { m: EarnModel }) {
           {m.funds && !blocked ? <FundsCard m={m.funds} label="Deposit or withdraw" /> : null}
 
           {m.connected && m.wallet.kind === "ok" && m.wallet.value === 0n && config.target !== "mainnet" && config.earn.faucetUrl ? (
-            <p className="wz-hint">
+            <p className={ui.hint}>
               This vault uses Blend test USDC, a different asset from the USDC you borrow.{" "}
               <ExternalLink href={config.earn.faucetUrl}>Get some from the Blend faucet</ExternalLink>.
             </p>
