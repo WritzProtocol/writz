@@ -5,6 +5,11 @@
 
 const cx = (...parts: (string | false | null | undefined)[]) => parts.filter(Boolean).join(" ");
 
+/* The root of a landing page: the gutter and page width, the dark ground. `landing` and `home` are hooks for globals.css. */
+export const root =
+  "landing [--gut:32px] max-md:[--gut:16px] [--max:1184px] [color-scheme:dark] bg-bg text-body font-sans [overflow-x:clip]";
+export const homeRoot = cx(root, "home text-[17px] max-md:text-[16px] leading-[1.6]");
+
 /* Shared pieces */
 
 export const wrap = "w-full max-w-[calc(var(--max)+2*var(--gut))] mx-auto px-(--gut)";
@@ -28,6 +33,9 @@ export const dot = "flex-none w-[7px] h-3 bg-current -skew-x-16";
 export const tick = "flex-none inline-block w-2 h-[15px] bg-mark -skew-x-16";
 export const textLink =
   "inline-flex items-center min-h-11 text-link font-medium whitespace-nowrap underline decoration-1 underline-offset-[0.22em] decoration-link/45 transition-[text-decoration-color] duration-micro ease-enter hover:decoration-current";
+/** The small label above a heading, after a gold slash. */
+export const eyebrow =
+  "flex items-center gap-3 mt-0 mx-0 mb-4 text-[13px] font-medium tracking-[0.06em] uppercase text-muted before:w-2 before:h-[15px] before:bg-accent before:-skew-x-16";
 export const lead = "text-[length:clamp(18px,1.5vw,21px)] leading-[1.45] tracking-[-0.008em] text-body";
 const LOCKUP = "block aspect-[355.44/100] bg-heading [mask:url(/brand/writz-lockup.svg)_no-repeat_center/contain]";
 
@@ -67,6 +75,9 @@ export const footerGrid = "grid grid-cols-[2fr_1fr_1fr_1fr] gap-10 max-md:grid-c
 export const footerHome = "inline-flex items-center min-h-11";
 export const footerLockup = cx(LOCKUP, "h-7");
 export const footerBio = "m-0 mt-3 max-w-[34ch] text-[15px] text-muted";
+/** On pages of running text the footer paragraphs also take the page's paragraph leading, and the legal line its measure. */
+export const footerProseBio = "leading-[1.6]";
+export const footerProseLegal = "max-w-[680px] leading-[1.6]";
 export const footerHeading = "m-0 text-[15px] font-medium leading-[1.4] tracking-[0] text-muted";
 export const footerList = "mt-2 mb-0 mx-0 p-0 list-none";
 export const footerLink = "inline-flex items-center min-h-11 min-w-11 text-[15px] text-heading hover:underline hover:underline-offset-[0.22em]";

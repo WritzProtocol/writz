@@ -67,7 +67,7 @@ export function HowItWorks() {
             </div>
             <div className={l.clause}>
               <h3>
-                <span className="sr">Step {i + 1}: </span>
+                <span className="sr-only">Step {i + 1}: </span>
                 {s.title}
               </h3>
               <p>{s.body}</p>

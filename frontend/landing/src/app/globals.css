@@ -1,18 +1,17 @@
-/* Tailwind without preflight: the landing keeps its own reset below. Source
- * detection is off because old class names collide with utilities (the
- * whitepaper's `.contents` list would become `display: contents`); each page
- * is added with an `@source` line when it moves to utilities.
- *
- * The stylesheets of pages not yet on utilities sit in the `legacy` layer,
- * under the utilities, so a utility always wins over them while their own
- * rules keep competing with each other as before. */
-@layer theme, base, legacy, utilities;
+/* Tailwind without preflight: the landing keeps its own reset below, in the
+ * base layer under the utilities. Source detection is off because an old class
+ * name could collide with a utility, so the folders that use utilities are
+ * listed with `@source`. */
+@layer theme, base, utilities;
 
 @import "tailwindcss/theme" layer(theme);
 @import "tailwindcss/utilities" layer(utilities) source(none);
 @import "../../../../packages/brand/theme.css";
 
 @source "../features/landing";
+@source "./about";
+@source "./brand";
+@source "./whitepaper";
 
 @layer base {
   *,
@@ -48,6 +47,133 @@
     html {
       scroll-behavior: smooth;
     }
+  }
+
+  /* The whitepaper is a light page, so its ground is light too. */
+  body:has(.paper-doc) {
+    background: #f6f7f8;
+  }
+
+  /* The landing pages. The root sets the gutter and the page width the utilities read. */
+  html:has(.landing),
+  html:has(.landing) body {
+    background: var(--bg);
+  }
+
+  .landing a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .landing .mono,
+  .landing .v {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0;
+  }
+
+  .landing :focus-visible {
+    outline: 2px solid var(--mark);
+    outline-offset: 3px;
+  }
+
+  .landing h2 {
+    margin: 0;
+    font-size: clamp(27px, 2.6vw, 36px);
+    font-weight: 600;
+    letter-spacing: -0.022em;
+    line-height: 1.15;
+    color: var(--heading);
+    text-wrap: balance;
+  }
+
+  .landing section {
+    padding: 96px 0;
+    scroll-margin-top: 96px;
+  }
+
+  .landing.home section {
+    padding: 0;
+  }
+
+  /* The home page's own type: headings and lists drop the browser's spacing. */
+  .home h1,
+  .home h3 {
+    margin: 0;
+    font-weight: 600;
+    color: var(--heading);
+    text-wrap: balance;
+  }
+
+  .home h3 {
+    font-size: clamp(21px, 1.8vw, 25px);
+    letter-spacing: -0.014em;
+    line-height: 1.25;
+  }
+
+  .home p,
+  .home ul,
+  .home ol,
+  .home dl,
+  .home dd {
+    margin: 0;
+    padding: 0;
+  }
+
+  .home ul,
+  .home ol {
+    list-style: none;
+  }
+}
+
+/* Sections below the hero reveal once as they scroll into view. .reveal-ready is set by ScrollReveal, so without
+ * JavaScript nothing is hidden. */
+@media (prefers-reduced-motion: no-preference) {
+  .landing.reveal-ready [data-reveal]:not(.settled) {
+    transition-property: opacity, transform;
+    transition-duration: var(--dur-section);
+    transition-timing-function: var(--ease-enter);
+  }
+
+  .landing.reveal-ready [data-reveal]:not(.in) {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+}
+
+/* Reduced motion switches every animation and transition off on the landing pages. */
+@media (prefers-reduced-motion: reduce) {
+  .landing *,
+  .landing *::before,
+  .landing *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+@keyframes landing-rise {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+}
+
+@keyframes landing-rise-opaque {
+  from {
+    transform: translateY(20px);
+  }
+}
+
+@keyframes landing-field {
+  from {
+    opacity: 0;
+    transform: skewX(-16deg) translateX(64px);
+  }
+}
+
+@keyframes landing-grow {
+  from {
+    transform: scaleX(0);
   }
 }
 

@@ -7,7 +7,7 @@ import { OG_IMAGE, ORGANIZATION_ID, SITE_NAME, WEBSITE_ID } from "@/config/site"
 import { workSans } from "@/features/landing/fonts";
 import { DOCS_URL, GITHUB_URL } from "@/features/landing/constants";
 import { CopyButton } from "../brand/CopyButton";
-import "./whitepaper.css";
+import * as w from "./styles";
 
 const TITLE = "Writz Protocol whitepaper";
 const SUBTITLE =
@@ -128,22 +128,22 @@ export default function WhitepaperPage() {
   };
 
   return (
-    <div className={`${workSans.variable} paper-doc`}>
+    <div className={`${workSans.variable} ${w.root}`}>
       <script
         type="application/ld+json"
         // Static, build-time data only; nothing user-supplied reaches this.
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      <header className="masthead">
-        <div className="wrap">
-          <Link href="/" aria-label="Writz home" style={{ display: "inline-block" }}>
-            <div className="lockup" role="img" aria-label="Writz" />
+      <header className={w.masthead}>
+        <div className={w.wrap}>
+          <Link href="/" aria-label="Writz home" className={w.link} style={{ display: "inline-block" }}>
+            <div className={w.lockup} role="img" aria-label="Writz" />
           </Link>
-          <h1>{TITLE}</h1>
-          <p className="lead">Version {VERSION}, as published in {DATE_LABEL}.</p>
+          <h1 className={w.h1}>{TITLE}</h1>
+          <p className={w.lead}>Version {VERSION}, as published in {DATE_LABEL}.</p>
 
-          <ul className="doc-meta">
+          <ul className={w.docMeta}>
             <li>
               <strong>Version</strong> {VERSION}
             </li>
@@ -158,48 +158,50 @@ export default function WhitepaperPage() {
             </li>
             <li>
               <strong>DOI</strong>{" "}
-              <a href={DOI_URL} rel="noreferrer">
+              <a href={DOI_URL} rel="noreferrer" className={w.textLink}>
                 {DOI}
               </a>
             </li>
           </ul>
 
-          <div className="doc-actions">
-            <a className="btn primary" href={PDF_PATH} download>
+          <div className={w.docActions}>
+            <a className={w.btn(true)} href={PDF_PATH} download>
               Download the PDF
             </a>
-            <a className="btn" href={ZENODO_URL} rel="noreferrer">
+            <a className={w.btn()} href={ZENODO_URL} rel="noreferrer">
               View on Zenodo
             </a>
-            <a className="btn" href={DOCS_URL}>
+            <a className={w.btn()} href={DOCS_URL}>
               Read the docs
             </a>
           </div>
         </div>
       </header>
 
-      <main className="wrap">
-        <section>
-          <p className="label">Abstract</p>
-          <h2>What the paper argues</h2>
-          <p className="caption">
+      <main className={w.wrap}>
+        <section className={w.section}>
+          <p className={w.label}>Abstract</p>
+          <h2 className={w.h2}>What the paper argues</h2>
+          <p className={w.caption}>
             This page is the record of version {VERSION}. The position privacy the paper describes is
             not part of Writz: every position is public on chain. Bitcoin verification has since moved
             to an on-chain header light client.
           </p>
           {ABSTRACT.map((p) => (
-            <p key={p.slice(0, 24)}>{p}</p>
+            <p key={p.slice(0, 24)} className={w.p}>
+              {p}
+            </p>
           ))}
-          <p className="caption">
+          <p className={w.caption}>
             Writz Protocol is live on Stellar testnet, not mainnet. The paper is informational and is
             not financial advice or an offer of any security.
           </p>
         </section>
 
-        <section>
-          <p className="label">Contributions</p>
-          <h2>Three pieces</h2>
-          <ol className="contributions">
+        <section className={w.section}>
+          <p className={w.label}>Contributions</p>
+          <h2 className={w.h2}>Three pieces</h2>
+          <ol className={w.contributions}>
             {CONTRIBUTIONS.map((c) => (
               <li key={c.name}>
                 <strong>{c.name}</strong> {c.text}
@@ -208,50 +210,54 @@ export default function WhitepaperPage() {
           </ol>
         </section>
 
-        <section>
-          <p className="label">Contents</p>
-          <h2>Inside the paper</h2>
-          <ol className="contents">
+        <section className={w.section}>
+          <p className={w.label}>Contents</p>
+          <h2 className={w.h2}>Inside the paper</h2>
+          <ol className={w.contents}>
             {CONTENTS.map((c) => (
               <li key={c.n}>
-                <span className="num">{c.n}</span>
+                <span className={w.contentsNum}>{c.n}</span>
                 <span>
-                  <span className="name">{c.name}</span>
-                  <span className="note">{c.note}</span>
+                  <span className={w.contentsName}>{c.name}</span>
+                  <span className={w.contentsNote}>{c.note}</span>
                 </span>
               </li>
             ))}
           </ol>
         </section>
 
-        <section>
-          <p className="label">Cite</p>
-          <h2>Citing this paper</h2>
-          <blockquote>
-            <div className="head">
-              <span className="name">Plain text</span>
-              <CopyButton text={CITATION_TEXT} />
+        <section className={w.section}>
+          <p className={w.label}>Cite</p>
+          <h2 className={w.h2}>Citing this paper</h2>
+          <blockquote className={w.quote}>
+            <div className={w.quoteHead}>
+              <span className={w.quoteName}>Plain text</span>
+              <CopyButton text={CITATION_TEXT} className={w.copy} />
             </div>
-            <p>{CITATION_TEXT}</p>
+            <p className={w.p}>{CITATION_TEXT}</p>
           </blockquote>
-          <blockquote style={{ marginTop: 16 }}>
-            <div className="head">
-              <span className="name">BibTeX</span>
-              <CopyButton text={BIBTEX} />
+          <blockquote className={w.quote} style={{ marginTop: 16 }}>
+            <div className={w.quoteHead}>
+              <span className={w.quoteName}>BibTeX</span>
+              <CopyButton text={BIBTEX} className={w.copy} />
             </div>
-            <pre className="cite">{BIBTEX}</pre>
+            <pre className={w.cite}>{BIBTEX}</pre>
           </blockquote>
         </section>
       </main>
 
-      <footer className="colophon">
-        <div className="wrap links">
-          <Link href="/">writz.xyz</Link>
-          <a href={DOCS_URL}>Docs</a>
-          <a href={GITHUB_URL} rel="noreferrer">
+      <footer className={w.colophon}>
+        <div className={`${w.wrap} ${w.colophonLinks}`}>
+          <Link href="/" className={w.link}>
+            writz.xyz
+          </Link>
+          <a href={DOCS_URL} className={w.link}>
+            Docs
+          </a>
+          <a href={GITHUB_URL} rel="noreferrer" className={w.link}>
             GitHub
           </a>
-          <a href="https://x.com/WritzProtocol" rel="me noreferrer">
+          <a href="https://x.com/WritzProtocol" rel="me noreferrer" className={w.link}>
             @WritzProtocol
           </a>
         </div>

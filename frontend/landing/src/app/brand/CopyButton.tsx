@@ -1,14 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import { copy } from "./styles";
 
-export function CopyButton({ text }: { text: string }) {
+export function CopyButton({ text, className = copy }: { text: string; className?: string }) {
+
   const [done, setDone] = useState(false);
 
   return (
     <button
       type="button"
-      className="copy"
+      className={className}
       onClick={async () => {
         try {
           await navigator.clipboard.writeText(text);

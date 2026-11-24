@@ -24,7 +24,7 @@ export function ClosingCard() {
   );
 }
 
-export function Footer() {
+export function Footer({ prose = false }: { prose?: boolean }) {
   return (
     <footer className={l.footer}>
       <div className={l.wrap}>
@@ -33,7 +33,7 @@ export function Footer() {
             <Link className={l.footerHome} href="/" aria-label="Writz home">
               <span className={l.footerLockup} />
             </Link>
-            <p className={l.footerBio}>Lock real BTC. Borrow USDC on Stellar. No bridge, no custodian, no wrapped token.</p>
+            <p className={`${l.footerBio}${prose ? ` ${l.footerProseBio}` : ""}`}>Lock real BTC. Borrow USDC on Stellar. No bridge, no custodian, no wrapped token.</p>
           </div>
           {footerLinkGroups.map((g) => (
             <div key={g.title}>
@@ -50,7 +50,7 @@ export function Footer() {
             </div>
           ))}
         </div>
-        <p className={l.footerLegal}>© 2026 Writz Protocol. Open source under Apache 2.0.</p>
+        <p className={`${l.footerLegal}${prose ? ` ${l.footerProseLegal}` : ""}`}>© 2026 Writz Protocol. Open source under Apache 2.0.</p>
       </div>
     </footer>
   );
