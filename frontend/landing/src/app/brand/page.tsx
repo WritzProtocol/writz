@@ -4,8 +4,8 @@ import { workSans } from "@/features/landing/fonts";
 import { Navbar } from "@/features/landing/sections/Navbar";
 import { Footer } from "@/features/landing/sections/Closing";
 import { CopyButton } from "./CopyButton";
-import "@/features/landing/landing.css";
-import "./press.css";
+import * as l from "@/features/landing/styles";
+import * as b from "./styles";
 
 const META_TITLE = "Writz Protocol brand assets and press kit";
 const META_DESCRIPTION =
@@ -154,17 +154,19 @@ const SECTIONS = [
   { id: "rules", label: "Rules" },
 ];
 
+const cx = (...parts: (string | false | null | undefined)[]) => parts.filter(Boolean).join(" ");
+
 const num = (i: number) => String(i + 1).padStart(2, "0");
 
 function Head({ id, title }: { id: string; title: string }) {
   const i = SECTIONS.findIndex((s) => s.id === id);
   return (
     <>
-      <p className="eyebrow">
-        <span className="num">{num(i)}</span>
+      <p className={b.eyebrow}>
+        <span className={b.eyebrowNum}>{num(i)}</span>
         {SECTIONS[i].label}
       </p>
-      <h2>{title}</h2>
+      <h2 className={b.h2}>{title}</h2>
     </>
   );
 }
@@ -188,25 +190,28 @@ export default function BrandPage() {
   const markH = 168;
 
   return (
-    <div className={`${workSans.variable} landing press-root`}>
+    <div className={`${workSans.variable} ${b.root}`}>
       <Navbar />
-      <header className="masthead">
-        <div className="wrap">
-          <p className="eyebrow">Press and partners</p>
-          <h1>Brand assets</h1>
-          <p className="lead">
+      <header className={b.masthead}>
+        <div className={l.wrap}>
+          <p className={b.eyebrow}>Press and partners</p>
+          <h1 className={b.h1}>Brand assets</h1>
+          <p className={b.lead}>
             Free to use to refer to us. The rules are at the bottom. Anything else, write to{" "}
-            <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a> or ask on{" "}
-            <a href={X_URL} rel="me noreferrer">
+            <a href={`mailto:${CONTACT_EMAIL}`} className={b.leadLink}>
+              {CONTACT_EMAIL}
+            </a>{" "}
+            or ask on{" "}
+            <a href={X_URL} rel="me noreferrer" className={b.leadLink}>
               X
             </a>
             .
           </p>
-          <ol className="index">
+          <ol className={b.index}>
             {SECTIONS.map((sec, i) => (
               <li key={sec.id}>
-                <a href={`#${sec.id}`}>
-                  <span className="num">{num(i)}</span>
+                <a href={`#${sec.id}`} className={b.indexLink}>
+                  <span className={b.num}>{num(i)}</span>
                   {sec.label}
                 </a>
               </li>
@@ -215,202 +220,202 @@ export default function BrandPage() {
         </div>
       </header>
 
-      <div className="wrap">
-        <section id="logo">
+      <div className={l.wrap}>
+        <section id="logo" className={b.section}>
           <Head id="logo" title="Four forms, three fills" />
 
-          <div className="assets">
+          <div className={b.assets}>
             {ASSETS.map((a) => (
-              <div className="asset" key={a.file}>
-                <div className="stage">
+              <div className={b.asset} key={a.file}>
+                <div className={b.stage}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={`/brand/${a.file}-white.svg`} alt={a.name} style={{ height: a.h }} />
                 </div>
-                <div className="meta">
-                  <span className="name">{a.name}</span>
-                  <span className="files">
-                    <a href={`/brand/${a.file}.svg`} download>
+                <div className={b.meta}>
+                  <span className={b.name}>{a.name}</span>
+                  <span className={b.files}>
+                    <a href={`/brand/${a.file}.svg`} download className={b.fileLink}>
                       svg
                     </a>
-                    <a href={`/brand/${a.file}-black.svg`} download>
+                    <a href={`/brand/${a.file}-black.svg`} download className={b.fileLink}>
                       black
                     </a>
-                    <a href={`/brand/${a.file}-white.svg`} download>
+                    <a href={`/brand/${a.file}-white.svg`} download className={b.fileLink}>
                       white
                     </a>
                   </span>
                 </div>
               </div>
             ))}
-            <div className="asset">
-              <div className="stage" style={{ background: PAPER }}>
+            <div className={b.asset}>
+              <div className={b.stage} style={{ background: PAPER }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src="/brand/writz-lockup-black.svg" alt="Writz on a light ground" style={{ height: 40 }} />
               </div>
-              <div className="meta">
-                <span className="name">On Paper, for documents and print</span>
-                <span className="files">
-                  <a href="/brand/writz-lockup-black.svg" download>
+              <div className={b.meta}>
+                <span className={b.name}>On Paper, for documents and print</span>
+                <span className={b.files}>
+                  <a href="/brand/writz-lockup-black.svg" download className={b.fileLink}>
                     black
                   </a>
                 </span>
               </div>
             </div>
           </div>
-          <p className="caption">
+          <p className={b.caption}>
             The four forms sit on Graphite, the dark ground of writz.xyz, the app, banners and
             merch. Paper is the ground for documents and print. The unsuffixed file takes its colour
-            from CSS. Use <code>-black</code> and{" "}
-            <code>-white</code> when you do not control the styling.
+            from CSS. Use <code className={b.code}>-black</code> and{" "}
+            <code className={b.code}>-white</code> when you do not control the styling.
           </p>
         </section>
 
-        <section id="clear-space">
+        <section id="clear-space" className={b.section}>
           <Head id="clear-space" title="Half the mark, on every side" />
-          <div className="clearspace">
-            <div className="box" style={{ padding: markH / 2 }}>
-              <span className="unit" style={{ width: markH / 2, height: markH / 2 }} />
-              <div className="mark" style={{ height: markH, color: PAPER }} />
+          <div className={b.clearspace}>
+            <div className={b.box} style={{ padding: markH / 2 }}>
+              <span className={b.unit} style={{ width: markH / 2, height: markH / 2 }} />
+              <div className={b.mark} style={{ height: markH, color: PAPER }} />
             </div>
           </div>
-          <p className="caption">
+          <p className={b.caption}>
             Nothing enters the dashed box. Not a tagline, not a partner logo, not the edge of a
             photograph.
           </p>
         </section>
 
-        <section id="size">
+        <section id="size" className={b.section}>
           <Head id="size" title="Twenty pixels tall, not wide" />
-          <div className="ladder">
+          <div className={b.ladder}>
             {SIZES.map((s) => (
-              <div className={`step ${s.state ?? ""}`} key={s.px}>
-                <div className="slot">
-                  <div className="mark" style={{ height: s.px, color: PAPER }} />
+              <div className={b.step} key={s.px}>
+                <div className={b.slot}>
+                  <div className={b.mark} style={{ height: s.px, color: PAPER }} />
                 </div>
-                <div className="tag">{s.tag}</div>
+                <div className={b.stepTag(s.state)}>{s.tag}</div>
               </div>
             ))}
           </div>
-          <p className="caption">
+          <p className={b.caption}>
             The mark is 1.452 times wider than tall, so a floor stated in width lets it be placed
             at 11px tall, where the five pieces close up. Below 20px the construction is gone. The
             favicon is the one exception, since a tab icon works on silhouette.
           </p>
         </section>
 
-        <section id="colour">
+        <section id="colour" className={b.section}>
           <Head id="colour" title="Graphite & Gold" />
-          <p>
+          <p className={b.p}>
             One palette for every surface: writz.xyz, the app, documents, slides, print and merch.
             Paper is the ground for documents and print, Graphite the ground of the product.
           </p>
-          <div className="swatches">
+          <div className={b.swatches}>
             {COLOURS.map((c) => (
-              <div className="swatch" key={c.name}>
-                <div className="chip" style={{ background: c.hex }} />
-                <div className="name">{c.name}</div>
-                <div className="hex">{c.hex}</div>
-                <div className="role">{c.role}</div>
+              <div key={c.name}>
+                <div className={b.chip()} style={{ background: c.hex }} />
+                <div className={b.swatchName}>{c.name}</div>
+                <div className={b.hex}>{c.hex}</div>
+                <div className={b.role}>{c.role}</div>
               </div>
             ))}
           </div>
 
-          <h3>Greys</h3>
-          <div className="swatches">
+          <h3 className={b.h3}>Greys</h3>
+          <div className={b.swatches}>
             {GREYS.map((c) => (
-              <div className="swatch" key={c.name}>
-                <div className="chip small" style={{ background: c.hex }} />
-                <div className="name">{c.name}</div>
-                <div className="hex">{c.hex}</div>
-                <div className="role">{c.note}</div>
+              <div key={c.name}>
+                <div className={b.chip(true)} style={{ background: c.hex }} />
+                <div className={b.swatchName}>{c.name}</div>
+                <div className={b.hex}>{c.hex}</div>
+                <div className={b.role}>{c.note}</div>
               </div>
             ))}
           </div>
-          <p className="caption">
-            Derived, not part of the five. In the product, <code>--surface-2</code>{" "}
-            <code>#1C2027</code> raises an element on a panel and <code>--heading</code>{" "}
-            <code>#F4F5F7</code> carries headings and values. Hairlines are white at 7 percent,
+          <p className={b.caption}>
+            Derived, not part of the five. In the product, <code className={b.code}>--surface-2</code>{" "}
+            <code className={b.code}>#1C2027</code> raises an element on a panel and <code className={b.code}>--heading</code>{" "}
+            <code className={b.code}>#F4F5F7</code> carries headings and values. Hairlines are white at 7 percent,
             strong rules white at 14 percent.
           </p>
 
-          <h3>Gold is a surface, never type on paper</h3>
-          <div className="pairs">
+          <h3 className={b.h3}>Gold is a surface, never type on paper</h3>
+          <div className={b.pairs}>
             {PAIRS.map((p) => (
               <div
-                className={`pair ${p.ground ?? ""} ${p.fail ? "fail" : ""}`}
+                className={cx(b.pair({ fail: p.fail }), p.ground && "selection:bg-on-accent selection:text-accent")}
                 key={p.label}
                 style={{ background: p.on, color: p.aa }}
               >
-                <div className="aa">Aa</div>
-                <div className="ratio">
+                <div className={b.aa}>Aa</div>
+                <div className={b.ratioText}>
                   {p.ratio}
                   {p.fail ? " fails" : ""}
                 </div>
-                <div className="label">{p.label}</div>
+                <div className={b.plainLabel}>{p.label}</div>
               </div>
             ))}
           </div>
-          <p className="caption">
+          <p className={b.caption}>
             WCAG asks 4.5:1 for normal text. The last one is the most common way this palette gets
             broken.
           </p>
 
-          <h3>Status, on paper and on dark</h3>
-          <div className="pairs status">
+          <h3 className={b.h3}>Status, on paper and on dark</h3>
+          <div className={b.pairs}>
             {STATUS.map((s) => (
-              <div className="pair split" key={s.name}>
-                <div className="half" style={{ background: PAPER, color: s.paper.hex }}>
-                  <div className="label">{s.name}</div>
-                  <div className="ratio">
+              <div className={b.pair({ split: true })} key={s.name}>
+                <div className={b.half} style={{ background: PAPER, color: s.paper.hex }}>
+                  <div className={b.statusLabel}>{s.name}</div>
+                  <div className={b.statusRatio}>
                     {s.paper.hex} {s.paper.ratio}
                   </div>
                 </div>
-                <div className="half" style={{ background: GRAPHITE, color: s.dark.hex }}>
-                  <div className="label">{s.name}</div>
-                  <div className="ratio">
+                <div className={b.half} style={{ background: GRAPHITE, color: s.dark.hex }}>
+                  <div className={b.statusLabel}>{s.name}</div>
+                  <div className={b.statusRatio}>
                     {s.dark.hex} {s.dark.graphite}
                   </div>
-                  <div className="ratio">{s.dark.ink} on Ink</div>
+                  <div className={b.statusRatio}>{s.dark.ink} on Ink</div>
                 </div>
               </div>
             ))}
           </div>
-          <p className="caption">
+          <p className={b.caption}>
             {STATUS.map((s) => `${s.name}: ${s.use}`).join(" ")} Gold is the brand, never a
             status, and a user must never have to tell the two apart by hue, so a badge, a chart or
             a toast carries a label too. On dark, warning sits close to Gold and always carries its
             label.
           </p>
 
-          <h3>Type on the product grounds</h3>
-          <div className="pairs">
+          <h3 className={b.h3}>Type on the product grounds</h3>
+          <div className={b.pairs}>
             {PRODUCT_TYPE.map((p) => (
-              <div className="pair split" key={p.label} style={{ color: p.aa }}>
-                <div className="half" style={{ background: GRAPHITE }}>
-                  <div className="aa">Aa</div>
-                  <div className="ratio">{p.bg} on Graphite</div>
+              <div className={b.pair({ split: true })} key={p.label} style={{ color: p.aa }}>
+                <div className={b.half} style={{ background: GRAPHITE }}>
+                  <div className={b.aa}>Aa</div>
+                  <div className={b.ratioText}>{p.bg} on Graphite</div>
                 </div>
-                <div className="half" style={{ background: INK }}>
-                  <div className="label">{p.label}</div>
-                  <div className="ratio">{p.surface} on Ink</div>
+                <div className={b.half} style={{ background: INK }}>
+                  <div className={b.pairLabel}>{p.label}</div>
+                  <div className={b.ratioText}>{p.surface} on Ink</div>
                 </div>
               </div>
             ))}
           </div>
-          <p className="caption">
-            Graphite is <code>--bg</code> in the product and Ink is <code>--surface</code>, the
+          <p className={b.caption}>
+            Graphite is <code className={b.code}>--bg</code> in the product and Ink is <code className={b.code}>--surface</code>, the
             panel. Gold stays type only on these dark grounds, never on paper.
           </p>
         </section>
 
-        <section id="type">
+        <section id="type" className={b.section}>
           <Head id="type" title="Work Sans" />
-          <div className="specimen">
+          <div className={b.specimen}>
             {TYPE.map((t) => (
-              <div className="row" key={t.spec}>
-                <div className="spec">{t.spec}</div>
+              <div className={b.row} key={t.spec}>
+                <div className={b.spec}>{t.spec}</div>
                 <div
-                  className="sample"
+                  className={b.sample}
                   style={{
                     fontSize: t.size,
                     fontWeight: t.weight,
@@ -424,121 +429,121 @@ export default function BrandPage() {
               </div>
             ))}
           </div>
-          <p className="caption">
+          <p className={b.caption}>
             Tracking goes negative as size goes up and positive as it goes down. Values that come
             from a chain render in the mono, with tabular figures. Work Sans is under the{" "}
-            <a href="https://fonts.google.com/specimen/Work+Sans" rel="noreferrer">
+            <a href="https://fonts.google.com/specimen/Work+Sans" rel="noreferrer" className={b.textLink}>
               SIL Open Font License
             </a>
             .
           </p>
         </section>
 
-        <section id="graphics">
+        <section id="graphics" className={b.section}>
           <Head id="graphics" title="One angle, two colours" />
-          <div className="gfx">
-            <div className="cell">
-              <div className="cap">The cut</div>
+          <div className={b.gfx}>
+            <div className={b.cell}>
+              <div className={b.cap}>The cut</div>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <span style={{ ...shear(64, 30), background: DEEP }} />
                 <span style={{ ...shear(64, 30), background: GOLD }} />
-                <span className="note">skewX(-16°)</span>
+                <span className={b.note}>skewX(-16°)</span>
               </div>
             </div>
 
 
-            <div className="cell">
-              <div className="cap">Redaction bar</div>
-              <div className="redact">
+            <div className={b.cell}>
+              <div className={b.cap}>Redaction bar</div>
+              <div className={b.redact}>
                 <span>Collateral</span>
                 <span style={{ ...shear(92, 17), background: PAPER }} />
                 <span>BTC</span>
               </div>
-              <p className="note" style={{ marginTop: 14, lineHeight: 1.5 }}>
+              <p className={b.noteParagraph} style={{ marginTop: 14, lineHeight: 1.5 }}>
                 A value that exists and is not disclosed. Never a placeholder.
               </p>
             </div>
 
-            <div className="cell">
-              <div className="cap">Tints</div>
-              <div className="tints" style={{ marginBottom: 6 }}>
+            <div className={b.cell}>
+              <div className={b.cap}>Tints</div>
+              <div className={b.tints} style={{ marginBottom: 6 }}>
                 {TINTS.map((o) => (
                   <span key={o} style={{ background: DEEP, opacity: o }} />
                 ))}
               </div>
-              <div className="tints">
+              <div className={b.tints}>
                 {TINTS.map((o) => (
                   <span key={o} style={{ background: GOLD, opacity: o }} />
                 ))}
               </div>
             </div>
           </div>
-          <p className="caption">
-            The offset on a sheared box is its height times <code>tan(16°)</code>, which is 0.2867,
+          <p className={b.caption}>
+            The offset on a sheared box is its height times <code className={b.code}>tan(16°)</code>, which is 0.2867,
             not a fixed number. One angle, one radius family, tints of the two brand colours. No
             third hue, no gradients, no shadows.
           </p>
         </section>
 
-        <section id="copy">
+        <section id="copy" className={b.section}>
           <Head id="copy" title="Describing Writz" />
 
-          <blockquote>
-            <div className="head">
-              <span className="name">One line</span>
+          <blockquote className={b.quote}>
+            <div className={b.quoteHead}>
+              <span className={b.quoteName}>One line</span>
               <CopyButton text={ONE_LINE} />
             </div>
-            <p>{ONE_LINE}</p>
+            <p className={b.p}>{ONE_LINE}</p>
           </blockquote>
 
-          <blockquote style={{ marginTop: 16 }}>
-            <div className="head">
-              <span className="name">Boilerplate</span>
+          <blockquote className={b.quote} style={{ marginTop: 16 }}>
+            <div className={b.quoteHead}>
+              <span className={b.quoteName}>Boilerplate</span>
               <CopyButton text={`About Writz\n\n${BOILERPLATE}`} />
             </div>
-            <p>{BOILERPLATE}</p>
+            <p className={b.p}>{BOILERPLATE}</p>
           </blockquote>
 
-          <p className="caption">
+          <p className={b.caption}>
             Writz is on Stellar testnet, not mainnet, and any description carries that. Independent
             software, not affiliated with or endorsed by the Stellar Development Foundation.
           </p>
         </section>
 
-        <section id="misuse">
+        <section id="misuse" className={b.section}>
           <Head id="misuse" title="Six ways to break it" />
-          <div className="dont">
-            <figure>
-              <div className="stage">
+          <div className={b.dont}>
+            <figure className={b.figure}>
+              <div className={b.dontStage}>
                 <div
-                  className="mark"
+                  className={b.mark}
                   style={{ height: 44, color: PAPER, transform: "scaleX(1.6)" }}
                 />
               </div>
-              <figcaption>Stretch it</figcaption>
+              <figcaption className={b.caption2}>Stretch it</figcaption>
             </figure>
-            <figure>
-              <div className="stage">
+            <figure className={b.figure}>
+              <div className={b.dontStage}>
                 <div
-                  className="mark"
+                  className={b.mark}
                   style={{ height: 44, color: PAPER, transform: "rotate(-14deg)" }}
                 />
               </div>
-              <figcaption>Rotate or skew it</figcaption>
+              <figcaption className={b.caption2}>Rotate or skew it</figcaption>
             </figure>
-            <figure>
-              <div className="stage" style={{ background: PAPER }}>
-                <div className="mark" style={{ height: 44, color: GOLD }} />
+            <figure className={b.figure}>
+              <div className={b.dontStage} style={{ background: PAPER }}>
+                <div className={b.mark} style={{ height: 44, color: GOLD }} />
               </div>
-              <figcaption>Put gold on a light ground</figcaption>
+              <figcaption className={b.caption2}>Put gold on a light ground</figcaption>
             </figure>
-            <figure>
-              <div className="stage">
+            <figure className={b.figure}>
+              <div className={b.dontStage}>
                 {/* The filter sits on a wrapper: on the masked element itself the mask
                     clips the shadow away and the tile shows a clean mark. */}
                 <div style={{ filter: "drop-shadow(0 8px 8px rgba(0,0,0,0.45))" }}>
                   <div
-                    className="mark"
+                    className={b.mark}
                     style={{
                       height: 44,
                       background: `linear-gradient(135deg, ${GOLD}, #6C3FD1)`,
@@ -546,76 +551,76 @@ export default function BrandPage() {
                   />
                 </div>
               </div>
-              <figcaption>Add shadow, glow or gradient</figcaption>
+              <figcaption className={b.caption2}>Add shadow, glow or gradient</figcaption>
             </figure>
-            <figure>
-              <div className="stage busy">
-                <span className="blocks" aria-hidden="true">
-                  <span />
-                  <span />
-                  <span />
-                  <span />
-                  <span />
+            <figure className={b.figure}>
+              <div className={b.dontStageBusy}>
+                <span aria-hidden="true">
+                  <span className={cx(b.block, "inset-[0_62%_40%_0] bg-muted")} />
+                  <span className={cx(b.block, "inset-[18%_20%_0_30%] bg-body")} />
+                  <span className={cx(b.block, "inset-[0_0_55%_70%] bg-surface-2")} />
+                  <span className={cx(b.block, "inset-[60%_55%_0_0] bg-bg")} />
+                  <span className={cx(b.block, "inset-[45%_0_0_78%] bg-muted")} />
                 </span>
-                <div className="mark" style={{ height: 44, color: PAPER }} />
+                <div className={cx(b.mark, "relative")} style={{ height: 44, color: PAPER }} />
               </div>
-              <figcaption>Place it on a busy ground</figcaption>
+              <figcaption className={b.caption2}>Place it on a busy ground</figcaption>
             </figure>
-            <figure>
-              <div className="stage">
-                <div className="mark" style={{ height: 44, color: "#6C3FD1" }} />
+            <figure className={b.figure}>
+              <div className={b.dontStage}>
+                <div className={b.mark} style={{ height: 44, color: "#6C3FD1" }} />
               </div>
-              <figcaption>Recolour it outside the palette</figcaption>
+              <figcaption className={b.caption2}>Recolour it outside the palette</figcaption>
             </figure>
           </div>
-          <p className="caption">
+          <p className={b.caption}>
             Also: do not rebuild the lockup by setting the word next to the mark yourself. The gap,
-            the cap height and the kerning are measured. Use <code>writz-lockup.svg</code>. If you
+            the cap height and the kerning are measured. Use <code className={b.code}>writz-lockup.svg</code>. If you
             need the mark inside a circle or a rounded square, the app icons are that form already,
             drawn with the right clear space. Do not make your own.
           </p>
         </section>
 
-        <section id="rules">
+        <section id="rules" className={b.section}>
           <Head id="rules" title="What you can do with these" />
-          <div className="rules">
+          <div className={b.rules}>
             <div>
-              <ul className="allowed">
+              <ul>
                 {ALLOWED.map((r) => (
-                  <li key={r}>{r}</li>
+                  <li key={r} className={b.allowed}>{r}</li>
                 ))}
               </ul>
             </div>
             <div>
-              <ul className="forbidden">
+              <ul>
                 {FORBIDDEN.map((r) => (
-                  <li key={r}>{r}</li>
+                  <li key={r} className={b.forbidden}>{r}</li>
                 ))}
               </ul>
             </div>
           </div>
-          <p className="caption">
+          <p className={b.caption}>
             Merchandise for sale, use on a physical product, and anything a reader could read as a
             Writz endorsement need to be cleared first.
           </p>
         </section>
       </div>
 
-      <div className="colophon">
-        <div className="wrap">
+      <div className={b.colophon}>
+        <div className={l.wrap}>
           Questions, or a use not covered here:{" "}
-          <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>,{" "}
-          <a href={X_URL} rel="me noreferrer">
+          <a href={`mailto:${CONTACT_EMAIL}`} className={b.textLink}>{CONTACT_EMAIL}</a>,{" "}
+          <a href={X_URL} rel="me noreferrer" className={b.textLink}>
             @WritzProtocol
           </a>{" "}
           on X, or{" "}
-          <a href="https://github.com/WritzProtocol/writz/issues" rel="noreferrer">
+          <a href="https://github.com/WritzProtocol/writz/issues" rel="noreferrer" className={b.textLink}>
             GitHub
           </a>
           .
         </div>
       </div>
-      <Footer />
+      <Footer prose />
     </div>
   );
 }

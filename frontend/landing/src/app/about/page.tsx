@@ -6,9 +6,9 @@ import { Navbar } from "@/features/landing/sections/Navbar";
 import { Footer } from "@/features/landing/sections/Closing";
 import { DOCS_URL, GITHUB_URL } from "@/features/landing/constants";
 import { explorerUrl, ledger } from "@/features/landing/data/contracts.data";
-import "@/features/landing/landing.css";
-import "../brand/press.css";
-import "./about.css";
+import * as l from "@/features/landing/styles";
+import * as b from "../brand/styles";
+import * as a from "./styles";
 
 const META_TITLE = "About Writz Protocol";
 const META_DESCRIPTION =
@@ -114,9 +114,9 @@ const jsonLd = {
   },
 };
 
-function Arrow() {
+function Arrow({ className }: { className?: string }) {
   return (
-    <svg className="arrow" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+    <svg className={className} viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
       <path d="M4 12 12 4M6 4h6v6" fill="none" stroke="currentColor" strokeWidth="1.5" />
     </svg>
   );
@@ -124,32 +124,34 @@ function Arrow() {
 
 export default function AboutPage() {
   return (
-    <div className={`${workSans.variable} landing press-root about`}>
+    <div className={`${workSans.variable} ${a.root}`}>
       <script
         type="application/ld+json"
         // Static, build-time data only; nothing user-supplied reaches this.
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <Navbar />
-      <header className="masthead">
-        <div className="field" aria-hidden="true" />
-        <div className="wrap mast-in">
-          <div className="mast-copy">
-            <h1>Writz Protocol</h1>
-            <p className="lead">
+      <header className={a.masthead}>
+        <div className={a.field} aria-hidden="true" />
+        <div className={a.mastIn}>
+          <div>
+            <h1 className={a.h1}>Writz Protocol</h1>
+            <p className={a.lead}>
               Writz is a lending protocol on Stellar backed by native BTC. A Bitcoin Script holds the
               collateral on Bitcoin itself rather than a company, and it never becomes a wrapped token.
               Borrow USDC against it, repay on your own schedule, and recover your Bitcoin even if Writz
               disappears.
             </p>
           </div>
-          <section id="status" className="status" aria-labelledby="status-h">
-            <h2 id="status-h">Where it stands</h2>
-            <dl>
+          <section id="status" className={a.status} aria-labelledby="status-h">
+            <h2 id="status-h" className={a.statusHeading}>
+              Where it stands
+            </h2>
+            <dl className={a.statusList}>
               {STATUS.map((s) => (
                 <div key={s.k}>
-                  <dt>
-                    <span className="tick" aria-hidden="true" />
+                  <dt className={a.statusTerm}>
+                    <span className={a.statusTick} aria-hidden="true" />
                     {s.k}
                   </dt>
                   <dd>{s.v}</dd>
@@ -160,33 +162,34 @@ export default function AboutPage() {
         </div>
       </header>
 
-      <div className="wrap">
-        <section id="team" aria-labelledby="team-h">
-          <div className="sec-head">
+      <div className={l.wrap}>
+        <section id="team" className={a.section} aria-labelledby="team-h">
+          <div className={a.secHead}>
             <h2 id="team-h">Who builds it</h2>
             <p>Four cofounders across Latin America.</p>
           </div>
-          <ul className="team">
-            {TEAM.map((m) => (
-              <li key={m.name}>
-                <div className="avatar" aria-hidden="true">
-                  <span>{m.initials}</span>
-                  <i style={{ backgroundImage: `url(https://github.com/${m.github}.png?size=192)` }} />
+          <ul className={a.team}>
+            {TEAM.map((m, i) => (
+              <li key={m.name} className={a.member(i)}>
+                <div className={a.avatar} aria-hidden="true">
+                  <span className={a.initials}>{m.initials}</span>
+                  <i className={a.photo} style={{ backgroundImage: `url(https://github.com/${m.github}.png?size=192)` }} />
                 </div>
-                <h3>{m.name}</h3>
-                <p className="role">{m.role}</p>
-                <p className="scope">{m.scope}</p>
-                <p className="links">
-                  <a href={`https://github.com/${m.github}`} rel="noreferrer" aria-label={`${m.name} on GitHub`}>
+                <h3 className={a.memberName}>{m.name}</h3>
+                <p className={a.role}>{m.role}</p>
+                <p className={a.scope}>{m.scope}</p>
+                <p className={a.links}>
+                  <a href={`https://github.com/${m.github}`} rel="noreferrer" aria-label={`${m.name} on GitHub`} className={a.memberLink}>
                     GitHub
                   </a>
-                  <a href={`https://x.com/${m.x}`} rel="noreferrer" aria-label={`${m.name} on X`}>
+                  <a href={`https://x.com/${m.x}`} rel="noreferrer" aria-label={`${m.name} on X`} className={a.memberLink}>
                     X
                   </a>
                   <a
                     href={`https://www.linkedin.com/in/${m.linkedin}/`}
                     rel="noreferrer"
                     aria-label={`${m.name} on LinkedIn`}
+                    className={a.memberLink}
                   >
                     LinkedIn
                   </a>
@@ -196,26 +199,26 @@ export default function AboutPage() {
           </ul>
         </section>
 
-        <section id="recognition" aria-labelledby="recognition-h">
-          <div className="sec-head">
+        <section id="recognition" className={a.section} aria-labelledby="recognition-h">
+          <div className={a.secHead}>
             <h2 id="recognition-h">Recognition</h2>
             <p>What the work has earned so far.</p>
           </div>
-          <ul className="awards">
-            <li>
-              <span className="kind">Hackathon</span>
-              <span className="what">Winners of Pulso Hackathon Colombia</span>
-              <span className="detail">First place, 2026</span>
-              <a href="https://dorahacks.io/hackathon/stellar-pulso-hackathon/detail" rel="noreferrer">
+          <ul className={a.awards}>
+            <li className={a.award}>
+              <span className={a.kind}>Hackathon</span>
+              <span className={a.what}>Winners of Pulso Hackathon Colombia</span>
+              <span className={a.detail}>First place, 2026</span>
+              <a href="https://dorahacks.io/hackathon/stellar-pulso-hackathon/detail" rel="noreferrer" className={a.awardLink}>
                 See the hackathon
                 <Arrow />
               </a>
             </li>
-            <li>
-              <span className="kind">Grants</span>
-              <span className="what">Two Stellar Community Fund Instawards</span>
-              <span className="detail">Awarded in 2026</span>
-              <a href="https://communityfund.stellar.org" rel="noreferrer">
+            <li className={a.award}>
+              <span className={a.kind}>Grants</span>
+              <span className={a.what}>Two Stellar Community Fund Instawards</span>
+              <span className={a.detail}>Awarded in 2026</span>
+              <a href="https://communityfund.stellar.org" rel="noreferrer" className={a.awardLink}>
                 About the Stellar Community Fund
                 <Arrow />
               </a>
@@ -223,20 +226,20 @@ export default function AboutPage() {
           </ul>
         </section>
 
-        <section id="check" aria-labelledby="check-h">
-          <div className="sec-head">
+        <section id="check" className={a.sectionLast} aria-labelledby="check-h">
+          <div className={a.secHead}>
             <h2 id="check-h">Check it yourself</h2>
             <p>The code, the deployed contracts and the papers behind them.</p>
           </div>
-          <ul className="proof">
+          <ul className={a.proof}>
             {PROOF.map((p) => (
               <li key={p.name}>
-                <a href={p.href} rel={p.href.startsWith("/") ? undefined : "noreferrer"}>
-                  <span className={p.mono ? "nm mono" : "nm"}>{p.name}</span>
-                  <span className="note">{p.note}</span>
-                  <span className="where">
+                <a href={p.href} rel={p.href.startsWith("/") ? undefined : "noreferrer"} className={a.proofLink}>
+                  <span className={p.mono ? a.proofNameMono : a.proofName}>{p.name}</span>
+                  <span className={a.proofNote}>{p.note}</span>
+                  <span className={a.proofWhere}>
                     {p.where}
-                    <Arrow />
+                    <Arrow className={a.proofArrow} />
                   </span>
                 </a>
               </li>
@@ -244,21 +247,25 @@ export default function AboutPage() {
           </ul>
         </section>
 
-        <section id="contact" aria-labelledby="contact-h">
-          <h2 id="contact-h">Contact</h2>
-          <a className="email" href={`mailto:${CONTACT_EMAIL}`}>
+        <section id="contact" className={a.contact} aria-labelledby="contact-h">
+          <h2 id="contact-h" className={a.contactHeading}>
+            Contact
+          </h2>
+          <a className={a.email} href={`mailto:${CONTACT_EMAIL}`}>
             {CONTACT_EMAIL}
           </a>
-          <p>
+          <p className={a.contactText}>
             Or{" "}
-            <a href="https://x.com/WritzProtocol" rel="me noreferrer">
+            <a href="https://x.com/WritzProtocol" rel="me noreferrer" className={b.textLink}>
               @WritzProtocol
             </a>{" "}
-            on X. Logos and approved descriptions are on the <a href="/brand">brand page</a>.
+            on X. Logos and approved descriptions are on the <a href="/brand" className={b.textLink}>
+              brand page
+            </a>.
           </p>
         </section>
       </div>
-      <Footer />
+      <Footer prose />
     </div>
   );
 }

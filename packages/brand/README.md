@@ -24,7 +24,7 @@ Each app imports it from its `globals.css`:
 @import "../../../../packages/brand/theme.css";
 ```
 
-The landing imports Tailwind's theme and utilities without preflight and with source detection off, so its plain stylesheets render as before; a page that moves to utilities is added with an `@source` line in `frontend/landing/src/app/globals.css`.
+The landing imports Tailwind's theme and utilities without preflight and with source detection off, and lists the folders that hold class strings with `@source` lines in `frontend/landing/src/app/globals.css`.
 
 Both apps set the `next/font` variables `--ff-sans` (Work Sans) and `--ff-mono` (Geist Mono) on `<html>`, which `--font-sans` and `--font-mono` resolve against.
 

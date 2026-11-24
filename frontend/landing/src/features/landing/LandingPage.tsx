@@ -5,12 +5,11 @@ import { Products } from "./sections/Products";
 import { Evidence } from "./sections/Evidence";
 import { ClosingCard, Footer } from "./sections/Closing";
 import { ScrollReveal } from "./sections/ScrollReveal";
-import "./landing.css";
 import * as l from "./styles";
 
 export function LandingPage() {
   return (
-    <div className="landing home">
+    <div className={l.homeRoot}>
       <a className={l.skip} href="#main">
         Skip to content
       </a>
